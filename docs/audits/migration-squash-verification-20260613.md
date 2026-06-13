@@ -18,7 +18,7 @@
 |------|--------|
 | Command | `npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script` |
 | Provider for generation | **sqlite** (dual-engine portability; avoids Postgres-only `CREATE TYPE` / `CREATE SCHEMA`) |
-| Hand edits | JSON defaults: `DEFAULT {}` → `DEFAULT '{}'`, `DEFAULT []` → `DEFAULT '[]'` (25 columns); timestamps: `DATETIME` → `TIMESTAMP(3)` (174 columns) for Postgres deploy on untouched repo |
+| Hand edits | JSON defaults: `DEFAULT {}` → `DEFAULT '{}'`, `DEFAULT []` → `DEFAULT '[]'` (25 columns); timestamps: `DATETIME` → `TIMESTAMP(3)` (174 columns); **CREATE TABLE order** topologically sorted for Postgres inline FK constraints |
 | PRAGMA | None in baseline |
 | `CREATE TABLE` count | 83 |
 | `model` count in schema | 82 |

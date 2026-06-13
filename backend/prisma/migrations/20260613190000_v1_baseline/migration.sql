@@ -4,6 +4,7 @@
 -- Generated via: prisma migrate diff --from-empty --to-schema-datamodel (sqlite provider for dual-engine portability)
 -- Portable JSON defaults: {} and [] written as quoted string literals for SQLite + Postgres parity
 -- Portable timestamps: DATETIME from sqlite diff normalized to TIMESTAMP(3) for Postgres deploy parity
+-- CREATE TABLE blocks topologically sorted for Postgres inline FK constraints (validate: validate-baseline-fk-order.mjs)
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -59,6 +60,78 @@ CREATE TABLE "ApiLog" (
     "method" TEXT NOT NULL DEFAULT 'GET',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ApiLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Campaign" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "handle" TEXT NOT NULL,
+    "inviteToken" TEXT,
+    "description" TEXT,
+    "campaignOwnerUserId" TEXT NOT NULL,
+    "discoverability" TEXT NOT NULL DEFAULT 'private',
+    "views" INTEGER NOT NULL DEFAULT 0,
+    "followers" INTEGER NOT NULL DEFAULT 0,
+    "language" TEXT DEFAULT 'English',
+    "gameSystem" TEXT DEFAULT 'dnd-5e',
+    "customGameSystemName" TEXT,
+    "themePreset" TEXT NOT NULL DEFAULT 'dark',
+    "appearanceProfile" JSONB,
+    "isLookingForGroup" BOOLEAN NOT NULL DEFAULT false,
+    "recruitmentTagline" TEXT,
+    "recruitmentPremise" TEXT,
+    "recruitmentBeforeApplyNote" TEXT,
+    "scheduleFrequency" TEXT,
+    "scheduleDay" TEXT,
+    "scheduleTime" TEXT,
+    "scheduleTimezone" TEXT,
+    "currentSession" INTEGER NOT NULL DEFAULT 0,
+    "sessionDuration" TEXT,
+    "estimatedLength" TEXT,
+    "campaignFormat" TEXT,
+    "experienceRequired" TEXT,
+    "ageRestriction" TEXT,
+    "levelRange" TEXT,
+    "tableStyleTags" JSONB,
+    "maxSeats" INTEGER NOT NULL DEFAULT 0,
+    "maxPlayers" INTEGER NOT NULL DEFAULT 5,
+    "genreThemes" JSONB,
+    "externalTools" JSONB,
+    "safetyTools" TEXT,
+    "contentWarnings" TEXT,
+    "equipmentNeeded" TEXT,
+    "includeRules" BOOLEAN NOT NULL DEFAULT false,
+    "includeFAQ" BOOLEAN NOT NULL DEFAULT false,
+    "includeSessionZero" BOOLEAN NOT NULL DEFAULT false,
+    "includeHomebrew" BOOLEAN NOT NULL DEFAULT false,
+    "includeSafetyGuidelines" BOOLEAN NOT NULL DEFAULT false,
+    "includeCharacterCreation" BOOLEAN NOT NULL DEFAULT false,
+    "includeTableExpectations" BOOLEAN NOT NULL DEFAULT false,
+    "allowPlayerChronologyManagement" BOOLEAN NOT NULL DEFAULT false,
+    "sidebarConfig" JSONB,
+    "dashboardConfig" JSONB,
+    "creativeDriftDispositions" JSONB,
+    "downtimeGapOverlays" JSONB,
+    "ensembleConfig" JSONB,
+    "currentEpochMinute" BIGINT NOT NULL DEFAULT 0,
+    "archivedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "Campaign_campaignOwnerUserId_fkey" FOREIGN KEY ("campaignOwnerUserId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "UserToken" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "userId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "tokenHash" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "lastUsedAt" TIMESTAMP(3),
+    "scopes" JSONB NOT NULL DEFAULT '[]',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "UserToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -165,19 +238,6 @@ CREATE TABLE "CampaignJoinRequest" (
 );
 
 -- CreateTable
-CREATE TABLE "UserToken" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "userId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "tokenHash" TEXT NOT NULL,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
-    "lastUsedAt" TIMESTAMP(3),
-    "scopes" JSONB NOT NULL DEFAULT '[]',
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "UserToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
 CREATE TABLE "PasswordResetToken" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "userId" TEXT NOT NULL,
@@ -260,62 +320,79 @@ CREATE TABLE "PluginSecret" (
 );
 
 -- CreateTable
-CREATE TABLE "Campaign" (
+CREATE TABLE "Party" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "name" TEXT NOT NULL,
-    "handle" TEXT NOT NULL,
-    "inviteToken" TEXT,
-    "description" TEXT,
-    "campaignOwnerUserId" TEXT NOT NULL,
-    "discoverability" TEXT NOT NULL DEFAULT 'private',
-    "views" INTEGER NOT NULL DEFAULT 0,
-    "followers" INTEGER NOT NULL DEFAULT 0,
-    "language" TEXT DEFAULT 'English',
-    "gameSystem" TEXT DEFAULT 'dnd-5e',
-    "customGameSystemName" TEXT,
-    "themePreset" TEXT NOT NULL DEFAULT 'dark',
-    "appearanceProfile" JSONB,
-    "isLookingForGroup" BOOLEAN NOT NULL DEFAULT false,
-    "recruitmentTagline" TEXT,
-    "recruitmentPremise" TEXT,
-    "recruitmentBeforeApplyNote" TEXT,
-    "scheduleFrequency" TEXT,
-    "scheduleDay" TEXT,
-    "scheduleTime" TEXT,
-    "scheduleTimezone" TEXT,
-    "currentSession" INTEGER NOT NULL DEFAULT 0,
-    "sessionDuration" TEXT,
-    "estimatedLength" TEXT,
-    "campaignFormat" TEXT,
-    "experienceRequired" TEXT,
-    "ageRestriction" TEXT,
-    "levelRange" TEXT,
-    "tableStyleTags" JSONB,
-    "maxSeats" INTEGER NOT NULL DEFAULT 0,
-    "maxPlayers" INTEGER NOT NULL DEFAULT 5,
-    "genreThemes" JSONB,
-    "externalTools" JSONB,
-    "safetyTools" TEXT,
-    "contentWarnings" TEXT,
-    "equipmentNeeded" TEXT,
-    "includeRules" BOOLEAN NOT NULL DEFAULT false,
-    "includeFAQ" BOOLEAN NOT NULL DEFAULT false,
-    "includeSessionZero" BOOLEAN NOT NULL DEFAULT false,
-    "includeHomebrew" BOOLEAN NOT NULL DEFAULT false,
-    "includeSafetyGuidelines" BOOLEAN NOT NULL DEFAULT false,
-    "includeCharacterCreation" BOOLEAN NOT NULL DEFAULT false,
-    "includeTableExpectations" BOOLEAN NOT NULL DEFAULT false,
-    "allowPlayerChronologyManagement" BOOLEAN NOT NULL DEFAULT false,
-    "sidebarConfig" JSONB,
-    "dashboardConfig" JSONB,
-    "creativeDriftDispositions" JSONB,
-    "downtimeGapOverlays" JSONB,
-    "ensembleConfig" JSONB,
-    "currentEpochMinute" BIGINT NOT NULL DEFAULT 0,
-    "archivedAt" TIMESTAMP(3),
+    "campaignId" TEXT NOT NULL,
+    "displayName" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "Campaign_campaignOwnerUserId_fkey" FOREIGN KEY ("campaignOwnerUserId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "Party_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "NoteBookArc" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "campaignId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "displayOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "NoteBookArc_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Asset" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "campaignId" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "displayUrl" TEXT,
+    "thumbnailUrl" TEXT,
+    "width" INTEGER,
+    "height" INTEGER,
+    "originalWidth" INTEGER,
+    "originalHeight" INTEGER,
+    "displayName" TEXT,
+    "visibility" TEXT NOT NULL DEFAULT 'Public',
+    "expiresAt" TIMESTAMP(3),
+    "imageCredit" JSONB,
+    "uploadedByUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "Asset_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Asset_uploadedByUserId_fkey" FOREIGN KEY ("uploadedByUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "WikiPage" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "campaignId" TEXT NOT NULL,
+    "workspace" TEXT,
+    "pathKey" TEXT,
+    "notebookArcId" TEXT,
+    "title" TEXT NOT NULL,
+    "parentId" TEXT,
+    "featuredImageId" TEXT,
+    "mapAssetId" TEXT,
+    "blocks" JSONB NOT NULL DEFAULT '[]',
+    "templateType" TEXT NOT NULL DEFAULT 'DEFAULT',
+    "visibility" TEXT NOT NULL,
+    "metadata" JSONB,
+    "ownerType" TEXT NOT NULL DEFAULT 'STAFF',
+    "ownerUserId" TEXT,
+    "ownerPartyId" TEXT,
+    "createdByUserId" TEXT,
+    "deletedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "WikiPage_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "WikiPage_ownerUserId_fkey" FOREIGN KEY ("ownerUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "WikiPage_ownerPartyId_fkey" FOREIGN KEY ("ownerPartyId") REFERENCES "Party" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "WikiPage_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "WikiPage_notebookArcId_fkey" FOREIGN KEY ("notebookArcId") REFERENCES "NoteBookArc" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "WikiPage_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "WikiPage" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "WikiPage_featuredImageId_fkey" FOREIGN KEY ("featuredImageId") REFERENCES "Asset" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "WikiPage_mapAssetId_fkey" FOREIGN KEY ("mapAssetId") REFERENCES "Asset" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -488,6 +565,95 @@ CREATE TABLE "CampaignScheduledEffect" (
 );
 
 -- CreateTable
+CREATE TABLE "FantasyCalendar" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "campaignId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "isMasterTime" BOOLEAN NOT NULL DEFAULT false,
+    "epochOffset" BIGINT NOT NULL DEFAULT 0,
+    "weekdays" JSONB NOT NULL,
+    "months" JSONB NOT NULL,
+    "seasons" JSONB NOT NULL,
+    "moons" JSONB NOT NULL,
+    "leapDays" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "FantasyCalendar_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "CalendarEventCategory" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "campaignId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "color" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "CalendarEventCategory_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "CalendarEvent" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "calendarId" TEXT NOT NULL,
+    "categoryId" TEXT,
+    "prerequisiteId" TEXT,
+    "visibility" TEXT NOT NULL DEFAULT 'PARTY',
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "duration" INTEGER NOT NULL DEFAULT 1,
+    "isRepeating" BOOLEAN NOT NULL DEFAULT false,
+    "repeatInterval" INTEGER,
+    "repeatUnit" TEXT,
+    "limitRepetitions" INTEGER,
+    "conditions" JSONB,
+    "moonOverrides" JSONB,
+    "isRecurring" BOOLEAN NOT NULL DEFAULT false,
+    "targetYear" INTEGER,
+    "targetMonth" INTEGER,
+    "targetDay" INTEGER,
+    "targetEpochMinute" BIGINT,
+    "recurrenceRule" JSONB,
+    "metadata" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "CalendarEvent_calendarId_fkey" FOREIGN KEY ("calendarId") REFERENCES "FantasyCalendar" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "CalendarEvent_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "CalendarEventCategory" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "CalendarEvent_prerequisiteId_fkey" FOREIGN KEY ("prerequisiteId") REFERENCES "CalendarEvent" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "CampaignWorldEventSuggestion" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "campaignId" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "kind" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "narrative" TEXT,
+    "occurredAtEpochMinute" BIGINT NOT NULL,
+    "sourceType" TEXT NOT NULL DEFAULT 'time_hook',
+    "sourceRef" TEXT NOT NULL,
+    "idempotencyKey" TEXT NOT NULL,
+    "primaryOrgPageId" TEXT,
+    "eraId" TEXT,
+    "momentumState" TEXT,
+    "trendDirection" TEXT,
+    "acceptedCalendarEventId" TEXT,
+    "resolvedByUserId" TEXT,
+    "resolvedAt" TIMESTAMP(3),
+    "developmentPayload" JSONB,
+    "expiresAt" TIMESTAMP(3),
+    "advanceCycleCount" INTEGER NOT NULL DEFAULT 0,
+    "parentSuggestionId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "CampaignWorldEventSuggestion_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "CampaignWorldEventSuggestion_primaryOrgPageId_fkey" FOREIGN KEY ("primaryOrgPageId") REFERENCES "WikiPage" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "CampaignWorldEventSuggestion_acceptedCalendarEventId_fkey" FOREIGN KEY ("acceptedCalendarEventId") REFERENCES "CalendarEvent" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "CampaignWorldEventSuggestion_resolvedByUserId_fkey" FOREIGN KEY ("resolvedByUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "CampaignScheduledEffectOccurrence" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "campaignId" TEXT NOT NULL,
@@ -594,37 +760,6 @@ CREATE TABLE "CampaignMomentum" (
 );
 
 -- CreateTable
-CREATE TABLE "CampaignWorldEventSuggestion" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "campaignId" TEXT NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'pending',
-    "kind" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
-    "narrative" TEXT,
-    "occurredAtEpochMinute" BIGINT NOT NULL,
-    "sourceType" TEXT NOT NULL DEFAULT 'time_hook',
-    "sourceRef" TEXT NOT NULL,
-    "idempotencyKey" TEXT NOT NULL,
-    "primaryOrgPageId" TEXT,
-    "eraId" TEXT,
-    "momentumState" TEXT,
-    "trendDirection" TEXT,
-    "acceptedCalendarEventId" TEXT,
-    "resolvedByUserId" TEXT,
-    "resolvedAt" TIMESTAMP(3),
-    "developmentPayload" JSONB,
-    "expiresAt" TIMESTAMP(3),
-    "advanceCycleCount" INTEGER NOT NULL DEFAULT 0,
-    "parentSuggestionId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "CampaignWorldEventSuggestion_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "CampaignWorldEventSuggestion_primaryOrgPageId_fkey" FOREIGN KEY ("primaryOrgPageId") REFERENCES "WikiPage" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "CampaignWorldEventSuggestion_acceptedCalendarEventId_fkey" FOREIGN KEY ("acceptedCalendarEventId") REFERENCES "CalendarEvent" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "CampaignWorldEventSuggestion_resolvedByUserId_fkey" FOREIGN KEY ("resolvedByUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
-);
-
--- CreateTable
 CREATE TABLE "NarrativeLifecycleState" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "campaignId" TEXT NOT NULL,
@@ -724,74 +859,6 @@ CREATE TABLE "CampaignActivity" (
 );
 
 -- CreateTable
-CREATE TABLE "FantasyCalendar" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "campaignId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "isMasterTime" BOOLEAN NOT NULL DEFAULT false,
-    "epochOffset" BIGINT NOT NULL DEFAULT 0,
-    "weekdays" JSONB NOT NULL,
-    "months" JSONB NOT NULL,
-    "seasons" JSONB NOT NULL,
-    "moons" JSONB NOT NULL,
-    "leapDays" JSONB NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "FantasyCalendar_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "CalendarEventCategory" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "campaignId" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "color" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "CalendarEventCategory_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "CalendarEvent" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "calendarId" TEXT NOT NULL,
-    "categoryId" TEXT,
-    "prerequisiteId" TEXT,
-    "visibility" TEXT NOT NULL DEFAULT 'PARTY',
-    "title" TEXT NOT NULL,
-    "description" TEXT,
-    "duration" INTEGER NOT NULL DEFAULT 1,
-    "isRepeating" BOOLEAN NOT NULL DEFAULT false,
-    "repeatInterval" INTEGER,
-    "repeatUnit" TEXT,
-    "limitRepetitions" INTEGER,
-    "conditions" JSONB,
-    "moonOverrides" JSONB,
-    "isRecurring" BOOLEAN NOT NULL DEFAULT false,
-    "targetYear" INTEGER,
-    "targetMonth" INTEGER,
-    "targetDay" INTEGER,
-    "targetEpochMinute" BIGINT,
-    "recurrenceRule" JSONB,
-    "metadata" JSONB,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "CalendarEvent_calendarId_fkey" FOREIGN KEY ("calendarId") REFERENCES "FantasyCalendar" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "CalendarEvent_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "CalendarEventCategory" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "CalendarEvent_prerequisiteId_fkey" FOREIGN KEY ("prerequisiteId") REFERENCES "CalendarEvent" ("id") ON DELETE SET NULL ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "Party" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "campaignId" TEXT NOT NULL,
-    "displayName" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "Party_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
 CREATE TABLE "CampaignRoleCapabilityOverride" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "campaignId" TEXT NOT NULL,
@@ -818,49 +885,6 @@ CREATE TABLE "CampaignMember" (
     CONSTRAINT "CampaignMember_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "CampaignMember_partyId_fkey" FOREIGN KEY ("partyId") REFERENCES "Party" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "CampaignMember_identityPageId_fkey" FOREIGN KEY ("identityPageId") REFERENCES "WikiPage" ("id") ON DELETE SET NULL ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "WikiPage" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "campaignId" TEXT NOT NULL,
-    "workspace" TEXT,
-    "pathKey" TEXT,
-    "notebookArcId" TEXT,
-    "title" TEXT NOT NULL,
-    "parentId" TEXT,
-    "featuredImageId" TEXT,
-    "mapAssetId" TEXT,
-    "blocks" JSONB NOT NULL DEFAULT '[]',
-    "templateType" TEXT NOT NULL DEFAULT 'DEFAULT',
-    "visibility" TEXT NOT NULL,
-    "metadata" JSONB,
-    "ownerType" TEXT NOT NULL DEFAULT 'STAFF',
-    "ownerUserId" TEXT,
-    "ownerPartyId" TEXT,
-    "createdByUserId" TEXT,
-    "deletedAt" TIMESTAMP(3),
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "WikiPage_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "WikiPage_ownerUserId_fkey" FOREIGN KEY ("ownerUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "WikiPage_ownerPartyId_fkey" FOREIGN KEY ("ownerPartyId") REFERENCES "Party" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "WikiPage_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "WikiPage_notebookArcId_fkey" FOREIGN KEY ("notebookArcId") REFERENCES "NoteBookArc" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "WikiPage_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "WikiPage" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "WikiPage_featuredImageId_fkey" FOREIGN KEY ("featuredImageId") REFERENCES "Asset" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT "WikiPage_mapAssetId_fkey" FOREIGN KEY ("mapAssetId") REFERENCES "Asset" ("id") ON DELETE SET NULL ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "NoteBookArc" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "campaignId" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
-    "displayOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "NoteBookArc_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -1201,29 +1225,6 @@ CREATE TABLE "SocialMention" (
     "createdByUserId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "SocialMention_sourcePageId_fkey" FOREIGN KEY ("sourcePageId") REFERENCES "WikiPage" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "Asset" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "campaignId" TEXT NOT NULL,
-    "url" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
-    "displayUrl" TEXT,
-    "thumbnailUrl" TEXT,
-    "width" INTEGER,
-    "height" INTEGER,
-    "originalWidth" INTEGER,
-    "originalHeight" INTEGER,
-    "displayName" TEXT,
-    "visibility" TEXT NOT NULL DEFAULT 'Public',
-    "expiresAt" TIMESTAMP(3),
-    "imageCredit" JSONB,
-    "uploadedByUserId" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "Asset_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "Asset_uploadedByUserId_fkey" FOREIGN KEY ("uploadedByUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
