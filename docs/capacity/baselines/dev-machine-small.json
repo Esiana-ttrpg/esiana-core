@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-06-13T20:33:11.484Z",
+  "environment": {
+    "db": "sqlite",
+    "campaignHandle": "dev-benchmark-small",
+    "platform": "win32 x64",
+    "nodeVersion": "v20.19.5",
+    "profileId": "benchmark-small",
+    "label": "Small"
+  },
+  "campaignSnapshot": {
+    "pageCount": 172,
+    "characterCount": 50,
+    "locationCount": 25,
+    "organizationCount": 10,
+    "sessionCount": 25,
+    "mapCount": 2
+  },
+  "scenarios": {
+    "export": {
+      "iterations": 3,
+      "avgMs": 93,
+      "maxMs": 103,
+      "errors": 0
+    },
+    "campaign-load": {
+      "iterations": 3,
+      "avgMs": 46,
+      "maxMs": 54,
+      "errors": 0
+    },
+    "character-search": {
+      "iterations": 3,
+      "avgMs": 22,
+      "maxMs": 32,
+      "errors": 0
+    },
+    "timeline-projection": {
+      "iterations": 3,
+      "avgMs": 17,
+      "maxMs": 27,
+      "errors": 0
+    },
+    "map-load": {
+      "iterations": 1,
+      "avgMs": 28,
+      "maxMs": 28,
+      "errors": 0,
+      "payloadBytes": 33
+    }
+  }
+}

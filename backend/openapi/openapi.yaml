@@ -1,0 +1,702 @@
+openapi: 3.1.0
+info:
+  title: Esiana Core API
+  version: 0.9.0
+  description: |
+    REST API for Esiana campaign narrative infrastructure.
+
+    **Authentication:** Session cookie (`esiana_token`) or Bearer API token with scopes.
+
+    **Campaign scope:** Most lore routes live under `/api/campaigns/{campaignHandle}/`.
+
+    ## Not available in core (v1.0)
+
+    - **Search** — no unified `/search` REST endpoint; use wiki hubs, link-index, or plugin search.
+    - **Webhooks** — outbound delivery queue deferred post-1.0.
+
+    ## Human documentation
+
+    API guides and architecture explainers live in the [Esiana docs wiki](https://github.com/Esiana-ttrpg/docs):
+    [API overview](../../docs/api/overview.md), [campaign model](../../docs/architecture/campaign-model.md),
+    [plugin development](../../docs/plugin-development/getting-started.md).
+
+    **Interactive explorer:** open `/api/docs` on your running Esiana instance (version-locked to this release).
+servers:
+  - url: http://localhost:3001
+    description: Local backend
+tags:
+  - name: Auth
+  - name: Campaigns
+  - name: Wiki
+  - name: Assets
+  - name: Backup
+  - name: Import
+  - name: Plugins
+paths:
+  /api/health:
+    get:
+      tags: [Auth]
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              example:
+                status: ok
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+            example:
+              email: gm@example.com
+              password: changeme123
+      responses:
+        '201':
+          description: User created; session cookie set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+              example:
+                user:
+                  id: usr_01HXYZ
+                  email: gm@example.com
+                  role: USER
+                  displayName: null
+                  avatarUrl: null
+                  username: gm
+                  passwordAuthEnabled: true
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Email and password (min 8 characters) are required
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Email already registered
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+            example:
+              email: gm@example.com
+              password: changeme123
+      responses:
+        '200':
+          description: Session cookie set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+              example:
+                user:
+                  id: usr_01HXYZ
+                  email: gm@example.com
+                  role: GAMEMASTER
+                  displayName: Allie
+                  avatarUrl: null
+                  username: gm
+                  passwordAuthEnabled: true
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid credentials
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Clear session
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              example:
+                ok: true
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserWithProviders'
+              example:
+                user:
+                  id: usr_01HXYZ
+                  email: gm@example.com
+                  role: GAMEMASTER
+                  displayName: Allie
+                  avatarUrl: null
+                  username: gm
+                  passwordAuthEnabled: true
+                  linkedProviders: []
+  /api/campaigns:
+    get:
+      tags: [Campaigns]
+      summary: List campaigns for current user
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Campaign list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  campaigns:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CampaignSummary'
+              example:
+                campaigns:
+                  - id: cmp_01ABC
+                    name: Port Haven
+                    handle: port-haven
+                    role: GAMEMASTER
+                    isMember: true
+                    isCampaignOwner: true
+                    heroImageUrl: null
+                    isArchived: false
+    post:
+      tags: [Campaigns]
+      summary: Create campaign (wizard)
+      description: Multipart form — cover image, Obsidian ZIP, sovereign backup ZIP, or calendar JSON optional.
+      security:
+        - cookieAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                handle:
+                  type: string
+                markdownZipFile:
+                  type: string
+                  format: binary
+                backupZipFile:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Campaign created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CampaignCreated'
+              example:
+                campaign:
+                  id: cmp_01ABC
+                  name: Port Haven
+                  handle: port-haven
+                  role: GAMEMASTER
+                  isMember: true
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Campaign name is required
+  /api/campaigns/{campaignHandle}:
+    patch:
+      tags: [Campaigns]
+      summary: Update campaign settings
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      responses:
+        '200':
+          description: Updated campaign
+  /api/campaigns/{campaignHandle}/wiki:
+    post:
+      tags: [Wiki]
+      summary: Create wiki page (entity)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      requestBody:
+        content:
+          application/json:
+            example:
+              title: The Black Tide
+              templateType: CHARACTER
+              visibility: Party
+              parentId: null
+              metadata:
+                entityCategory: characters
+                profession: Scout
+      responses:
+        '201':
+          description: Page created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  page:
+                    $ref: '#/components/schemas/WikiPageSummary'
+              example:
+                page:
+                  id: pg_01WIKI
+                  title: The Black Tide
+                  templateType: CHARACTER
+                  visibility: Party
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Page title is required
+  /api/campaigns/{campaignHandle}/wiki/{pageId}:
+    get:
+      tags: [Wiki]
+      summary: Get wiki page
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Wiki page payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WikiPageSummary'
+              example:
+                id: pg_01WIKI
+                title: The Black Tide
+                templateType: CHARACTER
+                visibility: Party
+        '404':
+          description: Page not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Page not found
+    patch:
+      tags: [Wiki]
+      summary: Update wiki page
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated page
+    delete:
+      tags: [Wiki]
+      summary: Soft-delete wiki page
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+  /api/campaigns/{campaignHandle}/wiki/tree:
+    get:
+      tags: [Wiki]
+      summary: Wiki navigation tree
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      responses:
+        '200':
+          description: Tree nodes
+          content:
+            application/json:
+              example:
+                tree:
+                  - id: cat_characters
+                    title: Characters
+                    children:
+                      - id: pg_01WIKI
+                        title: The Black Tide
+                campaign:
+                  id: cmp_01ABC
+                  slug: port-haven
+                  name: Port Haven
+                  role: GAMEMASTER
+                  isMember: true
+                players: []
+                playerSessionNotesFolderTitle: Session Notes
+  /api/campaigns/{campaignHandle}/wiki/link-index:
+    get:
+      tags: [Wiki]
+      summary: Wikilink index (not full-text search)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      responses:
+        '200':
+          description: Link index entries
+          content:
+            application/json:
+              example:
+                entries:
+                  - pageId: pg_01WIKI
+                    title: The Black Tide
+                    label: The Black Tide
+                    normalizedLabel: the black tide
+                    templateType: CHARACTER
+  /api/assets/{assetId}:
+    get:
+      tags: [Assets]
+      summary: Stream campaign asset
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Binary asset
+        '404':
+          description: Not found or no access
+  /api/campaigns/{campaignHandle}/backup:
+    get:
+      tags: [Backup]
+      summary: Download sovereign campaign ZIP
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      responses:
+        '200':
+          description: esiana-campaign-backup-v2 ZIP
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+  /api/campaigns/{campaignHandle}/backup/async:
+    post:
+      tags: [Backup]
+      summary: Queue async sovereign export
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      responses:
+        '202':
+          description: Background task started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAccepted'
+              example:
+                taskId: task_export_01
+  /api/campaigns/{campaignHandle}/backup/restore:
+    post:
+      tags: [Backup]
+      summary: Restore sovereign ZIP into campaign
+      description: Destructive — replaces wiki, tags, links, plugin data in campaign.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                backupZipFile:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Restore queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAccepted'
+              example:
+                taskId: task_restore_01
+        '400':
+          description: Invalid backup archive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid campaign backup ZIP
+  /api/import-providers:
+    get:
+      tags: [Import]
+      summary: List import providers (core + plugins)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Provider descriptors
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [core, plugins]
+                properties:
+                  core:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CoreImportProvider'
+                  plugins:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PluginImportProvider'
+              example:
+                core:
+                  - source: core
+                    id: markdown-zip
+                    label: Markdown ZIP
+                    description: Obsidian-style markdown archive
+                  - source: core
+                    id: esiana-backup
+                    label: Esiana Backup
+                    description: Full campaign backup package
+                plugins:
+                  - source: plugin
+                    id: obsidian-vault
+                    pluginId: obsidian
+                    providerId: vault-import
+                    label: Vault Import
+                    description: ''
+                    requiresFile: false
+                    requiresAuth: false
+  /api/plugins:
+    get:
+      tags: [Plugins]
+      summary: List installed system plugins
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Plugin catalog
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: esiana_token
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API token with scopes
+  parameters:
+    campaignHandle:
+      name: campaignHandle
+      in: path
+      required: true
+      schema:
+        type: string
+      example: port-haven
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        username:
+          type: string
+        passwordAuthEnabled:
+          type: boolean
+    UserWithProviders:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            linkedProviders:
+              type: array
+              items:
+                type: string
+    CampaignSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        handle:
+          type: string
+        role:
+          type: string
+          nullable: true
+        isMember:
+          type: boolean
+        isCampaignOwner:
+          type: boolean
+        heroImageUrl:
+          type: string
+          nullable: true
+        isArchived:
+          type: boolean
+    CampaignCreated:
+      type: object
+      properties:
+        campaign:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            handle:
+              type: string
+            role:
+              type: string
+            isMember:
+              type: boolean
+    WikiPageSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        templateType:
+          type: string
+        visibility:
+          type: string
+    TaskAccepted:
+      type: object
+      required: [taskId]
+      properties:
+        taskId:
+          type: string
+    CoreImportProvider:
+      type: object
+      required: [source, id, label, description]
+      properties:
+        source:
+          type: string
+          enum: [core]
+        id:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+    PluginImportProvider:
+      type: object
+      required: [source, id, pluginId, providerId, label, description, requiresFile, requiresAuth]
+      properties:
+        source:
+          type: string
+          enum: [plugin]
+        id:
+          type: string
+        pluginId:
+          type: string
+        providerId:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        requiresFile:
+          type: boolean
+        requiresAuth:
+          type: boolean

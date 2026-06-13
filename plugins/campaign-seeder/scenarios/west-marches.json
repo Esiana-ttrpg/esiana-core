@@ -1,0 +1,11 @@
+{
+  "id": "west-marches",
+  "mode": "generic",
+  "params": {
+    "sessionCount": 14,
+    "locationCount": 5,
+    "factionCount": 4,
+    "npcCount": 6,
+    "unresolvedRate": 0.22
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "id": "player-experience-demo",
+  "mode": "scenario",
+  "coverageFlavor": "player-demo",
+  "pages": [
+    {
+      "key": "loc:old-mill",
+      "title": "Old Mill Road",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "A muddy track between the village and the ruined mill. The party camped here after [[The Missing Ledger]] went sideways."
+    },
+    {
+      "key": "loc:brightquill-yard",
+      "title": "Brightquill Yard",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "Merchant wagons and a small shrine. [[Lyra Moonfall]] knows the family clerk here."
+    },
+    {
+      "key": "npc:innkeeper",
+      "title": "Marta the Innkeeper",
+      "parentKey": "skeleton:World/Characters",
+      "metadata": { "entityCategory": "characters" },
+      "body": "Runs the Crossroads Inn. Heard rumors about [[Old Mill Road]] after dark."
+    },
+    {
+      "key": "quest:ledger",
+      "title": "The Missing Ledger",
+      "parentKey": "skeleton:Game/Quests",
+      "metadata": { "entityCategory": "quests", "questStatus": "ACTIVE" },
+      "body": "Recover the Brightquill shipping ledger before the festival. Party-visible objective."
+    },
+    {
+      "key": "journal:party-recap",
+      "title": "Party Recap — Session Zero",
+      "parentKey": "skeleton:Game/Journals",
+      "metadata": { "entityCategory": "journals" },
+      "body": "We agreed to share loot and rotate watch. Finn wants to scout [[Old Mill Road]] first."
+    },
+    {
+      "key": "journal:dm-only-twist",
+      "title": "DM Thread — Hidden Patron",
+      "parentKey": "skeleton:Game/Journals",
+      "metadata": { "entityCategory": "journals" },
+      "visibility": "DM_Only",
+      "body": "The ledger theft was staged. The real prize is a map fragment in [[Brightquill Yard]]."
+    },
+    {
+      "key": "session:1",
+      "title": "Session 1 Notes",
+      "parentKey": "skeleton:Player Session Notes",
+      "templateType": "SESSION_NOTE",
+      "body": "Introduced the party at the Crossroads Inn. Hook: [[The Missing Ledger]]."
+    }
+  ],
+  "calendarEvents": [
+    {
+      "title": "Festival Eve Deadline",
+      "description": "Ledger must be found before the Brightquill festival.",
+      "dayOffset": 5
+    }
+  ]
+}

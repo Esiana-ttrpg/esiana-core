@@ -1,0 +1,96 @@
+You are completely right—most digital diplomatic webs look incredible in marketing screenshots, but the second you add more than five factions, they turn into an unreadable plate of neon spaghetti. Nodes overlap, labels collide, and the tool becomes completely useless for quick reference during a live session.
+
+If we want this intertwined world page to be genuinely useful, we need to design it around **Focus Isolation** and **Chronological Context**.
+
+Instead of showing *everything all at once*, the UI should focus on showing **the world through the eyes of a single entity** at a **specific point in time**.
+
+Here is how we can design the UI and visual interactions to make this highly usable and deeply integrated with your existing timelines.
+
+---
+
+## 🗺️ The World Hub Layout: "The Split View"
+
+To keep the screen grounded, avoid full-screen abstract maps. Use a **70/30 Split View Canvas**. The left 70% is your clean, interactive visual canvas; the right 30% is a persistent, contextual detail pane that updates automatically based on what you click.
+
+```
+┌───────────────────────────────────────────────┬───────────────────────────┐
+│ [Geopolitical Map]  [Lineage]  [Org Charts]   │ CONTEXT PANEL:            │
+├───────────────────────────────────────────────┤ The Iron Syndicate        │
+│                                               │ ── Faction (Cult) ──      │
+│     (Oakhaven) ─────────────── (City Guard)   │                           │
+│          │                         │          │ Description:              │
+│          │                         │          │ Criminal underground...   │
+│          │                         │          │                           │
+│          └───────────► 💥 ◄────────┘          ├───────────────────────────┤
+│                   (Syndicate)                 │ ACTIVE TIMELINE IMPACTS   │
+│                                               │ • Year 402: Instigated the│
+│                                               │   Bread Riots [Link]      │
+│ ═══ Chrono-Scrubber ═════════════════════════ │ • Year 405: Secret treaty │
+│ [ 400 DG ]──────────────●───────[ 408 DG ]    │   with City Guard [Link]  │
+└───────────────────────────────────────────────┴───────────────────────────┘
+
+```
+
+---
+
+## 🤝 Making Diplomacy Webs Actually Usable
+
+To solve the "spaghetti web" problem, we implement three core UX interactions:
+
+### 1. Dynamic Focus Isolation (Hover & Click)
+
+* **The Default State:** The map displays a faint, low-contrast overview of major factions and geographic regions.
+* **The Interaction:** Hovering over or clicking a faction node (e.g., *The Iron Syndicate*) instantly **dims the rest of the web by 80%**.
+* **The Visual Result:** The map dynamically lights up only the direct connections to that specific faction. Allies glow emerald green, enemies glow crimson red, and non-aggression pacts glow amber. All crossing lines from irrelevant factions vanish from sight.
+
+### 2. The "Chrono-Scrubber" Timeline Integration
+
+Since your platform already has powerful calendar and timeline mechanics, let's turn them into a temporal navigation tool.
+
+* **The UI:** A interactive timeline slider sits at the bottom of the World canvas view.
+* **The Visual Result:** As the DM drags the slider back and forth through campaign history, **the political web dynamically updates in real-time**.
+* **The Gameplay Value:** Drag the slider to *Year 400*, and lines show Oakhaven and the Syndicate are at peace. Slide it to *Year 405*, and the connection line snaps, catching fire to symbolize an active war. This instantly handles Legendkeeper's goal of visualizing "cause and effect" over parallel storylines.
+
+### 3. Asymmetric Filter Rails
+
+DMs rarely need to see every corporate feud and religious crusade simultaneously. Provide a lightweight sidebar filter toggle:
+
+* `[x] Show Commercial/Trade Alliances`
+* `[ ] Show Secret/Shadow Feuds`
+* `[x] Show Military Treaties`
+
+---
+
+## 🏢 Visualizing Organizational Divisions Cleanly
+
+When switching from the macro political web down into specialized internal organizational views, changing the visual structure based on the organization's **division tab** keeps data incredibly scannable.
+
+### The Cult Interface (Cellular / Blind Layout)
+
+* **The Visual Style:** Decentralized, floating clusters.
+* **The Usability Pattern:** The UI doesn't show a clean top-down tree. Instead, it shows isolated "Cells" connected by single, thin, hidden link lines to an obscured or masked "Handler" node. Clicking a cell reveals only what *that specific cell* knows, letting the DM easily track fog-of-war layers during infiltration plots.
+
+### The Alliance Interface (The Flat Council Wheel)
+
+* **The Visual Style:** A circular or ribbon-style layout where all nodes are placed equidistant from the center.
+* **The Usability Pattern:** No node sits higher than another. The central hub space inside the circle displays the shared alliance assets (e.g., *The Coalition Treasury, The Combined Fleet Staging Grounds*).
+
+### The Empire Interface (The Feudal Tiered Pyramid)
+
+* **The Visual Style:** Strict, wide, cascading rows.
+* **The Usability Pattern:** Highly structured rows explicitly divided by regional boundaries or tiers (e.g., *Imperial Throne -> Sector Governors -> Local Magistrates*). Dragging a Character card into a tier automatically updates their regional metadata tags under the hood.
+
+---
+
+## 👑 The Family Tree "Portrait Strip" Layout
+
+Standard family trees break if someone has four partners, multiple adoptive heirs, and generation-skipping timelines.
+
+* **The UI Fix:** Use an interactive **Horizontal Swimlane** timeline rather than a geometric box tree. Each generation occupies a strict horizontal row pinned to your calendar years.
+* **The Visuals:** Clicking any individual portrait highlights their biological parents, active spouses, and direct children with clean neon vectors, while opening their personal chronicle registry directly in the context sidebar pane.
+
+---
+
+By focusing on this highly visual, contextual design, you prevent clutter, make information instantly retrievable during game sessions, and bind your static wiki pages to your live timeline elements.
+
+Does this focus-isolated, timeline-scrubbing design feel like a framework that solves your worries about clunky visual tools?

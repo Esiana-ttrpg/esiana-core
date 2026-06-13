@@ -1,0 +1,28 @@
+/* Esiana mark — foreground fill with perceptual atmospheric halo (not a stroke outline). */
+
+.esiana-logo {
+  display: block;
+}
+
+.esiana-logo__glyph {
+  stroke-opacity: 0.07;
+}
+
+.esiana-logo {
+  filter:
+    drop-shadow(0 1px 0 color-mix(in srgb, var(--color-foreground) 4%, transparent))
+    drop-shadow(0 0 10px color-mix(in srgb, var(--color-primary) 9%, transparent));
+}
+
+html.theme-light .esiana-logo,
+html.theme-parchment .esiana-logo {
+  filter:
+    drop-shadow(0 1px 2px color-mix(in srgb, var(--color-primary-hover) 14%, transparent))
+    drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 7%, transparent))
+    drop-shadow(0 0 0.45px color-mix(in srgb, var(--color-foreground) 30%, transparent));
+}
+
+html.theme-light .esiana-logo__glyph,
+html.theme-parchment .esiana-logo__glyph {
+  stroke-opacity: 0.1;
+}

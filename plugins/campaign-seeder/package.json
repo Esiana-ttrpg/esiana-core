@@ -1,0 +1,12 @@
+{
+  "name": "@esiana/campaign-seeder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "seed-campaign": "./cli/seed-campaign.mjs"
+  },
+  "scripts": {
+    "seed": "node cli/seed-campaign.mjs"
+  }
+}

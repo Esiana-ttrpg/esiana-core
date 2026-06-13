@@ -1,0 +1,22 @@
+{
+  "id": "player-journal",
+  "name": "Player Journal",
+  "version": "0.1.0",
+  "description": "Personal journal entries with optional publish-to-wiki — TodoMVC-style plugin example.",
+  "scope": "campaign",
+  "category": "utility",
+  "engines": { "esiana-core": "^0.8.0" },
+  "permissions": ["plugin:data", "ui:slot"],
+  "uiSlots": ["dashboard", "campaign-plugin-settings"],
+  "configTemplate": [
+    {
+      "key": "publishFolderTitle",
+      "label": "Publish folder title",
+      "type": "text",
+      "defaultValue": "Journals"
+    }
+  ],
+  "githubUrl": "https://github.com/Esiana-ttrpg/community-plugins/tree/main/player-journal",
+  "backendEntry": "backend/index.js",
+  "frontendEntry": "frontend/index.js"
+}

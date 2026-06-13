@@ -1,0 +1,17 @@
+{
+  "id": "benchmark-small",
+  "label": "Small Benchmark World",
+  "description": "Starter campaign scale — ~100 pages for smoke tests, demos, and local profiling.",
+  "defaultSeed": "benchmark-small-v1",
+  "defaultDensity": "quiet",
+  "wizardVisible": true,
+  "params": {
+    "pageCount": 100,
+    "characterCount": 50,
+    "locationCount": 25,
+    "organizationCount": 10,
+    "sessionCount": 25,
+    "mapCount": 2,
+    "unresolvedRate": 0.12
+  }
+}

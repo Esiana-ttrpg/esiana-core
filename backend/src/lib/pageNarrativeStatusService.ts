@@ -1,0 +1,240 @@
+import { PageNarrativeStatusType } from '@prisma/client';
+import { prisma } from './prisma.js';
+import {
+  ALL_PAGE_NARRATIVE_STATUSES,
+  normalizePageNarrativeStatus,
+  PageNarrativeStatuses,
+  type PageNarrativeStatusValue,
+  projectPageNarrativeStatus,
+  resolvePageNarrativeStatus,
+} from '../../../shared/pageNarrativeStatus.js';
+import type { NarrativeViewerContext } from '../../../shared/narrativeProjection.js';
+import {
+  parseCharacterMetadata,
+  resolveCharacterStatus,
+} from './characterMetadata.js';
+import { parseCharacterLineageMetadata } from './characterLineageMetadata.js';
+
+export type StoredPageNarrativeStatus = {
+  wikiPageId: string;
+  status: PageNarrativeStatusValue;
+  reason: string | null;
+};
+
+function toStoredStatus(row: {
+  wikiPageId: string;
+  status: PageNarrativeStatusType;
+  reason: string | null;
+}): StoredPageNarrativeStatus {
+  return {
+    wikiPageId: row.wikiPageId,
+    status: row.status as PageNarrativeStatusValue,
+    reason: row.reason,
+  };
+}
+
+export function prismaStatusToShared(
+  status: PageNarrativeStatusType,
+): PageNarrativeStatusValue {
+  return status as PageNarrativeStatusValue;
+}
+
+export function sharedStatusToPrisma(
+  status: PageNarrativeStatusValue,
+): PageNarrativeStatusType {
+  return status as PageNarrativeStatusType;
+}
+
+export async function getPageNarrativeStatusMap(
+  campaignId: string,
+  pageIds: readonly string[],
+): Promise<Map<string, StoredPageNarrativeStatus>> {
+  if (pageIds.length === 0) return new Map();
+  const rows = await prisma.pageNarrativeStatus.findMany({
+    where: { campaignId, wikiPageId: { in: [...pageIds] } },
+    select: { wikiPageId: true, status: true, reason: true },
+  });
+  const map = new Map<string, StoredPageNarrativeStatus>();
+  for (const row of rows) {
+    map.set(row.wikiPageId, toStoredStatus(row));
+  }
+  return map;
+}
+
+export async function getPageNarrativeStatus(
+  campaignId: string,
+  wikiPageId: string,
+): Promise<StoredPageNarrativeStatus | null> {
+  const row = await prisma.pageNarrativeStatus.findUnique({
+    where: { wikiPageId },
+    select: { wikiPageId: true, status: true, reason: true, campaignId: true },
+  });
+  if (!row || row.campaignId !== campaignId) return null;
+  return toStoredStatus(row);
+}
+
+function resolveCharacterFallbackForPage(
+  templateType: string,
+  metadata: unknown,
+): PageNarrativeStatusValue | null {
+  if (templateType !== 'CHARACTER') return null;
+  const identity = parseCharacterMetadata(metadata);
+  const lineage = parseCharacterLineageMetadata(metadata);
+  const lifeStatus = resolveCharacterStatus(identity, lineage);
+  return resolvePageNarrativeStatus({ characterLifeStatus: lifeStatus });
+}
+
+export function resolveEffectivePageNarrativeStatus(input: {
+  stored?: StoredPageNarrativeStatus | null;
+  templateType?: string;
+  metadata?: unknown;
+}): PageNarrativeStatusValue {
+  if (input.stored) return input.stored.status;
+  const fallback =
+    input.templateType != null
+      ? resolveCharacterFallbackForPage(input.templateType, input.metadata)
+      : null;
+  return fallback ?? PageNarrativeStatuses.ACTIVE;
+}
+
+export function projectStoredPageNarrativeStatus(
+  stored: StoredPageNarrativeStatus | null | undefined,
+  ctx: NarrativeViewerContext,
+  fallback?: PageNarrativeStatusValue,
+): ReturnType<typeof projectPageNarrativeStatus> {
+  const status =
+    stored?.status ?? fallback ?? PageNarrativeStatuses.ACTIVE;
+  return projectPageNarrativeStatus(status, ctx, stored?.reason ?? null);
+}
+
+export async function buildPageNarrativeStatusProjectionMap(input: {
+  campaignId: string;
+  pageIds: readonly string[];
+  ctx: NarrativeViewerContext;
+  pages?: ReadonlyArray<{
+    id: string;
+    templateType: string;
+    metadata: unknown;
+  }>;
+}): Promise<Map<string, ReturnType<typeof projectPageNarrativeStatus>>> {
+  const storedMap = await getPageNarrativeStatusMap(
+    input.campaignId,
+    input.pageIds,
+  );
+  const pageMeta = new Map(
+    (input.pages ?? []).map((p) => [p.id, p] as const),
+  );
+  const result = new Map<string, ReturnType<typeof projectPageNarrativeStatus>>();
+  for (const pageId of input.pageIds) {
+    const stored = storedMap.get(pageId) ?? null;
+    const meta = pageMeta.get(pageId);
+    const effective = resolveEffectivePageNarrativeStatus({
+      stored,
+      templateType: meta?.templateType,
+      metadata: meta?.metadata,
+    });
+    result.set(
+      pageId,
+      projectPageNarrativeStatus(
+        effective,
+        input.ctx,
+        stored?.reason ?? null,
+      ),
+    );
+  }
+  return result;
+}
+
+export async function upsertPageNarrativeStatus(input: {
+  campaignId: string;
+  wikiPageId: string;
+  status: PageNarrativeStatusType;
+  reason?: string | null;
+  updatedByUserId?: string | null;
+}): Promise<StoredPageNarrativeStatus> {
+  const row = await prisma.pageNarrativeStatus.upsert({
+    where: { wikiPageId: input.wikiPageId },
+    create: {
+      campaignId: input.campaignId,
+      wikiPageId: input.wikiPageId,
+      status: input.status,
+      reason: input.reason ?? null,
+      updatedByUserId: input.updatedByUserId ?? null,
+    },
+    update: {
+      status: input.status,
+      reason: input.reason ?? null,
+      updatedByUserId: input.updatedByUserId ?? null,
+    },
+    select: { wikiPageId: true, status: true, reason: true },
+  });
+  return toStoredStatus(row);
+}
+
+export async function ensurePageNarrativeStatusOnCreate(input: {
+  campaignId: string;
+  wikiPageId: string;
+  status?: PageNarrativeStatusType;
+}): Promise<void> {
+  await prisma.pageNarrativeStatus.upsert({
+    where: { wikiPageId: input.wikiPageId },
+    create: {
+      campaignId: input.campaignId,
+      wikiPageId: input.wikiPageId,
+      status: input.status ?? PageNarrativeStatusType.ACTIVE,
+    },
+    update: {},
+  });
+}
+
+export async function backfillPageNarrativeStatusFromCharacterMetadata(
+  campaignId: string,
+): Promise<number> {
+  const pages = await prisma.wikiPage.findMany({
+    where: { campaignId, deletedAt: null, templateType: 'CHARACTER' },
+    select: { id: true, templateType: true, metadata: true },
+  });
+  let updated = 0;
+  for (const page of pages) {
+    const fallback = resolveCharacterFallbackForPage(
+      page.templateType,
+      page.metadata,
+    );
+    if (!fallback || fallback === PageNarrativeStatuses.ACTIVE) continue;
+    await prisma.pageNarrativeStatus.updateMany({
+      where: { wikiPageId: page.id, status: PageNarrativeStatusType.ACTIVE },
+      data: { status: sharedStatusToPrisma(fallback) },
+    });
+    updated += 1;
+  }
+  return updated;
+}
+
+export function assertSharedMatchesPrismaEnum(): void {
+  const prismaValues = Object.values(PageNarrativeStatusType);
+  if (prismaValues.length !== ALL_PAGE_NARRATIVE_STATUSES.length) {
+    throw new Error('PageNarrativeStatus shared/Prisma enum length mismatch');
+  }
+  for (const value of ALL_PAGE_NARRATIVE_STATUSES) {
+    if (!prismaValues.includes(value as PageNarrativeStatusType)) {
+      throw new Error(`Missing Prisma enum value for ${value}`);
+    }
+  }
+}
+
+export function parsePageNarrativeStatusBody(
+  body: Record<string, unknown>,
+): { status: PageNarrativeStatusType; reason: string | null } | null {
+  const normalized = normalizePageNarrativeStatus(body.status);
+  if (!normalized) return null;
+  const reason =
+    typeof body.reason === 'string'
+      ? body.reason.trim() || null
+      : body.reason === null
+        ? null
+        : undefined;
+  return {
+    status: sharedStatusToPrisma(normalized),
+    reason: reason === undefined ? null : reason,
+  };
+}

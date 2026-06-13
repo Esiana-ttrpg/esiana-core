@@ -1,0 +1,142 @@
+{
+  "id": "tomb-of-horrors-demo",
+  "mode": "scenario",
+  "coverageFlavor": "tomb-demo",
+  "pages": [
+    {
+      "key": "map:crypt-overview",
+      "title": "Crypt Overview Map",
+      "parentKey": "skeleton:World/Maps",
+      "templateType": "DEFAULT",
+      "metadata": { "entityCategory": "maps", "mapStub": true },
+      "body": "A rough sketch of the sunken crypt complex. [[Entry Hall]] leads to the [[False Antechamber]].\n\n*Map art placeholder — attach a battle map asset later.*"
+    },
+    {
+      "key": "map:upper-level",
+      "title": "Upper Crypt Sketch",
+      "parentKey": "skeleton:World/Maps",
+      "metadata": { "entityCategory": "maps", "mapStub": true },
+      "body": "Annotated corridors linking [[Guardian Vault]] and [[Archivist's Niche]]."
+    },
+    {
+      "key": "npc:archivist",
+      "title": "The Archivist",
+      "parentKey": "skeleton:World/Characters",
+      "metadata": { "entityCategory": "characters" },
+      "body": "A dust-shrouded scholar who catalogued expedition gear before the delving turned sour. Mentions [[False Antechamber]] and warns about [[Spike Pit]]."
+    },
+    {
+      "key": "npc:guardian",
+      "title": "Guardian Construct",
+      "parentKey": "skeleton:World/Characters",
+      "metadata": { "entityCategory": "characters" },
+      "body": "A ward-bound automaton guarding the [[Guardian Vault]]. Responds to the phrase carved on [[Entry Hall]] — or doesn't."
+    },
+    {
+      "key": "npc:herald",
+      "title": "Herald of Ash",
+      "parentKey": "skeleton:World/Characters",
+      "metadata": { "entityCategory": "characters" },
+      "body": "A spectral voice echoing from [[False Antechamber]]. Offers riddles, never answers."
+    },
+    {
+      "key": "quest:delve",
+      "title": "The Sunken Delve",
+      "parentKey": "skeleton:Game/Quests",
+      "metadata": { "entityCategory": "quests", "questStatus": "ACTIVE" },
+      "body": "Recover the Archivist's ledger from the crypt. First casualties reported near [[Spike Pit]]."
+    },
+    {
+      "key": "room:entry",
+      "title": "Entry Hall",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "Cracked mosaic floor. Inscription: *Only the wary pass.* Leads to [[False Antechamber]] and a side passage to [[Archivist's Niche]]."
+    },
+    {
+      "key": "room:antechamber",
+      "title": "False Antechamber",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "Three identical doors. One is real. [[Herald of Ash]] whispers from the ceiling. Wrong choice → [[Spike Pit]]."
+    },
+    {
+      "key": "room:spike-pit",
+      "title": "Spike Pit",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "A concealed drop lined with rusted spikes. Climbing out requires rope or magic. Linked from [[False Antechamber]]."
+    },
+    {
+      "key": "room:guardian-vault",
+      "title": "Guardian Vault",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "[[Guardian Construct]] stands before a sealed reliquary. Beyond lies [[Dust Chapel]]."
+    },
+    {
+      "key": "room:dust-chapel",
+      "title": "Dust Chapel",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "Collapsed altar. Faint chronology marks on the walls reference [[Expedition Begins]]."
+    },
+    {
+      "key": "room:archivist-niche",
+      "title": "Archivist's Niche",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "Shelves of rotted journals. [[The Archivist]] left notes pointing to [[Guardian Vault]]."
+    },
+    {
+      "key": "room:sealed-door",
+      "title": "Sealed Inner Door",
+      "parentKey": "skeleton:World/Locations",
+      "metadata": { "entityCategory": "locations" },
+      "body": "A door with no handle. Stub link to [[Lost Treasury]] — never fully mapped."
+    },
+    {
+      "key": "stub:abandoned",
+      "title": "Abandoned Survey Notes",
+      "parentKey": "skeleton:Game/Journals",
+      "body": "TODO: finish mapping the lower level."
+    },
+    {
+      "key": "stub:typo",
+      "title": "Expedition Log (fragment)",
+      "parentKey": "skeleton:Game/Journals",
+      "body": "Day 3 — found the [[Spike Pitt]] entrance. (typo link intentional)"
+    }
+  ],
+  "calendarEvents": [
+    {
+      "title": "Expedition Begins",
+      "description": "The delving company enters the crypt.",
+      "dayOffset": -18
+    },
+    {
+      "title": "First Casualties Reported",
+      "description": "Scouts fail to return from the antechamber.",
+      "dayOffset": -10
+    },
+    {
+      "title": "Ledger Recovery Attempt",
+      "description": "Survivors push toward the Guardian Vault.",
+      "dayOffset": -4
+    }
+  ],
+  "eventPages": [
+    {
+      "key": "event:expedition-begins",
+      "title": "Expedition Begins",
+      "parentKey": "skeleton:Game/Events",
+      "body": "The company descends into the crypt. See [[Entry Hall]]."
+    },
+    {
+      "key": "event:first-casualties",
+      "title": "First Casualties Reported",
+      "parentKey": "skeleton:Game/Events",
+      "body": "Word reaches camp that scouts vanished near [[False Antechamber]]."
+    }
+  ]
+}

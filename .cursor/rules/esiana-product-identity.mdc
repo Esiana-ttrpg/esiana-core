@@ -1,0 +1,40 @@
+---
+description: Esiana product identity, anti-goals, and design priorities
+alwaysApply: true
+---
+
+# Esiana Product Identity
+
+Esiana is **campaign narrative infrastructure**, not a VTT. Source: [philosophy.md](../../philosophy.md).
+
+## Focus on
+
+- Continuity, historical state, collaborative worldbuilding
+- Knowledge revelation and player discovery (not omniscient exposure)
+- Long-term campaign memory and interconnected lore
+- Extensible systems over hardcoded assumptions
+
+## Design priorities (in order)
+
+1. Narrative continuity over combat tooling
+2. Knowledge organization over rules execution
+3. Temporal world state over static wiki pages
+4. Player discovery over omniscient data exposure
+
+## Anti-goals — push back or scope as plugin only
+
+Do not build toward: tactical combat simulators, Foundry replacement, rules automation engines, virtual tabletops, character optimization platforms, live-service MMO campaign hosts, initiative/LOS/combat automation.
+
+Maps are **world-history views** (temporal projection, lore pins), not tactical battle simulators.
+
+## UX tone
+
+Calm, restrained, lore-forward. Avoid startup-dashboard chaos and over-decorated fantasy chrome. Experience direction: [design-philosophy.md](../../design-philosophy.md).
+
+Reject **Dashboard** in user-facing copy — use **Campaign Home**. TTRPG clarity over literary abstraction (GM, Game Master, Writer stay; Steward does not replace GM in UI).
+
+## Feature gate
+
+Before adding a feature, ask: Does it strengthen narrative continuity, discovery, or temporal world state?
+
+If it primarily automates combat or replaces a VTT, decline or scope as an optional plugin only.

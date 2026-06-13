@@ -1,0 +1,17 @@
+export {
+  EVENT_CONSEQUENCE_VERSION,
+  EVENT_CONSEQUENCE_METADATA_KEY,
+  EVENT_LORE_AUTO_GENERATED_METADATA_KEY,
+  computeEventConsequenceId,
+  dedupeEventConsequencesById,
+  isEventConsequenceActionable,
+  mapRouteChangeToEconomicSignal,
+  mergeEventConsequenceSetIntoMetadata,
+  parseEventConsequenceSet,
+  readEventConsequencesFromMetadata,
+  type EventConsequence,
+  type EventConsequenceApplyResult,
+  type EventConsequenceKind,
+  type EventConsequencePreviewRow,
+  type EventConsequenceSet,
+} from '../../../shared/eventConsequence.js';

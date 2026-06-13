@@ -1,0 +1,2192 @@
+// Esiana — DB-agnostic schema (PostgreSQL + SQLite)
+// Constraints: no Prisma enums, no native scalar arrays (String[]).
+// Application-layer TypeScript enforces role/type literals.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Switch provider to "sqlite" for local SQLite dev (Prisma requires a literal here).
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  SYSTEM_ADMIN
+}
+
+enum TimelineEventVisibility {
+  PUBLIC
+  PARTY
+  DM_ONLY
+}
+
+/// Layer 1 — GM-authored canon narrative status for wiki pages (distinct from content presence / discovery).
+enum PageNarrativeStatusType {
+  ACTIVE
+  MISSING
+  DEAD
+  ARCHIVED
+  RUMORED
+  RETIRED
+  HISTORICAL
+  LEGENDARY
+  SECRET
+}
+
+// ---------------------------------------------------------------------------
+// Core identity & campaigns
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  displayName  String?
+  avatarUrl    String?
+  pronouns     String?
+  publicBio    String?
+  statusBlurb  String?
+  bluesky      String?
+  discord      String?
+  github       String?
+  reddit       String?
+  mastodon     String?
+  otherLink    String?
+  /// Default recruitment application message (long-form text).
+  defaultPitch String?
+  /// Public GM style tags (JSON string array).
+  gmStyleTags Json?
+  /// Null for federated-only accounts (linked via Account rows).
+  passwordHash String?
+  role         UserRole @default(USER)
+  /// Personal UI theme profile (foundation, genre, identity, palette, tinting).
+  appearanceProfile Json?
+  /// When true, campaign/system themes apply when the user has no personal profile.
+  allowCampaignSystemOverride Boolean @default(true)
+  /// IANA timezone for session scheduling and date display (e.g. America/New_York).
+  timezone String?
+
+  campaignMembers    CampaignMember[]
+  ownedCampaigns     Campaign[] @relation("CampaignOwner")
+  pageShortcuts      PageShortcut[]
+  playerSandboxNotes PlayerSandboxNote[]
+  notifications              Notification[]
+  notificationPreference     UserNotificationPreference?
+  apiTokens          UserToken[]
+  joinRequests       CampaignJoinRequest[]
+  sessionTimelinePoints CampaignSessionTimeline[]
+  campaignActivities    CampaignActivity[]
+  apiLogs               ApiLog[]
+  apiRequestLogs        ApiRequestLog[]
+  sessionAttendance     SessionAttendance[]
+  accounts              Account[]
+  passwordResetTokens   PasswordResetToken[]
+  userCampaignDefaults  UserCampaignDefaults?
+  userTemplateResources UserTemplateResource[]
+  contentPresenceReveals ContentPresenceState[]
+  narrativeSnapshotsCreated NarrativeStateSnapshot[] @relation("SnapshotCreatedBy")
+  narrativeLifecycleUpdates NarrativeLifecycleState[] @relation("LifecycleUpdatedBy")
+  pageNarrativeStatusUpdates PageNarrativeStatus[]     @relation("PageNarrativeStatusUpdatedBy")
+  downtimeProjectUpdates    DowntimeProject[]         @relation("DowntimeProjectUpdatedBy")
+  downtimeHavenUpdates      DowntimeHaven[]           @relation("DowntimeHavenUpdatedBy")
+  campaignLedgerUpdates     CampaignLedger[]          @relation("CampaignLedgerUpdatedBy")
+  campaignLedgerEntriesCreated CampaignLedgerEntry[]    @relation("CampaignLedgerEntryCreatedBy")
+  campaignLedgerEntriesUpdated CampaignLedgerEntry[]    @relation("CampaignLedgerEntryUpdatedBy")
+  campaignLedgerSuggestionsResolved CampaignLedgerSuggestion[] @relation("CampaignLedgerSuggestionResolvedBy")
+  campaignReputationUpdates CampaignReputation[] @relation("CampaignReputationUpdatedBy")
+  campaignMomentumUpdates CampaignMomentum[] @relation("CampaignMomentumUpdatedBy")
+  campaignReputationSuggestionsResolved CampaignReputationSuggestion[] @relation("CampaignReputationSuggestionResolvedBy")
+  campaignWorldEventSuggestionsResolved CampaignWorldEventSuggestion[] @relation("CampaignWorldEventSuggestionResolvedBy")
+  campaignScheduledEffectsCreated CampaignScheduledEffect[] @relation("CampaignScheduledEffectCreatedBy")
+  partyRegionVisitsCreated  PartyRegionVisit[] @relation("VisitCreatedBy")
+  campaignPins              UserCampaignPin[]
+  hubAttentionDismissals    UserHubAttentionDismissal[]
+  wikiPagesOwned            WikiPage[] @relation("WikiPageOwnerUser")
+  wikiPagesCreated          WikiPage[] @relation("WikiPageCreatedBy")
+  assetsUploaded            Asset[]    @relation("AssetUploadedBy")
+
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserCampaignDefaults {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prefs     Json     @default("{}")
+  updatedAt DateTime @updatedAt
+}
+
+model UserTemplateResource {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  markdown  String   @default("")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind])
+}
+
+/// Tracks API calls against plugin and external sync endpoints (per-user analytics).
+model ApiLog {
+  id     String @id @default(cuid())
+  userId String
+  path   String
+  method String @default("GET")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Detailed API telemetry for quota + admin usage dashboards.
+/// - `campaignId` is optional for system/global endpoints.
+/// - `apiTokenId` is optional for session-authenticated requests.
+model ApiRequestLog {
+  id         String   @id @default(cuid())
+  campaignId String?
+  userId     String?
+  apiTokenId String?
+  statusCode Int
+  endpoint   String
+  method     String
+
+  campaign Campaign?  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiToken UserToken? @relation(fields: [apiTokenId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([campaignId, createdAt])
+  @@index([userId, createdAt])
+  @@index([apiTokenId, createdAt])
+  @@index([statusCode, createdAt])
+}
+
+/// Singleton row (`id` = "GLOBAL_CONFIG") for core platform governance settings.
+model SystemSetting {
+  id String @id @default("GLOBAL_CONFIG")
+
+  allowRegistrations Boolean @default(true)
+  /// Comma- or newline-separated email domains (e.g. example.com, guild.org).
+  allowedDomains     String?
+
+  smtpHost        String?
+  smtpPort        Int?     @default(587)
+  smtpUser        String?
+  smtpPassword    String?
+  smtpSecure      Boolean  @default(false)
+  smtpFromAddress String?
+
+  maxUploadSizeMb  Int     @default(10)
+  /// Optional cartography upload cap (MB). When null or zero, uses maxUploadSizeMb.
+  mapMaxUploadSizeMb Int?
+  /// Max pixel edge for map display variant at upload time (locked per asset after).
+  mapDisplayMaxEdge  Int  @default(8192)
+  /// Max pixel edge for map thumbnail variant at upload time.
+  mapThumbMaxEdge    Int  @default(2048)
+  /// Keep original full-resolution bytes alongside display/thumb variants.
+  mapPreserveFullRes Boolean @default(true)
+  /// Comma-separated allowed raster types (png,jpeg,webp,gif).
+  allowedImageTypes String? @default("png,jpeg,webp")
+  maxImageWidth     Int     @default(16384)
+  maxImageHeight    Int     @default(16384)
+  urlImportsEnabled       Boolean @default(true)
+  urlImportAllowHttp      Boolean @default(false)
+  urlImportMaxDownloadMb  Int     @default(50)
+  urlImportTimeoutSeconds Int     @default(15)
+  /// Relations workspace renderer safety cap (nodes). Null uses code default (50).
+  relationsMaxVisibleNodes Int?
+  /// Relations workspace renderer safety cap (edges). Null uses code default (80).
+  relationsMaxVisibleEdges Int?
+  maintenanceMode         Boolean   @default(false)
+  systemBannerText        String?
+  systemBannerExpiresAt   DateTime?
+
+  pluginRegistryUrl String @default("https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/registry.json")
+
+  globalTitle        String @default("Esiana")
+  globalLogoUrl      String?
+  faviconUrl         String?
+  /// Instance default UI theme preset: light | dark | auto | fantasy | cyberpunk | parchment
+  globalThemePreset  String @default("dark")
+  /// Instance global palette id (see frontend globalPalette.ts)
+  globalPalette       String  @default("ocean")
+  /// When true, palette overrides bg/surface/border on non-campaign pages
+  applyBackgroundTint Boolean @default(false)
+  /// Full ThemeStack profile (foundation + genre + identity overlay)
+  appearanceProfile   Json?
+
+  footerCustomText        String?
+  footerTosUrl            String?
+  footerPrivacyPolicyUrl  String?
+  footerDiscordUrl        String?
+  footerGithubUrl         String?
+  footerAlignment         String  @default("center")
+
+  /// Bell badge poll interval in seconds (30–300). Default 60 for SQLite-friendly load.
+  notificationPollIntervalSeconds Int @default(60)
+  /// Instance default IANA timezone when a user has not set their own.
+  defaultTimezone String @default("UTC")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Modular platform extensions (storage, auth, integrations) with JSON configuration.
+/// `scope` is `global` (instance-wide) or `campaign` (per-campaign via CampaignPluginSetting).
+model SystemPlugin {
+  id          String   @id
+  name        String
+  scope       String   @default("global")
+  isEnabled   Boolean  @default(false)
+  installedAt DateTime @default(now())
+  config      Json
+
+  campaignSettings CampaignPluginSetting[]
+
+  updatedAt DateTime @updatedAt
+}
+
+/// Per-campaign enablement and configuration for campaign-scoped plugins.
+model CampaignPluginSetting {
+  campaignId String
+  pluginId   String
+  isEnabled  Boolean @default(false)
+  config     Json
+
+  campaign Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  plugin   SystemPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([campaignId, pluginId])
+  @@index([campaignId])
+  @@index([pluginId])
+}
+
+model CampaignJoinRequest {
+  id         String @id @default(cuid())
+  campaignId String
+  userId     String
+  message    String
+  status     String
+  /// Canned decline reason code when status is REJECTED.
+  declineReasonCode String?
+  /// Optional DM message to applicant when declining.
+  declineMessage    String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([campaignId, status])
+}
+
+model UserToken {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  tokenHash  String
+  expiresAt  DateTime
+  lastUsedAt DateTime?
+  /// JSON string array, e.g. ["campaign:read","plugins:manage"]. Empty = full access (legacy).
+  scopes     Json      @default("[]")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiRequestLogs ApiRequestLog[]
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// External identity provider (OIDC) configured by the instance operator.
+model IdentityProvider {
+  id                String   @id
+  /// Admin template key only — runtime uses standard OIDC; default "oidc".
+  template          String   @default("oidc")
+  enabled           Boolean  @default(false)
+  displayName       String
+  issuerUrl         String
+  clientId          String
+  clientSecretEnc   String
+  scopes            String   @default("openid profile email")
+  tenantId          String?
+  /// JWT/userinfo claim for group membership; null disables group sync.
+  groupsClaim       String?
+  groupRoleMappings Json?
+  sortOrder         Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// Short-lived OIDC CSRF / PKCE state.
+model OidcAuthState {
+  id           String   @id @default(cuid())
+  state        String   @unique
+  providerId   String
+  mode         String
+  userId       String?
+  codeVerifier String
+  returnTo     String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+/// Federated identity link (OIDC `sub` per upstream provider).
+model Account {
+  id                String    @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  /// Last normalized group ids/names from IdP at login (JSON string array).
+  idpGroups         Json?
+  groupsSyncedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Campaign-scoped key-value store for plugin structured data.
+model PluginData {
+  id         String @id @default(cuid())
+  pluginId   String
+  campaignId String
+  key        String
+  value      Json
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pluginId, campaignId, key])
+  @@index([campaignId])
+  @@index([pluginId, campaignId])
+}
+
+/// Encrypted campaign-scoped secrets for plugins (export-redacted).
+model PluginSecret {
+  id         String @id @default(cuid())
+  pluginId   String
+  campaignId String
+  key        String
+  valueEnc   String
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pluginId, campaignId, key])
+  @@index([campaignId])
+  @@index([pluginId, campaignId])
+}
+
+model Campaign {
+  id               String      @id @default(cuid())
+  name             String
+  handle           String      @unique
+  inviteToken      String?     @unique
+  description      String?
+  /// Campaign container administration (deletion, discoverability, membership governance).
+  campaignOwnerUserId String
+  campaignOwner       User     @relation("CampaignOwner", fields: [campaignOwnerUserId], references: [id], onDelete: Restrict)
+  /// Container discoverability: private | unlisted | public
+  discoverability  String      @default("private")
+  views            Int         @default(0)
+  followers        Int         @default(0)
+  language         String?     @default("English")
+  gameSystem             String? @default("dnd-5e")
+  customGameSystemName   String?
+  /// Campaign UI theme preset: light | dark | auto | fantasy | cyberpunk | parchment
+  themePreset      String      @default("dark")
+  /// Campaign-wide appearance profile (foundation, genre, identity, palette, tinting).
+  appearanceProfile Json?
+
+  isLookingForGroup Boolean @default(false)
+  /// One-line hook on public recruitment listing hero.
+  recruitmentTagline String?
+  /// Narrative pitch (markdown) for public recruitment listings.
+  recruitmentPremise String?
+  /// Short vibe disclosure near the apply CTA (plain text, not wiki).
+  recruitmentBeforeApplyNote String?
+  scheduleFrequency String?
+  scheduleDay       String?
+  scheduleTime      String?
+  /// IANA timezone for public schedule display and applicant overlap hints.
+  scheduleTimezone  String?
+  currentSession    Int     @default(0)
+  sessionDuration   String?
+  estimatedLength   String?
+  campaignFormat    String?
+  experienceRequired String?
+  ageRestriction    String?
+  levelRange        String?
+  /// Campaign-level table play-feel tags (shared catalog with GM style tags).
+  tableStyleTags    Json?
+  maxSeats          Int     @default(0)
+  maxPlayers        Int     @default(5)
+  genreThemes       Json?
+  externalTools     Json?
+  safetyTools       String?
+  contentWarnings   String?
+  equipmentNeeded   String?
+  includeRules      Boolean @default(false)
+  includeFAQ        Boolean @default(false)
+  includeSessionZero Boolean @default(false)
+  includeHomebrew   Boolean @default(false)
+  includeSafetyGuidelines Boolean @default(false)
+  includeCharacterCreation Boolean @default(false)
+  includeTableExpectations Boolean @default(false)
+  /// When true, players may create/edit chronology events and categories.
+  allowPlayerChronologyManagement Boolean @default(false)
+  /// JSON: { headers: { worldLore, gameManagement }, worldLoreOrder, gameManagementOrder }
+  sidebarConfig     Json?
+  /// JSON: { hero: { coverImageUrl, summary, heroMode, focalPointX, focalPointY, overlayStrength }, widgets: [...] }
+  dashboardConfig   Json?
+  /// JSON: fingerprint-keyed GM dispositions for Layer 3 creative drift findings
+  creativeDriftDispositions Json?
+  /// JSON: gapId → downtime period GM overlays (annotations, promoted labels)
+  downtimeGapOverlays Json?
+  /// JSON: narrative party / ensemble cast screen config (name, spotlight, featured quests, etc.)
+  ensembleConfig    Json?
+  /// Master universal chronology pulse (minutes from epoch zero).
+  currentEpochMinute BigInt @default(0)
+  /// When set, campaign is archived (hidden from hub; LFG cleared).
+  archivedAt         DateTime?
+
+  members            CampaignMember[]
+  fantasyCalendars   FantasyCalendar[]
+  calendarEventCategories CalendarEventCategory[]
+  joinRequests       CampaignJoinRequest[]
+  wikiPages          WikiPage[]
+  notebookArcs       NoteBookArc[]
+  assets             Asset[]
+  mapLayers               MapLayer[]
+  mapObjectGroups         MapObjectGroup[]
+  mapSceneObjects         MapSceneObject[]
+  mapPresentationPresets  MapPresentationPreset[]
+  contentPresenceStates ContentPresenceState[]
+  templates          Template[]
+  pageShortcuts      PageShortcut[]
+  playerSandboxNotes PlayerSandboxNote[]
+  dashboardWidgets   DashboardWidget[]
+  tags               Tag[]
+  sessionTimelinePoints CampaignSessionTimeline[]
+  activities           CampaignActivity[]
+  pluginSettings       CampaignPluginSetting[]
+  apiRequestLogs       ApiRequestLog[]
+  notifications        Notification[]
+  ownershipTransfers   CampaignOwnershipTransfer[]
+  pluginData           PluginData[]
+  pluginSecrets        PluginSecret[]
+  narrativeStateSnapshots NarrativeStateSnapshot[]
+  partyRegionVisits       PartyRegionVisit[]
+  partyVisitSuggestions   PartyVisitSuggestion[]
+  entityRelations         EntityRelation[]
+  narrativeLifecycleStates NarrativeLifecycleState[]
+  pageNarrativeStatuses    PageNarrativeStatus[]
+  narrativeBranchStates    NarrativeBranchState[]
+  narrativeConsequenceReceipts NarrativeConsequenceReceipt[]
+  worldAdvanceReceipts         WorldAdvanceReceipt[]
+  timeAdvanceSimulationRuns    TimeAdvanceSimulationRun[]
+  downtimeProjects           DowntimeProject[]
+  downtimeHavens             DowntimeHaven[]
+  campaignLedger             CampaignLedger?
+  campaignLedgerEntries      CampaignLedgerEntry[]
+  campaignLedgerSuggestions  CampaignLedgerSuggestion[]
+  campaignReputation         CampaignReputation?
+  campaignReputationEvents   CampaignReputationEvent[]
+  campaignReputationSuggestions CampaignReputationSuggestion[]
+  campaignWorldEventSuggestions CampaignWorldEventSuggestion[]
+  campaignScheduledEffects      CampaignScheduledEffect[]
+  campaignScheduledEffectOccurrences CampaignScheduledEffectOccurrence[]
+  campaignMomentum           CampaignMomentum?
+  userPins                   UserCampaignPin[]
+  parties                    Party[]
+  roleCapabilityOverrides    CampaignRoleCapabilityOverride[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([archivedAt])
+  @@index([campaignOwnerUserId])
+}
+
+/// Layer 1 — downtime project simulation state (wiki-linked narrative surface).
+model DowntimeProject {
+  id                          String  @id @default(cuid())
+  campaignId                  String
+  wikiPageId                  String  @unique
+  ownerPageId                 String?
+  havenPageId                 String?
+  /// construction | research | training | operations | recovery
+  projectType                 String  @default("operations")
+  /// PLANNED | ACTIVE | PAUSED | SUSPENDED | COMPLETED | FAILED | ABANDONED
+  status                      String  @default("PLANNED")
+  /// low | normal | high | critical
+  priority                    String? @default("normal")
+  /// Presentation-oriented; canonical truth is durationElapsedMinutes + status.
+  progressPercent             Int     @default(0)
+  durationTotalMinutes        BigInt  @default(0)
+  durationElapsedMinutes      BigInt  @default(0)
+  /// Lifetime stall accumulation (epoch minutes) — gated, paused, or suspended periods.
+  stalledDurationMinutes      BigInt  @default(0)
+  startedAtEpochMinute        BigInt?
+  completedAtEpochMinute      BigInt?
+  targetCompletionEpochMinute BigInt?
+  relatedPageIds              Json    @default("[]")
+  resources                   Json    @default("[]")
+  blockers                    Json    @default("[]")
+  outcomes                    Json    @default("[]")
+  risks                       Json    @default("[]")
+  semanticsVersion            String  @default("downtime-project-v1")
+  updatedByUserId             String?
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  wikiPage  WikiPage  @relation("DowntimeProjectWiki", fields: [wikiPageId], references: [id], onDelete: Cascade)
+  ownerPage WikiPage? @relation("DowntimeProjectOwner", fields: [ownerPageId], references: [id], onDelete: SetNull)
+  havenPage WikiPage? @relation("DowntimeProjectHaven", fields: [havenPageId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("DowntimeProjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  ledgerEntries     CampaignLedgerEntry[]
+  ledgerSuggestions CampaignLedgerSuggestion[]
+  reputationEvents  CampaignReputationEvent[]
+  reputationSuggestions CampaignReputationSuggestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status])
+  @@index([campaignId, havenPageId])
+  @@index([campaignId, priority])
+}
+
+/// Layer 1 — downtime haven simulation state (wiki-linked narrative anchor).
+model DowntimeHaven {
+  id               String    @id @default(cuid())
+  campaignId       String
+  wikiPageId       String    @unique
+  havenType        String    @default("sanctuary")
+  status           String    @default("prosperous")
+  locationPageId   String?
+  scale            String?
+  ownershipType    String?
+  primaryTheme     String?
+  establishedAt    DateTime?
+  discoveryState   String?
+  residentPageIds  Json      @default("[]")
+  factionPageIds   Json      @default("[]")
+  crew             Json      @default("[]")
+  upgrades         Json      @default("[]")
+  threats          Json      @default("[]")
+  passiveBenefits  Json      @default("[]")
+  activityLog      Json      @default("[]")
+  relatedPageIds   Json      @default("[]")
+  identityHints    Json      @default("{}")
+  references       Json      @default("[]")
+  spaces           Json      @default("[]")
+  simulationHints  Json      @default("{}")
+  semanticsVersion String    @default("downtime-haven-v2")
+  updatedByUserId  String?
+
+  campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  wikiPage     WikiPage  @relation("DowntimeHavenWiki", fields: [wikiPageId], references: [id], onDelete: Cascade)
+  locationPage WikiPage? @relation("DowntimeHavenLocation", fields: [locationPageId], references: [id], onDelete: SetNull)
+  updatedBy    User?     @relation("DowntimeHavenUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status])
+  @@index([campaignId, havenType])
+  @@index([campaignId, ownershipType])
+  @@index([campaignId, discoveryState])
+}
+
+/// Layer 1 — campaign economic ledger settings (one per campaign).
+model CampaignLedger {
+  id                    String  @id @default(cuid())
+  campaignId            String  @unique
+  currencyLabel         String  @default("gold")
+  currencySuffix        String  @default("g")
+  openingBalance        Int     @default(0)
+  /// When true, show shared-party contribute/withdraw/fund quick actions.
+  sharedTreasuryEnabled Boolean @default(true)
+  semanticsVersion      String  @default("campaign-ledger-v1")
+  updatedByUserId       String?
+
+  campaign    Campaign                  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  updatedBy   User?                     @relation("CampaignLedgerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  entries     CampaignLedgerEntry[]
+  suggestions CampaignLedgerSuggestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Layer 1 — campaign economic ledger line items (narrative transactions).
+model CampaignLedgerEntry {
+  id                    String  @id @default(cuid())
+  campaignId            String
+  ledgerId              String
+  /// credit | debit | debt_open | debt_payment
+  entryKind             String
+  /// upkeep | project | income | reward | trade | donation | debt | other
+  category              String  @default("other")
+  title                 String
+  narrative             String?
+  amount                Int
+  occurredAtEpochMinute BigInt
+  projectId             String?
+  havenWikiPageId       String?
+  debtMeta              Json?
+  /// manual | system
+  source                String  @default("manual")
+  contributorPageId     String?
+  createdByUserId       String?
+  updatedByUserId       String?
+
+  campaign        Campaign                  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ledger          CampaignLedger            @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  project         DowntimeProject?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  havenWiki       WikiPage?                 @relation("CampaignLedgerEntryHaven", fields: [havenWikiPageId], references: [id], onDelete: SetNull)
+  contributorWiki WikiPage?                 @relation("CampaignLedgerEntryContributor", fields: [contributorPageId], references: [id], onDelete: SetNull)
+  createdBy       User?                     @relation("CampaignLedgerEntryCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy       User?                     @relation("CampaignLedgerEntryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  acceptedFromSuggestion CampaignLedgerSuggestion? @relation("CampaignLedgerSuggestionAcceptedEntry")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, occurredAtEpochMinute])
+  @@index([ledgerId, occurredAtEpochMinute])
+  @@index([campaignId, entryKind])
+}
+
+/// Layer 1 — pending treasury suggestions from upstream narrative events (human-approved only).
+model CampaignLedgerSuggestion {
+  id                    String    @id @default(cuid())
+  campaignId            String
+  ledgerId              String
+  /// pending | accepted | dismissed
+  status                String    @default("pending")
+  entryKind             String
+  category              String    @default("other")
+  title                 String
+  narrative             String?
+  /// Nullable — trade/inferred suggestions may omit amount until GM edits on accept.
+  amount                Int?
+  occurredAtEpochMinute BigInt
+  /// project_completion | haven_upkeep | trade_event | quest_reward | other
+  sourceType            String
+  sourceRef             String
+  idempotencyKey        String
+  projectId             String?
+  havenWikiPageId       String?
+  /// inferred | authored
+  confidence            String    @default("inferred")
+  acceptedEntryId       String?   @unique
+  resolvedByUserId      String?
+  resolvedAt            DateTime?
+
+  campaign      Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ledger        CampaignLedger      @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  project       DowntimeProject?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  havenWiki     WikiPage?           @relation("CampaignLedgerSuggestionHaven", fields: [havenWikiPageId], references: [id], onDelete: SetNull)
+  acceptedEntry CampaignLedgerEntry? @relation("CampaignLedgerSuggestionAcceptedEntry", fields: [acceptedEntryId], references: [id], onDelete: SetNull)
+  resolvedBy    User?               @relation("CampaignLedgerSuggestionResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, idempotencyKey])
+  @@index([campaignId, status])
+  @@index([ledgerId, status])
+}
+
+/// Layer 1 — campaign administration schedules (recurring effects; distinct from CalendarEvent).
+model CampaignScheduledEffect {
+  id                    String  @id @default(cuid())
+  campaignId            String
+  /// active | paused | archived
+  status                String  @default("active")
+  /// ledger_upkeep | ledger_income | future kinds via effectPayload
+  effectKind            String
+  title                 String
+  narrative             String?
+  recurrenceRule        Json
+  anchorEpochMinute     BigInt
+  nextFireEpochMinute   BigInt
+  lastFiredEpochMinute  BigInt?
+  effectPayload         Json?
+  ledgerEntryKind       String?
+  ledgerCategory        String?
+  amount                Int?
+  havenWikiPageId       String?
+  createdByUserId       String?
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  havenWiki WikiPage? @relation("CampaignScheduledEffectHaven", fields: [havenWikiPageId], references: [id], onDelete: SetNull)
+  createdBy User?     @relation("CampaignScheduledEffectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  occurrences CampaignScheduledEffectOccurrence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status, nextFireEpochMinute])
+  @@index([campaignId, effectKind])
+}
+
+/// Layer 1 — audit log for narrative scheduled effect fire epochs.
+model CampaignScheduledEffectOccurrence {
+  id                     String  @id @default(cuid())
+  campaignId             String
+  scheduledEffectId      String
+  /// Snapshot of effectKind at fire time (self-describing without schedule join)
+  effectKind             String
+  fireAtEpochMinute      BigInt
+  /// fired | suppressed
+  status                 String
+  suppressionReason      String?
+  worldEventSuggestionId String?
+
+  campaign             Campaign                  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scheduledEffect      CampaignScheduledEffect   @relation(fields: [scheduledEffectId], references: [id], onDelete: Cascade)
+  worldEventSuggestion CampaignWorldEventSuggestion? @relation(fields: [worldEventSuggestionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@unique([campaignId, scheduledEffectId, fireAtEpochMinute])
+  @@index([campaignId, scheduledEffectId, createdAt])
+}
+
+/// Layer 1 — party-to-faction reputation simulation state (one row per campaign).
+model CampaignReputation {
+  id               String @id @default(cuid())
+  campaignId       String @unique
+  simulationState  Json   @default("{}")
+  semanticsVersion String @default("campaign-reputation-v1")
+  updatedByUserId  String?
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  updatedBy User?    @relation("CampaignReputationUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  events    CampaignReputationEvent[]
+  suggestions CampaignReputationSuggestion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Layer 1 — append-only party-to-faction reputation feed events.
+model CampaignReputationEvent {
+  id                    String  @id @default(cuid())
+  campaignId            String
+  reputationId          String
+  factionPageId         String
+  /// drift | band_crossing | investigation | rumor_spread | project_outcome
+  eventKind             String
+  /// trust | notoriety
+  axis                  String
+  /// up | down | flat
+  direction             String  @default("flat")
+  fromBand              String?
+  toBand                String?
+  title                 String
+  narrative             String?
+  occurredAtEpochMinute BigInt
+  /// time_hook | project_outcome | haven_activity | rumor_pressure | creative_drift | other
+  sourceType            String  @default("other")
+  sourceRef             String
+  projectId             String?
+  havenWikiPageId       String?
+
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  reputation     CampaignReputation @relation(fields: [reputationId], references: [id], onDelete: Cascade)
+  factionWiki    WikiPage @relation("CampaignReputationEventFaction", fields: [factionPageId], references: [id], onDelete: Cascade)
+  project        DowntimeProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  havenWiki      WikiPage? @relation("CampaignReputationEventHaven", fields: [havenWikiPageId], references: [id], onDelete: SetNull)
+  acceptedFromSuggestion CampaignReputationSuggestion? @relation("CampaignReputationSuggestionAcceptedEvent")
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId, occurredAtEpochMinute])
+  @@index([reputationId, occurredAtEpochMinute])
+  @@index([campaignId, factionPageId])
+}
+
+/// Layer 1 — pending reputation shift suggestions (human-approved for major changes).
+model CampaignReputationSuggestion {
+  id                    String  @id @default(cuid())
+  campaignId            String
+  reputationId          String
+  /// pending | accepted | dismissed
+  status                String  @default("pending")
+  /// band_crossing | investigation | rumor_spread
+  kind                  String
+  factionPageId         String
+  axis                  String
+  direction             String  @default("flat")
+  fromBand              String?
+  toBand                String?
+  title                 String
+  narrative             String?
+  occurredAtEpochMinute BigInt
+  sourceType            String  @default("other")
+  sourceRef             String
+  idempotencyKey        String
+  projectId             String?
+  havenWikiPageId       String?
+  claimId               String?
+  targetOrgPageId       String?
+  proposedTrust         Int?
+  proposedNotoriety     Int?
+  acceptedEventId       String? @unique
+  resolvedByUserId      String?
+  resolvedAt            DateTime?
+
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  reputation    CampaignReputation @relation(fields: [reputationId], references: [id], onDelete: Cascade)
+  factionWiki   WikiPage @relation("CampaignReputationSuggestionFaction", fields: [factionPageId], references: [id], onDelete: Cascade)
+  project       DowntimeProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  havenWiki     WikiPage? @relation("CampaignReputationSuggestionHaven", fields: [havenWikiPageId], references: [id], onDelete: SetNull)
+  acceptedEvent CampaignReputationEvent? @relation("CampaignReputationSuggestionAcceptedEvent", fields: [acceptedEventId], references: [id], onDelete: SetNull)
+  resolvedBy    User? @relation("CampaignReputationSuggestionResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, idempotencyKey])
+  @@index([campaignId, status])
+  @@index([reputationId, status])
+}
+
+/// Layer 1 — campaign era definitions + world pressure pacing (one row per campaign).
+model CampaignMomentum {
+  id               String @id @default(cuid())
+  campaignId       String @unique
+  state            Json   @default("{}")
+  semanticsVersion String @default("campaign-momentum-v1")
+  updatedByUserId  String?
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  updatedBy User?    @relation("CampaignMomentumUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Layer 1 — pending world event prompts from pressure projection (human-approved only).
+model CampaignWorldEventSuggestion {
+  id                    String  @id @default(cuid())
+  campaignId            String
+  /// pending | accepted | dismissed | archived | obsolete
+  status                String  @default("pending")
+  /// faction_pressure | era_trend
+  kind                  String
+  title                 String
+  narrative             String?
+  occurredAtEpochMinute BigInt
+  sourceType            String  @default("time_hook")
+  sourceRef             String
+  idempotencyKey        String
+  primaryOrgPageId      String?
+  eraId                 String?
+  momentumState         String?
+  trendDirection        String?
+  acceptedCalendarEventId String? @unique
+  resolvedByUserId      String?
+  resolvedAt            DateTime?
+  developmentPayload    Json?
+  expiresAt             DateTime?
+  advanceCycleCount     Int     @default(0)
+  parentSuggestionId    String?
+
+  campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  primaryOrg    WikiPage?      @relation("CampaignWorldEventSuggestionOrg", fields: [primaryOrgPageId], references: [id], onDelete: SetNull)
+  acceptedEvent CalendarEvent? @relation("CampaignWorldEventSuggestionAcceptedEvent", fields: [acceptedCalendarEventId], references: [id], onDelete: SetNull)
+  resolvedBy    User?          @relation("CampaignWorldEventSuggestionResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  scheduledEffectOccurrences CampaignScheduledEffectOccurrence[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, idempotencyKey])
+  @@index([campaignId, status])
+  @@index([campaignId, primaryOrgPageId, momentumState])
+  @@index([campaignId, expiresAt])
+  @@index([parentSuggestionId])
+}
+
+/// Layer 2 orchestration lifecycle (quests, future open threads).
+model NarrativeLifecycleState {
+  id               String @id @default(cuid())
+  campaignId       String
+  /// quest | open_thread
+  subjectKind      String
+  /// wiki page id for quest subjects
+  subjectId        String
+  lifecycleState   String
+  semanticsVersion String @default("narrative-lifecycle-v1")
+  updatedByUserId  String?
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  updatedBy User?    @relation("LifecycleUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, subjectKind, subjectId])
+  @@index([campaignId, subjectKind, lifecycleState])
+}
+
+/// Layer 1 — GM-authored canon narrative status for wiki pages (1:1 with WikiPage).
+model PageNarrativeStatus {
+  id               String                  @id @default(cuid())
+  campaignId       String
+  wikiPageId       String                  @unique
+  status           PageNarrativeStatusType @default(ACTIVE)
+  reason           String?
+  semanticsVersion String                  @default("page-narrative-status-v1")
+  updatedByUserId  String?
+
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  wikiPage  WikiPage @relation(fields: [wikiPageId], references: [id], onDelete: Cascade)
+  updatedBy User?    @relation("PageNarrativeStatusUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status])
+}
+
+/// Layer 2 — sparse authored branch runtime pointer (graph definition lives in wiki metadata).
+model NarrativeBranchState {
+  id               String @id @default(cuid())
+  campaignId       String
+  subjectId        String
+  activeNodeId     String
+  semanticsVersion String @default("narrative-branch-v1")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, subjectId])
+  @@index([campaignId])
+}
+
+/// Layer 2 — idempotency receipts for consequence rule execution.
+model NarrativeConsequenceReceipt {
+  id               String @id @default(cuid())
+  campaignId       String
+  idempotencyKey   String
+  ruleId           String
+  subjectId        String
+  semanticsVersion String @default("narrative-consequence-v1")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([campaignId, idempotencyKey])
+  @@index([campaignId, subjectId])
+}
+
+/// Layer 1 — audit receipts for global time-hook simulation runs.
+model TimeAdvanceSimulationRun {
+  id                  String @id @default(cuid())
+  campaignId          String
+  previousEpochMinute BigInt
+  nextEpochMinute     BigInt
+  /// time_tracking | world_advance
+  source              String
+  /// world-advance batchId when applicable
+  sourceRef           String?
+  semanticsVersion    String @default("time-hooks-v1")
+  /// Compact GlobalTimeSimulationReceipt — operational/diagnostic only
+  receipt             Json
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([campaignId, source, sourceRef, nextEpochMinute])
+  @@index([campaignId, createdAt])
+}
+
+/// Layer 3 — idempotency receipts for world-advance batch effects.
+model WorldAdvanceReceipt {
+  id               String @id @default(cuid())
+  campaignId       String
+  batchId          String
+  effectId         String
+  idempotencyKey   String
+  chronologyEventId String
+  semanticsVersion String @default("world-advance-v1")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([campaignId, idempotencyKey])
+  @@index([campaignId, batchId])
+  @@index([campaignId, chronologyEventId])
+}
+
+model CampaignActivity {
+  id         String @id @default(cuid())
+  campaignId String
+  userId     String
+  /// CREATE | UPDATE | DELETE
+  actionType String
+  /// WIKI_PAGE | CHARACTER | TIME_TRACKING | etc.
+  entityType String
+  entityId   String
+  entityName String
+  /// Folder/category label, e.g. "Characters"
+  parentContext String?
+  pageSizeBytes Int?
+  deltaBytes    Int?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId])
+  @@index([campaignId, createdAt])
+  @@index([campaignId, entityType, entityId])
+}
+
+model FantasyCalendar {
+  id           String  @id @default(uuid())
+  campaignId   String
+  name         String
+  isMasterTime Boolean @default(false)
+  /// Offset in minutes from the campaign master epoch.
+  epochOffset  BigInt  @default(0)
+  weekdays     Json
+  /// Array of month objects: { name, length, type, climateAspect? } where climateAspect is ARID | PLUVIAL | CRYORIC | TEMPEST | OVERGROWTH | NEUTRAL.
+  months       Json
+  seasons      Json
+  moons        Json
+  leapDays     Json
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  events   CalendarEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+model CalendarEventCategory {
+  id         String @id @default(cuid())
+  campaignId String
+  name       String
+  color      String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  events   CalendarEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+  @@unique([campaignId, name])
+}
+
+model CalendarEvent {
+  id             String  @id @default(uuid())
+  calendarId     String
+  categoryId     String?
+  prerequisiteId String?
+  visibility     TimelineEventVisibility @default(PARTY)
+  title          String
+  description    String?
+  duration       Int @default(1)
+  isRepeating    Boolean @default(false)
+  repeatInterval Int?
+  repeatUnit     String?
+  limitRepetitions Int?
+  conditions     Json?
+  moonOverrides  Json?
+  isRecurring    Boolean @default(false)
+  targetYear     Int?
+  targetMonth    Int?
+  targetDay      Int?
+  targetEpochMinute BigInt?
+  recurrenceRule Json?
+  metadata       Json?
+
+  calendar     FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  category     CalendarEventCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  prerequisite CalendarEvent?  @relation("CalendarEventPrerequisite", fields: [prerequisiteId], references: [id], onDelete: SetNull)
+  dependents   CalendarEvent[] @relation("CalendarEventPrerequisite")
+  rumorCirculations RumorCirculation[]
+  acceptedFromWorldEventSuggestion CampaignWorldEventSuggestion? @relation("CampaignWorldEventSuggestionAcceptedEvent")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([calendarId])
+  @@index([categoryId])
+  @@index([prerequisiteId])
+  @@index([visibility])
+  @@index([isRepeating])
+  @@index([repeatUnit])
+  @@index([calendarId, categoryId])
+  @@index([targetEpochMinute])
+  @@index([targetYear, targetMonth, targetDay])
+}
+
+model Party {
+  id          String   @id @default(cuid())
+  campaignId  String
+  displayName String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  members     CampaignMember[]
+  ownedPages  WikiPage[] @relation("PartyOwnedPages")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+model CampaignRoleCapabilityOverride {
+  id         String   @id @default(cuid())
+  campaignId String
+  /// GAMEMASTER | WRITER | PARTICIPANT | OBSERVER
+  role       String
+  capability String
+  /// GRANT | REVOKE
+  effect     String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, role, capability])
+  @@index([campaignId, role])
+}
+
+model CampaignMember {
+  userId         String
+  campaignId     String
+  /// GAMEMASTER | WRITER | PARTICIPANT | OBSERVER
+  role           String
+  /// When true and campaign allows player chronology, participant may edit chronology.
+  chronologyContributor Boolean @default(false)
+  identityPageId String?
+  partyId        String?
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  party        Party?    @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  identityPage WikiPage? @relation("MemberIdentity", fields: [identityPageId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@id([userId, campaignId])
+  @@index([campaignId])
+  @@index([identityPageId])
+  @@index([partyId])
+}
+
+// ---------------------------------------------------------------------------
+// Wiki & assets
+// ---------------------------------------------------------------------------
+
+enum PageOwnerType {
+  STAFF
+  USER
+  PARTY
+}
+
+enum CampaignWorkspace {
+  CHARACTERS
+  BESTIARY
+  ANCESTRIES
+  ORGANIZATIONS
+  LOCATIONS
+  OBJECTS
+  FAMILIES
+  RULES_RESOURCES
+  ADVENTURES
+  THREADS
+  HAVENS
+  PROJECTS
+  JOURNALS
+  PAGES
+  CUSTOM
+}
+
+model WikiPage {
+  id              String  @id @default(cuid())
+  campaignId      String
+  /// Workspace namespace for public routing (scoped with pathKey).
+  workspace       CampaignWorkspace?
+  /// URL segment within workspace — derived from title, unique per (campaignId, workspace).
+  pathKey         String?
+  notebookArcId   String?
+  title           String
+  parentId        String?
+  featuredImageId String?
+  /// Interactive cartography canvas bound to this wiki page (Maps category).
+  mapAssetId      String?
+  blocks          Json    @default("[]")
+  templateType    String  @default("DEFAULT")
+  visibility      String
+  metadata        Json?
+  /// Editorial stewardship — who maintains this page (STAFF | USER | PARTY).
+  ownerType       PageOwnerType @default(STAFF)
+  ownerUserId     String?
+  ownerPartyId    String?
+  createdByUserId String?
+
+  campaign      Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  ownerUser     User?      @relation("WikiPageOwnerUser", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  ownerParty    Party?     @relation("PartyOwnedPages", fields: [ownerPartyId], references: [id], onDelete: SetNull)
+  createdBy     User?      @relation("WikiPageCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  notebookArc   NoteBookArc? @relation(fields: [notebookArcId], references: [id], onDelete: SetNull)
+  parent        WikiPage?  @relation("WikiPageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children      WikiPage[] @relation("WikiPageTree")
+  featuredImage Asset?     @relation("WikiPageFeaturedImage", fields: [featuredImageId], references: [id], onDelete: SetNull)
+  mapAsset      Asset?     @relation("WikiPageInteractiveMap", fields: [mapAssetId], references: [id], onDelete: SetNull)
+
+  mapPinTargets MapPin[]
+  pageShortcuts PageShortcut[]
+  outgoingLinks WikiLink[]     @relation("WikiLinkSource")
+  incomingLinks WikiLink[]     @relation("WikiLinkTarget")
+  sessionTimelinePoint CampaignSessionTimeline?
+  tags                 Tag[]
+  memberIdentities     CampaignMember[] @relation("MemberIdentity")
+  aliases              WikiPageAlias[]
+  historicalAliases    EntityHistoricalAlias[]
+  loreInterpretationGroups LoreInterpretationGroup[]
+  loreInterpretationAccounts LoreInterpretationAccount[]
+  loreClaims           LoreClaim[]
+  stats                WikiPageStats?
+  unresolvedFromSource UnresolvedWikilink[] @relation("UnresolvedWikilinkSource")
+  socialMentionsFromSource SocialMention[] @relation("SocialMentionSource")
+  downtimeProject          DowntimeProject?  @relation("DowntimeProjectWiki")
+  downtimeProjectsOwned    DowntimeProject[] @relation("DowntimeProjectOwner")
+  downtimeProjectsAtHaven  DowntimeProject[] @relation("DowntimeProjectHaven")
+  downtimeHaven            DowntimeHaven?    @relation("DowntimeHavenWiki")
+  downtimeHavensAtLocation DowntimeHaven[]   @relation("DowntimeHavenLocation")
+  campaignLedgerEntriesAtHaven CampaignLedgerEntry[] @relation("CampaignLedgerEntryHaven")
+  campaignLedgerEntriesAsContributor CampaignLedgerEntry[] @relation("CampaignLedgerEntryContributor")
+  campaignLedgerSuggestionsAtHaven CampaignLedgerSuggestion[] @relation("CampaignLedgerSuggestionHaven")
+  campaignReputationEventsAsFaction CampaignReputationEvent[] @relation("CampaignReputationEventFaction")
+  campaignReputationEventsAtHaven CampaignReputationEvent[] @relation("CampaignReputationEventHaven")
+  campaignReputationSuggestionsAsFaction CampaignReputationSuggestion[] @relation("CampaignReputationSuggestionFaction")
+  campaignReputationSuggestionsAtHaven CampaignReputationSuggestion[] @relation("CampaignReputationSuggestionHaven")
+  campaignWorldEventSuggestionsAsOrg CampaignWorldEventSuggestion[] @relation("CampaignWorldEventSuggestionOrg")
+  campaignScheduledEffectsAtHaven CampaignScheduledEffect[] @relation("CampaignScheduledEffectHaven")
+  narrativeStatus PageNarrativeStatus?
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, workspace, pathKey])
+  @@index([campaignId])
+  @@index([campaignId, workspace])
+  @@index([parentId])
+  @@index([notebookArcId])
+  @@index([mapAssetId])
+}
+
+model NoteBookArc {
+  id           String @id @default(cuid())
+  campaignId   String
+  title        String
+  displayOrder Int    @default(0)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  pages    WikiPage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, displayOrder])
+}
+
+model CampaignSessionTimeline {
+  id            String @id @default(cuid())
+  campaignId    String
+  wikiPageId    String @unique
+  authorId      String
+  sequenceOrder Int
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  wikiPage WikiPage @relation(fields: [wikiPageId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  schedule   CampaignSessionSchedule?
+  attendance SessionAttendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, sequenceOrder])
+  @@index([authorId])
+}
+
+/// Layer 1 — materialized projection capture (visit / milestone / manual).
+model NarrativeStateSnapshot {
+  id                         String @id @default(cuid())
+  campaignId                 String
+  /// party_visit | milestone | manual
+  kind                       String
+  /// region | campaign (extensible)
+  snapshotType               String @default("region")
+  payloadVersion             String @default("region-v1")
+  label                      String?
+  anchorLocationPageId       String?
+  regionKey                  String?
+  capturedAtEpochMinute      BigInt
+  projectionContextHash      String
+  projectionSemanticsVersion String @default("narrative-projection-v1")
+  /// hot | cold | compressing
+  payloadTier                String @default("hot")
+  dmPayload                  Json
+  partyPayload               Json
+  compressionAttempts        Int    @default(0)
+  createdByUserId            String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("SnapshotCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  partyVisits PartyRegionVisit[]
+  promotedFromSuggestions PartyVisitSuggestion[] @relation("PromotedVisit")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+  @@index([campaignId, regionKey])
+  @@index([campaignId, anchorLocationPageId])
+  @@index([campaignId, kind, payloadTier])
+}
+
+/// Canonical party visit marker (never deleted).
+model PartyRegionVisit {
+  id                    String @id @default(cuid())
+  campaignId            String
+  locationPageId        String
+  snapshotId            String
+  visitedAtEpochMinute  BigInt
+  sessionTimelinePointId String?
+  createdByUserId       String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  snapshot NarrativeStateSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  createdBy User? @relation("VisitCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId, locationPageId, visitedAtEpochMinute])
+  @@index([snapshotId])
+}
+
+/// Chronicle-derived visit signal (non-canonical until promoted).
+model PartyVisitSuggestion {
+  id                    String @id @default(cuid())
+  campaignId            String
+  locationPageId        String
+  sessionTimelinePointId String?
+  sourceLabel           String?
+  dismissedAt           DateTime?
+  promotedVisitId       String?
+  promotedSnapshotId    String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  promotedSnapshot NarrativeStateSnapshot? @relation("PromotedVisit", fields: [promotedSnapshotId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, locationPageId])
+  @@index([campaignId, locationPageId, dismissedAt])
+}
+
+model CampaignSessionSchedule {
+  timelinePointId String @id
+  status          String @default("DRAFT")
+  plannedStartAt  DateTime?
+  plannedEndAt    DateTime?
+  timezone        String?
+  venueType       String?
+  venueLabel      String?
+  venueUrl        String?
+  locationPageId  String?
+  reminderSentAt  DateTime?
+  publishedAt     DateTime?
+
+  timelinePoint CampaignSessionTimeline @relation(fields: [timelinePointId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, plannedStartAt])
+  @@index([plannedStartAt, reminderSentAt])
+}
+
+model SessionAttendance {
+  timelinePointId String
+  userId          String
+  status          String
+  note            String?
+
+  timelinePoint CampaignSessionTimeline @relation(fields: [timelinePointId], references: [id], onDelete: Cascade)
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+
+  @@id([timelinePointId, userId])
+  @@index([timelinePointId])
+  @@index([userId])
+}
+
+model CampaignOwnershipTransfer {
+  id         String   @id @default(cuid())
+  campaignId String
+  fromUserId String
+  toUserId   String
+  status     String
+  expiresAt  DateTime
+  resolvedAt DateTime?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status])
+  @@index([toUserId, status])
+}
+
+model WikiLink {
+  id              String  @id @default(cuid())
+  campaignId      String
+  sourcePageId    String
+  targetPageId    String
+  aliasText       String?
+  createdByUserId String?
+
+  sourcePage WikiPage @relation("WikiLinkSource", fields: [sourcePageId], references: [id], onDelete: Cascade)
+  targetPage WikiPage @relation("WikiLinkTarget", fields: [targetPageId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([sourcePageId, targetPageId])
+  @@index([targetPageId])
+  @@index([campaignId, targetPageId])
+}
+
+/// Derived unified entity graph edges (synced from WikiLink, metadata, calendar, map).
+model EntityRelation {
+  id               String @id @default(cuid())
+  campaignId       String
+
+  sourceEntityType String
+  sourceEntityId   String
+  targetEntityType String
+  targetEntityId   String
+
+  relationKind     String
+  direction        String @default("directed")
+
+  startDate        Json?
+  endDate          Json?
+  visibility       String?
+  payload          Json?
+
+  sourceDomain     String
+  sourceRecordKey  String
+  sourcePageId     String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, sourceDomain, sourceRecordKey])
+  @@index([campaignId, sourceEntityType, sourceEntityId])
+  @@index([campaignId, targetEntityType, targetEntityId])
+  @@index([campaignId, relationKind])
+  @@index([campaignId, sourcePageId])
+}
+
+model WikiPageAlias {
+  id              String @id @default(cuid())
+  campaignId      String
+  pageId          String
+  alias           String
+  normalizedAlias String
+
+  page WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, normalizedAlias])
+  @@index([pageId])
+}
+
+/// Temporal display names — distinct from WikiPageAlias (wikilink resolution).
+model EntityHistoricalAlias {
+  id                 String  @id @default(cuid())
+  stableKey          String  @unique
+  campaignId         String
+  pageId             String
+  name               String
+  label              String?
+  context            String?
+  usageType          String  @default("OFFICIAL")
+  eraStart           Json?
+  eraEnd             Json?
+  regions            Json    @default("[]")
+  visibility         String  @default("GM_ONLY")
+  isPrimaryInEra     Boolean @default(false)
+  isSecret           Boolean @default(false)
+  playerDiscoverable Boolean @default(true)
+  sortOrder          Int     @default(0)
+
+  page WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([campaignId, pageId])
+}
+
+/// Optional grouping for historiographic debates — never required.
+model LoreInterpretationGroup {
+  id         String  @id @default(cuid())
+  campaignId String
+  pageId     String
+  topic      String?
+  sortOrder  Int     @default(0)
+
+  page     WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  accounts LoreInterpretationAccount[]
+  claims   LoreClaim[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([campaignId, pageId])
+}
+
+model LoreInterpretationAccount {
+  id                    String  @id @default(cuid())
+  stableKey             String  @unique
+  campaignId            String
+  pageId                String
+  interpretationGroupId String?
+  title                 String
+  narrative             String
+  accountKind           String  @default("UNVERIFIED")
+  beliefRegion          String?
+  sourceOrigin          String?
+  confidence            String  @default("UNVERIFIED")
+  visibility            String  @default("GM_ONLY")
+  narrativeWeight       String?
+  gmResolution          String?
+  sortOrder             Int     @default(0)
+
+  page  WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  group LoreInterpretationGroup? @relation(fields: [interpretationGroupId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([interpretationGroupId])
+  @@index([campaignId, pageId])
+}
+
+model LoreClaim {
+  id                    String    @id @default(cuid())
+  stableKey             String    @unique
+  campaignId            String
+  pageId                String
+  statement             String
+  interpretationGroupId String?
+  confidence            String    @default("UNVERIFIED")
+  visibility            String    @default("GM_ONLY")
+  narrativeWeight       String?
+  gmResolution          String?
+  knowledgeState        String?
+  discoveredViaSessionId String?
+  discoveredViaType     String?
+  discoveredViaRef      String?
+  discoveredAt          DateTime?
+  sortOrder             Int       @default(0)
+
+  page    WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  group   LoreInterpretationGroup? @relation(fields: [interpretationGroupId], references: [id], onDelete: SetNull)
+  sources LoreClaimSource[]
+  rumorCirculations RumorCirculation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pageId])
+  @@index([interpretationGroupId])
+  @@index([campaignId, pageId])
+}
+
+/// Layer 3 — append-only rumor propagation history (INSERT only at app layer).
+model RumorCirculation {
+  id                      String  @id @default(cuid())
+  stableKey               String  @unique
+  campaignId              String
+  claimId                 String
+  edgeKind                String  @default("circulation")
+  targetKind              String
+  targetRef               String
+  stance                  String
+  awarenessScope          String
+  visibility              String  @default("GM_ONLY")
+  spreadEventId           String
+  circulatedAtEpochMinute BigInt
+  supersedesCirculationId String?
+
+  claim       LoreClaim       @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  spreadEvent CalendarEvent   @relation(fields: [spreadEventId], references: [id], onDelete: Restrict)
+  supersedes  RumorCirculation?  @relation("CirculationRetraction", fields: [supersedesCirculationId], references: [id], onDelete: Restrict)
+  retractions RumorCirculation[] @relation("CirculationRetraction")
+
+  createdAt DateTime @default(now())
+
+  @@index([campaignId, targetKind, targetRef, circulatedAtEpochMinute])
+  @@index([campaignId, targetKind, targetRef, visibility])
+  @@index([campaignId, claimId, circulatedAtEpochMinute])
+  @@index([spreadEventId])
+  @@index([supersedesCirculationId])
+}
+
+model LoreClaimSource {
+  id               String  @id @default(cuid())
+  claimId          String
+  role             String  @default("SUPPORTS")
+  sourceType       String  @default("OTHER")
+  sourceEntityType String?
+  sourceEntityId   String?
+  label            String?
+  note             String?
+  visibility       String  @default("GM_ONLY")
+
+  claim LoreClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([claimId])
+}
+
+model WikiPageStats {
+  pageId                  String   @id
+  campaignId              String
+  wordCount               Int      @default(0)
+  characterCount          Int      @default(0)
+  outboundLinkCount       Int      @default(0)
+  inboundLinkCount        Int      @default(0)
+  unresolvedWikilinkCount Int      @default(0)
+  editCount               Int      @default(0)
+  firstCreatedAt          DateTime
+  lastEditedAt            DateTime
+  lastEditedByUserId      String?
+  statsComputedAt         DateTime @default(now())
+
+  page WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+model NarrativeEvent {
+  id           String   @id @default(cuid())
+  campaignId   String
+  type         String
+  /// Write provenance: user | import | restore | seed | migration | repair
+  source       String   @default("user")
+  actorUserId  String?
+  pageId       String?
+  targetPageId String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([campaignId, createdAt])
+  @@index([campaignId, type, createdAt])
+  @@index([campaignId, source, createdAt])
+}
+
+model UnresolvedWikilink {
+  id              String    @id @default(cuid())
+  campaignId      String
+  sourcePageId    String
+  rawText         String
+  normalizedText  String
+  occurrenceCount Int       @default(1)
+  status          String    @default("OPEN")
+  ignoredByUserId String?
+  ignoredAt       DateTime?
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @default(now())
+
+  sourcePage WikiPage @relation("UnresolvedWikilinkSource", fields: [sourcePageId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, sourcePageId, normalizedText])
+  @@index([campaignId, normalizedText])
+  @@index([campaignId, status])
+}
+
+model SocialMention {
+  id              String   @id @default(cuid())
+  campaignId      String
+  sourcePageId    String
+  mentionType     String
+  targetUserId    String?
+  identityPageId  String?
+  label           String
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  sourcePage WikiPage @relation("SocialMentionSource", fields: [sourcePageId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, targetUserId])
+  @@index([sourcePageId])
+}
+
+model Asset {
+  id         String @id @default(cuid())
+  campaignId String
+  url        String
+  type       String
+  /// Display variant for map canvas (locked dimensions in width/height).
+  displayUrl String?
+  /// Small preview for lists and hover cards.
+  thumbnailUrl String?
+  /// Pixel dimensions of the display variant (Leaflet coordinate space).
+  width      Int?
+  height     Int?
+  originalWidth  Int?
+  originalHeight Int?
+  /// Optional cartography label for hub/viewer (falls back to linked Location title).
+  displayName String?
+  /// Public | Party | DM_Only — same semantics as wiki pages.
+  visibility  String  @default("Public")
+  /// Optional expiration timestamp for temporary/import assets.
+  expiresAt  DateTime?
+  /// Optional art attribution (artist, source, made-with tool).
+  imageCredit Json?
+  uploadedByUserId String?
+
+  campaign            Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploadedBy          User?      @relation("AssetUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  mapPins             MapPin[]   @relation("MapPinOnAsset")
+  mapLayers               MapLayer[]
+  mapObjectGroups         MapObjectGroup[]
+  mapSceneObjects         MapSceneObject[]
+  mapPresentationPresets  MapPresentationPreset[]
+  nestedMapPinTargets     MapPin[]   @relation("MapPinNestedMap")
+  featuredOnWikiPages WikiPage[] @relation("WikiPageFeaturedImage")
+  interactiveMapPages WikiPage[] @relation("WikiPageInteractiveMap")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+model MapPin {
+  id            String  @id @default(cuid())
+  assetId       String
+  targetPageId  String?
+  targetAssetId String?
+  label         String?
+  pinType       String  @default("Location")
+  x_coordinate  Float
+  y_coordinate  Float
+
+  asset       Asset            @relation("MapPinOnAsset", fields: [assetId], references: [id], onDelete: Cascade)
+  targetPage  WikiPage?        @relation(fields: [targetPageId], references: [id], onDelete: SetNull)
+  targetAsset Asset?           @relation("MapPinNestedMap", fields: [targetAssetId], references: [id], onDelete: SetNull)
+  sceneObject MapSceneObject?  @relation("MapPinSceneObject")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([targetPageId])
+  @@index([targetAssetId])
+}
+
+/// Diegetic overlay stack on a map (borders, routes, ruins). Affects presence when disabled.
+model MapLayer {
+  id             String  @id @default(cuid())
+  campaignId     String
+  mapAssetId     String
+  name           String
+  sortOrder      Int     @default(0)
+  defaultEnabled Boolean @default(true)
+  color          String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  objects  MapSceneObject[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mapAssetId])
+  @@index([campaignId])
+}
+
+/// Editor-only organization for scene objects (does not affect presence).
+model MapObjectGroup {
+  id         String @id @default(cuid())
+  campaignId String
+  mapAssetId String
+  name       String
+  color      String?
+  sortOrder  Int    @default(0)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  objects  MapSceneObject[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mapAssetId])
+  @@index([campaignId])
+}
+
+/// Unified map primitive: pins (via mapPinId), regions, labels, paths, tokens.
+model MapSceneObject {
+  id                      String  @id @default(cuid())
+  campaignId              String
+  mapAssetId              String
+  layerId                 String?
+  groupId                 String?
+  kind                    String  @default("pin")
+  label                   String?
+  visibility              String  @default("Public")
+  revelation              String  @default("REVEALED")
+  geometry                Json
+  style                   Json?
+  sortOrder               Int     @default(0)
+  mapPinId                String? @unique
+  targetPageId            String?
+  targetAssetId           String?
+  pinType                 String?
+  visibleFromEpochMinute  BigInt?
+  visibleUntilEpochMinute BigInt?
+
+  campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  layer     MapLayer?       @relation(fields: [layerId], references: [id], onDelete: SetNull)
+  group     MapObjectGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  mapPin    MapPin?         @relation("MapPinSceneObject", fields: [mapPinId], references: [id], onDelete: Cascade)
+  keyframes MapObjectKeyframe[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mapAssetId])
+  @@index([campaignId])
+  @@index([layerId])
+  @@index([groupId])
+  @@index([targetPageId])
+  @@index([targetAssetId])
+  @@index([visibleFromEpochMinute])
+  @@index([visibleUntilEpochMinute])
+}
+
+/// Explicit temporal override at a chronology instant (no morphing — discrete swaps).
+model MapObjectKeyframe {
+  id                   String @id @default(cuid())
+  sceneObjectId        String
+  effectiveEpochMinute BigInt
+  geometryOverride     Json?
+  styleOverride        Json?
+  visibilityOverride   String?
+  revelationOverride   String?
+
+  sceneObject MapSceneObject @relation(fields: [sceneObjectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sceneObjectId, effectiveEpochMinute])
+}
+
+/// Layer 3 — era shortcut for map chronology scrub (anchor epoch + default layer toggles).
+model MapPresentationPreset {
+  id                String @id @default(cuid())
+  campaignId        String
+  mapAssetId        String
+  label             String
+  anchorEpochMinute BigInt
+  /// JSON string[] of MapLayer ids enabled when this preset is selected (empty = no override).
+  enabledLayerIds   Json   @default("[]")
+  sortOrder         Int    @default(0)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mapAssetId])
+  @@index([campaignId])
+}
+
+/// Canonical cross-system reveal state for maps, wiki pages/blocks, timeline, journals, and search.
+model ContentPresenceState {
+  id               String   @id @default(cuid())
+  campaignId       String
+  entityType       String
+  entityId         String
+  subEntityId      String?
+  state            String
+  workflowKey      String?
+  reason           String?
+  revealedByUserId String?
+  revealedAt       DateTime?
+  /// Party cannot access until campaign clock reaches this epoch minute (orthogonal to epistemic state).
+  availableFromEpochMinute BigInt?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  revealedByUser User? @relation(fields: [revealedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, entityType, entityId, subEntityId])
+  @@index([campaignId, entityType, state])
+  @@index([campaignId, workflowKey])
+  @@index([campaignId, entityType, entityId])
+  @@index([campaignId, updatedAt])
+}
+
+model PageShortcut {
+  id         String @id @default(cuid())
+  userId     String
+  campaignId String
+  pageId     String
+  sortOrder  Int
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  page     WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaignId, pageId])
+  @@index([userId, campaignId])
+}
+
+/// User-pinned campaigns for hub hero ordering and favorites filter.
+model UserCampaignPin {
+  userId     String
+  campaignId String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@id([userId, campaignId])
+  @@index([userId, sortOrder])
+}
+
+/// Dismissed or snoozed hub attention items (primarily whisper-tier maintenance).
+model UserHubAttentionDismissal {
+  userId      String
+  dismissKey  String
+  snoozeUntil DateTime?
+  dismissedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dismissKey])
+}
+
+model Template {
+  id             String  @id @default(cuid())
+  campaignId     String?
+  name           String
+  defaultContent String?
+  isGlobal       Boolean @default(false)
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+// ---------------------------------------------------------------------------
+// Plugins
+// ---------------------------------------------------------------------------
+
+model InstalledPlugin {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  githubUrl     String
+  version       String
+  isEnabled     Boolean @default(false)
+  backendEntry  String
+  frontendEntry String
+  commitSha     String  @default("")
+  sourceRepo    String  @default("")
+  installPath   String  @default("")
+  manifestChecksum String @default("")
+  trustedInstall   Boolean @default(false)
+  installedByUserId String?
+  runtimeStatus    String  @default("active")
+  quarantineReason String?
+  quarantinedAt    DateTime?
+  recentErrors     Json    @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Placeholder structures (future features)
+// ---------------------------------------------------------------------------
+
+model PlayerSandboxNote {
+  id         String  @id @default(cuid())
+  userId     String
+  campaignId String
+  title      String
+  content    String?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, campaignId])
+}
+
+model DashboardWidget {
+  id         String  @id @default(cuid())
+  campaignId String
+  widgetType String
+  configJson String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+model UserNotificationPreference {
+  userId     String @id
+  /// JSON: { "JOIN_REQUEST_ACCEPTED": { inApp: true, email: false }, ... }
+  channels   Json
+  mutedUntil DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id         String    @id @default(cuid())
+  userId     String
+  type       String
+  title      String
+  body       String?
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  linkUrl    String?
+  campaignId String?
+  metadata   Json?
+  expiresAt  DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+  @@index([campaignId])
+}
+
+
+model Tag {
+  id         String  @id @default(cuid())
+  campaignId String
+  name       String
+  label      String
+  icon       String?
+  color      String?
+
+  campaign Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  pages    WikiPage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([campaignId, name])
+  @@index([campaignId])
+}

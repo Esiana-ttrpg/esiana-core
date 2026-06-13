@@ -1,0 +1,33 @@
+---
+description: Locked architecture patterns and explicit won't-do decisions
+alwaysApply: true
+---
+
+# Esiana Architecture Decisions
+
+Do not re-litigate without explicit user direction. Full ledger: [deferred-backlog.md](../../docs/deferred-backlog.md).
+
+## Do this
+
+- **Wiki / TipTap is canonical** — graphs, maps, diplomacy views are derived projections on wiki metadata ([chat.md](../../docs/plans/chat.md))
+- **One map presence resolver** — `resolveMapObjectPresence`; layers affect visibility; groups/filters are editor-only ([map-presence-visibility.md](../../docs/plans/map-presence-visibility.md))
+- **Temporal maps** — visibility windows + keyframe overrides on one base asset; not duplicate map uploads per era
+- **Campaign Home** (`/campaigns/:handle/dashboard`) — recency, continuity, coordination; **sidebar** — stable navigation only
+- **Phase 15.5 narrative** — storyboards as views over wiki entities, not a parallel content DB ([todo.md](../../todo.md))
+- **Narrative diagnostics** — deterministic/rule-based unless scoped as optional plugin/AI
+
+## Won't-do
+
+| Area | Decision |
+|------|----------|
+| Real-time | No WebSockets/SSE for notifications (polling + focus refresh) |
+| Mail | Hardcoded nodemailer SMTP via Admin settings; no mail router / provider registry / queues |
+| Events | No full central `dispatchDomainEvent` refactor; extend controller hooks |
+| Security | No global `/api/*` rate limiter (targeted limits only) |
+| Recruitment | No leaderboards, ratings, MMO role meta, engagement-optimization metrics |
+| Chronology | No `TimelineEra` model resurrection |
+| Versioning | Product version in `package.json`, not `SystemSetting` DB |
+| Imports | OneNote / Google Docs ingestion plugin-only ([deferred-backlog.md](../../docs/deferred-backlog.md)) |
+| Share links | No tokenized public read-only wiki/campaign surfaces in core; campaign discoverability covers anonymous presentation |
+
+Do not build separate `FogEngine` products — fog/revelation is visibility state on entities, unified with temporal presence where applicable.

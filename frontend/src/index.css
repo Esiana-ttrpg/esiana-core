@@ -1,0 +1,2397 @@
+@import 'tailwindcss';
+@config '../tailwind.config.js';
+@plugin '@tailwindcss/typography';
+@import './styles/ambient-motion.css';
+@import './styles/hub-ambient.css';
+@import './styles/esiana-logo.css';
+
+/*
+ * Tailwind v4 theme tokens → runtime CSS variables on :root/html.
+ * Use utilities like bg-primary, text-foreground, border-border, bg-surface.
+ * `inline` keeps utilities referencing var(...) directly so palette/theme updates apply live.
+ */
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-accent: var(--color-accent);
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-soft: var(--accent-soft);
+  --color-background: var(--color-bg);
+  --color-elevated: var(--color-bg-elevated);
+  --color-surface: var(--color-surface);
+  --color-border: var(--color-border);
+  --color-foreground: var(--color-text);
+  --color-muted: var(--color-text-muted);
+  --color-canvas: var(--color-canvas);
+  --color-focal: var(--color-focal);
+  --color-focal-foreground: var(--color-focal-foreground);
+  --color-focal-muted: var(--color-focal-muted);
+  --color-display-foreground: var(--color-display-foreground);
+  --color-prose-foreground: var(--color-prose-foreground);
+  --color-prose-muted: var(--color-prose-muted);
+  --color-contextual: var(--color-contextual);
+  --color-contextual-foreground: var(--color-contextual-foreground);
+  --color-recessed-foreground: var(--color-recessed-foreground);
+  --color-operational-foreground: var(--color-operational-foreground);
+  --color-overlay-elevated: var(--color-overlay-elevated);
+}
+
+/* Global design tokens (overridden by applyGlobalTheme and campaign theme classes) */
+:root,
+html {
+  --color-primary: #f59e0b;
+  --color-primary-hover: #d97706;
+  --color-bg: #090b11;
+  --color-bg-elevated: #0d1118;
+  --color-surface: #111827;
+  --color-border: rgb(214 197 168 / 0.10);
+  --color-text: #e8e4dc;
+  --color-text-muted: #8a8278;
+  --color-accent: #c4a574;
+  --accent-gold: #c8a96b;
+  --accent-warm: #9f7a45;
+  --accent-soft: #e0c48f;
+  /* Surface role tokens — cinematic narrative workspace (tonal layering) */
+  --focal-luminance-mode: narrative-dark;
+  --color-canvas: #090b11;
+  --color-focal: #111827;
+  --color-focal-elevated: #161f2d;
+  --color-focal-foreground: #e8e4dc;
+  --color-focal-muted: #9a9288;
+  --color-contextual: rgb(24 22 20 / 0.58);
+  --color-contextual-foreground: var(--color-text);
+  --color-recessed-foreground: #8a8278;
+  --color-operational-foreground: #9a9288;
+  --color-overlay-elevated: #111317;
+  --color-depth-0: #090b11;
+  --color-depth-1: #0b0f16;
+  --color-depth-2: #111827;
+  --color-depth-3: #161f2d;
+  --color-depth-4: #1c2636;
+  --color-depth-0-rgb: 9 11 17;
+  --color-depth-1-rgb: 11 15 22;
+  --color-depth-2-rgb: 17 24 39;
+  --color-depth-3-rgb: 22 31 45;
+  --color-canvas-gradient-mid: rgb(17 24 39 / 0.1);
+  --color-canvas-gradient-warm: rgb(120 110 90 / 0.06);
+  --color-border-rgb: 214 197 168;
+  --color-border-warm-rgb: 214 197 168;
+  --color-surface-rgb: 21 24 33;
+  --color-focal-rgb: 31 27 24;
+  --color-focal-glow-rgb: 100 90 80;
+  --color-canvas-rgb: 9 11 17;
+  --color-atmosphere-glow-rgb: 100 90 80;
+  --color-atmosphere-shadow-rgb: 9 11 17;
+  --color-atmosphere-haze-rgb: 120 110 90;
+  --atmosphere-haze-alpha: 0.14;
+  --atmosphere-glow-alpha: 0.07;
+  --atmosphere-glow-alpha-operational: 0.07;
+  --atmosphere-glow-alpha-focal: 0.12;
+  --atmosphere-glow-alpha-dramatic: 0.19;
+  --atmosphere-region-fade-strength: 0.28;
+  --atmosphere-shadow-alpha: 0.22;
+  --atmosphere-shadow-blur: 13px;
+  --atmosphere-depth-edge-opacity: 0.09;
+  --atmosphere-vignette-strength: 0.3;
+  --color-edge-light-rgb: 214 197 168;
+  --atmosphere-edge-light-alpha: 0.06;
+  --color-atmosphere-material-shadow-rgb: 9 11 17;
+  --atmosphere-periphery-strength: 0.5;
+  --atmosphere-fog-density: 1;
+  --atmosphere-focal-intensity: 1;
+  --atmosphere-amplitude: 1;
+  --atmosphere-gradient-behavior: void_vignette;
+  --atmosphere-bloom-behavior: desaturated_dust;
+  --atmosphere-event-escalation: soft;
+  --atmosphere-bias-horizontal: 0;
+  --atmosphere-bias-vertical: 0;
+  --atmosphere-warm-corner: none;
+  --atmosphere-cold-corner: none;
+  --atmosphere-breathe-amplitude: 1;
+  --color-void: rgb(5 6 8);
+  --color-void-rgb: 5 6 8;
+  --atmosphere-void-preservation: 0.35;
+  --color-display-foreground: var(--color-focal-foreground);
+  --color-prose-foreground: var(--color-focal-foreground);
+  --color-prose-muted: var(--color-focal-muted);
+  --type-display-weight: 500;
+  --type-display-tracking: -0.02em;
+  --type-display-size: clamp(1.875rem, 4vw, 3.25rem);
+  --type-display-subtitle-gap: calc(var(--space-section, 1.5rem) * 1.75);
+  --type-prose-line-height: 1.65;
+  --type-section-gap-scale: 1;
+  --type-meta-luminance-cap: 0.72;
+  --type-prose-subdued-opacity: 0.92;
+  --atmosphere-sidebar-edge-alpha: 0.1;
+  --atmosphere-glow-alpha-sidebar: 0.08;
+  --atmosphere-glow-alpha-hero: 0.19;
+  --atmosphere-glow-alpha-rail: 0.06;
+  --material-specular-hero: 0.03;
+  --material-specular-silent: 0.01;
+  --material-specular-float: 0.03;
+  --material-specular-sidebar: 0.025;
+  --material-absorption-void: 1.2;
+  --material-absorption-lacquer: 0.85;
+  --material-absorption-velvet: 1.1;
+  --material-edge-sharpness-sidebar: 0.14;
+  --material-edge-sharpness-card: 0.09;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Source Serif 4', 'Georgia', 'Times New Roman', serif;
+  --font-editorial: 'Source Serif 4', 'Georgia', 'Times New Roman', serif;
+  --text-measure-ch: 86;
+  --text-measure-wide-ch: 90;
+  --text-measure-max-ch: 96;
+  --space-section: 1.5rem;
+  --space-group: 0.75rem;
+  --motion-duration: 180ms;
+  --motion-ease: ease-out;
+  --breakpoint-ultrawide: 1920px;
+}
+
+html {
+  color-scheme: dark;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Campaign-level theme presets (scoped overrides) */
+.theme-light {
+  --color-primary: #d97706;
+  --color-primary-hover: #b45309;
+  --color-bg: #f8fafc;
+  --color-bg-elevated: #f1f5f9;
+  --color-surface: #ffffff;
+  --color-border: #cbd5e1;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-accent: #4f46e5;
+  --color-canvas: var(--color-bg);
+  --color-focal: #ffffff;
+  --color-focal-foreground: #0f172a;
+  --color-focal-muted: #64748b;
+  --color-contextual: rgb(241 245 249 / 0.95);
+  --color-contextual-foreground: var(--color-text);
+  --color-border-rgb: 203 213 225;
+  --color-surface-rgb: 255 255 255;
+  --color-focal-rgb: 255 255 255;
+  --color-canvas-rgb: 248 250 252;
+  color-scheme: light;
+}
+
+.theme-dark {
+  --color-primary: #f59e0b;
+  --color-primary-hover: #d97706;
+  --color-bg: #090b11;
+  --color-bg-elevated: #0d1118;
+  --color-surface: #111827;
+  --color-border: rgb(214 197 168 / 0.10);
+  --color-text: #e8e4dc;
+  --color-text-muted: #8a8278;
+  --color-accent: #c4a574;
+  --focal-luminance-mode: narrative-dark;
+  --color-canvas: #090b11;
+  --color-focal: #111827;
+  --color-focal-elevated: #161f2d;
+  --color-focal-foreground: #e8e4dc;
+  --color-focal-muted: #9a9288;
+  --color-contextual: rgb(24 22 20 / 0.58);
+  --color-contextual-foreground: var(--color-text);
+  --color-recessed-foreground: #8a8278;
+  --color-operational-foreground: #9a9288;
+  --color-overlay-elevated: #111317;
+  --color-depth-0: #090b11;
+  --color-depth-1: #0b0f16;
+  --color-depth-2: #111827;
+  --color-depth-3: #161f2d;
+  --color-depth-4: #1c2636;
+  --color-depth-0-rgb: 9 11 17;
+  --color-depth-1-rgb: 11 15 22;
+  --color-depth-2-rgb: 17 24 39;
+  --color-depth-3-rgb: 22 31 45;
+  --color-canvas-gradient-mid: rgb(17 24 39 / 0.1);
+  --color-canvas-gradient-warm: rgb(120 110 90 / 0.06);
+  --color-border-rgb: 214 197 168;
+  --color-border-warm-rgb: 214 197 168;
+  --color-surface-rgb: 21 24 33;
+  --color-focal-rgb: 31 27 24;
+  --color-focal-glow-rgb: 100 90 80;
+  --color-canvas-rgb: 9 11 17;
+  --color-atmosphere-glow-rgb: 100 90 80;
+  --color-atmosphere-shadow-rgb: 9 11 17;
+  --color-atmosphere-haze-rgb: 120 110 90;
+  --atmosphere-haze-alpha: 0.14;
+  --atmosphere-glow-alpha: 0.07;
+  --atmosphere-glow-alpha-operational: 0.07;
+  --atmosphere-glow-alpha-focal: 0.12;
+  --atmosphere-glow-alpha-dramatic: 0.19;
+  --atmosphere-region-fade-strength: 0.28;
+  --atmosphere-shadow-alpha: 0.22;
+  --atmosphere-shadow-blur: 13px;
+  --atmosphere-depth-edge-opacity: 0.09;
+  --atmosphere-vignette-strength: 0.3;
+  color-scheme: dark;
+}
+
+.theme-fantasy {
+  --color-primary: #a78bfa;
+  --color-primary-hover: #8b5cf6;
+  --color-bg: #1a1028;
+  --color-bg-elevated: #261636;
+  --color-surface: #32204a;
+  --color-border: rgb(214 197 168 / 0.12);
+  --color-text: #f3e8ff;
+  --color-text-muted: #b8a8d4;
+  --color-accent: #fbbf24;
+  color-scheme: dark;
+}
+
+.theme-cyberpunk {
+  --color-primary: #22d3ee;
+  --color-primary-hover: #06b6d4;
+  --color-bg: #050510;
+  --color-bg-elevated: #0a0a1a;
+  --color-surface: #12122a;
+  --color-border: rgb(214 197 168 / 0.10);
+  --color-text: #e0f2fe;
+  --color-text-muted: #8a9aaa;
+  --color-accent: #f472b6;
+  color-scheme: dark;
+}
+
+.theme-parchment {
+  --color-primary: #7c5c2e;
+  --color-primary-hover: #5c4522;
+  --color-bg: #f8f0e0;
+  --color-bg-elevated: #f3e8d4;
+  --color-surface: #fffef8;
+  --color-border: #d4c4a8;
+  --color-text: #2c2416;
+  --color-text-muted: #5c4f3a;
+  --color-accent: #8b6914;
+  --color-canvas: var(--color-bg);
+  --color-focal: #fffef8;
+  --color-focal-foreground: #2c2416;
+  --color-focal-muted: #5c4f3a;
+  --color-contextual: rgb(243 232 212 / 0.92);
+  --color-contextual-foreground: var(--color-text);
+  --color-border-rgb: 212 196 168;
+  --color-surface-rgb: 255 254 248;
+  --color-focal-rgb: 255 254 248;
+  --color-canvas-rgb: 248 240 224;
+  --font-family: 'Garamond', 'Georgia', serif;
+  --font-display: var(--font-family);
+  --font-editorial: var(--font-family);
+  color-scheme: light;
+  background-color: var(--color-bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.14'/%3E%3C/svg%3E");
+  background-blend-mode: multiply;
+}
+
+html.theme-parchment,
+html.theme-parchment body,
+html.theme-parchment #root {
+  font-family: var(--font-family, 'Garamond', 'Georgia', serif);
+}
+
+.campaign-theme-shell {
+  background-color: var(--color-canvas, var(--color-bg));
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+.canvas-atmosphere,
+.canvas-atmosphere--ambient {
+  --periphery-x: calc(50% + var(--atmosphere-bias-horizontal, 0) * 22%);
+  --periphery-y: calc(50% + var(--atmosphere-bias-vertical, 0) * -18%);
+  --haze-x: calc(12% + var(--atmosphere-bias-horizontal, 0) * -8%);
+  --haze-y: calc(8% + var(--atmosphere-bias-vertical, 0) * -6%);
+  --glow-x: calc(50% + var(--atmosphere-bias-horizontal, 0) * 12%);
+  --glow-y: calc(calc(-8% + var(--atmosphere-bias-vertical, 0) * 12%) * -1);
+  background-color: var(--color-canvas, var(--color-bg));
+  background-image:
+    radial-gradient(
+      ellipse 130% 90% at var(--periphery-x) var(--periphery-y),
+      transparent calc(52% - var(--atmosphere-periphery-strength, 0.5) * 8%),
+      rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / var(--atmosphere-vignette-strength, 0.3)) 100%
+    ),
+    radial-gradient(
+      ellipse 120% 80% at var(--glow-x) var(--glow-y),
+      rgb(var(--color-atmosphere-glow-rgb, 100 90 80) / calc(var(--atmosphere-glow-alpha-operational, 0.07) * var(--atmosphere-amplitude, 1))),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at var(--haze-x) var(--haze-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--atmosphere-haze-alpha, 0.14) * var(--atmosphere-fog-density, 1))),
+      transparent calc(32% + var(--atmosphere-periphery-strength, 0.5) * 6%)
+    ),
+    radial-gradient(
+      ellipse 140% 70% at var(--glow-x) calc(var(--glow-y) - 7%),
+      var(--color-canvas-gradient-mid, rgb(var(--color-surface-rgb, 17 24 39) / 0.1)),
+      transparent 58%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--color-canvas-rgb, 9 11 17)),
+      var(--color-canvas-gradient-mid, rgb(var(--color-surface-rgb, 17 24 39) / 0.1))
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+  background-blend-mode: normal, normal, normal, normal, normal, soft-light;
+}
+
+html[data-atmosphere-warm-corner='br'] .canvas-atmosphere--ambient,
+html[data-atmosphere-warm-corner='br'] .canvas-atmosphere {
+  background-image:
+    radial-gradient(
+      ellipse 55% 45% at 92% 88%,
+      rgb(var(--accent-warm, 159 122 69) / calc(0.08 * var(--atmosphere-amplitude, 1))),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 130% 90% at var(--periphery-x) var(--periphery-y),
+      transparent calc(52% - var(--atmosphere-periphery-strength, 0.5) * 8%),
+      rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / var(--atmosphere-vignette-strength, 0.3)) 100%
+    ),
+    radial-gradient(
+      ellipse 120% 80% at var(--glow-x) var(--glow-y),
+      rgb(var(--color-atmosphere-glow-rgb, 100 90 80) / calc(var(--atmosphere-glow-alpha-operational, 0.07) * var(--atmosphere-amplitude, 1))),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at var(--haze-x) var(--haze-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--atmosphere-haze-alpha, 0.14) * var(--atmosphere-fog-density, 1))),
+      transparent calc(32% + var(--atmosphere-periphery-strength, 0.5) * 6%)
+    ),
+    radial-gradient(
+      ellipse 140% 70% at var(--glow-x) calc(var(--glow-y) - 7%),
+      var(--color-canvas-gradient-mid, rgb(var(--color-surface-rgb, 17 24 39) / 0.1)),
+      transparent 58%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--color-canvas-rgb, 9 11 17)),
+      var(--color-canvas-gradient-mid, rgb(var(--color-surface-rgb, 17 24 39) / 0.1))
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+html[data-atmosphere-gradient-behavior='warm_rise'] .canvas-atmosphere--ambient,
+html[data-atmosphere-gradient-behavior='warm_rise'] .canvas-atmosphere {
+  background-image:
+    radial-gradient(
+      ellipse 100% 60% at 50% 105%,
+      rgb(var(--color-atmosphere-glow-rgb, 140 90 50) / calc(var(--atmosphere-glow-alpha-focal, 0.12) * var(--atmosphere-fog-density, 1))),
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 130% 90% at var(--periphery-x) var(--periphery-y),
+      transparent calc(52% - var(--atmosphere-periphery-strength, 0.5) * 8%),
+      rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / var(--atmosphere-vignette-strength, 0.3)) 100%
+    ),
+    radial-gradient(
+      circle at var(--haze-x) var(--haze-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--atmosphere-haze-alpha, 0.14) * var(--atmosphere-fog-density, 1))),
+      transparent calc(32% + var(--atmosphere-periphery-strength, 0.5) * 6%)
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--color-canvas-rgb, 9 11 17)),
+      var(--color-canvas-gradient-mid, rgb(var(--color-surface-rgb, 17 24 39) / 0.1))
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+html[data-atmosphere-gradient-behavior='horizon_fog'] .canvas-atmosphere--ambient,
+html[data-atmosphere-gradient-behavior='horizon_fog'] .canvas-atmosphere {
+  background-image:
+    radial-gradient(
+      ellipse 120% 50% at 50% -5%,
+      rgb(var(--color-atmosphere-haze-rgb, 40 90 130) / calc(var(--atmosphere-haze-alpha, 0.14) * var(--atmosphere-fog-density, 1) * 1.15)),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 130% 90% at var(--periphery-x) var(--periphery-y),
+      transparent calc(52% - var(--atmosphere-periphery-strength, 0.5) * 8%),
+      rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / var(--atmosphere-vignette-strength, 0.3)) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--color-canvas-rgb, 9 11 17)),
+      var(--color-canvas-gradient-mid, rgb(var(--color-surface-rgb, 17 24 39) / 0.1))
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+.canvas-atmosphere--base {
+  background-color: var(--color-canvas, var(--color-bg));
+  background-image:
+    radial-gradient(
+      ellipse 130% 90% at 50% 50%,
+      transparent 52%,
+      rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / var(--atmosphere-vignette-strength, 0.3)) 100%
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.03'/%3E%3C/svg%3E");
+  background-blend-mode: normal, soft-light;
+}
+
+.workspace-surface {
+  background-color: var(--color-depth-1);
+}
+
+.atmosphere-focal {
+  position: relative;
+}
+
+.workspace-gutter {
+  padding-block: var(--space-section, 1.5rem);
+}
+
+.workspace-gutter[data-workspace-rail='true'] {
+  padding-block-start: 0.75rem;
+}
+
+.workspace-rail {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+  max-height: 3rem;
+  margin-inline: calc(-1 * var(--workspace-rail-inset, 0px));
+  padding-block: 0.375rem;
+  border-bottom: 1px solid rgb(var(--color-border-warm-rgb) / 0.08);
+  background: rgb(var(--color-canvas-rgb, 15 17 20) / 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.workspace-rail__start {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+}
+
+.workspace-rail__end {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workspace-rail--tabs .workspace-rail__start,
+.workspace-rail--hybrid .workspace-rail__start {
+  align-items: flex-end;
+}
+
+.workspace-rail--toolbar .workspace-rail__start {
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.workspace-context-strip {
+  padding-block: 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: rgb(var(--color-muted-rgb, 148 163 184) / 0.9);
+}
+
+.workspace-composition,
+.workspace-field {
+  max-width: none;
+  margin-inline: 0;
+}
+
+.editorial-measure {
+  max-width: min(calc(var(--text-measure-ch) * 1ch), var(--text-measure-max-ch));
+  margin-inline: auto;
+}
+
+.surface-canvas {
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+}
+
+.surface-primary {
+  background-color: var(--color-focal);
+  color: var(--color-focal-foreground);
+  border-radius: 0.375rem;
+  border: 1px solid rgb(var(--color-edge-light-rgb, 214 197 168) / var(--atmosphere-edge-light-alpha, 0.06));
+  box-shadow:
+    0 8px 32px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.03),
+    inset 0 0 0 1px rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-edge-light-alpha, 0.06) * 0.5));
+}
+
+.surface-environmental {
+  background-color: transparent;
+  color: var(--color-focal-foreground);
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.surface-float {
+  background-color: var(--color-depth-2, var(--color-focal));
+  color: var(--color-focal-foreground);
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  box-shadow:
+    0 4px 20px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / calc(0.32 * var(--material-absorption-lacquer, 0.85))),
+    inset 0 1px 0 rgb(255 255 255 / var(--material-specular-float, 0.03));
+}
+
+.canvas-recess {
+  background-color: var(--color-void, rgb(var(--color-void-rgb, 5 6 8)));
+  min-height: var(--canvas-recess-min-height, 0);
+  padding-block: calc(var(--space-section, 1.5rem) * var(--atmosphere-void-preservation, 0.35));
+  box-shadow: inset 0 2px 24px rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / calc(var(--atmosphere-shadow-alpha, 0.22) * var(--material-absorption-void, 1.2)));
+}
+
+.environmental-hero {
+  position: relative;
+  margin-inline: calc(-1 * var(--wiki-focal-padding-x, 1.5rem));
+  width: calc(100% + 2 * var(--wiki-focal-padding-x, 1.5rem));
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / var(--material-specular-hero, 0.03)),
+    0 12px 40px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / calc(var(--atmosphere-shadow-alpha, 0.22) * var(--material-absorption-lacquer, 0.85)));
+  border-radius: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+}
+
+.environmental-hero .type-display {
+  font-size: var(--type-display-size);
+  font-weight: var(--type-display-weight, 500);
+  letter-spacing: var(--type-display-tracking, -0.02em);
+  color: var(--color-display-foreground, var(--color-focal-foreground));
+  margin-block-end: calc(var(--type-display-subtitle-gap, 1.5rem) * 0.35);
+  text-shadow: 0 2px 24px rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / 0.65);
+}
+
+.environmental-hero .type-meta {
+  color: var(--color-prose-muted, var(--color-focal-muted));
+}
+
+.wiki-focal-region--canvas {
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  --wiki-focal-padding-x: 1.5rem;
+}
+
+/* Page-level envelope — padding applied once; nested focal regions stay flush */
+.wiki-focal-region--page-envelope .wiki-focal-region:not(.wiki-focal-region--page-envelope) {
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .wiki-focal-region--canvas {
+    --wiki-focal-padding-x: 2rem;
+  }
+
+  .environmental-hero {
+    margin-inline: calc(-1 * var(--wiki-focal-padding-x, 2rem));
+    width: calc(100% + 2 * var(--wiki-focal-padding-x, 2rem));
+  }
+}
+
+/* Bestiary creature hero — lightweight biome tint */
+.creature-hero-env {
+  --creature-env-accent: 100 116 139;
+  --creature-env-bg: 15 23 42;
+}
+
+.creature-hero-env--frost {
+  --creature-env-accent: 125 211 252;
+  --creature-env-bg: 12 30 48;
+}
+
+.creature-hero-env--swamp {
+  --creature-env-accent: 134 169 134;
+  --creature-env-bg: 18 32 22;
+}
+
+.creature-hero-env--volcanic {
+  --creature-env-accent: 251 146 60;
+  --creature-env-bg: 40 18 12;
+}
+
+/* Bestiary hunter catalog — codex grid + tiles */
+.bestiary-codex-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 1rem;
+}
+
+.creature-codex-tile {
+  display: flex;
+  flex-direction: column;
+  min-height: 14rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(var(--color-border-warm-rgb) / 0.35);
+  background: rgb(var(--color-surface-rgb) / 0.6);
+  box-shadow: 0 1px 3px rgb(var(--color-atmosphere-shadow-rgb, 11 13 16) / 0.08);
+}
+
+.creature-codex-tile--selected {
+  border-color: rgb(var(--color-primary-rgb) / 0.65);
+  box-shadow:
+    0 0 0 1px rgb(var(--color-primary-rgb) / 0.35),
+    0 0 12px rgb(var(--color-primary-rgb) / 0.15);
+}
+
+.creature-codex-tile--compact {
+  min-height: 10rem;
+}
+
+.creature-codex-tile__portrait {
+  aspect-ratio: 4 / 5;
+  width: 100%;
+  overflow: hidden;
+  background: rgb(var(--color-elevated-rgb) / 0.5);
+}
+
+.creature-codex-tile--silhouette .creature-codex-tile__portrait {
+  filter: brightness(0.3) contrast(1.2);
+}
+
+.creature-codex-tile--partial .creature-codex-tile__portrait {
+  filter: blur(4px) saturate(0.6);
+}
+
+.creature-codex-tile__body {
+  padding: 0.625rem 0.75rem 0.75rem;
+}
+
+.creature-tile-env {
+  --creature-env-accent: 100 116 139;
+  --creature-env-bg: 15 23 42;
+}
+
+.creature-tile-env--frost {
+  --creature-env-accent: 125 211 252;
+  --creature-env-bg: 12 30 48;
+}
+
+.creature-tile-env--swamp {
+  --creature-env-accent: 134 169 134;
+  --creature-env-bg: 18 32 22;
+}
+
+.creature-tile-env--volcanic {
+  --creature-env-accent: 251 146 60;
+  --creature-env-bg: 40 18 12;
+}
+
+.creature-tile-env--frost .creature-codex-tile__portrait,
+.creature-tile-env--swamp .creature-codex-tile__portrait,
+.creature-tile-env--volcanic .creature-codex-tile__portrait {
+  box-shadow: inset 0 -2rem 3rem rgb(var(--creature-env-bg) / 0.45);
+}
+
+.creature-codex-tile.group:hover.creature-tile-env--frost,
+.creature-codex-tile.group:hover.creature-tile-env--swamp,
+.creature-codex-tile.group:hover.creature-tile-env--volcanic {
+  border-color: rgb(var(--creature-env-accent) / 0.35);
+}
+
+.bestiary-section-header {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid rgb(var(--color-border-warm-rgb) / 0.5);
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: linear-gradient(
+    90deg,
+    rgb(var(--color-elevated-rgb) / 0.35) 0%,
+    transparent 100%
+  );
+}
+
+.bestiary-section-header--frost {
+  border-left-color: rgb(125 211 252 / 0.55);
+  background: linear-gradient(90deg, rgb(12 30 48 / 0.35) 0%, transparent 100%);
+}
+
+.bestiary-section-header--swamp {
+  border-left-color: rgb(134 169 134 / 0.55);
+  background: linear-gradient(90deg, rgb(18 32 22 / 0.35) 0%, transparent 100%);
+}
+
+.bestiary-section-header--volcanic {
+  border-left-color: rgb(251 146 60 / 0.55);
+  background: linear-gradient(90deg, rgb(40 18 12 / 0.35) 0%, transparent 100%);
+}
+
+.bestiary-section-header--apex-active.bestiary-section-header--frost,
+.bestiary-section-header--apex-active.bestiary-section-header--swamp,
+.bestiary-section-header--apex-active.bestiary-section-header--volcanic,
+.bestiary-section-header--apex-active {
+  border-left-width: 4px;
+}
+
+.bestiary-section-presence {
+  font-variant-numeric: tabular-nums;
+}
+
+.bestiary-section-apex-callout {
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: rgb(251 191 36);
+}
+
+.narrative-layout--bestiary-hub-inline.narrative-layout--inline,
+.narrative-layout--bestiary-hub-inline.narrative-layout--workspace {
+  grid-template-columns: minmax(0, 1fr) var(--bestiary-hub-rail-width, 380px);
+}
+
+@media (max-width: 1023px) {
+  .narrative-layout--bestiary-hub-inline.narrative-layout--inline,
+  .narrative-layout--bestiary-hub-inline.narrative-layout--workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.creature-hero-backdrop {
+  background: linear-gradient(
+    135deg,
+    rgb(var(--creature-env-bg) / 0.55) 0%,
+    rgb(var(--creature-env-accent) / 0.08) 50%,
+    transparent 100%
+  );
+}
+
+.surface-primary.atmosphere-focal {
+  box-shadow:
+    0 8px 32px rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.03),
+    0 0 24px rgb(var(--color-atmosphere-glow-rgb, 100 90 80) / var(--atmosphere-glow-alpha-focal, 0.12));
+}
+
+.focal-elevated {
+  background-color: var(--color-focal-elevated);
+  color: var(--color-focal-foreground);
+}
+
+.region-depth-1 {
+  background-color: var(--color-depth-1);
+}
+
+.region-depth-2 {
+  background-color: var(--color-depth-2);
+}
+
+.region-depth-3 {
+  background-color: var(--color-depth-3);
+}
+
+.region-compose {
+  position: relative;
+}
+
+.region-compose::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2.5rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / var(--atmosphere-region-fade-strength, 0.28)),
+    transparent
+  );
+}
+
+.surface-silent,
+.surface-silent.region-compose::before,
+.surface-silent.region-compose--fade-bottom::after {
+  background-color: var(--color-focal);
+  color: var(--color-focal-foreground);
+  box-shadow: none;
+  background-image: none;
+  backdrop-filter: none;
+}
+
+.surface-silent.region-compose::before,
+.surface-silent.region-compose--fade-bottom::after {
+  content: none;
+}
+
+.wiki-focal-region > .surface-silent,
+.wiki-focal-region .wiki-reader-prose.surface-silent {
+  border-radius: 0;
+}
+
+/* Scene composition — zone-scoped environmental orchestration */
+html[data-scene] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 70% 55% at var(--sidebar-periphery-x) var(--sidebar-periphery-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--zone-sidebar-glow-alpha, var(--atmosphere-glow-alpha-sidebar, 0.08)) * var(--atmosphere-amplitude, 1))),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 45% 40% at var(--sidebar-warm-x) var(--sidebar-warm-y),
+      rgb(var(--accent-warm, 159 122 69) / calc(0.06 * var(--atmosphere-amplitude, 1))),
+      transparent 72%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 3px),
+      rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--zone-sidebar-edge-light, var(--atmosphere-sidebar-edge-alpha, 0.1)) * var(--material-edge-sharpness-sidebar, 0.14))) 100%
+    );
+}
+
+html[data-sidebar-atmosphere='violet_archive_wall'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to bottom,
+      transparent 68%,
+      rgb(var(--color-canvas-rgb, 9 11 17) / 0.35) 100%
+    ),
+    linear-gradient(
+      to left,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 139 92 246)) / calc(var(--zone-sidebar-edge-light, 0.12) * var(--material-edge-sharpness-sidebar, 0.14))) 0,
+      transparent 14px
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 139 92 246)) / var(--sidebar-nav-container-edge-alpha, 0.18)),
+    inset -1px 0 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.025));
+}
+
+html[data-sidebar-atmosphere='violet_archive_wall'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 55% 65% at 92% 50%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 139 92 246)) / calc(var(--zone-sidebar-glow-alpha, 0.08) * 1.4)),
+      transparent 65%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at var(--sidebar-periphery-x) var(--sidebar-periphery-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--zone-sidebar-glow-alpha, var(--atmosphere-glow-alpha-sidebar, 0.08)) * var(--atmosphere-amplitude, 1))),
+      transparent 68%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 3px),
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 139 92 246)) / calc(var(--zone-sidebar-edge-light, var(--atmosphere-sidebar-edge-alpha, 0.1)) * var(--material-edge-sharpness-sidebar, 0.14))) 100%
+    );
+}
+
+/* Global sidebar nav ecology — dark foundation palettes */
+html[data-sidebar-ecology='atmospheric'] .sidebar-atmosphere .sidebar-nav-item {
+  color: rgb(var(--sidebar-nav-ink, 214 219 230) / var(--sidebar-nav-ink-opacity, 0.82));
+  background: transparent;
+  border-left: 1px solid transparent;
+  font-weight: 400;
+  transition:
+    color var(--motion-duration, 180ms) var(--motion-ease, ease-out),
+    background var(--motion-duration, 180ms) var(--motion-ease, ease-out),
+    box-shadow var(--motion-duration, 180ms) var(--motion-ease, ease-out),
+    border-color var(--motion-duration, 180ms) var(--motion-ease, ease-out);
+}
+
+html[data-sidebar-ecology='atmospheric'] .sidebar-atmosphere .sidebar-nav-item:hover {
+  color: rgb(var(--sidebar-nav-ink-hover, 230 234 242) / var(--sidebar-nav-ink-hover-opacity, 0.92));
+  background: linear-gradient(
+    to right,
+    rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb)) / var(--sidebar-nav-hover-fill-alpha, 0.06)),
+    transparent 70%
+  );
+}
+
+html[data-sidebar-ecology='atmospheric'] .sidebar-atmosphere .sidebar-nav-item[aria-current='page'] {
+  color: rgb(var(--sidebar-nav-ink-active, 245 238 220));
+  font-weight: 500;
+  background: linear-gradient(
+    to right,
+    rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb)) / var(--sidebar-nav-active-fill-start, 0.16)),
+    rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb)) / var(--sidebar-nav-active-fill-end, 0.04)) 35%,
+    transparent 80%
+  );
+  border-left: 1px solid rgb(var(--sidebar-nav-active-edge-rgb, 192 160 96) / 0.8);
+  box-shadow:
+    inset 1px 0 0 rgb(255 255 255 / var(--sidebar-nav-active-catch-alpha, 0.04)),
+    0 0 18px rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb)) / var(--sidebar-nav-active-glow-alpha, 0.12));
+}
+
+html[data-sidebar-ecology='atmospheric'] .sidebar-nav-secondary .sidebar-nav-item:not([aria-current='page']) {
+  color: rgb(var(--sidebar-nav-ink, 214 219 230) / 0.72);
+}
+
+html[data-scene][data-sidebar-ecology='atmospheric'] .sidebar-atmosphere .sidebar-nav-item[aria-current='page'] {
+  padding-left: calc(0.5rem - 1px);
+}
+
+/* Ember — warm center-left diffusion */
+html[data-sidebar-atmosphere='warm_diffusion'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to bottom,
+      transparent 62%,
+      rgb(var(--color-canvas-rgb, 9 11 17) / 0.3) 100%
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 100 50)) / calc(var(--sidebar-nav-container-edge-alpha, 0.14) * 0.85)) 0,
+      transparent 18px
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 100 50)) / var(--sidebar-nav-container-edge-alpha, 0.14)),
+    inset -1px 0 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.025));
+}
+
+html[data-sidebar-atmosphere='warm_diffusion'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 60% 70% at 18% 55%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 100 50)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * 1.5)),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at var(--sidebar-periphery-x) var(--sidebar-periphery-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * var(--atmosphere-amplitude, 1))),
+      transparent 68%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 3px),
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 100 50)) / var(--sidebar-nav-container-edge-alpha, 0.14)) 100%
+    );
+}
+
+/* Ocean — cold top fog, horizon edge */
+html[data-sidebar-atmosphere='horizon_fog_wall'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 56 120 160)) / calc(var(--sidebar-nav-container-edge-alpha, 0.12) * 0.5)) 0,
+      transparent 22%
+    ),
+    linear-gradient(
+      to left,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 56 120 160)) / calc(var(--sidebar-nav-container-edge-alpha, 0.12) * 0.7)) 0,
+      transparent 12px
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 56 120 160)) / var(--sidebar-nav-container-edge-alpha, 0.12)),
+    inset -1px 0 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.02));
+}
+
+html[data-sidebar-atmosphere='horizon_fog_wall'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 80% 45% at 50% 8%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 56 120 160)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * 1.2)),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 50% 60% at 95% 72%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 56 120 160)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * 0.9)),
+      transparent 65%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 3px),
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 56 120 160)) / var(--sidebar-nav-container-edge-alpha, 0.12)) 100%
+    );
+}
+
+/* Forest — filtered green periphery */
+html[data-sidebar-atmosphere='canopy_filter_wall'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to right,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 120 75)) / calc(var(--sidebar-nav-container-edge-alpha, 0.1) * 1.1)) 0,
+      transparent 16px
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 70%,
+      rgb(var(--color-canvas-rgb, 9 11 17) / 0.28) 100%
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 120 75)) / var(--sidebar-nav-container-edge-alpha, 0.1)),
+    inset -1px 0 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.02));
+}
+
+html[data-sidebar-atmosphere='canopy_filter_wall'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 45% 75% at 6% 50%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 120 75)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * 1.1)),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 40% 55% at 88% 35%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 120 75)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * 0.75)),
+      transparent 68%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 3px),
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 120 75)) / var(--sidebar-nav-container-edge-alpha, 0.1)) 100%
+    );
+}
+
+/* Deep space — minimal void recess */
+html[data-sidebar-atmosphere='void_recess_wall'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image: linear-gradient(
+    to left,
+    rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 80 140)) / calc(var(--sidebar-nav-container-edge-alpha, 0.08) * 0.6)) 0,
+    transparent 10px
+  );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 80 140)) / var(--sidebar-nav-container-edge-alpha, 0.08)),
+    inset -1px 0 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.015));
+}
+
+html[data-sidebar-atmosphere='void_recess_wall'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 35% 50% at 94% 50%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 80 140)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * 0.55)),
+      transparent 62%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 2px),
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 70 80 140)) / calc(var(--sidebar-nav-container-edge-alpha, 0.08) * 0.7)) 100%
+    );
+}
+
+/* Sunlit sidebar nav ecology — light foundation palettes */
+html[data-sidebar-ecology='sunlit'] .sidebar-atmosphere .sidebar-nav-item {
+  color: rgb(var(--sidebar-nav-ink, 72 62 52) / var(--sidebar-nav-ink-opacity, 0.88));
+  background: transparent;
+  border-left: 1px solid transparent;
+  font-weight: 400;
+  transition:
+    color var(--motion-duration, 180ms) var(--motion-ease, ease-out),
+    background var(--motion-duration, 180ms) var(--motion-ease, ease-out),
+    box-shadow var(--motion-duration, 180ms) var(--motion-ease, ease-out),
+    border-color var(--motion-duration, 180ms) var(--motion-ease, ease-out);
+}
+
+html[data-sidebar-ecology='sunlit'] .sidebar-atmosphere .sidebar-nav-item:hover {
+  color: rgb(var(--sidebar-nav-ink-hover, 58 50 42) / var(--sidebar-nav-ink-hover-opacity, 0.95));
+  background: linear-gradient(
+    to right,
+    rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb)) / var(--sidebar-nav-hover-fill-alpha, 0.04)),
+    transparent 70%
+  );
+}
+
+html[data-sidebar-ecology='sunlit'] .sidebar-atmosphere .sidebar-nav-item[aria-current='page'] {
+  color: rgb(var(--sidebar-nav-ink-active, 42 36 28));
+  font-weight: 500;
+  background: linear-gradient(
+    to right,
+    rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb)) / var(--sidebar-nav-active-fill-start, 0.1)),
+    rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb)) / var(--sidebar-nav-active-fill-end, 0.02)) 40%,
+    transparent 85%
+  );
+  border-left: 1px solid rgb(var(--sidebar-nav-active-edge-rgb, var(--sidebar-nav-edge-rgb)) / 0.55);
+  box-shadow:
+    inset 1px 0 0 rgb(255 255 255 / var(--sidebar-nav-active-catch-alpha, 0.06)),
+    inset 0 1px 2px rgb(var(--color-atmosphere-material-shadow-rgb, 42 38 32) / calc(var(--sidebar-nav-active-glow-alpha, 0.04) * 1.5));
+}
+
+html[data-sidebar-ecology='sunlit'] .sidebar-nav-secondary .sidebar-nav-item:not([aria-current='page']) {
+  color: rgb(var(--sidebar-nav-ink, 72 62 52) / 0.75);
+}
+
+html[data-scene][data-sidebar-ecology='sunlit'] .sidebar-atmosphere .sidebar-nav-item[aria-current='page'] {
+  padding-left: calc(0.5rem - 1px);
+}
+
+/* Sunset — warm folio margin */
+html[data-sidebar-atmosphere='warm_folio_wall'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to top left,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 200 120 80)) / calc(var(--sidebar-nav-container-edge-alpha, 0.12) * 0.45)) 100%,
+      transparent 55%
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 200 120 80)) / calc(var(--sidebar-nav-container-edge-alpha, 0.12) * 0.7)) 0,
+      transparent 14px
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 200 120 80)) / var(--sidebar-nav-container-edge-alpha, 0.12)),
+    inset 0 1px 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.02));
+}
+
+html[data-sidebar-atmosphere='warm_folio_wall'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 55% 65% at 88% 78%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 200 120 80)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.03) * 1.8)),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 70% 55% at var(--sidebar-periphery-x) var(--sidebar-periphery-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--atmosphere-glow-alpha-sidebar, 0.03) * var(--atmosphere-amplitude, 1))),
+      transparent 68%
+    );
+}
+
+/* Desert — sand archive recess */
+html[data-sidebar-atmosphere='sand_archive_wall'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to bottom right,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 140 90)) / calc(var(--sidebar-nav-container-edge-alpha, 0.11) * 0.5)) 100%,
+      transparent 50%
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 140 90)) / calc(var(--sidebar-nav-container-edge-alpha, 0.11) * 0.65)) 0,
+      transparent 16px
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 140 90)) / var(--sidebar-nav-container-edge-alpha, 0.11)),
+    inset 0 1px 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.018));
+}
+
+html[data-sidebar-atmosphere='sand_archive_wall'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 50% 60% at 82% 72%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 140 90)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.03) * 1.6)),
+      transparent 70%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 3px),
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 180 140 90)) / var(--sidebar-nav-container-edge-alpha, 0.11)) 100%
+    );
+}
+
+/* Arctic — skylight folio wall */
+html[data-sidebar-atmosphere='skylight_folio_wall'] .sidebar-atmosphere {
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to top,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 80 140 180)) / calc(var(--sidebar-nav-container-edge-alpha, 0.09) * 0.4)) 0,
+      transparent 24%
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 80 140 180)) / calc(var(--sidebar-nav-container-edge-alpha, 0.09) * 0.55)) 0,
+      transparent 12px
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 80 140 180)) / var(--sidebar-nav-container-edge-alpha, 0.09)),
+    inset 0 1px 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.02));
+}
+
+html[data-sidebar-atmosphere='skylight_folio_wall'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 75% 42% at 50% 6%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 80 140 180)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.03) * 1.5)),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 45% 55% at 92% 68%,
+      rgb(var(--sidebar-nav-edge-rgb, var(--color-edge-light-rgb, 80 140 180)) / calc(var(--atmosphere-glow-alpha-sidebar, 0.03) * 0.9)),
+      transparent 65%
+    );
+}
+
+html[data-scene] .environmental-hero {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / var(--zone-hero-specular, var(--material-specular-hero, 0.03))),
+    0 12px 40px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / calc(var(--atmosphere-shadow-alpha, 0.22) * var(--material-absorption-lacquer, 0.85))),
+    0 0 48px rgb(var(--color-atmosphere-glow-rgb, 139 92 246) / var(--zone-hero-glow-alpha, var(--atmosphere-glow-alpha-hero, 0.12)));
+}
+
+html[data-scene-hero-gradient='celestial_bloom_left'] .environmental-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 55% 70% at 12% 38%,
+      rgb(var(--color-edge-light-rgb, 139 92 246) / calc(var(--zone-hero-glow-alpha, 0.2) * 0.65)),
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 40% 50% at 85% 20%,
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--zone-hero-glow-alpha, 0.15) * 0.35)),
+      transparent 70%
+    );
+}
+
+html[data-scene-hero-gradient='celestial_bloom_left'] .environmental-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-scene][data-sidebar-ecology='sunlit'] .environmental-hero {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / var(--zone-hero-specular, var(--material-specular-hero, 0.045))),
+    0 8px 24px rgb(var(--color-atmosphere-material-shadow-rgb, 42 38 32) / calc(var(--atmosphere-shadow-alpha, 0.08) * var(--material-absorption-lacquer, 0.75)));
+}
+
+html[data-scene-hero-gradient='warm_center_rise'] .environmental-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 50% 65% at 72% 82%,
+      rgb(var(--color-edge-light-rgb, 200 120 80) / calc(var(--zone-hero-glow-alpha, 0.04) * 0.9)),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 40% 45% at 18% 22%,
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--zone-hero-glow-alpha, 0.03) * 0.5)),
+      transparent 72%
+    );
+}
+
+html[data-scene-hero-gradient='horizon_fog_open'] .environmental-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 80% 40% at 50% 8%,
+      rgb(var(--color-edge-light-rgb, 80 140 180) / calc(var(--zone-hero-glow-alpha, 0.04) * 0.85)),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 45% 50% at 88% 75%,
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--zone-hero-glow-alpha, 0.03) * 0.4)),
+      transparent 68%
+    );
+}
+
+html[data-scene-hero-gradient='warm_center_rise'] .environmental-hero > *,
+html[data-scene-hero-gradient='horizon_fog_open'] .environmental-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-scene='quiet_codex'] .surface-silent,
+html[data-scene='quiet_reading_room'] .surface-silent,
+html[data-scene='quiet_codex'] .surface-silent.region-compose::before,
+html[data-scene='quiet_codex'] .surface-silent.region-compose--fade-bottom::after,
+html[data-scene='quiet_reading_room'] .surface-silent.region-compose::before,
+html[data-scene='quiet_reading_room'] .surface-silent.region-compose--fade-bottom::after {
+  box-shadow: none;
+  background-image: none;
+  filter: none;
+}
+
+html[data-scene='quiet_codex'] .surface-silent,
+html[data-scene='quiet_reading_room'] .surface-silent {
+  --material-specular-silent: var(--zone-prose-specular, 0.008);
+}
+
+html[data-scene] .canvas-recess {
+  background-color: color-mix(
+    in srgb,
+    var(--color-void, rgb(var(--color-void-rgb, 5 6 8))),
+    black calc(var(--zone-void-luminance-offset, 0) * -100%)
+  );
+  padding-block: calc(
+    var(--space-section, 1.5rem) *
+    var(--atmosphere-void-preservation, 0.35) *
+    var(--scene-void-ratio, 1)
+  );
+}
+
+html[data-scene] .surface-float {
+  box-shadow:
+    0 4px 20px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / calc(0.32 * var(--zone-float-absorption, var(--material-absorption-lacquer, 0.85)))),
+    inset 0 1px 0 rgb(255 255 255 / var(--zone-float-specular, var(--material-specular-float, 0.03)));
+}
+
+html[data-scene] .narrative-layout__contextual {
+  opacity: calc(0.88 + var(--zone-rail-glow-alpha, 0.06) * 0.5);
+}
+
+html[data-scene='moonlit_archive'] .narrative-layout--scene-moonlit_archive {
+  --data-negative-space-scale: var(--scene-negative-space-scale, 1.35);
+  --data-focal-column-ratio: var(--scene-focal-column-ratio, 1.5);
+}
+
+html[data-scene='quiet_codex'] .narrative-layout--scene-quiet_codex {
+  --data-negative-space-scale: var(--scene-negative-space-scale, 1.2);
+  --data-contextual-recess: var(--scene-contextual-recess, 0.72);
+}
+
+html[data-scene='sunlit_archive'] .narrative-layout--scene-sunlit_archive {
+  --data-negative-space-scale: var(--scene-negative-space-scale, 1.15);
+  --data-focal-column-ratio: var(--scene-focal-column-ratio, 1.35);
+}
+
+html[data-scene='quiet_reading_room'] .narrative-layout--scene-quiet_reading_room {
+  --data-negative-space-scale: var(--scene-negative-space-scale, 1.1);
+  --data-contextual-recess: var(--scene-contextual-recess, 0.78);
+}
+
+.region-compose--fade-bottom::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2rem;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgb(var(--color-atmosphere-shadow-rgb, 9 11 17) / calc(var(--atmosphere-region-fade-strength, 0.28) + 0.05)),
+    transparent
+  );
+}
+
+.surface-contextual {
+  background-color: var(--color-contextual);
+  color: var(--color-contextual-foreground);
+  border-radius: 0.375rem;
+  border: 1px solid rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-edge-light-alpha, 0.06) * 0.75));
+  box-shadow:
+    0 8px 32px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / 0.4),
+    inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+
+.surface-contextual-inline {
+  background-color: var(--color-contextual);
+  color: var(--color-contextual-foreground);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.surface-recessed {
+  color: var(--color-recessed-foreground, var(--color-text-muted));
+  font-size: 0.75rem;
+  line-height: 1.35;
+  opacity: 0.9;
+}
+
+.surface-operational {
+  color: var(--color-operational-foreground, var(--color-text-muted));
+  font-size: 0.75rem;
+}
+
+.surface-elevated {
+  background-color: var(--color-overlay-elevated);
+  color: var(--color-text);
+  box-shadow: 0 12px 40px rgb(var(--color-atmosphere-shadow-rgb, 11 13 16) / calc(var(--atmosphere-shadow-alpha, 0.16) * 2.5));
+}
+
+.type-display {
+  font-family: var(--font-display);
+  font-weight: var(--type-display-weight, 500);
+  font-size: var(--type-display-size, inherit);
+  letter-spacing: var(--type-display-tracking, -0.02em);
+  line-height: 1.15;
+  color: var(--color-display-foreground, var(--color-focal-foreground));
+}
+
+.type-prose {
+  font-family: var(--font-editorial);
+  line-height: var(--type-prose-line-height, 1.65);
+  letter-spacing: 0.01em;
+  color: var(--color-prose-foreground, var(--color-focal-foreground));
+}
+
+.type-meta {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--color-prose-muted, var(--color-recessed-foreground, var(--color-text-muted)));
+}
+
+.narrative-layout {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: var(--space-section, 1.5rem);
+  align-items: start;
+}
+
+.narrative-layout--inline,
+.narrative-layout--workspace {
+  grid-template-columns: minmax(0, 1.2fr) minmax(240px, min(360px, 22vw));
+}
+
+.narrative-layout[data-composition-stance='hero_dominant'] {
+  gap: calc(var(--space-section, 1.5rem) * var(--data-negative-space-scale, 1.25));
+}
+
+.narrative-layout[data-composition-stance='hero_dominant'].narrative-layout--workspace,
+.narrative-layout[data-composition-stance='hero_dominant'].narrative-layout--inline {
+  grid-template-columns:
+    minmax(0, calc(1fr * var(--data-focal-column-ratio, 1.45)))
+    minmax(220px, min(320px, calc(20vw * var(--data-contextual-recess, 0.82))));
+}
+
+.narrative-layout[data-composition-stance='editorial_stream'].narrative-layout--workspace,
+.narrative-layout[data-composition-stance='editorial_stream'].narrative-layout--inline {
+  grid-template-columns:
+    minmax(0, calc(1fr * var(--data-focal-column-ratio, 1.35)))
+    minmax(220px, min(340px, 21vw));
+}
+
+.narrative-layout[data-composition-stance='entity_workspace'].narrative-layout--workspace,
+.narrative-layout[data-composition-stance='entity_workspace'].narrative-layout--inline {
+  grid-template-columns:
+    minmax(0, calc(1fr * var(--data-focal-column-ratio, 1.42)))
+    minmax(220px, min(340px, calc(21vw * var(--data-contextual-recess, 0.8))));
+}
+
+.narrative-layout[data-composition-stance='studio_field'] {
+  gap: calc(var(--space-section, 1.5rem) * 1.3);
+}
+
+.narrative-layout__contextual[data-contextual-recess] {
+  opacity: var(--data-contextual-recess, 0.82);
+}
+
+.hub-stagger-grid {
+  display: grid;
+  gap: calc(var(--space-section, 1.5rem) * var(--type-section-gap-scale, 1));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+}
+
+.adventure-shell-body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-section, 1.5rem) * var(--type-section-gap-scale, 1));
+  width: 100%;
+  min-width: 0;
+}
+
+.sidebar-shell--collapsed .sidebar-nav-item--collapsed {
+  margin-inline: auto;
+}
+
+.sidebar-shell--collapsed .sidebar-nav-primary {
+  align-items: center;
+}
+
+.sidebar-shell--collapsed .sidebar-nav-item--collapsed .sidebar-nav-icon {
+  margin-inline: auto;
+}
+
+.entity-catalog-grid {
+  display: grid;
+  gap: calc(var(--space-section, 1.5rem) * var(--type-section-gap-scale, 1));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+}
+
+@media (min-width: 1280px) {
+  .entity-catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  }
+}
+
+@media (min-width: 1536px) {
+  .entity-catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  }
+}
+
+/* Operator catalog table — identity-biased columns, no horizontal scroll */
+.operator-index-table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.operator-index-table .operator-index-table__col-name {
+  width: 32%;
+  min-width: 12rem;
+}
+
+.operator-index-table .operator-index-table__col-meta {
+  min-width: 5rem;
+}
+
+.operator-index-table .operator-index-table__col-updated {
+  width: 5.5rem;
+  min-width: 5.5rem;
+}
+
+.hub-stagger-grid > *:first-child {
+  grid-column: span 1;
+}
+
+@media (min-width: 768px) {
+  .hub-stagger-grid > *:first-child {
+    grid-column: span 2;
+    grid-row: span 1;
+  }
+
+  .hub-stagger-grid > *:nth-child(n + 4) {
+    opacity: 0.92;
+  }
+}
+
+.dashboard-widget-grid--staggered .react-grid-item:first-child {
+  z-index: 2;
+}
+
+.dashboard-widget-grid--staggered .react-grid-item:not(:first-child) .surface-float,
+.dashboard-widget-grid--staggered .react-grid-item:not(:first-child) .surface-contextual {
+  opacity: 0.94;
+}
+
+.narrative-layout--hub {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.narrative-layout--character-hub-inline.narrative-layout--inline,
+.narrative-layout--character-hub-inline.narrative-layout--workspace {
+  grid-template-columns: minmax(0, 1fr) var(--character-hub-rail-width, 380px);
+}
+
+@media (max-width: 1023px) {
+  .narrative-layout--character-hub-inline.narrative-layout--inline,
+  .narrative-layout--character-hub-inline.narrative-layout--workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.narrative-layout--inline.workspace-composition,
+.narrative-layout--workspace.workspace-composition {
+  gap: clamp(1rem, 2vw, var(--space-section, 1.5rem));
+}
+
+.narrative-layout__focal {
+  min-width: 0;
+}
+
+.narrative-layout__contextual {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .narrative-layout--inline,
+  .narrative-layout--workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .narrative-layout__contextual--overlay-host {
+    display: none;
+  }
+}
+
+.wiki-focal-region.surface-primary {
+  box-shadow:
+    0 0 0 1px rgb(var(--color-border-warm-rgb) / var(--atmosphere-depth-edge-opacity, 0.07)),
+    0 1px var(--atmosphere-shadow-blur, 13px) rgb(var(--color-atmosphere-shadow-rgb, 11 13 16) / calc(var(--atmosphere-shadow-alpha, 0.16) * 0.875));
+}
+
+.wiki-focal-region {
+  padding: 1.25rem 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .wiki-focal-region {
+    padding: 1.75rem 2rem;
+  }
+}
+
+.wiki-focal-region--compact {
+  padding: 0.75rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .wiki-focal-region--compact {
+    padding: 1rem 1.25rem;
+  }
+}
+
+.wiki-focal-region .wiki-reader-prose,
+.wiki-focal-region .wiki-page-renderer {
+  color: var(--color-focal-foreground);
+}
+
+.wiki-focal-region .wiki-reader-prose .text-muted,
+.wiki-focal-region .type-meta {
+  color: var(--color-focal-muted);
+}
+
+.codex-chrome-reading {
+  opacity: 0.92;
+}
+
+.codex-chrome-reading [role='toolbar'] button,
+.codex-chrome-reading [role='toolbar'] select {
+  opacity: 0.9;
+}
+
+.ultrawide-sidebar-recede {
+  /* ultrawide-only margin tweak — atmosphere lives in .sidebar-atmosphere */
+}
+
+.sidebar-atmosphere {
+  --sidebar-periphery-x: calc(18% + var(--atmosphere-bias-horizontal, 0) * -14%);
+  --sidebar-periphery-y: calc(12% + var(--atmosphere-bias-vertical, 0) * -10%);
+  --sidebar-warm-x: 88%;
+  --sidebar-warm-y: 92%;
+  position: relative;
+  isolation: isolate;
+  border-right: none;
+  background-color: var(--color-sidebar-base, var(--color-depth-1));
+  background-image:
+    linear-gradient(
+      to bottom,
+      transparent 72%,
+      rgb(var(--color-canvas-rgb, 9 11 17) / 0.28) 100%
+    ),
+    linear-gradient(
+      to left,
+      rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-sidebar-edge-alpha, 0.1) * var(--material-edge-sharpness-sidebar, 0.14))) 0,
+      transparent 12px
+    );
+  box-shadow:
+    inset -1px 0 0 rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-sidebar-edge-alpha, 0.1) * var(--material-edge-sharpness-sidebar, 0.14))),
+    inset -1px 0 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.025));
+}
+
+.sidebar-atmosphere::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(
+      ellipse 70% 55% at var(--sidebar-periphery-x) var(--sidebar-periphery-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * var(--atmosphere-amplitude, 1))),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 45% 40% at var(--sidebar-warm-x) var(--sidebar-warm-y),
+      rgb(var(--accent-warm, 159 122 69) / calc(0.06 * var(--atmosphere-amplitude, 1))),
+      transparent 72%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 3px),
+      rgb(var(--color-edge-light-rgb, 214 197 168) / var(--atmosphere-sidebar-edge-alpha, 0.1)) 100%
+    );
+}
+
+html[data-atmosphere-warm-corner='br'] .sidebar-atmosphere::before {
+  background-image:
+    radial-gradient(
+      ellipse 70% 55% at var(--sidebar-periphery-x) var(--sidebar-periphery-y),
+      rgb(var(--color-atmosphere-haze-rgb, 120 110 90) / calc(var(--atmosphere-glow-alpha-sidebar, 0.08) * var(--atmosphere-amplitude, 1))),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 50% 45% at var(--sidebar-warm-x) var(--sidebar-warm-y),
+      rgb(var(--accent-warm, 159 122 69) / calc(0.09 * var(--atmosphere-amplitude, 1))),
+      transparent 70%
+    ),
+    linear-gradient(
+      to right,
+      transparent calc(100% - 4px),
+      rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-sidebar-edge-alpha, 0.1) * 1.15)) 100%
+    );
+}
+
+.sidebar-atmosphere > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-identity-band {
+  background-color: var(--color-sidebar-lifted, var(--color-sidebar-base, var(--color-depth-1)));
+  padding-block: calc(var(--space-section, 1.5rem) * 0.85);
+  box-shadow:
+    inset 0 -1px 0 rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-sidebar-edge-alpha, 0.1) * 0.5)),
+    inset 0 1px 0 rgb(255 255 255 / var(--material-specular-sidebar, 0.025));
+}
+
+.sidebar-identity-band .type-display {
+  font-size: 1.125rem;
+  line-height: 1.3;
+  margin-block-end: 0.375rem;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-nav-primary {
+  --type-section-gap-scale: 1;
+}
+
+.sidebar-nav-secondary {
+  --type-section-gap-scale: 0.9;
+}
+
+.sidebar-nav-secondary .sidebar-zone-heading-secondary .type-meta,
+.sidebar-nav-secondary a:not([aria-current='page']) {
+  color: var(--color-recessed-foreground, var(--color-prose-muted));
+}
+
+/* Non-foundation fallback — recessed nav when no sidebar ecology */
+html:not([data-sidebar-ecology='atmospheric']):not([data-sidebar-ecology='sunlit']) .sidebar-atmosphere .sidebar-nav-item {
+  color: var(--color-recessed-foreground);
+  transition:
+    color var(--motion-duration, 180ms) var(--motion-ease, ease-out),
+    background-color var(--motion-duration, 180ms) var(--motion-ease, ease-out);
+}
+
+html:not([data-sidebar-ecology='atmospheric']):not([data-sidebar-ecology='sunlit']) .sidebar-atmosphere .sidebar-nav-item:hover {
+  background-color: rgb(var(--color-depth-2-rgb) / 0.2);
+  color: var(--color-focal-foreground);
+}
+
+html:not([data-sidebar-ecology='atmospheric']):not([data-sidebar-ecology='sunlit']) .sidebar-atmosphere .sidebar-nav-item[aria-current='page'] {
+  border-left: 2px solid rgb(var(--color-border-warm-rgb) / 0.35);
+  background-color: rgb(var(--color-depth-3-rgb) / 0.5);
+  padding-left: calc(0.5rem - 2px);
+  font-weight: 500;
+  color: var(--color-focal-foreground);
+}
+
+.sidebar-breathing-gap {
+  min-height: calc(var(--space-section, 1.5rem) * 1.5);
+}
+
+@media (min-width: 1920px) {
+  .ultrawide-sidebar-recede {
+    margin-inline-end: 0;
+  }
+}
+
+.wiki-reader-prose {
+  line-height: var(--type-prose-line-height, 1.65);
+  letter-spacing: 0.01em;
+  color: var(--color-prose-foreground, var(--color-focal-foreground));
+}
+
+.wiki-reader-prose h1 {
+  font-size: calc(var(--type-display-size, 2rem) * 0.85);
+  margin-block: 0 0.75em;
+  color: var(--color-display-foreground, var(--color-focal-foreground));
+}
+
+.wiki-reader-prose h2 {
+  font-size: calc(var(--type-display-size, 2rem) * 0.62);
+  margin-block: 1.25em 0.5em;
+  color: var(--color-display-foreground, var(--color-focal-foreground));
+}
+
+.surface-silent .wiki-reader-prose .text-muted,
+.surface-silent .type-meta {
+  color: var(--color-prose-muted, var(--color-focal-muted));
+}
+
+.theme-light .surface-silent .wiki-reader-prose .text-muted,
+.theme-light .surface-silent .type-meta,
+.theme-parchment .surface-silent .wiki-reader-prose .text-muted,
+.theme-parchment .surface-silent .type-meta {
+  opacity: 1;
+}
+
+.surface-silent .wiki-reader-prose blockquote {
+  border-left: 2px solid rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-edge-light-alpha, 0.06) * 2));
+  padding-left: 1rem;
+  color: var(--color-prose-muted, var(--color-focal-muted));
+  font-style: italic;
+}
+
+.wiki-reader-prose .wiki-editorial-block + .wiki-editorial-block {
+  margin-top: var(--space-section, 1.25rem);
+}
+
+.wiki-reader-prose .tiptap p {
+  margin: 0.65em 0;
+}
+
+.wiki-reader-prose a[href^='#codex-block-'] {
+  color: var(--color-primary, rgb(245 158 11));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wiki-reader-collapsible > summary::after {
+  content: '▾';
+  margin-left: auto;
+  font-size: 0.65rem;
+  opacity: 0.6;
+  transition: transform var(--motion-duration, 180ms) var(--motion-ease, ease-out);
+}
+
+.wiki-reader-collapsible:not([open]) > summary::after {
+  transform: rotate(-90deg);
+}
+
+.wiki-reader-collapsible[open] > summary {
+  margin-bottom: 0.25rem;
+}
+
+.ultrawide-focal-column:has(.narrative-layout--inline),
+.ultrawide-focal-column:has(.narrative-layout--workspace),
+.ultrawide-focal-column.workspace-composition,
+.ultrawide-focal-column.workspace-field {
+  max-width: none;
+  margin-inline: 0;
+}
+
+@media (min-width: 1920px) {
+  .ultrawide-focal-column.workspace-document:not(:has(.narrative-layout--inline)):not(:has(.narrative-layout--workspace)) {
+    max-width: min(100%, calc(var(--text-measure-max-ch) * 1ch + 12rem));
+    margin-inline: auto;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+#root {
+  min-height: 100vh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* TipTap editor prose */
+.tiptap {
+  outline: none;
+}
+
+.wiki-widget-editor .tiptap,
+.wiki-widget-editor .ProseMirror {
+  min-height: 100%;
+  outline: none;
+}
+
+.tiptap p {
+  margin: 0.5em 0;
+}
+
+.tiptap h1,
+.tiptap h2,
+.tiptap h3 {
+  margin: 0.75em 0 0.35em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.tiptap h1 {
+  font-size: 1.5rem;
+}
+
+.tiptap h2 {
+  font-size: 1.25rem;
+}
+
+.tiptap h3 {
+  font-size: 1.1rem;
+}
+
+.tiptap ul,
+.tiptap ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.tiptap code {
+  font-size: 0.9em;
+  background: rgb(var(--color-focal-rgb) / 0.15);
+  color: var(--color-focal-foreground);
+  padding: 0.15em 0.35em;
+  border-radius: 0.25rem;
+}
+
+.tiptap pre {
+  background: rgb(var(--color-focal-rgb) / 0.12);
+  border: 1px solid rgb(var(--color-border-rgb) / 0.25);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  background: none;
+  padding: 0;
+}
+
+.tiptap blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--color-primary) 50%, transparent);
+  margin: 0.75em 0;
+  padding-left: 1em;
+  color: var(--color-focal-muted);
+}
+
+.tiptap mark {
+  border-radius: 2px;
+}
+
+/* Editor token colors — dark foundation (default) */
+:root {
+  --editor-text-rose: #fb7185;
+  --editor-text-pink: #f472b6;
+  --editor-text-violet: #c4b5fd;
+  --editor-text-blue: #93c5fd;
+  --editor-text-cyan: #67e8f9;
+  --editor-text-teal: #5eead4;
+  --editor-text-green: #86efac;
+  --editor-text-amber: #fcd34d;
+  --editor-text-orange: #fdba74;
+  --editor-text-red: #fca5a5;
+  --editor-text-gray: #a8a29e;
+  --editor-text-slate: #94a3b8;
+  --editor-text-brown: #d6b896;
+
+  --editor-highlight-pink: rgba(244, 114, 182, 0.22);
+  --editor-highlight-violet: rgba(167, 139, 250, 0.24);
+  --editor-highlight-blue: rgba(147, 197, 253, 0.22);
+  --editor-highlight-amber: rgba(251, 191, 36, 0.22);
+  --editor-highlight-green: rgba(134, 239, 172, 0.2);
+  --editor-highlight-teal: rgba(94, 234, 212, 0.2);
+  --editor-highlight-red: rgba(252, 165, 165, 0.22);
+  --editor-highlight-gray: rgba(168, 162, 158, 0.18);
+}
+
+html.theme-light,
+html.theme-parchment {
+  --editor-text-rose: #e11d48;
+  --editor-text-pink: #db2777;
+  --editor-text-violet: #7c3aed;
+  --editor-text-blue: #2563eb;
+  --editor-text-cyan: #0891b2;
+  --editor-text-teal: #0d9488;
+  --editor-text-green: #16a34a;
+  --editor-text-amber: #d97706;
+  --editor-text-orange: #ea580c;
+  --editor-text-red: #dc2626;
+  --editor-text-gray: #57534e;
+  --editor-text-slate: #475569;
+  --editor-text-brown: #92400e;
+
+  --editor-highlight-pink: rgba(244, 114, 182, 0.38);
+  --editor-highlight-violet: rgba(167, 139, 250, 0.38);
+  --editor-highlight-blue: rgba(147, 197, 253, 0.4);
+  --editor-highlight-amber: rgba(251, 191, 36, 0.4);
+  --editor-highlight-green: rgba(134, 239, 172, 0.38);
+  --editor-highlight-teal: rgba(94, 234, 212, 0.38);
+  --editor-highlight-red: rgba(252, 165, 165, 0.38);
+  --editor-highlight-gray: rgba(168, 162, 158, 0.35);
+}
+
+.tiptap [data-text-color='rose'],
+.wiki-reader-prose [data-text-color='rose'] {
+  color: var(--editor-text-rose);
+}
+.tiptap [data-text-color='pink'],
+.wiki-reader-prose [data-text-color='pink'] {
+  color: var(--editor-text-pink);
+}
+.tiptap [data-text-color='violet'],
+.wiki-reader-prose [data-text-color='violet'] {
+  color: var(--editor-text-violet);
+}
+.tiptap [data-text-color='blue'],
+.wiki-reader-prose [data-text-color='blue'] {
+  color: var(--editor-text-blue);
+}
+.tiptap [data-text-color='cyan'],
+.wiki-reader-prose [data-text-color='cyan'] {
+  color: var(--editor-text-cyan);
+}
+.tiptap [data-text-color='teal'],
+.wiki-reader-prose [data-text-color='teal'] {
+  color: var(--editor-text-teal);
+}
+.tiptap [data-text-color='green'],
+.wiki-reader-prose [data-text-color='green'] {
+  color: var(--editor-text-green);
+}
+.tiptap [data-text-color='amber'],
+.wiki-reader-prose [data-text-color='amber'] {
+  color: var(--editor-text-amber);
+}
+.tiptap [data-text-color='orange'],
+.wiki-reader-prose [data-text-color='orange'] {
+  color: var(--editor-text-orange);
+}
+.tiptap [data-text-color='red'],
+.wiki-reader-prose [data-text-color='red'] {
+  color: var(--editor-text-red);
+}
+.tiptap [data-text-color='gray'],
+.wiki-reader-prose [data-text-color='gray'] {
+  color: var(--editor-text-gray);
+}
+.tiptap [data-text-color='slate'],
+.wiki-reader-prose [data-text-color='slate'] {
+  color: var(--editor-text-slate);
+}
+.tiptap [data-text-color='brown'],
+.wiki-reader-prose [data-text-color='brown'] {
+  color: var(--editor-text-brown);
+}
+
+.tiptap mark[data-highlight='pink'],
+.wiki-reader-prose mark[data-highlight='pink'] {
+  background-color: var(--editor-highlight-pink);
+  color: inherit;
+}
+.tiptap mark[data-highlight='violet'],
+.wiki-reader-prose mark[data-highlight='violet'] {
+  background-color: var(--editor-highlight-violet);
+  color: inherit;
+}
+.tiptap mark[data-highlight='blue'],
+.wiki-reader-prose mark[data-highlight='blue'] {
+  background-color: var(--editor-highlight-blue);
+  color: inherit;
+}
+.tiptap mark[data-highlight='amber'],
+.wiki-reader-prose mark[data-highlight='amber'] {
+  background-color: var(--editor-highlight-amber);
+  color: inherit;
+}
+.tiptap mark[data-highlight='green'],
+.wiki-reader-prose mark[data-highlight='green'] {
+  background-color: var(--editor-highlight-green);
+  color: inherit;
+}
+.tiptap mark[data-highlight='teal'],
+.wiki-reader-prose mark[data-highlight='teal'] {
+  background-color: var(--editor-highlight-teal);
+  color: inherit;
+}
+.tiptap mark[data-highlight='red'],
+.wiki-reader-prose mark[data-highlight='red'] {
+  background-color: var(--editor-highlight-red);
+  color: inherit;
+}
+.tiptap mark[data-highlight='gray'],
+.wiki-reader-prose mark[data-highlight='gray'] {
+  background-color: var(--editor-highlight-gray);
+  color: inherit;
+}
+
+/* Table extension rendering */
+.tiptap table {
+  width: 100%;
+  min-width: 280px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.tiptap th,
+.tiptap td {
+  border: 1px solid rgb(148 163 184 / 0.35);
+  padding: 0.45rem 0.5rem;
+  vertical-align: top;
+}
+
+.tiptap th {
+  font-weight: 600;
+  background: rgb(var(--color-focal-rgb) / 0.18);
+}
+
+:root {
+  --codex-readable-ch: 92ch;
+  --codex-readable-ch-tight: 72ch;
+  --codex-readable-ch-standard: 86ch;
+  --codex-readable-ch-hybrid: 96ch;
+}
+
+/* Workspace orchestration — runtime profiles, not cosmetic presets */
+.wiki-page-article[data-workspace-mode='focused'] .wiki-editorial-flow {
+  gap: 1.25rem;
+}
+
+.wiki-page-article[data-workspace-mode='focused'] .wiki-measure-focused {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+.wiki-page-article[data-workspace-mode='immersive'] {
+  --wiki-header-chrome: transparent;
+}
+
+.wiki-measure-immersive {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+}
+
+.wiki-page-article[data-workspace-mode='immersive'] .wiki-editorial-grid {
+  gap: 1rem;
+}
+
+.wiki-page-article[data-workspace-mode='expanded'] .wiki-editorial-grid {
+  gap: 0.65rem;
+}
+
+.wiki-workspace-expanded .wiki-grid-block--dimmed {
+  opacity: 1;
+}
+
+.wiki-grid-block[data-codex-highlight='true'] {
+  outline: 2px solid color-mix(in srgb, var(--color-primary, #a78bfa) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* Editorial document flow — content drives height, not RGL row units */
+.wiki-editorial-grid,
+.wiki-editorial-flow {
+  overflow: visible;
+}
+
+@media (max-width: 1023px) {
+  .wiki-editorial-grid[data-expand-behavior='editorial-reflow'] .wiki-editorial-block,
+  .wiki-editorial-grid[data-expand-behavior='dense-grid'] .wiki-editorial-block {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+.wiki-editorial-block {
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wiki-editorial-flow--animating .wiki-editorial-block {
+    transition:
+      opacity 200ms ease,
+      transform 220ms ease;
+  }
+
+  .wiki-editorial-flow[data-expand-behavior='prose-stack'].wiki-editorial-flow--animating
+    .wiki-editorial-block--active {
+    transform: scale(1);
+  }
+
+  .wiki-editorial-grid[data-expand-behavior='editorial-reflow'].wiki-editorial-grid--animating
+    .wiki-editorial-block {
+    transition:
+      opacity 200ms ease,
+      grid-column-start 180ms ease,
+      grid-column-end 180ms ease;
+  }
+
+  .wiki-editorial-block--active {
+    transform: scale(1);
+  }
+
+  .wiki-editorial-block--dimmed {
+    opacity: 0.62;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wiki-editorial-flow--animating .wiki-editorial-block,
+  .wiki-editorial-grid--animating .wiki-editorial-block {
+    transition: none;
+  }
+}
+
+.wiki-editorial-block .wiki-grid-widget-body {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* Layout-chrome drag grid (RGL) — container height from runtime layout */
+.wiki-layout-chrome-grid.react-grid-layout {
+  overflow: visible;
+}
+
+.wiki-grid-3col .react-grid-item {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.wiki-grid-3col .react-grid-item.react-draggable-dragging {
+  overflow: hidden;
+}
+
+.wiki-grid-3col .wiki-grid-widget-body {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wiki-grid-3col.layout-animating .react-grid-item {
+    transition:
+      transform 220ms ease-out,
+      width 220ms ease-out,
+      height 220ms ease-out;
+  }
+}
+
+.wiki-grid-3col .react-grid-item.wiki-grid-block--dimmed {
+  opacity: 0.6;
+  transition: opacity 150ms ease-out;
+}
+
+.tiptap a.wiki-link--broken,
+.tiptap [data-type='mention'].wiki-link--broken,
+.tiptap [data-type='wikiLink'].wiki-link--broken,
+.tiptap .wiki-link-node--unresolved {
+  color: #fb7185;
+  text-decoration: line-through;
+  text-decoration-style: dashed;
+  cursor: pointer;
+}
+
+.wiki-link-node--resolved {
+  color: var(--color-primary, #a78bfa);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Read-only codex links: manuscript margin reference, not web hyperlinks */
+.wiki-readonly-prose .ProseMirror {
+  user-select: text;
+}
+
+.wiki-readonly-prose .wiki-link-node--readonly {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.wiki-readonly-prose .wiki-link-node--readonly:hover {
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.wiki-link--narrative-muted {
+  opacity: 0.72;
+}
+
+.wiki-link--narrative-strike {
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.wiki-link--narrative-legend {
+  font-style: italic;
+  text-decoration-style: wavy;
+}
+
+.wiki-readonly-prose .wiki-link-node--readonly-unresolved {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 28%, transparent);
+  text-decoration-style: dashed;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+  opacity: 0.88;
+}
+
+.wiki-readonly-prose .wiki-link-node--readonly-unresolved:hover {
+  text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.wiki-readonly-prose .wiki-link-node--undiscovered {
+  color: inherit;
+  cursor: default;
+  text-decoration: none;
+}
+
+.social-mention-node {
+  color: #7dd3fc;
+  font-weight: 500;
+}
+
+.wiki-ambient-hint {
+  border-bottom: 1px dashed rgba(167, 139, 250, 0.45);
+  cursor: help;
+}
+
+@keyframes blahaj-nibble {
+  0%,
+  100% {
+    transform: rotate(2deg) translateX(0);
+  }
+  50% {
+    transform: rotate(-2deg) translateX(-2px);
+  }
+}
+
+.blahaj-nibble {
+  animation: blahaj-nibble 2.5s ease-in-out infinite;
+  transform-origin: center left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blahaj-nibble {
+    animation: none;
+  }
+}
+
+@keyframes codex-rail-continuity-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(251 191 36 / 0.55);
+    border-color: rgb(251 191 36 / 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgb(251 191 36 / 0);
+    border-color: rgb(251 191 36 / 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(251 191 36 / 0);
+    border-color: rgb(251 191 36 / 0.15);
+  }
+}
+
+.codex-rail-continuity-pulse {
+  border: 1px solid rgb(251 191 36 / 0.5);
+  animation: codex-rail-continuity-pulse 2s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .codex-rail-continuity-pulse {
+    animation: none;
+    border-color: rgb(251 191 36 / 0.55);
+    box-shadow: inset 0 0 0 1px rgb(251 191 36 / 0.35);
+  }
+}
+
+/* Campaign Home — magazine-style level scale */
+.campaign-home-level--story .surface-float,
+.campaign-home-level--state .surface-float {
+  border-radius: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .campaign-home-level--story {
+    min-height: 18rem;
+  }
+}

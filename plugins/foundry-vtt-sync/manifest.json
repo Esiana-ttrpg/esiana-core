@@ -1,0 +1,17 @@
+{
+  "id": "foundry-vtt-sync",
+  "name": "Foundry VTT Sync",
+  "version": "1.0.0",
+  "description": "Sync scenes and assets with a Foundry VTT world.",
+  "scope": "global",
+  "category": "integration",
+  "permissions": ["network:fetch"],
+  "engines": { "esiana-core": "^0.8.0" },
+  "configTemplate": [
+    { "key": "serverUrl", "label": "Foundry server URL", "type": "url" },
+    { "key": "apiKey", "label": "API key", "type": "password" },
+    { "key": "worldId", "label": "World ID", "type": "text" }
+  ],
+  "backendEntry": "backend/index.js",
+  "frontendEntry": "frontend/index.js"
+}

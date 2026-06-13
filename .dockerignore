@@ -1,0 +1,16 @@
+.git
+.gitignore
+**/.env
+**/.env.*
+**/node_modules
+**/dist
+**/*.db
+**/*.db-journal
+**/coverage
+**/.cursor
+**/.vscode
+**/ci-test.db
+docs
+*.md
+!backend/**/*.md
+!frontend/**/*.md

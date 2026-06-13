@@ -1,0 +1,84 @@
+Phase 10 is the architectural inflection point of your platform. You are transitioning the codebase from a predictable, highly trusted monolith into a **distributed runtime environment** that hosts untrusted, unpredictable third-party code.
+
+If executed purely as a list of independent features, this phase will introduce severe stability bugs, UI crashes, and database lockups. Below is an engineering evaluation of your expanded Phase 10 plan, highlighting critical architectural traps, breaking points, and missing pieces required to make this system truly resilient.
+
+---
+
+## 1. Core "System Breakers" (The Architectural Traps)
+
+### The Pre-Persistence Interceptor Trap (Core Bricking)
+
+Your plan introduces **Data Interceptor Hooks** to transform or validate data *before* it hits the database. By definition, pre-persistence hooks must be **blocking (synchronous to the request-response lifecycle)**.
+
+* **The Vulnerability:** If an external author writes a plugin that performs an unoptimized synchronous loop, hits a slow external API, or experiences an unhandled promise rejection inside an interceptor, **the core platform will freeze.** A single buggy plugin could prevent all users on that instance from saving wiki pages, editing characters, or clearing notifications.
+* **The Safeguard:** Pre-persistence interceptors must be governed by a strict **Execution Timeout Circuit Breaker** (e.g., maximum 200ms allocation). If a plugin fails to resolve its transformation within that window, the platform must abort the plugin execution context, log a critical system warning, automatically disable the plugin, and allow the core database mutation to proceed unimpeded.
+
+### The UI Slot Cascade Crash (Total Layout Collapse)
+
+Integrating custom React widgets and layout elements into **UI Slots** (sidebars, dashboards, headers) introduces an immediate front-end vulnerability. If a plugin component encounters a standard JavaScript runtime error (e.g., trying to read a property of an undefined object during a map render), **React's default behavior is to unmount the entire component tree.** This means a single visual bug in a plugin will wipe out the user's entire dashboard screen, leaving them with a blank white page.
+
+* **The Vulnerability:** CSS class clashing. If your core platform uses Tailwind CSS and a plugin author loads a compiled stylesheet with conflicting utility overrides, it can subtly distort or corrupt your core responsive typography, spacing, and grid layouts.
+* **The Safeguard:** Every registered UI Slot container must be explicitly wrapped in a **React Error Boundary** component. If a plugin crashes, the boundary must catch the exception locally, isolate the failure, and render a clean, sandboxed fallback widget (*"Plugin failed to load"*), keeping the core gaming dashboard functional. Furthermore, consider forcing plugin slot styles to compile under a strict CSS namespace or scope.
+
+### The SQLite Transaction Deadlock (Zip Importers/Exporters)
+
+Your plan notes that external authors will maintain adventure importers via zip files. Unpacking an adventure zip requires reading large configuration files, downloading or parsing massive markdown files, and executing hundreds of database inserts (maps, wiki nodes, calendar events).
+
+* **The Vulnerability:** Because your platform operates on a single-node SQLite architecture, executing a massive import sequence can trigger an immediate `SQLITE_BUSY` database lockup. If the import process is not isolated, it will block all concurrent read/write queries from players actively gaming in other campaigns on that same server instance.
+* **The Safeguard:** Adventure imports must be processed completely outside the main server thread using standard background worker pools. Furthermore, the entire import operation must occur inside a **single, isolatable database transaction**. If a zip file contains mismatched schema versions, corrupt JSON structures, or missing references midway through execution, the transaction must roll back cleanly to prevent leaving orphaned, half-imported database records in the SQLite file.
+
+---
+
+## 2. The Serialization Wall (Resource Guardrails)
+
+Your decision to use isolated memory contexts (like `isolated-vm`) to enforce resource guardrails introduces a fundamental development constraint that must be addressed early in your architecture: **The Serialization Wall.**
+
+* **The Problem:** You cannot pass live JavaScript objects, active database references, or Prisma query delegates directly across an isolate memory boundary. Everything moving between your core Node.js application and the plugin script environment must be completely serialized into raw string payloads (like JSON data or structured clones) and re-hydrated on the other side.
+* **The Structural Break:** If your controller hooks try to pass a standard campaign entity containing circular dependencies or deep relational nesting to a plugin, the serialization process will instantly throw a runtime exception.
+* **The Strategy:** You must design explicit, minimalist **Data Transfer Objects (DTOs)** for your event payloads. The core system must strip out internal database functions, metadata, and sensitive tokens, passing only flattened, immutable data structures to the plugin runtime environment.
+
+---
+
+## 3. Crucial Missing Elements for a Powerful System
+
+To transform this from a basic hook listener into a truly mature and robust plugin ecosystem, you should integrate these three missing architectural capabilities into Phase 10:
+
+### A. The Declarative Permission Manifest Model
+
+Plugins must not have implicit, unrestricted access to your entire host architecture. A malicious or compromised plugin could silently read your master `.env` file, extract session keys, or stream your database to an external server via background network requests.
+
+* **The Solution:** Adopt an Android/Chrome-style declarative manifest system (`plugin.json`). Plugin authors must explicitly request the capabilities their code requires:
+```json
+{
+  "id": "external-adventure-importer",
+  "permissions": [
+    "storage:write",
+    "campaign:scoped",
+    "network:fetch" 
+  ]
+}
+
+```
+
+
+If a plugin attempts to make a network request or execute a filesystem mutation without declaring that specific capability in its manifest, the core platform sandbox must instantly block the execution thread.
+
+### B. Version Matrix Dependency Gates
+
+As you advance toward your production 1.0.0 milestone, your internal database schemas and API signatures will steadily evolve. If a user installs an old, unmaintained plugin designed for version 0.9.0 onto a core platform running version 1.2.0, the mismatch can result in silent data corruption.
+
+* **The Solution:** The `config-schema.json` or manifest parser must enforce a strict semantic versioning engine constraint (e.g., `"engines": { "esiana-core": "^1.0.0" }`). During the startup or initialization phase, the plugin loader must validate these version constraints, automatically disabling any stale plugins that fail to match the host platform's active release boundaries.
+
+### C. Campaign-Context Jail (Strict Multi-Tenancy for Plugins)
+
+When a DM activates an adventure import plugin, that plugin's data visibility must be strictly confined to that specific campaign space.
+
+* **The Solution:** The data interceptor layer must inject a pre-scoped, locked down mutation context into the plugin runtime. The plugin must never be allowed to pass a variable `campaignId` parameter down to database drivers. Instead, the runtime environment itself should dynamically force-append the active target campaign parameter to all background writes, ensuring it is structurally impossible for a custom importer plugin to corrupt, overwrite, or peek into data belonging to separate campaigns on the server.
+
+---
+
+### Phase 10 Blueprint Validation
+
+Your plan captures the broad feature requirements beautifully, but its success depends entirely on **how defensively you build the boundaries**. By adding **execution timeouts** to interceptors, **error boundaries** to your React UI slots, and a **strict declarative permission manifest**, you will ensure the core platform remains incredibly stable, secure, and performant even when executing arbitrary code written by external authors.
+
+When you begin building the `StorageDriver` abstraction interface, are you planning to abstract file streaming at the raw block/buffer level, or will the driver interface interact purely with short-lived access tokens and redirect URLs to optimize single-node memory allocations?

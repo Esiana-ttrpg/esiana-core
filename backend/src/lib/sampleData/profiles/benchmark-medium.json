@@ -1,0 +1,18 @@
+{
+  "id": "benchmark-medium",
+  "label": "Medium Benchmark World",
+  "description": "1–2 year campaign scale — ~1000 pages for integration and capacity profiling.",
+  "defaultSeed": "benchmark-medium-v1",
+  "defaultDensity": "active",
+  "wizardVisible": true,
+  "params": {
+    "pageCount": 1000,
+    "characterCount": 300,
+    "locationCount": 150,
+    "organizationCount": 50,
+    "sessionCount": 100,
+    "mapCount": 10,
+    "unresolvedRate": 0.18
+  },
+  "executorConcurrency": 6
+}

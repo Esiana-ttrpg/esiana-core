@@ -1,0 +1,1 @@
+export const STORYBOARD_LANE_HEIGHT = 160;

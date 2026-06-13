@@ -1,0 +1,26 @@
+{
+  "name": "esiana",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Self-hosted, multi-campaign TTRPG manager",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/storage-s3"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=@esiana/storage-s3 && npm run build --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace=backend",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:push": "npm run db:push --workspace=backend",
+    "db:migrate-registry-url": "npm run db:migrate-registry-url --workspace=backend",
+    "plugins:link": "node scripts/link-community-plugins.mjs",
+    "seed-campaign": "npm run seed-campaign --workspace=backend",
+    "profile-capacity": "npm run profile-capacity --workspace=backend"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

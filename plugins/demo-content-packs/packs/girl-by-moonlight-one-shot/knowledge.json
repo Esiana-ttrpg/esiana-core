@@ -1,0 +1,24 @@
+{
+  "historicalAliases": [
+    {
+      "pageSlug": "org-lunar-directorate",
+      "name": "Civic Watch Committee",
+      "context": "Pre-reform government name",
+      "visibility": "Party"
+    }
+  ],
+  "loreClaims": [
+    {
+      "pageSlug": "lore-moon-curse",
+      "statement": "The moon curse predates the city founding.",
+      "knowledgeState": "SUSPECTED",
+      "visibility": "Party"
+    },
+    {
+      "pageSlug": "lore-moon-curse",
+      "statement": "The Directorate engineered the first binding ritual.",
+      "knowledgeState": "UNDISCOVERED",
+      "visibility": "DM_Only"
+    }
+  ]
+}

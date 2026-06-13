@@ -1,0 +1,17 @@
+{
+  "regionFrostMarch": "<wiki-page-id-frost-march>",
+  "regionGreywatch": "<wiki-page-id-greywatch>",
+  "regionHarvestVale": "<wiki-page-id-harvest-vale>",
+  "regionRiverCorridor": "<wiki-page-id-river-corridor>",
+  "regionNorthernReach": "<wiki-page-id-northern-reach>",
+  "regionPeacefulShire": "<wiki-page-id-peaceful-shire>",
+  "regionCapital": "<wiki-page-id-capital>",
+  "regionDistantCoast": "<wiki-page-id-distant-coast>",
+  "orgHouseValen": "<wiki-page-id-house-valen>",
+  "orgRivalHouse": "<wiki-page-id-house-rivalen>",
+  "orgHouseAldric": "<wiki-page-id-house-aldric>",
+  "orgHouseCorwin": "<wiki-page-id-house-corwin>",
+  "orgMerchantGuild": "<wiki-page-id-merchant-guild>",
+  "npcRefugeeLeader": "<wiki-page-id-refugee-leader>",
+  "npcWinterTraveler": "<wiki-page-id-winter-traveler>"
+}

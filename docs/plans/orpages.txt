@@ -1,0 +1,93 @@
+You are entirely right to hold the line on this: **the visual dashboards do not replace the wiki pages.**
+
+If the Geopolitical Web or the Family Tree is the map, the **Wiki Page** is the actual destination. A visual graph can tell you *that* the Thieves' Guild is at war with the City Guard, but it can’t tell you *why*, it can't list the names of their secret safehouses, and it can’t store the stat-blocks of their assassins.
+
+You absolutely still need a robust Wiki section. Here is exactly why we need these pages, what they look like in a TipTap-powered workspace, and how they bridge raw text with visual data.
+
+---
+
+## 🏢 1. The Faction (Organization) Wiki Page
+
+A Faction page holds the operational truth of an organization. This is where the DM writes their history, culture, and assets, and where your TipTap auto-linking engine goes to work.
+
+### What the Page Layout Looks Like
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 👥 Organizations > The Iron Syndicate                                     │
+├───────────────────────────────────────────────┬───────────────────────────┤
+│ [ Lore & Details ]  [ 📊 Internal Org Chart ] │ FACTION REGISTRY          │
+├───────────────────────────────────────────────┤                           │
+│ TITLE: The Iron Syndicate                     │ Division: Cult            │
+│ MOTTO: "Gold bleeds, iron binds."             │ Base: Oakhaven Slums      │
+│                                               │ Leader: Masked Handler    │
+│ [TipTap Editor Area]                          ├───────────────────────────┤
+│ The Syndicate began as a simple blacksmiths'   │ DIPLOMATIC STANDING       │
+│ guild in the Year 400 [Timestamp]. Over time, │ 🔴 Enemy: City Guard      │
+│ they expanded into smuggling...               │ 🟢 Ally: Smuggler Coalition│
+│                                               ├───────────────────────────┤
+│ Members like Alden [Link] use specialized...  │ WRITER STATS              │
+│                                               │ Words: 840 | Reads: 3m    │
+└───────────────────────────────────────────────┴───────────────────────────┘
+
+```
+
+### Key Components of this Wiki Page:
+
+* **The Multi-Tab Interface:**
+* **Lore & Details Tab:** A clean, uninterrupted TipTap writing workspace for history, secrets, and notes.
+* **Internal Org Chart Tab:** Instead of leaving the page to look at the global map, clicking this tab flips the page over to show *only this faction's* cellular or hierarchical command structure.
+
+
+* **The Metadata Sidebar Panel:** A structured card containing rigid fields (Leader, Division Type, Base of Operations).
+* **The Intertwining:** Changing the "Diplomatic Standing" checkboxes in this sidebar panel is what automatically updates the lines on your global **Geopolitical Diplomacy Web**.
+
+---
+
+## 👑 2. The Family / Dynasty Wiki Page
+
+A Family page isn't just a list of names; it's a record of bloodlines, ancestral wealth, genetic curses, and political marriages.
+
+### What the Page Layout Looks Like
+
+```
+┌───────────────────────────────────────────────────────────────────────────┐
+│ 🛡️ Dynasties & Families > House of Sterling                              │
+├───────────────────────────────────────────────┬───────────────────────────┤
+│ [ Chronicle & History ]  [ 👑 Lineage Tree ]   │ DYNASTY REGISTRY          │
+├───────────────────────────────────────────────┤                           │
+│ HOUSE: House of Sterling                      │ Current Head: King Alden  │
+│ COAT OF ARMS: A silver wolf on a blue field    │ Seat: Sterling Keep       │
+│                                               │ Status: Ruling Family     │
+│ [TipTap Editor Area]                          ├───────────────────────────┤
+│ Founded during the Mythic Antiquity era, the  │ INHERITED TRAITS          │
+│ Sterling bloodline carries the ancient curse  │ • Moon-touched eyes       │
+│ of the Lunar Veil...                          │ • Arcane aptitude (High)  │
+│                                               ├───────────────────────────┤
+│ Chronicled Events:                            │ BACKLINKS RADAR           │
+│ • Year 402: The Coronation of Alden [Link]    │ Mentioned in 12 pages     │
+└───────────────────────────────────────────────┴───────────────────────────┘
+
+```
+
+### Key Components of this Wiki Page:
+
+* **The Multi-Tab Interface:**
+* **Chronicle & History Tab:** The TipTap workspace documenting their rise to power, historical betrayals, and deep lore.
+* **Lineage Tree Tab:** Switches the view to the horizontal generational "Portrait Strip" layout, showing exactly who gave birth to whom, who married into the family, and who is currently dead.
+
+
+* **The Inheritance Ledger:** A specialized section in the metadata sidebar for tracking heirloom items (pointing to your `Objects` wiki directory) or inherited traits.
+* **The Intertwining:** When a user writes a new profile under the `Characters` wiki section and tags their family line as "House of Sterling," that character's face, status, and link automatically populate inside this page's **Lineage Tree** tab.
+
+---
+
+## 🗂️ How the Main Wiki Section Coordinates Everything
+
+Your sidebar doesn't change into a collection of floating maps. It remains a rock-solid, highly structured directory tree.
+
+When a DM or player navigates the wiki, they use the sidebar to open these structural text pages to read or write text. But because you have built specialized **Node View tabs** directly into the tops of these specific folder templates, the text pages can instantly transform into interactive visual graphs on demand.
+
+This layout achieves the ultimate goal: **The wiki section remains the database of truth, while the dashboards become lens overlays that let you see how that data interacts.**
+
+Does this specific layout strategy for the Faction and Family wiki pages match the scannable, intuitive writing environment you want to provide inside TipTap?

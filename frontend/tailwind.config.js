@@ -1,0 +1,36 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  theme: {
+    extend: {
+      colors: {
+        primary: 'var(--color-primary)',
+        'primary-hover': 'var(--color-primary-hover)',
+        accent: 'var(--color-accent)',
+        'accent-gold': 'var(--accent-gold)',
+        'accent-warm': 'var(--accent-warm)',
+        'accent-soft': 'var(--accent-soft)',
+        background: 'var(--color-bg)',
+        elevated: 'var(--color-bg-elevated)',
+        surface: 'var(--color-surface)',
+        border: 'var(--color-border)',
+        foreground: 'var(--color-text)',
+        muted: 'var(--color-text-muted)',
+        canvas: 'var(--color-canvas)',
+        focal: 'var(--color-focal)',
+        'focal-elevated': 'var(--color-focal-elevated)',
+        'focal-foreground': 'var(--color-focal-foreground)',
+        'focal-muted': 'var(--color-focal-muted)',
+        'depth-0': 'var(--color-depth-0)',
+        'depth-1': 'var(--color-depth-1)',
+        'depth-2': 'var(--color-depth-2)',
+        'depth-3': 'var(--color-depth-3)',
+        'depth-4': 'var(--color-depth-4)',
+        contextual: 'var(--color-contextual)',
+        'contextual-foreground': 'var(--color-contextual-foreground)',
+        'recessed-foreground': 'var(--color-recessed-foreground)',
+        'operational-foreground': 'var(--color-operational-foreground)',
+        'overlay-elevated': 'var(--color-overlay-elevated)',
+      },
+    },
+  },
+};

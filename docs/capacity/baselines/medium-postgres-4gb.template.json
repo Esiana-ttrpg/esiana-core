@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-06-13T00:00:00.000Z",
+  "note": "Placeholder baseline template. Re-run profile-capacity on a reference Compose stack and replace values after seeding benchmark-medium.",
+  "environment": {
+    "db": "postgresql",
+    "ramGb": 4,
+    "campaignHandle": "benchmark-medium-example",
+    "profileId": "benchmark-medium",
+    "label": "Medium"
+  },
+  "campaignSnapshot": {
+    "pageCount": 1000,
+    "characterCount": 300,
+    "locationCount": 150,
+    "organizationCount": 50,
+    "sessionCount": 100,
+    "mapCount": 10
+  },
+  "scenarios": {
+    "export": { "iterations": 3, "avgMs": 0, "maxMs": 0, "errors": 0 },
+    "campaign-load": { "iterations": 3, "avgMs": 0, "maxMs": 0, "errors": 0 },
+    "character-search": { "iterations": 3, "avgMs": 0, "maxMs": 0, "errors": 0 },
+    "timeline-projection": { "iterations": 3, "avgMs": 0, "maxMs": 0, "errors": 0 },
+    "map-load": { "iterations": 3, "avgMs": 0, "maxMs": 0, "errors": 0 }
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"chronologyDomainKinds.js","sourceRoot":"","sources":["chronologyDomainKinds.ts"],"names":[],"mappings":";;;AAAA;;;GAGG;AACU,QAAA,oBAAoB,GAAG;IAClC,WAAW,EAAE,aAAa;IAC1B,iBAAiB,EAAE,mBAAmB;IACtC,YAAY,EAAE,cAAc;IAC5B,cAAc,EAAE,gBAAgB;IAChC,YAAY,EAAE,cAAc;IAC5B,gBAAgB,EAAE,kBAAkB;IACpC,eAAe,EAAE,iBAAiB;IAClC,aAAa,EAAE,eAAe;IAC9B,eAAe,EAAE,iBAAiB;CAC1B,CAAC"}

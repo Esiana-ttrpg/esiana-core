@@ -1,0 +1,6 @@
+const STORYBOARD_LAYOUT_METADATA_KEY = "storyboardLayout";
+const ADVENTURE_HUB_TITLE = "Adventure";
+export {
+  ADVENTURE_HUB_TITLE,
+  STORYBOARD_LAYOUT_METADATA_KEY
+};

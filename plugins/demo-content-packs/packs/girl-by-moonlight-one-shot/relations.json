@@ -1,0 +1,72 @@
+{
+  "links": [
+    {
+      "sourceSlug": "pc-hana",
+      "targetSlug": "org-shirogane-academy"
+    },
+    {
+      "sourceSlug": "pc-mira",
+      "targetSlug": "org-student-council"
+    },
+    {
+      "sourceSlug": "pc-yuki",
+      "targetSlug": "org-lunar-directorate"
+    },
+    {
+      "sourceSlug": "pc-ren",
+      "targetSlug": "org-crescent-resistance"
+    },
+    {
+      "sourceSlug": "org-shirogane-academy",
+      "targetSlug": "org-student-council"
+    },
+    {
+      "sourceSlug": "org-lunar-directorate",
+      "targetSlug": "org-eclipse-syndicate"
+    },
+    {
+      "sourceSlug": "quest-find-idol",
+      "targetSlug": "thread-hope-vs-despair"
+    },
+    {
+      "sourceSlug": "quest-investigate-ruins",
+      "targetSlug": "thread-city-secret"
+    },
+    {
+      "sourceSlug": "quest-confront-regent",
+      "targetSlug": "thread-cost-of-power"
+    }
+  ],
+  "tags": [
+    {
+      "pageSlug": "lore-moon-curse",
+      "tagName": "lore",
+      "tagLabel": "Lore"
+    },
+    {
+      "pageSlug": "quest-find-idol",
+      "tagName": "quest",
+      "tagLabel": "Quest"
+    }
+  ],
+  "mapPins": [
+    {
+      "id": "gbm-pin-academy",
+      "assetPath": "assets/locations/city-map.webp",
+      "targetSlug": "loc-shirogane-campus",
+      "label": "Academy District",
+      "pinType": "Location",
+      "x_coordinate": 120,
+      "y_coordinate": 80
+    },
+    {
+      "id": "gbm-pin-rooftop",
+      "assetPath": "assets/locations/city-map.webp",
+      "targetSlug": "haven-school-rooftop",
+      "label": "Rooftop Haven",
+      "pinType": "Location",
+      "x_coordinate": 200,
+      "y_coordinate": 140
+    }
+  ]
+}

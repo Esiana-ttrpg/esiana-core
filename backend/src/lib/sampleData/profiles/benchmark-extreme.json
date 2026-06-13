@@ -1,0 +1,18 @@
+{
+  "id": "benchmark-extreme",
+  "label": "Extreme Archive",
+  "description": "Internal regression scale — 10000+ pages. CLI and Admin only; not a hosting target.",
+  "defaultSeed": "benchmark-extreme-v1",
+  "defaultDensity": "obsessive",
+  "wizardVisible": false,
+  "params": {
+    "pageCount": 10000,
+    "characterCount": 1500,
+    "locationCount": 800,
+    "organizationCount": 300,
+    "sessionCount": 800,
+    "mapCount": 80,
+    "unresolvedRate": 0.22
+  },
+  "executorConcurrency": 8
+}

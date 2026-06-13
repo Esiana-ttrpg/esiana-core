@@ -1,0 +1,18 @@
+{
+  "id": "benchmark-large",
+  "label": "Large Benchmark World",
+  "description": "Multi-year archive scale — ~5000 pages; expect long seed times.",
+  "defaultSeed": "benchmark-large-v1",
+  "defaultDensity": "active",
+  "wizardVisible": true,
+  "params": {
+    "pageCount": 5000,
+    "characterCount": 1000,
+    "locationCount": 500,
+    "organizationCount": 200,
+    "sessionCount": 500,
+    "mapCount": 50,
+    "unresolvedRate": 0.2
+  },
+  "executorConcurrency": 8
+}

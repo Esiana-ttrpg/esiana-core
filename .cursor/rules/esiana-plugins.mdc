@@ -1,0 +1,41 @@
+---
+description: Plugin manifest, sandbox, slots, and integration boundaries
+globs: plugins/**,backend/src/lib/plugins/**
+alwaysApply: false
+---
+
+# Esiana Plugins
+
+Applies to `plugins/` and `backend/src/lib/plugins/`. Author docs: [docs/plugin-development/](../../../docs/plugin-development/). Engineering: [data-interceptors.md](../../docs/plugins/data-interceptors.md).
+
+## Manifest v2
+
+- `permissions[]` — declare only what the plugin needs
+- `engines.esiana-core` — version range; mismatch auto-disables at load
+- `configSchema` — inline or `config-schema.json` for settings UI
+
+## Registration
+
+- `register(router, context)` via `PluginHostContext`
+- Routes validated at register time (namespace firewall, blocked infra prefixes)
+- Campaign-scoped data via `createPluginDataService(campaignId)` when permitted
+
+## Data interceptors
+
+- Worker sandbox, allowlists, `failMode`, quarantine on failure
+- No unrestricted main-thread plugin code for intercept paths
+
+## UI integration
+
+- Declarative UI slots with error boundaries (header, sidebar, map, settings)
+- `wiki:decorate` — read-only `metadata` / `pluginDisplay` injection on wiki responses
+- `extendRoutes` skipped for content lifecycle; do not bypass core ACL
+
+## Integrations vs core product
+
+Foundry sync and similar packages are **stubs/adapters**, not core VTT features. Do not move combat/tactical simulation into core to support them.
+
+## Reference
+
+- In-repo examples: `plugins/` first-party stubs
+- External template: [docs/plugin-development/getting-started.md](../../../docs/plugin-development/getting-started.md) · `community-plugins/example-plugin`
