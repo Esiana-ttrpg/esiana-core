@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -50,6 +50,7 @@ jobs:
         working-directory: backend
         run: |
           sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
+          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/migrations/migration_lock.toml
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
           npx prisma generate
           npx prisma migrate deploy

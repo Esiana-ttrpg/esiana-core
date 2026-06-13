@@ -75,7 +75,7 @@ Layer 1 convergence and continuity warnings v1 are complete — see [changelog.m
 
 *Prefer delaying 1.0 over large post-freeze migrations.*
 
-- [ ] Pre-1.0 schema freeze checklist complete — migration audit + export audit + [database-portability-audit.md](./docs/audits/database-portability-audit.md) done; **baseline squash is a release artifact** at v1.0.0 tag only ([migration-audit.md](./docs/audits/migration-audit.md))
+- [ ] Pre-1.0 schema freeze checklist complete — migration audit + export audit + [database-portability-audit.md](./docs/audits/database-portability-audit.md) done; **baseline squash executed** pre-tag ([migration-squash-verification-20260613.md](./docs/audits/migration-squash-verification-20260613.md), [migration-audit.md](./docs/audits/migration-audit.md))
 - [ ] **Platform & infrastructure** items below (portability audit, Postgres CI parity, Postgres default, Docker, CI) complete
 
 ### Post-1.0 schema policy
@@ -188,7 +188,8 @@ If a feature needs a **large migration**, ship it in the Pre-1.0 window or defer
 - [x] **Postgres default deployment** — Flip repo/Docker/dev defaults after CI stable — `gate:pre-1.0` `legacy: Phase 11`
 - [x] **Multi-stage Docker architecture** — Compose + Dockerfiles in repo; polish multi-stage caching — `legacy: Phase 11`
 - [x] **Orchestration & resilient initialization** — Health checks in compose; entrypoint runs migrate — `legacy: Phase 11`
-- [ ] **Prisma transaction audit** — Database-agnostic repository handling — `legacy: Phase 11`
+- [x] **Prisma transaction audit** — Database-agnostic repository handling — `legacy: Phase 11` — [prisma-transaction-audit.md](./docs/audits/prisma-transaction-audit.md)
+- [ ] **resolveCurrentEpochMinute consolidation** — Merge duplicate private helpers in `downtimeProjectService` / `campaignLedgerService` into shared chronology helper — `target:post-1.0` `legacy: Phase 11`
 - [ ] **Branch protections** — Required PR reviews on `main` / `develop` — `legacy: Phase 12`
 - [ ] **CodeQL SAST** — GitHub Actions CodeQL on pull requests — `legacy: Phase 12`
 - [ ] **Automated dependency auditing** — Dependabot, Snyk, or similar — `legacy: Phase 12`

@@ -20,9 +20,10 @@ Pre-1.0 audit work — data sovereignty, integrator docs, migration review, and 
 - **Sovereign `knowledge.json`** — Lore claims + historical aliases export/restore in GM backup ZIP (`sovereign/knowledge.json`)
 - **Obsidian import typing** — Folder module → `templateType` + `entityCategory` (frontmatter overrides)
 - **OpenAPI + `/api/docs`** — Manual OpenAPI 3.1 spec with examples; Swagger UI (disabled in production unless `OPENAPI_DOCS_ENABLED=true`)
-- **Migration audit** — [migration-audit.md](docs/audits/migration-audit.md) + squash plan at tag time
+- **Migration audit** — [migration-audit.md](docs/audits/migration-audit.md); **78→1 baseline squash** archived at [migration-history/pre-v1-squash-20260613](docs/migrations/migration-history/pre-v1-squash-20260613/) — [verification report](docs/audits/migration-squash-verification-20260613.md)
 - **Docker Compose baseline** — `docker-compose.yml`, Dockerfiles, [self-hosting-runbook.md](docs/deployment/self-hosting-runbook.md)
 - **Docker Phase 11 polish** — `.dockerignore`, targeted Dockerfile COPY layers, profile-free Postgres compose, backend healthcheck + frontend startup ordering, migrate retry in entrypoint, CI `docker-build` job, self-hosting doc alignment
+- **Prisma transaction audit** — `DbClient` / `withDbTransaction` module; nested-tx fix in world-development auto-apply during global time hooks; tx-aware chronology/ledger/rumor helpers — [prisma-transaction-audit.md](docs/audits/prisma-transaction-audit.md)
 - **Narrative foundation sign-off** — [narrative-foundation-signoff.md](docs/audits/narrative-foundation-signoff.md)
 - **RC checklist** — [pre-1.0-rc-checklist.md](docs/release/pre-1.0-rc-checklist.md)
 

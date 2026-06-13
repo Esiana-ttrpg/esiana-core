@@ -10,6 +10,7 @@ Complete before tagging **v1.0.0**.
 - [ ] Postgres fresh install: `docker compose up -d --build` — migrations apply automatically via backend entrypoint
 - [x] OpenAPI loads at `/api/docs` — build copies spec to `dist/backend/openapi`; loader fallback to source
 - [ ] [database-portability-audit.md](../audits/database-portability-audit.md) reviewed
+- [ ] [prisma-transaction-audit.md](../audits/prisma-transaction-audit.md) reviewed
 
 ## Data sovereignty
 
@@ -22,7 +23,7 @@ Complete before tagging **v1.0.0**.
 
 - [ ] [migration-audit.md](../audits/migration-audit.md) reviewed
 - [ ] Upgrade path tested from v0.9.0 DB snapshot (manual)
-- [ ] Baseline squash executed as **release artifact** (see [migration-audit.md](../audits/migration-audit.md)); fresh install verified on Postgres + SQLite before tag
+- [x] Baseline squash executed — [migration-squash-verification-20260613.md](../audits/migration-squash-verification-20260613.md); fresh SQLite install verified locally; Postgres fresh install gated on CI `test-postgres`
 
 ## Integrator experience
 

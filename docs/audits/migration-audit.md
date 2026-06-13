@@ -1,16 +1,19 @@
 # Pre-1.0 migration audit
 
 **Audited:** 2026-06-13  
-**Migration count:** 78 folders (`20260527214000_baseline_core_schema` → `20260613180000_remove_campaign_plugin_manifest_policy`)
+**Squash executed:** 2026-06-13 — see [migration-squash-verification-20260613.md](./migration-squash-verification-20260613.md)  
+**Active migration count:** 1 (`20260613190000_v1_baseline`)  
+**Archived pre-squash count:** 78 folders → [`migration-history/pre-v1-squash-20260613/`](../migrations/migration-history/pre-v1-squash-20260613/)
 
 ## Inventory summary
 
 | Item | Result |
 |------|--------|
-| Baseline squash | Partial — two May 2025 baseline migrations capture pre-`migrate` `db push` state |
-| Incremental migrations | 76 after baseline |
-| Dead migrations queued post-1.0 | **None identified** — latest churn is plugin secrets + manifest policy cleanup |
-| Superseded patterns | Template Studio removed (`20260609200000_remove_campaign_templates`); campaign `slug` → `handle` |
+| Baseline squash | **Executed** — 78 incremental migrations archived; single v1 baseline active |
+| Pre-squash chain | `20260527214000_baseline_core_schema` → `20260613180000_remove_campaign_plugin_manifest_policy` (read-only archive) |
+| Dead migrations queued post-1.0 | **None identified** |
+| Superseded patterns | Template Studio removed; campaign `slug` → `handle` (folded into baseline) |
+| `migration_lock.toml` | `provider = "postgresql"` (aligned with schema default) |
 
 ## Tooling
 
@@ -52,33 +55,25 @@ npx tsx prisma/scripts/check-migration-state.ts
 
 No missing `campaignId` indexes flagged on hot paths during this audit. Post-freeze: index-only migrations allowed per [todo.md](../../todo.md) post-1.0 policy.
 
-## Squash plan — release artifact (v1.0.0 tag only)
+## Squash execution (2026-06-13)
 
-**Do not squash during normal development.** Squash executes only after RC approval and final schema freeze sign-off.
+**Status:** Complete — pre-v1.0 tag as dedicated PR.
 
-**Not a dev task.** Treat `20260701000000_v1_baseline` as a release artifact:
+| Deliverable | Location |
+|-------------|----------|
+| Active baseline | `backend/prisma/migrations/20260613190000_v1_baseline/` |
+| Archive (78 folders) | [`migration-history/pre-v1-squash-20260613/`](../migrations/migration-history/pre-v1-squash-20260613/) |
+| Verification report | [migration-squash-verification-20260613.md](./migration-squash-verification-20260613.md) |
 
-```text
-RC approved
-  ↓
-No pending schema changes
-  ↓
-Generate v1_baseline migration
-  ↓
-Verify fresh install (Postgres + SQLite)
-  ↓
-Archive pre-freeze folders → migration-history/
-  ↓
-Tag v1.0.0
-```
+**Generation notes:** Baseline SQL generated with sqlite provider for dual-engine portability; JSON column defaults and timestamp types hand-normalized (`'{}'`, `'[]'`, `TIMESTAMP(3)`) so **Postgres `migrate deploy` succeeds on untouched repo state** (CI `test-postgres` applies no sed patches).
 
-At tag time:
+**Upgrade path:**
 
-1. Generate one **`20260701000000_v1_baseline`** migration from current `schema.prisma` (Postgres + SQLite portable SQL)
-2. Archive pre-freeze folders to [`migration-history/](./migration-history/README.md)` (read-only reference)
-3. Document upgrade path: beta instances run full 78-folder chain once; fresh installs apply single baseline
-
-Existing beta databases **must not** jump directly to squashed baseline without a documented migration bridge.
+| Audience | Path |
+|----------|------|
+| Fresh install | `migrate deploy` → single baseline only |
+| Disposable dev DBs | Reset / delete DB → redeploy |
+| Existing beta on 78-chain | Cannot jump in-place; run archived chain once or re-seed |
 
 See also [database-portability-audit.md](./database-portability-audit.md) for the full v1.0 pipeline order.
 
@@ -96,5 +91,5 @@ See also [database-portability-audit.md](./database-portability-audit.md) for th
 
 - [x] Extension points documented — [lore-knowledge-extension-points.md](./lore-knowledge-extension-points.md), [capability-matrix.md](../plugins/capability-matrix.md)
 - [x] Migration audit (this document)
-- [ ] Squash execution (at tag time)
+- [x] Squash execution — [migration-squash-verification-20260613.md](./migration-squash-verification-20260613.md) (2026-06-13, pre-tag PR)
 - [x] No pending destructive migrations queued for post-1.0
