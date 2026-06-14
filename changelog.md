@@ -10,6 +10,10 @@ When a change was planned before implementation, entries may link to a snapshot 
 
 ## [Unreleased]
 
+### Added
+
+- **License** — Core repository under [AGPL-3.0](./LICENSE)
+
 ## [1.0.0] - 2026-06-13
 
 First stable release — schema freeze, production baseline (Postgres default, Docker Compose, dual-engine CI), and release automation.

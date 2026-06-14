@@ -116,6 +116,14 @@ After changing provider, run `npm run db:generate` and migrate/push.
 
 Drop active modular plugin folders directly under `/plugins`. Packages can be registered, installed, and toggled on the fly using the core API routes (`/api/plugins`). For details on building a custom module extension, review `plugins/README.md`.
 
+## License
+
+Esiana core is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE) — Copyright (C) 2026 Esiana Contributors.
+
+If you modify this software and run it as a network service, AGPL section 13 requires you to offer corresponding source to users interacting with it over the network. See [LICENSE](./LICENSE) for full terms.
+
+Runtime plugin packages under [`plugins/`](./plugins/) may carry separate licenses from their authors; see each package and the [community-plugins](https://github.com/Esiana-ttrpg/community-plugins) catalog.
+
 ## Versioning note
 
 The root [`package.json`](./package.json) `version` field is the **product version** source of truth (currently v1.0.0). It is injected into the admin UI and backend update checks at build/runtime. [changelog.md](./changelog.md) records notable changes by version; [todo.md](./todo.md) tracks the roadmap. **Release process:** merge `develop` → `main`, tag `vX.Y.Z` on `main` — the [release workflow](.github/workflows/release.yml) runs CI, publishes GHCR images, and creates the GitHub Release.
