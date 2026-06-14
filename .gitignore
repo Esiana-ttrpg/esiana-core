@@ -20,5 +20,4 @@ uploads/*
 .vscode/*
 !.vscode/extensions.json
 
-# Prisma
-backend/prisma/migrations/**/migration_lock.toml
+# Prisma (migration_lock.toml at migrations root is tracked)

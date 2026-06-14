@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
 
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
@@ -26,6 +26,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run db:generate --workspace=backend
+
+      - name: Build storage-s3 package
+        run: npm run build --workspace=@esiana/storage-s3
 
       - name: Build frontend
         run: npm run build --workspace=frontend
@@ -50,12 +53,16 @@ jobs:
         working-directory: backend
         run: |
           sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
+          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/migrations/migration_lock.toml
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
           npx prisma generate
           npx prisma migrate deploy
 
       - name: Run backend tests
-        run: npm test --workspace=backend
+        working-directory: backend
+        env:
+          DATABASE_URL: file:./ci-test.db
+        run: npm test
 
   test-postgres:
     runs-on: ubuntu-latest
@@ -84,6 +91,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate baseline migration portability
+        working-directory: backend
+        run: |
+          node prisma/scripts/validate-baseline-fk-order.mjs
+          node prisma/scripts/validate-postgres-identifier-length.mjs
+
       - name: Prepare Postgres test database
         working-directory: backend
         env:
@@ -93,9 +106,10 @@ jobs:
           npx prisma migrate deploy
 
       - name: Run backend tests
+        working-directory: backend
         env:
           DATABASE_URL: postgresql://esiana:esiana_ci@localhost:5432/esiana
-        run: npm test --workspace=backend
+        run: npm test
 
   docker-build:
     runs-on: ubuntu-latest
