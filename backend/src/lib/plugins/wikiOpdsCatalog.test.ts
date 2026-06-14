@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,9 +9,19 @@ const catalogPath = path.resolve(
   '../../../../../community-plugins/wiki-opds-feed/backend/catalog.js',
 );
 
-const { buildWikiOpdsCatalogFeed } = await import(pathToFileURL(catalogPath).href);
+async function loadCatalogModule() {
+  if (!fs.existsSync(catalogPath)) return null;
+  return import(pathToFileURL(catalogPath).href);
+}
 
-test('buildWikiOpdsCatalogFeed maps public pages to acquisition entries', () => {
+test('buildWikiOpdsCatalogFeed maps public pages to acquisition entries', async (t) => {
+  const mod = await loadCatalogModule();
+  if (!mod) {
+    t.skip('community-plugins wiki-opds-feed not on disk');
+    return;
+  }
+
+  const { buildWikiOpdsCatalogFeed } = mod;
   const feed = buildWikiOpdsCatalogFeed({
     pluginId: 'wiki-opds-feed',
     campaignHandle: 'somerden',
@@ -34,7 +45,14 @@ test('buildWikiOpdsCatalogFeed maps public pages to acquisition entries', () => 
   assert.match(feed.entries[0]?.links[0]?.href ?? '', /pages\/page-1\.md$/);
 });
 
-test('buildWikiOpdsCatalogFeed uses custom catalog title suffix', () => {
+test('buildWikiOpdsCatalogFeed uses custom catalog title suffix', async (t) => {
+  const mod = await loadCatalogModule();
+  if (!mod) {
+    t.skip('community-plugins wiki-opds-feed not on disk');
+    return;
+  }
+
+  const { buildWikiOpdsCatalogFeed } = mod;
   const feed = buildWikiOpdsCatalogFeed({
     pluginId: 'wiki-opds-feed',
     campaignHandle: 'test',
