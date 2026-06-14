@@ -6,6 +6,7 @@ import {
   shouldShowDiscoveryBadge,
   type DiscoveryBadgeSurface,
 } from '@/lib/wikiPageHeaderMeta';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 
 export function DiscoveryStateBadge({
   discovery,
@@ -78,12 +79,14 @@ interface CategoryIndexDiscoveryBannerProps {
   undiscoveredCount: number;
   discoveredCount: number;
   itemLabel: string;
+  showDocsLink?: boolean;
 }
 
 export function CategoryIndexDiscoveryBanner({
   undiscoveredCount,
   discoveredCount,
   itemLabel,
+  showDocsLink = false,
 }: CategoryIndexDiscoveryBannerProps) {
   if (undiscoveredCount <= 0) return null;
 
@@ -99,6 +102,11 @@ export function CategoryIndexDiscoveryBanner({
         {undiscoveredCount} undiscovered{' '}
         {undiscoveredCount === 1 ? 'entry' : 'entries'} not yet revealed to the party.
       </span>
+      {showDocsLink ? (
+        <span className="mt-2 block">
+          <DocsLearnMoreLink doc="discoveryRevelation" label="Discovery & revelation guide" />
+        </span>
+      ) : null}
     </div>
   );
 }

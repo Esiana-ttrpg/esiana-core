@@ -28,7 +28,7 @@ import { mergePluginConfigFields } from '@/lib/configSchemaParser';
 import { PluginDiscoveryGrid } from '@/components/admin/PluginDiscoveryGrid';
 import { PluginRegistrySyncSection } from '@/components/admin/PluginRegistrySyncSection';
 import { FieldLabel } from '@/components/admin/AdminSectionCard';
-import { controlClasses } from '@/components/admin/adminFormStyles';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 
 function pluginIcon(_id: string): LucideIcon {
   return Package;
@@ -266,11 +266,14 @@ export function AdminPluginsTab() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-2 text-muted">
-        <Boxes className="size-5 text-primary" />
-        <p className="text-sm">
-          Discover extensions from a remote registry or install manifests directly.
-        </p>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-muted">
+        <div className="flex items-center gap-2">
+          <Boxes className="size-5 text-primary" />
+          <p className="text-sm">
+            Discover extensions from a remote registry or install manifests directly.
+          </p>
+        </div>
+        <DocsLearnMoreLink doc="pluginsOverview" label="Plugin catalog guide" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline" />
       </div>
 
       {(manifestError || registryError) && (

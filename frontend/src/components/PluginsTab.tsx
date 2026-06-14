@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWiki } from '@/contexts/WikiContext';
-import { X } from 'lucide-react';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 
 interface Plugin {
   id: string;
@@ -75,6 +75,9 @@ export function PluginsTab() {
   return (
     <div className="max-w-2xl">
       <h2 className="mb-4 text-lg font-semibold">Plugins</h2>
+      <p className="mb-4 text-sm text-muted">
+        <DocsLearnMoreLink doc="pluginsOverview" label="How plugins work" />
+      </p>
       <div className="space-y-4">
         {plugins.length === 0 && <p className="text-sm text-muted">No plugins installed</p>}
         {plugins.map(plugin => (

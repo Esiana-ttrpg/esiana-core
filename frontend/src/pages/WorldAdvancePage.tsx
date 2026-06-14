@@ -24,7 +24,7 @@ import {
   fetchTimeTracking,
   masterCalendarFromBundle,
 } from '@/lib/timeTrackingApi';
-import { WorldAdvanceConditionPanel } from '@/components/worldAdvance/WorldAdvanceConditionPanel';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 import {
   campaignTimeTrackingPath,
   campaignWorldAdvanceBatchPath,
@@ -224,6 +224,8 @@ export function WorldAdvancePage() {
           <Link to={`/campaigns/${campaignHandle}/chronology`} className="text-primary hover:underline">
             Chronology
           </Link>
+          {' · '}
+          <DocsLearnMoreLink doc="worldAdvance" label="World advance guide" className="inline-flex items-center gap-1 text-primary hover:underline" />
         </p>
       </header>
 

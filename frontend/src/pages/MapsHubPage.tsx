@@ -11,7 +11,7 @@ import {
 import type { CampaignMapAsset } from '@/types/maps';
 import { mapDisplayTitle } from '@/types/maps';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { CategoryIndexDiscoveryBanner } from '@/components/wiki/indexBrowse/CategoryIndexDiscoveryBanner';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 import type { CategoryDiscoverySummary } from '@/lib/wiki';
 import { MapCard, type MapCardSize } from '@/components/maps/MapCard';
 import { MapHubTable } from '@/components/maps/MapHubTable';
@@ -203,7 +203,12 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
         </h1>
         <p className={`${TYPE_PROSE_CLASS} mt-2 text-sm text-focal-muted`}>
           Campaign cartography — upload, link to locations, nest detail maps,
-          and place pins.
+          and place pins.{' '}
+          <DocsLearnMoreLink
+            doc="mapsCartography"
+            label="Maps guide"
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          />
         </p>
       </div>
 
@@ -218,6 +223,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
           undiscoveredCount={discoverySummary.undiscoveredCount}
           discoveredCount={discoverySummary.discoveredCount}
           itemLabel="maps"
+          showDocsLink
         />
       ) : null}
 
