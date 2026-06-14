@@ -91,6 +91,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate baseline migration portability
+        working-directory: backend
+        run: |
+          node prisma/scripts/validate-baseline-fk-order.mjs
+          node prisma/scripts/validate-postgres-identifier-length.mjs
+
       - name: Prepare Postgres test database
         working-directory: backend
         env:

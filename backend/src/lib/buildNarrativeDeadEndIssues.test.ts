@@ -8,6 +8,7 @@ import {
 import {
   BranchNodeKinds,
   NARRATIVE_BRANCH_VERSION,
+  type BranchNodeKind,
   type NarrativeBranchGraph,
 } from '../../../shared/narrativeBranch.js';
 import {
@@ -66,7 +67,7 @@ describe('detectNarrativeDeadEnds', () => {
     const graph = makeBranchGraph({
       nodes: [
         { id: 'start', label: 'Start', kind: BranchNodeKinds.OUTCOME },
-        { id: 'hidden', label: 'Hidden', kind: BranchNodeKinds.HIDDEN },
+        { id: 'hidden', label: 'Hidden', kind: 'decision' as BranchNodeKind },
       ],
       edges: [{ from: 'start', to: 'hidden' }],
     });

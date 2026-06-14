@@ -1,4 +1,4 @@
-﻿-- v1.0 pre-release baseline squash (2026-06-13)
+-- v1.0 pre-release baseline squash (2026-06-13)
 -- Replaces 78 incremental migrations archived under docs/migrations/migration-history/pre-v1-squash-20260613/
 -- Schema source: prisma/schema.prisma at squash time. No intentional schema changes.
 -- Generated via: prisma migrate diff --from-empty --to-schema-datamodel (sqlite provider for dual-engine portability)
@@ -1645,10 +1645,10 @@ CREATE INDEX "CampaignScheduledEffect_campaignId_status_nextFireEpochMinute_idx"
 CREATE INDEX "CampaignScheduledEffect_campaignId_effectKind_idx" ON "CampaignScheduledEffect"("campaignId", "effectKind");
 
 -- CreateIndex
-CREATE INDEX "CampaignScheduledEffectOccurrence_campaignId_scheduledEffectId_createdAt_idx" ON "CampaignScheduledEffectOccurrence"("campaignId", "scheduledEffectId", "createdAt");
+CREATE INDEX "CampaignSchedEffectOcc_campId_schedEffId_createdAt_idx" ON "CampaignScheduledEffectOccurrence"("campaignId", "scheduledEffectId", "createdAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CampaignScheduledEffectOccurrence_campaignId_scheduledEffectId_fireAtEpochMinute_key" ON "CampaignScheduledEffectOccurrence"("campaignId", "scheduledEffectId", "fireAtEpochMinute");
+CREATE UNIQUE INDEX "CampaignSchedEffectOcc_campId_schedEffId_fireAt_key" ON "CampaignScheduledEffectOccurrence"("campaignId", "scheduledEffectId", "fireAtEpochMinute");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CampaignReputation_campaignId_key" ON "CampaignReputation"("campaignId");

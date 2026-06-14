@@ -39,7 +39,7 @@ backend/prisma/migrations/
 | Step | Result |
 |------|--------|
 | `migrate diff --from-migrations --to-schema-datamodel` | Empty (`-- This is an empty migration.`) |
-| Fresh `migrate deploy` on empty DB | **Not run locally** (Docker unavailable); CI `test-postgres` job is the gate |
+| Fresh `migrate deploy` on empty DB | **PGlite + CI `test-postgres`** (see 2026-06-14 fix: UTF-8 BOM strip, Postgres 63-char index rename) |
 | `prisma generate` | Pass |
 | `tsc --noEmit` | Pass |
 

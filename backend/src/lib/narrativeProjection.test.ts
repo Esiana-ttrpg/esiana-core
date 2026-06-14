@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   ContentRevelationStates,
 } from '../../../shared/contentPresence.js';
+import { MembershipRoles } from '../../../shared/campaignPolicy/membershipRoles.js';
 import {
   buildNarrativeViewerContext,
   fromChronologyVisibility,
@@ -27,14 +28,14 @@ const campaignNow = {
 
 function partyCtx() {
   return buildNarrativeViewerContext({
-    role: 'Player',
+    role: MembershipRoles.PARTICIPANT,
     campaignNow,
   });
 }
 
 function elevatedCtx() {
   return buildNarrativeViewerContext({
-    role: 'DM',
+    role: MembershipRoles.GAMEMASTER,
     campaignNow,
   });
 }

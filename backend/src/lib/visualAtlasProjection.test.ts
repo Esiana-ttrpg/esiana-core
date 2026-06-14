@@ -68,12 +68,12 @@ describe('collectImageDisplayBlocks', () => {
         {
           type: 'image-display',
           content: {
-            imageUrl: 'https://example.com/art.png',
+            imageUrl: '/api/assets/test-art-id',
             imageCredit: { artCredit: 'Jane Doe', sourceUrl: 'https://ignored.test' },
           },
         },
       ],
-      'DM',
+      'GAMEMASTER',
     );
     assert.equal(blocks.length, 1);
     assert.equal(blocks[0]?.imageCredit?.artCredit, 'Jane Doe');

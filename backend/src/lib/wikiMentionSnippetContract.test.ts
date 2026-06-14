@@ -16,24 +16,8 @@ describe('mention-snippet lazy hydration contract', () => {
       {
         type: 'text-tiptap',
         content: {
-          type: 'doc',
-          content: [
-            {
-              type: 'paragraph',
-              content: [
-                { type: 'text', text: 'Met ' },
-                {
-                  type: 'wikiLink',
-                  attrs: {
-                    targetPageId: 'char-mario',
-                    label: 'Mario',
-                    resolved: true,
-                  },
-                },
-                { type: 'text', text: ' at the docks.' },
-              ],
-            },
-          ],
+          markdown:
+            'Met <span data-type="wikiLink" data-id="char-mario" data-label="Mario">Mario</span> at the docks.',
         },
       },
     ];
@@ -49,7 +33,9 @@ describe('mention-snippet lazy hydration contract', () => {
     );
     const fnStart = source.indexOf('export async function getWikiBacklinksForPage');
     assert.ok(fnStart >= 0);
-    const fnBody = source.slice(fnStart, fnStart + 2500);
+    const fnEnd = source.indexOf('export async function getWikiOutlinksForPage', fnStart);
+    assert.ok(fnEnd > fnStart);
+    const fnBody = source.slice(fnStart, fnEnd);
     assert.doesNotMatch(fnBody, /\bblocks\b/);
     assert.doesNotMatch(fnBody, /contextSnippet/);
     assert.doesNotMatch(fnBody, /extractMentionSnippetFromBlocks/);
