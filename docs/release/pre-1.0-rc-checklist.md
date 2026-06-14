@@ -49,4 +49,4 @@ Complete before tagging **v1.0.0**.
 
 - [x] [todo.md](../../todo.md) release gates complete
 - [x] [changelog.md](../../changelog.md) v1.0.0 entry
-- [ ] Git tag `v1.0.0` on `main` (triggers release workflow)
+- [x] Git tag `v1.0.0` on `main` (triggers release workflow) — pushed 2026-06-14; monitor [Release workflow](https://github.com/Esiana-ttrpg/esiana-core/actions/workflows/release.yml)
