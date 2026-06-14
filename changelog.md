@@ -10,7 +10,22 @@ When a change was planned before implementation, entries may link to a snapshot 
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-06-13
+### Changed
+
+#### Release engineering
+
+- **Unified container image** — Single `ghcr.io/esiana-ttrpg/esiana` image (nginx + API + SPA); `docker-compose.yml` runs `postgres` + `esiana`. Deprecated `esiana-backend` and `esiana-frontend` GHCR packages.
+- **GitHub Release notes** — Tag releases append GHCR pull instructions automatically.
+
+### Added
+
+#### Governance & contributor docs
+
+- **`CONTRIBUTING.md`**, **`GOVERNANCE.md`**, **`SECURITY.md`** — Contributor setup, AI Review Policy, and security reporting
+- **Dependabot** — Weekly npm dependency updates via `.github/dependabot.yml`
+- **Issue templates** — Bug report and feature request forms
+- **`docs/release/release-checklist.md`** — Post-1.0 tag checklist with maintainer attestation
+
 
 First stable release — schema freeze, production baseline (Postgres default, Docker Compose, dual-engine CI), and release automation.
 
