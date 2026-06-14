@@ -1,5 +1,9 @@
 import { validatePluginManifest, type PluginManifest } from './pluginManifest.js';
-import { SsrfGuardError, assertUrlSafeForImport } from './ssrfGuard.js';
+import {
+  SsrfGuardError,
+  assertUrlSafeForImport,
+  isUrlSafeForImport,
+} from './ssrfGuard.js';
 
 export const MAX_MANIFEST_BYTES = 512 * 1024;
 
@@ -59,10 +63,83 @@ export async function fetchAndValidateManifestFromUrl(
   | { ok: true; manifest: PluginManifest }
   | { ok: false; status: number; error: string; details?: string[] }
 > {
-  let response: globalThis.Response;
-  let safeUrl: URL;
+  const normalized = normalizeRemoteJsonUrl(url);
+
+  if (await isUrlSafeForImport(normalized, { allowHttp: true })) {
+    let response: globalThis.Response;
+    try {
+      response = await fetch(normalized.toString(), {
+        headers: { Accept: 'application/json' },
+        redirect: 'error',
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        status: 502,
+        error:
+          err instanceof Error
+            ? `Unable to reach manifest URL: ${err.message}`
+            : 'Unable to reach manifest URL',
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: 502,
+        error: `Manifest URL returned HTTP ${response.status}`,
+      };
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    if (
+      contentType &&
+      !contentType.includes('application/json') &&
+      !contentType.includes('text/json') &&
+      !contentType.includes('text/plain')
+    ) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Manifest URL must return JSON (application/json)',
+      };
+    }
+
+    const rawText = await response.text();
+    if (rawText.length > MAX_MANIFEST_BYTES) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Manifest file exceeds maximum allowed size',
+      };
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(rawText);
+    } catch {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Manifest URL did not return valid JSON',
+      };
+    }
+
+    const result = validatePluginManifest(payload);
+    if (!result.ok) {
+      return {
+        ok: false,
+        status: 400,
+        error: 'Invalid plugin manifest',
+        details: result.errors,
+      };
+    }
+
+    return { ok: true, manifest: result.manifest };
+  }
+
   try {
-    safeUrl = await resolveSafeRemoteJsonUrl(url, { allowHttp: true });
+    await assertUrlSafeForImport(normalized, { allowHttp: true });
   } catch (err) {
     if (err instanceof SsrfGuardError) {
       return { ok: false, status: 400, error: err.message };
@@ -70,73 +147,5 @@ export async function fetchAndValidateManifestFromUrl(
     throw err;
   }
 
-  try {
-    response = await fetch(safeUrl.toString(), {
-      headers: { Accept: 'application/json' },
-      redirect: 'error',
-    });
-  } catch (err) {
-    return {
-      ok: false,
-      status: 502,
-      error:
-        err instanceof Error
-          ? `Unable to reach manifest URL: ${err.message}`
-          : 'Unable to reach manifest URL',
-    };
-  }
-
-  if (!response.ok) {
-    return {
-      ok: false,
-      status: 502,
-      error: `Manifest URL returned HTTP ${response.status}`,
-    };
-  }
-
-  const contentType = response.headers.get('content-type') ?? '';
-  if (
-    contentType &&
-    !contentType.includes('application/json') &&
-    !contentType.includes('text/json') &&
-    !contentType.includes('text/plain')
-  ) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Manifest URL must return JSON (application/json)',
-    };
-  }
-
-  const rawText = await response.text();
-  if (rawText.length > MAX_MANIFEST_BYTES) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Manifest file exceeds maximum allowed size',
-    };
-  }
-
-  let payload: unknown;
-  try {
-    payload = JSON.parse(rawText);
-  } catch {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Manifest URL did not return valid JSON',
-    };
-  }
-
-  const result = validatePluginManifest(payload);
-  if (!result.ok) {
-    return {
-      ok: false,
-      status: 400,
-      error: 'Invalid plugin manifest',
-      details: result.errors,
-    };
-  }
-
-  return { ok: true, manifest: result.manifest };
+  return { ok: false, status: 400, error: 'URL target is not allowed' };
 }

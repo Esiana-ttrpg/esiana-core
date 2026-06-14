@@ -104,3 +104,16 @@ export async function assertUrlSafeForImport(
   assertAllowedImportProtocol(url, options.allowHttp);
   await resolveAndAssertHostname(url.hostname);
 }
+
+export async function isUrlSafeForImport(
+  url: URL,
+  options: { allowHttp: boolean },
+): Promise<boolean> {
+  try {
+    await assertUrlSafeForImport(url, options);
+    return true;
+  } catch (error) {
+    if (error instanceof SsrfGuardError) return false;
+    throw error;
+  }
+}

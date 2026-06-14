@@ -1,0 +1,9 @@
+# Module type verified from NodeNext ESM import path used at call sites:
+# backend/src/lib/fetchPluginManifest.ts and fetchPluginRegistry.ts import
+# isUrlSafeForImport from './ssrfGuard.js' (definition in ssrfGuard.ts).
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierGuardModel
+    data:
+      - ["./ssrfGuard.js", "Member[isUrlSafeForImport].Argument[0]", "true", "request-forgery"]

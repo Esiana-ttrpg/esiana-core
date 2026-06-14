@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  fetchAndValidateManifestFromUrl,
   normalizeRemoteJsonUrl,
   resolveSafeRemoteJsonUrl,
 } from './fetchPluginManifest.js';
@@ -71,4 +72,26 @@ test('resolveSafeRemoteJsonUrl normalizes GitHub blob URLs before validation', a
     safe.pathname,
     '/Esiana-ttrpg/community-plugins/main/manifest.json',
   );
+});
+
+test('fetchAndValidateManifestFromUrl does not call fetch when URL is blocked', async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = ((...args: Parameters<typeof fetch>) => {
+    fetchCalls += 1;
+    return originalFetch(...args);
+  }) as typeof fetch;
+
+  try {
+    const result = await fetchAndValidateManifestFromUrl(
+      new URL('http://localhost/manifest.json'),
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.match(result.error, /not allowed|localhost/i);
+    }
+    assert.equal(fetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

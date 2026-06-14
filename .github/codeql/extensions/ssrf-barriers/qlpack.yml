@@ -1,4 +1,4 @@
-name: esiana/codeql-extensions
+name: esiana/ssrf-barriers
 version: 0.0.1
 library: true
 extensionTargets:

@@ -1,7 +1,0 @@
-extensions:
-  - addsTo:
-      pack: codeql/javascript-all
-      extensible: barrierModel
-    data:
-      - ["./fetchPluginManifest.js", "Member[resolveSafeRemoteJsonUrl].ReturnValue", "request-forgery"]
-      - ["../lib/fetchPluginManifest.js", "Member[resolveSafeRemoteJsonUrl].ReturnValue", "request-forgery"]
