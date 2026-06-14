@@ -4,7 +4,7 @@ Engineering targets for a **narrative operating system for long-form TTRPG campa
 
 User-facing capability summaries stay in [README.md](./README.md#features). **Shipped** product changes are recorded in [changelog.md](./changelog.md), grouped by domain. Deferred and won't-do items from plans live in [docs/deferred-backlog.md](./docs/deferred-backlog.md).
 
-**Product status:** Beta v0.9.0 shipped; **v1.0.0** follows schema freeze + infra baseline (Postgres, Docker, CI) — date flexible  
+**Product status:** **v1.0.0** shipped — schema freeze + production baseline complete  
 **Last reviewed:** 2026-06-13
 
 ### Pre-1.0 design convergence
@@ -68,15 +68,15 @@ Visual identity, density doctrine, terminology, and shell primitives are **pre-1
 
 Layer 1 convergence and continuity warnings v1 are complete — see [changelog.md](./changelog.md).
 
-- [ ] Migration audit: no pending destructive migrations queued for post-1.0 — see [migration-audit.md](./docs/audits/migration-audit.md) (audited 2026-06-13)
+- [x] Migration audit: no pending destructive migrations queued for post-1.0 — see [migration-audit.md](./docs/audits/migration-audit.md) (audited 2026-06-13)
 - [x] Extension points documented for post-1.0 work (metadata JSON, revelation, temporal projection, plugins) — lore: [lore-knowledge-extension-points.md](./docs/architecture-internal/lore-knowledge-extension-points.md); plugins: [capability-matrix.md](./docs/plugins/capability-matrix.md), [pre-1.0-plugin-platform.md](./docs/plans/pre-1.0-plugin-platform.md) (audited 2026-06-13)
 
 ### v1.0.0 production baseline
 
 *Prefer delaying 1.0 over large post-freeze migrations.*
 
-- [ ] Pre-1.0 schema freeze checklist complete — migration audit + export audit + [database-portability-audit.md](./docs/audits/database-portability-audit.md) done; **baseline squash executed** pre-tag ([migration-squash-verification-20260613.md](./docs/audits/migration-squash-verification-20260613.md), [migration-audit.md](./docs/audits/migration-audit.md))
-- [ ] **Platform & infrastructure** items below (portability audit, Postgres CI parity, Postgres default, Docker, CI) complete
+- [x] Pre-1.0 schema freeze checklist complete — migration audit + export audit + [database-portability-audit.md](./docs/audits/database-portability-audit.md) done; baseline squash at v1.0.0 ([migration-audit.md](./docs/audits/migration-audit.md))
+- [x] **Platform & infrastructure** items below (portability audit, Postgres CI parity, Postgres default, Docker, CI) complete
 
 ### Post-1.0 schema policy
 
@@ -188,12 +188,11 @@ If a feature needs a **large migration**, ship it in the Pre-1.0 window or defer
 - [x] **Postgres default deployment** — Flip repo/Docker/dev defaults after CI stable — `gate:pre-1.0` `legacy: Phase 11`
 - [x] **Multi-stage Docker architecture** — Compose + Dockerfiles in repo; polish multi-stage caching — `legacy: Phase 11`
 - [x] **Orchestration & resilient initialization** — Health checks in compose; entrypoint runs migrate — `legacy: Phase 11`
-- [x] **Prisma transaction audit** — Database-agnostic repository handling — `legacy: Phase 11` — [prisma-transaction-audit.md](./docs/audits/prisma-transaction-audit.md)
-- [ ] **resolveCurrentEpochMinute consolidation** — Merge duplicate private helpers in `downtimeProjectService` / `campaignLedgerService` into shared chronology helper — `target:post-1.0` `legacy: Phase 11`
-- [ ] **Branch protections** — Required PR reviews on `main` / `develop` — `legacy: Phase 12`
-- [ ] **CodeQL SAST** — GitHub Actions CodeQL on pull requests — `legacy: Phase 12`
+- [X] **Prisma transaction audit** — Database-agnostic repository handling — `legacy: Phase 11`
+- [X] **Branch protections** — Required PR reviews on `main` / `develop` — `legacy: Phase 12`
+- [X] **CodeQL SAST** — GitHub Actions CodeQL on pull requests — `legacy: Phase 12`
 - [ ] **Automated dependency auditing** — Dependabot, Snyk, or similar — `legacy: Phase 12`
-- [ ] **Secret exposure safeguards** — Repository secret scanning — `legacy: Phase 12`
+- [X] **Secret exposure safeguards** — Repository secret scanning — `legacy: Phase 12`
 
 ### v1.0.x operations & docs (parallel; does not block v1.0.0 tag)
 

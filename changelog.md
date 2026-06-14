@@ -10,9 +10,17 @@ When a change was planned before implementation, entries may link to a snapshot 
 
 ## [Unreleased]
 
-Pre-1.0 audit work — data sovereignty, integrator docs, migration review, and production baseline scaffolding until v1.0.0 tag.
+## [1.0.0] - 2026-06-13
+
+First stable release — schema freeze, production baseline (Postgres default, Docker Compose, dual-engine CI), and release automation.
 
 ### Added
+
+#### Release engineering (2026-06-13)
+
+- **Release workflow** — Tag-gated [`.github/workflows/release.yml`](.github/workflows/release.yml): full CI gate, GHCR image publish (`esiana-backend`, `esiana-frontend`), GitHub Release from changelog
+- **GHCR compose wiring** — `docker-compose.yml` `image:` refs with `ESIANA_VERSION`; self-hosting pull-based upgrades documented
+- **CI trigger fix** — `develop` push runs the build workflow (direct pushes no longer bypass CI)
 
 #### Pre-1.0 audit (2026-06-13)
 

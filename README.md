@@ -118,7 +118,7 @@ Drop active modular plugin folders directly under `/plugins`. Packages can be re
 
 ## Versioning note
 
-The root [`package.json`](./package.json) `version` field is the **product version** source of truth (currently v0.9.0). It is injected into the admin UI and backend update checks at build/runtime. [changelog.md](./changelog.md) records notable changes by version; [todo.md](./todo.md) tracks the roadmap and milestone targets: **Pre-1.0** (schema freeze), **1.0.0** (Docker/CI after freeze — date flexible), **1.0.x** (ops docs). Tag releases as `vX.Y.Z` on git to align with GitHub release checks.
+The root [`package.json`](./package.json) `version` field is the **product version** source of truth (currently v1.0.0). It is injected into the admin UI and backend update checks at build/runtime. [changelog.md](./changelog.md) records notable changes by version; [todo.md](./todo.md) tracks the roadmap. **Release process:** merge `develop` → `main`, tag `vX.Y.Z` on `main` — the [release workflow](.github/workflows/release.yml) runs CI, publishes GHCR images, and creates the GitHub Release.
 
 ## Third-party assets
 

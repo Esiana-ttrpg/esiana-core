@@ -19,6 +19,7 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ghcr.io/esiana-ttrpg/esiana-backend:${ESIANA_VERSION:-latest}
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
@@ -52,6 +53,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ghcr.io/esiana-ttrpg/esiana-frontend:${ESIANA_VERSION:-latest}
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile

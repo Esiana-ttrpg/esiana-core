@@ -4,15 +4,19 @@ Complete before tagging **v1.0.0**.
 
 ## Automated gates
 
-- [ ] `npm ci && npm run build` (CI `build` job)
-- [ ] `test-sqlite` — full backend tests on SQLite (export matrix + backup round-trip)
-- [ ] `test-postgres` — full backend tests on PostgreSQL (export matrix + backup round-trip)
-- [ ] Postgres fresh install: `docker compose up -d --build` — migrations apply automatically via backend entrypoint
+- [x] `npm ci && npm run build` (CI `build` job)
+- [x] `test-sqlite` — full backend tests on SQLite (export matrix + backup round-trip)
+- [x] `test-postgres` — full backend tests on PostgreSQL (export matrix + backup round-trip)
+- [x] Postgres fresh install: `docker compose up -d --build` — migrations apply automatically via backend entrypoint (CI `docker-build` job)
 - [x] OpenAPI loads at `/api/docs` — build copies spec to `dist/backend/openapi`; loader fallback to source
-- [ ] [database-portability-audit.md](../audits/database-portability-audit.md) reviewed
-- [ ] [prisma-transaction-audit.md](../audits/prisma-transaction-audit.md) reviewed
+- [x] [database-portability-audit.md](../audits/database-portability-audit.md) reviewed
+- [x] [prisma-transaction-audit.md](../audits/prisma-transaction-audit.md) reviewed
+- [x] Release workflow — [`.github/workflows/release.yml`](../../.github/workflows/release.yml) (tag → CI → GHCR → GitHub Release)
+- [x] `npm pack` tarball inspected — no secrets, databases, or test artifacts included
 
 ## Data sovereignty
+
+> Recommended falsification test: export → delete instance → restore → verify campaign integrity.
 
 - [ ] Sovereign export → restore on **new** campaign (wizard)
 - [ ] Sovereign export → restore **in-campaign** (destructive)
@@ -32,6 +36,8 @@ Complete before tagging **v1.0.0**.
 
 ## Manual RC pass (GM)
 
+> Operator verification required before production deployment. CI validates build, tests, and Docker compose — not live campaign workflows.
+
 - [ ] Campaign Home loads
 - [ ] Create/edit wiki page (character, location)
 - [ ] Map temporal scrub + fog reveal
@@ -41,6 +47,6 @@ Complete before tagging **v1.0.0**.
 
 ## Ship
 
-- [ ] [todo.md](../../todo.md) release gates complete
-- [ ] [changelog.md](../../changelog.md) v1.0.0 entry
-- [ ] Git tag `v1.0.0`
+- [x] [todo.md](../../todo.md) release gates complete
+- [x] [changelog.md](../../changelog.md) v1.0.0 entry
+- [ ] Git tag `v1.0.0` on `main` (triggers release workflow)

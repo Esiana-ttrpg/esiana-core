@@ -4,6 +4,8 @@ build/
 .env
 .env.local
 *.log
+test-out.txt
+*.tgz
 .DS_Store
 Thumbs.db
 
