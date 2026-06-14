@@ -25,3 +25,34 @@ test('assertUrlSafeForImport requires HTTPS when HTTP disallowed', async () => {
     SsrfGuardError,
   );
 });
+
+test('assertUrlSafeForImport rejects URLs with embedded credentials', async () => {
+  await assert.rejects(
+    () =>
+      assertUrlSafeForImport(new URL('https://user:pass@example.com/file.json'), {
+        allowHttp: true,
+      }),
+    SsrfGuardError,
+  );
+});
+
+test('assertUrlSafeForImport rejects userinfo URLs targeting private IPs', async () => {
+  await assert.rejects(
+    () =>
+      assertUrlSafeForImport(new URL('https://foo@127.0.0.1/file.json'), {
+        allowHttp: true,
+      }),
+    SsrfGuardError,
+  );
+});
+
+test('assertUrlSafeForImport blocks link-local metadata IP literals', async () => {
+  await assert.rejects(
+    () =>
+      assertUrlSafeForImport(
+        new URL('https://169.254.169.254/latest/meta-data'),
+        { allowHttp: true },
+      ),
+    SsrfGuardError,
+  );
+});

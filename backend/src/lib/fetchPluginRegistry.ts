@@ -1,5 +1,8 @@
 import { parsePluginRegistryIndex } from './pluginManifest.js';
-import { normalizeRemoteJsonUrl } from './fetchPluginManifest.js';
+import {
+  resolveSafeRemoteJsonUrl,
+} from './fetchPluginManifest.js';
+import { SsrfGuardError } from './ssrfGuard.js';
 
 export const MAX_REGISTRY_BYTES = 512 * 1024;
 
@@ -9,12 +12,21 @@ export async function fetchAndParsePluginRegistry(
   | ReturnType<typeof parsePluginRegistryIndex> & { ok: true }
   | { ok: false; status: number; error: string; details?: string[] }
 > {
-  const fetchUrl = normalizeRemoteJsonUrl(url);
+  let safeUrl: URL;
+  try {
+    safeUrl = await resolveSafeRemoteJsonUrl(url, { allowHttp: true });
+  } catch (err) {
+    if (err instanceof SsrfGuardError) {
+      return { ok: false, status: 400, error: err.message };
+    }
+    throw err;
+  }
+
   let response: globalThis.Response;
   try {
-    response = await fetch(fetchUrl.toString(), {
+    response = await fetch(safeUrl.toString(), {
       headers: { Accept: 'application/json' },
-      redirect: 'follow',
+      redirect: 'error',
     });
   } catch (err) {
     return {
@@ -63,7 +75,7 @@ export async function fetchAndParsePluginRegistry(
       error: 'Invalid plugin registry index',
       details: [
         ...parsed.errors,
-        fetchUrl.hostname === 'github.com'
+        safeUrl.hostname === 'github.com'
           ? 'GitHub page URLs must use raw.githubusercontent.com or a /blob/ link (auto-normalized when possible).'
           : 'Expected registry.json with a plugins array, or a single manifest.json plugin object.',
       ],

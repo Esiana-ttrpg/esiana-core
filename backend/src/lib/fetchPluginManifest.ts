@@ -1,4 +1,5 @@
 import { validatePluginManifest, type PluginManifest } from './pluginManifest.js';
+import { SsrfGuardError, assertUrlSafeForImport } from './ssrfGuard.js';
 
 export const MAX_MANIFEST_BYTES = 512 * 1024;
 
@@ -43,6 +44,15 @@ export function normalizeRemoteJsonUrl(input: URL): URL {
   return input;
 }
 
+export async function resolveSafeRemoteJsonUrl(
+  url: URL,
+  options: { allowHttp: boolean },
+): Promise<URL> {
+  const normalized = normalizeRemoteJsonUrl(url);
+  await assertUrlSafeForImport(normalized, options);
+  return normalized;
+}
+
 export async function fetchAndValidateManifestFromUrl(
   url: URL,
 ): Promise<
@@ -50,11 +60,20 @@ export async function fetchAndValidateManifestFromUrl(
   | { ok: false; status: number; error: string; details?: string[] }
 > {
   let response: globalThis.Response;
-  const fetchUrl = normalizeRemoteJsonUrl(url);
+  let safeUrl: URL;
   try {
-    response = await fetch(fetchUrl.toString(), {
+    safeUrl = await resolveSafeRemoteJsonUrl(url, { allowHttp: true });
+  } catch (err) {
+    if (err instanceof SsrfGuardError) {
+      return { ok: false, status: 400, error: err.message };
+    }
+    throw err;
+  }
+
+  try {
+    response = await fetch(safeUrl.toString(), {
       headers: { Accept: 'application/json' },
-      redirect: 'follow',
+      redirect: 'error',
     });
   } catch (err) {
     return {
