@@ -122,15 +122,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate production compose config
+      - name: Validate compose config
         run: docker compose config --quiet
-
-      - name: Validate local compose override
-        run: docker compose -f docker-compose.yml -f docker-compose.local.yml config --quiet
 
       - name: Assert Postgres health-gated startup
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.local.yml config | grep -c 'condition: service_healthy' | grep -q '^1$'
+          docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
 
   publish-images:
     needs: [build, test-sqlite, test-postgres, docker-build]

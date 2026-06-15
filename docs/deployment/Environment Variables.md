@@ -21,11 +21,13 @@ Canonical reference for every supported Esiana environment variable.
 
 | Name | Default | Required | Description | Example |
 |------|---------|----------|-------------|---------|
-| `PUBLIC_ORIGIN` | `https://world.psl.coffee` (must match `x-esiana-host` in compose) | Optional | Public browser URL (no trailing slash). Sets `FRONTEND_ORIGIN`, `CORS_ORIGIN`, and `BACKEND_PUBLIC_ORIGIN` for the app container. Edit `x-esiana-host` in `docker-compose.yml` when changing hostname. | `https://esiana.example.com` |
+| `PUBLIC_ORIGIN` | `http://localhost:8080` (matches `COMPOSE_HTTP_PORT`) | Optional | Public browser URL (no trailing slash). Sets `FRONTEND_ORIGIN`, `CORS_ORIGIN`, and `BACKEND_PUBLIC_ORIGIN`. Required when using a reverse proxy — see [Reverse Proxies.md](Reverse%20Proxies.md). | `https://esiana.example.com` |
 | `ESIANA_VERSION` | `latest` | Optional | GHCR image tag. Pin for pull-based upgrades. | `v1.0.1` |
 | `AUTH_SECRETS_KEY` | (empty) | Optional | 32-byte base64 AES key for encrypting OIDC client secrets in Admin. Required when using Identity Providers in production. | `openssl rand -base64 32` |
 | `OPENAPI_DOCS_ENABLED` | `true` | Optional | `true` exposes `/api/docs` in production; `false` hides Swagger on public hosts. | `false` |
-| `COMPOSE_HTTP_PORT` | `8080` | Optional | Host port when using [`docker-compose.local.yml`](../../docker-compose.local.yml) (local trial without Caddy). | `8080` |
+| `COMPOSE_HTTP_PORT` | `8080` | Optional | Host port mapped to the esiana container. | `8080` |
+| `TRUST_PROXY` | `false` | Optional | `true` when behind a reverse proxy that sets `X-Forwarded-*` headers. | `true` |
+| `COOKIE_SECURE` | `false` | Optional | `true` for HTTPS-only session cookies. Set when serving only over TLS. | `true` |
 
 ---
 
@@ -39,7 +41,7 @@ Canonical reference for every supported Esiana environment variable.
 | `NODE_ENV` | `production` | Runtime mode for the container. |
 | `UPLOADS_DIR` | `/data/uploads` | Upload storage inside the container (backed by the `uploads` volume). |
 | `PLUGINS_DIR` | `/app/plugins` | Plugin packages inside the container (backed by the `plugins` volume). |
-| `TRUST_PROXY` | `true` (production compose) / `false` (local override) | Express trust proxy — rate limits and client IP behind Caddy/nginx. |
+| `TRUST_PROXY` | `false` | `true` when behind a reverse proxy — see [Reverse Proxies.md](Reverse%20Proxies.md). |
 
 ---
 
@@ -192,6 +194,8 @@ Build metadata: root `package.json` `version` is injected as `__ESIANA_VERSION__
 
 ## Related docs
 
+- [Docker Compose.md](Docker%20Compose.md) — official quick start
+- [Reverse Proxies.md](Reverse%20Proxies.md) — HTTPS and public hostname setup
 - [Self-hosting runbook](self-hosting-runbook.md) — maintainer RC verification
 - [Object storage](object-storage.md) — S3 driver setup
 - [docs/self-hosting/](../../../docs/self-hosting/) — operator installation wiki
