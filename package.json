@@ -6,12 +6,13 @@
   "workspaces": [
     "backend",
     "frontend",
-    "packages/storage-s3"
+    "packages/storage-s3",
+    "packages/ssrf-guard"
   ],
   "scripts": {
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
-    "build": "npm run build --workspace=@esiana/storage-s3 && npm run build --workspaces --if-present",
+    "build": "npm run build --workspace=@esiana/storage-s3 && npm run build --workspace=@esiana/ssrf-guard && npm run build --workspaces --if-present",
     "db:generate": "npm run db:generate --workspace=backend",
     "db:migrate": "npm run db:migrate --workspace=backend",
     "db:push": "npm run db:push --workspace=backend",

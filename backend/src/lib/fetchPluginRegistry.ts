@@ -3,8 +3,8 @@ import { normalizeRemoteJsonUrl } from './fetchPluginManifest.js';
 import {
   SsrfGuardError,
   assertUrlSafeForImport,
-  isUrlSafeForImport,
-} from './ssrfGuard.js';
+  isUrlSafeForImportSync,
+} from '@esiana/ssrf-guard';
 
 export const MAX_REGISTRY_BYTES = 512 * 1024;
 
@@ -16,7 +16,16 @@ export async function fetchAndParsePluginRegistry(
 > {
   const normalized = normalizeRemoteJsonUrl(url);
 
-  if (await isUrlSafeForImport(normalized, { allowHttp: true })) {
+  if (isUrlSafeForImportSync(normalized, { allowHttp: true })) {
+    try {
+      await assertUrlSafeForImport(normalized, { allowHttp: true });
+    } catch (err) {
+      if (err instanceof SsrfGuardError) {
+        return { ok: false, status: 400, error: err.message };
+      }
+      throw err;
+    }
+
     let response: globalThis.Response;
     try {
       response = await fetch(normalized.toString(), {

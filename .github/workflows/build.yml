@@ -30,6 +30,9 @@ jobs:
       - name: Build storage-s3 package
         run: npm run build --workspace=@esiana/storage-s3
 
+      - name: Build ssrf-guard package
+        run: npm run build --workspace=@esiana/ssrf-guard
+
       - name: Build frontend
         run: npm run build --workspace=frontend
 

@@ -63,7 +63,6 @@ function assertHostnameAllowed(hostname: string): void {
   const ipVersion = isIP(host);
   if (ipVersion) {
     assertIpAllowed(host);
-    return;
   }
 }
 
@@ -111,6 +110,27 @@ export async function isUrlSafeForImport(
 ): Promise<boolean> {
   try {
     await assertUrlSafeForImport(url, options);
+    return true;
+  } catch (error) {
+    if (error instanceof SsrfGuardError) return false;
+    throw error;
+  }
+}
+
+/**
+ * Synchronous SSRF pre-check for guard branches (hostname literals, userinfo, protocol).
+ * Callers must still run assertUrlSafeForImport before network I/O for DNS resolution.
+ */
+export function isUrlSafeForImportSync(
+  url: URL,
+  options: { allowHttp: boolean },
+): boolean {
+  try {
+    if (url.username || url.password) {
+      throw new SsrfGuardError('URL credentials are not allowed');
+    }
+    assertAllowedImportProtocol(url, options.allowHttp);
+    assertHostnameAllowed(url.hostname);
     return true;
   } catch (error) {
     if (error instanceof SsrfGuardError) return false;

@@ -5,7 +5,7 @@ import {
   normalizeRemoteJsonUrl,
   resolveSafeRemoteJsonUrl,
 } from './fetchPluginManifest.js';
-import { SsrfGuardError } from './ssrfGuard.js';
+import { SsrfGuardError } from '@esiana/ssrf-guard';
 
 test('normalizeRemoteJsonUrl converts github blob links to raw.githubusercontent.com', () => {
   const normalized = normalizeRemoteJsonUrl(

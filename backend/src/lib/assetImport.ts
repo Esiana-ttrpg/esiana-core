@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { parseTargetUrl } from './fetchPluginManifest.js';
-import { SsrfGuardError, assertUrlSafeForImport } from './ssrfGuard.js';
+import { SsrfGuardError, assertUrlSafeForImport } from '@esiana/ssrf-guard';
 import { getUrlImportSettings } from './imageUploadSettings.js';
 import { detectImageFromBuffer, UploadValidationError } from './uploadValidation.js';
 import {

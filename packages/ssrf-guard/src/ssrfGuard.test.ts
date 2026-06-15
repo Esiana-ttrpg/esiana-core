@@ -4,6 +4,7 @@ import {
   SsrfGuardError,
   assertUrlSafeForImport,
   isUrlSafeForImport,
+  isUrlSafeForImportSync,
 } from './ssrfGuard.js';
 
 test('assertUrlSafeForImport blocks localhost', async () => {
@@ -101,6 +102,33 @@ test('isUrlSafeForImport returns false for link-local metadata IP literals', asy
 test('isUrlSafeForImport returns false for URLs with embedded credentials', async () => {
   assert.equal(
     await isUrlSafeForImport(new URL('https://user:pass@example.com/file.json'), {
+      allowHttp: true,
+    }),
+    false,
+  );
+});
+
+test('isUrlSafeForImportSync returns true for public HTTPS URLs', () => {
+  assert.equal(
+    isUrlSafeForImportSync(new URL('https://example.com/manifest.json'), {
+      allowHttp: true,
+    }),
+    true,
+  );
+});
+
+test('isUrlSafeForImportSync returns false for localhost', () => {
+  assert.equal(
+    isUrlSafeForImportSync(new URL('http://localhost/manifest.json'), {
+      allowHttp: true,
+    }),
+    false,
+  );
+});
+
+test('isUrlSafeForImportSync returns false for private IPv4 literals', () => {
+  assert.equal(
+    isUrlSafeForImportSync(new URL('https://192.168.1.10/manifest.json'), {
       allowHttp: true,
     }),
     false,
