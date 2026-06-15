@@ -7,7 +7,7 @@ Complete before tagging **v1.0.0**.
 - [x] `npm ci && npm run build` (CI `build` job)
 - [x] `test-sqlite` — full backend tests on SQLite (export matrix + backup round-trip)
 - [x] `test-postgres` — full backend tests on PostgreSQL (export matrix + backup round-trip)
-- [x] Postgres fresh install: `docker compose up -d --build` — migrations apply automatically via backend entrypoint (CI `docker-build` job)
+- [x] Postgres fresh install: `docker compose up -d --build` — migrations apply automatically via esiana entrypoint (CI `docker-build` job)
 - [x] OpenAPI loads at `/api/docs` — build copies spec to `dist/backend/openapi`; loader fallback to source
 - [x] [database-portability-audit.md](../audits/database-portability-audit.md) reviewed
 - [x] [prisma-transaction-audit.md](../audits/prisma-transaction-audit.md) reviewed
@@ -44,6 +44,14 @@ Complete before tagging **v1.0.0**.
 - [ ] Export sovereign ZIP
 - [ ] Restore backup
 - [ ] Enable example plugin
+
+## Maintainer sign-off
+
+> AI-generated release checklists are advisory only. See [GOVERNANCE.md](../../GOVERNANCE.md).
+
+> Human verification always supersedes AI analysis.
+
+- [ ] Human maintainer verified automated gates, data sovereignty, migration, and manual RC items (not solely via AI review)
 
 ## Ship
 
