@@ -115,9 +115,13 @@ After changing provider, run `npm run db:generate` and migrate/push.
 
 Drop active modular plugin folders directly under `/plugins`. Packages can be registered, installed, and toggled on the fly using the core API routes (`/api/plugins`). For details on building a custom module extension, review `plugins/README.md`.
 
-## Security
+## License
 
-Report vulnerabilities privately — see [SECURITY.md](./SECURITY.md). Dependabot monitors npm dependencies; review and merge dependency PRs like any other change.
+Esiana core is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE) — Copyright (C) 2026 Esiana Contributors.
+
+If you modify this software and run it as a network service, AGPL section 13 requires you to offer corresponding source to users interacting with it over the network. See [LICENSE](./LICENSE) for full terms.
+
+Runtime plugin packages under [`plugins/`](./plugins/) may carry separate licenses from their authors; see each package and the [community-plugins](https://github.com/Esiana-ttrpg/community-plugins) catalog.
 
 ## Versioning note
 
