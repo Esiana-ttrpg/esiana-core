@@ -1,0 +1,85 @@
+name: Bug report
+description: Report incorrect behavior in Esiana core
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. For security vulnerabilities, see [SECURITY.md](../../SECURITY.md) — do not file public bugs for those.
+
+  - type: input
+    id: version
+    attributes:
+      label: Esiana version
+      description: From Admin UI, package.json, or release tag (e.g. v1.0.0)
+      placeholder: v1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Local dev (npm run dev)
+        - Docker Compose (GHCR pull)
+        - Docker Compose (build from source)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - PostgreSQL
+        - SQLite
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps a maintainer can follow
+      placeholder: |
+        1. Log in as GM
+        2. Open campaign X
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Browser console, `docker compose logs esiana`, or backend terminal output
+    validations:
+      required: false
+
+  - type: input
+    id: campaign-scope
+    attributes:
+      label: Campaign scope (optional)
+      description: Does this affect one campaign, all campaigns, or system admin only?
+      placeholder: Single campaign / all campaigns / admin
+    validations:
+      required: false

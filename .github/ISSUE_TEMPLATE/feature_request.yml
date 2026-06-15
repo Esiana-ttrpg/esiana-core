@@ -1,0 +1,55 @@
+name: Feature request
+description: Suggest narrative infrastructure improvements for Esiana core
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Esiana is campaign narrative infrastructure — not a VTT. See [philosophy.md](../../philosophy.md) for product scope.
+        Plugin-only integrations may belong in [community-plugins](https://github.com/Esiana-ttrpg/community-plugins) instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or gap
+      description: What workflow or continuity need is unmet?
+    validations:
+      required: true
+
+  - type: textarea
+    id: narrative-fit
+    attributes:
+      label: Narrative continuity fit
+      description: How does this strengthen continuity, discovery, or temporal world state?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Core product (esiana-core)
+        - Plugin / integration (community-plugins)
+        - Documentation only
+        - Unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Optional — sketch UX, API, or data model at a high level
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      options:
+        - label: I checked deferred scope in docs/deferred-backlog.md or todo.md
+          required: false

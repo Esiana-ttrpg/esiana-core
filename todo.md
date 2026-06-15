@@ -191,7 +191,7 @@ If a feature needs a **large migration**, ship it in the Pre-1.0 window or defer
 - [X] **Prisma transaction audit** — Database-agnostic repository handling — `legacy: Phase 11`
 - [X] **Branch protections** — Required PR reviews on `main` / `develop` — `legacy: Phase 12`
 - [X] **CodeQL SAST** — GitHub Actions CodeQL on pull requests — `legacy: Phase 12`
-- [ ] **Automated dependency auditing** — Dependabot, Snyk, or similar — `legacy: Phase 12`
+- [x] **Automated dependency auditing** — Dependabot on npm workspaces — `legacy: Phase 12`
 - [X] **Secret exposure safeguards** — Repository secret scanning — `legacy: Phase 12`
 
 ### v1.0.x operations & docs (parallel; does not block v1.0.0 tag)
