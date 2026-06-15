@@ -9,7 +9,6 @@ COPY backend ./backend
 COPY frontend ./frontend
 COPY shared ./shared
 COPY packages ./packages
-# Prisma client must match runtime DATABASE_URL provider (Compose defaults to PostgreSQL).
 ARG PRISMA_DATABASE_PROVIDER=postgresql
 RUN if [ "$PRISMA_DATABASE_PROVIDER" = "sqlite" ]; then \
   sed -i 's/provider = "postgresql"/provider = "sqlite"/' backend/prisma/schema.prisma; \
@@ -19,8 +18,19 @@ RUN npm run build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
+
+LABEL org.opencontainers.image.title="Esiana"
+LABEL org.opencontainers.image.description="Self-hosted narrative infrastructure for long-form TTRPG campaigns (nginx + API + SPA)"
+LABEL org.opencontainers.image.source="https://github.com/Esiana-ttrpg/esiana-core"
+LABEL org.opencontainers.image.vendor="Esiana-ttrpg"
+
+RUN apk add --no-cache nginx su-exec \
+  && addgroup -S esiana && adduser -S esiana -G esiana \
+  && mkdir -p /data/uploads /app/plugins /run/nginx \
+  && chown -R esiana:esiana /data/uploads /app/plugins
+
 ENV NODE_ENV=production
-RUN addgroup -S esiana && adduser -S esiana -G esiana
+
 COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/backend/dist ./backend/dist
@@ -29,8 +39,11 @@ COPY --from=build /app/backend/package.json ./backend/
 COPY --from=build /app/backend/prisma ./backend/prisma
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/shared ./shared
-COPY docker/backend-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh && mkdir -p /data/uploads && chown -R esiana:esiana /data/uploads
-USER esiana
-EXPOSE 3001
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
+
+COPY docker/nginx-esiana.conf /etc/nginx/conf.d/default.conf
+COPY docker/esiana-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 80
 ENTRYPOINT ["/entrypoint.sh"]
