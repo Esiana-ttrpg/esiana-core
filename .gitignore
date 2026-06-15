@@ -22,4 +22,11 @@ uploads/*
 .vscode/*
 !.vscode/extensions.json
 
+# Shared TypeScript sources only — do not commit emitted artifacts
+shared/**/*.js
+shared/**/*.js.map
+shared/**/*.d.ts
+shared/**/*.d.ts.map
+!shared/**/*.test.js
+
 # Prisma (migration_lock.toml at migrations root is tracked)
