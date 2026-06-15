@@ -20,8 +20,9 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 ### Operator / packaging (when Docker or compose changed)
 
 - [ ] `docker compose config` validates
-- [ ] Fresh `docker compose up -d --build` (or GHCR pull smoke) — login, `/api/health`, wiki edit
-- [ ] `ESIANA_VERSION` documented for pull-based upgrades
+- [ ] Fresh `docker compose up -d` (or GHCR pull smoke) — login, `/api/health`, wiki edit at `http://localhost:8080`
+- [ ] `docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:<tag>` shows `linux/amd64` and `linux/arm64`
+- [ ] Optional `ESIANA_VERSION` documented for pull-based upgrades ([Environment Variables.md](../deployment/Environment%20Variables.md))
 - [ ] Self-hosting docs aligned ([docs/self-hosting/](../../../docs/self-hosting/))
 
 ### Data sovereignty (when export/import or schema touched)
