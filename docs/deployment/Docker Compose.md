@@ -86,6 +86,19 @@ See [Reverse Proxies.md](Reverse%20Proxies.md) for examples. Esiana does not req
 
 ---
 
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `exec /entrypoint.sh: exec format error` | GHCR image is amd64-only on an arm64 host (e.g. Apple Silicon, Raspberry Pi, ARM VPS) | Upgrade to **v1.0.2+** (multi-arch). Verify: `docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:latest` shows `linux/arm64`. Do not add `platform: linux/amd64` unless you have QEMU/binfmt emulation installed. |
+| `no matching manifest for linux/arm64` | Tagged release predates multi-arch publishing | Pull `v1.0.2` or later, or `latest` after the multi-arch release ships |
+| CORS errors | `PUBLIC_ORIGIN` does not match browser URL | Set `PUBLIC_ORIGIN` in `.env` to your public URL — see [Reverse Proxies.md](Reverse%20Proxies.md) |
+| Login cookie not set | `COOKIE_SECURE=true` over plain HTTP | Use HTTPS or set `COOKIE_SECURE=false` for local HTTP only |
+| Postgres restart loop | `POSTGRES_PASSWORD` missing from `.env` | Copy `.env.example` and set required secrets |
+| Blank page / API errors | Migrations failed on startup | `docker compose logs esiana` |
+
+---
+
 ## Related docs
 
 - [Environment Variables.md](Environment%20Variables.md) — every supported variable
