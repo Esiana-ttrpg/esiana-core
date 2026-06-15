@@ -193,20 +193,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Extract changelog section
-        id: changelog
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
           TAG="${GITHUB_REF_NAME}"
-          awk -v ver="$VERSION" '
-            $0 ~ "^## \\[" ver "\\]" { found=1; next }
-            found && /^## \[/ { exit }
-            found { print }
-          ' changelog.md > release-notes.md
+          PREV=$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -1 || true)
+          if [ -n "$PREV" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="$TAG" \
+              -f target_commitish="${GITHUB_SHA}" \
+              -f previous_tag_name="$PREV" \
+              --jq .body > release-notes.md
+          else
+            echo "# Esiana ${TAG}" > release-notes.md
+          fi
           if [ ! -s release-notes.md ]; then
-            echo "No changelog section for ${VERSION}; using tag message." >&2
-            echo "See [changelog.md](./changelog.md)." > release-notes.md
+            echo "# Esiana ${TAG}" > release-notes.md
+            echo "" >> release-notes.md
+            echo "See [GitHub Releases](https://github.com/${GITHUB_REPOSITORY}/releases)." >> release-notes.md
           fi
           {
             echo ""

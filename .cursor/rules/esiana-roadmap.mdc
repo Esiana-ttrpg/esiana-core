@@ -1,26 +1,25 @@
 ---
-description: Roadmap status, doc hygiene, and todo.md conventions
+description: Roadmap status, doc hygiene, and planning conventions
 alwaysApply: true
 ---
 
 # Esiana Roadmap Context
 
-Source: [todo.md](../../todo.md) (last reviewed 2026-06-13).
+Source: [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) and [Milestones](https://github.com/Esiana-ttrpg/esiana-core/milestones) (last reviewed 2026-06-15).
 
 ## Status
 
-- **Shipped:** Beta v0.9.0
-- **In progress:** Pre-1.0 (schema freeze, infra baseline)
+- **Shipped:** v1.0.1
+- **In progress:** Post-1.0 views and plugins over frozen schema
 
 ## Before implementing roadmap work
 
-1. Read open `[ ]` items in [todo.md](../../todo.md)
+1. Check open [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) and current Milestones
 2. Prefer extending shipped primitives over greenfield rewrites
 3. Check [deferred-backlog.md](../../docs/deferred-backlog.md) for deferred, `won't-do`, or `plugin-only` items
 
 ## Do not assume shipped (near-term open)
 
-- Phase 11–12 infra hardening (branch protections, CodeQL, Dependabot) — partial: Docker compose + CI tests added
 - Layer 6 narrative intelligence (session prep, pacing analytics)
 - Map atlas polish (clustering, cached manifests) — core atlas shipped
 
@@ -30,17 +29,9 @@ Source: [todo.md](../../todo.md) (last reviewed 2026-06-13).
 - OpenAPI `/api/docs` (version-locked in core); human API/plugin docs in [`docs/`](../../docs/) wiki
 - See [pre-1.0-export-audit.md](../../docs/audits/pre-1.0-export-audit.md), [migration-audit.md](../../docs/audits/migration-audit.md)
 
-## Markers in todo.md
-
-| Marker | Meaning |
-|--------|---------|
-| `[ ]` | Open core work — scheduled in todo.md |
-| Shipped | [changelog.md](../../changelog.md) only |
-| Won't do / plugin-only | [deferred-backlog.md](../../docs/deferred-backlog.md) only |
-
 ## Doc hygiene
 
-- User-facing releases → [changelog.md](../../changelog.md)
+- User-facing releases → [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases)
 - Deferred scope → [deferred-backlog.md](../../docs/deferred-backlog.md)
 - Plan snapshots → [docs/plans/](../../docs/plans/)
-- Do not duplicate full todo checklists inside code or rules — link todo.md instead
+- Historical roadmap → [docs/archive/todo-roadmap-through-20260615.md](../../docs/archive/todo-roadmap-through-20260615.md)

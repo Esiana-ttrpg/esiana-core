@@ -62,5 +62,6 @@ Esiana is a TypeScript monorepo:
 
 - Governance: [GOVERNANCE.md](./GOVERNANCE.md)
 - Security reporting: [SECURITY.md](./SECURITY.md)
+- Maintainer releases: [DEVELOPMENT.md](./DEVELOPMENT.md#maintainer-release) · [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases)
 - Installation and local development: [../docs/options/installation.md](../docs/options/installation.md)
 - Plugin development: [../docs/plugin-development/getting-started.md](../docs/plugin-development/getting-started.md)

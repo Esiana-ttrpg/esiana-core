@@ -160,7 +160,7 @@ All checks must pass before merge.
 
 Campaign-scoped routes must include tenant isolation (`campaignId` in reads/writes). See [docs/security/tenant-isolation-audit.md](./docs/security/tenant-isolation-audit.md).
 
-User-facing changes belong in [changelog.md](./changelog.md). Deferred scope: [docs/deferred-backlog.md](./docs/deferred-backlog.md).
+User-facing release notes belong on [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases). Deferred scope: [docs/deferred-backlog.md](./docs/deferred-backlog.md).
 
 Do not commit secrets (`.env`, credentials, local databases).
 
@@ -172,6 +172,6 @@ Release authority and tagging rules: [GOVERNANCE.md](./GOVERNANCE.md).
 
 Before tagging `vX.Y.Z` on `main`:
 
-1. Update [changelog.md](./changelog.md) for the version
+1. Review and edit GitHub Release notes after the workflow runs (generated from merged PRs since the previous tag)
 2. Complete [docs/release/release-checklist.md](./docs/release/release-checklist.md) with human maintainer attestation
 3. Tag on `main` — the [release workflow](.github/workflows/release.yml) publishes GHCR images and creates the GitHub Release

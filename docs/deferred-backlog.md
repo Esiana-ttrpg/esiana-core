@@ -1,7 +1,7 @@
 # Deferred backlog (from plans)
 
 > **Last audited:** 2026-06-13 (core/plugin/won't-do split; removed superseded outdated items)  
-> Intent and rationale live in each linked plan snapshot. **Delivery tracking** lives in [todo.md](../todo.md).  
+> Intent and rationale live in each linked plan snapshot. **Delivery tracking** uses [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues).  
 > Update this file when closing a plan or shipping a feature that was previously deferred.
 
 ## How to use
@@ -9,8 +9,8 @@
 
 | Status        | Meaning                                                     |
 | ------------- | ----------------------------------------------------------- |
-| `open`        | Still deferred; not tracked as an open checkbox in todo.md  |
-| `in-todo`     | Captured in [todo.md](../todo.md) — use todo for scheduling |
+| `open`        | Still deferred; not tracked as a GitHub Issue yet          |
+| `in-todo`     | Tracked via [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) |
 | `partial`     | Part shipped; remainder still deferred                      |
 | `shipped`     | Was deferred in a plan but has since landed                 |
 | `won't-do`    | Explicit core skip (architecture/product decision)          |

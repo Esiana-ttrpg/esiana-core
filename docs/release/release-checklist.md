@@ -14,7 +14,7 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 
 - [ ] `npm ci && npm run build` passes locally or on the release PR
 - [ ] CI green on the commit to be tagged (`build`, `test-sqlite`, `test-postgres`, `docker-build`)
-- [ ] [changelog.md](../../changelog.md) has an accurate section for this version
+- [ ] GitHub Release notes reviewed after workflow (generated from merged PRs; edit on GitHub if operator-facing detail is needed)
 - [ ] No pending schema migrations queued without maintainer review ([migration-audit.md](../audits/migration-audit.md))
 
 ### Operator / packaging (when Docker or compose changed)

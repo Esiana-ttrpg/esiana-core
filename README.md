@@ -3,13 +3,13 @@
 Esiana is a self-hosted, multi-campaign TTRPG worldbuilding and campaign manager designed for Game Masters who want deep lore organization without heavy VTT automation.
 
 [!NOTE]
-Project Status: **v1.0.0** (stable baseline)
+Project Status: **v1.0.1** (stable baseline)
 
-Esiana ships a schema-frozen production baseline with Postgres default, Docker Compose, and dual-engine CI. Post-1.0 work extends views and plugins over existing tables — see [todo.md](./todo.md). AI assists development and review; [GOVERNANCE.md](./GOVERNANCE.md) requires human maintainer sign-off for merges and releases.
+Esiana ships a schema-frozen production baseline with Postgres default, Docker Compose, and dual-engine CI. Post-1.0 work extends views and plugins over existing tables — track via [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues). AI assists development and review; [GOVERNANCE.md](./GOVERNANCE.md) requires human maintainer sign-off for merges and releases.
 
 ## Features
 
-For upcoming work, see the [development roadmap](./todo.md).
+For upcoming work, see [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) and [Milestones](https://github.com/Esiana-ttrpg/esiana-core/milestones) ([roadmap](./todo.md)).
 
 Contributors: [CONTRIBUTING.md](./CONTRIBUTING.md) · [GOVERNANCE.md](./GOVERNANCE.md) · [`.cursor/rules/`](./.cursor/rules/) · [philosophy.md](./philosophy.md) · [design-philosophy.md](./design-philosophy.md)
 
@@ -125,7 +125,7 @@ Runtime plugin packages under [`plugins/`](./plugins/) may carry separate licens
 
 ## Versioning note
 
-The root [`package.json`](./package.json) `version` field is the **product version** source of truth (currently v1.0.0). It is injected into the admin UI and backend update checks at build/runtime. [changelog.md](./changelog.md) records notable changes by version; [todo.md](./todo.md) tracks the roadmap. **Release process:** merge via reviewed PR to `main`, complete [release checklist](./docs/release/release-checklist.md), tag `vX.Y.Z` — the [release workflow](.github/workflows/release.yml) runs CI, publishes `ghcr.io/esiana-ttrpg/esiana`, and creates the GitHub Release. See [GOVERNANCE.md](./GOVERNANCE.md) for maintainer and AI review policy.
+The root [`package.json`](./package.json) `version` field is the **product version** source of truth (currently v1.0.1). It is injected into the admin UI and backend update checks at build/runtime. [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases) record release history; [todo.md](./todo.md) links to Issues and Milestones for roadmap tracking. **Release process:** merge via reviewed PR to `main`, complete [release checklist](./docs/release/release-checklist.md), tag `vX.Y.Z` — the [release workflow](.github/workflows/release.yml) runs CI, publishes `ghcr.io/esiana-ttrpg/esiana`, and creates the GitHub Release. See [GOVERNANCE.md](./GOVERNANCE.md) for maintainer and AI review policy.
 
 ## Third-party assets
 
@@ -133,8 +133,6 @@ The root [`package.json`](./package.json) `version` field is the **product versi
 
 ---
 
-## Active Milestone Roadmap
+## Roadmap
 
-We maintain a granular development, framework task, and testing roadmap right in the root of this workspace. Before tackling features, writing backend integration frameworks, or extending data visualization canvases, please review the active development milestones:
-
-📄 **[Review the Project Todo Tracker (`todo.md`)](./todo.md)**
+Open work is tracked in [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) and [Milestones](https://github.com/Esiana-ttrpg/esiana-core/milestones). See [todo.md](./todo.md) for links and archived history.
