@@ -124,7 +124,7 @@ jobs:
 
       - name: Assert health-based startup ordering
         run: |
-          docker compose config | grep -c 'condition: service_healthy' | grep -q '^2$'
+          docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
 
       - name: Build images
         run: docker compose build

@@ -127,7 +127,7 @@ jobs:
 
       - name: Assert health-based startup ordering
         run: |
-          docker compose config | grep -c 'condition: service_healthy' | grep -q '^2$'
+          docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
 
       - name: Build images
         run: docker compose build
@@ -164,60 +164,75 @@ jobs:
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
           SEMVER="${{ steps.meta.outputs.semver }}"
-          BACKEND_TAGS="ghcr.io/esiana-ttrpg/esiana-backend:${TAG}
-          ghcr.io/esiana-ttrpg/esiana-backend:${SEMVER}"
-          FRONTEND_TAGS="ghcr.io/esiana-ttrpg/esiana-frontend:${TAG}
-          ghcr.io/esiana-ttrpg/esiana-frontend:${SEMVER}"
+          IMAGE_TAGS="ghcr.io/esiana-ttrpg/esiana:${TAG}
+          ghcr.io/esiana-ttrpg/esiana:${SEMVER}"
           if [ "${{ steps.meta.outputs.is_prerelease }}" = "false" ]; then
-            BACKEND_TAGS="${BACKEND_TAGS}
-          ghcr.io/esiana-ttrpg/esiana-backend:latest"
-            FRONTEND_TAGS="${FRONTEND_TAGS}
-          ghcr.io/esiana-ttrpg/esiana-frontend:latest"
+            IMAGE_TAGS="${IMAGE_TAGS}
+          ghcr.io/esiana-ttrpg/esiana:latest"
           fi
           {
-            echo "backend<<EOF"
-            echo "$BACKEND_TAGS"
-            echo "EOF"
-            echo "frontend<<EOF"
-            echo "$FRONTEND_TAGS"
+            echo "image<<EOF"
+            echo "$IMAGE_TAGS"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build and push backend image
+      - name: Build and push Esiana image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/backend.Dockerfile
+          file: docker/esiana.Dockerfile
           push: true
-          tags: ${{ steps.tags.outputs.backend }}
-
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/frontend.Dockerfile
-          push: true
-          tags: ${{ steps.tags.outputs.frontend }}
+          tags: ${{ steps.tags.outputs.image }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
+            org.opencontainers.image.source=https://github.com/Esiana-ttrpg/esiana-core
+            org.opencontainers.image.description=Self-hosted narrative infrastructure for long-form TTRPG campaigns
 
   github-release:
     needs: [build, test-sqlite, test-postgres, docker-build, publish-images]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Extract changelog section
-        id: changelog
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          awk -v ver="$VERSION" '
-            $0 ~ "^## \\[" ver "\\]" { found=1; next }
-            found && /^## \[/ { exit }
-            found { print }
-          ' changelog.md > release-notes.md
-          if [ ! -s release-notes.md ]; then
-            echo "No changelog section for ${VERSION}; using tag message." >&2
-            echo "See [changelog.md](./changelog.md)." > release-notes.md
+          TAG="${GITHUB_REF_NAME}"
+          PREV=$(git tag --sort=-v:refname | grep -v "^${TAG}$" | head -1 || true)
+          if [ -n "$PREV" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+              -f tag_name="$TAG" \
+              -f target_commitish="${GITHUB_SHA}" \
+              -f previous_tag_name="$PREV" \
+              --jq .body > release-notes.md
+          else
+            echo "# Esiana ${TAG}" > release-notes.md
           fi
+          if [ ! -s release-notes.md ]; then
+            echo "# Esiana ${TAG}" > release-notes.md
+            echo "" >> release-notes.md
+            echo "See [GitHub Releases](https://github.com/${GITHUB_REPOSITORY}/releases)." >> release-notes.md
+          fi
+          {
+            echo ""
+            echo "## Container image"
+            echo ""
+            echo "\`\`\`"
+            echo "ghcr.io/esiana-ttrpg/esiana:${TAG}"
+            echo "\`\`\`"
+            echo ""
+            echo "Set \`ESIANA_VERSION=${TAG}\` in your \`.env\`, then:"
+            echo ""
+            echo "\`\`\`bash"
+            echo "docker compose pull"
+            echo "docker compose up -d"
+            echo "\`\`\`"
+            echo ""
+            echo "See [Self-hosting installation](https://github.com/Esiana-ttrpg/docs/blob/main/self-hosting/installation.md)."
+          } >> release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

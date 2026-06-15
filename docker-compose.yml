@@ -18,11 +18,11 @@ services:
       retries: 5
     restart: unless-stopped
 
-  backend:
-    image: ghcr.io/esiana-ttrpg/esiana-backend:${ESIANA_VERSION:-latest}
+  esiana:
+    image: ghcr.io/esiana-ttrpg/esiana:${ESIANA_VERSION:-latest}
     build:
       context: .
-      dockerfile: docker/backend.Dockerfile
+      dockerfile: docker/esiana.Dockerfile
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://esiana:${POSTGRES_PASSWORD}@postgres:5432/esiana}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
@@ -31,12 +31,13 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       NODE_ENV: ${NODE_ENV:-production}
       UPLOADS_DIR: /data/uploads
+      PLUGINS_DIR: /app/plugins
       OPENAPI_DOCS_ENABLED: ${OPENAPI_DOCS_ENABLED:-true}
     volumes:
       - uploads:/data/uploads
       - plugins:/app/plugins
     ports:
-      - '3001:3001'
+      - '${COMPOSE_HTTP_PORT:-8080}:80'
     depends_on:
       postgres:
         condition: service_healthy
@@ -44,24 +45,12 @@ services:
       test:
         [
           'CMD-SHELL',
-          'node -e "require(\"http\").get(\"http://127.0.0.1:3001/api/health\",r=>process.exit(r.statusCode===200?0:1)).on(\"error\",()=>process.exit(1))"',
+          'node -e "require(\"http\").get(\"http://127.0.0.1/api/health\",r=>process.exit(r.statusCode===200?0:1)).on(\"error\",()=>process.exit(1))"',
         ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 60s
-    restart: unless-stopped
-
-  frontend:
-    image: ghcr.io/esiana-ttrpg/esiana-frontend:${ESIANA_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: docker/frontend.Dockerfile
-    ports:
-      - '8080:80'
-    depends_on:
-      backend:
-        condition: service_healthy
+      start_period: 90s
     restart: unless-stopped
 
 volumes:
