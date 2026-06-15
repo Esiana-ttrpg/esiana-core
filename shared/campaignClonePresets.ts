@@ -1,5 +1,5 @@
-import type { CampaignCloneOptions } from './campaignCloneOptions';
-import { cloneOptionsEqual } from './campaignCloneOptions';
+import type { CampaignCloneOptions } from './campaignCloneOptions.js';
+import { cloneOptionsEqual } from './campaignCloneOptions.js';
 
 export const CLONE_PRESET_IDS = [
   'fresh-sequel',

@@ -282,7 +282,7 @@ export function displayToNormalizedPoint(
   return [x / width, y / height];
 }
 
-export { parsePointGeometry, polygonGeometry, lineStringGeometry } from './mapGeometry';
+export { parsePointGeometry, polygonGeometry, lineStringGeometry } from './mapGeometry.js';
 
 export function pointGeometry(
   coordinates: [number, number],
