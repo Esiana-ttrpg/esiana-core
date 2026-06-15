@@ -36,6 +36,10 @@ jobs:
       - name: Build backend
         run: npm run build --workspace=backend
 
+      - name: Verify compiled backend shared modules are ESM
+        working-directory: backend
+        run: node scripts/verify-dist-esm.mjs
+
   test-sqlite:
     runs-on: ubuntu-latest
     steps:
