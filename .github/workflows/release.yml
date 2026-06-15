@@ -122,15 +122,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate compose config
+      - name: Validate production compose config
         run: docker compose config --quiet
 
-      - name: Assert health-based startup ordering
-        run: |
-          docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
+      - name: Validate local compose override
+        run: docker compose -f docker-compose.yml -f docker-compose.local.yml config --quiet
 
-      - name: Build images
-        run: docker compose build
+      - name: Assert Postgres health-gated startup
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.local.yml config | grep -c 'condition: service_healthy' | grep -q '^1$'
 
   publish-images:
     needs: [build, test-sqlite, test-postgres, docker-build]
@@ -191,6 +191,11 @@ jobs:
             org.opencontainers.image.source=https://github.com/Esiana-ttrpg/esiana-core
             org.opencontainers.image.description=Self-hosted narrative infrastructure for long-form TTRPG campaigns
 
+      - name: Verify multi-arch manifest
+        run: |
+          docker buildx imagetools inspect "ghcr.io/esiana-ttrpg/esiana:${{ steps.meta.outputs.tag }}" \
+            | grep -E 'linux/(amd64|arm64)'
+
   github-release:
     needs: [build, test-sqlite, test-postgres, docker-build, publish-images]
     runs-on: ubuntu-latest
@@ -227,9 +232,10 @@ jobs:
             echo "ghcr.io/esiana-ttrpg/esiana:${TAG}"
             echo "\`\`\`"
             echo ""
-            echo "Set \`ESIANA_VERSION=${TAG}\` in your \`.env\`, then:"
+            echo "Multi-arch: \`linux/amd64\`, \`linux/arm64\`. Verify with:"
             echo ""
             echo "\`\`\`bash"
+            echo "docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:${TAG}"
             echo "docker compose pull"
             echo "docker compose up -d"
             echo "\`\`\`"

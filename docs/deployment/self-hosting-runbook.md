@@ -9,10 +9,12 @@ This file is a maintainer appendix — RC gates and release verification.
 ## RC verification
 
 - OpenAPI loads at `/api/docs` when `OPENAPI_DOCS_ENABLED` ≠ false
-- `docker compose up -d --build` — migrations apply automatically via esiana entrypoint
+- `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d` — migrations apply automatically via esiana entrypoint
 - Smoke: login, wiki edit, sovereign export ZIP at `http://localhost:8080`
+- GHCR image is multi-arch (`linux/amd64`, `linux/arm64`):
+  `docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:latest`
 
-GHCR: `ghcr.io/esiana-ttrpg/esiana` (set `ESIANA_VERSION` for pull-based upgrades)
+GHCR: `ghcr.io/esiana-ttrpg/esiana` (optional `ESIANA_VERSION` in `.env` for pinned upgrades)
 
 See [`release/release-checklist.md`](../release/release-checklist.md).
 
@@ -26,6 +28,6 @@ See [`release/release-checklist.md`](../release/release-checklist.md).
 | Docker | [self-hosting/docker.md](../../../docs/self-hosting/docker.md) |
 | Backups | [self-hosting/backups.md](../../../docs/self-hosting/backups.md) |
 | Upgrades | [self-hosting/upgrades.md](../../../docs/self-hosting/upgrades.md) |
-| Env vars | [options/environment-variables.md](../../../docs/options/environment-variables.md) |
+| Env vars | [Environment Variables.md](Environment%20Variables.md) |
 
-API docs: `http://localhost:8080/api/docs` (via nginx proxy; version-locked to running instance)
+API docs: `/api/docs` on your public origin (via nginx proxy; version-locked to running instance)
