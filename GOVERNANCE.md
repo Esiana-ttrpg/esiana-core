@@ -1,66 +1,43 @@
-# Esiana governance
+# Esiana Governance
 
-Maintainer and contributor process rules for [esiana-core](https://github.com/Esiana-ttrpg/esiana-core).
+## Project stewardship
 
-For local setup, see [CONTRIBUTING.md](./CONTRIBUTING.md). For security reports, see [SECURITY.md](./SECURITY.md).
+Esiana is maintained by the project maintainers.
 
----
+Maintainers are responsible for:
 
-## AI Review Policy
+- Reviewing and merging pull requests
+- Managing releases
+- Maintaining project direction
+- Enforcing project policies
+- Making final decisions when consensus cannot be reached
 
-> AI-generated reviews, recommendations, audits, release checklists, and approval suggestions are advisory only.
->
-> AI systems must not be treated as code reviewers, approvers, release managers, or quality sign-off authorities.
->
-> No pull request may be merged solely on the basis of AI review.
->
-> All merges require a human maintainer to verify:
->
-> - The stated changes were actually implemented.
-> - CI completed successfully.
-> - Relevant tests were executed.
-> - Release or migration impacts were understood.
->
-> AI may assist with:
->
-> - Code review suggestions
-> - Documentation drafting
-> - Architecture discussion
-> - Test planning
-> - Release checklist generation
->
-> AI may not:
->
-> - Approve pull requests
-> - Sign off releases
-> - Override failed checks
-> - Act as a required reviewer
+## Decision making
 
-### GitHub branch protection
+Discussion and consensus are preferred.
 
-```text
-AI reviews are informational and do not satisfy any required-reviewer
-branch protection rules.
-```
+When consensus cannot be reached, a maintainer may make a final decision to unblock progress.
 
-This applies to Cursor agents, ChatGPT, GitHub Copilot review, and any other automated review bot.
+## Branch model
 
-### Overriding principle
+- `develop` is the primary development branch.
+- Feature work targets `develop`.
+- `main` represents release-ready code.
+- Releases are created by merging `develop` into `main` and creating a version tag.
 
-> Human verification always supersedes AI analysis.
+## Pull requests
 
-Schema migrations, export/import matrices, Docker packaging, and release automation make “AI said ready” insufficient. AI can identify missing work; only a maintainer grants approval.
+All changes must be submitted through pull requests.
 
----
+Before merge:
 
-## Release sign-off
+- CI must pass.
+- A maintainer must review the change.
+- Migration and release impacts must be understood.
+- Documentation must be updated when applicable.
 
-Tagged releases require a human maintainer attestation. Use [docs/release/release-checklist.md](./docs/release/release-checklist.md) before pushing a version tag.
+## Release authority
 
-AI-generated release checklists are inputs to maintainer judgment — not substitutes for the attestation checkbox.
+Only maintainers may create release tags.
 
----
-
-## Product scope
-
-Core product identity and anti-goals: [philosophy.md](./philosophy.md). Engineering guardrails: [engineeringprinciples.md](./engineeringprinciples.md) and [`.cursor/rules/`](./.cursor/rules/).
+A maintainer must complete the release checklist before publishing a release.
