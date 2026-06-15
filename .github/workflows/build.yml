@@ -52,6 +52,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build ssrf-guard package
+        run: npm run build --workspace=@esiana/ssrf-guard
+
       - name: Prepare SQLite test database
         working-directory: backend
         run: |
@@ -93,6 +96,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build ssrf-guard package
+        run: npm run build --workspace=@esiana/ssrf-guard
 
       - name: Validate baseline migration portability
         working-directory: backend
