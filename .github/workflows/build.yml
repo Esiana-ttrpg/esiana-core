@@ -119,3 +119,8 @@ jobs:
           tags: esiana:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify workspace storage package in image
+        run: |
+          docker run --rm --entrypoint node esiana:ci \
+            --input-type=module -e "import('@esiana/storage-s3')"

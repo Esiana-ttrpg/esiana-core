@@ -1,6 +1,6 @@
 {
   "name": "esiana",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "private": true,
   "description": "Self-hosted, multi-campaign TTRPG manager",
   "license": "AGPL-3.0-only",
@@ -19,5 +19,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@esiana/storage-s3": "workspace:*"
   }
 }

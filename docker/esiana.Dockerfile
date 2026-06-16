@@ -1,4 +1,4 @@
-﻿FROM node:20-alpine AS build
+FROM node:20-alpine AS build
 WORKDIR /app
 
 RUN corepack enable
@@ -7,7 +7,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
 COPY packages/storage-s3/package.json packages/storage-s3/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile \
+  && mkdir -p backend/node_modules
 COPY backend ./backend
 COPY frontend ./frontend
 COPY shared ./shared
@@ -18,6 +19,7 @@ RUN if [ "$PRISMA_DATABASE_PROVIDER" = "sqlite" ]; then \
 fi \
   && pnpm --filter backend db:generate
 RUN pnpm -r build
+RUN node --input-type=module -e "import('@esiana/storage-s3')"
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
@@ -39,6 +41,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=build /app/backend/openapi ./backend/dist/backend/openapi
 COPY --from=build /app/backend/package.json ./backend/
+COPY --from=build /app/backend/node_modules ./backend/node_modules
 COPY --from=build /app/backend/prisma ./backend/prisma
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/shared ./shared
@@ -51,4 +54,4 @@ RUN chmod +x /entrypoint.sh \
   && nginx -t
 
 EXPOSE 80 3001
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]

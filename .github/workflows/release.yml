@@ -101,6 +101,15 @@ jobs:
       - name: Validate compose config
         run: docker compose config --quiet
 
+      - name: Reject UTF-8 BOM in Docker packaging files
+        run: |
+          for f in docker/*.sh docker/esiana.Dockerfile; do
+            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
+              echo "UTF-8 BOM detected in $f" >&2
+              exit 1
+            fi
+          done
+
       - name: Assert Postgres health-gated startup
         run: |
           docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
@@ -130,20 +139,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Prepare GHCR image tag lists
+      - name: Reject UTF-8 BOM in Docker packaging files
+        run: |
+          for f in docker/*.sh docker/esiana.Dockerfile; do
+            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
+              echo "UTF-8 BOM detected in $f" >&2
+              exit 1
+            fi
+          done
+
+      - name: Prepare image tag lists
         id: tags
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
           SEMVER="${{ steps.meta.outputs.semver }}"
           IMAGE_TAGS="ghcr.io/esiana-ttrpg/esiana:${TAG}
-          ghcr.io/esiana-ttrpg/esiana:${SEMVER}"
+          ghcr.io/esiana-ttrpg/esiana:${SEMVER}
+          docker.io/esiana/esiana:${TAG}
+          docker.io/esiana/esiana:${SEMVER}"
           if [ "${{ steps.meta.outputs.is_prerelease }}" = "false" ]; then
             IMAGE_TAGS="${IMAGE_TAGS}
-          ghcr.io/esiana-ttrpg/esiana:latest"
+          ghcr.io/esiana-ttrpg/esiana:latest
+          docker.io/esiana/esiana:latest"
           fi
           {
             echo "image<<EOF"
@@ -151,7 +177,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build and push Esiana image (GHCR)
+      - name: Build and push Esiana image (GHCR + Docker Hub)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -167,44 +193,34 @@ jobs:
             org.opencontainers.image.source=https://github.com/Esiana-ttrpg/esiana-core
             org.opencontainers.image.description=Self-hosted narrative infrastructure for long-form TTRPG campaigns
 
-      - name: Verify multi-arch manifest (GHCR)
-        run: |
-          docker buildx imagetools inspect "ghcr.io/esiana-ttrpg/esiana:${{ steps.meta.outputs.tag }}" \
-            | grep -E 'linux/(amd64|arm64)'
-
-      - uses: docker/login-action@v3
-        continue-on-error: true
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Mirror to Docker Hub (best effort)
-        continue-on-error: true
+      - name: Verify multi-arch manifests
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
-          SEMVER="${{ steps.meta.outputs.semver }}"
-          SRC="ghcr.io/esiana-ttrpg/esiana:${TAG}"
-          mirror() {
-            docker buildx imagetools create \
-              -t "docker.io/esiana/esiana:${TAG}" \
-              -t "docker.io/esiana/esiana:${SEMVER}" \
-              "${SRC}"
-            if [ "${{ steps.meta.outputs.is_prerelease }}" = "false" ]; then
-              docker buildx imagetools create -t "docker.io/esiana/esiana:latest" "${SRC}"
-            fi
-          }
-          for attempt in 1 2 3; do
-            if mirror; then exit 0; fi
-            echo "Docker Hub mirror attempt ${attempt} failed; retrying in 30s…"
-            sleep 30
+          for ref in \
+            "ghcr.io/esiana-ttrpg/esiana:${TAG}" \
+            "docker.io/esiana/esiana:${TAG}"; do
+            docker buildx imagetools inspect "$ref" | grep -E 'linux/(amd64|arm64)'
           done
-          exit 1
 
-      - name: Verify multi-arch manifest (Docker Hub)
-        continue-on-error: true
+      - name: Verify runtime platform invariants (GHCR)
         run: |
-          docker buildx imagetools inspect "docker.io/esiana/esiana:${{ steps.meta.outputs.tag }}" \
-            | grep -E 'linux/(amd64|arm64)'
+          TAG="${{ steps.meta.outputs.tag }}"
+          IMAGE="ghcr.io/esiana-ttrpg/esiana:${TAG}"
+          arm=$(docker run --rm --platform linux/arm64 --entrypoint uname "$IMAGE" -m)
+          amd=$(docker run --rm --platform linux/amd64 --entrypoint uname "$IMAGE" -m)
+          test "$arm" = "aarch64" || { echo "arm64 runtime got: $arm"; exit 1; }
+          test "$amd" = "x86_64" || { echo "amd64 runtime got: $amd"; exit 1; }
+
+      - name: Verify production entrypoint on arm64 (GHCR)
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          IMAGE="ghcr.io/esiana-ttrpg/esiana:${TAG}"
+          out=$(docker run --rm --platform linux/arm64 \
+            -e JWT_SECRET=smoke -e DATABASE_URL=postgresql://x \
+            "$IMAGE" 2>&1 || true)
+          echo "$out"
+          echo "$out" | grep -qi 'exec format error' && exit 1
+          echo "$out" | grep -qi 'ERR_MODULE_NOT_FOUND' && exit 1
 
   github-release:
     needs: [build, test-sqlite, test-postgres, docker-build, publish-images]
@@ -243,12 +259,20 @@ jobs:
             echo "docker.io/esiana/esiana:${TAG}"
             echo "\`\`\`"
             echo ""
-            echo "Docker Hub is mirrored from GHCR when the mirror step succeeds."
+            echo "Both registries are published in a single multi-arch build (not mirrored)."
             echo ""
-            echo "Multi-arch: \`linux/amd64\`, \`linux/arm64\`. Verify with:"
+            echo "Multi-arch: \`linux/amd64\`, \`linux/arm64\`. Verify manifest metadata:"
             echo ""
             echo "\`\`\`bash"
             echo "docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:${TAG}"
+            echo "docker buildx imagetools inspect docker.io/esiana/esiana:${TAG}"
+            echo "\`\`\`"
+            echo ""
+            echo "Verify runtime platform (manifest inspect alone is not sufficient):"
+            echo ""
+            echo "\`\`\`bash"
+            echo "docker run --rm --platform linux/arm64 --entrypoint uname ghcr.io/esiana-ttrpg/esiana:${TAG} -m"
+            echo "docker run --rm --platform linux/amd64 --entrypoint uname ghcr.io/esiana-ttrpg/esiana:${TAG} -m"
             echo "docker compose pull"
             echo "docker compose up -d"
             echo "\`\`\`"

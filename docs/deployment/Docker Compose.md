@@ -90,8 +90,9 @@ See [Reverse Proxies.md](Reverse%20Proxies.md) for examples. Esiana does not req
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `exec /entrypoint.sh: exec format error` | GHCR image is amd64-only on an arm64 host (e.g. Apple Silicon, Raspberry Pi, ARM VPS) | Upgrade to **v1.0.2+** (multi-arch). Verify: `docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:latest` shows `linux/arm64`. Do not add `platform: linux/amd64` unless you have QEMU/binfmt emulation installed. |
+| `exec /entrypoint.sh: exec format error` on arm64 | **v1.0.5–v1.0.6:** UTF-8 BOM before shebang in entrypoint; kernel cannot exec `/entrypoint.sh`. **Older tags:** amd64-only image on arm64 host | Upgrade to **v1.0.7+**. Verify runtime (not just manifest): `docker run --rm --platform linux/arm64 --entrypoint uname ghcr.io/esiana-ttrpg/esiana:latest -m` → `aarch64`. **v1.0.6 workaround:** add `entrypoint: ["/bin/sh", "/entrypoint.sh"]` in `docker-compose.override.yml`. Do not add `platform: linux/amd64` unless you have QEMU/binfmt emulation installed. |
 | `no matching manifest for linux/arm64` | Tagged release predates multi-arch publishing | Pull `v1.0.2` or later, or `latest` after the multi-arch release ships |
+| `ERR_MODULE_NOT_FOUND: @esiana/storage-s3` | **v1.0.6** pnpm Docker packaging regression; backend could not resolve workspace package at boot | Upgrade to **v1.0.7+**. Default `STORAGE_PROVIDER=filesystem` does not require S3 configuration. |
 | CORS errors | `PUBLIC_ORIGIN` does not match browser URL | Set `PUBLIC_ORIGIN` in `.env` to your public URL — see [Reverse Proxies.md](Reverse%20Proxies.md) |
 | Login cookie not set | `COOKIE_SECURE=true` over plain HTTP | Use HTTPS or set `COOKIE_SECURE=false` for local HTTP only |
 | Postgres restart loop | `POSTGRES_PASSWORD` missing from `.env` | Copy `.env.example` and set required secrets |
