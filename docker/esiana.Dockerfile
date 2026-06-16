@@ -1,10 +1,13 @@
 ﻿FROM node:20-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
 COPY packages/storage-s3/package.json packages/storage-s3/
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 COPY backend ./backend
 COPY frontend ./frontend
 COPY shared ./shared
@@ -13,8 +16,8 @@ ARG PRISMA_DATABASE_PROVIDER=postgresql
 RUN if [ "$PRISMA_DATABASE_PROVIDER" = "sqlite" ]; then \
   sed -i 's/provider = "postgresql"/provider = "sqlite"/' backend/prisma/schema.prisma; \
 fi \
-  && npm run db:generate --workspace=backend
-RUN npm run build
+  && pnpm --filter backend db:generate
+RUN pnpm -r build
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
@@ -31,7 +34,7 @@ RUN apk add --no-cache nginx su-exec \
 
 ENV NODE_ENV=production
 
-COPY --from=build /app/package.json /app/package-lock.json ./
+COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/backend/dist ./backend/dist
 COPY --from=build /app/backend/openapi ./backend/dist/backend/openapi

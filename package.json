@@ -1,25 +1,21 @@
 {
   "name": "esiana",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
   "description": "Self-hosted, multi-campaign TTRPG manager",
   "license": "AGPL-3.0-only",
-  "workspaces": [
-    "backend",
-    "frontend",
-    "packages/storage-s3"
-  ],
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
-    "dev:backend": "npm run dev --workspace=backend",
-    "dev:frontend": "npm run dev --workspace=frontend",
-    "build": "npm run build --workspace=@esiana/storage-s3 && npm run build --workspaces --if-present",
-    "db:generate": "npm run db:generate --workspace=backend",
-    "db:migrate": "npm run db:migrate --workspace=backend",
-    "db:push": "npm run db:push --workspace=backend",
-    "db:migrate-registry-url": "npm run db:migrate-registry-url --workspace=backend",
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter backend db:generate",
+    "db:migrate": "pnpm --filter backend db:migrate",
+    "db:push": "pnpm --filter backend db:push",
+    "db:migrate-registry-url": "pnpm --filter backend db:migrate-registry-url",
     "plugins:link": "node scripts/link-community-plugins.mjs",
-    "seed-campaign": "npm run seed-campaign --workspace=backend",
-    "profile-capacity": "npm run profile-capacity --workspace=backend"
+    "seed-campaign": "pnpm --filter backend seed-campaign",
+    "profile-capacity": "pnpm --filter backend profile-capacity"
   },
   "engines": {
     "node": ">=20.0.0"

@@ -11,7 +11,7 @@ Extended install notes: [../docs/options/installation.md](../docs/options/instal
 ### Requirements
 
 - Node.js ≥ 20
-- npm (workspaces monorepo)
+- pnpm 9 (via Corepack — see `packageManager` in [package.json](./package.json))
 - PostgreSQL (default) or SQLite for solo dev
 
 ### Quick start
@@ -19,23 +19,24 @@ Extended install notes: [../docs/options/installation.md](../docs/options/instal
 From the `esiana-core` root:
 
 ```bash
-npm install
+corepack enable
+pnpm install
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-npm run db:generate
-npm run db:push
+pnpm run db:generate
+pnpm run db:push
 ```
 
 Terminal 1 — backend:
 
 ```bash
-npm run dev:backend
+pnpm run dev:backend
 ```
 
 Terminal 2 — frontend:
 
 ```bash
-npm run dev:frontend
+pnpm run dev:frontend
 ```
 
 Open **http://localhost:5173**.
@@ -63,7 +64,7 @@ Open **http://localhost:5173**.
 Check out [`community-plugins`](../community-plugins) beside `esiana-core`, then:
 
 ```bash
-npm run plugins:link
+pnpm run plugins:link
 ```
 
 Restart the backend after manifest changes. See [plugins/README.md](./plugins/README.md) and [../docs/plugin-development/getting-started.md](../docs/plugin-development/getting-started.md).
@@ -81,14 +82,14 @@ Root scripts from [package.json](./package.json):
 
 | Script | Purpose |
 |--------|---------|
-| `npm run dev:backend` | Start backend dev server |
-| `npm run dev:frontend` | Start Vite dev server |
-| `npm run build` | Build all workspaces |
-| `npm run db:generate` | Regenerate Prisma client |
-| `npm run db:push` | Push schema to local database |
-| `npm run db:migrate` | Run migrations |
-| `npm run plugins:link` | Symlink sibling `community-plugins` packages |
-| `npm run seed-campaign` | Run campaign seeder CLI |
+| `pnpm run dev:backend` | Start backend dev server |
+| `pnpm run dev:frontend` | Start Vite dev server |
+| `pnpm run build` | Build all workspaces |
+| `pnpm run db:generate` | Regenerate Prisma client |
+| `pnpm run db:push` | Push schema to local database |
+| `pnpm run db:migrate` | Run migrations |
+| `pnpm run plugins:link` | Symlink sibling `community-plugins` packages |
+| `pnpm run seed-campaign` | Run campaign seeder CLI |
 
 ---
 
@@ -97,7 +98,7 @@ Root scripts from [package.json](./package.json):
 Backend tests (from repo root):
 
 ```bash
-cd backend && npm test
+cd backend && pnpm test
 ```
 
 Add or update tests when you change behavior, tenant isolation, or migrations. Co-locate `*.test.ts` files with the modules they cover.
@@ -111,8 +112,8 @@ The active engine is the literal `provider` in `backend/prisma/schema.prisma`. S
 After changing provider or schema:
 
 ```bash
-npm run db:generate
-npm run db:push   # or db:migrate
+pnpm run db:generate
+pnpm run db:push   # or db:migrate
 ```
 
 Restart the backend so Prisma Client reloads.
@@ -127,7 +128,7 @@ Local compose smoke (matches CI `docker-build` job):
 
 ```bash
 docker compose config --quiet
-docker compose build
+docker build -f docker/esiana.Dockerfile -t esiana:local .
 ```
 
 Operator deployment: [../docs/self-hosting/docker.md](../docs/self-hosting/docker.md) · [docs/deployment/self-hosting-runbook.md](./docs/deployment/self-hosting-runbook.md)
@@ -151,10 +152,10 @@ Full steward and merge rules: [GOVERNANCE.md](./GOVERNANCE.md).
 
 | Job | What it checks |
 |-----|----------------|
-| `build` | `npm ci`, Prisma generate, storage-s3 + frontend + backend build |
+| `build` | `pnpm install`, Prisma generate, workspace build |
 | `test-sqlite` | SQLite migrate deploy + backend test suite |
 | `test-postgres` | Baseline migration validation + Postgres migrate deploy + backend tests |
-| `docker-build` | `docker compose config` + image build |
+| `docker-build` | `docker compose config` + amd64 image build (Buildx + GHA cache) |
 
 All checks must pass before merge.
 
@@ -174,4 +175,4 @@ Before tagging `vX.Y.Z` on `main`:
 
 1. Review and edit GitHub Release notes after the workflow runs (generated from merged PRs since the previous tag)
 2. Complete [docs/release/release-checklist.md](./docs/release/release-checklist.md) with human maintainer attestation
-3. Tag on `main` — the [release workflow](.github/workflows/release.yml) publishes GHCR images and creates the GitHub Release
+3. Tag on `main` — the [release workflow](.github/workflows/release.yml) publishes GHCR images (required), mirrors to Docker Hub (best effort), and creates the GitHub Release
