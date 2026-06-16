@@ -28,7 +28,6 @@ import { getOrCreateSystemSettings } from './lib/systemSettings.js';
 import { setPluginHostReloader } from './lib/pluginRuntime/index.js';
 import { bootstrapStorageRegistry, initializeActiveStorageProvider, registerStorageProvider } from './lib/storage/storageRegistry.js';
 import { resolveS3CompatibleConfig } from './lib/storage/storageProviderConfig.js';
-import { registerS3CompatibleProvider } from '@esiana/storage-s3';
 import { bootstrapGlobalTimeHooks } from './lib/globalTimeHooks/index.js';
 import { apiUsageLogger } from './middleware/apiLogger.js';
 import { installSystemLogCapture } from './lib/systemLogBuffer.js';
@@ -38,6 +37,22 @@ import { pluginAssetsRouter } from './routes/pluginAssets.js';
 import { assetsRouter } from './routes/assets.js';
 import { optionalAuth } from './middleware/auth.js';
 import { getUploadByFilename } from './controllers/assetsController.js';
+
+async function registerOptionalS3Provider(): Promise<void> {
+  try {
+    const { registerS3CompatibleProvider } = await import('@esiana/storage-s3');
+    registerS3CompatibleProvider(registerStorageProvider, () =>
+      resolveS3CompatibleConfig() as unknown as Record<string, unknown>,
+    );
+  } catch (err) {
+    if (env.storageProvider === 's3-compatible') {
+      console.warn(
+        '[storage] STORAGE_PROVIDER=s3-compatible but @esiana/storage-s3 is not available:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+}
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -86,9 +101,7 @@ export async function createApp(): Promise<Express> {
 
   await getOrCreateSystemSettings();
   bootstrapStorageRegistry();
-  registerS3CompatibleProvider(registerStorageProvider, () =>
-    resolveS3CompatibleConfig() as unknown as Record<string, unknown>,
-  );
+  await registerOptionalS3Provider();
   initializeActiveStorageProvider();
   bootstrapGlobalTimeHooks();
   setPluginHostReloader(reloadPluginHost);
