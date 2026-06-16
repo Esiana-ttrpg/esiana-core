@@ -2,6 +2,8 @@
 
 Esiana ships a **StorageDriver** registry with a built-in filesystem provider and an optional **`@esiana/storage-s3`** infrastructure package for S3-compatible backends.
 
+**Optional** means configuration-time (`STORAGE_PROVIDER=filesystem` is the default), not a campaign plugin. The `@esiana/storage-s3` package ships in the core Docker image and registers lazily at boot when available. Set `STORAGE_PROVIDER=s3-compatible` only when you intend to use remote object storage.
+
 ## Active write provider
 
 Select the provider that receives **new uploads** via environment variable:

@@ -22,7 +22,15 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 - [ ] `docker compose config` validates
 - [ ] Fresh `docker compose up -d` (or GHCR pull smoke) — login, `/api/health`, wiki edit at `http://localhost:8080`
 - [ ] `docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:<tag>` shows `linux/amd64` and `linux/arm64`
-- [ ] Optional: `docker buildx imagetools inspect docker.io/esiana/esiana:<tag>` (when Docker Hub mirror succeeded)
+- [ ] `docker buildx imagetools inspect docker.io/esiana/esiana:<tag>` shows `linux/amd64` and `linux/arm64`
+- [ ] Runtime platform invariants (manifest inspect alone is not sufficient):
+  ```bash
+  docker run --rm --platform linux/arm64 --entrypoint uname ghcr.io/esiana-ttrpg/esiana:<tag> -m  # → aarch64
+  docker run --rm --platform linux/amd64 --entrypoint uname ghcr.io/esiana-ttrpg/esiana:<tag> -m  # → x86_64
+  ```
+- [ ] Production entrypoint on arm64 does not emit `exec format error` or `ERR_MODULE_NOT_FOUND`
+- [ ] `docker run --rm --workdir /app/backend --entrypoint node ghcr.io/esiana-ttrpg/esiana:<tag> --input-type=module -e "import('@esiana/storage-s3')"` succeeds
+- [ ] No UTF-8 BOM in `docker/*.sh` or `docker/esiana.Dockerfile` (CI gate; see `.gitattributes`)
 - [ ] Optional `ESIANA_VERSION` documented for pull-based upgrades ([Environment Variables.md](../deployment/Environment%20Variables.md))
 - [ ] Self-hosting docs aligned ([docs/self-hosting/](../../../docs/self-hosting/))
 
@@ -42,7 +50,7 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 
 - [ ] Tag `vX.Y.Z` on `main` (triggers [release workflow](../../.github/workflows/release.yml))
 - [ ] GitHub Release body includes container image pull instructions
-- [ ] Monitor workflow to completion (GHCR push + optional Docker Hub mirror + release asset)
+- [ ] Monitor workflow to completion (GHCR + Docker Hub push, runtime smoke, release asset)
 
 ---
 
