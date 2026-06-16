@@ -28,6 +28,7 @@ Canonical reference for every supported Esiana environment variable.
 | `COMPOSE_HTTP_PORT` | `8080` | Optional | Host port mapped to the esiana container. | `8080` |
 | `TRUST_PROXY` | `false` | Optional | `true` when behind a reverse proxy that sets `X-Forwarded-*` headers. | `true` |
 | `COOKIE_SECURE` | `false` | Optional | `true` for HTTPS-only session cookies. Set when serving only over TLS. | `true` |
+| `ENABLE_INTERNAL_NGINX` | `true` | Optional | `true` runs internal nginx (web delivery layer: SPA + API proxy on container port 80). `false` is API-only on port 3001 — SPA not served. | `false` |
 
 ---
 
@@ -41,6 +42,7 @@ Canonical reference for every supported Esiana environment variable.
 | `NODE_ENV` | `production` | Runtime mode for the container. |
 | `UPLOADS_DIR` | `/data/uploads` | Upload storage inside the container (backed by the `uploads` volume). |
 | `PLUGINS_DIR` | `/app/plugins` | Plugin packages inside the container (backed by the `plugins` volume). |
+| `ENABLE_INTERNAL_NGINX` | `true` | `true` runs nginx web delivery layer on port 80; `false` is API-only. |
 | `TRUST_PROXY` | `false` | `true` when behind a reverse proxy — see [Reverse Proxies.md](Reverse%20Proxies.md). |
 
 ---

@@ -33,7 +33,7 @@ Open **http://localhost:8080**, register, and use Esiana. The first account beco
 
 | Service | Image | Role |
 |---------|-------|------|
-| **esiana** | `ghcr.io/esiana-ttrpg/esiana` | nginx + API + SPA (single container) |
+| **esiana** | `ghcr.io/esiana-ttrpg/esiana` | Node API + nginx web delivery layer (single container; nginx on by default) |
 | **postgres** | `postgres:16-alpine` | Database |
 
 Esiana waits for Postgres to pass `pg_isready` before starting. Migrations run automatically on container start.
@@ -96,6 +96,8 @@ See [Reverse Proxies.md](Reverse%20Proxies.md) for examples. Esiana does not req
 | Login cookie not set | `COOKIE_SECURE=true` over plain HTTP | Use HTTPS or set `COOKIE_SECURE=false` for local HTTP only |
 | Postgres restart loop | `POSTGRES_PASSWORD` missing from `.env` | Copy `.env.example` and set required secrets |
 | Blank page / API errors | Migrations failed on startup | `docker compose logs esiana` |
+| `"server" directive is not allowed here` in esiana logs | `server {}` placed in Alpine global `conf.d/` (pre-v1.0.5 image) | Pull/rebuild **v1.0.5+**; site config belongs in `http.d/` only |
+| SPA blank but `/api/health` works | Web delivery layer (nginx) failed; API still running | `docker compose logs esiana`; check nginx warnings; set `ENABLE_INTERNAL_NGINX=true` |
 
 ---
 
