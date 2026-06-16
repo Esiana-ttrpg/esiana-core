@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import { UserRoles } from '../../types/domain.js';
 import { prisma } from '../prisma.js';
 import {
   bootstrapSystemSettings,
@@ -98,7 +98,7 @@ export async function resolveOidcLogin(
     };
   }
 
-  const role = isBootstrap ? UserRole.SYSTEM_ADMIN : UserRole.USER;
+  const role = isBootstrap ? UserRoles.SYSTEM_ADMIN : UserRoles.USER;
 
   const user = await prisma.user.create({
     data: {
@@ -109,7 +109,7 @@ export async function resolveOidcLogin(
     select: { id: true },
   });
 
-  if (role === UserRole.SYSTEM_ADMIN) {
+  if (role === UserRoles.SYSTEM_ADMIN) {
     await bootstrapSystemSettings();
   }
 

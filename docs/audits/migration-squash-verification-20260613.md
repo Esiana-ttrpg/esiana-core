@@ -57,6 +57,10 @@ Executed with `schema.prisma` + `migration_lock.toml` temporarily set to `sqlite
 
 ## CI alignment
 
+[`validate-dual-engine-portability.mjs`](../../backend/prisma/scripts/validate-dual-engine-portability.mjs) fails if `schema.prisma` reintroduces Prisma enums or other Postgres-only types the baseline does not create.
+
+**Runtime note (v1.0.8):** `migrate diff --from-migrations --to-schema-datamodel` empty does **not** guarantee Postgres write parity when schema declared Prisma enums but baseline stores TEXT. `test-postgres` includes `dualEnginePortability.integration.test.ts` to catch that class of bug.
+
 [`.github/workflows/build.yml`](../../.github/workflows/build.yml) `test-sqlite` job sed-patches both `schema.prisma` and `migration_lock.toml` to `sqlite` before `migrate deploy`.
 
 ## Upgrade path (documented, not implemented)

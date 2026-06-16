@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CampaignWorkspace } from '@prisma/client';
+import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
 import { resolveCanonicalPagePath } from '../../../shared/campaignWorkspaceRoutes.js';
 import { resolvePublicPagePath } from './plugins/publicWikiRead.js';

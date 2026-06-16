@@ -1,4 +1,3 @@
-import { PageNarrativeStatusType } from '@prisma/client';
 import { prisma } from './prisma.js';
 import {
   ALL_PAGE_NARRATIVE_STATUSES,
@@ -23,7 +22,7 @@ export type StoredPageNarrativeStatus = {
 
 function toStoredStatus(row: {
   wikiPageId: string;
-  status: PageNarrativeStatusType;
+  status: string;
   reason: string | null;
 }): StoredPageNarrativeStatus {
   return {
@@ -31,18 +30,6 @@ function toStoredStatus(row: {
     status: row.status as PageNarrativeStatusValue,
     reason: row.reason,
   };
-}
-
-export function prismaStatusToShared(
-  status: PageNarrativeStatusType,
-): PageNarrativeStatusValue {
-  return status as PageNarrativeStatusValue;
-}
-
-export function sharedStatusToPrisma(
-  status: PageNarrativeStatusValue,
-): PageNarrativeStatusType {
-  return status as PageNarrativeStatusType;
 }
 
 export async function getPageNarrativeStatusMap(
@@ -148,7 +135,7 @@ export async function buildPageNarrativeStatusProjectionMap(input: {
 export async function upsertPageNarrativeStatus(input: {
   campaignId: string;
   wikiPageId: string;
-  status: PageNarrativeStatusType;
+  status: PageNarrativeStatusValue;
   reason?: string | null;
   updatedByUserId?: string | null;
 }): Promise<StoredPageNarrativeStatus> {
@@ -174,14 +161,14 @@ export async function upsertPageNarrativeStatus(input: {
 export async function ensurePageNarrativeStatusOnCreate(input: {
   campaignId: string;
   wikiPageId: string;
-  status?: PageNarrativeStatusType;
+  status?: PageNarrativeStatusValue;
 }): Promise<void> {
   await prisma.pageNarrativeStatus.upsert({
     where: { wikiPageId: input.wikiPageId },
     create: {
       campaignId: input.campaignId,
       wikiPageId: input.wikiPageId,
-      status: input.status ?? PageNarrativeStatusType.ACTIVE,
+      status: input.status ?? PageNarrativeStatuses.ACTIVE,
     },
     update: {},
   });
@@ -202,29 +189,32 @@ export async function backfillPageNarrativeStatusFromCharacterMetadata(
     );
     if (!fallback || fallback === PageNarrativeStatuses.ACTIVE) continue;
     await prisma.pageNarrativeStatus.updateMany({
-      where: { wikiPageId: page.id, status: PageNarrativeStatusType.ACTIVE },
-      data: { status: sharedStatusToPrisma(fallback) },
+      where: { wikiPageId: page.id, status: PageNarrativeStatuses.ACTIVE },
+      data: { status: fallback },
     });
     updated += 1;
   }
   return updated;
 }
 
-export function assertSharedMatchesPrismaEnum(): void {
-  const prismaValues = Object.values(PageNarrativeStatusType);
-  if (prismaValues.length !== ALL_PAGE_NARRATIVE_STATUSES.length) {
-    throw new Error('PageNarrativeStatus shared/Prisma enum length mismatch');
+export function assertPageNarrativeStatusCatalog(): void {
+  const unique = new Set(ALL_PAGE_NARRATIVE_STATUSES);
+  if (unique.size !== ALL_PAGE_NARRATIVE_STATUSES.length) {
+    throw new Error('PageNarrativeStatuses contains duplicate values');
   }
   for (const value of ALL_PAGE_NARRATIVE_STATUSES) {
-    if (!prismaValues.includes(value as PageNarrativeStatusType)) {
-      throw new Error(`Missing Prisma enum value for ${value}`);
+    if (!normalizePageNarrativeStatus(value)) {
+      throw new Error(`Invalid catalog value: ${value}`);
     }
   }
 }
 
+/** @deprecated Use assertPageNarrativeStatusCatalog */
+export const assertSharedMatchesPrismaEnum = assertPageNarrativeStatusCatalog;
+
 export function parsePageNarrativeStatusBody(
   body: Record<string, unknown>,
-): { status: PageNarrativeStatusType; reason: string | null } | null {
+): { status: PageNarrativeStatusValue; reason: string | null } | null {
   const normalized = normalizePageNarrativeStatus(body.status);
   if (!normalized) return null;
   const reason =
@@ -234,7 +224,7 @@ export function parsePageNarrativeStatusBody(
         ? null
         : undefined;
   return {
-    status: sharedStatusToPrisma(normalized),
+    status: normalized,
     reason: reason === undefined ? null : reason,
   };
 }

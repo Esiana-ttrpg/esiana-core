@@ -1,139 +1,94 @@
-# Esiana TTRPG Manager
+# Esiana
 
-Esiana is a self-hosted, multi-campaign TTRPG worldbuilding and campaign manager designed for Game Masters who want deep lore organization without heavy VTT automation.
+> Your world. Your stories.
 
-[!NOTE]
-Project Status: **v1.0.1** (stable baseline)
+Esiana is a self-hosted TTRPG campaign manager built for long-running worlds, evolving narratives, and interconnected lore.
 
-Esiana ships a schema-frozen production baseline with Postgres default, Docker Compose, and dual-engine CI. Post-1.0 work extends views and plugins over existing tables — track via [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues). AI assists development and review; [GOVERNANCE.md](./GOVERNANCE.md) requires human maintainer sign-off for merges and releases.
+Unlike traditional worldbuilding wikis, Esiana focuses on continuity, historical state, knowledge discovery, and the relationships between the people, places, and events that shape your world.
+
+![Release](https://img.shields.io/github/v/release/Esiana-ttrpg/esiana-core?style=for-the-badge&color=5BCEFA&cacheSeconds=14400)
+![Discussions](https://img.shields.io/github/discussions/esiana-ttrpg/esiana-core?style=for-the-badge&color=F5A9B8&cacheSeconds=14400)
+![Docker Pulls](https://img.shields.io/docker/pulls/esiana/esiana?style=for-the-badge&color=FFFFFF&cacheSeconds=14400)
+![License](https://img.shields.io/github/license/esiana-ttrpg/esiana-core?style=for-the-badge&color=F5A9B8&cacheSeconds=14400)]
+![Discord](https://img.shields.io/discord/1516532775132463194?style=for-the-badge&logo=discord&label=Discord&color=F5A9B8&cacheSeconds=14400)
+
+
 
 ## Features
 
-For upcoming work, see [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) and [Milestones](https://github.com/Esiana-ttrpg/esiana-core/milestones) ([roadmap](./todo.md)).
+| Domain | Capability |
+| :--- | :--- |
+| **Worldbuilding Core** | Characters, locations, organizations, families, objects, and custom entity types with full relational modeling |
+| **Relationship Networks** | Character relationships, family trees, political hierarchies, faction structures, and custom graph links |
+| **Narrative Continuity** | Historical state tracking, entity evolution, timeline-linked events, and lore provenance |
+| **Knowledge System** | Player vs GM knowledge separation, discovery-based lore, rumors, and visibility controls |
+| **Time & Calendars** | Custom fantasy calendars, moons, seasons, world clocks, and timeline synchronization |
+| **Maps & Geography** | Regions, borders, trade routes, travel paths, layered overlays, and pinned world entities |
+| **Campaign Operations** | Multi-campaign worlds, unified campaign history, character perspective switching, and narrative dashboards |
+| **Collaboration** | Multi-user editing, role-based permissions, shared worldbuilding, and co-GM workflows |
+| **Self Hosting** | Docker deployment, Postgres/SQLite support, plugin architecture, full data ownership |
 
-Contributors: [CONTRIBUTING.md](./CONTRIBUTING.md) · [GOVERNANCE.md](./GOVERNANCE.md) · [`.cursor/rules/`](./.cursor/rules/) · [philosophy.md](./philosophy.md) · [design-philosophy.md](./design-philosophy.md)
+## Own Your World
 
-### Campaign hub & discovery
+Esiana stores your campaign data in open, portable formats.
 
-- Multi-campaign **global hub** with create and join flows
-- **Public campaign directory** and slug-based URLs (`/c/:campaignSlug`)
-- **Looking-for-group (LFG)** listings and player applications
-- Campaign metadata: **game system**, language, visibility, and archive
+- Export complete campaign archives
+- Import existing worlds and datasets
+- Preserve relationships and historical continuity
+- Create full backups for long-term preservation
 
-### Wiki & lore
+Your world should outlive any single application.
 
-- **Hierarchical wiki** with category folders and nested pages
-- **Block-based pages**: rich text, images, infoboxes, stat blocks, and layout grids
-- **Visibility levels**: Public, Party, and DM-only
-- **Quick Access**, category index pages, and **backlinks**
-- Dedicated **character** routes
+## Quick Start
+Requirements: Docker and .env file
 
-### Sessions & notes
+<details>
+<summary><strong>Image Repositories</strong></summary>
 
-- **Session timeline** and per-session notes
-- **Notebook arcs**, plus player, session, and tag views
-- **Compile session notes** to Markdown; document upload support
+| Registry | Image |
+| --- | --- |
+| Docker Hub | `esiana/esiana` |
+| GitHub Container Registry | `ghcr.io/esiana-ttrpg/esiana` |
 
-### Time & chronology
+</details>
+1. Download the Docker Compose template and environment file:
 
-- **Custom fantasy calendars** (months, moons, leap days, advance time)
-- **Chronology hub** combining calendar and timeline views
-- JSON calendar import
+- [`docker-compose.yml`](https://github.com/Esiana-ttrpg/docs/blob/main/options/compose.docker.example.yml)
+- [`.env.example`](https://github.com/Esiana-ttrpg/docs/blob/main/options/compose.env.example)
 
-### Campaign UX
-
-- **Campaign Home** overview (session schedule, world chronometer, bulletin, recent lore, quest ledger, threads, and more)
-- **Recent changes** / activity feed
-- Customizable **campaign sidebar**
-
-### Platform & admin
-
-- Email/password auth, user profiles, and **developer API tokens**
-- **Self-hosted** deployment with SQLite or PostgreSQL
-- **Runtime plugins** at instance and per-campaign scope
-- **System admin console**: branding, maintenance mode, user management, backups, and API usage analytics
-
-## Monorepo layout
-
-| Path | Stack |
-|------|-------|
-| `/backend` | Node.js, Express, TypeScript, Prisma |
-| `/frontend` | React, Vite, Tailwind CSS, TypeScript |
-| `/plugins` | Community plugin packages (loaded at runtime) |
-
-## Quick start
+2. Copy the environment file:
 
 ```bash
-corepack enable
-pnpm install
-cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
-pnpm run db:generate
-pnpm run db:push
-pnpm run dev:backend
+cp .env.example .env
 ```
 
-In another terminal:
+3. Edit the required values:
+
+```env
+POSTGRES_PASSWORD=change-me
+JWT_SECRET=generate-with-openssl-rand-hex-32
+```
+
+4. Start Esiana:
 
 ```bash
-pnpm run dev:frontend
+docker compose up -d
 ```
 
-Then open the app at `http://localhost:5173`.
+5. Open:
 
-## Documentation wiki
+```
+http://localhost:8080
+```
 
-User guides, API docs, plugin author docs, and architecture explainers live in the sibling [`docs/`](../docs/) repo:
+The first registered user becomes the system administrator.
+For production deployments, reverse proxies, HTTPS, OIDC, object storage, and plugins, see the documentation.
 
-- **[Documentation wiki home](../docs/README.md)** — audience routing
-- [Campaign model](../docs/architecture/campaign-model.md) — how Esiana thinks about world data
-- [API guides](../docs/api/README.md) — human REST docs; **`/api/docs`** on your running instance for endpoints
-- [Plugin development](../docs/plugin-development/getting-started.md)
-- [Self-hosting](../docs/self-hosting/installation.md) — Docker Compose install (`ghcr.io/esiana-ttrpg/esiana`)
-- [Features](../docs/features/README.md) — wiki, sessions, maps, LFG
-- [Options](../docs/options/README.md) — env vars, admin settings
+## Documentation
 
-Engineering audits and internal platform specs: [`docs/README.md`](./docs/README.md).
-
-### Dev ports & proxy
-
-- **Backend**: defaults to `PORT=3001` (see `backend/.env.example`)
-- **Frontend**: Vite runs on `5173` and proxies `/api` + `/uploads` to `VITE_API_PROXY_TARGET`
-  - Default in `frontend/.env.example` is `http://localhost:3000`
-  - If you keep backend on 3001, set `VITE_API_PROXY_TARGET=http://localhost:3001`
-
-## Database (PostgreSQL or SQLite)
-
-Prisma schema is DB-agnostic at the application layer. The active engine is set by the literal `provider` in `backend/prisma/schema.prisma` (see `backend/prisma/README.md`).
-
-**PostgreSQL (default):** `DATABASE_URL="postgresql://user:password@localhost:5432/esiana"`
-
-**SQLite (solo dev / trial):** set `provider = "sqlite"` in `schema.prisma`, then `DATABASE_URL="file:./dev.db"`.
-
-After changing provider, run `pnpm run db:generate` and migrate/push.
-
-## Plugins
-
-Drop active modular plugin folders directly under `/plugins`. Packages can be registered, installed, and toggled on the fly using the core API routes (`/api/plugins`). For details on building a custom module extension, review `plugins/README.md`.
-
-## License
-
-Esiana core is licensed under the [GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE) — Copyright (C) 2026 Esiana Contributors.
-
-If you modify this software and run it as a network service, AGPL section 13 requires you to offer corresponding source to users interacting with it over the network. See [LICENSE](./LICENSE) for full terms.
-
-Runtime plugin packages under [`plugins/`](./plugins/) may carry separate licenses from their authors; see each package and the [community-plugins](https://github.com/Esiana-ttrpg/community-plugins) catalog.
-
-## Versioning note
-
-The root [`package.json`](./package.json) `version` field is the **product version** source of truth (currently v1.0.1). It is injected into the admin UI and backend update checks at build/runtime. [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases) record release history; [todo.md](./todo.md) links to Issues and Milestones for roadmap tracking. **Release process:** merge via reviewed PR to `main`, complete [release checklist](./docs/release/release-checklist.md), tag `vX.Y.Z` — the [release workflow](.github/workflows/release.yml) runs CI, publishes `ghcr.io/esiana-ttrpg/esiana`, and creates the GitHub Release. See [GOVERNANCE.md](./GOVERNANCE.md) for maintainer and AI review policy.
-
-## Third-party assets
-
-- **BLÅHAJ shark art** (error page mascot) — Copyright © 2022 Evangelos "GeopJr" Paterakis, [BSD-2-Clause](https://github.com/GeopJr/BLAHAJ). Source and license: [`frontend/src/assets/blahaj/`](./frontend/src/assets/blahaj/).
-
----
-
-## Roadmap
-
-Open work is tracked in [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) and [Milestones](https://github.com/Esiana-ttrpg/esiana-core/milestones). See [todo.md](./todo.md) for links and archived history.
+- User Guide
+- Self-Hosting Guide
+- Plugin Development
+- API Documentation (`/api/docs`)
+- Roadmap
+- Discussions

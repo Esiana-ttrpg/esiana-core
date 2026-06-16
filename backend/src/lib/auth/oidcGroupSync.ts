@@ -1,25 +1,25 @@
-import { UserRole } from '@prisma/client';
 import type { IdentityProvider } from '@prisma/client';
+import { UserRoles, type UserRoleLiteral } from '../../types/domain.js';
 import { prisma } from '../prisma.js';
 import { getClaimByPath, normalizeGroupsClaimValue } from './oidcClaims.js';
 
 const ALLOWED_MAPPED_ROLES = new Set<string>([
-  UserRole.SYSTEM_ADMIN,
-  UserRole.USER,
+  UserRoles.SYSTEM_ADMIN,
+  UserRoles.USER,
 ]);
 
 export function parseGroupRoleMappings(
   raw: unknown,
-): Record<string, UserRole> {
+): Record<string, UserRoleLiteral> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-  const out: Record<string, UserRole> = {};
+  const out: Record<string, UserRoleLiteral> = {};
   for (const [groupKey, roleValue] of Object.entries(
     raw as Record<string, unknown>,
   )) {
     const key = groupKey.trim();
     if (!key || typeof roleValue !== 'string') continue;
     if (!ALLOWED_MAPPED_ROLES.has(roleValue)) continue;
-    out[key] = roleValue as UserRole;
+    out[key] = roleValue as UserRoleLiteral;
   }
   return out;
 }
@@ -65,12 +65,12 @@ export async function syncGroupsOnLogin(params: {
   });
   if (!user) return groups;
 
-  let targetRole: UserRole | null = null;
+  let targetRole: UserRoleLiteral | null = null;
   for (const group of groups) {
     const mapped = mappings[group];
     if (!mapped) continue;
-    if (mapped === UserRole.SYSTEM_ADMIN) {
-      targetRole = UserRole.SYSTEM_ADMIN;
+    if (mapped === UserRoles.SYSTEM_ADMIN) {
+      targetRole = UserRoles.SYSTEM_ADMIN;
       break;
     }
     if (!targetRole) targetRole = mapped;
@@ -78,12 +78,12 @@ export async function syncGroupsOnLogin(params: {
 
   // Promote-only: never demote on login.
   if (
-    targetRole === UserRole.SYSTEM_ADMIN &&
-    user.role !== UserRole.SYSTEM_ADMIN
+    targetRole === UserRoles.SYSTEM_ADMIN &&
+    user.role !== UserRoles.SYSTEM_ADMIN
   ) {
     await prisma.user.update({
       where: { id: params.userId },
-      data: { role: UserRole.SYSTEM_ADMIN },
+      data: { role: UserRoles.SYSTEM_ADMIN },
     });
   }
 

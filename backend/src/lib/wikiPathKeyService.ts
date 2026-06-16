@@ -1,4 +1,5 @@
-import type { CampaignWorkspace, Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
+import type { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import {
   generatePathKeyFromTitle,
   syncPathKeyOnRename,
@@ -33,7 +34,7 @@ export async function loadCampaignWikiPathKeyRows(
       workspace: true,
       pathKey: true,
     },
-  });
+  }) as Promise<WikiPathKeyRow[]>;
 }
 
 async function takenPathKeysInWorkspace(
@@ -76,7 +77,7 @@ export function resolveWikiPageWorkspaceAndPathKey(
     RESERVED_PATH_KEY_SEGMENTS,
   );
 
-  return { workspace: workspace as CampaignWorkspace, pathKey };
+  return { workspace, pathKey };
 }
 
 export async function assignPathKeyForNewPage(
@@ -88,7 +89,7 @@ export async function assignPathKeyForNewPage(
   const resolved = resolveWorkspaceForPage(page, flatPages);
   if (!resolved) return { workspace: null, pathKey: null };
 
-  const workspace = resolved as CampaignWorkspace;
+  const workspace = resolved;
   const taken = await takenPathKeysInWorkspace(campaignId, workspace, undefined, tx);
   const pathKey = generatePathKeyFromTitle(
     page.title,
@@ -136,7 +137,7 @@ export async function backfillCampaignPathKeys(
       continue;
     }
 
-    const ws = workspace as CampaignWorkspace;
+    const ws = workspace;
     if (!takenByWorkspace.has(ws)) {
       takenByWorkspace.set(ws, new Set());
     }

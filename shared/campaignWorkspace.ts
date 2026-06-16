@@ -1,6 +1,5 @@
 /**
- * Campaign workspace enum — canonical stored value on WikiPage.workspace.
- * Keep in sync with Prisma enum CampaignWorkspace.
+ * Campaign workspace — canonical stored value on WikiPage.workspace (String column).
  */
 export const CampaignWorkspace = {
   CHARACTERS: 'CHARACTERS',
