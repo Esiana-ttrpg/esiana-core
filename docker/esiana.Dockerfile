@@ -14,12 +14,13 @@ COPY frontend ./frontend
 COPY shared ./shared
 COPY packages ./packages
 ARG PRISMA_DATABASE_PROVIDER=postgresql
+RUN pnpm install --frozen-lockfile
 RUN if [ "$PRISMA_DATABASE_PROVIDER" = "sqlite" ]; then \
   sed -i 's/provider = "postgresql"/provider = "sqlite"/' backend/prisma/schema.prisma; \
 fi \
   && pnpm --filter backend db:generate
 RUN pnpm -r build
-RUN node --input-type=module -e "import('@esiana/storage-s3')"
+RUN cd backend && node --input-type=module -e "import('@esiana/storage-s3')"
 
 FROM node:20-alpine AS runtime
 WORKDIR /app

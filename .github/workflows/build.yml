@@ -122,5 +122,5 @@ jobs:
 
       - name: Verify workspace storage package in image
         run: |
-          docker run --rm --entrypoint node esiana:ci \
+          docker run --rm --workdir /app/backend --entrypoint node esiana:ci \
             --input-type=module -e "import('@esiana/storage-s3')"

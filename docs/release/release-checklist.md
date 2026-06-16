@@ -29,7 +29,7 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
   docker run --rm --platform linux/amd64 --entrypoint uname ghcr.io/esiana-ttrpg/esiana:<tag> -m  # → x86_64
   ```
 - [ ] Production entrypoint on arm64 does not emit `exec format error` or `ERR_MODULE_NOT_FOUND`
-- [ ] `docker run --rm --entrypoint node ghcr.io/esiana-ttrpg/esiana:<tag> --input-type=module -e "import('@esiana/storage-s3')"` succeeds
+- [ ] `docker run --rm --workdir /app/backend --entrypoint node ghcr.io/esiana-ttrpg/esiana:<tag> --input-type=module -e "import('@esiana/storage-s3')"` succeeds
 - [ ] No UTF-8 BOM in `docker/*.sh` or `docker/esiana.Dockerfile` (CI gate; see `.gitattributes`)
 - [ ] Optional `ESIANA_VERSION` documented for pull-based upgrades ([Environment Variables.md](../deployment/Environment%20Variables.md))
 - [ ] Self-hosting docs aligned ([docs/self-hosting/](../../../docs/self-hosting/))
