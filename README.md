@@ -64,18 +64,19 @@ Contributors: [CONTRIBUTING.md](./CONTRIBUTING.md) · [GOVERNANCE.md](./GOVERNAN
 ## Quick start
 
 ```bash
-npm install
+corepack enable
+pnpm install
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-npm run db:generate
-npm run db:push
-npm run dev:backend
+pnpm run db:generate
+pnpm run db:push
+pnpm run dev:backend
 ```
 
 In another terminal:
 
 ```bash
-npm run dev:frontend
+pnpm run dev:frontend
 ```
 
 Then open the app at `http://localhost:5173`.
@@ -109,7 +110,7 @@ Prisma schema is DB-agnostic at the application layer. The active engine is set 
 
 **SQLite (solo dev / trial):** set `provider = "sqlite"` in `schema.prisma`, then `DATABASE_URL="file:./dev.db"`.
 
-After changing provider, run `npm run db:generate` and migrate/push.
+After changing provider, run `pnpm run db:generate` and migrate/push.
 
 ## Plugins
 

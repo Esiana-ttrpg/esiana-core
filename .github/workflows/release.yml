@@ -19,38 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Generate Prisma client
-        run: npm run db:generate --workspace=backend
+        run: pnpm --filter backend db:generate
 
-      - name: Build storage-s3 package
-        run: npm run build --workspace=@esiana/storage-s3
-
-      - name: Build frontend
-        run: npm run build --workspace=frontend
-
-      - name: Build backend
-        run: npm run build --workspace=backend
+      - name: Build workspaces
+        run: pnpm -r build
 
   test-sqlite:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Prepare SQLite test database
         working-directory: backend
@@ -58,14 +40,14 @@ jobs:
           sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
           sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/migrations/migration_lock.toml
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
-          npx prisma generate
-          npx prisma migrate deploy
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
 
       - name: Run backend tests
         working-directory: backend
         env:
           DATABASE_URL: file:./ci-test.db
-        run: npm test
+        run: pnpm test
 
   test-postgres:
     runs-on: ubuntu-latest
@@ -86,13 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Validate baseline migration portability
         working-directory: backend
@@ -105,14 +81,14 @@ jobs:
         env:
           DATABASE_URL: postgresql://esiana:esiana_ci@localhost:5432/esiana
         run: |
-          npx prisma generate
-          npx prisma migrate deploy
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
 
       - name: Run backend tests
         working-directory: backend
         env:
           DATABASE_URL: postgresql://esiana:esiana_ci@localhost:5432/esiana
-        run: npm test
+        run: pnpm test
 
   docker-build:
     runs-on: ubuntu-latest
@@ -158,7 +134,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Prepare image tag lists
+      - name: Prepare GHCR image tag lists
         id: tags
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
@@ -175,7 +151,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Build and push Esiana image
+      - name: Build and push Esiana image (GHCR)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -183,14 +159,51 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tags.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
           labels: |
             org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
             org.opencontainers.image.source=https://github.com/Esiana-ttrpg/esiana-core
             org.opencontainers.image.description=Self-hosted narrative infrastructure for long-form TTRPG campaigns
 
-      - name: Verify multi-arch manifest
+      - name: Verify multi-arch manifest (GHCR)
         run: |
           docker buildx imagetools inspect "ghcr.io/esiana-ttrpg/esiana:${{ steps.meta.outputs.tag }}" \
+            | grep -E 'linux/(amd64|arm64)'
+
+      - uses: docker/login-action@v3
+        continue-on-error: true
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Mirror to Docker Hub (best effort)
+        continue-on-error: true
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          SEMVER="${{ steps.meta.outputs.semver }}"
+          SRC="ghcr.io/esiana-ttrpg/esiana:${TAG}"
+          mirror() {
+            docker buildx imagetools create \
+              -t "docker.io/esiana/esiana:${TAG}" \
+              -t "docker.io/esiana/esiana:${SEMVER}" \
+              "${SRC}"
+            if [ "${{ steps.meta.outputs.is_prerelease }}" = "false" ]; then
+              docker buildx imagetools create -t "docker.io/esiana/esiana:latest" "${SRC}"
+            fi
+          }
+          for attempt in 1 2 3; do
+            if mirror; then exit 0; fi
+            echo "Docker Hub mirror attempt ${attempt} failed; retrying in 30s…"
+            sleep 30
+          done
+          exit 1
+
+      - name: Verify multi-arch manifest (Docker Hub)
+        continue-on-error: true
+        run: |
+          docker buildx imagetools inspect "docker.io/esiana/esiana:${{ steps.meta.outputs.tag }}" \
             | grep -E 'linux/(amd64|arm64)'
 
   github-release:
@@ -227,7 +240,10 @@ jobs:
             echo ""
             echo "\`\`\`"
             echo "ghcr.io/esiana-ttrpg/esiana:${TAG}"
+            echo "docker.io/esiana/esiana:${TAG}"
             echo "\`\`\`"
+            echo ""
+            echo "Docker Hub is mirrored from GHCR when the mirror step succeeds."
             echo ""
             echo "Multi-arch: \`linux/amd64\`, \`linux/arm64\`. Verify with:"
             echo ""

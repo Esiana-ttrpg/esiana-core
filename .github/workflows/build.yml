@@ -16,25 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Generate Prisma client
-        run: npm run db:generate --workspace=backend
+        run: pnpm --filter backend db:generate
 
-      - name: Build storage-s3 package
-        run: npm run build --workspace=@esiana/storage-s3
-
-      - name: Build frontend
-        run: npm run build --workspace=frontend
-
-      - name: Build backend
-        run: npm run build --workspace=backend
+      - name: Build workspaces
+        run: pnpm -r build
 
       - name: Verify compiled backend shared modules are ESM
         working-directory: backend
@@ -45,13 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Prepare SQLite test database
         working-directory: backend
@@ -59,14 +41,14 @@ jobs:
           sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
           sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/migrations/migration_lock.toml
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
-          npx prisma generate
-          npx prisma migrate deploy
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
 
       - name: Run backend tests
         working-directory: backend
         env:
           DATABASE_URL: file:./ci-test.db
-        run: npm test
+        run: pnpm test
 
   test-postgres:
     runs-on: ubuntu-latest
@@ -87,13 +69,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+      - uses: ./.github/actions/setup-pnpm
 
       - name: Validate baseline migration portability
         working-directory: backend
@@ -106,14 +82,14 @@ jobs:
         env:
           DATABASE_URL: postgresql://esiana:esiana_ci@localhost:5432/esiana
         run: |
-          npx prisma generate
-          npx prisma migrate deploy
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
 
       - name: Run backend tests
         working-directory: backend
         env:
           DATABASE_URL: postgresql://esiana:esiana_ci@localhost:5432/esiana
-        run: npm test
+        run: pnpm test
 
   docker-build:
     runs-on: ubuntu-latest
@@ -130,5 +106,16 @@ jobs:
         run: |
           docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
 
+      - uses: docker/setup-buildx-action@v3
+
       - name: Build runtime image
-        run: docker build -f docker/esiana.Dockerfile -t esiana:ci .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/esiana.Dockerfile
+          push: false
+          load: true
+          platforms: linux/amd64
+          tags: esiana:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

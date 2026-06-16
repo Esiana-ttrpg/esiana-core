@@ -12,7 +12,7 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 
 ### Automated gates
 
-- [ ] `npm ci && npm run build` passes locally or on the release PR
+- [ ] `pnpm install --frozen-lockfile && pnpm run build` passes locally or on the release PR
 - [ ] CI green on the commit to be tagged (`build`, `test-sqlite`, `test-postgres`, `docker-build`)
 - [ ] GitHub Release notes reviewed after workflow (generated from merged PRs; edit on GitHub if operator-facing detail is needed)
 - [ ] No pending schema migrations queued without maintainer review ([migration-audit.md](../audits/migration-audit.md))
@@ -22,6 +22,7 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 - [ ] `docker compose config` validates
 - [ ] Fresh `docker compose up -d` (or GHCR pull smoke) — login, `/api/health`, wiki edit at `http://localhost:8080`
 - [ ] `docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:<tag>` shows `linux/amd64` and `linux/arm64`
+- [ ] Optional: `docker buildx imagetools inspect docker.io/esiana/esiana:<tag>` (when Docker Hub mirror succeeded)
 - [ ] Optional `ESIANA_VERSION` documented for pull-based upgrades ([Environment Variables.md](../deployment/Environment%20Variables.md))
 - [ ] Self-hosting docs aligned ([docs/self-hosting/](../../../docs/self-hosting/))
 
@@ -41,7 +42,7 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 
 - [ ] Tag `vX.Y.Z` on `main` (triggers [release workflow](../../.github/workflows/release.yml))
 - [ ] GitHub Release body includes container image pull instructions
-- [ ] Monitor workflow to completion (GHCR push + release asset)
+- [ ] Monitor workflow to completion (GHCR push + optional Docker Hub mirror + release asset)
 
 ---
 
