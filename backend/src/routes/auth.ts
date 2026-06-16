@@ -8,7 +8,7 @@ import {
   signAuthToken,
 } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
-import { UserRole } from '@prisma/client';
+import { UserRoles } from '../types/domain.js';
 import { serializeUserIdentity } from '../lib/userDisplay.js';
 import {
   bootstrapSystemSettings,
@@ -104,7 +104,7 @@ authRouter.post('/register', authRegisterLimiter, async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const role = isBootstrapAdmin ? UserRole.SYSTEM_ADMIN : UserRole.USER;
+  const role = isBootstrapAdmin ? UserRoles.SYSTEM_ADMIN : UserRoles.USER;
 
   const user = await prisma.user.create({
     data: {
@@ -122,7 +122,7 @@ authRouter.post('/register', authRegisterLimiter, async (req, res) => {
     },
   });
 
-  if (role === UserRole.SYSTEM_ADMIN) {
+  if (role === UserRoles.SYSTEM_ADMIN) {
     await bootstrapSystemSettings();
   }
 

@@ -34,6 +34,10 @@ jobs:
 
       - uses: ./.github/actions/setup-pnpm
 
+      - name: Validate dual-engine portability
+        working-directory: backend
+        run: node prisma/scripts/validate-dual-engine-portability.mjs
+
       - name: Prepare SQLite test database
         working-directory: backend
         run: |
@@ -73,6 +77,7 @@ jobs:
       - name: Validate baseline migration portability
         working-directory: backend
         run: |
+          node prisma/scripts/validate-dual-engine-portability.mjs
           node prisma/scripts/validate-baseline-fk-order.mjs
           node prisma/scripts/validate-postgres-identifier-length.mjs
 

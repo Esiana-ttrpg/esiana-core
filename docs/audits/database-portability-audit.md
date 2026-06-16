@@ -34,7 +34,7 @@ Dual-engine confidence gate before Postgres default deployment and final schema 
 | `backend/src/` application code | **Pass** | No `$queryRaw` / `$executeRaw` / `Prisma.sql` |
 | Migrations (78 folders) | **Pass** | Portable `CREATE TABLE IF NOT EXISTS` / quoted identifiers; spot-checked recent folders |
 | Maintenance scripts | **Documented (SQLite-only)** | [`check-migration-state.ts`](../../backend/prisma/scripts/check-migration-state.ts), [`ensure-world-advance-receipt-table.ts`](../../backend/prisma/scripts/ensure-world-advance-receipt-table.ts) — dev tooling only; not used in production paths |
-| README schema copy | **Updated** | Removed stale "no Prisma enums" claim; enums in schema are Prisma-native on both engines |
+| README schema copy | **Updated** | Prisma schema uses String columns for role-like literals; enforce in shared/domain.ts. CI: `validate-dual-engine-portability.mjs` + `dualEnginePortability.integration.test.ts` |
 
 ---
 

@@ -1,13 +1,13 @@
 /**
  * Layer 1 — page narrative status (GM canon editorial state).
- * Values must stay in 1:1 sync with Prisma enum PageNarrativeStatusType.
+ * Stored as String in Prisma; these literals are the canonical values.
  * @see docs/plans/canonical-page-editor.md
  */
 import type { NarrativeViewerContext } from './narrativeProjection.js';
 
 export const PAGE_NARRATIVE_STATUS_SEMANTICS_VERSION = 'page-narrative-status-v1';
 
-/** Must stay in 1:1 sync with Prisma enum PageNarrativeStatusType */
+/** Canonical stored values for PageNarrativeStatus.status (String column). */
 export const PageNarrativeStatuses = {
   ACTIVE: 'ACTIVE',
   MISSING: 'MISSING',

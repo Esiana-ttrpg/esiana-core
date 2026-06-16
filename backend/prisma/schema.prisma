@@ -1,6 +1,7 @@
 // Esiana — DB-agnostic schema (PostgreSQL + SQLite)
-// Constraints: no Prisma enums, no native scalar arrays (String[]).
-// Application-layer TypeScript enforces role/type literals.
+// Dual-engine rule: if Prisma would expect a Postgres-only type (native enum, @db.*,
+// dbgenerated), neutralize it here as String/Json/DateTime — baseline migration is
+// SQLite-diff portable (TEXT columns). Enforce literals in shared/ and domain.ts.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,30 +11,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-enum UserRole {
-  USER
-  SYSTEM_ADMIN
-}
-
-enum TimelineEventVisibility {
-  PUBLIC
-  PARTY
-  DM_ONLY
-}
-
-/// Layer 1 — GM-authored canon narrative status for wiki pages (distinct from content presence / discovery).
-enum PageNarrativeStatusType {
-  ACTIVE
-  MISSING
-  DEAD
-  ARCHIVED
-  RUMORED
-  RETIRED
-  HISTORICAL
-  LEGENDARY
-  SECRET
 }
 
 // ---------------------------------------------------------------------------
@@ -60,7 +37,7 @@ model User {
   gmStyleTags Json?
   /// Null for federated-only accounts (linked via Account rows).
   passwordHash String?
-  role         UserRole @default(USER)
+  role         String @default("USER")
   /// Personal UI theme profile (foundation, genre, identity, palette, tinting).
   appearanceProfile Json?
   /// When true, campaign/system themes apply when the user has no personal profile.
@@ -983,7 +960,7 @@ model PageNarrativeStatus {
   id               String                  @id @default(cuid())
   campaignId       String
   wikiPageId       String                  @unique
-  status           PageNarrativeStatusType @default(ACTIVE)
+  status           String @default("ACTIVE")
   reason           String?
   semanticsVersion String                  @default("page-narrative-status-v1")
   updatedByUserId  String?
@@ -1142,7 +1119,7 @@ model CalendarEvent {
   calendarId     String
   categoryId     String?
   prerequisiteId String?
-  visibility     TimelineEventVisibility @default(PARTY)
+  visibility     String @default("PARTY")
   title          String
   description    String?
   duration       Int @default(1)
@@ -1239,35 +1216,11 @@ model CampaignMember {
 // Wiki & assets
 // ---------------------------------------------------------------------------
 
-enum PageOwnerType {
-  STAFF
-  USER
-  PARTY
-}
-
-enum CampaignWorkspace {
-  CHARACTERS
-  BESTIARY
-  ANCESTRIES
-  ORGANIZATIONS
-  LOCATIONS
-  OBJECTS
-  FAMILIES
-  RULES_RESOURCES
-  ADVENTURES
-  THREADS
-  HAVENS
-  PROJECTS
-  JOURNALS
-  PAGES
-  CUSTOM
-}
-
 model WikiPage {
   id              String  @id @default(cuid())
   campaignId      String
   /// Workspace namespace for public routing (scoped with pathKey).
-  workspace       CampaignWorkspace?
+  workspace       String?
   /// URL segment within workspace — derived from title, unique per (campaignId, workspace).
   pathKey         String?
   notebookArcId   String?
@@ -1281,7 +1234,7 @@ model WikiPage {
   visibility      String
   metadata        Json?
   /// Editorial stewardship — who maintains this page (STAFF | USER | PARTY).
-  ownerType       PageOwnerType @default(STAFF)
+  ownerType       String @default("STAFF")
   ownerUserId     String?
   ownerPartyId    String?
   createdByUserId String?

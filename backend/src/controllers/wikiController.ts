@@ -344,7 +344,7 @@ import {
   syncPathKeyForTitleChange,
 } from '../lib/wikiPathKeyService.js';
 import { segmentToWorkspace } from '../../../shared/campaignWorkspaceRoutes.js';
-import type { CampaignWorkspace } from '@prisma/client';
+import type { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import {
   mergeQuestTimeRulesIntoMetadata,
   resolveQuestTimeRulesPatch,
@@ -1457,7 +1457,7 @@ export async function updateWikiPage(
 
   if (
     !canEditPage(ctx.actor, {
-      ownerType: page.ownerType,
+      ownerType: page.ownerType as import('../../../shared/campaignPolicy/pageOwnership.js').PageOwnerType,
       ownerUserId: page.ownerUserId,
       ownerPartyId: page.ownerPartyId,
     })
@@ -1496,7 +1496,7 @@ export async function updateWikiPage(
       ctx.campaignId,
       page.id,
       nextTitle,
-      page.workspace,
+      page.workspace as CampaignWorkspace,
       page.pathKey,
     );
   }

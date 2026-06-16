@@ -1,4 +1,4 @@
-import { UserRole } from '@prisma/client';
+import { UserRoles } from '../types/domain.js';
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
@@ -79,7 +79,7 @@ export async function patchAdminUserRole(
 
   const body = req.body as { role?: unknown };
   const role =
-    body.role === UserRole.USER || body.role === UserRole.SYSTEM_ADMIN
+    body.role === UserRoles.USER || body.role === UserRoles.SYSTEM_ADMIN
       ? body.role
       : null;
 
@@ -88,7 +88,7 @@ export async function patchAdminUserRole(
     return;
   }
 
-  if (req.user?.id === userId && role === UserRole.USER) {
+  if (req.user?.id === userId && role === UserRoles.USER) {
     res.status(400).json({
       error: 'You cannot remove your own system administrator privileges',
     });

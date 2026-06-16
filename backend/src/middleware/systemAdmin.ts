@@ -1,5 +1,5 @@
 import type { Response, NextFunction } from 'express';
-import { UserRole } from '@prisma/client';
+import { UserRoles } from '../types/domain.js';
 import type { AuthenticatedRequest } from './auth.js';
 
 /**
@@ -16,7 +16,7 @@ export function verifySystemAdmin(
     return;
   }
 
-  if (req.user.role !== UserRole.SYSTEM_ADMIN) {
+  if (req.user.role !== UserRoles.SYSTEM_ADMIN) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }

@@ -14,7 +14,7 @@ import {
   ContentRevelationStates,
   type ContentRevelationState,
 } from '../../../shared/contentPresence.js';
-import type { CampaignWorkspace } from '@prisma/client';
+import type { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import { resolveCanonicalPagePath } from '../../../shared/campaignWorkspaceRoutes.js';
 import type { PublicPagePath } from '../../../shared/publicPagePath.js';
 
