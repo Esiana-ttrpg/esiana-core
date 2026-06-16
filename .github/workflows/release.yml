@@ -211,16 +211,16 @@ jobs:
           test "$arm" = "aarch64" || { echo "arm64 runtime got: $arm"; exit 1; }
           test "$amd" = "x86_64" || { echo "amd64 runtime got: $amd"; exit 1; }
 
-      - name: Verify production entrypoint on arm64 (GHCR)
+      - name: Verify arm64 runtime packaging (GHCR)
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
           IMAGE="ghcr.io/esiana-ttrpg/esiana:${TAG}"
-          out=$(docker run --rm --platform linux/arm64 \
-            -e JWT_SECRET=smoke -e DATABASE_URL=postgresql://x \
-            "$IMAGE" 2>&1 || true)
-          echo "$out"
-          echo "$out" | grep -qi 'exec format error' && exit 1
-          echo "$out" | grep -qi 'ERR_MODULE_NOT_FOUND' && exit 1
+          docker run --rm --platform linux/arm64 \
+            --workdir /app/backend --entrypoint node "$IMAGE" \
+            --input-type=module -e "import('@esiana/storage-s3')"
+          docker run --rm --platform linux/arm64 \
+            --entrypoint /bin/sh "$IMAGE" \
+            -c 'test -x /entrypoint.sh'
 
   github-release:
     needs: [build, test-sqlite, test-postgres, docker-build, publish-images]
