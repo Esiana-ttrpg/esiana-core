@@ -1,4 +1,4 @@
-services:
+﻿services:
   esiana:
     image: ghcr.io/esiana-ttrpg/esiana:${ESIANA_VERSION:-latest}
     environment:
@@ -11,6 +11,7 @@ services:
       CORS_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${COMPOSE_HTTP_PORT:-8080}}
       BACKEND_PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:${COMPOSE_HTTP_PORT:-8080}}
       TRUST_PROXY: ${TRUST_PROXY:-false}
+      ENABLE_INTERNAL_NGINX: ${ENABLE_INTERNAL_NGINX:-true}
       OPENAPI_DOCS_ENABLED: ${OPENAPI_DOCS_ENABLED:-true}
       AUTH_SECRETS_KEY: ${AUTH_SECRETS_KEY:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}

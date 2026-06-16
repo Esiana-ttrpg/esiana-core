@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+﻿FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
@@ -41,9 +41,11 @@ COPY --from=build /app/packages ./packages
 COPY --from=build /app/shared ./shared
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
-COPY docker/nginx-esiana.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/nginx-esiana.conf /etc/nginx/http.d/default.conf
 COPY docker/esiana-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+  && nginx -t
 
-EXPOSE 80
+EXPOSE 80 3001
 ENTRYPOINT ["/entrypoint.sh"]

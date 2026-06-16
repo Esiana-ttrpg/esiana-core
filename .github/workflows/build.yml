@@ -1,4 +1,4 @@
-name: Build
+﻿name: Build
 
 on:
   push:
@@ -129,3 +129,6 @@ jobs:
       - name: Assert Postgres health-gated startup
         run: |
           docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
+
+      - name: Build runtime image
+        run: docker build -f docker/esiana.Dockerfile -t esiana:ci .

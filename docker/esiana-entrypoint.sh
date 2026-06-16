@@ -1,4 +1,4 @@
-#!/bin/sh
+﻿#!/bin/sh
 set -e
 
 cd /app/backend
@@ -22,8 +22,12 @@ fi
 
 su-exec esiana node dist/backend/src/index.js &
 BACKEND_PID=$!
+NGINX_PID=
 
 cleanup() {
+  if [ -n "$NGINX_PID" ]; then
+    kill "$NGINX_PID" 2>/dev/null || true
+  fi
   kill "$BACKEND_PID" 2>/dev/null || true
   wait "$BACKEND_PID" 2>/dev/null || true
 }
@@ -43,5 +47,20 @@ while [ "$attempt" -le "$max_attempts" ]; do
   attempt=$((attempt + 1))
 done
 
-trap - EXIT INT TERM
-exec nginx -g 'daemon off;'
+ENABLE_INTERNAL_NGINX="${ENABLE_INTERNAL_NGINX:-true}"
+
+if [ "$ENABLE_INTERNAL_NGINX" = "true" ]; then
+  echo "Starting internal nginx (web delivery layer) on :80"
+  nginx -t || exit 1
+  nginx -g 'daemon off;' &
+  NGINX_PID=$!
+  sleep 1
+  if ! kill -0 "$NGINX_PID" 2>/dev/null; then
+    echo "warning: nginx exited immediately; API remains available on :${PORT:-3001}" >&2
+    NGINX_PID=
+  fi
+else
+  echo "Internal nginx disabled — API-only on :${PORT:-3001} (SPA requires the web delivery layer)"
+fi
+
+wait "$BACKEND_PID"

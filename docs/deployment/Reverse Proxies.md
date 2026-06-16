@@ -1,6 +1,6 @@
 # Reverse Proxies
 
-Esiana serves HTTP on **port 80 inside the container**. The official [`docker-compose.yml`](../../docker-compose.yml) maps that to **host port 8080** — no reverse proxy required for local or LAN use.
+Esiana's **web delivery layer** (internal nginx) listens on **port 80 inside the container**. The official [`docker-compose.yml`](../../docker-compose.yml) maps that to **host port 8080** — no reverse proxy required for local or LAN use.
 
 For HTTPS, a public hostname, or integration with existing infrastructure, terminate TLS at your reverse proxy and forward to Esiana. Esiana does not ship or require any particular proxy.
 
@@ -25,7 +25,7 @@ Browser ──HTTPS──► Reverse proxy ──HTTP──► esiana:80 (contai
 ```
 
 - Proxy **to the esiana container** on port **80** (not Postgres).
-- Esiana's internal nginx serves the SPA and proxies `/api` and `/uploads` to the Node backend.
+- Internal nginx is the **web delivery layer**: it serves the SPA and proxies `/api` and `/uploads` to the Node API on port 3001. External proxies always target container **port 80**, not Node 3001.
 - You may remove the `ports:` mapping from compose once the proxy reaches Esiana on the Docker network (advanced).
 
 ---
