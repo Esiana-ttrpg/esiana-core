@@ -16,6 +16,8 @@ export interface BackgroundTaskRecord {
   progress: number;
   startedAt: string;
   completedAt: string | null;
+  durationMs: number | null;
+  cronKey: string | null;
   errorMessage: string | null;
   abortable: boolean;
 }
@@ -27,14 +29,20 @@ interface BackgroundTaskInternal extends BackgroundTaskRecord {
   onAbort?: () => Promise<void> | void;
 }
 
-const MAX_TASKS = 250;
-const HISTORY_LIMIT = 20;
+const MAX_HISTORY = 200;
+const DEFAULT_FAILURE_LIMIT = 20;
 
 const tasks = new Map<string, BackgroundTaskInternal>();
+const dismissedFailureIds = new Set<string>();
 
 function clampProgress(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function deriveDurationMs(task: BackgroundTaskInternal): number | null {
+  if (task.completedAtMs === null) return null;
+  return Math.max(0, task.completedAtMs - task.startedAtMs);
 }
 
 function serialize(task: BackgroundTaskInternal): BackgroundTaskRecord {
@@ -47,20 +55,27 @@ function serialize(task: BackgroundTaskInternal): BackgroundTaskRecord {
     progress: task.progress,
     startedAt: task.startedAt,
     completedAt: task.completedAt,
+    durationMs: deriveDurationMs(task),
+    cronKey: task.cronKey,
     errorMessage: task.errorMessage,
     abortable: task.abortable,
   };
 }
 
+function isFinished(task: BackgroundTaskInternal): boolean {
+  return task.status === 'COMPLETED' || task.status === 'FAILED';
+}
+
 function trimTaskHistory(): void {
   const finished = Array.from(tasks.values())
-    .filter((task) => task.completedAtMs !== null)
+    .filter(isFinished)
     .sort((a, b) => (b.completedAtMs ?? 0) - (a.completedAtMs ?? 0));
 
-  const keepFinishedIds = new Set(finished.slice(0, MAX_TASKS).map((task) => task.id));
+  const keepFinishedIds = new Set(finished.slice(0, MAX_HISTORY).map((task) => task.id));
   for (const task of tasks.values()) {
-    if (task.completedAtMs !== null && !keepFinishedIds.has(task.id)) {
+    if (isFinished(task) && !keepFinishedIds.has(task.id)) {
       tasks.delete(task.id);
+      dismissedFailureIds.delete(task.id);
     }
   }
 }
@@ -72,6 +87,7 @@ export function createBackgroundTask(input: {
   status?: BackgroundTaskStatus;
   progress?: number;
   abortable?: boolean;
+  cronKey?: string | null;
   onAbort?: () => Promise<void> | void;
   meta?: Record<string, unknown>;
 }): BackgroundTaskRecord {
@@ -88,6 +104,8 @@ export function createBackgroundTask(input: {
     progress: clampProgress(input.progress ?? (status === 'PENDING' ? 0 : 5)),
     startedAt: new Date(now).toISOString(),
     completedAt: completed ? new Date(now).toISOString() : null,
+    durationMs: completed ? 0 : null,
+    cronKey: input.cronKey ?? null,
     errorMessage: null,
     abortable: Boolean(input.abortable),
     startedAtMs: now,
@@ -120,12 +138,14 @@ export function updateBackgroundTask(
       const now = Date.now();
       task.completedAtMs = now;
       task.completedAt = new Date(now).toISOString();
+      task.durationMs = deriveDurationMs(task);
       if (patch.status === 'COMPLETED') {
         task.progress = 100;
       }
     } else {
       task.completedAt = null;
       task.completedAtMs = null;
+      task.durationMs = null;
     }
   }
 
@@ -183,6 +203,83 @@ export async function abortBackgroundTask(taskId: string): Promise<{
     : { ok: false, error: 'Task not found after abort' };
 }
 
+export function listActiveTasks(): BackgroundTaskRecord[] {
+  return Array.from(tasks.values())
+    .filter((task) => task.status === 'PENDING' || task.status === 'PROCESSING')
+    .sort((a, b) => b.startedAtMs - a.startedAtMs)
+    .map(serialize);
+}
+
+export function listTaskFailures(limit = DEFAULT_FAILURE_LIMIT): BackgroundTaskRecord[] {
+  return Array.from(tasks.values())
+    .filter(
+      (task) =>
+        task.status === 'FAILED' &&
+        !dismissedFailureIds.has(task.id),
+    )
+    .sort((a, b) => (b.completedAtMs ?? 0) - (a.completedAtMs ?? 0))
+    .slice(0, limit)
+    .map(serialize);
+}
+
+export function listFinishedTasks(): BackgroundTaskRecord[] {
+  return Array.from(tasks.values())
+    .filter(isFinished)
+    .sort((a, b) => (b.completedAtMs ?? 0) - (a.completedAtMs ?? 0))
+    .map(serialize);
+}
+
+export function listTaskHistoryPage(input: {
+  page?: number;
+  limit?: number;
+}): {
+  runs: BackgroundTaskRecord[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    pageSize: number;
+  };
+} {
+  const pageSize = Math.min(50, Math.max(1, input.limit ?? 25));
+  const page = Math.max(1, input.page ?? 1);
+  const finished = listFinishedTasks();
+  const totalCount = finished.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const offset = (currentPage - 1) * pageSize;
+
+  return {
+    runs: finished.slice(offset, offset + pageSize),
+    pagination: {
+      currentPage,
+      totalPages,
+      totalCount,
+      pageSize,
+    },
+  };
+}
+
+export function getLatestCronRun(cronKey: string): BackgroundTaskRecord | null {
+  const match = Array.from(tasks.values())
+    .filter((task) => task.cronKey === cronKey && isFinished(task))
+    .sort((a, b) => (b.completedAtMs ?? 0) - (a.completedAtMs ?? 0))[0];
+  return match ? serialize(match) : null;
+}
+
+export function dismissTaskFailure(taskId: string): boolean {
+  const task = tasks.get(taskId);
+  if (!task || task.status !== 'FAILED') return false;
+  dismissedFailureIds.add(taskId);
+  return true;
+}
+
+/** @internal test helper */
+export function resetTaskRegistryForTests(): void {
+  tasks.clear();
+  dismissedFailureIds.clear();
+}
+
 export function listBackgroundTasks(): BackgroundTaskRecord[] {
   return Array.from(tasks.values())
     .sort((a, b) => b.startedAtMs - a.startedAtMs)
@@ -193,12 +290,8 @@ export function getBackgroundTask(taskId: string): BackgroundTaskInternal | unde
   return tasks.get(taskId);
 }
 
-export function listTaskHistory(limit = HISTORY_LIMIT): BackgroundTaskRecord[] {
-  return Array.from(tasks.values())
-    .filter((task) => task.status === 'COMPLETED' || task.status === 'FAILED')
-    .sort((a, b) => (b.completedAtMs ?? 0) - (a.completedAtMs ?? 0))
-    .slice(0, limit)
-    .map(serialize);
+export function listTaskHistory(limit = 20): BackgroundTaskRecord[] {
+  return listFinishedTasks().slice(0, limit);
 }
 
 export function getTaskMetaNumberSum(taskName: string, key: string, windowMs: number): number {
@@ -210,4 +303,3 @@ export function getTaskMetaNumberSum(taskName: string, key: string, windowMs: nu
       return sum + (typeof value === 'number' && Number.isFinite(value) ? value : 0);
     }, 0);
 }
-

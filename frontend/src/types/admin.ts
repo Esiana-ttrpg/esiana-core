@@ -234,6 +234,8 @@ export interface BackgroundTaskRecord {
   progress: number;
   startedAt: string;
   completedAt: string | null;
+  durationMs: number | null;
+  cronKey: string | null;
   errorMessage: string | null;
   abortable: boolean;
 }
@@ -244,6 +246,12 @@ export interface ScheduledSystemJobDefinition {
   schedule: string;
   description: string;
   scope: string;
+}
+
+export interface ScheduledJobSummary extends ScheduledSystemJobDefinition {
+  lastRunAt: string | null;
+  lastRunStatus: 'success' | 'failed' | null;
+  nextRunAt: string | null;
 }
 
 export interface BackgroundTaskSnapshot {
@@ -259,7 +267,17 @@ export interface BackgroundTaskSnapshot {
       freedFormattedThisWeek: string;
     };
   };
-  tasks: BackgroundTaskRecord[];
-  history: BackgroundTaskRecord[];
-  scheduledJobs: ScheduledSystemJobDefinition[];
+  active: BackgroundTaskRecord[];
+  scheduled: ScheduledJobSummary[];
+  failures: BackgroundTaskRecord[];
+}
+
+export interface TaskHistoryPage {
+  runs: BackgroundTaskRecord[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+    pageSize: number;
+  };
 }
