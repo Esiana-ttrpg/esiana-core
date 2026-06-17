@@ -29,7 +29,7 @@ if echo "$DATABASE_URL" | grep -q '^postgresql:'; then
   attempt=1
   max_attempts=10
   while [ "$attempt" -le "$max_attempts" ]; do
-    if su-exec esiana npx prisma migrate deploy; then
+    if su-exec esiana node_modules/.bin/prisma migrate deploy; then
       break
     fi
     if [ "$attempt" -eq "$max_attempts" ]; then
