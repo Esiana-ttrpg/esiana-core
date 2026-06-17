@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 RUN corepack enable
@@ -24,7 +24,7 @@ fi \
 RUN pnpm -r build
 RUN cd backend && node --input-type=module -e "import('@esiana/storage-s3')"
 
-FROM node:20-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 
 LABEL org.opencontainers.image.title="Esiana"
