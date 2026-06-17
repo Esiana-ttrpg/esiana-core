@@ -44,6 +44,16 @@ The technical side of development (environment setup, build commands, testing, d
 
 Start there once you've chosen an issue to work on.
 
+### Package manager
+
+Esiana uses **pnpm only**. Enable it via Corepack (`corepack enable`) — the required version is pinned in root `package.json` (`packageManager`).
+
+- Run `pnpm install` at the repo root — never `npm install`
+- Commit `pnpm-lock.yaml` when dependencies change; do not commit `package-lock.json`
+- CI rejects pull requests that introduce `package-lock.json`
+
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for install, build, and test commands.
+
 ### Tech stack
 
 Esiana is a TypeScript monorepo:
