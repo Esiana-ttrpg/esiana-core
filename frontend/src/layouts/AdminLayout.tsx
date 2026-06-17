@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   ArrowUpCircle,
   BarChart3,
@@ -21,10 +21,12 @@ import { AdminSidebarNav } from '@/components/admin/AdminSidebarNav';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminNavProvider, useAdminNav } from '@/contexts/AdminNavContext';
+import { useAdminSampleDataEnabled } from '@/hooks/useAdminSampleDataEnabled';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { UserRoles } from '@/types/domain';
+import type { AdminNavItem } from '@/components/admin/AdminSidebarNav';
 
-const SYSTEM_CONFIG_NAV = [
+const SYSTEM_CONFIG_NAV: AdminNavItem[] = [
   {
     to: '/admin/settings/general',
     label: 'General Settings',
@@ -76,11 +78,6 @@ const SYSTEM_CONFIG_NAV = [
     icon: Swords,
   },
   {
-    to: '/admin/config/sample-data',
-    label: 'Sample Data',
-    icon: FlaskConical,
-  },
-  {
     to: '/admin/memberships',
     label: 'Memberships',
     icon: Users,
@@ -90,10 +87,25 @@ const SYSTEM_CONFIG_NAV = [
     label: 'API Usage',
     icon: BarChart3,
   },
-] as const;
+];
+
+const SAMPLE_DATA_NAV_ITEM: AdminNavItem = {
+  to: '/admin/config/sample-data',
+  label: 'Sample Data',
+  icon: FlaskConical,
+};
 
 function AdminLayoutShell() {
   const { navOpen, closeNav } = useAdminNav();
+  const { enabled: sampleDataEnabled } = useAdminSampleDataEnabled();
+
+  const navItems = useMemo(() => {
+    if (!sampleDataEnabled) return SYSTEM_CONFIG_NAV;
+    const items = [...SYSTEM_CONFIG_NAV];
+    const campaignsIndex = items.findIndex((item) => item.to === '/admin/config/campaigns');
+    items.splice(campaignsIndex + 1, 0, SAMPLE_DATA_NAV_ITEM);
+    return items;
+  }, [sampleDataEnabled]);
 
   useBodyScrollLock(navOpen);
 
@@ -112,7 +124,7 @@ function AdminLayoutShell() {
       <AppHeader />
 
       <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-64">
-        <AdminSidebarNav items={SYSTEM_CONFIG_NAV} className="h-screen w-full" />
+        <AdminSidebarNav items={navItems} className="h-screen w-full" />
       </div>
 
       {navOpen && (
@@ -125,7 +137,7 @@ function AdminLayoutShell() {
           />
           <div className="absolute inset-y-0 left-0 flex shadow-2xl">
             <AdminSidebarNav
-              items={SYSTEM_CONFIG_NAV}
+              items={navItems}
               onNavigate={closeNav}
               onClose={closeNav}
             />
