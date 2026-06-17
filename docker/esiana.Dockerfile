@@ -24,14 +24,19 @@ RUN pnpm -r build
 
 RUN pnpm --filter @esiana/backend deploy --prod /prod/backend
 
-RUN cp -R node_modules/prisma /prod/backend/node_modules/ \
-    && cp -R node_modules/@prisma /prod/backend/node_modules/ \
-    && mkdir -p /prod/backend/node_modules/.bin \
-    && cp node_modules/.bin/prisma /prod/backend/node_modules/.bin/ \
-    && if [ -d node_modules/.prisma ]; then cp -R node_modules/.prisma /prod/backend/node_modules/; fi \
-    && cd /prod/backend \
-    && node -e "require('@prisma/client')" \
-    && node_modules/.bin/prisma --version
+RUN set -eux; \
+  DEPLOY=/prod/backend; \
+  mkdir -p "${DEPLOY}/node_modules/.bin"; \
+  cp -a node_modules/prisma "${DEPLOY}/node_modules/"; \
+  cp -a node_modules/.bin/prisma "${DEPLOY}/node_modules/.bin/prisma"; \
+  if [ -d node_modules/@prisma/engines ]; then \
+    mkdir -p "${DEPLOY}/node_modules/@prisma"; \
+    cp -a node_modules/@prisma/engines "${DEPLOY}/node_modules/@prisma/"; \
+  fi; \
+  cd "${DEPLOY}"; \
+  node_modules/.bin/prisma generate; \
+  node_modules/.bin/prisma --version; \
+  node --input-type=module -e "import('@prisma/client').then((m) => { if (!m.PrismaClient) process.exit(1); })"
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
