@@ -42,6 +42,7 @@ Canonical reference for every supported Esiana environment variable.
 | `NODE_ENV` | `production` | Runtime mode for the container. |
 | `UPLOADS_DIR` | `/data/uploads` | Upload storage inside the container (backed by the `uploads` volume). |
 | `PLUGINS_DIR` | `/app/plugins` | Plugin packages inside the container (backed by the `plugins` volume). |
+| `ESIANA_PRODUCT_VERSION` | (from image build) | Read-only product version metadata (matches root `package.json` at image build). Observability only — app reads version from `/app/package.json`. |
 | `ENABLE_INTERNAL_NGINX` | `true` | `true` runs nginx web delivery layer on port 80; `false` is API-only. |
 | `TRUST_PROXY` | `false` | `true` when behind a reverse proxy — see [Reverse Proxies.md](Reverse%20Proxies.md). |
 
