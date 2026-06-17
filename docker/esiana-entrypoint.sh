@@ -1,6 +1,28 @@
 #!/bin/sh
 set -e
 
+cat <<'EOF'
+__,  _, _  _, _, _  _,
+|_  (_  | /_\ |\ | /_\
+|   , ) | | | | \| | |
+~~~  ~  ~ ~ ~ ~  ~ ~ ~
+
+EOF
+
+VERSION="$(node -p "try{require('/app/package.json').version||''}catch{''}" 2>/dev/null || true)"
+BUILD_REF="${ESIANA_BUILD_REF:-${VCS_REF:-${GITHUB_SHA:-unknown}}}"
+BUILD_SHORT="$(printf '%s' "$BUILD_REF" | cut -c1-8)"
+NODE_VERSION="$(node -v 2>/dev/null || echo unknown)"
+RUNTIME_MODE="${NODE_ENV:-production}"
+
+[ -n "$VERSION" ] || VERSION="unknown"
+
+echo "Version: $VERSION"
+echo "Build: $BUILD_SHORT"
+echo "Node: $NODE_VERSION"
+echo "Mode: $RUNTIME_MODE"
+echo
+
 cd /app/backend
 
 if echo "$DATABASE_URL" | grep -q '^postgresql:'; then
