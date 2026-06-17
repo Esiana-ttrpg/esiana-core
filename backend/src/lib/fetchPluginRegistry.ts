@@ -1,7 +1,41 @@
 import { parsePluginRegistryIndex } from './pluginManifest.js';
 import { normalizeRemoteJsonUrl } from './fetchPluginManifest.js';
+import { fetchPluginRemoteText, NetworkFetchError } from './networkFetch.js';
 
 export const MAX_REGISTRY_BYTES = 512 * 1024;
+
+const PLUGIN_REGISTRY_TIMEOUT_SECONDS = 15;
+
+function isAllowedPluginJsonContentType(contentType: string | null): boolean {
+  if (!contentType) return false;
+  const normalized = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
+  return (
+    normalized === 'application/json' ||
+    normalized === 'text/json' ||
+    normalized === 'application/manifest+json'
+  );
+}
+
+function mapNetworkFetchFailure(error: unknown): {
+  status: number;
+  error: string;
+} {
+  if (error instanceof NetworkFetchError) {
+    const policyFailure =
+      error.message.includes('not allowed') ||
+      error.message.includes('HTTPS') ||
+      error.message.includes('credentials') ||
+      error.message.includes('private network');
+    return {
+      status: policyFailure ? 400 : 502,
+      error: error.message,
+    };
+  }
+  return {
+    status: 502,
+    error: error instanceof Error ? error.message : 'Unable to reach registry URL',
+  };
+}
 
 export async function fetchAndParsePluginRegistry(
   url: URL,
@@ -10,37 +44,27 @@ export async function fetchAndParsePluginRegistry(
   | { ok: false; status: number; error: string; details?: string[] }
 > {
   const fetchUrl = normalizeRemoteJsonUrl(url);
-  let response: globalThis.Response;
+
+  let rawText: string;
+  let contentType: string | null;
   try {
-    response = await fetch(fetchUrl.toString(), {
+    const fetched = await fetchPluginRemoteText(fetchUrl, {
+      maxBytes: MAX_REGISTRY_BYTES,
+      timeoutSeconds: PLUGIN_REGISTRY_TIMEOUT_SECONDS,
       headers: { Accept: 'application/json' },
-      redirect: 'follow',
     });
-  } catch (err) {
-    return {
-      ok: false,
-      status: 502,
-      error:
-        err instanceof Error
-          ? `Unable to reach registry URL: ${err.message}`
-          : 'Unable to reach registry URL',
-    };
+    rawText = fetched.text;
+    contentType = fetched.contentType;
+  } catch (error) {
+    const mapped = mapNetworkFetchFailure(error);
+    return { ok: false, status: mapped.status, error: mapped.error };
   }
 
-  if (!response.ok) {
-    return {
-      ok: false,
-      status: 502,
-      error: `Registry URL returned HTTP ${response.status}`,
-    };
-  }
-
-  const rawText = await response.text();
-  if (rawText.length > MAX_REGISTRY_BYTES) {
+  if (!isAllowedPluginJsonContentType(contentType)) {
     return {
       ok: false,
       status: 400,
-      error: 'Registry file exceeds maximum allowed size',
+      error: 'Registry URL must return JSON (application/json)',
     };
   }
 

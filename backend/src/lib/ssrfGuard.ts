@@ -98,6 +98,9 @@ export async function assertUrlSafeForImport(
   url: URL,
   options: { allowHttp: boolean },
 ): Promise<void> {
+  if (url.username || url.password) {
+    throw new SsrfGuardError('URL credentials are not allowed');
+  }
   assertAllowedImportProtocol(url, options.allowHttp);
   await resolveAndAssertHostname(url.hostname);
 }

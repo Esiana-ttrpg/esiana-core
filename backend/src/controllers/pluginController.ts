@@ -16,7 +16,8 @@ export async function installPluginFromLink(
 
   if (!target) {
     res.status(400).json({
-      error: 'A valid http or https manifest URL is required',
+      error:
+        'A valid HTTPS manifest URL on GitHub or GitLab is required',
     });
     return;
   }

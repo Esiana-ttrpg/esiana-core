@@ -25,3 +25,14 @@ test('assertUrlSafeForImport requires HTTPS when HTTP disallowed', async () => {
     SsrfGuardError,
   );
 });
+
+test('assertUrlSafeForImport rejects URL userinfo credentials', async () => {
+  await assert.rejects(
+    () =>
+      assertUrlSafeForImport(new URL('https://user:pass@example.com/image.png'), {
+        allowHttp: false,
+      }),
+    (error: unknown) =>
+      error instanceof SsrfGuardError && error.message.includes('credentials'),
+  );
+});
