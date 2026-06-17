@@ -1,15 +1,30 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { afterEach, describe, it } from 'node:test';
 import { buildCategoryIndexWhereClause } from './wikiCategoryEntityIndex.js';
+import { prismaJsonPath } from './prismaJsonPath.js';
 
 describe('buildCategoryIndexWhereClause', () => {
-  it('uses string path for SQLite-compatible JSON filter', () => {
+  const originalProvider = process.env.DATABASE_PROVIDER;
+
+  afterEach(() => {
+    if (originalProvider === undefined) {
+      delete process.env.DATABASE_PROVIDER;
+    } else {
+      process.env.DATABASE_PROVIDER = originalProvider;
+    }
+  });
+
+  it('uses provider-aware JSON path for entityCategory metadata filter', () => {
+    process.env.DATABASE_PROVIDER = 'postgresql';
     const clause = buildCategoryIndexWhereClause('Characters');
     const metadataFilter = clause.OR?.[0]?.metadata as {
       path?: string | string[];
     };
-    assert.equal(metadataFilter?.path, 'entityCategory');
-    assert.notEqual(typeof metadataFilter?.path, 'object');
+    assert.deepEqual(
+      metadataFilter?.path,
+      prismaJsonPath('entityCategory'),
+    );
+    assert.deepEqual(metadataFilter?.path, ['entityCategory']);
   });
 
   it('includes templateType fallback for Characters', () => {

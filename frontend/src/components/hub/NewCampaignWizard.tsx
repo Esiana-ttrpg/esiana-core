@@ -604,10 +604,15 @@ export function NewCampaignWizard({
       onCreated(campaign);
       handleResetAndClose();
     } catch (submitError) {
+      const message =
+        submitError instanceof Error ? submitError.message : 'Failed to create campaign';
+      const isNetworkFailure =
+        submitError instanceof TypeError &&
+        /failed to fetch|networkerror/i.test(message);
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : 'Failed to create campaign',
+        isNetworkFailure
+          ? 'Could not reach the server. The upload may exceed the server size limit, or the backend may be unavailable.'
+          : message,
       );
     } finally {
       setSubmitting(false);

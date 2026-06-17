@@ -276,15 +276,16 @@ These appeared in plan "out of scope" or deferral notes but have since landed �
 | Share links (tokenized read-only wiki/campaign surfaces)                                                                                      | `won't-do`    | —                              | Phase 5.5 deferral — campaign discoverability covers anonymous presentation; not core                                       |
 | Wizard UI copy explaining 3-day import ZIP retention                                                                                          | `open`    | —                              | [import_staging_retention](../../docs/plans/import_staging_retention_3ac62f48.plan.md)                                      |
 | Post-import immediate ZIP delete (vs 3-day janitor)                                                                                           | `open`    | Policy unchanged               | [import_staging_retention](../../docs/plans/import_staging_retention_3ac62f48.plan.md)                                      |
-| Platform hardening — audit & standardize external fetch/download paths (SSRF, streaming limits, timeouts, redirect policy, cleanup semantics) | `open`    | post asset-upload-governance   | [asset-upload-governance.md](./plans/asset-upload-governance.md) Phase 3                                                    |
+| Platform hardening — audit & standardize external fetch/download paths (SSRF, streaming limits, timeouts, redirect policy, cleanup semantics) | `partial` | post asset-upload-governance   | [asset-upload-governance.md](./plans/asset-upload-governance.md) Phase 3 — `networkFetch` + `pluginSourcePolicy` shipped for plugin manifest/registry/archive + asset URL import; DNS IP pinning deferred |
 
 
 **Platform hardening scope** (Phase 3 audit baseline; migrate incrementally — do not block on full refactor):
 
 - Pack import — [packAssetImporter.ts](../backend/src/lib/packAssetImporter.ts), [campaignImportProcessor.ts](../backend/src/lib/campaignImportProcessor.ts)
-- Plugin manifest / registry / archive — [fetchPluginManifest.ts](../backend/src/lib/fetchPluginManifest.ts), [fetchPluginRegistry.ts](../backend/src/lib/fetchPluginRegistry.ts), [pluginInstaller.ts](../backend/src/lib/pluginInstaller.ts)
+- Plugin manifest / registry / archive — migrated to [networkFetch.ts](../backend/src/lib/networkFetch.ts) + [pluginSourcePolicy.ts](../backend/src/lib/pluginSourcePolicy.ts)
 - Future asset imports — instance branding (logo, favicon, OG), OIDC avatar/logo cache when scoped
-- Standardize on shared `networkFetch` + existing [ssrfGuard.ts](../backend/src/lib/ssrfGuard.ts)
+- DNS rebinding / IP pinning at connect time — deferred (TOCTOU; `redirect: 'error'` + ssrfGuard reduces pivot risk)
+- Standardize remaining paths on [networkFetch.ts](../backend/src/lib/networkFetch.ts) + [ssrfGuard.ts](../backend/src/lib/ssrfGuard.ts)
 
 ### Recruitment & hub UX
 

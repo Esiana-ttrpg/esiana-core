@@ -3,6 +3,7 @@ import {
   entityCategoryIndexMatchValues,
   normalizeEntityCategoryKey,
 } from './entityCategoryKeys.js';
+import { prismaJsonPath } from './prismaJsonPath.js';
 
 /** JSON metadata key stamped when creating pages from a category index. */
 export const WIKI_ENTITY_CATEGORY_METADATA_KEY = 'entityCategory';
@@ -34,12 +35,11 @@ export function buildCategoryIndexWhereClause(
   categoryTitle: string,
   categoryPageId?: string,
 ): Prisma.WikiPageWhereInput {
-  // SQLite provider expects `path` as a dot-separated string, not a string[].
   const categoryMatchValues = entityCategoryIndexMatchValues(categoryTitle);
   const orConditions: Prisma.WikiPageWhereInput[] = categoryMatchValues.map(
     (value) => ({
       metadata: {
-        path: WIKI_ENTITY_CATEGORY_METADATA_KEY,
+        path: prismaJsonPath(WIKI_ENTITY_CATEGORY_METADATA_KEY),
         equals: value,
       },
     }),

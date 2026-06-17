@@ -92,6 +92,7 @@ async function runNotificationSweepOnce(): Promise<void> {
     status: 'PROCESSING',
     progress: 10,
     abortable: false,
+    cronKey: 'notification-sweep',
   });
 
   try {

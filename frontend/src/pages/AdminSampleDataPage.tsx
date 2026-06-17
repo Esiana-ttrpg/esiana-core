@@ -6,7 +6,6 @@ import {
   selectClasses,
 } from '@/components/admin/adminFormStyles';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { ApiError } from '@/lib/api';
 import {
   adminGenerateSampleCampaign,
   fetchAdminSampleDataStatus,
@@ -14,7 +13,6 @@ import {
 } from '@/lib/sampleData';
 
 export function AdminSampleDataPage() {
-  const [enabled, setEnabled] = useState<boolean | null>(null);
   const [profiles, setProfiles] = useState<SampleDataProfileCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,18 +28,12 @@ export function AdminSampleDataPage() {
     setError(null);
     try {
       const status = await fetchAdminSampleDataStatus();
-      setEnabled(status.enabled);
       setProfiles(status.profiles);
       if (status.profiles.length > 0 && !profileId) {
         setProfileId(status.profiles[0].profileId);
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
-        setEnabled(false);
-        setProfiles([]);
-      } else {
-        setError(err instanceof Error ? err.message : 'Failed to load sample data settings');
-      }
+      setError(err instanceof Error ? err.message : 'Failed to load sample data settings');
     } finally {
       setLoading(false);
     }
@@ -76,27 +68,6 @@ export function AdminSampleDataPage() {
 
   if (loading) {
     return <LoadingSpinner label="Loading sample data tools…" />;
-  }
-
-  if (enabled === false) {
-    return (
-      <div className="space-y-4">
-        <header>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold text-foreground">
-            <FlaskConical className="size-6 text-primary" />
-            Sample Data
-          </h1>
-          <p className="mt-2 text-sm text-muted">
-            Developer fixtures for QA, capacity profiling, and plugin testing. Not shown to end users unless
-            explicitly enabled.
-          </p>
-        </header>
-        <div className="rounded-xl border border-border bg-surface p-6 text-sm text-muted">
-          Sample Data is disabled. Set <code className="text-foreground">ENABLE_SAMPLE_DATA=true</code>{' '}
-          in the backend environment and restart the server to use this tool.
-        </div>
-      </div>
-    );
   }
 
   return (

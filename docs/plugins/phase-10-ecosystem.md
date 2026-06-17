@@ -48,7 +48,7 @@ Campaign-scoped JSON store (`PluginData` model). Host access via `PluginHostCont
 |----|------------|------|
 | `foundry-vtt-sync` | `network:fetch` | Integration stub |
 
-**Storage:** S3-compatible remote storage ships as infrastructure package **`@esiana/storage-s3`** (not a campaign plugin). See [asset-storage-platform.md](../plans/asset-storage-platform.md).
+**Storage:** S3-compatible remote storage ships as the **`remote-object-storage`** global community plugin (`storageProvider` capability). See [object-storage.md](../deployment/object-storage.md) and [asset-storage-platform.md](../plans/asset-storage-platform.md).
 
 **Removed:** hardcoded `BUILTIN_CATALOG` and admin per-plugin ID form switches.
 

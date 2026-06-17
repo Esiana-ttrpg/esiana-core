@@ -1,6 +1,6 @@
 {
   "name": "esiana",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "private": true,
   "description": "Self-hosted, multi-campaign TTRPG manager",
   "license": "AGPL-3.0-only",
@@ -8,7 +8,7 @@
   "scripts": {
     "dev:backend": "pnpm --filter backend dev",
     "dev:frontend": "pnpm --filter frontend dev",
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @esiana/backend --filter frontend --filter @esiana/ssrf-guard --filter @esiana/plugin-source-policy build",
     "db:generate": "pnpm --filter backend db:generate",
     "db:migrate": "pnpm --filter backend db:migrate",
     "db:push": "pnpm --filter backend db:push",
@@ -19,8 +19,5 @@
   },
   "engines": {
     "node": ">=20.0.0"
-  },
-  "dependencies": {
-    "@esiana/storage-s3": "workspace:*"
   }
 }

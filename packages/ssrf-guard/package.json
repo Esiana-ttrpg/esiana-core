@@ -1,9 +1,9 @@
 {
-  "name": "@esiana/storage-s3",
+  "name": "@esiana/ssrf-guard",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "S3-compatible storage provider for Esiana (AWS S3, MinIO, R2, Wasabi, DO Spaces)",
+  "description": "SSRF guard helpers for Esiana remote URL imports",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -15,10 +15,6 @@
   "scripts": {
     "build": "tsc",
     "test": "node --import tsx --test src/**/*.test.ts"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.840.0",
-    "@aws-sdk/s3-request-presigner": "^3.840.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.21",

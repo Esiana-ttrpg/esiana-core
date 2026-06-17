@@ -12,6 +12,16 @@ import {
 } from './pluginInstaller.js';
 import { readLocalPluginRegistryFromDisk } from './bundledPlugins.js';
 
+test('isBackendOnlyGlobalPlugin accepts storageProvider without frontendEntry', () => {
+  assert.equal(
+    isBackendOnlyGlobalPlugin({
+      scope: PluginScopes.GLOBAL,
+      capabilities: [PluginCapabilities.STORAGE_PROVIDER],
+    }),
+    true,
+  );
+});
+
 test('isBackendOnlyGlobalPlugin accepts developmentProvider without frontendEntry', () => {
   assert.equal(
     isBackendOnlyGlobalPlugin({
@@ -65,11 +75,11 @@ const campaignEntry = {
 test('installPluginFromRegistryEntry accepts both global and campaign scope entries', async () => {
   await assert.rejects(
     () => installPluginFromRegistryEntry(globalEntry),
-    /Plugin path|Download failed|not found|Unexpected archive/,
+    /Plugin path|Download failed|URL returned HTTP|not found|Unexpected archive/,
   );
   await assert.rejects(
     () => installPluginFromRegistryEntry(campaignEntry),
-    /Plugin path|Download failed|not found|Unexpected archive/,
+    /Plugin path|Download failed|URL returned HTTP|not found|Unexpected archive/,
   );
 });
 

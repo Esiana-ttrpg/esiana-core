@@ -7,6 +7,7 @@ import * as tar from 'tar';
 import { env } from '../config/env.js';
 import { registerCampaignPluginDefinition } from './campaignPlugins.js';
 import { fetchAndValidateManifestFromUrl, parseTargetUrl } from './fetchPluginManifest.js';
+import { fetchPluginRemoteStream, NetworkFetchError } from './networkFetch.js';
 import {
   isBackendOnlyGlobalPlugin,
   isDataOnlyContentPackPlugin,
@@ -39,22 +40,17 @@ export interface PluginInstallResult {
 }
 
 async function downloadToFile(url: string, destination: string): Promise<void> {
-  const response = await fetch(url, { redirect: 'follow' });
-  if (!response.ok) {
-    throw new Error(`Download failed (HTTP ${response.status})`);
+  try {
+    await fetchPluginRemoteStream(new URL(url), destination, {
+      maxBytes: MAX_PLUGIN_ARCHIVE_BYTES,
+      timeoutSeconds: 30,
+    });
+  } catch (error) {
+    if (error instanceof NetworkFetchError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
-
-  const contentLength = response.headers.get('content-length');
-  if (contentLength && Number(contentLength) > MAX_PLUGIN_ARCHIVE_BYTES) {
-    throw new Error('Plugin archive exceeds maximum allowed size');
-  }
-
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (buffer.length > MAX_PLUGIN_ARCHIVE_BYTES) {
-    throw new Error('Plugin archive exceeds maximum allowed size');
-  }
-
-  await fs.promises.writeFile(destination, buffer);
 }
 
 function findArchiveRoot(extractDir: string): string {

@@ -75,6 +75,29 @@ test('getRegisteredProviders returns metadata without instantiating drivers', ()
   clearStorageRegistryForTests();
 });
 
+test('active s3-compatible without registered provider is degraded', () => {
+  clearStorageRegistryForTests();
+  bootstrapStorageRegistry();
+
+  const originalProvider = process.env.STORAGE_PROVIDER;
+  process.env.STORAGE_PROVIDER = 's3-compatible';
+
+  try {
+    initializeActiveStorageProvider();
+    const providers = getRegisteredProviders();
+    const s3 = providers.find((p) => p.providerId === 's3-compatible');
+    assert.equal(s3, undefined);
+    assert.throws(
+      () => getActiveStorageDriver(),
+      ActiveStorageUnavailableError,
+    );
+  } finally {
+    if (originalProvider !== undefined) process.env.STORAGE_PROVIDER = originalProvider;
+    else delete process.env.STORAGE_PROVIDER;
+  }
+  clearStorageRegistryForTests();
+});
+
 test('degraded active provider rejects writes', () => {
   clearStorageRegistryForTests();
   bootstrapStorageRegistry();
