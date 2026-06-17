@@ -24,7 +24,7 @@ jobs:
         run: pnpm --filter backend db:generate
 
       - name: Build workspaces
-        run: pnpm -r build
+        run: pnpm build
 
       - name: Verify compiled backend shared modules are ESM
         working-directory: backend
@@ -139,7 +139,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify workspace storage package in image
+      - name: Verify core image starts without optional workspace plugins
         run: |
-          docker run --rm --workdir /app/backend --entrypoint node esiana:ci \
-            --input-type=module -e "import('@esiana/storage-s3')"
+          docker run --rm --platform linux/amd64 \
+            --entrypoint /bin/sh esiana:ci \
+            -c 'test -x /entrypoint.sh'

@@ -24,6 +24,7 @@ import {
   setPluginHostReloader,
 } from '../lib/pluginRuntime/index.js';
 import { initializeDevelopmentRegistry } from '../lib/developmentRegistry.js';
+import { initializeActiveStorageProvider } from '../lib/storage/storageRegistry.js';
 import { clearWikiContentDecorators } from '../lib/plugins/wikiContentDecorators.js';
 import {
   clearPublicPluginRouteRegistrars,
@@ -412,6 +413,7 @@ export async function reloadPluginHost(): Promise<void> {
 
   currentPluginRouter = hostRouter;
   rebuildPublicPluginRouter();
+  initializeActiveStorageProvider();
 }
 
 /** @deprecated Use reloadPluginHost */

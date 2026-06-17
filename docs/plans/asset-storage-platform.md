@@ -7,7 +7,7 @@ Shipped snapshot for pre-1.0 storage infrastructure (follows [asset-upload-gover
 - **Storage registry** — `StorageProviderRegistration`, provider capabilities, health states (`healthy` / `degraded`), `getRegisteredProviders()` without driver instantiation
 - **Degraded boot** — misconfigured active provider does not crash the app; uploads return 503; Admin Storage shows config errors
 - **Pointer-owned routing** — `parseStoragePointer()` + `resolveDriverForPointer()`; active provider controls writes only
-- **Infrastructure package** — `@esiana/storage-s3` registers `s3-compatible` provider (AWS S3, MinIO, R2, Wasabi, DO Spaces)
+- **Community plugin** — `remote-object-storage` registers `s3-compatible` provider (AWS S3, MinIO, R2, Wasabi, DO Spaces)
 - **Pointer formats (v1)** — filesystem: `/uploads/{key}`; s3-compatible: `s3://{key}`
 - **Admin Storage** — health, sanitized config, capability-driven metrics (exact filesystem / bounded estimate remote), manual refresh
 

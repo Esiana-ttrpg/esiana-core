@@ -25,7 +25,7 @@ jobs:
         run: pnpm --filter backend db:generate
 
       - name: Build workspaces
-        run: pnpm -r build
+        run: pnpm build
 
   test-sqlite:
     runs-on: ubuntu-latest
@@ -220,9 +220,6 @@ jobs:
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
           IMAGE="ghcr.io/esiana-ttrpg/esiana:${TAG}"
-          docker run --rm --platform linux/arm64 \
-            --workdir /app/backend --entrypoint node "$IMAGE" \
-            --input-type=module -e "import('@esiana/storage-s3')"
           docker run --rm --platform linux/arm64 \
             --entrypoint /bin/sh "$IMAGE" \
             -c 'test -x /entrypoint.sh'

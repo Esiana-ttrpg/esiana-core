@@ -222,7 +222,7 @@ Integration pattern for external systems: backend plugin routes at `/api/plugin-
 | **Domain event emit** | Yes | `{pluginId}:` prefix enforced |
 | **Background / scheduled jobs** | No | No plugin scheduler; plugins react to world advance events only |
 | **Data interceptors** | Partial | Sandbox workers; wikiPage + notebookArc only |
-| **Storage providers** | Yes | `@esiana/storage-s3` as infra package |
+| **Storage providers** | Yes | `remote-object-storage` community plugin (`storageProvider` capability) |
 | **Themes** | Stub | `registerPluginTheme` unwired; campaign theme engine is core todo (Phase 15) |
 | **Campaign creation** | Partial | Content packs in wizard; `campaign:seed` bearer scope for seeder CLI |
 | **PDK / SDK package** | No | Phase 13 todo; types duplicated across backend/frontend |
@@ -267,7 +267,7 @@ Audited against `community-plugins/` on 2026-06-13.
 - `editor` UI slot
 - `map:overlay`, `map:toolbar`, `map:token-context`
 - `importProvider` capability
-- `storage:provider` (moved to `@esiana/storage-s3` infra)
+- `storage:provider` — used by `remote-object-storage` (bundled infra plugin)
 - `wiki:decorate` permission
 - `onDomainEvent` subscription (emit only in player-journal)
 

@@ -6,7 +6,6 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
-COPY packages/storage-s3/package.json packages/storage-s3/
 COPY packages/ssrf-guard/package.json packages/ssrf-guard/
 COPY packages/plugin-source-policy/package.json packages/plugin-source-policy/
 RUN pnpm install --frozen-lockfile \
@@ -20,7 +19,7 @@ RUN if [ "$PRISMA_DATABASE_PROVIDER" = "sqlite" ]; then \
   sed -i 's/provider = "postgresql"/provider = "sqlite"/' backend/prisma/schema.prisma; \
 fi \
   && pnpm --filter backend db:generate
-RUN pnpm -r build
+RUN pnpm --filter @esiana/backend --filter frontend --filter @esiana/ssrf-guard --filter @esiana/plugin-source-policy build
 
 RUN pnpm --filter @esiana/backend deploy --prod /prod/backend
 
