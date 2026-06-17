@@ -79,6 +79,7 @@ const result = spawnSync(
     'src/lib/theme/luminanceEcology.test.ts',
     'src/lib/theme/themeStack.test.ts',
     'src/lib/hubAmbientTheme.test.ts',
+    'src/lib/adminVersionUi.test.ts',
   ],
   { cwd: frontendRoot, stdio: 'inherit', env: process.env },
 );
