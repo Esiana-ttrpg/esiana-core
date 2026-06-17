@@ -1,4 +1,5 @@
 # CodeQL barriers for networkFetch SSRF (js/request-forgery).
+# Pack manifest: codeql-pack.yml (required name for default-setup auto-discovery).
 # Primary: barrierModel on resolve*SafeForRemoteFetch return values (validatedUrl boundary).
 # Secondary: barrierGuardModel on sync pre-checks for early-reject branches.
 extensions:

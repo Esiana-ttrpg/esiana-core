@@ -1,0 +1,54 @@
+# CodeQL advanced setup — loads the local SSRF barrier model pack explicitly.
+#
+# Enable via Settings → Code security → CodeQL analysis → Advanced setup.
+# Disable default setup first to avoid duplicate scans.
+#
+# Until advanced setup is enabled, default setup auto-discovers
+# .github/codeql/extensions/esiana-network-fetch/codeql-pack.yml.
+name: CodeQL
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        env:
+          # Consume local model pack rows (barrierModel on resolve*SafeForRemoteFetch).
+          CODEQL_ACTION_EXTRA_OPTIONS: database run-queries --additional-packs=${{ github.workspace }}/.github/codeql --extension-packs=esiana/network-fetch-barriers
