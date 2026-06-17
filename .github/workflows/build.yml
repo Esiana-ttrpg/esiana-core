@@ -141,6 +141,6 @@ jobs:
 
       - name: Verify core image starts without optional workspace plugins
         run: |
-          docker run --rm --platform linux/arm64 \
+          docker run --rm --platform linux/amd64 \
             --entrypoint /bin/sh esiana:ci \
             -c 'test -x /entrypoint.sh'
