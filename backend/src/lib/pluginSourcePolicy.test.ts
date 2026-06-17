@@ -4,7 +4,7 @@ import {
   PluginSourcePolicyError,
   assertPluginSourceHost,
   assertPluginSourceUrl,
-  isPluginSourceHost,
+  isPluginSourceUrlSync,
   normalizePluginSourceHostname,
 } from './pluginSourcePolicy.js';
 
@@ -12,9 +12,12 @@ test('normalizePluginSourceHostname lowercases and strips trailing dot', () => {
   assert.equal(normalizePluginSourceHostname('GitHub.COM.'), 'github.com');
 });
 
-test('isPluginSourceHost accepts allowlisted hosts', () => {
-  assert.equal(isPluginSourceHost('raw.githubusercontent.com'), true);
-  assert.equal(isPluginSourceHost('gitlab.com'), true);
+test('isPluginSourceUrlSync mirrors assertPluginSourceUrl allowlist', () => {
+  assert.equal(
+    isPluginSourceUrlSync(new URL('https://raw.githubusercontent.com/o/r/main/m.json')),
+    true,
+  );
+  assert.equal(isPluginSourceUrlSync(new URL('https://example.com/manifest.json')), false);
 });
 
 test('assertPluginSourceUrl rejects userinfo trick (github.com@evil.com)', () => {

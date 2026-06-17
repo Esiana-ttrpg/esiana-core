@@ -63,7 +63,6 @@ function assertHostnameAllowed(hostname: string): void {
   const ipVersion = isIP(host);
   if (ipVersion) {
     assertIpAllowed(host);
-    return;
   }
 }
 
@@ -94,6 +93,21 @@ export function assertAllowedImportProtocol(
   throw new SsrfGuardError('URL must use HTTPS');
 }
 
+/** Sync pre-check for hostname/protocol (no DNS). Used before async validation + fetch. */
+export function isUrlSafeForImportSync(
+  url: URL,
+  options: { allowHttp: boolean },
+): boolean {
+  try {
+    if (url.username || url.password) return false;
+    assertAllowedImportProtocol(url, options.allowHttp);
+    assertHostnameAllowed(url.hostname);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function assertUrlSafeForImport(
   url: URL,
   options: { allowHttp: boolean },
@@ -103,4 +117,12 @@ export async function assertUrlSafeForImport(
   }
   assertAllowedImportProtocol(url, options.allowHttp);
   await resolveAndAssertHostname(url.hostname);
+}
+
+export async function resolveUrlSafeForRemoteFetch(
+  url: URL,
+  options: { allowHttp: boolean },
+): Promise<URL> {
+  await assertUrlSafeForImport(url, options);
+  return url;
 }

@@ -1,3 +1,5 @@
+import { assertUrlSafeForImport } from './ssrfGuard.js';
+
 export class PluginSourcePolicyError extends Error {
   constructor(message: string) {
     super(message);
@@ -34,4 +36,15 @@ export function assertPluginSourceHost(hostname: string): void {
 
 export function assertPluginSourceUrl(url: URL): void {
   assertPluginSourceHost(url.hostname);
+}
+
+/** Sync allowlist check for CodeQL guarded-branch analysis (no DNS). */
+export function isPluginSourceUrlSync(url: URL): boolean {
+  return isPluginSourceHost(url.hostname);
+}
+
+export async function resolvePluginUrlSafeForRemoteFetch(url: URL): Promise<URL> {
+  assertPluginSourceUrl(url);
+  await assertUrlSafeForImport(url, { allowHttp: false });
+  return url;
 }

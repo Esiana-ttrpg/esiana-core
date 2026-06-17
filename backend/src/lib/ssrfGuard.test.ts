@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { SsrfGuardError, assertUrlSafeForImport } from './ssrfGuard.js';
+import { SsrfGuardError, assertUrlSafeForImport, isUrlSafeForImportSync } from './ssrfGuard.js';
 
 test('assertUrlSafeForImport blocks localhost', async () => {
   await assert.rejects(
@@ -34,5 +34,21 @@ test('assertUrlSafeForImport rejects URL userinfo credentials', async () => {
       }),
     (error: unknown) =>
       error instanceof SsrfGuardError && error.message.includes('credentials'),
+  );
+});
+
+test('isUrlSafeForImportSync rejects URL userinfo credentials', () => {
+  assert.equal(
+    isUrlSafeForImportSync(new URL('https://user:pass@example.com/image.png'), {
+      allowHttp: false,
+    }),
+    false,
+  );
+});
+
+test('isUrlSafeForImportSync rejects private IPv4 literals', () => {
+  assert.equal(
+    isUrlSafeForImportSync(new URL('http://192.168.1.10/image.png'), { allowHttp: true }),
+    false,
   );
 });

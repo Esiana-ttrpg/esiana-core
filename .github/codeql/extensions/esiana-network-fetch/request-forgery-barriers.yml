@@ -1,0 +1,15 @@
+# CodeQL barriers for centralized networkFetch egress (js/request-forgery).
+# Sync guards enable guarded-branch analysis; resolve* return values mark post-validation URLs.
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierGuardModel
+    data:
+      - ["backend/src/lib/ssrfGuard.js", "Member[isUrlSafeForImportSync].Argument[0]", "true", "request-forgery"]
+      - ["backend/src/lib/pluginSourcePolicy.js", "Member[isPluginSourceUrlSync].Argument[0]", "true", "request-forgery"]
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierModel
+    data:
+      - ["backend/src/lib/ssrfGuard.js", "Member[resolveUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
+      - ["backend/src/lib/pluginSourcePolicy.js", "Member[resolvePluginUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
