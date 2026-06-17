@@ -15,7 +15,7 @@ Area-specific guidance for `/frontend`. General setup, CI, and branch workflow: 
 
 References:
 
-- [.cursor/rules/esiana-frontend.mdc](../.cursor/rules/esiana-frontend.mdc)
+- [AGENTS.md](../AGENTS.md) — §4 Domain behavior guidance (Frontend)
 - [docs/deprecated-ui-patterns.md](../docs/deprecated-ui-patterns.md)
 
 ---
