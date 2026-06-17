@@ -6,6 +6,11 @@ export interface ScheduledSystemJobDefinition {
   scope: string;
 }
 
+export const CRON_INTERVAL_MS: Record<string, number> = {
+  'import-staging-retention': 24 * 60 * 60 * 1000,
+  'notification-sweep': 15 * 60 * 1000,
+};
+
 export const SCHEDULED_SYSTEM_JOBS: ScheduledSystemJobDefinition[] = [
   {
     id: 'import-staging-retention',
@@ -24,3 +29,9 @@ export const SCHEDULED_SYSTEM_JOBS: ScheduledSystemJobDefinition[] = [
     scope: 'System',
   },
 ];
+
+export interface ScheduledJobSummary extends ScheduledSystemJobDefinition {
+  lastRunAt: string | null;
+  lastRunStatus: 'success' | 'failed' | null;
+  nextRunAt: string | null;
+}

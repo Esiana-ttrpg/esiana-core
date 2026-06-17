@@ -39,6 +39,8 @@ import {
 } from '../controllers/adminCampaignsController.js';
 import {
   abortAdminTask,
+  dismissAdminTask,
+  listAdminTaskHistory,
   listAdminTasks,
 } from '../controllers/adminTasksController.js';
 import {
@@ -263,6 +265,18 @@ adminRouter.post(
 );
 
 adminRouter.get('/tasks', requireAuth, verifySystemAdmin, listAdminTasks);
+adminRouter.get(
+  '/tasks/history',
+  requireAuth,
+  verifySystemAdmin,
+  listAdminTaskHistory,
+);
+adminRouter.post(
+  '/tasks/:id/dismiss',
+  requireAuth,
+  verifySystemAdmin,
+  dismissAdminTask,
+);
 adminRouter.post(
   '/tasks/:id/abort',
   requireAuth,

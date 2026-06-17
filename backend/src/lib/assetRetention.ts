@@ -16,6 +16,7 @@ async function sweepExpiredAssetsOnce(): Promise<void> {
     status: 'PROCESSING',
     progress: 5,
     abortable: false,
+    cronKey: 'import-staging-retention',
   });
 
   const expired = await prisma.asset.findMany(

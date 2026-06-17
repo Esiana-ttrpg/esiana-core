@@ -1,13 +1,35 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, Clock3, Cpu, HardDrive, RefreshCw, Shield, StopCircle } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Activity,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Cpu,
+  HardDrive,
+  RefreshCw,
+  Shield,
+  StopCircle,
+} from 'lucide-react';
 import { AdminSectionCard } from '@/components/admin/AdminSectionCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { abortAdminTask, fetchAdminTasks } from '@/lib/adminTasks';
+import {
+  abortAdminTask,
+  dismissAdminTask,
+  fetchAdminTaskHistory,
+  fetchAdminTasks,
+} from '@/lib/adminTasks';
 import type {
   BackgroundTaskRecord,
   BackgroundTaskSnapshot,
   BackgroundTaskStatus,
+  TaskHistoryPage,
 } from '@/types/admin';
+import {
+  formatAbsoluteDateTime,
+  formatDurationMs,
+  formatRelativeUpdated,
+} from '@/utils/formatDate';
 
 function statusClass(status: BackgroundTaskStatus): string {
   if (status === 'PROCESSING') {
@@ -22,24 +44,40 @@ function statusClass(status: BackgroundTaskStatus): string {
   return 'border-border bg-elevated text-foreground';
 }
 
-function taskTypeBadge(type: BackgroundTaskRecord['type']): string {
-  return type === 'SCHEDULED' ? 'System Cron' : 'Background Request';
+function displayResultStatus(task: BackgroundTaskRecord): string {
+  if (
+    task.status === 'FAILED' &&
+    task.errorMessage === 'Task aborted by administrator'
+  ) {
+    return 'Cancelled';
+  }
+  if (task.status === 'COMPLETED') return 'Success';
+  if (task.status === 'FAILED') return 'Failed';
+  return task.status;
 }
 
-function formatWhen(iso: string | null): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
+function scopeLabel(task: BackgroundTaskRecord): string {
+  return task.targetCampaign || 'System scope';
+}
+
+function TimeCell({ iso }: { iso: string | null }) {
+  if (!iso) return <span className="text-muted">—</span>;
+  return (
+    <span title={formatAbsoluteDateTime(iso)} className="cursor-default">
+      {formatRelativeUpdated(iso)}
+    </span>
+  );
 }
 
 export function AdminBackgroundTasksPage() {
   const [snapshot, setSnapshot] = useState<BackgroundTaskSnapshot | null>(null);
+  const [history, setHistory] = useState<TaskHistoryPage | null>(null);
+  const [historyPage, setHistoryPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [expandedFailureId, setExpandedFailureId] = useState<string | null>(null);
 
   const loadSnapshot = useCallback(async () => {
     setError(null);
@@ -55,6 +93,21 @@ export function AdminBackgroundTasksPage() {
     }
   }, []);
 
+  const loadHistory = useCallback(async (page: number) => {
+    setHistoryLoading(true);
+    try {
+      const data = await fetchAdminTaskHistory(page);
+      setHistory(data);
+      setHistoryPage(data.pagination.currentPage);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Unable to load task history',
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSnapshot();
     const poll = window.setInterval(() => {
@@ -63,14 +116,23 @@ export function AdminBackgroundTasksPage() {
     return () => window.clearInterval(poll);
   }, [loadSnapshot]);
 
-  const tasks = snapshot?.tasks ?? [];
-  const history = snapshot?.history ?? [];
-  const scheduledJobs = snapshot?.scheduledJobs ?? [];
-  const activeTasks = useMemo(
-    () =>
-      tasks.filter((task) => task.status === 'PENDING' || task.status === 'PROCESSING'),
-    [tasks],
-  );
+  useEffect(() => {
+    void loadHistory(historyPage);
+  }, [historyPage, loadHistory]);
+
+  useEffect(() => {
+    if (historyPage !== 1) return undefined;
+    const poll = window.setInterval(() => {
+      void loadHistory(1);
+    }, 5000);
+    return () => window.clearInterval(poll);
+  }, [historyPage, loadHistory]);
+
+  const active = snapshot?.active ?? [];
+  const failures = snapshot?.failures ?? [];
+  const scheduled = snapshot?.scheduled ?? [];
+  const historyRuns = history?.runs ?? [];
+  const pagination = history?.pagination;
 
   async function onAbort(task: BackgroundTaskRecord) {
     if (!window.confirm(`Abort task "${task.taskName}"?`)) return;
@@ -78,8 +140,21 @@ export function AdminBackgroundTasksPage() {
     try {
       await abortAdminTask(task.id);
       await loadSnapshot();
+      if (historyPage === 1) await loadHistory(1);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Unable to abort task');
+    } finally {
+      setBusyTaskId(null);
+    }
+  }
+
+  async function onDismiss(task: BackgroundTaskRecord) {
+    setBusyTaskId(task.id);
+    try {
+      await dismissAdminTask(task.id);
+      await loadSnapshot();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Unable to dismiss failure');
     } finally {
       setBusyTaskId(null);
     }
@@ -88,6 +163,11 @@ export function AdminBackgroundTasksPage() {
   if (loading && !snapshot) {
     return <LoadingSpinner label="Loading background task diagnostics…" />;
   }
+
+  const canGoPrev = pagination ? pagination.currentPage > 1 : false;
+  const canGoNext = pagination
+    ? pagination.currentPage < pagination.totalPages
+    : false;
 
   return (
     <div className="space-y-8">
@@ -99,7 +179,7 @@ export function AdminBackgroundTasksPage() {
           </h1>
         </div>
         <p className="text-sm text-muted">
-          Observe active workers, janitor sweeps, and recent background execution logs.
+          What is running now, what will run, what happened, and what needs attention.
         </p>
       </header>
 
@@ -143,59 +223,77 @@ export function AdminBackgroundTasksPage() {
         </div>
       </div>
 
-      <AdminSectionCard
-        title="Scheduled System Jobs"
-        description="Always-on cron workers registered by the server, including import staging file retention."
-        icon={Clock3}
-      >
-        {scheduledJobs.length === 0 ? (
-          <p className="rounded-lg border border-border bg-background/50 px-4 py-6 text-center text-sm text-muted">
-            No scheduled system jobs are configured.
-          </p>
-        ) : (
+      {failures.length > 0 && (
+        <AdminSectionCard
+          title="Failures"
+          description="Failed runs that need attention. Dismissed items remain in history."
+          icon={AlertTriangle}
+        >
           <div className="space-y-3">
-            {scheduledJobs.map((job) => (
-              <div
-                key={job.id}
-                className="rounded-lg border border-border bg-background/60 px-4 py-3"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-foreground">{job.taskName}</p>
-                    <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[11px] text-foreground">
-                      System Cron
-                    </span>
+            {failures.map((task) => {
+              const expanded = expandedFailureId === task.id;
+              return (
+                <div
+                  key={task.id}
+                  className="rounded-lg border border-red-900/40 bg-red-950/20 px-4 py-3"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-foreground">{task.taskName}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        {scopeLabel(task)} · Failed{' '}
+                        <TimeCell iso={task.completedAt} />
+                      </p>
+                      {task.errorMessage && !expanded && (
+                        <p className="mt-2 line-clamp-2 text-sm text-red-200">
+                          {task.errorMessage}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedFailureId(expanded ? null : task.id)
+                        }
+                        className="rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground hover:bg-elevated"
+                      >
+                        {expanded ? 'Collapse' : 'Inspect'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyTaskId === task.id}
+                        onClick={() => void onDismiss(task)}
+                        className="rounded-md border border-border px-2.5 py-1.5 text-xs text-foreground hover:bg-elevated disabled:opacity-60"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted">{job.schedule}</p>
-                </div>
-                <p className="mt-2 text-sm text-muted">{job.description}</p>
-                <p className="mt-2 text-xs text-muted">
-                  Scope: {job.scope}
-                  {job.id === 'import-staging-retention' && (
-                    <>
-                      {' '}
-                      | Asset types:{' '}
-                      <span className="font-mono text-foreground">
-                        campaign-import-zip, campaign-backup-zip
-                      </span>
-                    </>
+                  {expanded && task.errorMessage && (
+                    <p className="mt-3 rounded border border-red-900/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+                      {task.errorMessage}
+                    </p>
                   )}
-                </p>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
-        )}
-      </AdminSectionCard>
+        </AdminSectionCard>
+      )}
 
       <AdminSectionCard
-        title="Live Task Queue"
-        description="Current and recently started server workers."
+        title="Active Queue"
+        description="Tasks running or queued right now."
         icon={Activity}
       >
         <div className="mb-3 flex justify-end">
           <button
             type="button"
-            onClick={() => void loadSnapshot()}
+            onClick={() => {
+              void loadSnapshot();
+              void loadHistory(historyPage);
+            }}
             className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-elevated transition-colors"
           >
             <RefreshCw className="size-3.5" />
@@ -203,54 +301,42 @@ export function AdminBackgroundTasksPage() {
           </button>
         </div>
 
-        {tasks.length === 0 ? (
+        {active.length === 0 ? (
           <p className="rounded-lg border border-border bg-background/50 px-4 py-6 text-center text-sm text-muted">
-            No background jobs are currently tracked.
+            No active tasks.
           </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="bg-surface/90 text-left text-xs uppercase tracking-wider text-muted">
                 <tr>
-                  <th className="px-4 py-3">Task Details</th>
+                  <th className="px-4 py-3">Task</th>
                   <th className="px-4 py-3">Scope</th>
-                  <th className="px-4 py-3">Progress</th>
+                  <th className="px-4 py-3">Started</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border bg-background/50">
-                {tasks.map((task) => (
+                {active.map((task) => (
                   <tr key={task.id}>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-foreground">{task.taskName}</p>
-                      <span className="mt-1 inline-flex rounded-full border border-border px-2 py-0.5 text-[11px] text-foreground">
-                        {taskTypeBadge(task.type)}
-                      </span>
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      {task.taskName}
                     </td>
+                    <td className="px-4 py-3 text-foreground">{scopeLabel(task)}</td>
                     <td className="px-4 py-3 text-foreground">
-                      {task.targetCampaign || 'System scope'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="w-48 max-w-full">
-                        <div className="h-2 overflow-hidden rounded-full bg-elevated">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${task.progress}%` }}
-                          />
-                        </div>
-                        <p className="mt-1 text-xs text-muted">{task.progress}%</p>
-                      </div>
+                      <TimeCell iso={task.startedAt} />
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full border px-2 py-1 text-xs ${statusClass(task.status)}`}
                       >
-                        {task.status}
+                        {task.status === 'PROCESSING' ? 'Running' : task.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {task.status === 'PROCESSING' ? (
+                      {task.abortable &&
+                      (task.status === 'PROCESSING' || task.status === 'PENDING') ? (
                         <button
                           type="button"
                           disabled={busyTaskId === task.id}
@@ -258,10 +344,10 @@ export function AdminBackgroundTasksPage() {
                           className="inline-flex items-center gap-1 rounded-md border border-red-500/50 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-200 hover:bg-red-500/20 disabled:opacity-60"
                         >
                           <StopCircle className="size-3.5" />
-                          {busyTaskId === task.id ? 'Aborting…' : 'Abort Task'}
+                          {busyTaskId === task.id ? 'Aborting…' : 'Abort'}
                         </button>
                       ) : (
-                        <span className="text-xs text-muted">No action</span>
+                        <span className="text-xs text-muted">—</span>
                       )}
                     </td>
                   </tr>
@@ -270,53 +356,159 @@ export function AdminBackgroundTasksPage() {
             </table>
           </div>
         )}
-
-        {activeTasks.length === 0 && tasks.length > 0 && (
-          <p className="mt-3 text-xs text-muted">
-            No workers are actively processing right now.
-          </p>
-        )}
       </AdminSectionCard>
 
       <AdminSectionCard
-        title="Historical Log Ticker"
-        description="Last 20 completed or failed background operations."
-        icon={Activity}
+        title="Scheduled Jobs"
+        description="Cron definitions with last and next run summary."
+        icon={Clock3}
       >
-        {history.length === 0 ? (
+        {scheduled.length === 0 ? (
           <p className="rounded-lg border border-border bg-background/50 px-4 py-6 text-center text-sm text-muted">
-            No historical entries available yet.
+            No scheduled system jobs are configured.
           </p>
         ) : (
-          <div className="space-y-2">
-            {history.map((entry) => (
+          <div className="space-y-3">
+            {scheduled.map((job) => (
               <div
-                key={entry.id}
-                className="rounded-lg border border-border bg-background/60 px-3 py-2"
+                key={job.id}
+                className="rounded-lg border border-border bg-background/60 px-4 py-3"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm text-foreground">
-                    {entry.taskName} <span className="text-muted">({entry.id})</span>
-                  </p>
-                  <span className="text-xs text-muted">
-                    Completed: {formatWhen(entry.completedAt)}
-                  </span>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-foreground">{job.taskName}</p>
+                    <p className="mt-1 text-xs text-muted">{job.schedule}</p>
+                  </div>
+                  {job.lastRunStatus && (
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-1 text-xs ${
+                        job.lastRunStatus === 'success'
+                          ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-200'
+                          : 'border-red-500/50 bg-red-500/15 text-red-200'
+                      }`}
+                    >
+                      Last: {job.lastRunStatus}
+                    </span>
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-muted">
-                  Started: {formatWhen(entry.startedAt)} | Scope:{' '}
-                  {entry.targetCampaign || 'System'}
-                </p>
-                {entry.errorMessage && (
-                  <p className="mt-1 rounded border border-red-900/40 bg-red-950/20 px-2 py-1 text-xs text-red-300">
-                    Error: {entry.errorMessage}
-                  </p>
-                )}
+                <p className="mt-2 text-sm text-muted">{job.description}</p>
+                <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted">
+                  <span>
+                    Last run:{' '}
+                    <span className="text-foreground">
+                      <TimeCell iso={job.lastRunAt} />
+                    </span>
+                  </span>
+                  <span>
+                    Next run:{' '}
+                    <span className="text-foreground">
+                      <TimeCell iso={job.nextRunAt} />
+                    </span>
+                  </span>
+                  <span>Scope: {job.scope}</span>
+                </div>
               </div>
             ))}
           </div>
         )}
       </AdminSectionCard>
+
+      <AdminSectionCard
+        title="Recent Activity"
+        description="Paginated history of completed and failed runs."
+        icon={Activity}
+      >
+        {historyRuns.length === 0 && !historyLoading ? (
+          <p className="rounded-lg border border-border bg-background/50 px-4 py-6 text-center text-sm text-muted">
+            No historical entries available yet.
+          </p>
+        ) : (
+          <>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="min-w-full divide-y divide-border text-sm">
+                <thead className="bg-surface/90 text-left text-xs uppercase tracking-wider text-muted">
+                  <tr>
+                    <th className="px-4 py-3">Task</th>
+                    <th className="px-4 py-3">Started</th>
+                    <th className="px-4 py-3">Duration</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border bg-background/50">
+                  {historyRuns.map((task) => {
+                    const result = displayResultStatus(task);
+                    const muted =
+                      task.status === 'COMPLETED' &&
+                      result !== 'Cancelled';
+                    const failed = task.status === 'FAILED' && result !== 'Cancelled';
+                    const cancelled = result === 'Cancelled';
+                    return (
+                      <tr
+                        key={task.id}
+                        className={
+                          failed
+                            ? 'bg-red-950/10'
+                            : cancelled
+                              ? 'opacity-70'
+                              : muted
+                                ? 'opacity-80'
+                                : undefined
+                        }
+                      >
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-foreground">{task.taskName}</p>
+                          <p className="text-xs text-muted">{scopeLabel(task)}</p>
+                        </td>
+                        <td className="px-4 py-3 text-foreground">
+                          <TimeCell iso={task.startedAt} />
+                        </td>
+                        <td className="px-4 py-3 text-foreground">
+                          {formatDurationMs(task.durationMs)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full border px-2 py-1 text-xs ${statusClass(task.status)}`}
+                          >
+                            {result}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {pagination && pagination.totalCount > 0 && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-muted">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!canGoPrev || historyLoading}
+                    onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-elevated disabled:opacity-50 transition-colors"
+                  >
+                    <ChevronLeft className="size-4" />
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canGoNext || historyLoading}
+                    onClick={() => setHistoryPage((page) => page + 1)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-elevated disabled:opacity-50 transition-colors"
+                  >
+                    Next
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </AdminSectionCard>
     </div>
   );
 }
-
