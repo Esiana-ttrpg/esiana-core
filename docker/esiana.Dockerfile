@@ -16,13 +16,22 @@ COPY frontend ./frontend
 COPY shared ./shared
 COPY packages ./packages
 ARG PRISMA_DATABASE_PROVIDER=postgresql
-RUN pnpm install --frozen-lockfile
 RUN if [ "$PRISMA_DATABASE_PROVIDER" = "sqlite" ]; then \
   sed -i 's/provider = "postgresql"/provider = "sqlite"/' backend/prisma/schema.prisma; \
 fi \
   && pnpm --filter backend db:generate
 RUN pnpm -r build
-RUN cd backend && node --input-type=module -e "import('@esiana/storage-s3')"
+
+RUN pnpm --filter @esiana/backend deploy --prod /prod/backend
+
+RUN cp -R node_modules/prisma /prod/backend/node_modules/ \
+    && cp -R node_modules/@prisma /prod/backend/node_modules/ \
+    && mkdir -p /prod/backend/node_modules/.bin \
+    && cp node_modules/.bin/prisma /prod/backend/node_modules/.bin/ \
+    && if [ -d node_modules/.prisma ]; then cp -R node_modules/.prisma /prod/backend/node_modules/; fi \
+    && cd /prod/backend \
+    && node -e "require('@prisma/client')" \
+    && node_modules/.bin/prisma --version
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
@@ -39,15 +48,8 @@ RUN apk add --no-cache nginx su-exec \
 
 ENV NODE_ENV=production
 
-COPY --from=build /app/package.json /app/pnpm-lock.yaml ./
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/backend/dist ./backend/dist
-COPY --from=build /app/backend/openapi ./backend/dist/backend/openapi
-COPY --from=build /app/backend/package.json ./backend/
-COPY --from=build /app/backend/node_modules ./backend/node_modules
-COPY --from=build /app/backend/prisma ./backend/prisma
-COPY --from=build /app/packages ./packages
-COPY --from=build /app/shared ./shared
+COPY --from=build /app/package.json /app/package.json
+COPY --from=build /prod/backend /app/backend
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
 COPY docker/nginx.conf /etc/nginx/nginx.conf
