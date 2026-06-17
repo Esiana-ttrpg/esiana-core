@@ -1,7 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import { parseTargetUrl } from './fetchPluginManifest.js';
-import { SsrfGuardError, assertUrlSafeForImport } from './ssrfGuard.js';
+import { SsrfGuardError } from './ssrfGuard.js';
+import { fetchAssetRemoteBuffer, NetworkFetchError } from './networkFetch.js';
 import { getUrlImportSettings } from './imageUploadSettings.js';
 import { detectImageFromBuffer, UploadValidationError } from './uploadValidation.js';
 import {
@@ -51,69 +52,6 @@ async function readFileBuffer(file: Express.Multer.File): Promise<Buffer> {
   return fs.promises.readFile(diskPath);
 }
 
-export async function downloadUrlToBuffer(
-  url: URL,
-  options: { maxBytes: number; timeoutSeconds: number },
-): Promise<Buffer> {
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    options.timeoutSeconds * 1000,
-  );
-
-  let response: globalThis.Response;
-  try {
-    response = await fetch(url.toString(), {
-      redirect: 'error',
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new UrlImportError('URL import timed out');
-    }
-    throw new UrlImportError(
-      error instanceof Error
-        ? `Unable to reach URL: ${error.message}`
-        : 'Unable to reach URL',
-    );
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  if (!response.ok) {
-    throw new UrlImportError(`URL returned HTTP ${response.status}`);
-  }
-
-  const body = response.body;
-  if (!body) {
-    throw new UrlImportError('URL response had no body');
-  }
-
-  const reader = body.getReader();
-  const chunks: Buffer[] = [];
-  let total = 0;
-
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > options.maxBytes) {
-        await reader.cancel();
-        throw new UrlImportError('Download exceeds maximum allowed size');
-      }
-      chunks.push(Buffer.from(value));
-    }
-  } catch (error) {
-    if (error instanceof UrlImportError) throw error;
-    throw new UrlImportError(
-      error instanceof Error ? error.message : 'Download failed',
-    );
-  }
-
-  return Buffer.concat(chunks);
-}
-
 export async function importFromUrl(
   input: ImportFromUrlInput,
 ): Promise<ImportResult> {
@@ -127,19 +65,19 @@ export async function importFromUrl(
     throw new UrlImportError('Invalid URL');
   }
 
+  let buffer: Buffer;
   try {
-    await assertUrlSafeForImport(parsed, { allowHttp: settings.allowHttp });
+    buffer = await fetchAssetRemoteBuffer(parsed, {
+      allowHttp: settings.allowHttp,
+      maxBytes: settings.maxDownloadBytes,
+      timeoutSeconds: settings.timeoutSeconds,
+    });
   } catch (error) {
-    if (error instanceof SsrfGuardError) {
+    if (error instanceof NetworkFetchError) {
       throw new UrlImportError(error.message);
     }
     throw error;
   }
-
-  const buffer = await downloadUrlToBuffer(parsed, {
-    maxBytes: settings.maxDownloadBytes,
-    timeoutSeconds: settings.timeoutSeconds,
-  });
 
   const type = input.type ?? AssetTypes.GENERIC;
   if (type === AssetTypes.MAP) {

@@ -1,0 +1,10 @@
+# CodeQL barriers for networkFetch SSRF (js/request-forgery).
+# Module types must match scoped workspace package names (verified via CodeQL DB).
+# networkFetch.ts imports guards from @esiana/ssrf-guard and @esiana/plugin-source-policy.
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierGuardModel
+    data:
+      - ["@esiana/ssrf-guard", "Member[isUrlSafeForImportSync].Argument[0]", "true", "request-forgery"]
+      - ["@esiana/plugin-source-policy", "Member[isPluginSourceUrlSync].Argument[0]", "true", "request-forgery"]

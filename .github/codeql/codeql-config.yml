@@ -1,0 +1,13 @@
+# CodeQL analysis paths for the esiana-core monorepo.
+# Model pack: .github/codeql/extensions/esiana-network-fetch/ (codeql-pack.yml).
+name: Esiana CodeQL
+
+paths:
+  - backend
+  - frontend
+  - shared
+
+paths-ignore:
+  - "**/node_modules/**"
+  - "**/*.test.ts"
+  - "**/*.spec.ts"

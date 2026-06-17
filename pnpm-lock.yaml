@@ -10,10 +10,16 @@ importers:
     dependencies:
       '@esiana/storage-s3':
         specifier: workspace:*
-        version: link:../packages/storage-s3
+        version: link:packages/storage-s3
 
   backend:
     dependencies:
+      '@esiana/plugin-source-policy':
+        specifier: workspace:*
+        version: link:../packages/plugin-source-policy
+      '@esiana/ssrf-guard':
+        specifier: workspace:*
+        version: link:../packages/ssrf-guard
       '@prisma/client':
         specifier: ^6.8.2
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
@@ -215,6 +221,34 @@ importers:
       vite:
         specifier: ^6.3.5
         version: 6.4.2(@types/node@22.19.19)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.3)(yaml@2.9.0)
+
+  packages/plugin-source-policy:
+    dependencies:
+      '@esiana/ssrf-guard':
+        specifier: workspace:*
+        version: link:../ssrf-guard
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.21
+        version: 22.19.19
+      tsx:
+        specifier: ^4.19.4
+        version: 4.22.3
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/ssrf-guard:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.21
+        version: 22.19.19
+      tsx:
+        specifier: ^4.19.4
+        version: 4.22.3
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   packages/storage-s3:
     dependencies:
