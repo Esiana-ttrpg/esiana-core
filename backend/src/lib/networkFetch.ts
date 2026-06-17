@@ -163,7 +163,7 @@ async function executeRemoteFetch(
   const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
 
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetch(url, {
       redirect: REDIRECT_POLICY,
       signal: controller.signal,
       headers: options.headers,
@@ -270,7 +270,7 @@ export async function fetchPluginRemoteStream(
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
 
     try {
-      const response = await fetch(validatedUrl.toString(), {
+      const response = await fetch(validatedUrl, {
         redirect: REDIRECT_POLICY,
         signal: controller.signal,
         headers: options.headers,
