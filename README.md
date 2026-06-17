@@ -6,11 +6,11 @@ Esiana is a self-hosted TTRPG campaign manager built for long-running worlds, ev
 
 Unlike traditional worldbuilding wikis, Esiana focuses on continuity, historical state, knowledge discovery, and the relationships between the people, places, and events that shape your world.
 
-![Release](https://img.shields.io/github/v/release/Esiana-ttrpg/esiana-core?style=for-the-badge&color=5BCEFA&cacheSeconds=14400)
-![Discussions](https://img.shields.io/github/discussions/esiana-ttrpg/esiana-core?style=for-the-badge&color=F5A9B8&cacheSeconds=14400)
-![Docker Pulls](https://img.shields.io/docker/pulls/esiana/esiana?style=for-the-badge&color=FFFFFF&cacheSeconds=14400)
-![License](https://img.shields.io/github/license/esiana-ttrpg/esiana-core?style=for-the-badge&color=F5A9B8&cacheSeconds=14400)]
-![Discord](https://img.shields.io/discord/1516532775132463194?style=for-the-badge&logo=discord&label=Discord&color=F5A9B8&cacheSeconds=14400)
+![Release](https://img.shields.io/github/v/release/Esiana-ttrpg/esiana-core?color=5BCEFA&cacheSeconds=14400)
+![Discussions](https://img.shields.io/github/discussions/esiana-ttrpg/esiana-core?color=F5A9B8&cacheSeconds=14400)
+![Docker Pulls](https://img.shields.io/docker/pulls/esiana/esiana?color=FFFFFF&cacheSeconds=14400)
+![License](https://img.shields.io/github/license/esiana-ttrpg/esiana-core?color=F5A9B8&cacheSeconds=14400)
+![Discord](https://img.shields.io/discord/1516532775132463194?logo=discord&label=Discord&color=5BCEFA&cacheSeconds=14400)
 
 
 
