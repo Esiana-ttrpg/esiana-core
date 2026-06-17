@@ -16,6 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: ./.github/actions/reject-npm-lockfile
+
       - uses: ./.github/actions/setup-pnpm
 
       - name: Generate Prisma client
@@ -32,6 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/reject-npm-lockfile
 
       - uses: ./.github/actions/setup-pnpm
 
@@ -76,6 +80,8 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/reject-npm-lockfile
 
       - uses: ./.github/actions/setup-pnpm
 

@@ -1,6 +1,9 @@
 node_modules/
 dist/
 build/
+
+# npm lockfile — repo uses pnpm exclusively
+package-lock.json
 .env
 .env.local
 *.log

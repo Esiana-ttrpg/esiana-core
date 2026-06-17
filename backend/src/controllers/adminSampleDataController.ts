@@ -26,8 +26,7 @@ export async function getAdminSampleDataStatus(
   res: Response,
 ): Promise<void> {
   if (!isSampleDataEnabled()) {
-    res.status(403).json({
-      error: 'Sample Data is disabled. Set ENABLE_SAMPLE_DATA=true to use developer fixtures.',
+    res.json({
       enabled: false,
       profiles: [],
     });

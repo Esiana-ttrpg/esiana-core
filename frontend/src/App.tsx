@@ -44,6 +44,7 @@ import { UserManagementPage } from '@/pages/UserManagementPage';
 import { UsageAnalyticsPage } from '@/pages/UsageAnalyticsPage';
 import { AdminUtilitiesPage } from '@/pages/AdminUtilitiesPage';
 import { AdminCampaignsPage } from '@/pages/AdminCampaignsPage';
+import { RequireAdminSampleData } from '@/components/admin/RequireAdminSampleData';
 import { AdminSampleDataPage } from '@/pages/AdminSampleDataPage';
 import { AdminBackgroundTasksPage } from '@/pages/AdminBackgroundTasksPage';
 import { RecruitmentDirectoryPage } from '@/pages/RecruitmentDirectoryPage';
@@ -172,7 +173,14 @@ export default function App() {
             <Route path="config/utilities" element={<AdminUtilitiesPage />} />
             <Route path="config/background-tasks" element={<AdminBackgroundTasksPage />} />
             <Route path="config/campaigns" element={<AdminCampaignsPage />} />
-            <Route path="config/sample-data" element={<AdminSampleDataPage />} />
+            <Route
+              path="config/sample-data"
+              element={
+                <RequireAdminSampleData>
+                  <AdminSampleDataPage />
+                </RequireAdminSampleData>
+              }
+            />
             <Route path="memberships" element={<UserManagementPage />} />
             <Route path="analytics/usage" element={<UsageAnalyticsPage />} />
           </Route>
