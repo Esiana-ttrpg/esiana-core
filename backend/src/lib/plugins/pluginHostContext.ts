@@ -9,7 +9,10 @@ import {
   type DataInterceptorDefinition,
 } from '../pluginRuntime/index.js';
 import { registerStorageProvider } from '../storage/storageRegistry.js';
-import type { StorageDriverFactory } from '../storage/types.js';
+import type {
+  StorageDriverFactory,
+  StorageProviderRegistrationCapabilities,
+} from '../storage/types.js';
 import {
   createPluginDataService,
   type PluginDataApi,
@@ -106,13 +109,22 @@ export interface FeedsHostApi {
   buildOpdsAtom(feed: OpdsAtomFeed): string;
 }
 
+export interface PluginStorageProviderRegistration {
+  providerId: string;
+  displayName?: string;
+  version?: string;
+  factory: StorageDriverFactory;
+  resolveConfig?: () => Record<string, unknown>;
+  capabilities?: StorageProviderRegistrationCapabilities;
+}
+
 export interface PluginHostContext {
   pluginId: string;
   scope: string;
   manifestPermissions: string[];
   /** Set for campaign-scoped plugins — jails plugin data writes. */
   jailedCampaignId?: string;
-  registerStorageProvider(providerId: string, factory: StorageDriverFactory): void;
+  registerStorageProvider(registration: PluginStorageProviderRegistration): void;
   createPluginDataService(campaignId?: string): PluginDataService;
   /** Campaign-scoped JSON state (requires plugin:data + campaign jail). */
   data: PluginDataApi;
@@ -271,17 +283,17 @@ export function createPluginHostContext(
     publicWiki: createPublicWikiApi(pluginId, manifestPermissions),
     feeds: createFeedsApi(pluginId, manifestPermissions),
     ...services,
-    registerStorageProvider(providerId: string, factory: StorageDriverFactory) {
+    registerStorageProvider(registration: PluginStorageProviderRegistration) {
       if (!manifestPermissions.includes('storage:provider')) {
         throw new Error(
-          `Plugin "${pluginId}" lacks storage:provider permission to register "${providerId}"`,
+          `Plugin "${pluginId}" lacks storage:provider permission to register "${registration.providerId}"`,
         );
       }
-      registerStorageProvider(providerId, factory, {
-        displayName: providerId,
-        version: 'plugin',
-        resolveConfig: () => ({}),
-        capabilities: {},
+      registerStorageProvider(registration.providerId, registration.factory, {
+        displayName: registration.displayName ?? registration.providerId,
+        version: registration.version ?? 'plugin',
+        resolveConfig: registration.resolveConfig,
+        capabilities: registration.capabilities ?? {},
       });
     },
     createPluginDataService(requestedCampaignId?: string) {

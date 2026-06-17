@@ -1,8 +1,8 @@
 # Object storage deployment
 
-Esiana ships a **StorageDriver** registry with a built-in filesystem provider and an optional **`@esiana/storage-s3`** infrastructure package for S3-compatible backends.
+Esiana ships a **StorageDriver** registry with a built-in filesystem provider. S3-compatible remote storage is provided by the **`remote-object-storage`** global community plugin (install under `PLUGINS_DIR`, enable in Admin → System Plugins).
 
-**Optional** means configuration-time (`STORAGE_PROVIDER=filesystem` is the default), not a campaign plugin. The `@esiana/storage-s3` package ships in the core Docker image and registers lazily at boot when available. Set `STORAGE_PROVIDER=s3-compatible` only when you intend to use remote object storage.
+**Optional** means configuration-time (`STORAGE_PROVIDER=filesystem` is the default). The core Docker image does not bundle S3 support. Set `STORAGE_PROVIDER=s3-compatible` only when the plugin is installed and enabled.
 
 ## Active write provider
 
@@ -26,7 +26,9 @@ STORAGE_PROVIDER=filesystem
 
 Asset rows store pointers like `/uploads/{uuid}.webp`. Delivery remains through `GET /api/assets/:id` (ACL-backed).
 
-## S3-compatible (`@esiana/storage-s3`)
+## S3-compatible (`remote-object-storage` plugin)
+
+Install from the community catalog (Admin → Plugins) or link locally via `pnpm run plugins:link` when developing beside [`community-plugins`](https://github.com/Esiana-ttrpg/community-plugins).
 
 Works with AWS S3, MinIO, Cloudflare R2, Wasabi, DigitalOcean Spaces, and other S3 API backends.
 
@@ -46,10 +48,13 @@ New assets store pointers like `s3://{uuid}.webp` (bucket implied by `S3_BUCKET`
 
 ### MinIO smoke test (local)
 
-1. Run MinIO with a bucket (e.g. `esiana-dev`).
-2. Set env vars above with `S3_ENDPOINT=http://127.0.0.1:9000`.
-3. Restart Esiana; confirm Admin → Storage shows `s3-compatible` healthy.
-4. Upload a campaign image; confirm `Asset.url` is `s3://…` and `GET /api/assets/:id` succeeds.
+1. Install and enable **Remote Object Storage** in Admin → System Plugins.
+2. Run MinIO with a bucket (e.g. `esiana-dev`).
+3. Set env vars above with `S3_ENDPOINT=http://127.0.0.1:9000`.
+4. Restart Esiana; confirm Admin → Storage shows `s3-compatible` healthy.
+5. Upload a campaign image; confirm `Asset.url` is `s3://…` and `GET /api/assets/:id` succeeds.
+
+If the plugin is installed but **disabled**, storage stays **degraded** with an Admin warning — Esiana does not silently fall back to filesystem while `STORAGE_PROVIDER=s3-compatible`.
 
 ## Object key layout (current)
 
@@ -69,7 +74,7 @@ Future bucket-prefix layouts and migration jobs are deferred — see [asset-stor
 
 ## Plugin note
 
-Storage providers register via `registerStorageProvider()` from infrastructure packages — not campaign plugins. The legacy `remote-object-storage` campaign plugin stub was removed in favor of `@esiana/storage-s3`.
+Storage providers register via `registerStorageProvider()` from global plugins with the `storage:provider` permission. The **`remote-object-storage`** plugin ships as a pre-bundled ESM file (`manifest.json`, `backend/index.js`, `README.md` only at runtime — no `node_modules`).
 
 ## Deferred
 

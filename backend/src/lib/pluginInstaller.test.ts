@@ -12,6 +12,16 @@ import {
 } from './pluginInstaller.js';
 import { readLocalPluginRegistryFromDisk } from './bundledPlugins.js';
 
+test('isBackendOnlyGlobalPlugin accepts storageProvider without frontendEntry', () => {
+  assert.equal(
+    isBackendOnlyGlobalPlugin({
+      scope: PluginScopes.GLOBAL,
+      capabilities: [PluginCapabilities.STORAGE_PROVIDER],
+    }),
+    true,
+  );
+});
+
 test('isBackendOnlyGlobalPlugin accepts developmentProvider without frontendEntry', () => {
   assert.equal(
     isBackendOnlyGlobalPlugin({
