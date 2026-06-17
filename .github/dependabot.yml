@@ -9,5 +9,34 @@ updates:
     groups:
       production-dependencies:
         dependency-type: production
+        applies-to: version-updates
       development-dependencies:
         dependency-type: development
+        applies-to: version-updates
+      security-updates:
+        patterns: ["*"]
+        applies-to: security-updates
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: "/docker"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3

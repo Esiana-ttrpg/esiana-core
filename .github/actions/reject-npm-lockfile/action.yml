@@ -1,0 +1,12 @@
+name: Reject npm lockfile
+description: Fail if package-lock.json is present (pnpm-only repository)
+runs:
+  using: composite
+  steps:
+    - name: Reject npm lockfile
+      shell: bash
+      run: |
+        if [ -f package-lock.json ]; then
+          echo "package-lock.json is not allowed. Use pnpm."
+          exit 1
+        fi
