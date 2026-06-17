@@ -14,13 +14,13 @@ import {
   assertPluginSourceUrl,
   isPluginSourceUrlSync,
   resolvePluginUrlSafeForRemoteFetch,
-} from './pluginSourcePolicy.js';
+} from '@esiana/plugin-source-policy';
 import {
   SsrfGuardError,
   assertUrlSafeForImport,
   isUrlSafeForImportSync,
   resolveUrlSafeForRemoteFetch,
-} from './ssrfGuard.js';
+} from '@esiana/ssrf-guard';
 
 export class NetworkFetchError extends Error {
   constructor(message: string) {

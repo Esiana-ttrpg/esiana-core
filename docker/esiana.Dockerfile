@@ -7,6 +7,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY backend/package.json backend/
 COPY frontend/package.json frontend/
 COPY packages/storage-s3/package.json packages/storage-s3/
+COPY packages/ssrf-guard/package.json packages/ssrf-guard/
+COPY packages/plugin-source-policy/package.json packages/plugin-source-policy/
 RUN pnpm install --frozen-lockfile \
   && mkdir -p backend/node_modules
 COPY backend ./backend
