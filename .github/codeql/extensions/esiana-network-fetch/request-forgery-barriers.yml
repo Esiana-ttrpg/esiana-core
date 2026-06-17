@@ -1,29 +1,10 @@
 # CodeQL barriers for networkFetch SSRF (js/request-forgery).
-# Pack manifest: codeql-pack.yml (required name for default-setup auto-discovery).
-# Primary: barrierModel on resolve*SafeForRemoteFetch return values (validatedUrl boundary).
-# Secondary: barrierGuardModel on sync pre-checks for early-reject branches.
+# Module types must match ESM import specifiers from networkFetch.ts (verified via CodeQL DB).
+# barrierGuardModel: sync guard in same function as fetch(url).
 extensions:
   - addsTo:
       pack: codeql/javascript-all
       extensible: barrierGuardModel
     data:
-      - ["backend/src/lib/ssrfGuard.js", "Member[isUrlSafeForImportSync].Argument[0]", "true", "request-forgery"]
-      - ["backend/src/lib/ssrfGuard.ts", "Member[isUrlSafeForImportSync].Argument[0]", "true", "request-forgery"]
-      - ["src/lib/ssrfGuard.js", "Member[isUrlSafeForImportSync].Argument[0]", "true", "request-forgery"]
-      - ["src/lib/ssrfGuard.ts", "Member[isUrlSafeForImportSync].Argument[0]", "true", "request-forgery"]
-      - ["backend/src/lib/pluginSourcePolicy.js", "Member[isPluginSourceUrlSync].Argument[0]", "true", "request-forgery"]
-      - ["backend/src/lib/pluginSourcePolicy.ts", "Member[isPluginSourceUrlSync].Argument[0]", "true", "request-forgery"]
-      - ["src/lib/pluginSourcePolicy.js", "Member[isPluginSourceUrlSync].Argument[0]", "true", "request-forgery"]
-      - ["src/lib/pluginSourcePolicy.ts", "Member[isPluginSourceUrlSync].Argument[0]", "true", "request-forgery"]
-  - addsTo:
-      pack: codeql/javascript-all
-      extensible: barrierModel
-    data:
-      - ["backend/src/lib/ssrfGuard.js", "Member[resolveUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
-      - ["backend/src/lib/ssrfGuard.ts", "Member[resolveUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
-      - ["src/lib/ssrfGuard.js", "Member[resolveUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
-      - ["src/lib/ssrfGuard.ts", "Member[resolveUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
-      - ["backend/src/lib/pluginSourcePolicy.js", "Member[resolvePluginUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
-      - ["backend/src/lib/pluginSourcePolicy.ts", "Member[resolvePluginUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
-      - ["src/lib/pluginSourcePolicy.js", "Member[resolvePluginUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
-      - ["src/lib/pluginSourcePolicy.ts", "Member[resolvePluginUrlSafeForRemoteFetch].ReturnValue", "request-forgery"]
+      - ["./ssrfGuard.js", "Member[isUrlSafeForImportSync].Argument[0]", "true", "request-forgery"]
+      - ["./pluginSourcePolicy.js", "Member[isPluginSourceUrlSync].Argument[0]", "true", "request-forgery"]

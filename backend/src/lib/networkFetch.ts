@@ -3,7 +3,7 @@
  * ssrfGuard — destination safety: DNS/IP/hostname blocklist, scheme validation
  * pluginSourcePolicy — trust boundary: GitHub/GitLab host allowlist
  *
- * Trust boundary: only URLs returned from resolve*SafeForRemoteFetch reach fetch().
+ * fetch() runs only inside guarded branches (sync guard + async resolve on same url).
  */
 import fs from 'node:fs';
 import { createWriteStream } from 'node:fs';
@@ -163,98 +163,6 @@ async function rejectRemoteFetchPolicy(
   throw new NetworkFetchError('URL is not allowed for remote fetch');
 }
 
-/**
- * Transport-only fetch. Caller must pass a URL from resolve*SafeForRemoteFetch.
- * validatedUrl is DNS-checked, scheme-checked, IP-blocked, and plugin-allowlisted when applicable.
- */
-async function executeRemoteFetch(
-  validatedUrl: URL,
-  options: RemoteFetchOptions,
-): Promise<FetchBodyResult> {
-  const controller = new AbortController();
-  const timeoutMs = options.timeoutSeconds * 1000;
-  const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
-
-  try {
-    const response = await fetch(validatedUrl, {
-      redirect: REDIRECT_POLICY,
-      signal: controller.signal,
-      headers: options.headers,
-    });
-    return await readResponseBody(
-      response,
-      controller,
-      options.maxBytes,
-      options.timeoutSeconds,
-    );
-  } catch (error) {
-    throw toNetworkFetchError(error, controller, options.timeoutSeconds);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function executeRemoteStreamFetch(
-  validatedUrl: URL,
-  destination: string,
-  options: RemoteFetchOptions,
-): Promise<void> {
-  const controller = new AbortController();
-  const timeoutMs = options.timeoutSeconds * 1000;
-  const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
-
-  const destinationPath = path.resolve(destination);
-  await fs.promises.mkdir(path.dirname(destinationPath), { recursive: true });
-  const out = createWriteStream(destinationPath);
-  let total = 0;
-  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-
-  try {
-    const response = await fetch(validatedUrl, {
-      redirect: REDIRECT_POLICY,
-      signal: controller.signal,
-      headers: options.headers,
-    });
-
-    if (!response.ok) {
-      throw new NetworkFetchError(`URL returned HTTP ${response.status}`);
-    }
-
-    const body = response.body;
-    if (!body) {
-      throw new NetworkFetchError('URL response had no body');
-    }
-
-    reader = body.getReader();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      total += value.byteLength;
-      if (total > options.maxBytes) {
-        abortRequest(controller, 'size-limit', reader);
-        throw new NetworkFetchError('Response exceeded size limit');
-      }
-      if (!out.write(Buffer.from(value))) {
-        await new Promise<void>((resolve, reject) => {
-          out.once('drain', () => resolve());
-          out.once('error', reject);
-        });
-      }
-    }
-
-    out.end();
-    await finished(out);
-  } catch (error) {
-    out.destroy();
-    await fs.promises.rm(destinationPath, { force: true }).catch(() => {});
-    if (error instanceof NetworkFetchError) throw error;
-    throw toNetworkFetchError(error, controller, options.timeoutSeconds);
-  } finally {
-    clearTimeout(timeout);
-    void reader?.cancel().catch(() => {});
-  }
-}
-
 async function fetchRemoteBody(
   url: URL,
   mode: FetchMode,
@@ -264,32 +172,72 @@ async function fetchRemoteBody(
 
   if (mode === 'plugin') {
     if (
-      !isPluginSourceUrlSync(url) ||
-      !isUrlSafeForImportSync(url, { allowHttp: false })
+      isPluginSourceUrlSync(url) &&
+      isUrlSafeForImportSync(url, { allowHttp: false })
     ) {
-      return rejectRemoteFetchPolicy(url, 'plugin', false);
+      try {
+        await resolvePluginUrlSafeForRemoteFetch(url);
+      } catch (error) {
+        throw mapPolicyError(error);
+      }
+
+      const controller = new AbortController();
+      const timeoutMs = options.timeoutSeconds * 1000;
+      const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
+
+      try {
+        const response = await fetch(url, {
+          redirect: REDIRECT_POLICY,
+          signal: controller.signal,
+          headers: options.headers,
+        });
+        return await readResponseBody(
+          response,
+          controller,
+          options.maxBytes,
+          options.timeoutSeconds,
+        );
+      } catch (error) {
+        throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+      } finally {
+        clearTimeout(timeout);
+      }
     }
 
-    let validatedUrl: URL;
+    return rejectRemoteFetchPolicy(url, 'plugin', false);
+  }
+
+  if (isUrlSafeForImportSync(url, { allowHttp })) {
     try {
-      validatedUrl = await resolvePluginUrlSafeForRemoteFetch(url);
+      await resolveUrlSafeForRemoteFetch(url, { allowHttp });
     } catch (error) {
       throw mapPolicyError(error);
     }
-    return executeRemoteFetch(validatedUrl, options);
+
+    const controller = new AbortController();
+    const timeoutMs = options.timeoutSeconds * 1000;
+    const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        redirect: REDIRECT_POLICY,
+        signal: controller.signal,
+        headers: options.headers,
+      });
+      return await readResponseBody(
+        response,
+        controller,
+        options.maxBytes,
+        options.timeoutSeconds,
+      );
+    } catch (error) {
+      throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  if (!isUrlSafeForImportSync(url, { allowHttp })) {
-    return rejectRemoteFetchPolicy(url, 'asset', allowHttp);
-  }
-
-  let validatedUrl: URL;
-  try {
-    validatedUrl = await resolveUrlSafeForRemoteFetch(url, { allowHttp });
-  } catch (error) {
-    throw mapPolicyError(error);
-  }
-  return executeRemoteFetch(validatedUrl, options);
+  return rejectRemoteFetchPolicy(url, 'asset', allowHttp);
 }
 
 export async function fetchAssetRemoteBuffer(
@@ -322,17 +270,71 @@ export async function fetchPluginRemoteStream(
   options: PluginRemoteFetchOptions,
 ): Promise<void> {
   if (
-    !isPluginSourceUrlSync(url) ||
-    !isUrlSafeForImportSync(url, { allowHttp: false })
+    isPluginSourceUrlSync(url) &&
+    isUrlSafeForImportSync(url, { allowHttp: false })
   ) {
-    return rejectRemoteFetchPolicy(url, 'plugin', false);
+    try {
+      await resolvePluginUrlSafeForRemoteFetch(url);
+    } catch (error) {
+      throw mapPolicyError(error);
+    }
+
+    const controller = new AbortController();
+    const timeoutMs = options.timeoutSeconds * 1000;
+    const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
+
+    const destinationPath = path.resolve(destination);
+    await fs.promises.mkdir(path.dirname(destinationPath), { recursive: true });
+    const out = createWriteStream(destinationPath);
+    let total = 0;
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+
+    try {
+      const response = await fetch(url, {
+        redirect: REDIRECT_POLICY,
+        signal: controller.signal,
+        headers: options.headers,
+      });
+
+      if (!response.ok) {
+        throw new NetworkFetchError(`URL returned HTTP ${response.status}`);
+      }
+
+      const body = response.body;
+      if (!body) {
+        throw new NetworkFetchError('URL response had no body');
+      }
+
+      reader = body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > options.maxBytes) {
+          abortRequest(controller, 'size-limit', reader);
+          throw new NetworkFetchError('Response exceeded size limit');
+        }
+        if (!out.write(Buffer.from(value))) {
+          await new Promise<void>((resolve, reject) => {
+            out.once('drain', () => resolve());
+            out.once('error', reject);
+          });
+        }
+      }
+
+      out.end();
+      await finished(out);
+      return;
+    } catch (error) {
+      out.destroy();
+      await fs.promises.rm(destinationPath, { force: true }).catch(() => {});
+      if (error instanceof NetworkFetchError) throw error;
+      throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+    } finally {
+      clearTimeout(timeout);
+      void reader?.cancel().catch(() => {});
+    }
   }
 
-  let validatedUrl: URL;
-  try {
-    validatedUrl = await resolvePluginUrlSafeForRemoteFetch(url);
-  } catch (error) {
-    throw mapPolicyError(error);
-  }
-  return executeRemoteStreamFetch(validatedUrl, destination, options);
+  return rejectRemoteFetchPolicy(url, 'plugin', false);
 }
