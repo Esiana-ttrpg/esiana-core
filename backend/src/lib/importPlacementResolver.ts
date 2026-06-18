@@ -40,6 +40,8 @@ export type PlacementResult =
     }
   | { outcome: 'skip'; skipReason: string };
 
+type ImportPlacementResult = Extract<PlacementResult, { outcome: 'import' }>;
+
 const HARD_SKIP_BASENAMES = new Set([
   'todo',
   'untitled',
@@ -106,7 +108,7 @@ function placementFromModule(
   module: MappableImportModule,
   segments: readonly string[],
   customFields?: Record<string, string>,
-): PlacementResult {
+): ImportPlacementResult {
   const hasParty = segments.some((segment) => sanitizeFolderForSearch(segment) === 'party');
   const skeletonParentKey =
     module === 'Characters' && hasParty
