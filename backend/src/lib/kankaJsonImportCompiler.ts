@@ -10,6 +10,7 @@ import {
 } from '../../../shared/importModuleSynonyms.js';
 import { isKankaSkippedFolder, kankaSkipReason, KANKA_SKIP_REASON_LABELS } from '../../../shared/importSkipPolicy.js';
 import { mapKankaCharacterFields } from '../../../shared/importMappers/kankaCharacter.js';
+import { extractKankaMapId, mapKankaMapFields } from '../../../shared/importMappers/kankaMap.js';
 import {
   buildExternalEntityIndex,
   resolveExternalMentions,
@@ -115,7 +116,10 @@ function virtualPathForEntity(folder: string, name: string, kankaType: string | 
   return `${folder}/${slug || 'entry'}.md`;
 }
 
-export async function compileKankaJsonZip(zip: JSZip): Promise<KankaCompileResult> {
+export async function compileKankaJsonZip(
+  zip: JSZip,
+  options?: { existingPageIdsByKankaKey?: Map<string, string> },
+): Promise<KankaCompileResult> {
   const zipEntries = Object.keys(zip.files).filter((name) => !zip.files[name]?.dir);
   const entityPaths = collectKankaJsonEntityPaths(zipEntries);
   const skippedModuleCounts = new Map<string, number>();
@@ -168,7 +172,7 @@ export async function compileKankaJsonZip(zip: JSZip): Promise<KankaCompileResul
       (typeof row.raw.type === 'string' ? row.raw.type : null) ??
       (typeof entity.type === 'string' ? entity.type : null);
     const entityType = normalizeKankaEntityType(row.folder, kankaType);
-    const id = randomUUID();
+    let id = options?.existingPageIdsByKankaKey?.get(row.entityId) ?? randomUUID();
     externalKeyToPageId.set(row.entityId, id);
     const rawId = row.raw.id;
     if (typeof rawId === 'number') externalKeyToPageId.set(String(rawId), id);
@@ -179,12 +183,30 @@ export async function compileKankaJsonZip(zip: JSZip): Promise<KankaCompileResul
 
     let characterMetadata: Record<string, unknown> | undefined;
     let deferredRefs = undefined as VirtualNarrativeEntry['deferredRefs'];
+    let kankaMapId: string | undefined;
+    let kankaMapPlan: VirtualNarrativeEntry['kankaMapPlan'];
     const frontmatter: Record<string, unknown> = {
       type: entityType,
       visibility: kankaVisibility(row.raw),
       title: row.name,
     };
     const importMetadataExtras: Record<string, unknown> = {};
+
+    if (row.folder === 'maps') {
+      const mappedMap = mapKankaMapFields(row.raw);
+      if (mappedMap) {
+        kankaMapId = mappedMap.kankaMapId;
+        kankaMapPlan = mappedMap.kankaMapPlan;
+        frontmatter.type = 'maps';
+        const existingMapPageId = options?.existingPageIdsByKankaKey?.get(
+          `map:${mappedMap.kankaMapId}`,
+        );
+        if (existingMapPageId) {
+          id = existingMapPageId;
+          externalKeyToPageId.set(mappedMap.kankaMapId, existingMapPageId);
+        }
+      }
+    }
 
     if (row.folder === 'characters') {
       const mapped = mapKankaCharacterFields(row.raw);
@@ -218,6 +240,8 @@ export async function compileKankaJsonZip(zip: JSZip): Promise<KankaCompileResul
       parentExternalId,
       characterMetadata,
       deferredRefs,
+      kankaMapId,
+      kankaMapPlan,
       ...(Object.keys(importMetadataExtras).length
         ? { frontmatter: { ...frontmatter, ...importMetadataExtras } }
         : {}),

@@ -8,7 +8,6 @@ export type SkipReasonCode =
 export const KANKA_SKIP_POLICY: Record<string, SkipReasonCode> = {
   abilities: 'system_module',
   items: 'system_module',
-  maps: 'not_supported',
   settings: 'config',
   tags: 'metadata_only',
   w: 'asset_only',
