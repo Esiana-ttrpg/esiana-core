@@ -26,6 +26,10 @@ jobs:
       - name: Build workspaces
         run: pnpm build
 
+      - name: Validate i18n locale keys
+        working-directory: frontend
+        run: node scripts/validate-i18n-keys.mjs
+
       - name: Verify compiled backend shared modules are ESM
         working-directory: backend
         run: node scripts/verify-dist-esm.mjs

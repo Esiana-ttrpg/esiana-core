@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { BookOpen, PanelLeft } from 'lucide-react';
 import { EsianaLogo } from '@/components/brand/EsianaLogo';
 import { useBranding } from '@/contexts/BrandingContext';
@@ -9,6 +10,7 @@ import { CampaignHeader } from '@/components/layout/CampaignHeader';
 import { HeaderAccountNav } from '@/components/layout/HeaderAccountNav';
 
 export function AppHeader() {
+  const { t } = useTranslation();
   const { globalTitle, globalLogoUrl } = useBranding();
   const [logoError, setLogoError] = useState(false);
   const campaignNav = useOptionalCampaignNav();
@@ -33,7 +35,7 @@ export function AppHeader() {
             type="button"
             onClick={() => campaignNav?.toggleSidebar()}
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground transition-colors hover:bg-elevated lg:hidden"
-            aria-label="Open campaign menu"
+            aria-label={t('navigation.main.openCampaignMenu')}
             aria-expanded={campaignNav?.sidebarOpen}
           >
             <PanelLeft className="size-5" />
@@ -44,7 +46,7 @@ export function AppHeader() {
             type="button"
             onClick={() => adminNav?.toggleNav()}
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground transition-colors hover:bg-elevated md:hidden"
-            aria-label="Open admin menu"
+            aria-label={t('navigation.main.openAdminMenu')}
             aria-expanded={adminNav?.navOpen}
           >
             <PanelLeft className="size-5" />
@@ -76,7 +78,7 @@ export function AppHeader() {
             to="/recruitment"
             className="hidden text-sm font-medium text-muted transition-colors hover:text-primary sm:inline"
           >
-            Explore
+            {t('navigation.main.explore')}
           </Link>
         ) : null}
 

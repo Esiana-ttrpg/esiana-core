@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Bell, BookOpen, KeyRound, Palette, Shield, UserCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
@@ -22,6 +23,7 @@ import { UserProfileIdentitySection } from '@/components/settings/UserProfileIde
 import { UserAccountSecuritySection } from '@/components/settings/UserAccountSecuritySection';
 import { UserLinkedIdentitySection } from '@/components/settings/UserLinkedIdentitySection';
 import { UserCampaignDefaultsSection } from '@/components/settings/UserCampaignDefaultsSection';
+import { UserUiLanguageSection } from '@/components/settings/UserUiLanguageSection';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 
 type SettingsTab =
@@ -32,16 +34,29 @@ type SettingsTab =
   | 'developer'
   | 'account';
 
-const SETTINGS_TABS: Array<{ id: SettingsTab; label: string; icon: LucideIcon }> = [
-  { id: 'profile', label: 'Profile & Identity', icon: UserCircle },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'campaignDefaults', label: 'Campaign Defaults', icon: BookOpen },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'developer', label: 'Developer Keys', icon: KeyRound },
-  { id: 'account', label: 'Account & Security', icon: Shield },
+const SETTINGS_TAB_META: Array<{ id: SettingsTab; labelKey: string; icon: LucideIcon }> = [
+  { id: 'profile', labelKey: 'profile.profile.tabProfile', icon: UserCircle },
+  { id: 'appearance', labelKey: 'profile.profile.tabAppearance', icon: Palette },
+  {
+    id: 'campaignDefaults',
+    labelKey: 'profile.profile.tabCampaignDefaults',
+    icon: BookOpen,
+  },
+  { id: 'notifications', labelKey: 'profile.profile.tabNotifications', icon: Bell },
+  { id: 'developer', labelKey: 'profile.profile.tabDeveloper', icon: KeyRound },
+  { id: 'account', labelKey: 'profile.profile.tabAccount', icon: Shield },
 ];
 
-const VALID_TABS = new Set<string>(SETTINGS_TABS.map((tab) => tab.id));
+const TAB_DESCRIPTION_KEYS: Record<SettingsTab, string> = {
+  profile: 'profile.profile.descProfile',
+  appearance: 'profile.profile.descAppearance',
+  campaignDefaults: 'profile.profile.descCampaignDefaults',
+  notifications: 'profile.profile.descNotifications',
+  developer: 'profile.profile.descDeveloper',
+  account: 'profile.profile.descAccount',
+};
+
+const VALID_TABS = new Set<string>(SETTINGS_TAB_META.map((tab) => tab.id));
 
 function parseTabParam(value: string | null): SettingsTab {
   if (value && VALID_TABS.has(value)) return value as SettingsTab;
@@ -54,32 +69,23 @@ function getAccountDayCount(isoDate: string): number {
   return Math.max(0, Math.floor((Date.now() - created.getTime()) / 86_400_000));
 }
 
-function formatMemberSince(isoDate: string): string {
+function formatMemberSince(isoDate: string, locale?: string): string {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return 'Unknown';
-  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-}
-
-function tabDescription(tab: SettingsTab): string {
-  switch (tab) {
-    case 'profile':
-      return 'Manage your public identity and how you appear in campaigns.';
-    case 'appearance':
-      return 'Personalize how Esiana looks for you across the platform.';
-    case 'campaignDefaults':
-      return 'Save reusable table preferences and recruitment templates for new campaigns.';
-    case 'notifications':
-      return 'Control in-app and email notifications across your campaigns.';
-    case 'developer':
-      return 'Generate and manage API keys for programmatic access.';
-    case 'account':
-      return 'Update login credentials and manage your system account.';
-    default:
-      return '';
-  }
+  return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 }
 
 export function UserSettings() {
+  const { t, i18n } = useTranslation();
+  const settingsTabs = useMemo(
+    () =>
+      SETTINGS_TAB_META.map((tab) => ({
+        id: tab.id,
+        label: t(tab.labelKey),
+        icon: tab.icon,
+      })),
+    [t],
+  );
   const { isAuthenticated, loading: authLoading, refresh, logout, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -166,7 +172,9 @@ export function UserSettings() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : 'Failed to load profile.');
+          setLoadError(
+            err instanceof Error ? err.message : t('profile.profile.loadFailed'),
+          );
         }
       })
       .finally(() => {
@@ -176,11 +184,12 @@ export function UserSettings() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, t]);
 
   const memberSince = useMemo(
-    () => (profile ? formatMemberSince(profile.createdAt) : ''),
-    [profile],
+    () =>
+      profile ? formatMemberSince(profile.createdAt, i18n.language) : '',
+    [profile, i18n.language],
   );
 
   const accountDayCount = useMemo(
@@ -315,7 +324,7 @@ export function UserSettings() {
   }
 
   if (authLoading || loading) {
-    return <LoadingSpinner label="Loading account settings…" />;
+    return <LoadingSpinner label={t('profile.profile.loadingLabel')} />;
   }
 
   return (
@@ -324,17 +333,19 @@ export function UserSettings() {
         <header className="space-y-1">
           <div className="flex items-center gap-2 text-primary">
             <UserCircle className="size-7" strokeWidth={1.5} />
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Account Settings</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {t('profile.profile.pageTitle')}
+            </h1>
           </div>
-          <p className="text-sm text-muted">{tabDescription(activeTab)}</p>
+          <p className="text-sm text-muted">{t(TAB_DESCRIPTION_KEYS[activeTab])}</p>
         </header>
 
         <ResponsiveSectionNav
-          sections={SETTINGS_TABS}
+          sections={settingsTabs}
           activeId={activeTab}
           onChange={switchTab}
-          ariaLabel="Account settings sections"
-          mobileLabel="Settings section"
+          ariaLabel={t('profile.profile.sectionNavAria')}
+          mobileLabel={t('profile.profile.sectionNavMobile')}
         />
 
         {loadError && (
@@ -410,7 +421,12 @@ export function UserSettings() {
         </>
       )}
 
-      {activeTab === 'appearance' && <UserAppearanceSection />}
+      {activeTab === 'appearance' && (
+        <div className="space-y-6">
+          <UserUiLanguageSection />
+          <UserAppearanceSection />
+        </div>
+      )}
 
       {activeTab === 'campaignDefaults' && <UserCampaignDefaultsSection />}
 
