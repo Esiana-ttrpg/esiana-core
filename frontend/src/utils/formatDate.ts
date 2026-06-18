@@ -1,8 +1,16 @@
-export function formatCreatedDate(iso: string | undefined): string {
+import { getActiveUiLanguage, i18n, initI18n } from '@/i18n/initI18n';
+
+initI18n();
+
+function activeLocale(): string {
+  return getActiveUiLanguage();
+}
+
+export function formatCreatedDate(iso: string | undefined, locale?: string): string {
   if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale ?? activeLocale(), {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -15,16 +23,16 @@ export function formatRelativeUpdated(iso: string | undefined): string {
   if (Number.isNaN(date.getTime())) return '—';
 
   const diffMs = Date.now() - date.getTime();
-  if (diffMs < 60_000) return 'Just now';
+  if (diffMs < 60_000) return i18n.t('common.justNow');
 
   const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return i18n.t('common.minutesAgo', { count: minutes });
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return i18n.t('common.hoursAgo', { count: hours });
 
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return i18n.t('common.daysAgo', { count: days });
 
   return formatCreatedDate(iso);
 }
@@ -38,9 +46,9 @@ export function formatDurationMs(ms: number | null | undefined): string {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 }
 
-export function formatAbsoluteDateTime(iso: string | undefined): string {
+export function formatAbsoluteDateTime(iso: string | undefined, locale?: string): string {
   if (!iso) return '—';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString();
+  return date.toLocaleString(locale ?? activeLocale());
 }

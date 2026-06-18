@@ -1,0 +1,10 @@
+{
+  "common.save": "Save",
+  "common.cancel": "Cancel",
+  "common.loading": "Loading…",
+  "common.loadFailed": "Failed to load.",
+  "common.justNow": "Just now",
+  "common.minutesAgo": "{{count}}m ago",
+  "common.hoursAgo": "{{count}}h ago",
+  "common.daysAgo": "{{count}}d ago"
+}

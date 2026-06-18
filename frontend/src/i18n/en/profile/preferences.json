@@ -1,0 +1,8 @@
+{
+  "profile.preferences.uiLocaleLabel": "Interface language",
+  "profile.preferences.uiLocaleHint": "Controls Esiana menus and buttons. Campaign wiki content stays as you write it.",
+  "profile.preferences.uiLocaleAuto": "Automatic (browser)",
+  "profile.preferences.uiLocaleEnglish": "English",
+  "profile.preferences.uiLocaleSaved": "Language preference saved.",
+  "profile.preferences.uiLocaleSaveFailed": "Unable to save language preference."
+}

@@ -1,0 +1,19 @@
+{
+  "profile.profile.pageTitle": "Account Settings",
+  "profile.profile.loadingLabel": "Loading account settings…",
+  "profile.profile.loadFailed": "Failed to load profile.",
+  "profile.profile.sectionNavAria": "Account settings sections",
+  "profile.profile.sectionNavMobile": "Settings section",
+  "profile.profile.tabProfile": "Profile & Identity",
+  "profile.profile.tabAppearance": "Appearance",
+  "profile.profile.tabCampaignDefaults": "Campaign Defaults",
+  "profile.profile.tabNotifications": "Notifications",
+  "profile.profile.tabDeveloper": "Developer Keys",
+  "profile.profile.tabAccount": "Account & Security",
+  "profile.profile.descProfile": "Manage your public identity and how you appear in campaigns.",
+  "profile.profile.descAppearance": "Personalize how Esiana looks for you across the platform.",
+  "profile.profile.descCampaignDefaults": "Save reusable table preferences and recruitment templates for new campaigns.",
+  "profile.profile.descNotifications": "Control in-app and email notifications across your campaigns.",
+  "profile.profile.descDeveloper": "Generate and manage API keys for programmatic access.",
+  "profile.profile.descAccount": "Update login credentials and manage your system account."
+}

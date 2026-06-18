@@ -43,6 +43,7 @@ import {
   resolveEffectiveTimezone,
   sanitizeTimezone,
 } from '../lib/timezone.js';
+import { sanitizeUiLocale } from '../lib/uiLocale.js';
 import { isPasswordAuthEnabled } from '../lib/auth/passwordAuth.js';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -56,6 +57,7 @@ const PROFILE_UPDATE_KEYS = [
   'defaultPitch',
   'statusBlurb',
   'timezone',
+  'uiLocale',
   ...USER_SOCIAL_LINK_KEYS,
 ] as const;
 
@@ -65,6 +67,7 @@ const profileSelect = {
   appearanceProfile: true,
   allowCampaignSystemOverride: true,
   timezone: true,
+  uiLocale: true,
   createdAt: true,
   campaignMembers: {
     select: {
@@ -102,6 +105,7 @@ function serializeProfile(
     appearanceProfile: unknown;
     allowCampaignSystemOverride: boolean;
     timezone: string | null;
+    uiLocale: string | null;
     createdAt: Date;
     campaignMembers: Array<{
       role: string;
@@ -131,6 +135,7 @@ function serializeProfile(
     ),
     allowCampaignSystemOverride: user.allowCampaignSystemOverride,
     timezone: user.timezone,
+    uiLocale: user.uiLocale,
     effectiveTimezone: resolveEffectiveTimezone({
       userTimezone: user.timezone,
       systemDefaultTimezone,
@@ -387,6 +392,23 @@ export async function updateUserProfile(
         return;
       }
       updateData.timezone = sanitized;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, 'uiLocale')) {
+    if (body.uiLocale !== null && typeof body.uiLocale !== 'string') {
+      res.status(400).json({ error: 'uiLocale must be a string or null' });
+      return;
+    }
+    if (body.uiLocale === null || body.uiLocale === '') {
+      updateData.uiLocale = null;
+    } else {
+      const sanitized = sanitizeUiLocale(body.uiLocale);
+      if (!sanitized) {
+        res.status(400).json({ error: 'uiLocale must be a valid BCP 47 language tag' });
+        return;
+      }
+      updateData.uiLocale = sanitized;
     }
   }
 
