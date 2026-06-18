@@ -68,8 +68,9 @@ Defined in [`backend/src/config/env.ts`](../../backend/src/config/env.ts).
 | `PLUGINS_DIR` | `../plugins` | Optional | Runtime plugin package directory. | `/app/plugins` |
 | `STORAGE_PROVIDER` | `filesystem` | Optional | Active storage driver ID. | `filesystem` |
 | `STORAGE_REDIRECT_THRESHOLD_BYTES` | `5242880` (5 MB) | Optional | Prefer redirect delivery above this size. | `5242880` |
-| `ESIANA_CORE_VERSION` | `0.9.0` | Optional | Product version for plugin engine constraints. | `1.0.1` |
 | `OPENAPI_DOCS_ENABLED` | (unset) | Optional | `true` / `false`; when unset, `/api/docs` enabled in non-production only. | `true` |
+
+Product version (admin UI, update checks, plugin `engines.esiana-core` gate) comes from root `package.json` `version` at build/runtime — not from an environment variable.
 
 ---
 

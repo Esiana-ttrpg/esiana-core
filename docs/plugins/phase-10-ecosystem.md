@@ -21,8 +21,9 @@ Env:
 ```text
 STORAGE_PROVIDER=filesystem
 STORAGE_REDIRECT_THRESHOLD_BYTES=5242880
-ESIANA_CORE_VERSION=0.8.0
 ```
+
+Product version for `engines.esiana-core` gating comes from root `package.json` (not an env var).
 
 ### Plugin manifest v2
 
