@@ -2,6 +2,12 @@ import JSZip from 'jszip';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
+import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
+import { IMPORT_SK } from '../../../shared/importSkeletonKeys.js';
+import {
+  collectMarkdownZipPaths,
+  discoverImportFolders,
+} from '../../../shared/importZipStructure.js';
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { importFromPackBuffer } from './assetImport.js';
@@ -15,61 +21,51 @@ import {
   applySystemProvenanceTimestamps,
   extractTemporalFromFrontMatter,
 } from './temporalImportRestore.js';
+import { buildSkeletonParentKeyMap } from './markdownPackImporter.js';
+import { backfillCampaignPathKeys } from './wikiPathKeyService.js';
+import { normalizeFrontmatter } from './importFrontmatterNormalize.js';
 import {
-  resolveImportEntityCategory,
-  resolveImportTemplateType,
-} from './importModuleTemplateType.js';
-
-type ImportModule =
-  | 'Characters'
-  | 'Bestiary'
-  | 'Ancestries'
-  | 'Organizations'
-  | 'Locations'
-  | 'Maps'
-  | 'Objects'
-  | 'Families (tree)'
-  | 'Game/Rules & Resources'
-  | 'Game/Quests'
-  | 'Game/Session Notes'
-  | 'Game/Journals'
-  | 'Game/Calendars'
-  | 'Game/Timelines'
-  | 'Game/Events'
-  | 'Wiki/Generic'
-  | 'Ignore Folder';
+  buildPathScanRecord,
+  resolvePathHardSkip,
+  resolvePlacement,
+} from './importPlacementResolver.js';
+import { resolveWorkspaceForPage } from '../../../shared/wikiWorkspaceResolve.js';
 
 interface ImportManifest {
   folderMappings?: Array<{
     sourceFolderName: string;
-    targetModule: ImportModule | string;
+    targetModule: string;
     isAutoMatched?: boolean;
   }>;
 }
 
-interface NoteLookupEntry {
-  id: string;
-  module: string;
-  handle: string;
+interface SkippedNote {
+  sourcePath: string;
+  skipReason: string;
 }
 
-interface PathLookupEntry {
-  id: string;
-  module: string;
-}
-
-interface ParsedImportDoc {
+interface LoadedMarkdownEntry {
   relativePath: string;
-  rootFolder: string;
-  module: string;
   title: string;
-  noteId: string;
-  handle: string;
   bodyMarkdown: string;
-  blurb?: string;
+  visibility: string;
   tags: string[];
+  blurb?: string;
   infoboxCustomFields: Record<string, string>;
   importTemporal?: import('./temporalProvenance.js').TemporalMetadata;
+}
+
+interface PreparedImportRow {
+  id: string;
+  title: string;
+  parentId: string | null;
+  templateType: string;
+  visibility: string;
+  bodyMarkdown: string;
+  metadata: Record<string, unknown>;
+  module: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
@@ -107,26 +103,6 @@ function flattenToString(value: unknown): string {
   return String(value ?? '').trim();
 }
 
-function resolveModuleFromRoot(
-  rootFolder: string,
-  manifest: ImportManifest | null,
-): string {
-  if (!manifest?.folderMappings || manifest.folderMappings.length === 0) {
-    return 'Wiki/Generic';
-  }
-  const hit = manifest.folderMappings.find(
-    (entry) =>
-      entry.sourceFolderName.trim().toLowerCase() === rootFolder.trim().toLowerCase(),
-  );
-  return hit?.targetModule?.toString().trim() || 'Wiki/Generic';
-}
-
-function extractRootFolder(relativePath: string): string {
-  const normalized = relativePath.replace(/\\/g, '/');
-  const [root] = normalized.split('/');
-  return (root || '').trim();
-}
-
 function extractMarkdownTitleFallback(relativePath: string): string {
   const base = path.basename(relativePath, path.extname(relativePath)).trim();
   return base || 'Untitled Note';
@@ -141,10 +117,37 @@ function parseManifestFromCampaignDashboardConfig(input: unknown): ImportManifes
 }
 
 function sanitizeLegacyMarkdownLinks(markdown: string): string {
-  // Replace non-image markdown path links with plain label text to avoid legacy path leakage.
   return markdown.replace(/\[([^\]]+)\]\((?!https?:\/\/)([^)]+)\)/gi, (_m, label) => {
     return String(label ?? '').trim();
   });
+}
+
+function buildImportReportMarkdown(
+  skipped: SkippedNote[],
+  warnings: string[],
+): string {
+  const lines: string[] = ['# Import Report', ''];
+  if (skipped.length > 0) {
+    lines.push('## Skipped', '');
+    for (const entry of skipped) {
+      lines.push(`- \`${entry.sourcePath}\` — ${entry.skipReason}`);
+    }
+    lines.push('');
+  }
+  if (warnings.length > 0) {
+    lines.push('## Warnings', '');
+    for (const warning of warnings) {
+      lines.push(`- ${warning}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function resolveSkeletonParentId(
+  skeletonParentKey: string,
+  skeletonMap: Map<string, string>,
+): string | null {
+  return skeletonMap.get(skeletonParentKey) ?? null;
 }
 
 export async function processCampaignImportZip(
@@ -198,35 +201,51 @@ export async function processCampaignImportZip(
     updateBackgroundTask(task.id, { progress: 15 });
 
     const entries = Object.values(zip.files).filter((entry) => !entry.dir);
+    const zipEntryNames = entries.map((entry) => entry.name);
+    const folderDiscovery = discoverImportFolders(zipEntryNames);
+    const wrapperPrefix = folderDiscovery.wrapperPrefix;
     const markdownEntries = entries.filter((entry) =>
-      entry.name.toLowerCase().endsWith('.md'),
+      collectMarkdownZipPaths([entry.name]).length > 0,
     );
     const imageEntries = entries.filter((entry) =>
       IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()),
     );
 
-    const noteLookupMap = new Map<string, NoteLookupEntry>();
-    const pathLookupMap = new Map<string, PathLookupEntry>();
-    const parsedDocs: ParsedImportDoc[] = [];
+    const skippedNotes: SkippedNote[] = [];
+    const importWarnings: string[] = [];
+    const loadedByPath = new Map<string, LoadedMarkdownEntry>();
+    const deferredLooseRootPaths: string[] = [];
 
-    // Pass 1: Scaffolding and lookup maps.
     for (let i = 0; i < markdownEntries.length; i += 1) {
-      const file = markdownEntries[i];
+      const file = markdownEntries[i]!;
       const relativePath = file.name.replace(/\\/g, '/');
-      const rootFolder = extractRootFolder(relativePath);
-      const module = resolveModuleFromRoot(rootFolder, manifest);
-      if (module === 'Ignore Folder') continue;
+      const scan = buildPathScanRecord(relativePath, wrapperPrefix);
+      const hardSkip = resolvePathHardSkip(scan, manifest?.folderMappings);
+      if (hardSkip.skip) {
+        skippedNotes.push({ sourcePath: relativePath, skipReason: hardSkip.reason });
+        continue;
+      }
 
       const rawContent = await file.async('string');
       const parsed = parseMarkdownFrontMatter(rawContent);
-      const title = parsed.frontMatter.title || extractMarkdownTitleFallback(relativePath);
-      const noteId = randomUUID();
-      const slug = generateHandle(title);
+      const normalized = normalizeFrontmatter({
+        title: parsed.frontMatter.title,
+        blurb: parsed.frontMatter.blurb,
+        tags: parsed.frontMatter.tags,
+        ...parsed.frontMatter.customFields,
+      });
+      const title =
+        normalized.title ||
+        parsed.frontMatter.title ||
+        extractMarkdownTitleFallback(relativePath);
 
-      noteLookupMap.set(title.toLowerCase(), { id: noteId, module, handle: slug });
-      pathLookupMap.set(relativePath, { id: noteId, module });
+      const placement = resolvePlacement({
+        scan,
+        normalized,
+        folderMappings: manifest?.folderMappings,
+        wrapperPrefix,
+      });
 
-      // Taxonomy and custom fields normalization from front-matter.
       const tags = normalizeTagValues(parsed.frontMatter.tags);
       const infoboxCustomFields: Record<string, string> = {};
       for (const [key, value] of Object.entries(parsed.frontMatter.customFields ?? {})) {
@@ -237,16 +256,13 @@ export async function processCampaignImportZip(
         if (flattened) infoboxCustomFields[key] = flattened;
       }
 
-      parsedDocs.push({
+      const loaded: LoadedMarkdownEntry = {
         relativePath,
-        rootFolder,
-        module,
         title,
-        noteId,
-        handle: slug,
         bodyMarkdown: parsed.bodyMarkdown || '',
-        blurb: parsed.frontMatter.blurb,
+        visibility: normalized.visibility || 'Party',
         tags,
+        blurb: normalized.blurb || parsed.frontMatter.blurb,
         infoboxCustomFields,
         importTemporal: extractTemporalFromFrontMatter(
           parsed.frontMatter.customFields ?? {},
@@ -254,6 +270,27 @@ export async function processCampaignImportZip(
             ? parsed.frontMatter.customFields.date
             : undefined,
         ),
+      };
+
+      if (placement.outcome === 'skip') {
+        if (placement.skipReason === 'unclassified loose root note') {
+          deferredLooseRootPaths.push(relativePath);
+          loadedByPath.set(relativePath, loaded);
+        } else {
+          skippedNotes.push({ sourcePath: relativePath, skipReason: placement.skipReason });
+        }
+        continue;
+      }
+
+      if (placement.warnings?.length) {
+        for (const warning of placement.warnings) {
+          importWarnings.push(`${relativePath}: ${warning}`);
+        }
+      }
+
+      loadedByPath.set(relativePath, {
+        ...loaded,
+        ...(placement.entityCategory ? {} : {}),
       });
 
       if (i % 5 === 0 || i === markdownEntries.length - 1) {
@@ -263,7 +300,98 @@ export async function processCampaignImportZip(
       }
     }
 
-    // Resolve image entries once for embed replacement.
+    const skeletonMap = await buildSkeletonParentKeyMap(campaignId);
+    const noteLookupMap = new Map<string, { id: string; module: string; handle: string }>();
+    const importCandidates: Array<{
+      relativePath: string;
+      noteId: string;
+      placement: Extract<ReturnType<typeof resolvePlacement>, { outcome: 'import' }>;
+    }> = [];
+
+    function queueImport(
+      relativePath: string,
+      placement: Extract<ReturnType<typeof resolvePlacement>, { outcome: 'import' }>,
+    ) {
+      const loaded = loadedByPath.get(relativePath);
+      if (!loaded) return;
+      const noteId = randomUUID();
+      noteLookupMap.set(loaded.title.toLowerCase(), {
+        id: noteId,
+        module: placement.module,
+        handle: generateHandle(loaded.title),
+      });
+      importCandidates.push({ relativePath, noteId, placement });
+    }
+
+    for (const [relativePath, loaded] of loadedByPath.entries()) {
+      if (deferredLooseRootPaths.includes(relativePath)) continue;
+      const scan = buildPathScanRecord(relativePath, wrapperPrefix);
+      const normalized = normalizeFrontmatter({
+        title: loaded.title,
+        blurb: loaded.blurb,
+        tags: loaded.tags,
+        ...loaded.infoboxCustomFields,
+      });
+      const placement = resolvePlacement({
+        scan,
+        normalized,
+        folderMappings: manifest?.folderMappings,
+        wrapperPrefix,
+        bodyMarkdown: loaded.bodyMarkdown,
+      });
+      if (placement.outcome === 'import') {
+        queueImport(relativePath, placement);
+      }
+    }
+
+    const sessionNoteBodies = importCandidates
+      .map((candidate) => loadedByPath.get(candidate.relativePath))
+      .filter((loaded): loaded is LoadedMarkdownEntry => Boolean(loaded))
+      .filter((loaded) => {
+        const scan = buildPathScanRecord(loaded.relativePath, wrapperPrefix);
+        const normalized = normalizeFrontmatter({
+          title: loaded.title,
+          tags: loaded.tags,
+          ...loaded.infoboxCustomFields,
+        });
+        const placement = resolvePlacement({
+          scan,
+          normalized,
+          folderMappings: manifest?.folderMappings,
+          wrapperPrefix,
+        });
+        return placement.outcome === 'import' && placement.module === 'Game/Session Notes';
+      })
+      .map((loaded) => ({ title: loaded.title, body: loaded.bodyMarkdown }));
+
+    for (const relativePath of deferredLooseRootPaths) {
+      const loaded = loadedByPath.get(relativePath);
+      if (!loaded) continue;
+      const scan = buildPathScanRecord(relativePath, wrapperPrefix);
+      const normalized = normalizeFrontmatter({
+        title: loaded.title,
+        blurb: loaded.blurb,
+        tags: loaded.tags,
+        ...loaded.infoboxCustomFields,
+      });
+      const placement = resolvePlacement({
+        scan,
+        normalized,
+        folderMappings: manifest?.folderMappings,
+        wrapperPrefix,
+        bodyMarkdown: loaded.bodyMarkdown,
+        sessionNoteBodies,
+      });
+      if (placement.outcome === 'import') {
+        queueImport(relativePath, placement);
+      } else {
+        skippedNotes.push({
+          sourcePath: relativePath,
+          skipReason: placement.skipReason,
+        });
+      }
+    }
+
     const imageByBasename = new Map<string, JSZip.JSZipObject>();
     const imageByPath = new Map<string, JSZip.JSZipObject>();
     for (const imageFile of imageEntries) {
@@ -272,56 +400,14 @@ export async function processCampaignImportZip(
       imageByBasename.set(path.basename(normalizedPath).toLowerCase(), imageFile);
     }
 
-    const moduleFolderIds = new Map<string, string>();
     const createdAssetsBySource = new Map<string, { id: string; url: string }>();
+    const preparedRows: PreparedImportRow[] = [];
 
-    // Resolve or create module folders.
-    const usedModules = Array.from(
-      new Set(parsedDocs.map((doc) => doc.module).filter((module) => module !== 'Ignore Folder')),
-    );
+    for (const candidate of importCandidates) {
+      const loaded = loadedByPath.get(candidate.relativePath);
+      if (!loaded) continue;
+      let body = loaded.bodyMarkdown;
 
-    for (const moduleName of usedModules) {
-      const existing = await prisma.wikiPage.findFirst({
-        where: { campaignId, title: moduleName },
-        select: { id: true },
-      });
-      if (existing) {
-        moduleFolderIds.set(moduleName, existing.id);
-        continue;
-      }
-      const createdFolder = await prisma.wikiPage.create({
-        data: {
-          id: randomUUID(),
-          campaignId,
-          title: moduleName,
-          parentId: null,
-          visibility: 'Party',
-          templateType: 'DEFAULT',
-          blocks: [],
-          metadata: null,
-        } as any,
-        select: { id: true },
-      });
-      moduleFolderIds.set(moduleName, createdFolder.id);
-    }
-
-    // Pass 2: Rewrite wikilinks, embed images, and sanitize links.
-    const preparedRows: Array<{
-      id: string;
-      title: string;
-      parentId: string | null;
-      templateType: string;
-      bodyMarkdown: string;
-      metadata: Record<string, unknown>;
-      createdAt?: Date;
-      updatedAt?: Date;
-    }> = [];
-
-    for (let i = 0; i < parsedDocs.length; i += 1) {
-      const doc = parsedDocs[i];
-      let body = doc.bodyMarkdown;
-
-      // Embedded images: ![[image.png]]
       body = body.replace(/!\[\[([^[\]]+)\]\]/g, (_m, imageRefRaw: string) => {
         const imageRef = imageRefRaw.trim();
         const imageFile =
@@ -336,7 +422,6 @@ export async function processCampaignImportZip(
         return _m;
       });
 
-      // Embedded images: ![](Attachments/portrait.png)
       body = body.replace(/!\[[^\]]*]\(([^)]+)\)/g, (_m, imageRefRaw: string) => {
         const imageRef = imageRefRaw.trim();
         const imageFile =
@@ -351,50 +436,47 @@ export async function processCampaignImportZip(
         return _m;
       });
 
-      // Wikilinks [[Note Title]]
       body = body.replace(/\[\[([^[\]]+)\]\]/g, (_m, rawTitle: string) => {
         const noteTitle = rawTitle.trim();
         const match = noteLookupMap.get(noteTitle.toLowerCase());
         if (match) {
           return `<span data-type="mention" data-id="${match.id}" data-label="${noteTitle}" data-module="${match.module}">[[${noteTitle}]]</span>`;
         }
-        return `<span data-type="mention" data-id="" data-label="${noteTitle}" data-module="Wiki/Generic" data-stub="true">[[${noteTitle}]]</span>`;
+        return `<span data-type="mention" data-id="" data-label="${noteTitle}" data-module="${candidate.placement.module}" data-stub="true">[[${noteTitle}]]</span>`;
       });
 
       body = sanitizeLegacyMarkdownLinks(body);
 
-      const templateType = resolveImportTemplateType(doc.module, doc.infoboxCustomFields);
-      const entityCategory = resolveImportEntityCategory(doc.module, doc.infoboxCustomFields);
+      const parentId = resolveSkeletonParentId(
+        candidate.placement.skeletonParentKey,
+        skeletonMap,
+      );
 
       preparedRows.push({
-        id: doc.noteId,
-        title: doc.title.slice(0, 120),
-        parentId: moduleFolderIds.get(doc.module) ?? null,
-        templateType,
+        id: candidate.noteId,
+        title: loaded.title.slice(0, 120),
+        parentId,
+        templateType: candidate.placement.templateType,
+        visibility: loaded.visibility,
         bodyMarkdown: body,
+        module: candidate.placement.module,
         metadata: {
-          ...(entityCategory ? { entityCategory } : {}),
+          ...(candidate.placement.entityCategory
+            ? { entityCategory: candidate.placement.entityCategory }
+            : {}),
           importMetadata: {
-            sourcePath: doc.relativePath,
-            sourceFolder: doc.rootFolder,
-            module: doc.module,
-            slug: doc.handle,
-            tags: doc.tags,
-            ...(doc.blurb ? { blurb: doc.blurb } : {}),
-            infoboxCustomFields: doc.infoboxCustomFields,
+            sourcePath: loaded.relativePath,
+            module: candidate.placement.module,
+            slug: generateHandle(loaded.title),
+            tags: loaded.tags,
+            ...(loaded.blurb ? { blurb: loaded.blurb } : {}),
+            infoboxCustomFields: loaded.infoboxCustomFields,
           },
         },
-        ...applySystemProvenanceTimestamps('import', doc.importTemporal),
+        ...applySystemProvenanceTimestamps('import', loaded.importTemporal),
       });
-
-      if (i % 5 === 0 || i === parsedDocs.length - 1) {
-        updateBackgroundTask(task.id, {
-          progress: Math.min(80, 50 + Math.round(((i + 1) / Math.max(parsedDocs.length, 1)) * 30)),
-        });
-      }
     }
 
-    // Materialize all image assets now so image markup can be resolved before commit.
     for (const imageFile of imageEntries) {
       const normalizedSource = imageFile.name.replace(/\\/g, '/').toLowerCase();
       if (createdAssetsBySource.has(normalizedSource)) continue;
@@ -411,7 +493,6 @@ export async function processCampaignImportZip(
       });
     }
 
-    // second chance replacement now that assets exist
     for (const row of preparedRows) {
       row.bodyMarkdown = row.bodyMarkdown
         .replace(/!\[\[([^[\]]+)\]\]/g, (_m, imageRefRaw: string) => {
@@ -440,7 +521,6 @@ export async function processCampaignImportZip(
         });
     }
 
-    // Commit content rows in chunks to reduce lock pressure.
     const chunkSize = 25;
     for (let offset = 0; offset < preparedRows.length; offset += chunkSize) {
       const chunk = preparedRows.slice(offset, offset + chunkSize);
@@ -452,7 +532,7 @@ export async function processCampaignImportZip(
               campaignId,
               title: row.title,
               parentId: row.parentId,
-              visibility: 'Party',
+              visibility: row.visibility,
               templateType: row.templateType,
               metadata: row.metadata as any,
               blocks: [
@@ -464,7 +544,7 @@ export async function processCampaignImportZip(
                   w: 12,
                   h: 10,
                   isPrivate: false,
-                  visibility: 'Party',
+                  visibility: row.visibility,
                   content: { markdown: row.bodyMarkdown },
                 },
               ] as any,
@@ -474,10 +554,94 @@ export async function processCampaignImportZip(
           }),
         ),
       );
-      const processed = Math.min(offset + chunk.length, preparedRows.length);
-      updateBackgroundTask(task.id, {
-        progress: Math.min(98, 82 + Math.round((processed / Math.max(preparedRows.length, 1)) * 16)),
+    }
+
+    await backfillCampaignPathKeys(campaignId);
+
+    const importedPages = await prisma.wikiPage.findMany({
+      where: {
+        campaignId,
+        id: { in: preparedRows.map((row) => row.id) },
+      },
+      select: {
+        id: true,
+        title: true,
+        parentId: true,
+        templateType: true,
+        metadata: true,
+        workspace: true,
+      },
+    });
+
+    const pagesWorkspace = await prisma.wikiPage.findMany({
+      where: { campaignId, deletedAt: null },
+      select: {
+        id: true,
+        title: true,
+        parentId: true,
+        templateType: true,
+        metadata: true,
+      },
+    });
+
+    for (const page of importedPages) {
+      const workspace =
+        page.workspace ??
+        resolveWorkspaceForPage(
+          {
+            id: page.id,
+            title: page.title,
+            parentId: page.parentId,
+            templateType: page.templateType,
+            metadata: page.metadata,
+          },
+          pagesWorkspace,
+        );
+      if (workspace === CampaignWorkspace.PAGES) {
+        await prisma.wikiPage.delete({ where: { id: page.id } });
+        const sourcePath =
+          (page.metadata as Record<string, unknown> | null)?.importMetadata &&
+          typeof (page.metadata as Record<string, any>).importMetadata?.sourcePath === 'string'
+            ? String((page.metadata as Record<string, any>).importMetadata.sourcePath)
+            : page.title;
+        skippedNotes.push({
+          sourcePath,
+          skipReason: 'resolved to generic pages workspace',
+        });
+      }
+    }
+
+    if (skippedNotes.length > 0 || importWarnings.length > 0) {
+      const reportParentId = resolveSkeletonParentId(IMPORT_SK.rules, skeletonMap);
+      await prisma.wikiPage.create({
+        data: {
+          id: randomUUID(),
+          campaignId,
+          title: 'Import Report',
+          parentId: reportParentId,
+          visibility: 'Party',
+          templateType: 'DEFAULT',
+          metadata: {
+            entityCategory: 'rules-resources',
+          } as any,
+          blocks: [
+            {
+              id: `import-report-${randomUUID()}`,
+              type: 'text-tiptap',
+              x: 0,
+              y: 0,
+              w: 12,
+              h: 10,
+              isPrivate: false,
+              visibility: 'Party',
+              content: {
+                markdown: buildImportReportMarkdown(skippedNotes, importWarnings),
+              },
+            },
+          ] as any,
+        } as any,
       });
+      await backfillCampaignPathKeys(campaignId);
     }
 
     const { rebuildWikiLinksForCampaign } = await import('./wikiLinkService.js');
@@ -492,8 +656,9 @@ export async function processCampaignImportZip(
       progress: 100,
       metaMerge: {
         importedNotes: preparedRows.length,
+        skippedNotes: skippedNotes.length,
+        importWarnings: importWarnings.length,
         processedImages: createdAssetsBySource.size,
-        mappedPaths: pathLookupMap.size,
         wikiLinkEdges: linkEdgeCount,
       },
     });
@@ -519,4 +684,3 @@ export async function processCampaignImportZip(
     throw error;
   }
 }
-

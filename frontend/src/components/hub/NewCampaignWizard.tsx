@@ -31,26 +31,14 @@ import {
 } from '@/components/campaign/CampaignThemeMultiSelect';
 import type { CampaignDiscoverabilityValue, CampaignSummary } from '@/types/campaign';
 import { CampaignDiscoverability } from '@shared/campaignPolicy/discoverability';
+import { discoverImportFolders } from '@shared/importZipStructure';
+import { fuzzyMatchImportModule } from '@shared/importModuleSynonyms';
+import type { ImportModuleTarget } from '@shared/importSkeletonKeys';
+import JSZip from 'jszip';
 import { fetchUserCampaignDefaults } from '@/lib/userCampaignDefaults';
 import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
-type MappingTarget =
-  | 'Characters'
-  | 'Bestiary'
-  | 'Ancestries'
-  | 'Organizations'
-  | 'Locations'
-  | 'Maps'
-  | 'Objects'
-  | 'Families (tree)'
-  | 'Game/Rules & Resources'
-  | 'Game/Quests'
-  | 'Game/Session Notes'
-  | 'Game/Journals'
-  | 'Game/Calendars'
-  | 'Game/Timelines'
-  | 'Game/Events'
-  | 'Wiki/Generic'
-  | 'Ignore Folder';
+
+type MappingTarget = ImportModuleTarget;
 
 interface FolderMapping {
   sourceFolderName: string;
@@ -147,7 +135,6 @@ const MODULE_TARGETS: MappingTarget[] = [
   'Game/Calendars',
   'Game/Timelines',
   'Game/Events',
-  'Wiki/Generic',
   'Ignore Folder',
 ];
 
@@ -175,75 +162,22 @@ const WIKI_IMPORT_SOURCES = [
   },
 ];
 
-const MODULE_SYNONYMS: Array<{
-  target: Exclude<MappingTarget, 'Wiki/Generic' | 'Ignore Folder'>;
-  synonyms: string[];
-}> = [
-  { target: 'Characters', synonyms: ['npcs', 'characters', 'people', 'pc'] },
-  { target: 'Bestiary', synonyms: ['monsters', 'bestiary', 'creatures', 'enemies'] },
-  { target: 'Ancestries', synonyms: ['races', 'ancestries', 'lineages', 'species'] },
-  {
-    target: 'Organizations',
-    synonyms: ['factions', 'guilds', 'organizations', 'sects'],
-  },
-  { target: 'Locations', synonyms: ['locations', 'settlements', 'cities', 'world'] },
-  { target: 'Maps', synonyms: ['maps', 'cartography', 'scenes'] },
-  { target: 'Objects', synonyms: ['items', 'artifacts', 'loot', 'objects'] },
-  { target: 'Families (tree)', synonyms: ['houses', 'families', 'dynasties'] },
-  {
-    target: 'Game/Rules & Resources',
-    synonyms: ['rules', 'mechanics', 'handouts'],
-  },
-  { target: 'Game/Quests', synonyms: ['quests', 'missions', 'plots'] },
-  {
-    target: 'Game/Session Notes',
-    synonyms: ['session notes', 'sessions', 'recaps', 'logs'],
-  },
-  { target: 'Game/Journals', synonyms: ['journals', 'personal logs', 'diaries'] },
-  { target: 'Game/Calendars', synonyms: ['calendar', 'calendars'] },
-  { target: 'Game/Timelines', synonyms: ['timeline', 'timelines'] },
-  { target: 'Game/Events', synonyms: ['events'] },
-];
-
-function sanitizeForSearch(value: string): string {
-  return value.trim().toLowerCase().replace(/[_\-]+/g, ' ').replace(/\s+/g, ' ');
-}
-
-function inferFoldersFromZipFilename(filename: string): string[] {
-  const cleaned = filename.replace(/\.zip$/i, '');
-  const tokens = sanitizeForSearch(cleaned)
-    .split(/[\s,;:|]+/)
-    .filter((token) => token.length > 2);
-
-  const seeded = [
-    'Characters',
-    'Locations',
-    'Session Notes',
-    'Quests',
-    'Maps',
-    ...tokens,
-  ];
-
-  return Array.from(
-    new Set(
-      seeded
-        .map((folder) => folder.trim())
-        .filter(Boolean)
-        .slice(0, 12),
-    ),
-  );
-}
-
-function fuzzyMatchTarget(sourceFolderName: string): MappingTarget | '' {
-  const source = sanitizeForSearch(sourceFolderName);
-  for (const entry of MODULE_SYNONYMS) {
-    const found = entry.synonyms.some((synonym) => {
-      const candidate = sanitizeForSearch(synonym);
-      return source.includes(candidate) || candidate.includes(source);
+async function buildFolderMappingsFromZip(file: File): Promise<FolderMapping[]> {
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const discovery = discoverImportFolders(Object.keys(zip.files));
+  const mappings: FolderMapping[] = discovery.canonicalAutoMapped.map((entry) => ({
+    sourceFolderName: entry.folder,
+    targetModule: entry.targetModule,
+    isAutoMatched: true,
+  }));
+  for (const folder of discovery.needsMapping) {
+    mappings.push({
+      sourceFolderName: folder,
+      targetModule: fuzzyMatchImportModule(folder) || '',
+      isAutoMatched: Boolean(fuzzyMatchImportModule(folder)),
     });
-    if (found) return entry.target;
   }
-  return '';
+  return mappings;
 }
 
 export function NewCampaignWizard({
@@ -425,16 +359,8 @@ export function NewCampaignWizard({
     }));
   }
 
-  function setMarkdownZip(file: File | null) {
-    const scannedFolders = file ? inferFoldersFromZipFilename(file.name) : [];
-    const mappings = scannedFolders.map<FolderMapping>((folderName) => {
-      const matched = fuzzyMatchTarget(folderName);
-      return {
-        sourceFolderName: folderName,
-        targetModule: matched,
-        isAutoMatched: Boolean(matched),
-      };
-    });
+  async function setMarkdownZip(file: File | null) {
+    const mappings = file ? await buildFolderMappingsFromZip(file) : [];
 
     setPayload((current) => ({
       ...current,
