@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, RefreshCw, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWiki } from '@/contexts/WikiContext';
@@ -81,6 +82,7 @@ interface CampaignAccessMember {
 }
 
 export function CampaignSettingsPage() {
+  const { t } = useTranslation();
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -179,7 +181,7 @@ export function CampaignSettingsPage() {
         }
       } catch (err) {
         console.error('Error fetching campaign:', err);
-        setSettingsError('Failed to load campaign settings');
+        setSettingsError(t('campaign.settings.loadFailed'));
       }
     };
 
@@ -386,7 +388,7 @@ export function CampaignSettingsPage() {
     setSettingsLoading(true);
 
     if (!name.trim()) {
-      setSettingsError('Campaign name is required');
+      setSettingsError(t('campaign.settings.nameRequired'));
       setSettingsLoading(false);
       return;
     }
@@ -417,7 +419,7 @@ export function CampaignSettingsPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        setSettingsError(data.error || 'Failed to save campaign settings');
+        setSettingsError(data.error || t('campaign.settings.saveFailed'));
         return;
       }
 
@@ -437,11 +439,30 @@ export function CampaignSettingsPage() {
       setTimeout(() => setSettingsSuccess(false), 3000);
     } catch (err) {
       console.error('Error saving campaign settings:', err);
-      setSettingsError('Failed to save campaign settings');
+      setSettingsError(t('campaign.settings.saveFailed'));
     } finally {
       setSettingsLoading(false);
     }
   };
+
+  const settingsTabs = useMemo(
+    () =>
+      [
+        { id: 'general' as const, label: t('campaign.settings.tabGeneral') },
+        { id: 'access' as const, label: t('campaign.settings.tabAccess') },
+        ...(canManageSidebar
+          ? [{ id: 'appearance' as const, label: t('campaign.settings.tabAppearance') }]
+          : []),
+        { id: 'recruitment' as const, label: t('campaign.settings.tabRecruitment') },
+        { id: 'scheduling' as const, label: t('campaign.settings.tabScheduling') },
+        ...(canManageSidebar
+          ? [{ id: 'world-development' as const, label: t('campaign.settings.tabDevelopment') }]
+          : []),
+        { id: 'integrations' as const, label: t('campaign.settings.tabIntegrations') },
+        { id: 'advanced' as const, label: t('campaign.settings.tabAdvanced') },
+      ],
+    [canManageSidebar, t],
+  );
 
   if (wikiCampaign && !canAccessCampaignSettings) {
     return <Navigate to={campaignDashboardPath(campaignHandle)} replace />;
@@ -453,28 +474,13 @@ export function CampaignSettingsPage() {
         <div className="flex items-center gap-3">
           <Settings className="h-6 w-6 text-foreground" />
           <div>
-            <h1 className="text-2xl font-bold text-white">Campaign Settings</h1>
-            <p className="text-sm text-muted">
-              Manage campaign details, privacy, and performance metrics in one place.
-            </p>
+            <h1 className="text-2xl font-bold text-white">{t('campaign.settings.pageTitle')}</h1>
+            <p className="text-sm text-muted">{t('campaign.settings.pageSubtitle')}</p>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2 rounded-full bg-surface p-2">
-          {[
-            { id: 'general', label: 'General' },
-            { id: 'access', label: 'Access' },
-            ...(canManageSidebar
-              ? [{ id: 'appearance' as const, label: 'Appearance' }]
-              : []),
-            { id: 'recruitment', label: 'Recruitment' },
-            { id: 'scheduling', label: 'Scheduling' },
-            ...(canManageSidebar
-              ? [{ id: 'world-development' as const, label: 'Development' }]
-              : []),
-            { id: 'integrations', label: 'Integrations' },
-            { id: 'advanced', label: 'Advanced' },
-          ].map((tab) => (
+          {settingsTabs.map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -493,12 +499,16 @@ export function CampaignSettingsPage() {
 
       {activeTab === 'general' ? (
         <div className="rounded-lg border border-border bg-surface p-6">
-          <h2 className="mb-4 text-lg font-semibold text-white">General Settings</h2>
+          <h2 className="mb-4 text-lg font-semibold text-white">
+            {t('campaign.settings.generalHeading')}
+          </h2>
 
           <form onSubmit={handleSaveSettings} className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm text-foreground">Campaign Name</label>
+                <label className="mb-2 block text-sm text-foreground">
+                  {t('campaign.settings.campaignNameLabel')}
+                </label>
                 <input
                   type="text"
                   value={name}
@@ -602,7 +612,7 @@ export function CampaignSettingsPage() {
             )}
             {settingsSuccess && (
               <div className="rounded border border-emerald-700 bg-emerald-950/50 p-3 text-emerald-200">
-                Campaign settings saved successfully.
+                {t('campaign.settings.saveSuccess')}
               </div>
             )}
 

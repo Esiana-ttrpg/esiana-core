@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { BookOpen, Globe, Plus } from 'lucide-react';
 
@@ -49,7 +50,7 @@ import { rankCampaignsForContinue } from '@/lib/hubPrioritization';
 
 
 export function GlobalHubPage() {
-
+  const { t } = useTranslation();
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
@@ -116,7 +117,7 @@ export function GlobalHubPage() {
 
       }
 
-      setError(err instanceof Error ? err.message : 'Failed to load campaigns');
+      setError(err instanceof Error ? err.message : t('home.loadFailed'));
 
     } finally {
 
@@ -251,17 +252,15 @@ export function GlobalHubPage() {
 
             <h1 className="hub-page-title text-3xl font-bold tracking-tight text-foreground">
 
-              {isAuthenticated ? 'Campaign Hub' : 'Explore Esiana'}
+              {isAuthenticated ? t('home.pageTitleAuthenticated') : t('home.pageTitleGuest')}
 
             </h1>
 
             <p className="mt-2 max-w-xl text-muted">
 
               {isAuthenticated
-
-                ? 'Your worlds are waiting — resume your stories, every table in one place.'
-
-                : 'Browse publicly viewable campaigns from the community.'}
+                ? t('home.pageSubtitleAuthenticated')
+                : t('home.pageSubtitleGuest')}
 
             </p>
 
@@ -273,7 +272,7 @@ export function GlobalHubPage() {
 
               <Plus className="size-4" />
 
-              Create New Campaign
+              {t('home.createCampaign')}
 
             </HubActionButton>
 
@@ -363,9 +362,8 @@ export function GlobalHubPage() {
 
             icon={BookOpen}
 
-            title="No campaigns yet"
-
-            description="Create a campaign to build your first world on the shelf."
+            title={t('home.emptyTitle')}
+            description={t('home.emptyDescription')}
 
           />
 
