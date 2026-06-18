@@ -40,6 +40,9 @@ RUN set -eux; \
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
+ARG ESIANA_PRODUCT_VERSION
+ENV ESIANA_PRODUCT_VERSION=$ESIANA_PRODUCT_VERSION
+
 LABEL org.opencontainers.image.title="Esiana"
 LABEL org.opencontainers.image.description="Self-hosted narrative infrastructure for long-form TTRPG campaigns (nginx + API + SPA)"
 LABEL org.opencontainers.image.source="https://github.com/Esiana-ttrpg/esiana-core"

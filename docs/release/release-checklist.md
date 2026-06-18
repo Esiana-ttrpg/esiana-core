@@ -12,6 +12,7 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 
 ### Automated gates
 
+- [ ] Root [`package.json`](../../package.json) `version` bumped to match the tag you will push (`vX.Y.Z` → `X.Y.Z`); release CI fails on mismatch
 - [ ] `pnpm install --frozen-lockfile && pnpm run build` passes locally or on the release PR
 - [ ] CI green on the commit to be tagged (`build`, `test-sqlite`, `test-postgres`, `docker-build`)
 - [ ] GitHub Release notes reviewed after workflow (generated from merged PRs; edit on GitHub if operator-facing detail is needed)
