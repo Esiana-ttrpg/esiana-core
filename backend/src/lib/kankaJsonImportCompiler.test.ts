@@ -44,3 +44,54 @@ test('compileKankaJsonZip emits virtual narrative entries from entity JSON', asy
   assert.equal(result.externalKeyToPageId.get('6401071'), character.id);
   assert.ok(result.skippedModuleCounts.some((row) => row.folder === 'abilities'));
 });
+
+test('compileKankaJsonZip includes maps folder entries with map plan', async () => {
+  const zip = new JSZip();
+  zip.file('campaign.json', JSON.stringify({ name: 'Test Campaign', id: 240487 }));
+  zip.file(
+    'maps/world_6358560.json',
+    JSON.stringify({
+      entity: {
+        id: 6358560,
+        name: 'World Map',
+        image_path: 'w/240487/world.jpg',
+        width: 1000,
+        height: 500,
+      },
+      markers: [
+        {
+          id: 99,
+          name: 'City',
+          longitude: 100,
+          latitude: 200,
+          entity: { entity_id: 1, name: 'City' },
+        },
+      ],
+    }),
+  );
+
+  const result = await compileKankaJsonZip(zip);
+  assert.equal(result.entries.length, 1);
+  const mapEntry = result.entries[0];
+  assert.equal(mapEntry?.title, 'World Map');
+  assert.equal(mapEntry?.kankaMapId, '6358560');
+  assert.ok(mapEntry?.kankaMapPlan);
+  assert.equal(mapEntry.kankaMapPlan?.markers.length, 1);
+});
+
+test('compileKankaJsonZip reuses existing page ids when provided', async () => {
+  const zip = new JSZip();
+  zip.file('campaign.json', JSON.stringify({ name: 'Test Campaign' }));
+  zip.file(
+    'locations/city_1.json',
+    JSON.stringify({
+      entity: { id: 1, name: 'City', entry: '<p>Old city.</p>' },
+    }),
+  );
+
+  const existingId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+  const result = await compileKankaJsonZip(zip, {
+    existingPageIdsByKankaKey: new Map([['1', existingId]]),
+  });
+  assert.equal(result.entries[0]?.id, existingId);
+});

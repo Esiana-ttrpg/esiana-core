@@ -8,9 +8,17 @@ import {
   collectMarkdownZipPaths,
   detectZipImportFormat,
   discoverImportFolders,
+  normalizeZipPath,
 } from '../../../shared/importZipStructure.js';
-import type { VirtualNarrativeDeferredRef } from '../../../shared/virtualNarrativeEntry.js';
+import type { VirtualNarrativeDeferredRef, KankaMapPlan } from '../../../shared/virtualNarrativeEntry.js';
+import { KANKA_IMPORT_REPORT_TITLE } from '../../../shared/kankaImportProvenance.js';
 import { compileKankaJsonZip } from './kankaJsonImportCompiler.js';
+import { loadKankaImportIndex, type KankaImportIndex } from './kankaImportIndex.js';
+import {
+  bootstrapKankaMaps,
+  ingestKankaZipAsset,
+  type KankaMapBootstrapRow,
+} from './kankaMapBootstrap.js';
 import { reconcileCharacterIndexFromMetadata } from './characterMetadata.js';
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
@@ -61,6 +69,9 @@ interface LoadedMarkdownEntry {
   noteId?: string;
   characterMetadata?: Record<string, unknown>;
   deferredRefs?: VirtualNarrativeDeferredRef[];
+  kankaEntityId?: string;
+  kankaMapId?: string;
+  kankaMapPlan?: KankaMapPlan;
 }
 
 interface PreparedImportRow {
@@ -241,6 +252,103 @@ function applyResolvedPortraitMetadata(
   };
 }
 
+async function loadKankaCampaignJson(
+  zip: JSZip,
+): Promise<Record<string, unknown> | null> {
+  const candidates = [
+    'campaign.json',
+    ...Object.keys(zip.files).filter((name) =>
+      normalizeZipPath(name).toLowerCase().endsWith('/campaign.json'),
+    ),
+  ];
+  for (const candidate of candidates) {
+    const file = zip.file(candidate);
+    if (!file) continue;
+    try {
+      return JSON.parse(await file.async('string')) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function readKankaCampaignJsonId(
+  campaignJson: Record<string, unknown> | null,
+): string | number | null {
+  if (!campaignJson) return null;
+  const id = campaignJson.id;
+  if (typeof id === 'number' && Number.isFinite(id)) return id;
+  if (typeof id === 'string' && id.trim()) return id.trim();
+  return null;
+}
+
+function buildExistingPageIdsByKankaKey(index: KankaImportIndex): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const [kankaId, pageId] of index.entityPageIdByKankaId) {
+    map.set(kankaId, pageId);
+  }
+  for (const [mapId, pageId] of index.mapPageIdByKankaMapId) {
+    map.set(`map:${mapId}`, pageId);
+    map.set(mapId, pageId);
+  }
+  return map;
+}
+
+function existingWikiPageIdsFromIndex(index: KankaImportIndex): Set<string> {
+  return new Set([
+    ...index.entityPageIdByKankaId.values(),
+    ...index.mapPageIdByKankaMapId.values(),
+    ...(index.importReportPageId ? [index.importReportPageId] : []),
+  ]);
+}
+
+async function applyKankaPortraitMetadata(
+  metadata: Record<string, unknown>,
+  options: {
+    campaignId: string;
+    zip: JSZip;
+    campaignJsonId?: string | number | null;
+    index: KankaImportIndex;
+    createdAssetsBySource: Map<string, { id: string; url: string }>;
+  },
+): Promise<Record<string, unknown>> {
+  const appearance = metadata.appearance;
+  if (!appearance || typeof appearance !== 'object' || Array.isArray(appearance)) return metadata;
+  const portraitUrl = (appearance as Record<string, unknown>).portraitUrl;
+  if (typeof portraitUrl !== 'string' || !portraitUrl.trim()) return metadata;
+  const assetId = await ingestKankaZipAsset({
+    campaignId: options.campaignId,
+    zip: options.zip,
+    imagePath: portraitUrl,
+    campaignJsonId: options.campaignJsonId,
+    assetType: 'generic',
+    index: options.index,
+    createdAssetsBySource: options.createdAssetsBySource,
+  });
+  if (!assetId) return metadata;
+  return {
+    ...metadata,
+    appearance: {
+      ...(appearance as Record<string, unknown>),
+      portraitUrl: `/api/assets/${assetId}`,
+    },
+  };
+}
+
+function readManifestCoverAssetId(dashboardConfig: unknown): string | null {
+  if (!dashboardConfig || typeof dashboardConfig !== 'object') return null;
+  const root = dashboardConfig as Record<string, unknown>;
+  const importManifest = root.importManifest;
+  if (!importManifest || typeof importManifest !== 'object') return null;
+  const assets = (importManifest as Record<string, unknown>).assets;
+  if (!assets || typeof assets !== 'object') return null;
+  const coverImageAssetId = (assets as Record<string, unknown>).coverImageAssetId;
+  return typeof coverImageAssetId === 'string' && coverImageAssetId.trim()
+    ? coverImageAssetId.trim()
+    : null;
+}
+
 export async function processCampaignImportZip(
   campaignId: string,
   opts?: { taskId?: string },
@@ -317,9 +425,20 @@ export async function processCampaignImportZip(
     const loadedByPath = new Map<string, LoadedMarkdownEntry>();
     const deferredLooseRootPaths: string[] = [];
     const externalKeyToPageId = new Map<string, string>();
+    let kankaIndex: KankaImportIndex | null = null;
+    let kankaMapBootstrapRows: KankaMapBootstrapRow[] = [];
+    let kankaCampaignJson: Record<string, unknown> | null = null;
+    let kankaCampaignJsonId: string | number | null = null;
+    let existingWikiPageIds = new Set<string>();
 
     if (importFormat === 'kanka-json') {
-      const compiled = await compileKankaJsonZip(zip);
+      kankaIndex = await loadKankaImportIndex(campaignId);
+      existingWikiPageIds = existingWikiPageIdsFromIndex(kankaIndex);
+      kankaCampaignJson = await loadKankaCampaignJson(zip);
+      kankaCampaignJsonId = readKankaCampaignJsonId(kankaCampaignJson);
+      const compiled = await compileKankaJsonZip(zip, {
+        existingPageIdsByKankaKey: buildExistingPageIdsByKankaKey(kankaIndex),
+      });
       for (const [key, pageId] of compiled.externalKeyToPageId.entries()) {
         externalKeyToPageId.set(key, pageId);
       }
@@ -346,7 +465,17 @@ export async function processCampaignImportZip(
           noteId: entry.id,
           characterMetadata: entry.characterMetadata,
           deferredRefs: entry.deferredRefs,
+          kankaEntityId: entry.externalId,
+          kankaMapId: entry.kankaMapId,
+          kankaMapPlan: entry.kankaMapPlan,
         });
+        if (entry.kankaMapId && entry.kankaMapPlan) {
+          kankaMapBootstrapRows.push({
+            wikiPageId: entry.id,
+            kankaMapId: entry.kankaMapId,
+            plan: entry.kankaMapPlan,
+          });
+        }
       }
       for (const skipped of compiled.skippedModuleCounts) {
         importWarnings.push(
@@ -542,6 +671,14 @@ export async function processCampaignImportZip(
     }
 
     const createdAssetsBySource = new Map<string, { id: string; url: string }>();
+    if (kankaIndex) {
+      for (const [sourcePath, assetId] of kankaIndex.assetIdBySourcePath) {
+        createdAssetsBySource.set(sourcePath, {
+          id: assetId,
+          url: `/api/assets/${assetId}`,
+        });
+      }
+    }
     const preparedRows: PreparedImportRow[] = [];
 
     for (const candidate of importCandidates) {
@@ -614,6 +751,8 @@ export async function processCampaignImportZip(
               tags: loaded.tags,
               ...(loaded.blurb ? { blurb: loaded.blurb } : {}),
               infoboxCustomFields: loaded.infoboxCustomFields,
+              ...(loaded.kankaEntityId ? { kankaEntityId: loaded.kankaEntityId } : {}),
+              ...(loaded.kankaMapId ? { kankaMapId: loaded.kankaMapId } : {}),
             },
           },
           loaded.deferredRefs,
@@ -623,89 +762,173 @@ export async function processCampaignImportZip(
       });
     }
 
-    for (const imageFile of imageEntries) {
-      const normalizedSource = imageFile.name.replace(/\\/g, '/').toLowerCase();
-      if (createdAssetsBySource.has(normalizedSource)) continue;
-      const buffer = await imageFile.async('nodebuffer');
-      const result = await importFromPackBuffer({
-        campaignId,
-        buffer,
-        filename: path.basename(imageFile.name),
-        assetType: 'generic',
-      });
-      createdAssetsBySource.set(normalizedSource, {
-        id: result.asset.id,
-        url: result.asset.url,
-      });
+    if (importFormat !== 'kanka-json') {
+      for (const imageFile of imageEntries) {
+        const normalizedSource = imageFile.name.replace(/\\/g, '/').toLowerCase();
+        if (createdAssetsBySource.has(normalizedSource)) continue;
+        const buffer = await imageFile.async('nodebuffer');
+        const result = await importFromPackBuffer({
+          campaignId,
+          buffer,
+          filename: path.basename(imageFile.name),
+          assetType: 'generic',
+        });
+        createdAssetsBySource.set(normalizedSource, {
+          id: result.asset.id,
+          url: result.asset.url,
+        });
+      }
     }
 
-    for (const row of preparedRows) {
-      row.metadata = applyResolvedPortraitMetadata(
-        row.metadata,
-        createdAssetsBySource,
-        imageByPath,
-        imageByBasename,
-      );
-      row.bodyMarkdown = row.bodyMarkdown
-        .replace(/!\[\[([^[\]]+)\]\]/g, (_m, imageRefRaw: string) => {
-          const imageRef = imageRefRaw.trim();
-          const imageFile =
-            imageByPath.get(imageRef.toLowerCase()) ??
-            imageByBasename.get(path.basename(imageRef).toLowerCase());
-          if (!imageFile) return _m;
-          const hit = createdAssetsBySource.get(
-            imageFile.name.replace(/\\/g, '/').toLowerCase(),
-          );
-          if (!hit) return _m;
-          return `<img src="/api/assets/${hit.id}" alt="${path.basename(imageRef, path.extname(imageRef))}" />`;
-        })
-        .replace(/!\[[^\]]*]\(([^)]+)\)/g, (_m, imageRefRaw: string) => {
-          const imageRef = imageRefRaw.trim();
-          const imageFile =
-            imageByPath.get(imageRef.toLowerCase()) ??
-            imageByBasename.get(path.basename(imageRef).toLowerCase());
-          if (!imageFile) return _m;
-          const hit = createdAssetsBySource.get(
-            imageFile.name.replace(/\\/g, '/').toLowerCase(),
-          );
-          if (!hit) return _m;
-          return `<img src="/api/assets/${hit.id}" alt="${path.basename(imageRef, path.extname(imageRef))}" />`;
+    if (importFormat === 'kanka-json' && kankaIndex) {
+      for (const row of preparedRows) {
+        row.metadata = await applyKankaPortraitMetadata(row.metadata, {
+          campaignId,
+          zip,
+          campaignJsonId: kankaCampaignJsonId,
+          index: kankaIndex,
+          createdAssetsBySource,
         });
+      }
+    } else {
+      for (const row of preparedRows) {
+        row.metadata = applyResolvedPortraitMetadata(
+          row.metadata,
+          createdAssetsBySource,
+          imageByPath,
+          imageByBasename,
+        );
+        row.bodyMarkdown = row.bodyMarkdown
+          .replace(/!\[\[([^[\]]+)\]\]/g, (_m, imageRefRaw: string) => {
+            const imageRef = imageRefRaw.trim();
+            const imageFile =
+              imageByPath.get(imageRef.toLowerCase()) ??
+              imageByBasename.get(path.basename(imageRef).toLowerCase());
+            if (!imageFile) return _m;
+            const hit = createdAssetsBySource.get(
+              imageFile.name.replace(/\\/g, '/').toLowerCase(),
+            );
+            if (!hit) return _m;
+            return `<img src="/api/assets/${hit.id}" alt="${path.basename(imageRef, path.extname(imageRef))}" />`;
+          })
+          .replace(/!\[[^\]]*]\(([^)]+)\)/g, (_m, imageRefRaw: string) => {
+            const imageRef = imageRefRaw.trim();
+            const imageFile =
+              imageByPath.get(imageRef.toLowerCase()) ??
+              imageByBasename.get(path.basename(imageRef).toLowerCase());
+            if (!imageFile) return _m;
+            const hit = createdAssetsBySource.get(
+              imageFile.name.replace(/\\/g, '/').toLowerCase(),
+            );
+            if (!hit) return _m;
+            return `<img src="/api/assets/${hit.id}" alt="${path.basename(imageRef, path.extname(imageRef))}" />`;
+          });
+      }
     }
+
+    const wikiPageBlock = (row: PreparedImportRow) =>
+      ({
+        id: `imported-${row.id}`,
+        type: 'text-tiptap',
+        x: 0,
+        y: 0,
+        w: 12,
+        h: 10,
+        isPrivate: false,
+        visibility: row.visibility,
+        content: { markdown: row.bodyMarkdown },
+      }) as const;
+
+    const wikiPageData = (row: PreparedImportRow) =>
+      ({
+        title: row.title,
+        parentId: row.parentId,
+        visibility: row.visibility,
+        templateType: row.templateType,
+        metadata: row.metadata as any,
+        blocks: [wikiPageBlock(row)] as any,
+        ...(row.createdAt ? { createdAt: row.createdAt } : {}),
+        ...(row.updatedAt ? { updatedAt: row.updatedAt } : {}),
+      }) as const;
 
     const chunkSize = 25;
     for (let offset = 0; offset < preparedRows.length; offset += chunkSize) {
       const chunk = preparedRows.slice(offset, offset + chunkSize);
       await prisma.$transaction(
         chunk.map((row) =>
-          prisma.wikiPage.create({
-            data: {
-              id: row.id,
-              campaignId,
-              title: row.title,
-              parentId: row.parentId,
-              visibility: row.visibility,
-              templateType: row.templateType,
-              metadata: row.metadata as any,
-              blocks: [
-                {
-                  id: `imported-${row.id}`,
-                  type: 'text-tiptap',
-                  x: 0,
-                  y: 0,
-                  w: 12,
-                  h: 10,
-                  isPrivate: false,
-                  visibility: row.visibility,
-                  content: { markdown: row.bodyMarkdown },
-                },
-              ] as any,
-              ...(row.createdAt ? { createdAt: row.createdAt } : {}),
-              ...(row.updatedAt ? { updatedAt: row.updatedAt } : {}),
-            } as any,
-          }),
+          existingWikiPageIds.has(row.id)
+            ? prisma.wikiPage.update({
+                where: { id: row.id },
+                data: wikiPageData(row) as any,
+              })
+            : prisma.wikiPage.create({
+                data: {
+                  id: row.id,
+                  campaignId,
+                  ...wikiPageData(row),
+                } as any,
+              }),
         ),
       );
+    }
+
+    if (importFormat === 'kanka-json' && kankaIndex && kankaMapBootstrapRows.length > 0) {
+      await bootstrapKankaMaps({
+        campaignId,
+        zip,
+        campaignJsonId: kankaCampaignJsonId,
+        rows: kankaMapBootstrapRows,
+        externalKeyToPageId,
+        index: kankaIndex,
+        createdAssetsBySource,
+        warnings: importWarnings,
+      });
+    }
+
+    const manifestCoverAssetId = readManifestCoverAssetId(campaign.dashboardConfig);
+    if (
+      importFormat === 'kanka-json' &&
+      kankaIndex &&
+      !manifestCoverAssetId &&
+      kankaCampaignJson &&
+      typeof kankaCampaignJson.image === 'string' &&
+      kankaCampaignJson.image.trim()
+    ) {
+      const bannerAssetId = await ingestKankaZipAsset({
+        campaignId,
+        zip,
+        imagePath: kankaCampaignJson.image.trim(),
+        campaignJsonId: kankaCampaignJsonId,
+        assetType: 'campaign-cover',
+        index: kankaIndex,
+        createdAssetsBySource,
+      });
+      if (bannerAssetId) {
+        const currentConfig =
+          campaign.dashboardConfig && typeof campaign.dashboardConfig === 'object'
+            ? (campaign.dashboardConfig as Record<string, unknown>)
+            : {};
+        const importManifest =
+          currentConfig.importManifest && typeof currentConfig.importManifest === 'object'
+            ? (currentConfig.importManifest as Record<string, unknown>)
+            : {};
+        const assets =
+          importManifest.assets && typeof importManifest.assets === 'object'
+            ? (importManifest.assets as Record<string, unknown>)
+            : {};
+        await prisma.campaign.update({
+          where: { id: campaignId },
+          data: {
+            dashboardConfig: {
+              ...currentConfig,
+              importManifest: {
+                ...importManifest,
+                assets: { ...assets, coverImageAssetId: bannerAssetId },
+              },
+            },
+          },
+        });
+      }
     }
 
     await backfillCampaignPathKeys(campaignId);
@@ -765,34 +988,49 @@ export async function processCampaignImportZip(
 
     if (skippedNotes.length > 0 || importWarnings.length > 0) {
       const reportParentId = resolveSkeletonParentId(IMPORT_SK.rules, skeletonMap);
-      await prisma.wikiPage.create({
-        data: {
-          id: randomUUID(),
-          campaignId,
-          title: 'Import Report',
-          parentId: reportParentId,
+      const reportMarkdown = buildImportReportMarkdown(skippedNotes, importWarnings);
+      const reportMetadata = {
+        entityCategory: 'rules-resources',
+        importMetadata: { kankaImportReport: true },
+      } as any;
+      const reportBlocks = [
+        {
+          id: `import-report-${kankaIndex?.importReportPageId ?? randomUUID()}`,
+          type: 'text-tiptap',
+          x: 0,
+          y: 0,
+          w: 12,
+          h: 10,
+          isPrivate: false,
           visibility: 'Party',
-          templateType: 'DEFAULT',
-          metadata: {
-            entityCategory: 'rules-resources',
+          content: { markdown: reportMarkdown },
+        },
+      ] as any;
+
+      if (kankaIndex?.importReportPageId) {
+        await prisma.wikiPage.update({
+          where: { id: kankaIndex.importReportPageId },
+          data: {
+            title: KANKA_IMPORT_REPORT_TITLE,
+            parentId: reportParentId,
+            metadata: reportMetadata,
+            blocks: reportBlocks,
           } as any,
-          blocks: [
-            {
-              id: `import-report-${randomUUID()}`,
-              type: 'text-tiptap',
-              x: 0,
-              y: 0,
-              w: 12,
-              h: 10,
-              isPrivate: false,
-              visibility: 'Party',
-              content: {
-                markdown: buildImportReportMarkdown(skippedNotes, importWarnings),
-              },
-            },
-          ] as any,
-        } as any,
-      });
+        });
+      } else {
+        await prisma.wikiPage.create({
+          data: {
+            id: randomUUID(),
+            campaignId,
+            title: KANKA_IMPORT_REPORT_TITLE,
+            parentId: reportParentId,
+            visibility: 'Party',
+            templateType: 'DEFAULT',
+            metadata: reportMetadata,
+            blocks: reportBlocks,
+          } as any,
+        });
+      }
       await backfillCampaignPathKeys(campaignId);
     }
 
