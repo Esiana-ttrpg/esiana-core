@@ -11,7 +11,7 @@ const MODULE_SYNONYMS: Array<{
   { target: 'Ancestries', synonyms: ['races', 'ancestries', 'lineages', 'species'] },
   {
     target: 'Organizations',
-    synonyms: ['factions', 'guilds', 'organizations', 'sects'],
+    synonyms: ['factions', 'guilds', 'organizations', 'organisations', 'sects'],
   },
   { target: 'Locations', synonyms: ['locations', 'settlements', 'cities', 'world'] },
   { target: 'Maps', synonyms: ['maps', 'cartography', 'scenes'] },
@@ -64,4 +64,72 @@ export function matchCanonicalFolderSegment(
     return { segment: 'party', module: 'Characters' };
   }
   return null;
+}
+
+const KANKA_FOLDER_ENTITY_TYPE: Record<string, string> = {
+  characters: 'characters',
+  locations: 'locations',
+  organisations: 'organizations',
+  organizations: 'organizations',
+  creatures: 'bestiary',
+  races: 'ancestries',
+  families: 'families',
+  quests: 'quests',
+  journals: 'journals',
+  events: 'events',
+  timelines: 'timelines',
+  calendars: 'calendars',
+  notes: 'characters',
+};
+
+const KANKA_TYPE_ENTITY_TYPE: Record<string, string> = {
+  npc: 'characters',
+  pc: 'characters',
+  'player character': 'characters',
+  character: 'characters',
+  location: 'locations',
+  world: 'locations',
+  settlement: 'locations',
+  city: 'locations',
+  organisation: 'organizations',
+  organization: 'organizations',
+  cult: 'organizations',
+  guild: 'organizations',
+  journal: 'journals',
+  quest: 'quests',
+  main: 'quests',
+  'character arc': 'quests',
+  event: 'events',
+  era: 'timelines',
+  timeline: 'timelines',
+  'session notes': 'session-notes',
+  'session note': 'session-notes',
+  class: 'rules-resources',
+  handout: 'rules-resources',
+  creature: 'bestiary',
+  monster: 'bestiary',
+  race: 'ancestries',
+  ancestry: 'ancestries',
+  family: 'families',
+  house: 'families',
+};
+
+export function normalizeKankaEntityType(
+  folder: string,
+  kankaType: string | null | undefined,
+): string {
+  const normalizedType = sanitizeFolderForSearch(kankaType ?? '');
+  if (normalizedType && KANKA_TYPE_ENTITY_TYPE[normalizedType]) {
+    return KANKA_TYPE_ENTITY_TYPE[normalizedType]!;
+  }
+  const normalizedFolder = folder.trim().toLowerCase();
+  if (KANKA_FOLDER_ENTITY_TYPE[normalizedFolder]) {
+    return KANKA_FOLDER_ENTITY_TYPE[normalizedFolder]!;
+  }
+  return 'characters';
+}
+
+export function isKankaPlayerCharacterType(kankaType: string | null | undefined): boolean {
+  const normalized = sanitizeFolderForSearch(kankaType ?? '');
+  return normalized === 'player character' || normalized === 'pc';
 }
