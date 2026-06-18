@@ -158,12 +158,19 @@ function resolveSkeletonParentId(
   return skeletonMap.get(skeletonParentKey) ?? null;
 }
 
+const UNSAFE_METADATA_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isUnsafeMetadataKey(key: string): boolean {
+  return UNSAFE_METADATA_KEYS.has(key);
+}
+
 function setNestedMetadataField(
   metadata: Record<string, unknown>,
   fieldPath: string,
   value: string,
 ): void {
   const parts = fieldPath.split('.');
+  if (parts.some(isUnsafeMetadataKey)) return;
   if (parts.length === 1) {
     metadata[parts[0]!] = value;
     return;

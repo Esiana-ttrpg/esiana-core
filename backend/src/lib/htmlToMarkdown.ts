@@ -31,5 +31,11 @@ export function htmlToMarkdown(html: string): string {
 }
 
 function stripInlineTags(value: string): string {
-  return value.replace(/<[^>]+>/g, '').trim();
+  let text = value;
+  let previous = '';
+  while (text !== previous) {
+    previous = text;
+    text = text.replace(/<[^>]+>/g, '');
+  }
+  return text.replace(/[<>]/g, '').trim();
 }

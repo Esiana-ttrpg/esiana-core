@@ -10,3 +10,9 @@ test('htmlToMarkdown converts basic Kanka HTML', () => {
   assert.match(md, /\*Steel Meridian\*/);
   assert.match(md, /- First/);
 });
+
+test('htmlToMarkdown strips nested or malformed tags', () => {
+  const md = htmlToMarkdown('<p><<script>alert(1)</script>></p>');
+  assert.doesNotMatch(md, /</);
+  assert.doesNotMatch(md, />/);
+});
