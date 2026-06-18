@@ -31,9 +31,11 @@ import {
 } from '@/components/campaign/CampaignThemeMultiSelect';
 import type { CampaignDiscoverabilityValue, CampaignSummary } from '@/types/campaign';
 import { CampaignDiscoverability } from '@shared/campaignPolicy/discoverability';
-import { discoverImportFolders } from '@shared/importZipStructure';
+import { discoverImportFolders, discoverKankaJsonFolders, detectZipImportFormat } from '@shared/importZipStructure';
 import { fuzzyMatchImportModule } from '@shared/importModuleSynonyms';
 import type { ImportModuleTarget } from '@shared/importSkeletonKeys';
+import { KANKA_SKIP_REASON_LABELS } from '@shared/importSkipPolicy';
+import type { KankaFolderDiscovery } from '@shared/importZipStructure';
 import JSZip from 'jszip';
 import { fetchUserCampaignDefaults } from '@/lib/userCampaignDefaults';
 import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
@@ -56,10 +58,11 @@ interface NewCampaignWizardPayload {
     genreThemes: string[];
   };
   imports: {
-    campaignSource: 'blank' | 'obsidian' | 'esiana-backup' | 'contentPack' | 'sampleData';
+    campaignSource: 'blank' | 'obsidian' | 'kanka' | 'esiana-backup' | 'contentPack' | 'sampleData';
     contentPack: { pluginId: string; packId: string } | null;
     sampleDataProfile: { profileId: string } | null;
-    importSource: 'none' | 'obsidian' | 'esiana-backup';
+    importSource: 'none' | 'obsidian' | 'kanka' | 'esiana-backup';
+    importFormat: 'obsidian' | 'kanka-json' | null;
     markdownZipFile: File | null;
     backupZipFile: File | null;
     calendarConfigFile: File | null;
@@ -99,6 +102,7 @@ const INITIAL_PAYLOAD: NewCampaignWizardPayload = {
     contentPack: null,
     sampleDataProfile: null,
     importSource: 'none',
+    importFormat: null,
     markdownZipFile: null,
     backupZipFile: null,
     calendarConfigFile: null,
@@ -149,8 +153,8 @@ const WIKI_IMPORT_SOURCES = [
   {
     id: 'kanka',
     label: 'Kanka.io',
-    description: 'Import entities from a Kanka campaign.',
-    planned: true,
+    description: 'Import a Kanka JSON campaign export (.zip).',
+    planned: false,
     Icon: MapIcon,
   },
   {
@@ -161,6 +165,23 @@ const WIKI_IMPORT_SOURCES = [
     Icon: Archive,
   },
 ];
+
+function buildFolderMappingsFromKankaDiscovery(discovery: KankaFolderDiscovery): FolderMapping[] {
+  const mappings: FolderMapping[] = discovery.canonicalAutoMapped.map((entry) => ({
+    sourceFolderName: entry.folder,
+    targetModule: entry.targetModule,
+    isAutoMatched: true,
+  }));
+  for (const folder of discovery.needsMapping) {
+    const match = fuzzyMatchImportModule(folder);
+    mappings.push({
+      sourceFolderName: folder,
+      targetModule: match || '',
+      isAutoMatched: Boolean(match),
+    });
+  }
+  return mappings;
+}
 
 async function buildFolderMappingsFromZip(file: File): Promise<FolderMapping[]> {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -194,6 +215,7 @@ export function NewCampaignWizard({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const markdownZipInputRef = useRef<HTMLInputElement | null>(null);
+  const markdownZipSourceRef = useRef<'obsidian' | 'kanka'>('obsidian');
   const backupZipInputRef = useRef<HTMLInputElement | null>(null);
   const [defaultsAvailable, setDefaultsAvailable] = useState({
     tableExpectations: false,
@@ -203,10 +225,14 @@ export function NewCampaignWizard({
     recruitmentPreferences: false,
   });
   const [contentPackCards, setContentPackCards] = useState<ContentPackCard[]>([]);
+  const [sampleDataProfiles, setSampleDataProfiles] = useState<SampleDataProfileCard[]>([]);
   const [pluginImportProviders, setPluginImportProviders] = useState<PluginImportProviderCard[]>(
     [],
   );
-  const [sampleDataProfiles, setSampleDataProfiles] = useState<SampleDataProfileCard[]>([]);
+  const [kankaSkippedSummary, setKankaSkippedSummary] = useState<
+    Array<{ folder: string; entityCount: number; reason: string }>
+  >([]);
+  const [importFormatDetected, setImportFormatDetected] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -275,7 +301,7 @@ export function NewCampaignWizard({
     payload.identity.gameSystem === 'other' &&
     !payload.identity.customGameSystemName?.trim();
   const hasUnmappedFolders =
-    payload.imports.importSource === 'obsidian' &&
+    (payload.imports.importSource === 'obsidian' || payload.imports.importSource === 'kanka') &&
     payload.imports.folderMappings.some((mapping) => !mapping.targetModule);
   const wizardErrors = {
     titleMissing,
@@ -329,6 +355,9 @@ export function NewCampaignWizard({
     setStep(0);
     setError(null);
     setTitleTouched(false);
+    setKankaSkippedSummary([]);
+    setImportFormatDetected(null);
+    markdownZipSourceRef.current = 'obsidian';
     onClose();
   }
 
@@ -359,17 +388,66 @@ export function NewCampaignWizard({
     }));
   }
 
-  async function setMarkdownZip(file: File | null) {
-    const mappings = file ? await buildFolderMappingsFromZip(file) : [];
+  async function setMarkdownZip(file: File | null, source: 'obsidian' | 'kanka' = 'obsidian') {
+    let mappings: FolderMapping[] = [];
+    let skipped: Array<{ folder: string; entityCount: number; reason: string }> = [];
+    let detected: string | null = null;
+
+    if (file) {
+      const zip = await JSZip.loadAsync(await file.arrayBuffer());
+      const zipPaths = Object.keys(zip.files);
+      const format = detectZipImportFormat(zipPaths);
+      detected =
+        format.format === 'kanka-json'
+          ? 'Kanka JSON export'
+          : format.format === 'obsidian'
+            ? 'Obsidian vault'
+            : null;
+      if (source === 'kanka' || format.format === 'kanka-json') {
+        const discovery = discoverKankaJsonFolders(zipPaths);
+        mappings = buildFolderMappingsFromKankaDiscovery(discovery);
+        skipped = discovery.skippedFolders.map((row) => ({
+          folder: row.folder,
+          entityCount: row.entityCount,
+          reason: KANKA_SKIP_REASON_LABELS[row.reason],
+        }));
+        source = 'kanka';
+      } else {
+        mappings = await buildFolderMappingsFromZip(file);
+      }
+
+      if (source === 'kanka' && !payload.identity.title.trim()) {
+        const campaignFile = zip.file('campaign.json');
+        if (campaignFile) {
+          try {
+            const campaignJson = JSON.parse(await campaignFile.async('string')) as {
+              name?: string;
+            };
+            if (campaignJson.name?.trim()) {
+              setPayload((current) => ({
+                ...current,
+                identity: { ...current.identity, title: campaignJson.name!.trim() },
+              }));
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    }
+
+    setKankaSkippedSummary(skipped);
+    setImportFormatDetected(detected);
 
     setPayload((current) => ({
       ...current,
       imports: {
         ...current.imports,
-        campaignSource: file ? 'obsidian' : current.imports.campaignSource,
+        campaignSource: file ? source : current.imports.campaignSource,
         contentPack: file ? null : current.imports.contentPack,
         sampleDataProfile: file ? null : current.imports.sampleDataProfile,
-        importSource: file ? 'obsidian' : 'none',
+        importSource: file ? source : 'none',
+        importFormat: file ? (source === 'kanka' ? 'kanka-json' : 'obsidian') : null,
         markdownZipFile: file,
         backupZipFile: null,
         folderMappings: mappings,
@@ -519,6 +597,9 @@ export function NewCampaignWizard({
         importManifest: {
           genreThemes: payload.identity.genreThemes,
           folderMappings: payload.imports.folderMappings,
+          ...(payload.imports.importFormat
+            ? { importFormat: payload.imports.importFormat }
+            : {}),
           ...(userDefaults ? { userDefaults } : {}),
           ...(bootstrapSelection ? { bootstrap: bootstrapSelection } : {}),
         },
@@ -1072,11 +1153,15 @@ export function NewCampaignWizard({
                   {WIKI_IMPORT_SOURCES.map((source) => {
                     const SourceIcon = source.Icon;
                     const isObsidian = source.id === 'obsidian';
+                    const isKanka = source.id === 'kanka';
                     const isEsianaBackup = source.id === 'esiana-backup';
-                    const hasObsidianZip = Boolean(payload.imports.markdownZipFile);
+                    const hasWikiZip = Boolean(payload.imports.markdownZipFile);
                     const hasBackupZip = Boolean(payload.imports.backupZipFile);
                     const isSelected =
-                      (isObsidian && hasObsidianZip) ||
+                      (isObsidian &&
+                        hasWikiZip &&
+                        payload.imports.importSource === 'obsidian') ||
+                      (isKanka && hasWikiZip && payload.imports.importSource === 'kanka') ||
                       (isEsianaBackup && hasBackupZip);
 
                     if (source.planned) {
@@ -1122,15 +1207,16 @@ export function NewCampaignWizard({
                               },
                             }));
                           } else {
+                            markdownZipSourceRef.current = isKanka ? 'kanka' : 'obsidian';
                             markdownZipInputRef.current?.click();
                             setPayload((current) => ({
                               ...current,
                               imports: {
                                 ...current.imports,
-                                campaignSource: 'obsidian',
+                                campaignSource: isKanka ? 'kanka' : 'obsidian',
                                 contentPack: null,
                                 sampleDataProfile: null,
-                                importSource: 'obsidian',
+                                importSource: isKanka ? 'kanka' : 'obsidian',
                                 backupZipFile: null,
                               },
                             }));
@@ -1154,7 +1240,12 @@ export function NewCampaignWizard({
                           <FileArchive className="size-3.5" />
                           Choose .zip file
                         </span>
-                        {isObsidian && hasObsidianZip && (
+                        {isObsidian && isSelected && (
+                          <p className="text-xs text-emerald-300">
+                            Selected: {payload.imports.markdownZipFile?.name}
+                          </p>
+                        )}
+                        {isKanka && isSelected && (
                           <p className="text-xs text-emerald-300">
                             Selected: {payload.imports.markdownZipFile?.name}
                           </p>
@@ -1169,12 +1260,23 @@ export function NewCampaignWizard({
                   })}
                 </div>
 
+                {importFormatDetected && (
+                  <p className="text-xs text-muted">
+                    Detected format: <span className="text-foreground">{importFormatDetected}</span>
+                  </p>
+                )}
+
                 <input
                   ref={markdownZipInputRef}
                   type="file"
                   accept=".zip,application/zip"
                   className="hidden"
-                  onChange={(event) => setMarkdownZip(event.target.files?.[0] ?? null)}
+                  onChange={(event) =>
+                    setMarkdownZip(
+                      event.target.files?.[0] ?? null,
+                      markdownZipSourceRef.current,
+                    )
+                  }
                 />
                 <input
                   ref={backupZipInputRef}
@@ -1184,7 +1286,24 @@ export function NewCampaignWizard({
                   onChange={(event) => setBackupZip(event.target.files?.[0] ?? null)}
                 />
 
-                {payload.imports.importSource === 'obsidian' &&
+                {payload.imports.importSource === 'kanka' && kankaSkippedSummary.length > 0 && (
+                  <details className="rounded-xl border border-border bg-background/40 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-medium text-foreground">
+                      Skipped Kanka modules ({kankaSkippedSummary.length})
+                    </summary>
+                    <ul className="mt-3 space-y-1 text-xs text-muted">
+                      {kankaSkippedSummary.map((row) => (
+                        <li key={row.folder}>
+                          <span className="text-foreground">{row.folder}</span> — {row.entityCount}{' '}
+                          {row.entityCount === 1 ? 'entity' : 'entities'} ({row.reason})
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+
+                {(payload.imports.importSource === 'obsidian' ||
+                  payload.imports.importSource === 'kanka') &&
                   payload.imports.folderMappings.length > 0 && (
                 <div className="overflow-hidden rounded-xl border border-border">
                   <div className="border-b border-border bg-surface/90 px-4 py-3">
