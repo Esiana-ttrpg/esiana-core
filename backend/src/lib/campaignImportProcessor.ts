@@ -6,8 +6,12 @@ import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import { IMPORT_SK } from '../../../shared/importSkeletonKeys.js';
 import {
   collectMarkdownZipPaths,
+  detectZipImportFormat,
   discoverImportFolders,
 } from '../../../shared/importZipStructure.js';
+import type { VirtualNarrativeDeferredRef } from '../../../shared/virtualNarrativeEntry.js';
+import { compileKankaJsonZip } from './kankaJsonImportCompiler.js';
+import { reconcileCharacterIndexFromMetadata } from './characterMetadata.js';
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { importFromPackBuffer } from './assetImport.js';
@@ -32,6 +36,7 @@ import {
 import { resolveWorkspaceForPage } from '../../../shared/wikiWorkspaceResolve.js';
 
 interface ImportManifest {
+  importFormat?: 'obsidian' | 'kanka-json';
   folderMappings?: Array<{
     sourceFolderName: string;
     targetModule: string;
@@ -53,6 +58,9 @@ interface LoadedMarkdownEntry {
   blurb?: string;
   infoboxCustomFields: Record<string, string>;
   importTemporal?: import('./temporalProvenance.js').TemporalMetadata;
+  noteId?: string;
+  characterMetadata?: Record<string, unknown>;
+  deferredRefs?: VirtualNarrativeDeferredRef[];
 }
 
 interface PreparedImportRow {
@@ -150,6 +158,89 @@ function resolveSkeletonParentId(
   return skeletonMap.get(skeletonParentKey) ?? null;
 }
 
+const UNSAFE_METADATA_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isUnsafeMetadataKey(key: string): boolean {
+  return UNSAFE_METADATA_KEYS.has(key);
+}
+
+function setNestedMetadataField(
+  metadata: Record<string, unknown>,
+  fieldPath: string,
+  value: string,
+): void {
+  const parts = fieldPath.split('.');
+  if (parts.some(isUnsafeMetadataKey)) return;
+  if (parts.length === 1) {
+    metadata[parts[0]!] = value;
+    return;
+  }
+  let cursor: Record<string, unknown> = metadata;
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    const key = parts[i]!;
+    const next = cursor[key];
+    if (!next || typeof next !== 'object' || Array.isArray(next)) {
+      cursor[key] = {};
+    }
+    cursor = cursor[key] as Record<string, unknown>;
+  }
+  cursor[parts[parts.length - 1]!] = value;
+}
+
+function applyDeferredCharacterRefs(
+  metadata: Record<string, unknown>,
+  deferredRefs: VirtualNarrativeDeferredRef[] | undefined,
+  externalKeyToPageId: Map<string, string>,
+): Record<string, unknown> {
+  if (!deferredRefs?.length) return metadata;
+  const next = { ...metadata };
+  for (const ref of deferredRefs) {
+    const pageId = externalKeyToPageId.get(ref.kankaEntityId);
+    if (!pageId) continue;
+    setNestedMetadataField(next, ref.field, pageId);
+  }
+  return reconcileCharacterIndexFromMetadata(next);
+}
+
+function resolveImportedPortraitUrl(
+  portraitUrl: string,
+  createdAssetsBySource: Map<string, { id: string; url: string }>,
+  imageByPath: Map<string, JSZip.JSZipObject>,
+  imageByBasename: Map<string, JSZip.JSZipObject>,
+): string | null {
+  const normalized = portraitUrl.replace(/\\/g, '/').toLowerCase();
+  const existing = createdAssetsBySource.get(normalized);
+  if (existing) return `/api/assets/${existing.id}`;
+  const imageFile =
+    imageByPath.get(normalized) ?? imageByBasename.get(path.basename(normalized).toLowerCase());
+  if (!imageFile) return null;
+  const asset = createdAssetsBySource.get(imageFile.name.replace(/\\/g, '/').toLowerCase());
+  return asset ? `/api/assets/${asset.id}` : null;
+}
+
+function applyResolvedPortraitMetadata(
+  metadata: Record<string, unknown>,
+  createdAssetsBySource: Map<string, { id: string; url: string }>,
+  imageByPath: Map<string, JSZip.JSZipObject>,
+  imageByBasename: Map<string, JSZip.JSZipObject>,
+): Record<string, unknown> {
+  const appearance = metadata.appearance;
+  if (!appearance || typeof appearance !== 'object' || Array.isArray(appearance)) return metadata;
+  const portraitUrl = (appearance as Record<string, unknown>).portraitUrl;
+  if (typeof portraitUrl !== 'string' || !portraitUrl.trim()) return metadata;
+  const resolved = resolveImportedPortraitUrl(
+    portraitUrl,
+    createdAssetsBySource,
+    imageByPath,
+    imageByBasename,
+  );
+  if (!resolved) return metadata;
+  return {
+    ...metadata,
+    appearance: { ...(appearance as Record<string, unknown>), portraitUrl: resolved },
+  };
+}
+
 export async function processCampaignImportZip(
   campaignId: string,
   opts?: { taskId?: string },
@@ -202,6 +293,16 @@ export async function processCampaignImportZip(
 
     const entries = Object.values(zip.files).filter((entry) => !entry.dir);
     const zipEntryNames = entries.map((entry) => entry.name);
+    const detectedFormat = detectZipImportFormat(zipEntryNames);
+    const importFormat =
+      manifest?.importFormat === 'kanka-json' || detectedFormat.format === 'kanka-json'
+        ? 'kanka-json'
+        : 'obsidian';
+
+    if (importFormat === 'kanka-json') {
+      updateBackgroundTask(task.id, { taskName: 'Kanka JSON Ingestion' });
+    }
+
     const folderDiscovery = discoverImportFolders(zipEntryNames);
     const wrapperPrefix = folderDiscovery.wrapperPrefix;
     const markdownEntries = entries.filter((entry) =>
@@ -215,7 +316,46 @@ export async function processCampaignImportZip(
     const importWarnings: string[] = [];
     const loadedByPath = new Map<string, LoadedMarkdownEntry>();
     const deferredLooseRootPaths: string[] = [];
+    const externalKeyToPageId = new Map<string, string>();
 
+    if (importFormat === 'kanka-json') {
+      const compiled = await compileKankaJsonZip(zip);
+      for (const [key, pageId] of compiled.externalKeyToPageId.entries()) {
+        externalKeyToPageId.set(key, pageId);
+      }
+      for (const entry of compiled.entries) {
+        const infoboxCustomFields: Record<string, string> = { type: entry.type };
+        for (const [key, value] of Object.entries(entry.frontmatter)) {
+          if (value == null) continue;
+          if (['type', 'title', 'visibility', 'tags', 'blurb'].includes(key)) continue;
+          const flattened = flattenToString(value);
+          if (flattened) infoboxCustomFields[key] = flattened;
+        }
+        loadedByPath.set(entry.sourcePath, {
+          relativePath: entry.sourcePath,
+          title: entry.title,
+          bodyMarkdown: entry.body,
+          visibility:
+            typeof entry.frontmatter.visibility === 'string'
+              ? entry.frontmatter.visibility
+              : 'Party',
+          tags: normalizeTagValues(entry.frontmatter.tags),
+          blurb:
+            typeof entry.frontmatter.blurb === 'string' ? entry.frontmatter.blurb : undefined,
+          infoboxCustomFields,
+          noteId: entry.id,
+          characterMetadata: entry.characterMetadata,
+          deferredRefs: entry.deferredRefs,
+        });
+      }
+      for (const skipped of compiled.skippedModuleCounts) {
+        importWarnings.push(
+          `Skipped Kanka folder ${skipped.folder} (${skipped.entityCount} entities — ${skipped.reason})`,
+        );
+      }
+    }
+
+    if (importFormat !== 'kanka-json') {
     for (let i = 0; i < markdownEntries.length; i += 1) {
       const file = markdownEntries[i]!;
       const relativePath = file.name.replace(/\\/g, '/');
@@ -299,6 +439,7 @@ export async function processCampaignImportZip(
         });
       }
     }
+    }
 
     const skeletonMap = await buildSkeletonParentKeyMap(campaignId);
     const noteLookupMap = new Map<string, { id: string; module: string; handle: string }>();
@@ -314,7 +455,7 @@ export async function processCampaignImportZip(
     ) {
       const loaded = loadedByPath.get(relativePath);
       if (!loaded) return;
-      const noteId = randomUUID();
+      const noteId = loaded.noteId ?? randomUUID();
       noteLookupMap.set(loaded.title.toLowerCase(), {
         id: noteId,
         module: placement.module,
@@ -460,19 +601,24 @@ export async function processCampaignImportZip(
         visibility: loaded.visibility,
         bodyMarkdown: body,
         module: candidate.placement.module,
-        metadata: {
-          ...(candidate.placement.entityCategory
-            ? { entityCategory: candidate.placement.entityCategory }
-            : {}),
-          importMetadata: {
-            sourcePath: loaded.relativePath,
-            module: candidate.placement.module,
-            slug: generateHandle(loaded.title),
-            tags: loaded.tags,
-            ...(loaded.blurb ? { blurb: loaded.blurb } : {}),
-            infoboxCustomFields: loaded.infoboxCustomFields,
+        metadata: applyDeferredCharacterRefs(
+          {
+            ...(candidate.placement.entityCategory
+              ? { entityCategory: candidate.placement.entityCategory }
+              : {}),
+            ...(loaded.characterMetadata ?? {}),
+            importMetadata: {
+              sourcePath: loaded.relativePath,
+              module: candidate.placement.module,
+              slug: generateHandle(loaded.title),
+              tags: loaded.tags,
+              ...(loaded.blurb ? { blurb: loaded.blurb } : {}),
+              infoboxCustomFields: loaded.infoboxCustomFields,
+            },
           },
-        },
+          loaded.deferredRefs,
+          externalKeyToPageId,
+        ),
         ...applySystemProvenanceTimestamps('import', loaded.importTemporal),
       });
     }
@@ -494,6 +640,12 @@ export async function processCampaignImportZip(
     }
 
     for (const row of preparedRows) {
+      row.metadata = applyResolvedPortraitMetadata(
+        row.metadata,
+        createdAssetsBySource,
+        imageByPath,
+        imageByBasename,
+      );
       row.bodyMarkdown = row.bodyMarkdown
         .replace(/!\[\[([^[\]]+)\]\]/g, (_m, imageRefRaw: string) => {
           const imageRef = imageRefRaw.trim();

@@ -3,8 +3,10 @@ import {
   isCanonicalFolderName,
   sanitizeFolderForSearch,
 } from './importModuleSynonyms.js';
+import { isKankaSkippedFolder, kankaSkipReason, type SkipReasonCode } from './importSkipPolicy.js';
 import type { ImportModuleTarget } from './importSkeletonKeys.js';
 import type { MappableImportModule } from './importModuleSynonyms.js';
+import type { ImportSourceFormat } from './virtualNarrativeEntry.js';
 
 export type { MappableImportModule };
 
@@ -32,6 +34,114 @@ export function collectMarkdownZipPaths(zipEntries: string[]): string[] {
   return zipEntries
     .map(normalizeZipPath)
     .filter((entry) => !entry.endsWith('/') && entry.toLowerCase().endsWith('.md'));
+}
+
+export function collectKankaJsonEntityPaths(zipEntries: string[]): string[] {
+  return zipEntries
+    .map(normalizeZipPath)
+    .filter((entry) => {
+      if (entry.endsWith('/')) return false;
+      if (!entry.toLowerCase().endsWith('.json')) return false;
+      const base = entry.split('/').pop() ?? '';
+      if (base === 'campaign.json' || base === 'info.json') return false;
+      const parts = entry.split('/').filter(Boolean);
+      if (parts.length < 2) return false;
+      return !isKankaSkippedFolder(parts[0]!);
+    });
+}
+
+export type ZipImportFormatResult = {
+  format: ImportSourceFormat | 'unknown';
+  confidence: number;
+  signals: string[];
+};
+
+export function detectZipImportFormat(zipEntries: string[]): ZipImportFormatResult {
+  const normalized = zipEntries.map(normalizeZipPath);
+  const signals: string[] = [];
+  let confidence = 0;
+
+  const hasInfoJson = normalized.some(
+    (entry) => entry === 'info.json' || entry.endsWith('/info.json'),
+  );
+  const hasCampaignJson = normalized.some(
+    (entry) => entry === 'campaign.json' || entry.endsWith('/campaign.json'),
+  );
+  const kankaEntityCount = collectKankaJsonEntityPaths(normalized).length;
+  const mdCount = collectMarkdownZipPaths(normalized).length;
+
+  if (hasInfoJson) {
+    signals.push('info.json');
+    confidence += 0.9;
+  }
+  if (hasCampaignJson && kankaEntityCount > 0) {
+    signals.push(`kanka-entities:${kankaEntityCount}`);
+    confidence += 0.5;
+  }
+  if (mdCount > 0) {
+    signals.push(`md:${mdCount}`);
+    confidence += 0.8;
+  }
+
+  if (hasInfoJson || (hasCampaignJson && kankaEntityCount > 0)) {
+    return { format: 'kanka-json', confidence: Math.min(1, confidence), signals };
+  }
+  if (mdCount > 0) {
+    return { format: 'obsidian', confidence: Math.min(1, confidence), signals };
+  }
+  return { format: 'unknown', confidence: 0, signals };
+}
+
+export interface KankaFolderDiscovery {
+  topLevelFolders: string[];
+  canonicalAutoMapped: Array<{ folder: string; targetModule: MappableImportModule }>;
+  needsMapping: string[];
+  skippedFolders: Array<{ folder: string; reason: SkipReasonCode; entityCount: number }>;
+}
+
+export function discoverKankaJsonFolders(zipEntries: string[]): KankaFolderDiscovery {
+  const folderEntityCounts = new Map<string, number>();
+  const skippedCounts = new Map<string, number>();
+
+  for (const rawPath of zipEntries.map(normalizeZipPath)) {
+    if (rawPath.endsWith('/')) continue;
+    if (!rawPath.toLowerCase().endsWith('.json')) continue;
+    const base = rawPath.split('/').pop() ?? '';
+    if (base === 'campaign.json' || base === 'info.json') continue;
+    const parts = rawPath.split('/').filter(Boolean);
+    if (parts.length < 2) continue;
+    const folder = parts[0]!;
+    if (isDotPathSegment(folder)) continue;
+    if (isKankaSkippedFolder(folder)) {
+      const key = folder.toLowerCase();
+      skippedCounts.set(key, (skippedCounts.get(key) ?? 0) + 1);
+      continue;
+    }
+    folderEntityCounts.set(folder, (folderEntityCounts.get(folder) ?? 0) + 1);
+  }
+
+  const skippedFolders = [...skippedCounts.entries()]
+    .map(([folder, entityCount]) => ({
+      folder,
+      reason: kankaSkipReason(folder)!,
+      entityCount,
+    }))
+    .sort((a, b) => a.folder.localeCompare(b.folder));
+
+  const topLevelFolders = [...folderEntityCounts.keys()].sort((a, b) => a.localeCompare(b));
+  const canonicalAutoMapped: KankaFolderDiscovery['canonicalAutoMapped'] = [];
+  const needsMapping: string[] = [];
+
+  for (const folder of topLevelFolders) {
+    const targetModule = fuzzyMatchImportModule(folder);
+    if (targetModule) {
+      canonicalAutoMapped.push({ folder, targetModule });
+    } else {
+      needsMapping.push(folder);
+    }
+  }
+
+  return { topLevelFolders, canonicalAutoMapped, needsMapping, skippedFolders };
 }
 
 function stripWrapperPrefix(relativePath: string, wrapperPrefix?: string): string {

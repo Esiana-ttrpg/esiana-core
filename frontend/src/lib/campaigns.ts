@@ -78,6 +78,7 @@ export interface CreateCampaignWizardInput {
       targetModule: string;
       isAutoMatched?: boolean;
     }>;
+    importFormat?: 'obsidian' | 'kanka-json';
     userDefaults?: {
       docs?: string[];
       recruitmentPreferences?: boolean;
