@@ -152,6 +152,9 @@ importers:
       '@xyflow/react':
         specifier: ^12.11.0
         version: 12.11.0(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.1
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
