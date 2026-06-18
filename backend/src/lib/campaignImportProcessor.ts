@@ -273,6 +273,16 @@ async function loadKankaCampaignJson(
   return null;
 }
 
+function readKankaCampaignJsonId(
+  campaignJson: Record<string, unknown> | null,
+): string | number | null {
+  if (!campaignJson) return null;
+  const id = campaignJson.id;
+  if (typeof id === 'number' && Number.isFinite(id)) return id;
+  if (typeof id === 'string' && id.trim()) return id.trim();
+  return null;
+}
+
 function buildExistingPageIdsByKankaKey(index: KankaImportIndex): Map<string, string> {
   const map = new Map<string, string>();
   for (const [kankaId, pageId] of index.entityPageIdByKankaId) {
@@ -418,12 +428,14 @@ export async function processCampaignImportZip(
     let kankaIndex: KankaImportIndex | null = null;
     let kankaMapBootstrapRows: KankaMapBootstrapRow[] = [];
     let kankaCampaignJson: Record<string, unknown> | null = null;
+    let kankaCampaignJsonId: string | number | null = null;
     let existingWikiPageIds = new Set<string>();
 
     if (importFormat === 'kanka-json') {
       kankaIndex = await loadKankaImportIndex(campaignId);
       existingWikiPageIds = existingWikiPageIdsFromIndex(kankaIndex);
       kankaCampaignJson = await loadKankaCampaignJson(zip);
+      kankaCampaignJsonId = readKankaCampaignJsonId(kankaCampaignJson);
       const compiled = await compileKankaJsonZip(zip, {
         existingPageIdsByKankaKey: buildExistingPageIdsByKankaKey(kankaIndex),
       });
@@ -773,7 +785,7 @@ export async function processCampaignImportZip(
         row.metadata = await applyKankaPortraitMetadata(row.metadata, {
           campaignId,
           zip,
-          campaignJsonId: kankaCampaignJson?.id ?? null,
+          campaignJsonId: kankaCampaignJsonId,
           index: kankaIndex,
           createdAssetsBySource,
         });
@@ -864,7 +876,7 @@ export async function processCampaignImportZip(
       await bootstrapKankaMaps({
         campaignId,
         zip,
-        campaignJsonId: kankaCampaignJson?.id ?? null,
+        campaignJsonId: kankaCampaignJsonId,
         rows: kankaMapBootstrapRows,
         externalKeyToPageId,
         index: kankaIndex,
@@ -886,7 +898,7 @@ export async function processCampaignImportZip(
         campaignId,
         zip,
         imagePath: kankaCampaignJson.image.trim(),
-        campaignJsonId: kankaCampaignJson.id ?? null,
+        campaignJsonId: kankaCampaignJsonId,
         assetType: 'campaign-cover',
         index: kankaIndex,
         createdAssetsBySource,
