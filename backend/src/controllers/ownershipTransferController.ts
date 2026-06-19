@@ -3,7 +3,7 @@ import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import {
-  notifyUsersAsync,
+  notifyUsersFromTemplateAsync,
   getCampaignMemberUserIds,
 } from '../lib/notifications/notificationService.js';
 import { NotificationType, OwnershipTransferStatus } from '../lib/notifications/types.js';
@@ -119,11 +119,16 @@ export async function initiateOwnershipTransfer(
     },
   });
 
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: [targetUserId],
     type: NotificationType.OWNERSHIP_TRANSFER_OFFERED,
-    title: `Campaign ownership transfer: ${campaign?.name ?? 'Campaign'}`,
-    body: `${resolveUserDisplayName({ displayName: req.user!.displayName ?? null, email: req.user!.email })} wants to transfer campaign ownership to you.`,
+    vars: {
+      campaignName: campaign?.name ?? 'Campaign',
+      actorName: resolveUserDisplayName({
+        displayName: req.user!.displayName ?? null,
+        email: req.user!.email,
+      }),
+    },
     linkUrl: campaignTransferOwnershipPath(slug ?? ''),
     campaignId,
     metadata: { transferId: transfer.id },
@@ -224,11 +229,10 @@ export async function acceptOwnershipTransfer(
   }
 
   const memberIds = await getCampaignMemberUserIds(campaignId);
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: memberIds,
     type: NotificationType.OWNERSHIP_TRANSFER_COMPLETED,
-    title: `${campaign?.name ?? 'Campaign'} has a new campaign owner`,
-    body: 'Campaign ownership was transferred after acceptance.',
+    vars: { campaignName: campaign?.name ?? 'Campaign' },
     linkUrl: campaignTransferOwnershipPath(slug ?? ''),
     campaignId,
   });
@@ -270,11 +274,10 @@ export async function declineOwnershipTransfer(
     select: { name: true },
   });
 
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: [transfer.fromUserId],
     type: NotificationType.OWNERSHIP_TRANSFER_DECLINED,
-    title: `Ownership transfer declined: ${campaign?.name ?? 'Campaign'}`,
-    body: 'The offered member declined campaign ownership transfer.',
+    vars: { campaignName: campaign?.name ?? 'Campaign' },
     linkUrl: campaignTransferOwnershipPath(req.campaign!.campaignHandle ?? ''),
     campaignId,
   });

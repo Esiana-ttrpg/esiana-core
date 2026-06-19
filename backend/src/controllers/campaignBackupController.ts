@@ -17,7 +17,7 @@ import {
   updateBackgroundTask,
 } from '../lib/taskRegistry.js';
 import {
-  notifyUsersAsync,
+  notifyUsersFromTemplateAsync,
 } from '../lib/notifications/notificationService.js';
 import { NotificationType } from '../lib/notifications/types.js';
 import { campaignSettingsPath } from '../lib/notifications/deepLinks.js';
@@ -77,11 +77,10 @@ async function processAsyncCampaignExport(input: {
       metaMerge: { assetId: asset.id, filename },
     });
 
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: [input.userId],
       type: NotificationType.EXPORT_READY,
-      title: `Export ready: ${exportResult.manifest.campaign.name}`,
-      body: 'Your campaign backup ZIP is ready to download.',
+      vars: { campaignName: exportResult.manifest.campaign.name },
       linkUrl: `/api/campaigns/${input.handle}/backup/download/${asset.id}`,
       campaignId: input.campaignId,
       metadata: { assetId: asset.id, filename },
@@ -92,11 +91,13 @@ async function processAsyncCampaignExport(input: {
       status: 'FAILED',
       errorMessage: error instanceof Error ? error.message : 'Export failed',
     });
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: [input.userId],
       type: NotificationType.EXPORT_FAILED,
-      title: 'Campaign export failed',
-      body: error instanceof Error ? error.message : 'Unable to generate campaign backup.',
+      vars: {
+        customBody:
+          error instanceof Error ? error.message : 'Unable to generate campaign backup.',
+      },
       linkUrl: campaignSettingsPath(input.handle, 'backup'),
       campaignId: input.campaignId,
     });

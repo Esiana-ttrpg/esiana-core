@@ -17,7 +17,9 @@ export type NotificationType =
   | 'EXPORT_FAILED'
   | 'IMPORT_COMPLETE'
   | 'IMPORT_FAILED'
-  | 'GENERIC';
+  | 'GENERIC'
+  | 'MENTION_IN_PAGE'
+  | 'CHARACTER_REFERENCED_IN_PAGE';
 
 export interface NotificationRecord {
   id: string;

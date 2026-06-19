@@ -3,7 +3,7 @@ import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import {
-  notifyUsersAsync,
+  notifyUsersFromTemplateAsync,
   getCampaignMemberUserIds,
   getOperationalManagerUserIds,
 } from '../lib/notifications/notificationService.js';
@@ -172,11 +172,10 @@ export async function patchSessionSchedule(
       previous.locationPageId !== schedule.locationPageId)
   ) {
     const memberIds = await getCampaignMemberUserIds(campaignId);
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: memberIds,
       type: NotificationType.SESSION_CHANGED,
-      title: `${timeline.wikiPage.title} details updated`,
-      body: 'The date, time, or location for an upcoming session has changed.',
+      vars: { sessionTitle: timeline.wikiPage.title },
       linkUrl: campaignNotePath(slug ?? '', timelinePointId),
       campaignId,
     });
@@ -187,11 +186,10 @@ export async function patchSessionSchedule(
     schedule.status === SessionScheduleStatus.CANCELLED
   ) {
     const memberIds = await getCampaignMemberUserIds(campaignId);
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: memberIds,
       type: NotificationType.SESSION_CANCELLED,
-      title: `${timeline.wikiPage.title} cancelled`,
-      body: 'A scheduled session has been cancelled.',
+      vars: { sessionTitle: timeline.wikiPage.title },
       linkUrl: campaignNotePath(slug ?? '', timelinePointId),
       campaignId,
     });
@@ -228,13 +226,16 @@ export async function publishSessionSchedule(
   });
 
   const memberIds = await getCampaignMemberUserIds(campaignId);
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: memberIds,
     type: NotificationType.SESSION_PUBLISHED,
-    title: `${timeline.wikiPage.title} is scheduled`,
-    body: schedule.plannedStartAt
-      ? `Session planned for ${schedule.plannedStartAt.toLocaleString()}`
-      : 'Check the session page for details.',
+    variant: schedule.plannedStartAt ? 'withStartTime' : 'withoutStartTime',
+    vars: {
+      sessionTitle: timeline.wikiPage.title,
+      ...(schedule.plannedStartAt
+        ? { plannedStartAt: schedule.plannedStartAt.toLocaleString() }
+        : {}),
+    },
     linkUrl: campaignNotePath(slug ?? '', timelinePointId),
     campaignId,
   });
@@ -407,11 +408,19 @@ async function sendRsvpDigest(input: {
   });
 
   const managerIds = await getOperationalManagerUserIds(input.campaignId);
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: managerIds,
     type: NotificationType.RSVP_UPDATED,
-    title: `RSVP update: ${input.sessionTitle}`,
-    body: `${attending} attending, ${absent} absent, ${late} late, ${maybe} maybe (${rows.length}/${totalMembers} responded). Latest: ${input.actorLabel}.`,
+    vars: {
+      sessionTitle: input.sessionTitle,
+      attending,
+      absent,
+      late,
+      maybe,
+      responded: rows.length,
+      totalMembers,
+      actorLabel: input.actorLabel,
+    },
     linkUrl: campaignNotePath(input.handle, input.timelinePointId),
     campaignId: input.campaignId,
   });

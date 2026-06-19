@@ -21,6 +21,8 @@ const NOTIFICATION_TYPE_KEYS: Record<NotificationType, string> = {
   IMPORT_COMPLETE: 'profile.notifications.typeImportComplete',
   IMPORT_FAILED: 'profile.notifications.typeImportFailed',
   GENERIC: 'profile.notifications.typeGeneric',
+  MENTION_IN_PAGE: 'profile.notifications.typeMentionInPage',
+  CHARACTER_REFERENCED_IN_PAGE: 'profile.notifications.typeCharacterReferencedInPage',
 };
 
 const NOTIFICATION_GROUP_KEYS: Record<string, string> = {

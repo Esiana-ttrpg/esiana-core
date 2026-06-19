@@ -18,7 +18,7 @@ import {
   isValidDeclineReasonCode,
 } from '../lib/joinRequestDeclineReasons.js';
 import {
-  notifyUsersAsync,
+  notifyUsersFromTemplateAsync,
   getOperationalManagerUserIds,
 } from '../lib/notifications/notificationService.js';
 import { NotificationType } from '../lib/notifications/types.js';
@@ -189,17 +189,21 @@ async function resolveJoinRequestByStatus(
     const reasonLabel = declineReasonCode
       ? getDeclineReasonLabel(declineReasonCode)
       : null;
-    const notificationBody = declineMessage
-      ? declineMessage
+    const denyVariant = declineMessage
+      ? ('customBody' as const)
       : reasonLabel
-        ? `Your request was not accepted: ${reasonLabel}.`
-        : 'Your request to join this campaign was not accepted.';
+        ? ('reason' as const)
+        : ('default' as const);
 
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: [updated.userId],
       type: NotificationType.JOIN_REQUEST_DENIED,
-      title: `Application declined${campaign ? `: ${campaign.name}` : ''}`,
-      body: notificationBody,
+      variant: denyVariant,
+      vars: {
+        campaignName: campaign?.name,
+        ...(reasonLabel ? { reasonLabel } : {}),
+        ...(declineMessage ? { customBody: declineMessage } : {}),
+      },
       linkUrl:
         campaign?.handle &&
         isListedOnGlobalHub(resolveDiscoverability(campaign.discoverability))
@@ -294,11 +298,10 @@ async function resolveJoinRequestByStatus(
       select: { handle: true, name: true },
     });
 
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: [updated.userId],
       type: NotificationType.JOIN_REQUEST_ACCEPTED,
-      title: `Welcome${campaign ? ` to ${campaign.name}` : ''}!`,
-      body: 'Your join request was accepted. Jump into the campaign dashboard.',
+      vars: { campaignName: campaign?.name },
       linkUrl: campaign ? campaignDashboardPath(campaign.handle) : hubPath(),
       campaignId,
     });
@@ -538,11 +541,11 @@ export async function applyToCampaign(
       select: { handle: true, name: true },
     });
 
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: [req.user!.id],
       type: NotificationType.GENERIC,
-      title: `Joined campaign${campaignMeta ? `: ${campaignMeta.name}` : ''}`,
-      body: 'You joined this campaign using an invite link.',
+      variant: 'inviteJoin',
+      vars: { campaignName: campaignMeta?.name },
       linkUrl: campaignMeta ? campaignDashboardPath(campaignMeta.handle) : hubPath(),
       campaignId: campaign.id,
     });
@@ -582,11 +585,13 @@ export async function applyToCampaign(
   });
 
   const managerIds = await getOperationalManagerUserIds(campaign.id);
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: managerIds,
     type: NotificationType.JOIN_REQUEST_RECEIVED,
-    title: `New join request${campaignMeta ? `: ${campaignMeta.name}` : ''}`,
-    body: `${resolveUserDisplayName(created.user)} applied to join the campaign.`,
+    vars: {
+      campaignName: campaignMeta?.name,
+      applicantName: resolveUserDisplayName(created.user),
+    },
     linkUrl: campaignMeta
       ? campaignSettingsPath(campaignMeta.handle, 'recruitment')
       : hubPath(),
