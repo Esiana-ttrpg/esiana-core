@@ -1,6 +1,6 @@
 import { prisma } from '../prisma.js';
 import {
-  notifyUsersAsync,
+  notifyUsersFromTemplateAsync,
   getCampaignMemberUserIds,
 } from './notificationService.js';
 import {
@@ -69,13 +69,16 @@ export async function runSessionReminderSweep(): Promise<number> {
 
     if (marked.count === 0) continue;
 
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: recipientIds,
       type: NotificationType.SESSION_REMINDER_24H,
-      title: `Session tomorrow: ${schedule.timelinePoint.wikiPage.title}`,
-      body: schedule.plannedStartAt
-        ? `Starts ${schedule.plannedStartAt.toLocaleString()}`
-        : 'Your session is coming up in about 24 hours.',
+      variant: schedule.plannedStartAt ? 'withStartTime' : 'withoutStartTime',
+      vars: {
+        sessionTitle: schedule.timelinePoint.wikiPage.title,
+        ...(schedule.plannedStartAt
+          ? { plannedStartAt: schedule.plannedStartAt.toLocaleString() }
+          : {}),
+      },
       linkUrl: campaignNotePath(slug, schedule.timelinePointId),
       campaignId,
     });

@@ -44,6 +44,6 @@ Product terms (**Campaign Home**, **Game Master**, **Writer**, **Player**) are d
 1. **Foundation (Phase 0):** i18n tree, `uiLocale` preference, Account Settings + header slice
 2. **Shell (Phase 1):** sidebar, campaign settings chrome, notifications labels, global hub
 3. **Workspaces (Phase 2):** incremental domain folders under `campaign/`
-4. **Notifications (Phase 3):** structured metadata + localized render at read time
+4. **Notifications (Phase 3 — shipped):** structured `metadata.renderVersion` + template vars; localized render at read time in inbox/bell; email uses recipient `uiLocale`
 
 Full UI coverage is incremental; English remains complete throughout.

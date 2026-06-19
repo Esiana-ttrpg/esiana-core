@@ -1,7 +1,9 @@
 import { Bell, CheckCheck, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { renderNotificationContent } from '@/i18n/renderNotification';
 import {
   dismissNotification,
   fetchNotificationCapabilities,
@@ -31,6 +33,7 @@ export function NotificationBell({
 }: {
   alignControlsToAvatar?: boolean;
 }) {
+  const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -154,7 +157,7 @@ export function NotificationBell({
             ? 'relative inline-flex size-8 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-[rgb(var(--color-focal-rgb)/0.06)]'
             : 'relative inline-flex size-11 items-center justify-center rounded-lg border border-border text-foreground transition-colors hover:bg-elevated'
         }
-        aria-label="Notifications"
+        aria-label={t('profile.notifications.bellTitle')}
         aria-expanded={open}
       >
         <Bell className={alignControlsToAvatar ? 'size-4' : 'size-5'} />
@@ -174,23 +177,25 @@ export function NotificationBell({
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-background shadow-xl">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <span className="text-sm font-semibold">Notifications</span>
+            <span className="text-sm font-semibold">{t('profile.notifications.bellTitle')}</span>
             <button
               type="button"
               onClick={() => void handleMarkAllRead()}
               className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"
             >
               <CheckCheck className="size-3.5" />
-              Mark all read
+              {t('profile.notifications.bellMarkAllRead')}
             </button>
           </div>
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <p className="px-4 py-6 text-sm text-muted">Loading…</p>
+              <p className="px-4 py-6 text-sm text-muted">{t('common.loading')}</p>
             ) : items.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-muted">No notifications yet.</p>
+              <p className="px-4 py-6 text-sm text-muted">{t('profile.notifications.bellEmpty')}</p>
             ) : (
-              items.map((item) => (
+              items.map((item) => {
+                const content = renderNotificationContent(item);
+                return (
                 <button
                   key={item.id}
                   type="button"
@@ -200,9 +205,9 @@ export function NotificationBell({
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{item.title}</p>
-                    {item.body ? (
-                      <p className="mt-0.5 line-clamp-2 text-xs text-muted">{item.body}</p>
+                    <p className="text-sm font-medium">{content.title}</p>
+                    {content.body ? (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-muted">{content.body}</p>
                     ) : null}
                     <p className="mt-1 text-[10px] uppercase tracking-wide text-muted">
                       {formatRelativeTime(item.createdAt)}
@@ -212,12 +217,13 @@ export function NotificationBell({
                     type="button"
                     onClick={(event) => void handleDismiss(item.id, event)}
                     className="shrink-0 rounded p-1 text-muted hover:bg-background hover:text-foreground"
-                    aria-label="Dismiss"
+                    aria-label={t('profile.notifications.bellDismissAria')}
                   >
                     <X className="size-3.5" />
                   </button>
                 </button>
-              ))
+                );
+              })
             )}
           </div>
           <div className="border-t border-border px-4 py-2">
@@ -226,7 +232,7 @@ export function NotificationBell({
               onClick={() => setOpen(false)}
               className="text-xs font-medium text-primary hover:underline"
             >
-              View all notifications
+              {t('profile.notifications.bellViewAll')}
             </Link>
           </div>
         </div>

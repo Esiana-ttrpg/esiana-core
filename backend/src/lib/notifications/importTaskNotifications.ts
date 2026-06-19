@@ -1,6 +1,6 @@
 import { prisma } from '../prisma.js';
 import { getBackgroundTask } from '../taskRegistry.js';
-import { notifyUsersAsync } from './notificationService.js';
+import { notifyUsersFromTemplateAsync } from './notificationService.js';
 import { NotificationType } from './types.js';
 import { campaignSettingsPath } from './deepLinks.js';
 
@@ -25,17 +25,11 @@ export async function notifyImportTaskComplete(input: {
   });
   if (!campaign) return;
 
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: [userId],
     type: NotificationType.IMPORT_COMPLETE,
-    title:
-      input.kind === 'restore'
-        ? `Restore complete: ${campaign.name}`
-        : `Import complete: ${campaign.name}`,
-    body:
-      input.kind === 'restore'
-        ? 'Your campaign backup has been restored.'
-        : 'Your Obsidian import has finished processing.',
+    variant: input.kind === 'restore' ? 'restore' : 'import',
+    vars: { campaignName: campaign.name },
     linkUrl: campaignSettingsPath(campaign.handle, 'advanced'),
     campaignId: input.campaignId,
   });
@@ -55,14 +49,14 @@ export async function notifyImportTaskFailed(input: {
     select: { handle: true, name: true },
   });
 
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: [userId],
     type: NotificationType.IMPORT_FAILED,
-    title:
-      input.kind === 'restore'
-        ? `Restore failed${campaign ? `: ${campaign.name}` : ''}`
-        : `Import failed${campaign ? `: ${campaign.name}` : ''}`,
-    body: input.message,
+    variant: input.kind === 'restore' ? 'restore' : 'import',
+    vars: {
+      campaignName: campaign?.name,
+      customBody: input.message,
+    },
     linkUrl: campaign ? campaignSettingsPath(campaign.handle, 'advanced') : '/hub',
     campaignId: input.campaignId,
   });

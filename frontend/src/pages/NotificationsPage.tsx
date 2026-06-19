@@ -10,6 +10,7 @@ import {
   resolveNotificationHref,
 } from '@/lib/notifications';
 import type { NotificationRecord } from '@/types/notifications';
+import { renderNotificationContent } from '@/i18n/renderNotification';
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -89,15 +90,17 @@ export function NotificationsPage() {
         <p className="text-sm text-muted">{t('profile.notifications.empty')}</p>
       ) : (
         <ul className="divide-y divide-border rounded-xl border border-border">
-          {items.map((item) => (
+          {items.map((item) => {
+            const content = renderNotificationContent(item);
+            return (
             <li key={item.id} className="flex items-start gap-3 px-4 py-4">
               <button
                 type="button"
                 onClick={() => void openItem(item)}
                 className={`min-w-0 flex-1 text-left ${item.isRead ? '' : 'font-medium'}`}
               >
-                <p className="text-sm">{item.title}</p>
-                {item.body ? <p className="mt-1 text-sm text-muted">{item.body}</p> : null}
+                <p className="text-sm">{content.title}</p>
+                {content.body ? <p className="mt-1 text-sm text-muted">{content.body}</p> : null}
                 <p className="mt-2 text-xs text-muted">{formatWhen(item.createdAt)}</p>
               </button>
               <button
@@ -112,7 +115,8 @@ export function NotificationsPage() {
                 {t('common.dismiss')}
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

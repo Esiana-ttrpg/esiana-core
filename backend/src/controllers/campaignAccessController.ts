@@ -33,7 +33,7 @@ import {
 } from '../lib/mail/mailSender.js';
 import { getOrCreateSystemSettings, DEFAULT_GLOBAL_TITLE } from '../lib/systemSettings.js';
 import {
-  notifyUsersAsync,
+  notifyUsersFromTemplateAsync,
   getOperationalManagerUserIds,
 } from '../lib/notifications/notificationService.js';
 import { NotificationType } from '../lib/notifications/types.js';
@@ -501,11 +501,12 @@ export async function updateCampaignMemberRole(
   });
 
   if (previousRole !== updated.role) {
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: [targetUserId],
       type: NotificationType.ROLE_CHANGED,
-      title: 'Your campaign role changed',
-      body: `You are now ${membershipRoleUiLabel(updated.role as CampaignMemberRole)} in this campaign.`,
+      vars: {
+        roleLabel: membershipRoleUiLabel(updated.role as CampaignMemberRole),
+      },
       linkUrl: campaignSettingsPath(req.campaign!.campaignHandle ?? '', 'access'),
       campaignId,
     });
@@ -571,11 +572,11 @@ export async function transferGamemaster(
     }
   });
 
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: [targetUserId],
     type: NotificationType.ROLE_CHANGED,
-    title: 'You are now the campaign gamemaster',
-    body: 'Another member transferred primary gamemaster authority to you.',
+    variant: 'gamemasterPromotion',
+    vars: {},
     linkUrl: campaignSettingsPath(req.campaign!.campaignHandle ?? '', 'access'),
     campaignId,
   });
@@ -632,11 +633,14 @@ export async function removeCampaignMember(
 
   const slug = req.campaign!.campaignHandle;
   const managerIds = await getOperationalManagerUserIds(campaignId);
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: managerIds,
     type: NotificationType.MEMBER_DEPARTED,
-    title: 'A player left the campaign',
-    body: `${resolveUserDisplayName(membership.user)} (${membership.role}) was removed from the roster.`,
+    variant: 'removed',
+    vars: {
+      memberName: resolveUserDisplayName(membership.user),
+      memberRole: membership.role,
+    },
     linkUrl: campaignSettingsPath(slug ?? '', 'members'),
     campaignId,
   });
@@ -681,11 +685,14 @@ export async function leaveCampaign(
   });
 
   const managerIds = await getOperationalManagerUserIds(campaignId);
-  notifyUsersAsync({
+  notifyUsersFromTemplateAsync({
     userIds: managerIds,
     type: NotificationType.MEMBER_DEPARTED,
-    title: 'A player left the campaign',
-    body: `${resolveUserDisplayName(membership.user)} (${membership.role}) left the campaign.`,
+    variant: 'left',
+    vars: {
+      memberName: resolveUserDisplayName(membership.user),
+      memberRole: membership.role,
+    },
     linkUrl: campaignSettingsPath(slug ?? '', 'members'),
     campaignId,
   });

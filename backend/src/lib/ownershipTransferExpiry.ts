@@ -1,6 +1,6 @@
 import { prisma } from './prisma.js';
 import { NotificationType, OwnershipTransferStatus } from './notifications/types.js';
-import { notifyUsersAsync } from './notifications/notificationService.js';
+import { notifyUsersFromTemplateAsync } from './notifications/notificationService.js';
 import { campaignTransferOwnershipPath } from './notifications/deepLinks.js';
 
 export const OWNERSHIP_TRANSFER_EXPIRY_DAYS = 7;
@@ -42,11 +42,10 @@ export async function expireStaleOwnershipTransfers(input?: {
 
   if (input?.notify !== false) {
     for (const transfer of stale) {
-      notifyUsersAsync({
+      notifyUsersFromTemplateAsync({
         userIds: [transfer.fromUserId],
         type: NotificationType.OWNERSHIP_TRANSFER_EXPIRED,
-        title: `Ownership transfer expired: ${transfer.campaign.name}`,
-        body: 'The ownership transfer offer expired after 7 days without a response.',
+        vars: { campaignName: transfer.campaign.name },
         linkUrl: campaignTransferOwnershipPath(transfer.campaign.handle),
         campaignId: transfer.campaign.id,
         metadata: { transferId: transfer.id, hardExpired: true },
