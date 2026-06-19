@@ -125,4 +125,11 @@ Body`;
       /too large/i,
     );
   });
+
+  it('extracts h1 titles without polynomial regex backtracking', () => {
+    const spaces = ' '.repeat(5000);
+    const markdown = `#${spaces}Captain Veyra\n\nBody`;
+    const { prefill } = buildCreatePageImportPrefill(markdown, 'Characters');
+    assert.equal(prefill.title, 'Captain Veyra');
+  });
 });
