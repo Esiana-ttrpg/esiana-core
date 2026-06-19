@@ -30,6 +30,7 @@ import { bootstrapStorageRegistry } from './lib/storage/storageRegistry.js';
 import { ensureStorageProviderPluginReady } from './lib/storage/ensureStorageProviderPlugin.js';
 import { bootstrapGlobalTimeHooks } from './lib/globalTimeHooks/index.js';
 import { apiUsageLogger } from './middleware/apiLogger.js';
+import { installSystemLogCapture } from './lib/systemLogBuffer.js';
 import { isPluginEngineMismatchError } from './lib/plugins/pluginEngineMismatchError.js';
 import { startAssetRetentionSweep } from './lib/assetRetention.js';
 import { startNotificationSweep } from './lib/notifications/notificationScheduledJobs.js';
