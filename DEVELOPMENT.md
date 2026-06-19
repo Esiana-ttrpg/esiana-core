@@ -23,8 +23,13 @@ corepack enable
 pnpm install
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
+```
+
+**Database setup** — pick one engine (see [Database: PostgreSQL vs SQLite](#database-postgresql-vs-sqlite) below). For PostgreSQL:
+
+```bash
 pnpm run db:generate
-pnpm run db:push
+pnpm run db:migrate:deploy
 ```
 
 Terminal 1 — backend:
@@ -44,8 +49,10 @@ Open **http://localhost:5173**.
 ### Ports and proxy
 
 - Backend defaults to **PORT=3001** (`backend/.env.example`)
-- Vite runs on **5173** and proxies `/api` + `/uploads` to `VITE_API_PROXY_TARGET`
-- If backend stays on 3001, set `VITE_API_PROXY_TARGET=http://localhost:3001` in `frontend/.env`
+- Vite runs on **5173** and proxies `/api` + `/uploads` to **http://localhost:3001** by default (same as backend)
+- Override only if your backend uses a different port: set `VITE_API_PROXY_TARGET` in `frontend/.env` (copy from `frontend/.env.example`)
+
+If the UI shows `Request failed: 500` on every API call while the backend log looks healthy, check the Vite terminal for `http proxy error` / `ECONNREFUSED` — the proxy target likely does not match `PORT` in `backend/.env`.
 
 ### Repository layout
 
@@ -86,8 +93,10 @@ Root scripts from [package.json](./package.json):
 | `pnpm run dev:frontend` | Start Vite dev server |
 | `pnpm run build` | Build all workspaces |
 | `pnpm run db:generate` | Regenerate Prisma client |
-| `pnpm run db:push` | Push schema to local database |
-| `pnpm run db:migrate` | Run migrations |
+| `pnpm run db:migrate:deploy` | Apply migrations (PostgreSQL) |
+| `pnpm run db:migrate:deploy:sqlite` | Apply migrations to SQLite (`dev.db`, resets by default) |
+| `pnpm run db:migrate` | Create/apply migrations interactively (PostgreSQL) |
+| `pnpm run db:push` | Push schema without migrations (Postgres disposable dev only) |
 | `pnpm run plugins:link` | Symlink sibling `community-plugins` packages |
 | `pnpm run seed-campaign` | Run campaign seeder CLI |
 
@@ -105,18 +114,31 @@ Add or update tests when you change behavior, tenant isolation, or migrations. C
 
 ---
 
-## Database workflow
+## Database: PostgreSQL vs SQLite
 
-The active engine is the literal `provider` in `backend/prisma/schema.prisma`. See [backend/prisma/README.md](./backend/prisma/README.md) for Postgres vs SQLite switching.
+Esiana supports both engines with one portable schema. **PostgreSQL is the committed default** and matches production/Docker. **SQLite** is for solo local dev without running Postgres.
 
-After changing provider or schema:
+| | PostgreSQL (default) | SQLite (solo dev) |
+|--|---------------------|-------------------|
+| When to use | Production parity, team dev, Docker | Quick local setup, no DB server |
+| `schema.prisma` | Leave `provider = "postgresql"` | Local edit: `provider = "sqlite"` (**do not commit**) |
+| `backend/.env` | `DATABASE_URL=postgresql://…` | `DATABASE_URL="file:./dev.db"` |
+| | `DATABASE_PROVIDER=postgresql` | `DATABASE_PROVIDER=sqlite` |
+| Apply schema | `pnpm run db:migrate:deploy` | `pnpm run db:migrate:deploy:sqlite` |
+| Avoid | — | `db:push`, plain `db:migrate:deploy` |
+
+Committed migration SQL uses Postgres column types (`TIMESTAMP(3)`, `JSONB`) for deploy parity. Prisma's SQLite client requires `DATETIME` and `TEXT` — the `deploy-sqlite-migrations.mjs` script patches types at deploy time without changing tracked migration files.
+
+After any provider or schema change:
 
 ```bash
 pnpm run db:generate
-pnpm run db:push   # or db:migrate
+# then the deploy command for your engine (see table above)
 ```
 
 Restart the backend so Prisma Client reloads.
+
+Details: [backend/prisma/README.md](./backend/prisma/README.md) · [backend/DEVELOPMENT.md](./backend/DEVELOPMENT.md)
 
 Schema changes require maintainer review — see [docs/audits/migration-audit.md](./docs/audits/migration-audit.md).
 
@@ -153,7 +175,7 @@ Full steward and merge rules: [GOVERNANCE.md](./GOVERNANCE.md).
 | Job | What it checks |
 |-----|----------------|
 | `build` | `pnpm install`, Prisma generate, workspace build |
-| `test-sqlite` | SQLite migrate deploy + backend test suite |
+| `test-sqlite` | SQLite migrate deploy (type-normalized) + backend test suite |
 | `test-postgres` | Baseline migration validation + Postgres migrate deploy + backend tests |
 | `docker-build` | `docker compose config` + amd64 image build (Buildx + GHA cache) |
 

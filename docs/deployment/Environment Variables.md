@@ -185,7 +185,7 @@ When `STORAGE_PROVIDER=s3-compatible`. See [object-storage.md](object-storage.md
 
 | Name | Default | Required | Description | Example |
 |------|---------|----------|-------------|---------|
-| `VITE_API_PROXY_TARGET` | `http://localhost:3000` | Dev only | Dev proxy target for `/api` and `/uploads`. | `http://localhost:3001` |
+| `VITE_API_PROXY_TARGET` | `http://localhost:3001` | Dev only | Dev proxy target for `/api` and `/uploads`. | `http://localhost:3000` |
 | `VITE_API_BASE` | `/api` | Optional | API base for notification polling. | `/api` |
 | `VITE_API_BASE_URL` | (page origin) | Optional | Plugin asset URLs. | — |
 | `VITE_APP_BASE_URL` | `window.location.origin` | Optional | Invite link base URL. | — |

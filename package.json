@@ -11,6 +11,7 @@
     "build": "pnpm --filter @esiana/backend --filter frontend --filter @esiana/ssrf-guard --filter @esiana/plugin-source-policy build",
     "db:generate": "pnpm --filter backend db:generate",
     "db:migrate": "pnpm --filter backend db:migrate",
+    "db:migrate:deploy:sqlite": "pnpm --filter backend db:migrate:deploy:sqlite",
     "db:push": "pnpm --filter backend db:push",
     "db:migrate-registry-url": "pnpm --filter backend db:migrate-registry-url",
     "plugins:link": "node scripts/link-community-plugins.mjs",
