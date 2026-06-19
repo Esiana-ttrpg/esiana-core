@@ -42,8 +42,21 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
+function PluginEngineMismatchCallout({ message }: { message: string }) {
+  return (
+    <p className="rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+      {message}
+      <span className="mt-1 block text-amber-100/80">
+        This plugin is installed on this instance, but cannot be enabled until the host
+        version satisfies the engine constraint.
+      </span>
+    </p>
+  );
+}
+
 export function AdminPluginsTab() {
   const [plugins, setPlugins] = useState<SystemPluginRecord[]>([]);
+  const [hostCoreVersion, setHostCoreVersion] = useState('');
   const [campaignCapabilities, setCampaignCapabilities] = useState<
     CampaignPluginCapabilityRecord[]
   >([]);
@@ -73,6 +86,7 @@ export function AdminPluginsTab() {
   const refreshPlugins = useCallback(async () => {
     const response = await fetchAdminPlugins();
     setPlugins(response.plugins);
+    setHostCoreVersion(response.hostCoreVersion);
     setCampaignCapabilities(response.campaignCapabilities);
     return response;
   }, []);
@@ -86,6 +100,7 @@ export function AdminPluginsTab() {
       .then(([pluginResponse, settings]) => {
         if (cancelled) return;
         setPlugins(pluginResponse.plugins);
+        setHostCoreVersion(pluginResponse.hostCoreVersion);
         setCampaignCapabilities(pluginResponse.campaignCapabilities);
         setRegistryUrl(settings.plugins?.registryUrl ?? DEFAULT_PLUGIN_REGISTRY_URL);
       })
@@ -266,11 +281,19 @@ export function AdminPluginsTab() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-2 text-muted">
-        <Boxes className="size-5 text-primary" />
-        <p className="text-sm">
-          Discover extensions from a remote registry or install manifests directly.
-        </p>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-muted">
+          <Boxes className="size-5 text-primary" />
+          <p className="text-sm">
+            Discover extensions from a remote registry or install manifests directly.
+          </p>
+        </div>
+        {hostCoreVersion ? (
+          <p className="font-mono text-xs text-muted">
+            Host core version:{' '}
+            <span className="text-foreground">{hostCoreVersion}</span>
+          </p>
+        ) : null}
       </div>
 
       {(manifestError || registryError) && (
@@ -335,12 +358,23 @@ export function AdminPluginsTab() {
           Installed plugins
         </h2>
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {globalPlugins.length === 0 ? (
+            <p className="text-sm text-muted lg:col-span-2 xl:col-span-3">
+              No global plugins installed yet.
+            </p>
+          ) : null}
           {globalPlugins.map((plugin) => {
             const Icon = pluginIcon(plugin.id);
             const isExpanded = expandedId === plugin.id;
             const description =
               plugin.description ||
               'Platform extension installed on this instance.';
+            const engineMismatch = plugin.engineMismatch ?? null;
+            const lastVerifiedCore = plugin.compatibility?.lastVerifiedCore;
+            const showVerifiedInfo =
+              !engineMismatch &&
+              lastVerifiedCore &&
+              lastVerifiedCore !== hostCoreVersion;
 
             return (
               <article
@@ -369,20 +403,34 @@ export function AdminPluginsTab() {
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                        plugin.runtimeStatus === 'quarantined'
+                        engineMismatch
+                          ? 'border border-amber-500/30 bg-amber-500/15 text-amber-300'
+                          : plugin.runtimeStatus === 'quarantined'
                           ? 'border border-amber-500/30 bg-amber-500/15 text-amber-300'
                           : plugin.isEnabled
                             ? 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
                             : 'border border-border bg-elevated text-muted'
                       }`}
                     >
-                      {plugin.runtimeStatus === 'quarantined'
+                      {engineMismatch
+                        ? 'Incompatible'
+                        : plugin.runtimeStatus === 'quarantined'
                         ? 'Quarantined'
                         : plugin.isEnabled
                           ? 'Enabled'
                           : 'Disabled'}
                     </span>
                   </div>
+                  {engineMismatch ? (
+                    <div className="mb-3">
+                      <PluginEngineMismatchCallout message={engineMismatch} />
+                    </div>
+                  ) : null}
+                  {showVerifiedInfo ? (
+                    <p className="mb-3 text-xs text-muted">
+                      Last verified on core {lastVerifiedCore}.
+                    </p>
+                  ) : null}
                   {plugin.runtimeStatus === 'quarantined' && plugin.quarantineReason ? (
                     <p className="mb-3 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
                       Hook quarantine: {plugin.quarantineReason}
@@ -409,10 +457,19 @@ export function AdminPluginsTab() {
                     onSubmit={(e) => handleSavePlugin(e, plugin.id)}
                     className="space-y-4 border-t border-border bg-background/50 p-5"
                   >
+                    {engineMismatch ? (
+                      <PluginEngineMismatchCallout message={engineMismatch} />
+                    ) : null}
                     <ToggleRow
                       label="Enable plugin"
                       checked={draftEnabled}
+                      disabled={Boolean(engineMismatch)}
                       onChange={setDraftEnabled}
+                      description={
+                        engineMismatch
+                          ? 'Enable blocked — engine version mismatch.'
+                          : undefined
+                      }
                     />
                     {draftTemplate.length > 0 ? (
                       <PluginConfigForm

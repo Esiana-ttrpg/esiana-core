@@ -21,7 +21,8 @@ Env:
 ```text
 STORAGE_PROVIDER=filesystem
 STORAGE_REDIRECT_THRESHOLD_BYTES=5242880
-ESIANA_CORE_VERSION=0.8.0
+# Optional override — defaults to root package.json version when unset
+# ESIANA_CORE_VERSION=1.1.0
 ```
 
 ### Plugin manifest v2

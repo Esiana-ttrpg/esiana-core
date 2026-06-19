@@ -5,7 +5,8 @@
   "description": "Reference plugin demonstrating Pre-1.0 platform APIs.",
   "scope": "global",
   "category": "utility",
-  "engines": { "esiana-core": "^0.8.0" },
+  "engines": { "esiana-core": "^1.0.0" },
+  "compatibility": { "lastVerifiedCore": "0.8.0" },
   "permissions": [
     "plugin:data",
     "data:interceptor",

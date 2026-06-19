@@ -5,7 +5,8 @@
   "description": "Personal journal entries with optional publish-to-wiki — TodoMVC-style plugin example.",
   "scope": "campaign",
   "category": "utility",
-  "engines": { "esiana-core": "^0.8.0" },
+  "engines": { "esiana-core": "^1.0.0" },
+  "compatibility": { "lastVerifiedCore": "0.8.0" },
   "permissions": ["plugin:data", "ui:slot"],
   "uiSlots": ["dashboard", "campaign-plugin-settings"],
   "configTemplate": [

@@ -36,6 +36,7 @@ function buildManifestMetaConfig(manifest: PluginManifest): Record<string, unkno
       ...(manifest.uiSlots?.length ? { uiSlots: manifest.uiSlots } : {}),
       ...(manifest.permissions?.length ? { permissions: manifest.permissions } : {}),
       ...(manifest.engines ? { engines: manifest.engines } : {}),
+      ...(manifest.compatibility ? { compatibility: manifest.compatibility } : {}),
     },
   };
 }
@@ -72,6 +73,7 @@ export function serializeSystemPlugin(row: SystemPlugin) {
     uiSlots: meta?.uiSlots ?? [],
     permissions: meta?.permissions ?? [],
     engines: meta?.engines ?? {},
+    compatibility: meta?.compatibility,
     config: userConfig,
     updatedAt: row.updatedAt.toISOString(),
   };

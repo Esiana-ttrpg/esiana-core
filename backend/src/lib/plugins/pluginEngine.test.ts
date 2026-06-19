@@ -22,3 +22,16 @@ test('validatePluginEngines passes when constraint satisfied', () => {
     null,
   );
 });
+
+test('satisfiesEngineConstraint supports upper-bound ranges', () => {
+  assert.equal(satisfiesEngineConstraint('1.1.0', '>=1.0.0 <2.0.0'), true);
+  assert.equal(satisfiesEngineConstraint('2.0.0', '>=1.0.0 <2.0.0'), false);
+  assert.equal(satisfiesEngineConstraint('0.9.0', '>=1.0.0 <2.0.0'), false);
+});
+
+test('validatePluginEngines passes for 1.x host against ^1.0.0', () => {
+  assert.equal(
+    validatePluginEngines('1.1.0', { 'esiana-core': '^1.0.0' }),
+    null,
+  );
+});

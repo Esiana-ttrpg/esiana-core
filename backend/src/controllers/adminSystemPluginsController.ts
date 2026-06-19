@@ -25,12 +25,18 @@ import {
   readManifestForRecord,
   reloadPluginHost,
   syncInstalledPluginEnabled,
+  assertPluginCanEnable,
 } from '../plugins/pluginManager.js';
 import {
   collectAdminDiscoverablePluginEntries,
   mergeDiscoverablePluginEntries,
 } from '../lib/bundledPlugins.js';
 import { prisma } from '../lib/prisma.js';
+import { env } from '../config/env.js';
+import { validatePluginEngines } from '../lib/plugins/pluginEngine.js';
+import {
+  isPluginEngineMismatchError,
+} from '../lib/plugins/pluginEngineMismatchError.js';
 
 function parseConfigBody(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -68,8 +74,19 @@ function enrichPluginWithRuntime(
   } else if (isDevelopmentProvider) {
     adminDisplayLabel = `${plugin.name} (World Development provider)`;
   }
+
+  const engines =
+    runtimeManifest?.engines && Object.keys(runtimeManifest.engines).length
+      ? runtimeManifest.engines
+      : plugin.engines;
+  const compatibility = runtimeManifest?.compatibility ?? plugin.compatibility;
+  const engineMismatch = validatePluginEngines(env.coreVersion, engines);
+
   return {
     ...plugin,
+    engines,
+    ...(compatibility ? { compatibility } : {}),
+    engineMismatch,
     ...(adminDisplayLabel ? { adminDisplayLabel } : {}),
     runtimeStatus: installed?.runtimeStatus ?? 'active',
     quarantineReason: installed?.quarantineReason ?? null,
@@ -103,6 +120,7 @@ export async function listAdminPlugins(
   const installedByName = new Map(installedRows.map((row) => [row.name, row]));
 
   res.json({
+    hostCoreVersion: env.coreVersion,
     plugins: globalPlugins.map((plugin) => {
       const installed = installedByName.get(plugin.id);
       const serialized = serializeSystemPlugin(plugin);
@@ -235,10 +253,30 @@ export async function saveAdminPluginConfig(
     return;
   }
 
+  if (isEnabled === true) {
+    try {
+      await assertPluginCanEnable(pluginId);
+    } catch (err) {
+      if (isPluginEngineMismatchError(err)) {
+        res.status(409).json({ error: err.message, code: err.code });
+        return;
+      }
+      throw err;
+    }
+  }
+
   const row = await updateSystemPluginConfig(pluginId, config, isEnabled);
 
   if (isEnabled !== undefined) {
-    await syncInstalledPluginEnabled(pluginId, isEnabled);
+    try {
+      await syncInstalledPluginEnabled(pluginId, isEnabled);
+    } catch (err) {
+      if (isPluginEngineMismatchError(err)) {
+        res.status(409).json({ error: err.message, code: err.code });
+        return;
+      }
+      throw err;
+    }
   }
 
   res.json({ plugin: serializeSystemPlugin(row) });

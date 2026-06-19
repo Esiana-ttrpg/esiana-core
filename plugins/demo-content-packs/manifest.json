@@ -63,7 +63,8 @@
       "authorUrl": "https://github.com/Esiana-ttrpg/community-plugins"
     }
   ],
-  "engines": { "esiana-core": "^0.9.0" },
+  "engines": { "esiana-core": "^1.0.0" },
+  "compatibility": { "lastVerifiedCore": "0.9.0" },
   "permissions": ["plugin:data"],
   "githubUrl": "https://github.com/Esiana-ttrpg/community-plugins/tree/main/demo-content-packs"
 }

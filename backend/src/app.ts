@@ -30,7 +30,7 @@ import { bootstrapStorageRegistry } from './lib/storage/storageRegistry.js';
 import { ensureStorageProviderPluginReady } from './lib/storage/ensureStorageProviderPlugin.js';
 import { bootstrapGlobalTimeHooks } from './lib/globalTimeHooks/index.js';
 import { apiUsageLogger } from './middleware/apiLogger.js';
-import { installSystemLogCapture } from './lib/systemLogBuffer.js';
+import { isPluginEngineMismatchError } from './lib/plugins/pluginEngineMismatchError.js';
 import { startAssetRetentionSweep } from './lib/assetRetention.js';
 import { startNotificationSweep } from './lib/notifications/notificationScheduledJobs.js';
 import { pluginAssetsRouter } from './routes/pluginAssets.js';
@@ -115,6 +115,10 @@ export async function createApp(): Promise<Express> {
         err.message.includes('Unexpected upload')
       ) {
         res.status(400).json({ error: err.message });
+        return;
+      }
+      if (isPluginEngineMismatchError(err)) {
+        res.status(err.status).json({ error: err.message, code: err.code });
         return;
       }
       console.error(err);
