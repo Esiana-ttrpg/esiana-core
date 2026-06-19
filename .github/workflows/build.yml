@@ -54,11 +54,10 @@ jobs:
       - name: Prepare SQLite test database
         working-directory: backend
         run: |
-          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
-          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/migrations/migration_lock.toml
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
+          DATABASE_URL=file:./ci-test.db node prisma/scripts/deploy-sqlite-migrations.mjs --reset
+          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
           pnpm exec prisma generate
-          pnpm exec prisma migrate deploy
 
       - name: Run backend tests
         working-directory: backend

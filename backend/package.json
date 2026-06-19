@@ -10,6 +10,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:deploy:sqlite": "node prisma/scripts/deploy-sqlite-migrations.mjs --reset",
     "db:reconcile-migrations": "node prisma/scripts/reconcile-migration-checksums.mjs",
     "db:reset": "prisma migrate reset",
     "db:push": "prisma db push",
