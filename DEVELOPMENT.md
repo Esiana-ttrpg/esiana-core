@@ -61,18 +61,20 @@ If the UI shows `Request failed: 500` on every API call while the backend log lo
 | `/backend` | Node.js, Express, TypeScript, Prisma |
 | `/frontend` | React, Vite, Tailwind CSS, TypeScript |
 | `/shared` | Cross-workspace types and helpers |
-| `/plugins` | Runtime plugin directory (symlinked packages in dev) |
+| `/plugins` | Runtime plugin install directory (`PLUGINS_DIR`) — empty by default; not vendored in git |
 | `/docs` | In-repo engineering audits and internal specs |
 | `../docs` | Documentation wiki (features, API, self-hosting, plugin development) |
 | `../community-plugins` | Official plugin catalog (sibling repo) |
 
 ### Plugins
 
-Check out [`community-plugins`](../community-plugins) beside `esiana-core`, then:
+Check out [`community-plugins`](../community-plugins) beside `esiana-core` for first-party packages and the catalog index, then either:
 
 ```bash
-pnpm run plugins:link
+pnpm run plugins:link   # copy packages into PLUGINS_DIR for local dev
 ```
+
+or install from Admin → Sync Registry (default blob URL in [`community-plugins/README.md`](../community-plugins/README.md)).
 
 Restart the backend after manifest changes. See [plugins/README.md](./plugins/README.md) and [../docs/plugin-development/getting-started.md](../docs/plugin-development/getting-started.md).
 
@@ -97,7 +99,7 @@ Root scripts from [package.json](./package.json):
 | `pnpm run db:migrate:deploy:sqlite` | Apply migrations to SQLite (`dev.db`, resets by default) |
 | `pnpm run db:migrate` | Create/apply migrations interactively (PostgreSQL) |
 | `pnpm run db:push` | Push schema without migrations (Postgres disposable dev only) |
-| `pnpm run plugins:link` | Symlink sibling `community-plugins` packages |
+| `pnpm run plugins:link` | Copy sibling `community-plugins` packages into `PLUGINS_DIR` |
 | `pnpm run seed-campaign` | Run campaign seeder CLI |
 
 ---

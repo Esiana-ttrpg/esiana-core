@@ -25,7 +25,9 @@ uploads/*
 .vscode/*
 !.vscode/extensions.json
 
-# Shared TypeScript sources only — do not commit emitted artifacts
+# Runtime plugin installs (keep directory via README)
+plugins/*
+!plugins/README.md
 shared/**/*.js
 shared/**/*.js.map
 shared/**/*.d.ts

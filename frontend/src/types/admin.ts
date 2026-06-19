@@ -151,6 +151,33 @@ export interface PluginHistoryMeta {
   version?: string;
 }
 
+export type PluginInstalledFromType = 'registry' | 'manifest-url' | 'local-dev';
+
+export interface PluginInstalledFrom {
+  type: PluginInstalledFromType;
+  registryUrl?: string;
+  sourceRepo?: string;
+  commitSha?: string;
+}
+
+export function formatInstalledFromLabel(installedFrom?: PluginInstalledFrom): string | null {
+  if (!installedFrom) return null;
+  switch (installedFrom.type) {
+    case 'registry': {
+      const repo =
+        installedFrom.sourceRepo?.split('/').pop() ?? installedFrom.sourceRepo ?? 'registry';
+      const shortSha = installedFrom.commitSha?.slice(0, 12) ?? '';
+      return shortSha ? `${repo} (registry) @ ${shortSha}` : `${repo} (registry)`;
+    }
+    case 'manifest-url':
+      return 'Manifest URL';
+    case 'local-dev':
+      return 'Local development';
+    default:
+      return null;
+  }
+}
+
 export interface SystemPluginRecord {
   id: string;
   name: string;
@@ -175,6 +202,7 @@ export interface SystemPluginRecord {
   manifestChecksum?: string;
   trustedInstall?: boolean;
   commitSha?: string;
+  installedFrom?: PluginInstalledFrom;
   adminDisplayLabel?: string;
 }
 
@@ -197,6 +225,7 @@ export interface CampaignPluginCapabilityRecord {
   quarantinedAt?: string | null;
   commitSha?: string;
   trustedInstall?: boolean;
+  installedFrom?: PluginInstalledFrom;
 }
 
 export interface CampaignPluginDescriptor {

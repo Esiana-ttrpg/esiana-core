@@ -9,20 +9,24 @@ import {
 
 export type RegistrySortOption = 'name' | 'lastUpdated' | 'version';
 
-export type DiscoveryListStatus = 'installed' | 'bundled' | 'available' | 'catalogOnly';
+export type DiscoveryListStatus = 'installed' | 'available' | 'catalogOnly';
 
 export function deriveDiscoveryStatus(
   entry: PluginRegistryEntry,
   installed: boolean,
 ): DiscoveryListStatus {
   if (installed) return 'installed';
-  if (entry.source?.type === 'bundled') return 'bundled';
   if (isRegistryEntryInstallable(entry)) return 'available';
   return 'catalogOnly';
 }
 
-export function registryScopeLabel(scope: PluginScope): string {
-  return scope === PluginScopes.GLOBAL ? 'Global' : 'Campaign';
+export function formatRegistryEntrySource(
+  source?: { type?: string; repo?: string; commitSha?: string } | null,
+): string | null {
+  if (source?.type !== 'github' || !source.repo) return null;
+  const sha = source.commitSha?.trim() ?? '';
+  const pinned = /^[0-9a-f]{40}$/i.test(sha);
+  return pinned ? `${source.repo} @ ${sha.slice(0, 12)}` : source.repo;
 }
 
 export function resolveRegistryTags(entry: PluginRegistryEntry): string[] {
