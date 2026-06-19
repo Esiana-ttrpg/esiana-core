@@ -49,8 +49,10 @@ Open **http://localhost:5173**.
 ### Ports and proxy
 
 - Backend defaults to **PORT=3001** (`backend/.env.example`)
-- Vite runs on **5173** and proxies `/api` + `/uploads` to `VITE_API_PROXY_TARGET`
-- If backend stays on 3001, set `VITE_API_PROXY_TARGET=http://localhost:3001` in `frontend/.env`
+- Vite runs on **5173** and proxies `/api` + `/uploads` to **http://localhost:3001** by default (same as backend)
+- Override only if your backend uses a different port: set `VITE_API_PROXY_TARGET` in `frontend/.env` (copy from `frontend/.env.example`)
+
+If the UI shows `Request failed: 500` on every API call while the backend log looks healthy, check the Vite terminal for `http proxy error` / `ECONNREFUSED` — the proxy target likely does not match `PORT` in `backend/.env`.
 
 ### Repository layout
 
