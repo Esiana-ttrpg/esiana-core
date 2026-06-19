@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CloudDownload, Search } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { controlClasses } from '@/components/admin/adminFormStyles';
 import {
   ALL_PLUGIN_CATEGORIES,
@@ -19,6 +19,7 @@ import {
   matchesRegistryScopeFilter,
   matchesRegistrySearch,
   matchesRegistryTagFilter,
+  resolveRegistryTags,
   type RegistrySortOption,
 } from '@/lib/pluginRegistrySearch';
 import { PluginInstallConsent } from '@/components/admin/PluginInstallConsent';
@@ -41,7 +42,7 @@ function PluginCard({
   onInstall: () => void;
 }) {
   const categoryLabel = entry.category ? PLUGIN_CATEGORY_LABELS[entry.category] : null;
-  const displayTags = (entry.tags ?? []).slice(0, 5);
+  const displayTags = resolveRegistryTags(entry);
   const verifiedCore = formatRegistryVerifiedCore(entry);
 
   const badge = installed
@@ -115,14 +116,20 @@ export function PluginDiscoveryGrid({
   entries,
   installedIds,
   installingId,
+  syncingRegistry,
   onInstall,
-  title = 'Discoverable from registry',
+  onRefreshCatalog,
+  onInstallFromUrl,
+  onOpenPluginSources,
 }: {
   entries: PluginRegistryEntry[];
   installedIds: Set<string>;
   installingId: string | null;
+  syncingRegistry: boolean;
   onInstall: (entry: PluginRegistryEntry) => void;
-  title?: string;
+  onRefreshCatalog: () => void;
+  onInstallFromUrl: () => void;
+  onOpenPluginSources: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<PluginCategory | 'all'>('all');
@@ -143,21 +150,48 @@ export function PluginDiscoveryGrid({
     return [...filtered].sort((a, b) => compareRegistryEntries(a, b, sort));
   }, [entries, searchQuery, categoryFilter, scopeFilter, tagFilter, sort]);
 
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    categoryFilter !== 'all' ||
+    scopeFilter !== 'all' ||
+    tagFilter.length > 0;
+
   function toggleTagFilter(tag: string) {
     setTagFilter((current) =>
       current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag],
     );
   }
 
-  if (entries.length === 0) return null;
+  if (entries.length === 0) {
+    return (
+      <section className="space-y-4">
+        <div className="rounded-xl border border-border bg-surface/40 px-5 py-8 text-center">
+          <p className="text-sm text-foreground">No plugins were found in the catalog.</p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={onOpenPluginSources}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-elevated"
+            >
+              Open Plugin Sources
+            </button>
+            <button
+              type="button"
+              onClick={onRefreshCatalog}
+              disabled={syncingRegistry}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-elevated disabled:opacity-60"
+            >
+              <RefreshCw className={`size-4 ${syncingRegistry ? 'animate-spin' : ''}`} />
+              Refresh Catalog
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-4">
-      <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
-        <CloudDownload className="size-4 text-primary" />
-        {title}
-      </h2>
-
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface/40 p-4 lg:flex-row lg:items-end">
         <label className="min-w-0 flex-1">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
@@ -174,7 +208,28 @@ export function PluginDiscoveryGrid({
             />
           </div>
         </label>
-        <label className="w-full lg:w-44">
+        <div className="flex flex-wrap gap-2 lg:pb-0.5">
+          <button
+            type="button"
+            onClick={onRefreshCatalog}
+            disabled={syncingRegistry}
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-elevated disabled:opacity-60"
+          >
+            <RefreshCw className={`size-4 ${syncingRegistry ? 'animate-spin' : ''}`} />
+            Refresh Catalog
+          </button>
+          <button
+            type="button"
+            onClick={onInstallFromUrl}
+            className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-elevated"
+          >
+            Install from URL
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <label className="w-full sm:w-44">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
             Scope
           </span>
@@ -188,7 +243,7 @@ export function PluginDiscoveryGrid({
             <option value={PluginScopes.CAMPAIGN}>Campaign</option>
           </select>
         </label>
-        <label className="w-full lg:w-44">
+        <label className="w-full sm:w-44">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
             Sort
           </span>
@@ -251,26 +306,52 @@ export function PluginDiscoveryGrid({
         </div>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        {filteredEntries.map((entry) => {
-          const installed = installedIds.has(entry.id);
-          const installable = isRegistryEntryInstallable(entry);
-          return (
-            <PluginCard
-              key={entry.id}
-              entry={entry}
-              installed={installed}
-              installable={installable}
-              installing={installingId === entry.id}
-              onInstall={() => onInstall(entry)}
-            />
-          );
-        })}
-      </div>
-
       {filteredEntries.length === 0 ? (
-        <p className="text-sm text-muted">No registry entries match the current filters.</p>
-      ) : null}
+        <div className="rounded-xl border border-border bg-surface/40 px-5 py-8 text-center">
+          <p className="text-sm text-foreground">
+            {hasActiveFilters
+              ? 'No plugins match the current filters.'
+              : 'No plugins were found in the catalog.'}
+          </p>
+          {!hasActiveFilters ? (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={onOpenPluginSources}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-elevated"
+              >
+                Open Plugin Sources
+              </button>
+              <button
+                type="button"
+                onClick={onRefreshCatalog}
+                disabled={syncingRegistry}
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-elevated disabled:opacity-60"
+              >
+                <RefreshCw className={`size-4 ${syncingRegistry ? 'animate-spin' : ''}`} />
+                Refresh Catalog
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {filteredEntries.map((entry) => {
+            const installed = installedIds.has(entry.id);
+            const installable = isRegistryEntryInstallable(entry);
+            return (
+              <PluginCard
+                key={entry.id}
+                entry={entry}
+                installed={installed}
+                installable={installable}
+                installing={installingId === entry.id}
+                onInstall={() => onInstall(entry)}
+              />
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
