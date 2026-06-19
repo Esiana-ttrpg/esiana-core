@@ -17,6 +17,7 @@ import {
   collectRegistryTags,
   compareRegistryEntries,
   deriveDiscoveryStatus,
+  formatRegistryEntrySource,
   formatRegistryLastUpdated,
   formatRegistryVerifiedCore,
   matchesRegistryCategoryFilter,
@@ -293,6 +294,7 @@ export function PluginDiscoveryTable({
                 const installable = isRegistryEntryInstallable(entry);
                 const status = deriveDiscoveryStatus(entry, installed);
                 const verifiedCore = formatRegistryVerifiedCore(entry);
+                const sourceLabel = formatRegistryEntrySource(entry.source);
                 const displayTags = resolveRegistryTags(entry);
                 const expanded = expandedId === entry.id;
                 const installing = installingId === entry.id;
@@ -383,6 +385,11 @@ export function PluginDiscoveryTable({
                             ) : null}
                             {verifiedCore ? (
                               <p className="text-xs text-muted">{verifiedCore}</p>
+                            ) : null}
+                            {sourceLabel ? (
+                              <p className="font-mono text-xs text-muted">
+                                Source: {sourceLabel}
+                              </p>
                             ) : null}
                             <PluginInstallConsent entry={entry} />
                           </div>

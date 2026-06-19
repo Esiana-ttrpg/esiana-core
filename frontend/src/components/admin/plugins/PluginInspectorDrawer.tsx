@@ -16,6 +16,7 @@ import {
 } from '@/lib/pluginAdminPresentation';
 import { PLUGIN_CATEGORY_LABELS } from '@/lib/pluginManifest';
 import type { SystemPluginRecord } from '@/types/admin';
+import { formatInstalledFromLabel } from '@/types/admin';
 
 function InspectorSection({
   title,
@@ -76,6 +77,9 @@ export function PluginInspectorDrawer({
 
   const status = deriveListStatus(row);
   const globalPlugin = getGlobalPluginFromRow(row);
+  const installedFrom =
+    globalPlugin?.installedFrom ??
+    ('installedFrom' in row.source ? row.source.installedFrom : undefined);
   const category =
     'category' in row.source && row.source.category
       ? PLUGIN_CATEGORY_LABELS[row.source.category]
@@ -208,19 +212,23 @@ export function PluginInspectorDrawer({
               </InspectorSection>
             ) : null}
 
-            {globalPlugin &&
-            (globalPlugin.trustedInstall ||
-              globalPlugin.commitSha ||
-              globalPlugin.manifestChecksum) ? (
+            {(installedFrom ||
+              globalPlugin?.trustedInstall ||
+              globalPlugin?.manifestChecksum) ? (
               <InspectorSection title="Install provenance">
                 <dl className="space-y-2 text-sm text-muted">
-                  {globalPlugin.trustedInstall ? (
-                    <DetailRow label="Trust" value="Trusted install (SHA-pinned or bundled)" />
+                  {installedFrom ? (
+                    <DetailRow
+                      label="Installed from"
+                      value={
+                        formatInstalledFromLabel(installedFrom) ?? installedFrom.type
+                      }
+                    />
                   ) : null}
-                  {globalPlugin.commitSha ? (
-                    <DetailRow label="Commit" value={globalPlugin.commitSha.slice(0, 12)} />
+                  {globalPlugin?.trustedInstall ? (
+                    <DetailRow label="Trust" value="Trusted install (SHA-pinned)" />
                   ) : null}
-                  {globalPlugin.manifestChecksum ? (
+                  {globalPlugin?.manifestChecksum ? (
                     <DetailRow
                       label="Manifest"
                       value={`${globalPlugin.manifestChecksum.slice(0, 16)}…`}

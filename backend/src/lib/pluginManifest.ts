@@ -1,6 +1,6 @@
-/** Official community plugin catalog index. */
+/** Official community plugin catalog index (blob link — normalized to raw on fetch). */
 export const DEFAULT_PLUGIN_REGISTRY_URL =
-  'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/registry.json';
+  'https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json';
 
 /** Monorepo / dev default — same catalog, local file fallback in bundledPlugins. */
 export const DEV_PLUGIN_REGISTRY_URL = DEFAULT_PLUGIN_REGISTRY_URL;
@@ -8,10 +8,10 @@ export const DEV_PLUGIN_REGISTRY_URL = DEFAULT_PLUGIN_REGISTRY_URL;
 /** Previous placeholder URLs replaced by {@link DEFAULT_PLUGIN_REGISTRY_URL}. */
 export const LEGACY_PLUGIN_REGISTRY_URLS = [
   'https://raw.githubusercontent.com/esiana-app/core-plugins/main/registry.json',
+  'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/registry.json',
   'https://github.com/esiana-ttrpg/community-plugins/registry.json',
   'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/manifest.json',
   'https://github.com/Esiana-ttrpg/community-plugins/blob/main/manifest.json',
-  'https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json',
   'https://raw.githubusercontent.com/esiana-ttrpg/esiana/main/plugins/registry.json',
 ] as const;
 

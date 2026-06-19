@@ -189,7 +189,7 @@ model SystemSetting {
   systemBannerText        String?
   systemBannerExpiresAt   DateTime?
 
-  pluginRegistryUrl String @default("https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/registry.json")
+  pluginRegistryUrl String @default("https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json")
 
   globalTitle        String @default("Esiana")
   globalLogoUrl      String?
