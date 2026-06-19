@@ -124,6 +124,10 @@ export interface PluginConfigTemplateField {
   options?: string[];
 }
 
+export interface PluginCompatibilityMeta {
+  lastVerifiedCore?: string;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -138,8 +142,10 @@ export interface PluginManifest {
   githubUrl?: string;
   /** Declared capabilities (storage:provider, plugin:data, network:fetch, …). */
   permissions?: string[];
-  /** Host compatibility, e.g. { "esiana-core": "^0.8.0" }. */
+  /** Host compatibility, e.g. { "esiana-core": "^0.8.0" }. Hard runtime constraint. */
   engines?: Record<string, string>;
+  /** Informational trust signal — never enforced at runtime. */
+  compatibility?: PluginCompatibilityMeta;
   /** Inline JSON Schema subset for settings UI (Phase 10D auto-render). */
   configSchema?: Record<string, unknown>;
   /** Phase 10 stub — auto-render settings from remote schema (not implemented). */
@@ -229,6 +235,7 @@ export interface StoredPluginManifestMeta {
   configSchemaUrl?: string;
   permissions?: string[];
   engines?: Record<string, string>;
+  compatibility?: PluginCompatibilityMeta;
   uiSlots?: PluginUiSlotId[];
 }
 
@@ -607,6 +614,26 @@ function parseEngines(raw: unknown, errors: string[]): Record<string, string> | 
   return engines;
 }
 
+const CORE_VERSION_PATTERN = /^\d+\.\d+\.\d+/;
+
+function parseCompatibility(
+  raw: unknown,
+  errors: string[],
+): PluginCompatibilityMeta | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) {
+    errors.push('compatibility must be an object');
+    return undefined;
+  }
+  const lastVerifiedCore =
+    typeof raw.lastVerifiedCore === 'string' ? raw.lastVerifiedCore.trim() : undefined;
+  if (lastVerifiedCore !== undefined && !CORE_VERSION_PATTERN.test(lastVerifiedCore)) {
+    errors.push('compatibility.lastVerifiedCore must be a semver string (e.g. 1.0.0)');
+  }
+  if (!lastVerifiedCore) return undefined;
+  return { lastVerifiedCore };
+}
+
 export function validatePluginManifest(raw: unknown): ManifestValidationResult {
   const errors: string[] = [];
 
@@ -651,6 +678,7 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
     typeof raw.configSchemaUrl === 'string' ? raw.configSchemaUrl.trim() : undefined;
   const permissions = parseStringArray(raw.permissions, 'permissions', errors);
   const engines = parseEngines(raw.engines, errors);
+  const compatibility = parseCompatibility(raw.compatibility, errors);
   const configSchema =
     raw.configSchema !== undefined && isRecord(raw.configSchema)
       ? (raw.configSchema as Record<string, unknown>)
@@ -714,6 +742,7 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
       ...(githubUrl ? { githubUrl } : {}),
       ...(permissions?.length ? { permissions } : {}),
       ...(engines && Object.keys(engines).length ? { engines } : {}),
+      ...(compatibility ? { compatibility } : {}),
       ...(configSchema ? { configSchema } : {}),
       ...(configSchemaUrl ? { configSchemaUrl } : {}),
       ...(uiSlots?.length ? { uiSlots } : {}),
@@ -885,6 +914,18 @@ export function extractManifestMeta(
     raw.engines && typeof raw.engines === 'object' && !Array.isArray(raw.engines)
       ? (raw.engines as Record<string, string>)
       : undefined;
+  const compatibilityRaw = raw.compatibility;
+  const compatibility =
+    compatibilityRaw &&
+    typeof compatibilityRaw === 'object' &&
+    !Array.isArray(compatibilityRaw) &&
+    typeof (compatibilityRaw as Record<string, unknown>).lastVerifiedCore === 'string'
+      ? {
+          lastVerifiedCore: (
+            (compatibilityRaw as Record<string, unknown>).lastVerifiedCore as string
+          ).trim(),
+        }
+      : undefined;
   const configSchema =
     raw.configSchema && typeof raw.configSchema === 'object' && !Array.isArray(raw.configSchema)
       ? (raw.configSchema as Record<string, unknown>)
@@ -904,6 +945,7 @@ export function extractManifestMeta(
     ...(configSchemaUrl ? { configSchemaUrl } : {}),
     ...(permissions?.length ? { permissions } : {}),
     ...(engines ? { engines } : {}),
+    ...(compatibility ? { compatibility } : {}),
     ...(uiSlots?.length ? { uiSlots } : {}),
   };
 }

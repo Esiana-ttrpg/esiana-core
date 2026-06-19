@@ -139,6 +139,10 @@ export interface PublicSystemStatus {
   defaultUiLocale: string | null;
 }
 
+export interface PluginCompatibilityMeta {
+  lastVerifiedCore?: string;
+}
+
 export interface SystemPluginRecord {
   id: string;
   name: string;
@@ -153,6 +157,8 @@ export interface SystemPluginRecord {
   uiSlots?: string[];
   permissions?: string[];
   engines?: Record<string, string>;
+  compatibility?: PluginCompatibilityMeta;
+  engineMismatch?: string | null;
   config: Record<string, unknown>;
   updatedAt: string;
   runtimeStatus?: string;

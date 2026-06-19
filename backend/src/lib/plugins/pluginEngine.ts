@@ -29,9 +29,19 @@ export function satisfiesEngineConstraint(
   }
 
   if (trimmed.startsWith('>=')) {
-    const base = parseVersion(trimmed.slice(2));
-    if (!base) return false;
-    return compareVersions(host, base) >= 0;
+    const upperBoundMatch = /^>=([^\s<]+)(?:\s*<(.+))?$/.exec(trimmed);
+    if (upperBoundMatch) {
+      const min = parseVersion(upperBoundMatch[1]);
+      if (!min) return false;
+      if (compareVersions(host, min) < 0) return false;
+      const maxRaw = upperBoundMatch[2]?.trim();
+      if (maxRaw) {
+        const max = parseVersion(maxRaw);
+        if (!max) return false;
+        return compareVersions(host, max) < 0;
+      }
+      return true;
+    }
   }
 
   const exact = parseVersion(trimmed);

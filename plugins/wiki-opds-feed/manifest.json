@@ -5,7 +5,8 @@
   "description": "Syndicate public campaign wiki pages to e-readers via OPDS 1.2 Atom (read-only).",
   "scope": "campaign",
   "category": "wiki",
-  "engines": { "esiana-core": "^0.8.0" },
+  "engines": { "esiana-core": "^1.0.0" },
+  "compatibility": { "lastVerifiedCore": "0.8.0" },
   "permissions": ["feed:public", "wiki:read-public", "feed:opds", "ui:slot"],
   "uiSlots": ["campaign-plugin-settings"],
   "configTemplate": [

@@ -24,6 +24,7 @@ export interface PluginRegistryInstallResponse {
 }
 
 export interface AdminPluginsResponse {
+  hostCoreVersion: string;
   plugins: SystemPluginRecord[];
   campaignCapabilities: CampaignPluginCapabilityRecord[];
 }
