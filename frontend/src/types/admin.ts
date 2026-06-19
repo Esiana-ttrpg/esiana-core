@@ -136,6 +136,7 @@ export interface PublicSystemStatus {
   appearanceProfile?: ThemeProfile | null;
   footer: FooterConfig;
   defaultTimezone: string;
+  defaultUiLocale: string | null;
 }
 
 export interface SystemPluginRecord {
