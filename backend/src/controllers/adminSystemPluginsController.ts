@@ -33,7 +33,6 @@ import {
 } from '../lib/bundledPlugins.js';
 import { prisma } from '../lib/prisma.js';
 import { env } from '../config/env.js';
-import { validatePluginEngines } from '../lib/plugins/pluginEngine.js';
 import {
   isPluginEngineMismatchError,
 } from '../lib/plugins/pluginEngineMismatchError.js';
@@ -80,13 +79,11 @@ function enrichPluginWithRuntime(
       ? runtimeManifest.engines
       : plugin.engines;
   const compatibility = runtimeManifest?.compatibility ?? plugin.compatibility;
-  const engineMismatch = validatePluginEngines(env.coreVersion, engines);
 
   return {
     ...plugin,
     engines,
     ...(compatibility ? { compatibility } : {}),
-    engineMismatch,
     ...(adminDisplayLabel ? { adminDisplayLabel } : {}),
     runtimeStatus: installed?.runtimeStatus ?? 'active',
     quarantineReason: installed?.quarantineReason ?? null,
@@ -102,10 +99,13 @@ export async function listAdminPlugins(
   _req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
-  const [globalPlugins, campaignCapabilities] = await Promise.all([
+  const [globalPlugins, campaignCapabilities, campaignSystemRows] = await Promise.all([
     listSystemPluginsByScope(PluginScopes.GLOBAL),
     listAvailableCampaignPlugins(),
+    listSystemPluginsByScope(PluginScopes.CAMPAIGN),
   ]);
+
+  const campaignSystemById = new Map(campaignSystemRows.map((row) => [row.id, row]));
 
   const installedRows = await prisma.installedPlugin.findMany({
     where: {
@@ -130,8 +130,13 @@ export async function listAdminPlugins(
     campaignCapabilities: campaignCapabilities.map((capability) => {
       const installed = installedByName.get(capability.id);
       const runtimeManifest = installed ? readManifestForRecord(installed) : null;
+      const systemRow = campaignSystemById.get(capability.id);
+      const compatibility = runtimeManifest?.compatibility;
       return {
         ...capability,
+        ...(compatibility ? { compatibility } : {}),
+        installedAt: systemRow?.installedAt.toISOString(),
+        updatedAt: systemRow?.updatedAt.toISOString(),
         runtimeStatus: installed?.runtimeStatus ?? 'active',
         quarantineReason: installed?.quarantineReason ?? null,
         quarantinedAt: installed?.quarantinedAt?.toISOString() ?? null,

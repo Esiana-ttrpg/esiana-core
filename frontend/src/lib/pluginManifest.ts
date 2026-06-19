@@ -106,6 +106,12 @@ export interface PluginRegistryEntry {
   githubUrl?: string;
   configSchemaUrl?: string;
   permissions?: string[];
+  compatibility?: {
+    lastVerified?: string;
+    lastVerifiedCore?: string;
+  };
+  lastUpdated?: string;
+  tags?: string[];
   cspExtensions?: {
     connectSrc?: string[];
     imgSrc?: string[];

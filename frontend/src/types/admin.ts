@@ -140,7 +140,15 @@ export interface PublicSystemStatus {
 }
 
 export interface PluginCompatibilityMeta {
+  lastVerified?: string;
   lastVerifiedCore?: string;
+}
+
+export interface PluginHistoryMeta {
+  lastUpdated?: string;
+  lastVerified?: string;
+  lastVerifiedCoreVersion?: string;
+  version?: string;
 }
 
 export interface SystemPluginRecord {
@@ -158,7 +166,6 @@ export interface SystemPluginRecord {
   permissions?: string[];
   engines?: Record<string, string>;
   compatibility?: PluginCompatibilityMeta;
-  engineMismatch?: string | null;
   config: Record<string, unknown>;
   updatedAt: string;
   runtimeStatus?: string;
@@ -168,6 +175,7 @@ export interface SystemPluginRecord {
   manifestChecksum?: string;
   trustedInstall?: boolean;
   commitSha?: string;
+  adminDisplayLabel?: string;
 }
 
 export interface CampaignPluginCapabilityRecord {
@@ -181,6 +189,9 @@ export interface CampaignPluginCapabilityRecord {
   configSchema?: Record<string, unknown>;
   uiSlots?: string[];
   frontendEntry?: string | null;
+  compatibility?: PluginCompatibilityMeta;
+  installedAt?: string;
+  updatedAt?: string;
   runtimeStatus?: string;
   quarantineReason?: string | null;
   quarantinedAt?: string | null;
