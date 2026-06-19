@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import {
   PROGRESSION_SECTIONS,
@@ -17,11 +17,19 @@ export function ProgressionSectionTabs({
   basePath,
   activeSection,
 }: ProgressionSectionTabsProps) {
+  const navigate = useNavigate();
   const listboxId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+
+  const goToSection = useCallback(
+    (section: ProgressionSectionId) => {
+      navigate(progressionSectionHref(basePath, section));
+    },
+    [basePath, navigate],
+  );
 
   const activeLabel =
     PROGRESSION_SECTIONS.find((section) => section.id === activeSection)?.label ??
@@ -71,15 +79,16 @@ export function ProgressionSectionTabs({
           aria-label="Progression sections"
         >
           {PROGRESSION_SECTIONS.map((section) => (
-            <NavLink
+            <button
               key={section.id}
-              to={progressionSectionHref(basePath, section.id)}
+              type="button"
               role="tab"
               aria-selected={activeSection === section.id}
-              className={({ isActive }) => workspaceRailTabClass(isActive)}
+              className={workspaceRailTabClass(activeSection === section.id)}
+              onClick={() => goToSection(section.id)}
             >
               {section.label}
-            </NavLink>
+            </button>
           ))}
         </div>
       </div>
@@ -113,12 +122,15 @@ export function ProgressionSectionTabs({
               const isSelected = activeSection === section.id;
               const isHighlighted = index === highlightIndex;
               return (
-                <NavLink
+                <button
                   key={section.id}
-                  to={progressionSectionHref(basePath, section.id)}
+                  type="button"
                   role="option"
                   aria-selected={isSelected}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    goToSection(section.id);
+                  }}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 text-sm ${
                     isHighlighted ? 'bg-elevated/80' : ''
                   } ${isSelected ? 'font-medium text-primary' : 'text-foreground hover:bg-elevated/60'}`}
@@ -127,7 +139,7 @@ export function ProgressionSectionTabs({
                   {isSelected ? (
                     <Check className="size-4 shrink-0 text-primary" aria-hidden />
                   ) : null}
-                </NavLink>
+                </button>
               );
             })}
           </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { getWikiEditorMarkdown } from '@/components/wiki/createWikiEditor';
 import {
@@ -40,6 +40,12 @@ export function useEditorInstrumentation(
   options: UseEditorInstrumentationOptions = {},
 ): EditorInstrumentationState {
   const enabled = options.enabled !== false;
+  const campaignHandle = options.campaignHandle;
+  const pageId = options.pageId;
+  const pageTitle = options.pageTitle;
+  const onSessionFlushRef = useRef(options.onSessionFlush);
+  onSessionFlushRef.current = options.onSessionFlush;
+
   const [sessionWordDelta, setSessionWordDelta] = useState(0);
   const [sessionDurationMs, setSessionDurationMs] = useState(0);
   const [linksAdded, setLinksAdded] = useState(0);
@@ -69,7 +75,7 @@ export function useEditorInstrumentation(
 
   const flushSession = useCallback(async () => {
     if (!enabled || flushed.current || !editor) return;
-    if (!options.campaignHandle || !options.pageId) return;
+    if (!campaignHandle || !pageId) return;
 
     const markdown = getWikiEditorMarkdown(editor);
     const wordDelta = countWords(markdown) - baselineWords.current;
@@ -80,18 +86,18 @@ export function useEditorInstrumentation(
 
     flushed.current = true;
     try {
-      await flushWritingSession(options.campaignHandle, {
-        pageId: options.pageId,
-        pageTitle: options.pageTitle ?? 'Untitled',
+      await flushWritingSession(campaignHandle, {
+        pageId,
+        pageTitle: pageTitle ?? 'Untitled',
         durationMs,
         wordDelta,
         linksAdded: linkDelta,
       });
-      options.onSessionFlush?.();
+      onSessionFlushRef.current?.();
     } catch {
       flushed.current = false;
     }
-  }, [enabled, editor, options]);
+  }, [enabled, editor, campaignHandle, pageId, pageTitle]);
 
   useEffect(() => {
     if (!editor || !enabled) return;
@@ -161,12 +167,22 @@ export function useEditorInstrumentation(
     setSessionDurationMs(0);
   }, []);
 
-  return {
-    sessionWordDelta,
-    sessionDurationMs,
-    linksAdded,
-    isFocused,
-    breakNudgeVisible,
-    dismissBreakNudge,
-  };
+  return useMemo(
+    () => ({
+      sessionWordDelta,
+      sessionDurationMs,
+      linksAdded,
+      isFocused,
+      breakNudgeVisible,
+      dismissBreakNudge,
+    }),
+    [
+      sessionWordDelta,
+      sessionDurationMs,
+      linksAdded,
+      isFocused,
+      breakNudgeVisible,
+      dismissBreakNudge,
+    ],
+  );
 }
