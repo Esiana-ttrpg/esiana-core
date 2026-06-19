@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(__dirname, '../..');
 const repoRoot = path.resolve(backendRoot, '..');
 
-dotenv.config({ path: path.join(backendRoot, '.env') });
+dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
 
 function resolvePath(relative: string, base: string): string {
   return path.isAbsolute(relative) ? relative : path.resolve(base, relative);
