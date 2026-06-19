@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import GridLayout, { type Layout } from 'react-grid-layout';
 import { Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { updateDashboardLayout } from '@/lib/dashboard';
 import {
   DASHBOARD_MAX_ENABLED_WIDGETS,
@@ -11,6 +12,7 @@ import {
   type DashboardWidgetId,
   type DashboardWidgetPlacement,
 } from '@/lib/dashboardConfig';
+import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
 import type { DashboardSummary } from '@/lib/dashboardSummary';
 import { CalendarWidget } from '@/components/dashboard/widgets/CalendarWidget';
 import { CampaignBulletinWidget } from '@/components/dashboard/widgets/CampaignBulletinWidget';
@@ -72,6 +74,7 @@ export function DashboardGrid({
   onConfigChange,
   onLayoutSavingChange,
 }: DashboardGridProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [gridWidth, setGridWidth] = useState(960);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -108,13 +111,13 @@ export function DashboardGrid({
         onConfigChange(saved);
       } catch (err) {
         window.alert(
-          err instanceof Error ? err.message : 'Failed to save dashboard layout.',
+          err instanceof Error ? err.message : t('campaign.dashboard.layoutSaveFailed'),
         );
       } finally {
         onLayoutSavingChange?.(false);
       }
     },
-    [campaignHandle, onConfigChange, onLayoutSavingChange],
+    [campaignHandle, onConfigChange, onLayoutSavingChange, t],
   );
 
   const scheduleSave = useCallback(
@@ -287,7 +290,9 @@ export function DashboardGrid({
           <aside
             className={`${SURFACE_OPERATIONAL_CLASS} absolute right-0 top-0 w-52 rounded-xl border border-border/40 bg-background/90 p-3 shadow-lg backdrop-blur-sm`}
           >
-            <h3 className="mb-2 text-sm font-medium text-muted">Widget bank</h3>
+            <h3 className="mb-2 text-sm font-medium text-muted">
+              {t('campaign.dashboard.widgetBank')}
+            </h3>
             <ul className="space-y-2">
               {hiddenWidgets.map((widget) => (
                 <li key={widget.id}>
@@ -297,9 +302,12 @@ export function DashboardGrid({
                     className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border px-2 py-2 text-left text-xs text-foreground hover:border-primary/50 hover:text-primary"
                   >
                     <Plus className="size-3.5 shrink-0" />
-                    {DASHBOARD_WIDGET_LABELS[widget.id as DashboardWidgetId] ??
-                      parsePluginWidgetPlacementId(widget.id)?.widgetId ??
-                      widget.id}
+                    {translateDashboardWidgetLabel(
+                      widget.id as DashboardWidgetId,
+                      DASHBOARD_WIDGET_LABELS[widget.id as DashboardWidgetId] ??
+                        parsePluginWidgetPlacementId(widget.id)?.widgetId ??
+                        widget.id,
+                    )}
                   </button>
                 </li>
               ))}
