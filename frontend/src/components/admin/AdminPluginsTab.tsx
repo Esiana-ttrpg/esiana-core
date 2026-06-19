@@ -18,7 +18,7 @@ import {
 } from '@/lib/pluginManifest';
 import type { CampaignPluginCapabilityRecord, SystemPluginRecord } from '@/types/admin';
 import { mergePluginConfigFields } from '@/lib/configSchemaParser';
-import { PluginDiscoveryGrid } from '@/components/admin/PluginDiscoveryGrid';
+import { PluginDiscoveryTable } from '@/components/admin/plugins/PluginDiscoveryTable';
 import {
   PluginAdminTabBar,
   type PluginAdminView,
@@ -404,7 +404,7 @@ export function AdminPluginsTab() {
             </p>
           )}
 
-          <PluginDiscoveryGrid
+          <PluginDiscoveryTable
             entries={discovered}
             installedIds={installedIds}
             installingId={installingId}

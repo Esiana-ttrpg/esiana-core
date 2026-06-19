@@ -1,4 +1,5 @@
 import {
+  isRegistryEntryInstallable,
   PLUGIN_CATEGORY_LABELS,
   PluginScopes,
   type PluginCategory,
@@ -7,6 +8,22 @@ import {
 } from '@/lib/pluginManifest';
 
 export type RegistrySortOption = 'name' | 'lastUpdated' | 'version';
+
+export type DiscoveryListStatus = 'installed' | 'bundled' | 'available' | 'catalogOnly';
+
+export function deriveDiscoveryStatus(
+  entry: PluginRegistryEntry,
+  installed: boolean,
+): DiscoveryListStatus {
+  if (installed) return 'installed';
+  if (entry.source?.type === 'bundled') return 'bundled';
+  if (isRegistryEntryInstallable(entry)) return 'available';
+  return 'catalogOnly';
+}
+
+export function registryScopeLabel(scope: PluginScope): string {
+  return scope === PluginScopes.GLOBAL ? 'Global' : 'Campaign';
+}
 
 export function resolveRegistryTags(entry: PluginRegistryEntry): string[] {
   if (entry.tags?.length) return entry.tags.slice(0, 5);
