@@ -22,7 +22,7 @@ export interface MarkdownPackImportResult {
   slugToPageId: Map<string, string>;
 }
 
-function extractTitleFromBody(body: string): string | null {
+export function extractTitleFromBody(body: string): string | null {
   const match = body.match(/^#\s+(.+)$/m);
   return match?.[1]?.trim() ?? null;
 }
