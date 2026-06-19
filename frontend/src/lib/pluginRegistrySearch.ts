@@ -20,6 +20,10 @@ export function deriveDiscoveryStatus(
   return 'catalogOnly';
 }
 
+export function registryScopeLabel(scope: PluginScope): string {
+  return scope === PluginScopes.GLOBAL ? 'Global' : 'Campaign';
+}
+
 export function formatRegistryEntrySource(
   source?: { type?: string; repo?: string; commitSha?: string } | null,
 ): string | null {
