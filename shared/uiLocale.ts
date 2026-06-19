@@ -3,7 +3,7 @@
  */
 
 /** Locales with shipped translation bundles. Community PRs extend this list. */
-export const SHIPPED_UI_LOCALES = ['en'] as const;
+export const SHIPPED_UI_LOCALES = ['en', 'fr'] as const;
 
 export type ShippedUiLocale = (typeof SHIPPED_UI_LOCALES)[number];
 
@@ -31,10 +31,14 @@ export function uiLocaleLanguageTag(locale: string): string {
 export function resolveEffectiveUiLocale(input: {
   userUiLocale?: string | null;
   browserLanguage?: string | null;
+  instanceDefaultLocale?: string | null;
   fallback?: string;
 }): string {
   const user = sanitizeUiLocale(input.userUiLocale ?? null);
   if (user) return uiLocaleLanguageTag(user);
+
+  const instance = resolveInstanceDefaultUiLocale(input.instanceDefaultLocale);
+  if (instance) return instance;
 
   const browser = input.browserLanguage?.trim();
   if (browser) {
@@ -44,6 +48,14 @@ export function resolveEffectiveUiLocale(input: {
 
   const fallback = input.fallback ?? 'en';
   return uiLocaleLanguageTag(fallback);
+}
+
+/** Instance default from env/admin — only applies when the locale is shipped. */
+export function resolveInstanceDefaultUiLocale(raw: unknown): string | null {
+  const sanitized = sanitizeUiLocale(raw);
+  if (!sanitized) return null;
+  const tag = uiLocaleLanguageTag(sanitized);
+  return isShippedUiLocale(tag) ? tag : null;
 }
 
 export function isShippedUiLocale(languageTag: string): boolean {

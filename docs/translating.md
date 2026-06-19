@@ -61,13 +61,21 @@ Fails when:
 - key prefix does not match file path
 - duplicate keys across files
 - non-string values (nested objects)
+- community locale defines a key missing from `en`
+
+Informational completion report (non-gating):
+
+```bash
+pnpm --filter frontend report:i18n
+```
 
 ## PR checklist
 
 1. Feature PRs add `en` keys in the matching domain file.
-2. Translation PRs mirror the `en/` folder structure under `fr/` (or other locale).
-3. Link terminology-sensitive keys to [terminology.md](./terminology.md).
-4. Do not translate user-authored campaign content in examples or screenshots.
+2. Translation PRs mirror the `en/` folder structure under `fr/` (or other locale). **Partial coverage is welcome.**
+3. When adding a new shipped locale, update `SHIPPED_UI_LOCALES` in [`shared/uiLocale.ts`](../shared/uiLocale.ts).
+4. Link terminology-sensitive keys to [terminology.md](./terminology.md).
+5. Do not translate user-authored campaign content in examples or screenshots.
 
 ## Adding a new domain file
 
@@ -89,4 +97,10 @@ Fails when:
 
 Shipped UI bundles are listed in [`shared/uiLocale.ts`](../shared/uiLocale.ts) (`SHIPPED_UI_LOCALES`). Community locales merge on top of English for missing keys.
 
+**Starter slice (fr):** `common.json`, `home.json`, `navigation/*`, `profile/preferences.json` — expand domain-by-domain via contributor PRs.
+
 Ready for maintainer review after CI passes.
+
+## Hosted translation platforms (deferred)
+
+Weblate, Crowdin, automated sync, and maintainer dashboards are out of scope until active non-English contributors appear. Track in [deferred-backlog.md](./deferred-backlog.md).

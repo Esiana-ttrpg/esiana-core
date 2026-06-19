@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "validate:i18n": "node scripts/validate-i18n-keys.mjs",
+    "report:i18n": "node scripts/validate-i18n-keys.mjs --report-locales",
     "test": "node scripts/run-tests.mjs"
   },
   "dependencies": {

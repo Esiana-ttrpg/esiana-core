@@ -6,11 +6,12 @@ import { fetchUserProfile, updateUserProfile } from '@/lib/user';
 
 const LOCALE_LABEL_KEYS: Record<string, string> = {
   en: 'profile.preferences.uiLocaleEnglish',
+  fr: 'profile.preferences.uiLocaleFrench',
 };
 
 export function UserUiLanguageSection() {
   const { t } = useTranslation();
-  const { applyLanguage } = useLocale();
+  const { applyLanguage, instanceDefaultLocale } = useLocale();
   const [value, setValue] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,6 +51,7 @@ export function UserUiLanguageSection() {
         await applyLanguage(
           resolveEffectiveUiLocale({
             userUiLocale: updated.uiLocale ?? null,
+            instanceDefaultLocale,
             browserLanguage:
               typeof navigator !== 'undefined' ? navigator.language : null,
           }),
@@ -65,7 +67,7 @@ export function UserUiLanguageSection() {
         setSaving(false);
       }
     },
-    [applyLanguage, t],
+    [applyLanguage, instanceDefaultLocale, t],
   );
 
   return (

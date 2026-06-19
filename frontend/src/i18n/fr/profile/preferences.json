@@ -1,0 +1,9 @@
+{
+  "profile.preferences.uiLocaleLabel": "Langue de l'interface",
+  "profile.preferences.uiLocaleHint": "Contrôle les menus et boutons d'Esiana. Le contenu wiki de campagne reste tel que vous l'écrivez.",
+  "profile.preferences.uiLocaleAuto": "Automatique (navigateur)",
+  "profile.preferences.uiLocaleEnglish": "Anglais",
+  "profile.preferences.uiLocaleFrench": "Français",
+  "profile.preferences.uiLocaleSaved": "Préférence de langue enregistrée.",
+  "profile.preferences.uiLocaleSaveFailed": "Impossible d'enregistrer la préférence de langue."
+}

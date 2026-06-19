@@ -45,5 +45,21 @@ Product terms (**Campaign Home**, **Game Master**, **Writer**, **Player**) are d
 2. **Shell (Phase 1):** sidebar, campaign settings chrome, notifications labels, global hub
 3. **Workspaces (Phase 2):** incremental domain folders under `campaign/`
 4. **Notifications (Phase 3 — shipped):** structured `metadata.renderVersion` + template vars; localized render at read time in inbox/bell; email uses recipient `uiLocale`
+5. **Community locales (Phase 4 — shipped):** in-repo `fr/` starter slice, `SHIPPED_UI_LOCALES`, instance default via `ESIANA_DEFAULT_LOCALE`, locale completion report script
 
 Full UI coverage is incremental; English remains complete throughout.
+
+## Instance default locale
+
+Self-hosted instances may set `ESIANA_DEFAULT_LOCALE` (BCP 47, e.g. `fr`) in the backend environment. When a user leaves interface language on **Automatic**, resolution order is:
+
+1. `User.uiLocale` (if set)
+2. Instance default (if set and shipped)
+3. Browser language (if shipped)
+4. English
+
+Shipped locales are listed in [`shared/uiLocale.ts`](../shared/uiLocale.ts). The public system status API exposes `defaultUiLocale` for the frontend bootstrap.
+
+## Deferred translation infrastructure
+
+Hosted translation platforms (Weblate, Crowdin), automated sync workflows, and maintainer completion dashboards are **intentionally deferred** until there are active non-English contributors. The in-repo JSON tree and `pnpm --filter frontend report:i18n` completion summary are sufficient for early community PRs. See [deferred-backlog.md](./deferred-backlog.md).

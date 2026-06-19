@@ -14,12 +14,14 @@ import {
 } from '@shared/uiLocale';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchUserProfile } from '@/lib/user';
+import { fetchPublicSystemStatus } from '@/lib/publicSystem';
 import { applyUiLanguage, getActiveUiLanguage, i18n, initI18n } from '@/i18n/initI18n';
 
 initI18n();
 
 interface LocaleContextValue {
   language: string;
+  instanceDefaultLocale: string | null;
   applyLanguage: (languageTag: string) => Promise<void>;
 }
 
@@ -28,6 +30,9 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [language, setLanguage] = useState(() => getActiveUiLanguage());
+  const [instanceDefaultLocale, setInstanceDefaultLocale] = useState<string | null>(
+    null,
+  );
 
   const applyLanguage = useCallback(async (languageTag: string) => {
     const resolved = isShippedUiLocale(languageTag) ? languageTag : 'en';
@@ -40,19 +45,26 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
 
     void (async () => {
       let userUiLocale: string | null = null;
-      if (isAuthenticated) {
-        try {
-          const profile = await fetchUserProfile();
-          userUiLocale = profile.uiLocale ?? null;
-        } catch {
-          userUiLocale = null;
-        }
+      let instanceDefaultLocale: string | null = null;
+
+      const [profileResult, systemResult] = await Promise.allSettled([
+        isAuthenticated ? fetchUserProfile() : Promise.resolve(null),
+        fetchPublicSystemStatus(),
+      ]);
+
+      if (profileResult.status === 'fulfilled' && profileResult.value) {
+        userUiLocale = profileResult.value.uiLocale ?? null;
+      }
+      if (systemResult.status === 'fulfilled') {
+        instanceDefaultLocale = systemResult.value.defaultUiLocale ?? null;
+        setInstanceDefaultLocale(instanceDefaultLocale);
       }
 
       if (cancelled) return;
 
       const resolved = resolveEffectiveUiLocale({
         userUiLocale,
+        instanceDefaultLocale,
         browserLanguage:
           typeof navigator !== 'undefined' ? navigator.language : null,
       });
@@ -66,8 +78,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, applyLanguage]);
 
   const value = useMemo(
-    () => ({ language, applyLanguage }),
-    [language, applyLanguage],
+    () => ({ language, instanceDefaultLocale, applyLanguage }),
+    [language, instanceDefaultLocale, applyLanguage],
   );
 
   return (

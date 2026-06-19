@@ -286,6 +286,19 @@ These appeared in plan "out of scope" or deferral notes but have since landed �
 - DNS rebinding / IP pinning at connect time — deferred (TOCTOU; `redirect: 'error'` + ssrfGuard reduces pivot risk)
 - Standardize remaining paths on [networkFetch.ts](../backend/src/lib/networkFetch.ts) + [ssrfGuard.ts](../backend/src/lib/ssrfGuard.ts)
 
+### Localization & community translations
+
+
+| Item                                                                                     | Status    | Target | Source                                                                 |
+| ---------------------------------------------------------------------------------------- | --------- | ------ | ---------------------------------------------------------------------- |
+| UI locale foundation (Phases 0–3)                                                        | `shipped` | —      | [localization.md](./localization.md)                                   |
+| In-repo community locale tree + starter `fr/` slice (Phase 4)                            | `shipped` | —      | [translating.md](./translating.md)                                     |
+| Instance default UI locale (`ESIANA_DEFAULT_LOCALE`)                                     | `shipped` | —      | [localization.md](./localization.md)                                   |
+| Hosted translation platform (Weblate / Crowdin) + automated sync                         | `open`    | —      | Deferred until active non-English contributors; architecture compatible |
+| Maintainer locale completion dashboard (hosted / gating)                                 | `open`    | —      | Use `pnpm --filter frontend report:i18n` locally until then            |
+| Full `fr/` (and other locale) coverage of all domain files                                | `open`    | —      | Incremental community PRs                                              |
+
+
 ### Recruitment & hub UX
 
 Product guardrails and deferred lobby work: [recruitment_lobby_ux_deferred](../../docs/plans/recruitment_lobby_ux_deferred.plan.md). User-facing summary: [recruitment-lfg.md](../../docs/features/recruitment-lfg.md).
