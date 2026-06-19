@@ -1,4 +1,5 @@
 import {
+  isRegistryEntryInstallable,
   PLUGIN_CATEGORY_LABELS,
   PluginScopes,
   type PluginCategory,
@@ -8,12 +9,47 @@ import {
 
 export type RegistrySortOption = 'name' | 'lastUpdated' | 'version';
 
+export type DiscoveryListStatus = 'installed' | 'bundled' | 'available' | 'catalogOnly';
+
+export function deriveDiscoveryStatus(
+  entry: PluginRegistryEntry,
+  installed: boolean,
+): DiscoveryListStatus {
+  if (installed) return 'installed';
+  if (entry.source?.type === 'bundled') return 'bundled';
+  if (isRegistryEntryInstallable(entry)) return 'available';
+  return 'catalogOnly';
+}
+
+export function registryScopeLabel(scope: PluginScope): string {
+  return scope === PluginScopes.GLOBAL ? 'Global' : 'Campaign';
+}
+
+export function resolveRegistryTags(entry: PluginRegistryEntry): string[] {
+  if (entry.tags?.length) return entry.tags.slice(0, 5);
+  if (entry.category) return [PLUGIN_CATEGORY_LABELS[entry.category]];
+  return [];
+}
+
+export function formatCatalogSyncedAgo(lastSyncedAt: string | null): string {
+  if (!lastSyncedAt) return 'never';
+  const syncedMs = Date.parse(lastSyncedAt);
+  if (Number.isNaN(syncedMs)) return 'unknown';
+  const diffMs = Date.now() - syncedMs;
+  if (diffMs < 60_000) return 'just now';
+  const diffMinutes = Math.floor(diffMs / 60_000);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 48) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
 export function buildRegistrySearchText(entry: PluginRegistryEntry): string {
   const parts = [
     entry.name,
     entry.description,
-    ...(entry.tags ?? []),
-    entry.category ? PLUGIN_CATEGORY_LABELS[entry.category] : '',
+    ...resolveRegistryTags(entry),
     entry.scope === PluginScopes.GLOBAL ? 'global' : 'campaign',
   ];
   return parts
@@ -51,11 +87,8 @@ export function matchesRegistryTagFilter(
 ): boolean {
   if (tagFilter.length === 0) return true;
   const entryTags = new Set(
-    (entry.tags ?? []).map((tag) => tag.trim().toLowerCase()).filter(Boolean),
+    resolveRegistryTags(entry).map((tag) => tag.trim().toLowerCase()).filter(Boolean),
   );
-  if (entryTags.size === 0 && entry.category) {
-    entryTags.add(PLUGIN_CATEGORY_LABELS[entry.category].toLowerCase());
-  }
   return tagFilter.every((tag) => entryTags.has(tag.trim().toLowerCase()));
 }
 
@@ -94,7 +127,7 @@ export function compareRegistryEntries(
 export function collectRegistryTags(entries: PluginRegistryEntry[]): string[] {
   const tags = new Set<string>();
   for (const entry of entries) {
-    for (const tag of entry.tags ?? []) {
+    for (const tag of resolveRegistryTags(entry)) {
       const trimmed = tag.trim();
       if (trimmed) tags.add(trimmed);
     }

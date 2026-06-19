@@ -1,5 +1,5 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Boxes, Link2 } from 'lucide-react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { Boxes, Settings } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ApiError } from '@/lib/api';
 import {
@@ -18,20 +18,20 @@ import {
 } from '@/lib/pluginManifest';
 import type { CampaignPluginCapabilityRecord, SystemPluginRecord } from '@/types/admin';
 import { mergePluginConfigFields } from '@/lib/configSchemaParser';
-import { PluginDiscoveryGrid } from '@/components/admin/PluginDiscoveryGrid';
-import { PluginRegistrySyncSection } from '@/components/admin/PluginRegistrySyncSection';
-import { FieldLabel } from '@/components/admin/AdminSectionCard';
-import { controlClasses } from '@/components/admin/adminFormStyles';
+import { PluginDiscoveryTable } from '@/components/admin/plugins/PluginDiscoveryTable';
 import {
   PluginAdminTabBar,
   type PluginAdminView,
 } from '@/components/admin/plugins/PluginAdminTabBar';
 import { PluginInstalledTable } from '@/components/admin/plugins/PluginInstalledTable';
 import { PluginInspectorDrawer } from '@/components/admin/plugins/PluginInspectorDrawer';
+import { PluginSourcesDrawer } from '@/components/admin/plugins/PluginSourcesDrawer';
+import { InstallFromManifestModal } from '@/components/admin/plugins/InstallFromManifestModal';
 import {
   getGlobalPluginFromRow,
   type InstalledPluginAdminRow,
 } from '@/lib/pluginAdminPresentation';
+import { formatCatalogSyncedAgo } from '@/lib/pluginRegistrySearch';
 
 function ErrorBanner({ message }: { message: string }) {
   return (
@@ -56,12 +56,16 @@ export function AdminPluginsTab() {
   const [registryError, setRegistryError] = useState<string | null>(null);
   const [registryWarnings, setRegistryWarnings] = useState<string[]>([]);
   const [discovered, setDiscovered] = useState<PluginRegistryEntry[]>([]);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
 
   const [manifestError, setManifestError] = useState<string | null>(null);
   const [manifestMessage, setManifestMessage] = useState<string | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
-  const [manifestLinkUrl, setManifestLinkUrl] = useState('');
   const [installingFromLink, setInstallingFromLink] = useState(false);
+
+  const [pluginSourcesOpen, setPluginSourcesOpen] = useState(false);
+  const [installFromUrlOpen, setInstallFromUrlOpen] = useState(false);
+  const [installFromUrlError, setInstallFromUrlError] = useState<string | null>(null);
 
   const [inspectorRow, setInspectorRow] = useState<InstalledPluginAdminRow | null>(null);
   const [draftConfig, setDraftConfig] = useState<Record<string, unknown>>({});
@@ -73,6 +77,8 @@ export function AdminPluginsTab() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [enableError, setEnableError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const hasAttemptedInitialCatalogLoad = useRef(false);
 
   const refreshPlugins = useCallback(async () => {
     const response = await fetchAdminPlugins();
@@ -127,7 +133,7 @@ export function AdminPluginsTab() {
     });
   }
 
-  async function handleSyncRegistry() {
+  const handleSyncRegistry = useCallback(async () => {
     setSyncingRegistry(true);
     setRegistryError(null);
     setRegistryWarnings([]);
@@ -140,6 +146,7 @@ export function AdminPluginsTab() {
       const response = await fetchPluginRegistry();
       setRegistryUrl(response.registryUrl);
       setDiscovered(response.plugins);
+      setLastSyncedAt(new Date().toISOString());
       const warnings = [...(response.warnings ?? [])];
       if (response.plugins.length === 0) {
         warnings.push('Registry loaded but contains no plugin entries.');
@@ -155,7 +162,13 @@ export function AdminPluginsTab() {
     } finally {
       setSyncingRegistry(false);
     }
-  }
+  }, [registryUrl]);
+
+  useEffect(() => {
+    if (loading || loadError || hasAttemptedInitialCatalogLoad.current) return;
+    hasAttemptedInitialCatalogLoad.current = true;
+    void handleSyncRegistry();
+  }, [loading, loadError, handleSyncRegistry]);
 
   async function handleInstallRegistryEntry(entry: PluginRegistryEntry) {
     if (!isRegistryEntryInstallable(entry)) {
@@ -190,14 +203,15 @@ export function AdminPluginsTab() {
     }
   }
 
-  async function handleInstallFromLink() {
-    const url = manifestLinkUrl.trim();
+  async function handleInstallFromLink(urlInput: string) {
+    const url = urlInput.trim();
     if (!url) {
-      setManifestError('Enter a secure https:// or http:// manifest URL.');
+      setInstallFromUrlError('Enter a secure https:// or http:// manifest URL.');
       return;
     }
 
     setInstallingFromLink(true);
+    setInstallFromUrlError(null);
     setManifestError(null);
     setManifestMessage(null);
 
@@ -205,18 +219,16 @@ export function AdminPluginsTab() {
       const plugin = await installPluginFromLink(url);
       await refreshPlugins();
       setManifestMessage(`Installed ${plugin.name} (${plugin.id}) from remote manifest.`);
-      setManifestLinkUrl('');
+      setInstallFromUrlOpen(false);
       setView('installed');
     } catch (err) {
-      if (err instanceof ApiError && err.details?.length) {
-        setManifestError(err.details.join(' '));
-      } else {
-        setManifestError(
-          err instanceof Error
+      const message =
+        err instanceof ApiError && err.details?.length
+          ? err.details.join(' ')
+          : err instanceof Error
             ? err.message
-            : 'Unable to install plugin from manifest link.',
-        );
-      }
+            : 'Unable to install plugin from manifest link.';
+      setInstallFromUrlError(message);
     } finally {
       setInstallingFromLink(false);
     }
@@ -343,12 +355,26 @@ export function AdminPluginsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <PluginAdminTabBar view={view} onViewChange={setView} />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <PluginAdminTabBar view={view} onViewChange={setView} />
+          <button
+            type="button"
+            onClick={() => setPluginSourcesOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted hover:bg-elevated hover:text-foreground"
+            aria-label="Plugin sources"
+          >
+            <Settings className="size-4" />
+            Plugin Sources
+          </button>
+        </div>
         {hostCoreVersion ? (
           <p className="font-mono text-xs text-muted">
-            Host core version:{' '}
+            Host core{' '}
             <span className="text-foreground">{hostCoreVersion}</span>
+            {' · '}
+            Catalog synced{' '}
+            <span className="text-foreground">{formatCatalogSyncedAgo(lastSyncedAt)}</span>
           </p>
         ) : null}
       </div>
@@ -370,65 +396,26 @@ export function AdminPluginsTab() {
           />
         </div>
       ) : (
-        <div className="space-y-8">
-          <p className="text-sm text-muted">
-            Browse and install plugins from the registry or a direct manifest link.
-          </p>
-
-          {(manifestError || registryError) && (
-            <ErrorBanner message={manifestError ?? registryError ?? ''} />
-          )}
+        <div className="space-y-4">
+          {manifestError && <ErrorBanner message={manifestError} />}
           {manifestMessage && (
             <p className="rounded-lg border border-emerald-900/50 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-300">
               {manifestMessage}
             </p>
           )}
 
-          <PluginRegistrySyncSection
-            registryUrl={registryUrl}
-            onRegistryUrlChange={setRegistryUrl}
-            showRegistryUrlEditor
-            syncingRegistry={syncingRegistry}
-            onSync={() => void handleSyncRegistry()}
-            registryWarnings={registryWarnings}
-          />
-
-          <section className="space-y-3 rounded-xl border border-border bg-surface/40 p-5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-foreground">
-              <Link2 className="size-4 text-primary" />
-              Direct Manifest Link Installation
-            </h2>
-            <p className="text-xs text-muted">
-              Paste a raw JSON manifest URL (for example, a GitHub raw.githubusercontent.com
-              link). The server fetches and validates the manifest securely.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1">
-                <FieldLabel>Manifest URL</FieldLabel>
-                <input
-                  type="url"
-                  value={manifestLinkUrl}
-                  onChange={(e) => setManifestLinkUrl(e.target.value)}
-                  placeholder="https://raw.githubusercontent.com/org/repo/main/plugin.json"
-                  className={controlClasses}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => void handleInstallFromLink()}
-                disabled={installingFromLink}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-background hover:bg-primary-hover disabled:opacity-60"
-              >
-                {installingFromLink ? 'Installing…' : 'Install Plugin'}
-              </button>
-            </div>
-          </section>
-
-          <PluginDiscoveryGrid
+          <PluginDiscoveryTable
             entries={discovered}
             installedIds={installedIds}
             installingId={installingId}
+            syncingRegistry={syncingRegistry}
             onInstall={(entry) => void handleInstallRegistryEntry(entry)}
+            onRefreshCatalog={() => void handleSyncRegistry()}
+            onInstallFromUrl={() => {
+              setInstallFromUrlError(null);
+              setInstallFromUrlOpen(true);
+            }}
+            onOpenPluginSources={() => setPluginSourcesOpen(true)}
           />
         </div>
       )}
@@ -447,6 +434,30 @@ export function AdminPluginsTab() {
         onDraftEnabledChange={setDraftEnabled}
         onDraftFieldChange={setDraftField}
         onSave={(event) => void handleSavePlugin(event)}
+      />
+
+      <PluginSourcesDrawer
+        open={pluginSourcesOpen}
+        onClose={() => setPluginSourcesOpen(false)}
+        registryUrl={registryUrl}
+        onRegistryUrlChange={setRegistryUrl}
+        syncingRegistry={syncingRegistry}
+        onSync={() => void handleSyncRegistry()}
+        lastSyncedAt={lastSyncedAt}
+        registryError={registryError}
+        registryWarnings={registryWarnings}
+        catalogEntryCount={discovered.length}
+      />
+
+      <InstallFromManifestModal
+        open={installFromUrlOpen}
+        installing={installingFromLink}
+        error={installFromUrlError}
+        onClose={() => {
+          setInstallFromUrlOpen(false);
+          setInstallFromUrlError(null);
+        }}
+        onInstall={(url) => void handleInstallFromLink(url)}
       />
     </div>
   );
