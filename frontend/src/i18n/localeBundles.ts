@@ -1,16 +1,19 @@
-import common from './en/common.json';
-import navigationMain from './en/navigation/main.json';
-import navigationSidebar from './en/navigation/sidebar.json';
-import profileProfile from './en/profile/profile.json';
-import profilePreferences from './en/profile/preferences.json';
+const enModules = import.meta.glob<{ default: Record<string, string> }>(
+  './en/**/*.json',
+  { eager: true },
+);
 
-const ENGLISH_BUNDLE: Record<string, string> = {
-  ...common,
-  ...navigationMain,
-  ...navigationSidebar,
-  ...profileProfile,
-  ...profilePreferences,
-};
+function mergeLocaleModules(
+  modules: Record<string, { default: Record<string, string> }>,
+): Record<string, string> {
+  const merged: Record<string, string> = {};
+  for (const mod of Object.values(modules)) {
+    Object.assign(merged, mod.default ?? mod);
+  }
+  return merged;
+}
+
+const ENGLISH_BUNDLE = mergeLocaleModules(enModules);
 
 export function getEnglishTranslationBundle(): Record<string, string> {
   return ENGLISH_BUNDLE;
@@ -32,7 +35,7 @@ export async function loadTranslationBundle(
 
   for (const [path, loadModule] of Object.entries(loaders)) {
     const match = path.match(/^\.\/([^/]+)\/(.+\.json)$/);
-    if (!match || match[1] !== languageTag) continue;
+    if (!match || match[1] !== languageTag || match[1] === 'en') continue;
     const mod = await loadModule();
     Object.assign(merged, mod.default ?? mod);
     found = true;

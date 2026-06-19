@@ -1,8 +1,11 @@
 {
   "common.save": "Save",
   "common.cancel": "Cancel",
+  "common.saving": "Saving…",
   "common.loading": "Loading…",
+  "common.loadMore": "Load more",
   "common.loadFailed": "Failed to load.",
+  "common.dismiss": "Dismiss",
   "common.justNow": "Just now",
   "common.minutesAgo": "{{count}}m ago",
   "common.hoursAgo": "{{count}}h ago",

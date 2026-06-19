@@ -1,0 +1,18 @@
+{
+  "campaign.settings.pageTitle": "Campaign Settings",
+  "campaign.settings.pageSubtitle": "Manage campaign details, privacy, and performance metrics in one place.",
+  "campaign.settings.tabGeneral": "General",
+  "campaign.settings.tabAccess": "Access",
+  "campaign.settings.tabAppearance": "Appearance",
+  "campaign.settings.tabRecruitment": "Recruitment",
+  "campaign.settings.tabScheduling": "Scheduling",
+  "campaign.settings.tabDevelopment": "Development",
+  "campaign.settings.tabIntegrations": "Integrations",
+  "campaign.settings.tabAdvanced": "Advanced",
+  "campaign.settings.generalHeading": "General Settings",
+  "campaign.settings.campaignNameLabel": "Campaign Name",
+  "campaign.settings.saveSuccess": "Campaign settings saved successfully.",
+  "campaign.settings.loadFailed": "Failed to load campaign settings",
+  "campaign.settings.saveFailed": "Failed to save campaign settings",
+  "campaign.settings.nameRequired": "Campaign name is required"
+}

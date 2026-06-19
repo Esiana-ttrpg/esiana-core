@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   fetchNotificationCapabilities,
@@ -12,8 +13,13 @@ import type {
   NotificationType,
 } from '@/types/notifications';
 import { controlClasses } from '@/components/ui/formStyles';
+import {
+  translateNotificationGroupLabel,
+  translateNotificationTypeLabel,
+} from '@/i18n/notificationLabels';
 
 export function UserNotificationsSection() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +47,9 @@ export function UserNotificationsSection() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load notification settings.');
+          setError(
+            err instanceof Error ? err.message : t('profile.notifications.loadFailed'),
+          );
         }
       })
       .finally(() => {
@@ -75,9 +83,11 @@ export function UserNotificationsSection() {
         channels,
         mutedUntil: mutedUntil ? new Date(mutedUntil).toISOString() : null,
       });
-      setMessage('Notification preferences saved.');
+      setMessage(t('profile.notifications.saved'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to save preferences.');
+      setError(
+        err instanceof Error ? err.message : t('profile.notifications.saveFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -96,16 +106,13 @@ export function UserNotificationsSection() {
       <div className="rounded-xl border border-border bg-surface p-5">
         <div className="mb-4 flex items-center gap-2">
           <Bell className="size-5 text-primary" />
-          <h2 className="text-lg font-semibold">Notification preferences</h2>
+          <h2 className="text-lg font-semibold">{t('profile.notifications.preferencesTitle')}</h2>
         </div>
-        <p className="mb-4 text-sm text-muted">
-          Choose which events appear in your inbox and which also send email when SMTP is
-          configured on this instance.
-        </p>
+        <p className="mb-4 text-sm text-muted">{t('profile.notifications.preferencesIntro')}</p>
 
         <label className="mb-6 block">
           <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
-            Mute all until
+            {t('profile.notifications.muteUntilLabel')}
           </span>
           <input
             type="datetime-local"
@@ -113,27 +120,29 @@ export function UserNotificationsSection() {
             onChange={(event) => setMutedUntil(event.target.value)}
             className={controlClasses}
           />
-          <p className="mt-1 text-xs text-muted">
-            Leave blank to receive notifications normally.
-          </p>
+          <p className="mt-1 text-xs text-muted">{t('profile.notifications.muteUntilHint')}</p>
         </label>
 
         {groups.map((group) => (
           <div key={group.id} className="mb-6">
-            <h3 className="mb-2 text-sm font-semibold">{group.label}</h3>
+            <h3 className="mb-2 text-sm font-semibold">
+              {translateNotificationGroupLabel(group.id, group.label)}
+            </h3>
             <div className="overflow-hidden rounded-lg border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-elevated/60 text-left text-xs uppercase tracking-wide text-muted">
                   <tr>
-                    <th className="px-3 py-2">Event</th>
-                    <th className="px-3 py-2">In-app</th>
-                    <th className="px-3 py-2">Email</th>
+                    <th className="px-3 py-2">{t('profile.notifications.columnEvent')}</th>
+                    <th className="px-3 py-2">{t('profile.notifications.columnInApp')}</th>
+                    <th className="px-3 py-2">{t('profile.notifications.columnEmail')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {group.types.map((row) => (
                     <tr key={row.type} className="border-t border-border">
-                      <td className="px-3 py-2">{row.label}</td>
+                      <td className="px-3 py-2">
+                        {translateNotificationTypeLabel(row.type, row.label)}
+                      </td>
                       <td className="px-3 py-2">
                         <input
                           type="checkbox"
@@ -163,7 +172,7 @@ export function UserNotificationsSection() {
 
         {!emailAvailable ? (
           <p className="mb-4 text-xs text-muted">
-            Email toggles are disabled until an admin configures SMTP.
+            {t('profile.notifications.emailDisabledHint')}
           </p>
         ) : null}
 
@@ -176,7 +185,7 @@ export function UserNotificationsSection() {
           onClick={() => void handleSave()}
           className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-background hover:bg-primary/90 disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Save preferences'}
+          {saving ? t('common.saving') : t('profile.notifications.savePreferences')}
         </button>
       </div>
     </div>
