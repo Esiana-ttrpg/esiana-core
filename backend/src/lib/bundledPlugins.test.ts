@@ -12,9 +12,12 @@ test('readLocalPluginRegistryFromDisk loads community-plugins catalog in monorep
     t.skip('community-plugins registry not on disk');
     return;
   }
-  assert.ok(result.plugins.some((entry) => entry.id === 'wiki-opds-feed'));
-  assert.ok(result.plugins.some((entry) => entry.id === 'example-plugin'));
-  assert.ok(result.plugins.some((entry) => entry.id === 'campaign-seeder'));
+  const ids = result.plugins.map((entry) => entry.id).sort();
+  assert.deepEqual(ids, [
+    'demo-content-packs',
+    'remote-object-storage',
+    'wiki-opds-feed',
+  ]);
 });
 
 test('collectLocalRegistryFallback returns registry entries without bundled URL identity', () => {

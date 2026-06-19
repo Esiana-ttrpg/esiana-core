@@ -250,17 +250,29 @@ Common assumptions vs. Esiana reality:
 
 Audited against `community-plugins/` on 2026-06-13.
 
-### Installable plugins with manifests
+### Registry catalog (installable via Sync Registry)
+
+| Plugin | Scope | Capabilities used | UI slots used | Host APIs used |
+|--------|-------|-------------------|---------------|----------------|
+| **demo-content-packs** | global | `contentPack` | — | manifest-only import |
+| **wiki-opds-feed** | campaign | — | `campaign-plugin-settings` | public routes, `publicWiki`, OPDS |
+| **remote-object-storage** | global | `storageProvider` | — | storage driver registration |
+
+### Examples (`community-plugins/examples/` — not registry-listed)
 
 | Plugin | Scope | Capabilities used | UI slots used | Host APIs used |
 |--------|-------|-------------------|---------------|----------------|
 | **example-plugin** | global | — | `sidebar`, `header` | routes, data interceptor |
-| **foundry-vtt-sync** | global | — | — | stub route |
-| **wiki-opds-feed** | campaign | — | `campaign-plugin-settings` | public routes, `publicWiki`, OPDS |
 | **player-journal** | campaign | — | `dashboard`, `campaign-plugin-settings` | routes, PluginData, domain emit, wiki POST |
 | **settlement-life** | global | `developmentProvider` | — | dev providers, PluginData |
-| **demo-content-packs** | global | `contentPack` | — | manifest-only import |
-| **campaign-seeder** | global | — (retired generator) | — | routes, `campaign:seed` |
+
+### Stubs (`community-plugins/stubs/` — not registry-listed)
+
+| Plugin | Scope | Capabilities used | UI slots used | Host APIs used |
+|--------|-------|-------------------|---------------|----------------|
+| **foundry-vtt-sync** | global | — | — | stub route |
+
+**Retired:** `campaign-seeder` — engine superseded by core Sample Data; package removed from community-plugins.
 
 ### Extension points with zero community usage
 
@@ -396,5 +408,5 @@ Recommended before or immediately after schema freeze. Raises the "first-class s
 | Entity page shells (core-only) | `frontend/src/lib/entityPageShells/registry.ts` |
 | Ecosystem docs | `docs/plugins/phase-10-ecosystem.md` |
 | Security model | `docs/plugins/security-model.md` |
-| Reference plugin | `community-plugins/example-plugin/` |
+| Reference plugin | `community-plugins/examples/example-plugin/` |
 | Deferred work | `docs/deferred-backlog.md`, `todo.md` |
