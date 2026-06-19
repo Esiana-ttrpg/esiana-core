@@ -1,0 +1,4 @@
+{
+  "campaign.characters.loadingIndex": "Loading {{title}}…",
+  "campaign.characters.loadIndexFailed": "Failed to load index"
+}

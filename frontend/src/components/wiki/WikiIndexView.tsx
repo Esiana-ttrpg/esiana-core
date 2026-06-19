@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import {
@@ -83,6 +84,7 @@ export function EntityBrowserView({
   categoryPageId,
   categoryTitle,
 }: WikiIndexViewProps) {
+  const { t } = useTranslation();
   const params = useParams<{ campaignHandle?: string }>();
   const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign } =
     useWiki();
@@ -141,12 +143,14 @@ export function EntityBrowserView({
       setChildren(data.children ?? []);
       setDiscoverySummary(data.discoverySummary ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load index');
+      setError(
+        err instanceof Error ? err.message : t('campaign.characters.loadIndexFailed'),
+      );
       setChildren([]);
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, categoryPageId]);
+  }, [campaignHandle, categoryPageId, t]);
 
   useEffect(() => {
     loadIndex();
@@ -307,7 +311,11 @@ export function EntityBrowserView({
   }
 
   if (loading) {
-    return <LoadingSpinner label={`Loading ${categoryTitle}…`} />;
+    return (
+      <LoadingSpinner
+        label={t('campaign.characters.loadingIndex', { title: categoryTitle })}
+      />
+    );
   }
 
   return (
