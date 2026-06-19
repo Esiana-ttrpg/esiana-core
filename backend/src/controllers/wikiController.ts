@@ -83,6 +83,7 @@ import {
 } from '../lib/pluginRuntime/index.js';
 import { applyWikiContentDecorators } from '../lib/plugins/wikiContentDecorators.js';
 import { parseMarkdownFrontMatter } from '../lib/markdownFrontMatter.js';
+import { buildCreatePageImportPrefill } from '../lib/createPageMarkdownImport.js';
 import {
   assertDocumentFile,
   UploadValidationError,
@@ -876,6 +877,45 @@ export async function getWikiTree(
     }),
     playerSessionNotesFolderTitle: PLAYER_SESSION_NOTES_TITLE,
   });
+}
+
+export async function previewCreatePageMarkdownImport(
+  req: CampaignScopedRequest & AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const ctx = req.campaign!;
+
+  if (!policyCan(ctx.actor, CampaignCapabilities.PAGE_CREATE)) {
+    res.status(403).json({ error: 'Forbidden: cannot create pages' });
+    return;
+  }
+
+  const { markdown, categoryTitle, filename } = req.body as {
+    markdown?: string;
+    categoryTitle?: string;
+    filename?: string;
+  };
+
+  if (typeof markdown !== 'string' || !markdown.trim()) {
+    res.status(400).json({ error: 'markdown is required' });
+    return;
+  }
+
+  if (typeof categoryTitle !== 'string' || !categoryTitle.trim()) {
+    res.status(400).json({ error: 'categoryTitle is required' });
+    return;
+  }
+
+  try {
+    const result = buildCreatePageImportPrefill(markdown, categoryTitle.trim(), {
+      filename: typeof filename === 'string' ? filename : undefined,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : 'Unable to parse markdown import',
+    });
+  }
 }
 
 export async function createWikiPage(

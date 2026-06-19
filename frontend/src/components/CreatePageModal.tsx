@@ -27,7 +27,8 @@ import {
 import { filterAncestryPages } from '@/lib/questHubLayout';
 import { createWikiPage } from '@/lib/wiki';
 import { createItemLabel } from '@/lib/wikiLabels';
-import type { WikiTreeNode } from '@/types/wiki';
+import type { CreatePageImportPreviewResult } from '@/lib/createPageMarkdownImport';
+import type { WikiTagInput, WikiTreeNode } from '@/types/wiki';
 
 interface CreatePageModalProps {
   open: boolean;
@@ -68,6 +69,11 @@ export function CreatePageModal({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [members, setMembers] = useState<CampaignMemberIdentity[]>([]);
+  const [importedMetadata, setImportedMetadata] = useState<Record<string, unknown> | null>(
+    null,
+  );
+  const [importedTags, setImportedTags] = useState<WikiTagInput[]>([]);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
   const collapsibleFields = useMemo(
     () => getCollapsibleFields(categoryTitle, form.characterRole),
@@ -80,6 +86,9 @@ export function CreatePageModal({
     setForm(createEmptyFormState(categoryTitle, initialTitle, initialMetadata));
     setDetailsOpen(false);
     setError(null);
+    setImportedMetadata(null);
+    setImportedTags([]);
+    setImportWarnings([]);
   }, [open, categoryTitle, initialTitle, initialMetadata]);
 
   useEffect(() => {
@@ -121,6 +130,45 @@ export function CreatePageModal({
     }));
   }
 
+  function handleApplyImport(result: CreatePageImportPreviewResult) {
+    const { prefill, warnings } = result;
+    const patch = prefill.formPatch;
+    const nextRole = patch.characterRole
+      ? normalizeCharacterRole(patch.characterRole)
+      : form.characterRole;
+
+    setImportedMetadata(prefill.metadata);
+    setImportedTags(prefill.tags);
+    setImportWarnings(warnings);
+
+    const roleFieldKeys =
+      categoryTitle === 'Characters' ? getCharacterRoleFieldKeys(nextRole) : [];
+    const baseFieldValues =
+      categoryTitle === 'Characters'
+        ? Object.fromEntries(roleFieldKeys.map((key) => [key, '']))
+        : { ...form.fieldValues };
+
+    setForm((prev) => ({
+      ...prev,
+      name: patch.name ?? prefill.title ?? prev.name,
+      description: patch.description ?? prefill.description ?? prev.description,
+      visibility: patch.visibility ?? prefill.visibility ?? prev.visibility,
+      characterRole: nextRole,
+      fieldValues: {
+        ...baseFieldValues,
+        ...patch.fieldValues,
+      },
+      parentAncestryId:
+        patch.parentAncestryId !== undefined ? patch.parentAncestryId : prev.parentAncestryId,
+    }));
+
+    if (hasCollapsibleFields(categoryTitle, nextRole)) {
+      const fields = getCollapsibleFields(categoryTitle, nextRole);
+      const hasValues = fields.some((field) => patch.fieldValues?.[field.key]?.trim());
+      if (hasValues) setDetailsOpen(true);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const finalTitle = form.name.trim();
@@ -133,7 +181,10 @@ export function CreatePageModal({
     setSubmitting(true);
 
     try {
-      const metadata = buildCreateMetadata(categoryTitle, form);
+      const metadata = {
+        ...(importedMetadata ?? {}),
+        ...buildCreateMetadata(categoryTitle, form),
+      };
       const page = await createWikiPage(campaignHandle, {
         title: finalTitle,
         parentId,
@@ -141,6 +192,7 @@ export function CreatePageModal({
         templateType: config.templateType,
         visibility: form.visibility,
         blocks: buildCreateBlocks(categoryTitle, form.description),
+        ...(importedTags.length > 0 ? { tags: importedTags } : {}),
       });
 
       if (
@@ -284,7 +336,12 @@ export function CreatePageModal({
             Create {itemLabel}
           </h2>
           <div className="flex items-center gap-2">
-            <CreateImportMenu />
+            <CreateImportMenu
+              campaignHandle={campaignHandle}
+              categoryTitle={categoryTitle}
+              disabled={submitting}
+              onApply={handleApplyImport}
+            />
             <button
               type="button"
               onClick={onClose}
@@ -296,6 +353,17 @@ export function CreatePageModal({
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 p-5">
+          {importWarnings.length > 0 ? (
+            <div className="rounded-lg border border-amber-900/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
+              <p className="font-medium">Import notes</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
+                {importWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {error ? (
             <p className="rounded-lg bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>
           ) : null}

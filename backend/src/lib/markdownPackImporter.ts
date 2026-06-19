@@ -22,9 +22,17 @@ export interface MarkdownPackImportResult {
   slugToPageId: Map<string, string>;
 }
 
-function extractTitleFromBody(body: string): string | null {
-  const match = body.match(/^#\s+(.+)$/m);
-  return match?.[1]?.trim() ?? null;
+export function extractTitleFromBody(body: string): string | null {
+  const lineEnd = body.indexOf('\n');
+  let firstLine = lineEnd === -1 ? body : body.slice(0, lineEnd);
+  if (firstLine.endsWith('\r')) firstLine = firstLine.slice(0, -1);
+  if (!firstLine.startsWith('#')) return null;
+  if (firstLine.length > 1 && firstLine[1] === '#') return null;
+
+  let index = 1;
+  while (index < firstLine.length && firstLine[index] === ' ') index += 1;
+  const title = firstLine.slice(index).trim();
+  return title.length > 0 ? title : null;
 }
 
 const SLUG_PARENT_PREFIX = 'slug:';
