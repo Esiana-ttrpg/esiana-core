@@ -1,6 +1,5 @@
-import type { CampaignMemberRole } from '../types/domain.js';
-import { canViewWikiPage } from './wikiTree.js';
 import { compareWikiTitles } from './wikiSort.js';
+import { type HubVisibilityViewer, isHubPageVisible } from './hubVisibility.js';
 import {
   buildWikiPageGraph,
   type WikiPageGraphNode,
@@ -39,7 +38,7 @@ export function isDescendantOfQuestsRoot(
 export function collectVisibleQuestSubtreeRows(
   rows: QuestHubPageRow[],
   questsRootId: string,
-  role: CampaignMemberRole | null,
+  viewer: HubVisibilityViewer,
 ): QuestHubPageRow[] {
   const parentById = new Map(
     rows.map((row) => [row.id, { parentId: row.parentId }]),
@@ -54,7 +53,7 @@ export function collectVisibleQuestSubtreeRows(
       visited.add(current);
       const node = rowById.get(current);
       if (!node) return false;
-      if (!canViewWikiPage(node.visibility, role)) return false;
+      if (!isHubPageVisible(node.visibility, viewer)) return false;
       current = node.parentId;
     }
     return true;
@@ -65,7 +64,7 @@ export function collectVisibleQuestSubtreeRows(
     if (!isDescendantOfQuestsRoot(row.id, questsRootId, parentById)) {
       return false;
     }
-    if (!canViewWikiPage(row.visibility, role)) return false;
+    if (!isHubPageVisible(row.visibility, viewer)) return false;
     if (!row.parentId || row.parentId === questsRootId) return true;
     return hasVisibleAncestryChain(row.parentId);
   });

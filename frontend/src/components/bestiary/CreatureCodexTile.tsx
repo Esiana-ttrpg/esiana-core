@@ -3,8 +3,7 @@ import { Skull } from 'lucide-react';
 import type { CategoryIndexChild } from '@/lib/wiki';
 import { buildCreatureCodexTileViewModel } from '@/lib/bestiaryBrowseProjection';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { resolveVisibilityTierLabel } from '@/lib/campaignAffordances';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 
 interface CreatureCodexTileProps {
   child: CategoryIndexChild;
@@ -79,11 +78,10 @@ export function CreatureCodexTile({
           <h3 className="font-semibold leading-snug text-focal-foreground group-hover:text-primary">
             {model.displayName}
           </h3>
-          <VisibilityTierChip
-            tier={resolveVisibilityTierLabel({
-              pageVisibility: child.visibility,
-              narrativeStatus: child.narrativeStatus?.status ?? null,
-            })}
+          <BrowseVisibilityIndicator
+            pageVisibility={child.visibility}
+            narrativeStatus={child.narrativeStatus?.status ?? null}
+            showWhenElevated={isDMUser}
             compact
           />
         </div>

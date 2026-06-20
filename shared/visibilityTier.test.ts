@@ -29,8 +29,8 @@ test('visibilityTierLabelFromProjection maps narrative projection tiers', () => 
   assert.equal(visibilityTierLabelFromProjection('PARTY'), 'party');
 });
 
-test('formatProjectionVisibilityTier uses Staff label for elevated tiers', () => {
-  assert.equal(formatProjectionVisibilityTier('ELEVATED_ONLY'), 'Staff');
+test('formatProjectionVisibilityTier uses Private label for elevated tiers', () => {
+  assert.equal(formatProjectionVisibilityTier('ELEVATED_ONLY'), 'Private');
 });
 
 test('shouldShowProjectionVisibilityBadge hides party tier', () => {

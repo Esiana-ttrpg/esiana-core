@@ -51,8 +51,7 @@ import {
   type CategoryIndexViewMode,
 } from '@/lib/categoryIndexBrowseStorage';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { resolveVisibilityTierLabel } from '@/lib/campaignAffordances';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 import {
   getCategoryDefaultView,
   isEntityCatalogCategory,
@@ -513,11 +512,10 @@ function IndexCardView({
           {child.title}
         </h3>
         <DiscoveryStateBadge discovery={child.discovery} surface="browse" compact />
-        <VisibilityTierChip
-          tier={resolveVisibilityTierLabel({
-            pageVisibility: child.visibility,
-            narrativeStatus: child.narrativeStatus?.status ?? null,
-          })}
+        <BrowseVisibilityIndicator
+          pageVisibility={child.visibility}
+          narrativeStatus={child.narrativeStatus?.status ?? null}
+          showWhenElevated={isDMUser}
           compact
         />
       </div>

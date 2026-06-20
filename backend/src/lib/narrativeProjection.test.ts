@@ -10,6 +10,7 @@ import {
   fromRelationVisibility,
   fromWikiMapVisibility,
   isTimelineEventVisible,
+  isWikiVisibilityVisibleToViewer,
   projectEntityRelation,
   projectRevelation,
   projectRoleVisibility,
@@ -143,4 +144,12 @@ test('projectEntityRelation hides GM_ONLY from party', () => {
   const result = projectEntityRelation('GM_ONLY', partyCtx());
   assert.equal(result.visible, false);
   assert.equal(result.role.denyReason, 'role_elevated_only');
+});
+
+test('isWikiVisibilityVisibleToViewer respects party preview perspective', () => {
+  const gm = elevatedCtx();
+  const partyPreview = { ...gm, perspective: 'party' as const };
+  assert.equal(isWikiVisibilityVisibleToViewer('DM_Only', gm), true);
+  assert.equal(isWikiVisibilityVisibleToViewer('DM_Only', partyPreview), false);
+  assert.equal(isWikiVisibilityVisibleToViewer('Party', partyPreview), true);
 });

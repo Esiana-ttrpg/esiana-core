@@ -32,7 +32,7 @@ export const VISIBILITY_TIER_CHIP_SPEC: Record<
     lucideIcon: 'Users',
   },
   staff: {
-    label: 'Staff',
+    label: 'Private',
     tone: 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100',
     lucideIcon: 'Eye',
   },

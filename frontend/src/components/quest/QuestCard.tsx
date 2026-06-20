@@ -11,9 +11,8 @@ import {
   QuestCardTags,
 } from '@/components/quest/QuestCardPropertySummary';
 import { QuestTimePressureBadges } from '@/components/quest/QuestTimePressureBadges';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 import { shouldShowQuestDmPrivateChip } from '@/lib/questLifecycleDisplay';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { resolveVisibilityTierLabel } from '@/lib/campaignAffordances';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 
@@ -75,15 +74,11 @@ export function QuestCard({
               >
                 {node.title}
               </Link>
-              <VisibilityTierChip
-                tier={
-                  showDmPrivateChip
-                    ? 'draft'
-                    : resolveVisibilityTierLabel({
-                        pageVisibility: node.visibility,
-                        narrativeStatus: node.lifecycleState,
-                      })
-                }
+              <BrowseVisibilityIndicator
+                pageVisibility={node.visibility}
+                narrativeStatus={node.lifecycleState}
+                tierOverride={showDmPrivateChip ? 'draft' : undefined}
+                showWhenElevated={isDMUser && !playerPreview}
                 compact={boardMode}
               />
               {listDateLabel && (

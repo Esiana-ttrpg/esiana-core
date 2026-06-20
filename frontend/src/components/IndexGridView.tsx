@@ -28,8 +28,7 @@ import { NarrativeStatusBadge } from '@/components/wiki/NarrativeStatusBadge';
 import { DiscoveryStateBadge } from '@/components/wiki/indexBrowse/CategoryIndexDiscoveryBanner';
 import type { WikiTreeNode } from '@/types/wiki';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { resolveVisibilityTierLabel } from '@/lib/campaignAffordances';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 
 interface IndexGridViewProps {
   children: CategoryIndexChild[];
@@ -300,11 +299,10 @@ export function IndexGridView({
                       </Link>
                     )}
                     <DiscoveryStateBadge discovery={child.discovery} surface="browse" compact />
-                    <VisibilityTierChip
-                      tier={resolveVisibilityTierLabel({
-                        pageVisibility: child.visibility,
-                        narrativeStatus: child.narrativeStatus?.status ?? null,
-                      })}
+                    <BrowseVisibilityIndicator
+                      pageVisibility={child.visibility}
+                      narrativeStatus={child.narrativeStatus?.status ?? null}
+                      showWhenElevated={isDMUser}
                       compact
                     />
                     {child.narrativeStatus ? (
