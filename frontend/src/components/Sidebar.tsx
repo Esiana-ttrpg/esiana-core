@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { SidebarCollapseToggle } from '@/components/layout/SidebarCollapseToggle';
 import { useWiki } from '@/contexts/WikiContext';
 import {
   campaignCategoryChildPath,
@@ -760,7 +761,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`${SIDEBAR_ATMOSPHERE_CLASS} sidebar-shell flex h-full shrink-0 flex-col transition-[width] duration-200 ${
+      className={`${SIDEBAR_ATMOSPHERE_CLASS} sidebar-shell relative flex h-full shrink-0 flex-col transition-[width] duration-200 ${
         collapsed
           ? 'sidebar-shell--collapsed w-14 max-w-14'
           : 'w-72 max-w-[min(18rem,85vw)]'
@@ -785,7 +786,11 @@ export function Sidebar({
         </p>
       ) : null}
 
-      <nav className={`flex-1 overflow-y-auto py-2 ${collapsed ? 'px-0.5' : 'px-1'}`}>
+      <nav
+        className={`flex-1 overflow-y-auto py-2 ${collapsed ? 'px-0.5' : 'px-1'} ${
+          !onClose ? 'lg:pr-2.5' : ''
+        }`}
+      >
         {loading && !campaign ? (
           <div className="py-8">
             <LoadingSpinner label="Loading navigation…" />
@@ -813,6 +818,8 @@ export function Sidebar({
           }}
         />
       ) : null}
+
+      {!onClose ? <SidebarCollapseToggle /> : null}
     </aside>
   );
 }

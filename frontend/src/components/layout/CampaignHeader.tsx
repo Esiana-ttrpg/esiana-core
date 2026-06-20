@@ -3,50 +3,15 @@ import { Home, PanelLeft, Search } from 'lucide-react';
 import { useState } from 'react';
 import { useCampaignNav } from '@/contexts/CampaignNavContext';
 import { useWiki } from '@/contexts/WikiContext';
-import { campaignDashboardPath } from '@/lib/campaignPaths';
 import { useCampaignHeaderStatus } from '@/hooks/useCampaignHeaderStatus';
 import { CampaignSearch } from '@/components/campaign/CampaignSearch';
+import { CampaignPicker } from '@/components/layout/CampaignPicker';
 import { HeaderAccountNav } from '@/components/layout/HeaderAccountNav';
 
 const headerControlClass =
   'inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-[rgb(var(--color-focal-rgb)/0.06)]';
 
 const headerRowClass = 'items-center py-1.5 px-4 sm:pr-6 lg:pr-8';
-
-function CampaignTitleBlock({
-  campaignHandle,
-  campaignName,
-  subtitle,
-}: {
-  campaignHandle: string;
-  campaignName: string | null;
-  subtitle: string | null;
-}) {
-  return (
-    <div className="flex min-w-0 flex-1 flex-col justify-center">
-      {campaignName ? (
-        <Link
-          to={campaignDashboardPath(campaignHandle)}
-          className="block truncate text-lg font-semibold leading-tight whitespace-nowrap transition-colors hover:text-primary sm:text-xl"
-          title={campaignName}
-        >
-          {campaignName}
-        </Link>
-      ) : (
-        <span className="inline-block h-5 w-28 animate-pulse rounded bg-elevated" />
-      )}
-      {subtitle ? (
-        <p
-          className="ml-2 mt-0.5 truncate text-[11px] leading-none opacity-70"
-          aria-label="Campaign status"
-          title={subtitle}
-        >
-          {subtitle}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 function GlobalHomeLink() {
   return (
@@ -61,19 +26,41 @@ function GlobalHomeLink() {
   );
 }
 
-function SidebarCollapseToggle({ className = '' }: { className?: string }) {
-  const campaignNav = useCampaignNav();
-
+function CampaignIdentityCluster({
+  campaignHandle,
+  campaignId,
+  campaignName,
+  subtitle,
+}: {
+  campaignHandle: string;
+  campaignId?: string;
+  campaignName: string | null;
+  subtitle: string | null;
+}) {
   return (
-    <button
-      type="button"
-      onClick={() => campaignNav.toggleSidebarCollapsed()}
-      className={`${headerControlClass} ${className}`}
-      aria-label={campaignNav.sidebarCollapsed ? 'Expand campaign menu' : 'Collapse campaign menu'}
-      aria-expanded={!campaignNav.sidebarCollapsed}
-    >
-      <PanelLeft className="size-4" />
-    </button>
+    <div className="flex min-w-0 flex-1 flex-col justify-center">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <GlobalHomeLink />
+        <span
+          className="h-5 w-px shrink-0 bg-[rgb(var(--color-border-warm-rgb)/0.2)]"
+          aria-hidden
+        />
+        <CampaignPicker
+          campaignHandle={campaignHandle}
+          campaignId={campaignId}
+          campaignName={campaignName}
+        />
+      </div>
+      {subtitle ? (
+        <p
+          className="ml-[calc(2rem+0.375rem)] mt-0.5 truncate text-[11px] leading-none opacity-70"
+          aria-label="Campaign status"
+          title={subtitle}
+        >
+          {subtitle}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -107,10 +94,9 @@ export function CampaignHeader() {
           <PanelLeft className="size-4" />
         </button>
 
-        <GlobalHomeLink />
-
-        <CampaignTitleBlock
+        <CampaignIdentityCluster
           campaignHandle={campaignHandle}
+          campaignId={campaign?.id}
           campaignName={campaignName}
           subtitle={subtitle}
         />
@@ -129,13 +115,12 @@ export function CampaignHeader() {
       </div>
 
       <div
-        className={`hidden w-full grid-cols-[minmax(0,1fr)_min(100%,28rem)_minmax(0,1fr)] gap-x-3 sm:grid ${headerRowClass}`}
+        className={`hidden w-full grid-cols-[minmax(0,1fr)_min(100%,28rem)_minmax(0,1fr)] items-center gap-x-3 sm:grid ${headerRowClass}`}
       >
-        <div className="flex min-w-0 max-w-[min(100%,36%)] items-center gap-1.5 justify-self-start">
-          <SidebarCollapseToggle />
-          <GlobalHomeLink />
-          <CampaignTitleBlock
+        <div className="flex min-w-0 max-w-[min(100%,36%)] items-center justify-self-start">
+          <CampaignIdentityCluster
             campaignHandle={campaignHandle}
+            campaignId={campaign?.id}
             campaignName={campaignName}
             subtitle={subtitle}
           />
