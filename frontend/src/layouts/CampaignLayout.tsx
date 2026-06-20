@@ -214,7 +214,7 @@ function CampaignLayoutShell() {
       <SystemAnnouncementBanner />
       <AppHeader />
       <div className={`${CANVAS_ATMOSPHERE_AMBIENT_CLASS} flex min-h-0 flex-1`}>
-        <div className="hidden h-full shrink-0 lg:flex">
+        <div className="hidden min-h-0 shrink-0 self-stretch lg:flex">
           <Sidebar collapsed={sidebarCollapsed} />
         </div>
 
