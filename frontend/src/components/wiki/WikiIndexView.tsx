@@ -490,6 +490,7 @@ function IndexCardView({
   campaignHandle,
   pageById,
 }: CardViewProps) {
+  const isDMUser = useElevatedNarrativeView();
   const displayMetadata = getDisplayMetadata(child.metadata, categoryTitle);
   const locationTrailLabel =
     child.locationTrailLabel ??
