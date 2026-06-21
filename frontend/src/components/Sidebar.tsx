@@ -788,7 +788,7 @@ export function Sidebar({
 
       <nav
         className={`flex-1 overflow-y-auto py-2 ${collapsed ? 'px-0.5' : 'px-1'} ${
-          !onClose ? 'lg:pr-2.5' : ''
+          !onClose ? 'lg:pr-3.5' : ''
         }`}
       >
         {loading && !campaign ? (
