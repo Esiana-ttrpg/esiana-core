@@ -118,9 +118,14 @@ jobs:
         run: |
           docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
 
-  publish-images:
+  prepare-release-meta:
     needs: [build, test-sqlite, test-postgres, docker-build]
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      semver: ${{ steps.meta.outputs.semver }}
+      product_version: ${{ steps.meta.outputs.product_version }}
+      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
     steps:
       - uses: actions/checkout@v4
 
@@ -143,6 +148,82 @@ jobs:
             echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Reject UTF-8 BOM in Docker packaging files
+        run: |
+          for f in docker/*.sh docker/esiana.Dockerfile; do
+            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
+              echo "UTF-8 BOM detected in $f" >&2
+              exit 1
+            fi
+          done
+
+  # Node/pnpm under QEMU user-mode emulation for linux/arm64 hits SIGILL (exit 132)
+  # during install. Build each architecture on a native runner, push by digest, then
+  # merge into one multi-arch manifest.
+  build-image:
+    needs: prepare-release-meta
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image digest (${{ matrix.platform }})
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/esiana.Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          outputs: type=image,name=ghcr.io/esiana-ttrpg/esiana,push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            ESIANA_PRODUCT_VERSION=${{ needs.prepare-release-meta.outputs.product_version }}
+          cache-from: type=gha,scope=esiana-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=esiana-${{ matrix.platform }}
+          provenance: true
+          labels: |
+            org.opencontainers.image.version=${{ needs.prepare-release-meta.outputs.tag }}
+            org.opencontainers.image.source=https://github.com/Esiana-ttrpg/esiana-core
+            org.opencontainers.image.description=Self-hosted narrative infrastructure for long-form TTRPG campaigns
+
+      - name: Export digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.platform }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-images:
+    needs: [prepare-release-meta, build-image]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -154,60 +235,40 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - uses: docker/setup-qemu-action@v3
-
       - uses: docker/setup-buildx-action@v3
 
-      - name: Reject UTF-8 BOM in Docker packaging files
+      - name: Create and push multi-arch manifest (GHCR + Docker Hub)
+        env:
+          TAG: ${{ needs.prepare-release-meta.outputs.tag }}
+          SEMVER: ${{ needs.prepare-release-meta.outputs.semver }}
+          IS_PRERELEASE: ${{ needs.prepare-release-meta.outputs.is_prerelease }}
         run: |
-          for f in docker/*.sh docker/esiana.Dockerfile; do
-            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
-              echo "UTF-8 BOM detected in $f" >&2
-              exit 1
-            fi
-          done
-
-      - name: Prepare image tag lists
-        id: tags
-        run: |
-          TAG="${{ steps.meta.outputs.tag }}"
-          SEMVER="${{ steps.meta.outputs.semver }}"
-          IMAGE_TAGS="ghcr.io/esiana-ttrpg/esiana:${TAG}
-          ghcr.io/esiana-ttrpg/esiana:${SEMVER}
-          docker.io/esiana/esiana:${TAG}
-          docker.io/esiana/esiana:${SEMVER}"
-          if [ "${{ steps.meta.outputs.is_prerelease }}" = "false" ]; then
-            IMAGE_TAGS="${IMAGE_TAGS}
-          ghcr.io/esiana-ttrpg/esiana:latest
-          docker.io/esiana/esiana:latest"
+          set -euo pipefail
+          cd /tmp/digests
+          TAGS=(
+            "ghcr.io/esiana-ttrpg/esiana:${TAG}"
+            "ghcr.io/esiana-ttrpg/esiana:${SEMVER}"
+            "docker.io/esiana/esiana:${TAG}"
+            "docker.io/esiana/esiana:${SEMVER}"
+          )
+          if [ "$IS_PRERELEASE" = "false" ]; then
+            TAGS+=(
+              "ghcr.io/esiana-ttrpg/esiana:latest"
+              "docker.io/esiana/esiana:latest"
+            )
           fi
-          {
-            echo "image<<EOF"
-            echo "$IMAGE_TAGS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Build and push Esiana image (GHCR + Docker Hub)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/esiana.Dockerfile
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.tags.outputs.image }}
-          build-args: |
-            ESIANA_PRODUCT_VERSION=${{ steps.meta.outputs.product_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: true
-          labels: |
-            org.opencontainers.image.version=${{ steps.meta.outputs.tag }}
-            org.opencontainers.image.source=https://github.com/Esiana-ttrpg/esiana-core
-            org.opencontainers.image.description=Self-hosted narrative infrastructure for long-form TTRPG campaigns
+          ARGS=()
+          for t in "${TAGS[@]}"; do
+            ARGS+=(-t "$t")
+          done
+          for digest in *; do
+            ARGS+=("ghcr.io/esiana-ttrpg/esiana@sha256:${digest}")
+          done
+          docker buildx imagetools create "${ARGS[@]}"
 
       - name: Verify multi-arch manifests
         run: |
-          TAG="${{ steps.meta.outputs.tag }}"
+          TAG="${{ needs.prepare-release-meta.outputs.tag }}"
           for ref in \
             "ghcr.io/esiana-ttrpg/esiana:${TAG}" \
             "docker.io/esiana/esiana:${TAG}"; do
@@ -216,7 +277,7 @@ jobs:
 
       - name: Verify runtime platform invariants (GHCR)
         run: |
-          TAG="${{ steps.meta.outputs.tag }}"
+          TAG="${{ needs.prepare-release-meta.outputs.tag }}"
           IMAGE="ghcr.io/esiana-ttrpg/esiana:${TAG}"
           arm=$(docker run --rm --platform linux/arm64 --entrypoint uname "$IMAGE" -m)
           amd=$(docker run --rm --platform linux/amd64 --entrypoint uname "$IMAGE" -m)
@@ -225,7 +286,7 @@ jobs:
 
       - name: Verify arm64 runtime packaging (GHCR)
         run: |
-          TAG="${{ steps.meta.outputs.tag }}"
+          TAG="${{ needs.prepare-release-meta.outputs.tag }}"
           IMAGE="ghcr.io/esiana-ttrpg/esiana:${TAG}"
           docker run --rm --platform linux/arm64 \
             --entrypoint /bin/sh "$IMAGE" \
