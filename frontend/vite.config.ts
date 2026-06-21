@@ -3,6 +3,7 @@ import path from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { readVersionFromPackageJson } from '../shared/productVersion';
 
 const sharedRoot = path.resolve(__dirname, '../shared');
 
@@ -30,9 +31,11 @@ function sharedTypescriptResolve(): Plugin {
 
 function readRootPackageVersion(): string {
   const pkgPath = path.resolve(__dirname, '../package.json');
-  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string };
-  const version = typeof pkg.version === 'string' ? pkg.version.trim() : '';
-  return version || '0.0.0';
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
+    name?: string;
+    version?: string;
+  };
+  return readVersionFromPackageJson(pkg);
 }
 
 const esianaVersion = readRootPackageVersion();

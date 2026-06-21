@@ -81,6 +81,7 @@ const result = spawnSync(
     'src/lib/hubAmbientTheme.test.ts',
     'src/components/workshop/workshopNavigation.test.ts',
     'src/hooks/useProgressionRoute.test.ts',
+    'src/lib/adminVersionUi.test.ts',
   ],
   { cwd: frontendRoot, stdio: 'inherit', env: process.env },
 );

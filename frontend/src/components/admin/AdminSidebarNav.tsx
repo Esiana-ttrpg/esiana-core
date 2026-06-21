@@ -2,6 +2,10 @@ import { NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { Shield, X } from 'lucide-react';
 import { productVersion } from '@/lib/productVersion';
+import {
+  adminVersionFooterClass,
+  formatProductVersionLabel,
+} from '@/lib/adminVersionUi';
 
 export interface AdminNavItem {
   to: string;
@@ -14,6 +18,9 @@ interface AdminSidebarNavProps {
   onNavigate?: () => void;
   onClose?: () => void;
   className?: string;
+  isUpdateAvailable?: boolean;
+  latestVersion?: string | null;
+  updateNavPath?: string;
 }
 
 export function AdminSidebarNav({
@@ -21,6 +28,9 @@ export function AdminSidebarNav({
   onNavigate,
   onClose,
   className = '',
+  isUpdateAvailable = false,
+  latestVersion = null,
+  updateNavPath = '/admin/config/update',
 }: AdminSidebarNavProps) {
   return (
     <aside
@@ -53,23 +63,40 @@ export function AdminSidebarNav({
       >
         {items.map((item) => {
           const Icon = item.icon;
+          const showUpdateCue =
+            isUpdateAvailable && item.to === updateNavPath;
           return (
             <NavLink
               key={item.to}
               to={item.to}
               end
               onClick={onNavigate}
+              aria-label={
+                showUpdateCue
+                  ? `${item.label}, update available`
+                  : item.label
+              }
               className={({ isActive }) =>
                 `block min-h-11 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
                   isActive
                     ? 'border-accent/50 bg-accent/10 text-accent'
-                    : 'border-transparent text-muted hover:border-accent/30 hover:bg-elevated/60 hover:text-accent'
+                    : showUpdateCue
+                      ? 'border-primary/40 bg-primary/5 text-foreground hover:border-primary/50 hover:bg-primary/10'
+                      : 'border-transparent text-muted hover:border-accent/30 hover:bg-elevated/60 hover:text-accent'
                 }`
               }
             >
               <span className="flex items-center gap-2">
                 <Icon className="size-4 shrink-0" strokeWidth={1.5} />
-                {item.label}
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  {item.label}
+                  {showUpdateCue && (
+                    <span
+                      className="size-1.5 shrink-0 rounded-full bg-primary"
+                      aria-hidden="true"
+                    />
+                  )}
+                </span>
               </span>
             </NavLink>
           );
@@ -77,10 +104,18 @@ export function AdminSidebarNav({
       </nav>
 
       <div className="mt-auto shrink-0 border-t border-border bg-background px-4 pb-4 pt-4">
-        <div className="mb-4 rounded-lg border border-border/80 bg-surface/40 px-3 py-2.5">
+        <div
+          className={adminVersionFooterClass(isUpdateAvailable)}
+          aria-live="polite"
+        >
           <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
             Esiana v{productVersion}
           </p>
+          {isUpdateAvailable && latestVersion && (
+            <p className="mt-1 text-[10px] font-semibold text-primary">
+              {formatProductVersionLabel(latestVersion)} available
+            </p>
+          )}
         </div>
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">
           RESOURCES

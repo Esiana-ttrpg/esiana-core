@@ -42,6 +42,7 @@ Canonical reference for every supported Esiana environment variable.
 | `NODE_ENV` | `production` | Runtime mode for the container. |
 | `UPLOADS_DIR` | `/data/uploads` | Upload storage inside the container (backed by the `uploads` volume). |
 | `PLUGINS_DIR` | `/app/plugins` | Plugin packages inside the container (backed by the `plugins` volume). |
+| `ESIANA_PRODUCT_VERSION` | (from image build) | Read-only product version metadata (matches root `package.json` at image build). Observability only — app reads version from `/app/package.json`. |
 | `ENABLE_INTERNAL_NGINX` | `true` | `true` runs nginx web delivery layer on port 80; `false` is API-only. |
 | `TRUST_PROXY` | `false` | `true` when behind a reverse proxy — see [Reverse Proxies.md](Reverse%20Proxies.md). |
 
@@ -68,8 +69,10 @@ Defined in [`backend/src/config/env.ts`](../../backend/src/config/env.ts).
 | `PLUGINS_DIR` | `../plugins` | Optional | Runtime plugin package directory. | `/app/plugins` |
 | `STORAGE_PROVIDER` | `filesystem` | Optional | Active storage driver ID. | `filesystem` |
 | `STORAGE_REDIRECT_THRESHOLD_BYTES` | `5242880` (5 MB) | Optional | Prefer redirect delivery above this size. | `5242880` |
-| `ESIANA_CORE_VERSION` | root `package.json` version | Optional | Override for plugin engine constraint checks; auto-detected when unset. | `1.1.0` |
+| `ESIANA_CORE_VERSION` | root `package.json` version | Optional | Override for plugin engine constraint checks; auto-detected when unset. | `1.2.0` |
 | `OPENAPI_DOCS_ENABLED` | (unset) | Optional | `true` / `false`; when unset, `/api/docs` enabled in non-production only. | `true` |
+
+Product version (admin UI, update checks, plugin `engines.esiana-core` gate) comes from root `package.json` `version` at build/runtime — not from an environment variable.
 
 ---
 
