@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AdminNavProvider, useAdminNav } from '@/contexts/AdminNavContext';
 import { useAdminSampleDataEnabled } from '@/hooks/useAdminSampleDataEnabled';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useVersionCheck } from '@/hooks/useVersionCheck';
 import { UserRoles } from '@/types/domain';
 import type { AdminNavItem } from '@/components/admin/AdminSidebarNav';
 
@@ -98,6 +99,7 @@ const SAMPLE_DATA_NAV_ITEM: AdminNavItem = {
 function AdminLayoutShell() {
   const { navOpen, closeNav } = useAdminNav();
   const { enabled: sampleDataEnabled } = useAdminSampleDataEnabled();
+  const { isUpdateAvailable, latestVersion } = useVersionCheck();
 
   const navItems = useMemo(() => {
     if (!sampleDataEnabled) return SYSTEM_CONFIG_NAV;
@@ -124,7 +126,12 @@ function AdminLayoutShell() {
       <AppHeader />
 
       <div className="hidden md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-64">
-        <AdminSidebarNav items={navItems} className="h-screen w-full" />
+        <AdminSidebarNav
+          items={navItems}
+          className="h-screen w-full"
+          isUpdateAvailable={isUpdateAvailable}
+          latestVersion={latestVersion}
+        />
       </div>
 
       {navOpen && (
@@ -140,6 +147,8 @@ function AdminLayoutShell() {
               items={navItems}
               onNavigate={closeNav}
               onClose={closeNav}
+              isUpdateAvailable={isUpdateAvailable}
+              latestVersion={latestVersion}
             />
           </div>
         </div>

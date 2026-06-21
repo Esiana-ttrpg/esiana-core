@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readVersionFromPackageJson } from '../../../shared/productVersion.js';
 
 const FALLBACK_VERSION = '0.0.0';
 
@@ -14,8 +15,7 @@ function readRootPackageVersion(): string {
         version?: string;
       };
       if (pkg.name === 'esiana') {
-        const version = typeof pkg.version === 'string' ? pkg.version.trim() : '';
-        return version || FALLBACK_VERSION;
+        return readVersionFromPackageJson(pkg);
       }
     }
     const parent = dirname(dir);

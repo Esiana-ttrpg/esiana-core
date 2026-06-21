@@ -129,8 +129,14 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           SEMVER="${TAG#v}"
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$SEMVER" != "$PKG" ]; then
+            echo "Tag v${SEMVER} does not match package.json ${PKG}" >&2
+            exit 1
+          fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "semver=${SEMVER}" >> "$GITHUB_OUTPUT"
+          echo "product_version=${PKG}" >> "$GITHUB_OUTPUT"
           if echo "$TAG" | grep -Eq '-(rc|beta|alpha|pre)'; then
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           else
@@ -189,6 +195,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tags.outputs.image }}
+          build-args: |
+            ESIANA_PRODUCT_VERSION=${{ steps.meta.outputs.product_version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: true
