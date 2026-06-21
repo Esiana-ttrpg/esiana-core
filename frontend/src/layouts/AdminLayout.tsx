@@ -55,7 +55,7 @@ const SYSTEM_CONFIG_NAV: AdminNavItem[] = [
   },
   {
     to: '/admin/settings/plugins',
-    label: 'Plugins & Integrations',
+    label: 'Plugins',
     icon: Puzzle,
   },
   {

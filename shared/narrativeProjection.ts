@@ -261,6 +261,14 @@ export function fromRelationVisibility(
   return NarrativeVisibilityTier.PUBLIC;
 }
 
+/** Wiki page visibility tier (Public / Party / DM_Only) for a narrative viewer context. */
+export function isWikiVisibilityVisibleToViewer(
+  visibility: string,
+  ctx: NarrativeViewerContext,
+): boolean {
+  return projectRoleVisibility(fromWikiMapVisibility(visibility), ctx).visible;
+}
+
 export function projectRoleVisibility(
   tier: NarrativeVisibilityTierValue,
   ctx: NarrativeViewerContext,

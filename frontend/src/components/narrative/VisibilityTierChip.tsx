@@ -2,6 +2,7 @@ import { Clock, Eye, Globe, Pencil, Users, type LucideIcon } from 'lucide-react'
 import {
   VISIBILITY_TIER_CHIP_SPEC,
   resolveVisibilityTierLabel,
+  shouldShowVisibilityTierChip,
   type VisibilityTierLabel,
   type VisibilityTierLucideIcon,
 } from '@shared/visibilityTier';
@@ -49,6 +50,28 @@ export function VisibilityTierChipFromPage(props: {
   return <VisibilityTierChip tier={tier} compact={props.compact} />;
 }
 
+/** Browse/workarea surfaces — silent for Party/Public; Private/Draft/Future only for elevated viewers. */
+export function BrowseVisibilityIndicator(props: {
+  pageVisibility: string;
+  narrativeStatus?: string | null;
+  isFuture?: boolean;
+  showWhenElevated: boolean;
+  compact?: boolean;
+  /** When set, overrides resolved tier (e.g. quest draft lifecycle chip). */
+  tierOverride?: VisibilityTierLabel;
+}) {
+  if (!props.showWhenElevated) return null;
+  const tier =
+    props.tierOverride ??
+    resolveVisibilityTierLabel({
+      pageVisibility: props.pageVisibility,
+      narrativeStatus: props.narrativeStatus,
+      isFuture: props.isFuture,
+    });
+  if (!shouldShowVisibilityTierChip(tier)) return null;
+  return <VisibilityTierChip tier={tier} compact={props.compact} />;
+}
+
 /** Staff/elevated browse surfaces — omit chip for party viewers. */
 export function ElevatedBrowseVisibilityChip(props: {
   pageVisibility: string;
@@ -57,13 +80,5 @@ export function ElevatedBrowseVisibilityChip(props: {
   showWhenElevated: boolean;
   compact?: boolean;
 }) {
-  if (!props.showWhenElevated) return null;
-  return (
-    <VisibilityTierChipFromPage
-      pageVisibility={props.pageVisibility}
-      narrativeStatus={props.narrativeStatus}
-      isFuture={props.isFuture}
-      compact={props.compact}
-    />
-  );
+  return <BrowseVisibilityIndicator {...props} />;
 }

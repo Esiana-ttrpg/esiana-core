@@ -52,7 +52,7 @@ async function resolvePackCampaignArcTitle(campaignId: string): Promise<string |
 export async function applyPackCampaignConfig(
   campaignId: string,
   config: PackCampaignConfigV1,
-  options?: { slugToPageId?: Map<string, string> },
+  options?: { slugToPageId?: Map<string, string>; assetPathToId?: Map<string, string> },
 ): Promise<void> {
   const data: Prisma.CampaignUpdateInput = {};
   if (config.recruitmentTagline) {
@@ -93,6 +93,32 @@ export async function applyPackCampaignConfig(
         startingLocationPageId: pageId,
       };
       dashboardTouched = true;
+    }
+  }
+  const coverImagePath = config.coverImagePath?.trim();
+  if (coverImagePath && options?.assetPathToId) {
+    const existingCover =
+      nextConfig.importManifest?.assets?.coverImageAssetId?.trim() ||
+      hero.coverImageUrl?.trim();
+    if (!existingCover) {
+      const normalized = coverImagePath.replace(/^assets\//, '');
+      const coverAssetId =
+        options.assetPathToId.get(normalized) ??
+        options.assetPathToId.get(coverImagePath) ??
+        resolvePackAssetRef(
+          coverImagePath.startsWith('asset:') ? coverImagePath : `asset:${normalized}`,
+          options.assetPathToId,
+        );
+      if (coverAssetId) {
+        nextConfig.importManifest = {
+          ...nextConfig.importManifest,
+          assets: {
+            ...nextConfig.importManifest?.assets,
+            coverImageAssetId: coverAssetId,
+          },
+        };
+        dashboardTouched = true;
+      }
     }
   }
   if (dashboardTouched) {

@@ -21,6 +21,8 @@ Env:
 ```text
 STORAGE_PROVIDER=filesystem
 STORAGE_REDIRECT_THRESHOLD_BYTES=5242880
+# Optional override — defaults to root package.json version when unset
+# ESIANA_CORE_VERSION=1.2.0
 ```
 
 Product version for `engines.esiana-core` gating comes from root `package.json` (not an env var).

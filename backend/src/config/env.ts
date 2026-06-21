@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const backendRoot = path.resolve(__dirname, '../..');
 const repoRoot = path.resolve(backendRoot, '..');
 
-dotenv.config({ path: path.join(backendRoot, '.env') });
+dotenv.config({ path: path.join(backendRoot, '.env'), override: true });
 
 function resolvePath(relative: string, base: string): string {
   return path.isAbsolute(relative) ? relative : path.resolve(base, relative);
@@ -44,7 +44,7 @@ export const env = {
     process.env.STORAGE_REDIRECT_THRESHOLD_BYTES ?? 5 * 1024 * 1024,
   ),
   /** Product version — used for plugin engine constraints. */
-  coreVersion: PRODUCT_VERSION,
+  coreVersion: process.env.ESIANA_CORE_VERSION ?? PRODUCT_VERSION,
   pluginsDir: resolvePath(
     process.env.PLUGINS_DIR ?? '../plugins',
     backendRoot,
@@ -69,6 +69,8 @@ export const env = {
   enableDemoUsers: process.env.ENABLE_DEMO_USERS === 'true',
   /** When true, core Sample Data profiles are available (dev fixtures). Does not affect Content Packs. */
   enableSampleData: process.env.ENABLE_SAMPLE_DATA === 'true',
+  /** Optional instance UI locale for guests and users on browser auto (BCP 47, e.g. fr). */
+  defaultUiLocale: process.env.ESIANA_DEFAULT_LOCALE?.trim() ?? '',
 };
 
 export function canCreateSeededDemoUsers(): boolean {

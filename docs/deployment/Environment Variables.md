@@ -69,6 +69,7 @@ Defined in [`backend/src/config/env.ts`](../../backend/src/config/env.ts).
 | `PLUGINS_DIR` | `../plugins` | Optional | Runtime plugin package directory. | `/app/plugins` |
 | `STORAGE_PROVIDER` | `filesystem` | Optional | Active storage driver ID. | `filesystem` |
 | `STORAGE_REDIRECT_THRESHOLD_BYTES` | `5242880` (5 MB) | Optional | Prefer redirect delivery above this size. | `5242880` |
+| `ESIANA_CORE_VERSION` | root `package.json` version | Optional | Override for plugin engine constraint checks; auto-detected when unset. | `1.2.0` |
 | `OPENAPI_DOCS_ENABLED` | (unset) | Optional | `true` / `false`; when unset, `/api/docs` enabled in non-production only. | `true` |
 
 Product version (admin UI, update checks, plugin `engines.esiana-core` gate) comes from root `package.json` `version` at build/runtime — not from an environment variable.
@@ -187,7 +188,7 @@ When `STORAGE_PROVIDER=s3-compatible`. See [object-storage.md](object-storage.md
 
 | Name | Default | Required | Description | Example |
 |------|---------|----------|-------------|---------|
-| `VITE_API_PROXY_TARGET` | `http://localhost:3000` | Dev only | Dev proxy target for `/api` and `/uploads`. | `http://localhost:3001` |
+| `VITE_API_PROXY_TARGET` | `http://localhost:3001` | Dev only | Dev proxy target for `/api` and `/uploads`. | `http://localhost:3000` |
 | `VITE_API_BASE` | `/api` | Optional | API base for notification polling. | `/api` |
 | `VITE_API_BASE_URL` | (page origin) | Optional | Plugin asset URLs. | — |
 | `VITE_APP_BASE_URL` | `window.location.origin` | Optional | Invite link base URL. | — |

@@ -15,6 +15,6 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src/**/*", "../shared/**/*"],
+  "include": ["src/**/*", "../shared/**/*", "../frontend/src/i18n/en/**/*.json"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts", "../shared/**/*.test.ts"]
 }

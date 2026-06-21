@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchCampaign } from '@/lib/campaigns';
 import { fetchDashboardBundle, updateDashboardLayout } from '@/lib/dashboard';
 import {
@@ -33,6 +34,7 @@ const TIME_MANAGE_ROLES = LAYOUT_EDIT_ROLES;
 const HERO_SAVE_DEBOUNCE_MS = 450;
 
 export function CampaignDashboardPage() {
+  const { t } = useTranslation();
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const { campaign: wikiCampaign } = useWiki();
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
@@ -52,13 +54,13 @@ export function CampaignDashboardPage() {
       setCampaign(campaignData);
       setBundle(dashboardBundle);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load campaign');
+      setError(err instanceof Error ? err.message : t('campaign.dashboard.loadError'));
       setCampaign(null);
       setBundle(null);
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle]);
+  }, [campaignHandle, t]);
 
   useEffect(() => {
     void loadDashboard();
@@ -68,22 +70,22 @@ export function CampaignDashboardPage() {
     return (
       <MascotErrorPanel
         code={404}
-        title="Campaign not found"
-        description="Missing campaign slug in the URL."
+        title={t('campaign.dashboard.campaignNotFound')}
+        description={t('campaign.dashboard.campaignNotFoundDescription')}
       />
     );
   }
 
   if (loading) {
-    return <LoadingSpinner label="Loading campaign home…" />;
+    return <LoadingSpinner label={t('campaign.dashboard.loadingCampaignHome')} />;
   }
 
   if (error || !campaign || !bundle) {
     return (
       <MascotErrorPanel
         code={404}
-        title="Unable to load campaign"
-        description={error ?? 'This campaign may be private or unavailable.'}
+        title={t('campaign.dashboard.loadFailed')}
+        description={error ?? t('campaign.dashboard.loadFailedDescription')}
       />
     );
   }

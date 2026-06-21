@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LocaleProvider } from '@/contexts/LocaleContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CampaignLayout } from '@/layouts/CampaignLayout';
@@ -72,6 +73,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <LocaleProvider>
         <BrandingProvider>
         <Routes>
           <Route element={<AppLayout />} errorElement={<RouteErrorPage />}>
@@ -186,6 +188,7 @@ export default function App() {
           </Route>
         </Routes>
         </BrandingProvider>
+        </LocaleProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -8,12 +8,12 @@ export function AdminPluginsPage() {
         <div className="flex items-center gap-2 text-primary">
           <Shield className="size-7" strokeWidth={1.5} />
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Plugins & Integrations
+            Plugins
           </h1>
         </div>
         <p className="flex items-center gap-2 text-sm text-muted">
           <Puzzle className="size-4 shrink-0" />
-          Registry discovery and remote manifest installation.
+          Installed plugin state and catalog discovery.
         </p>
       </header>
       <AdminPluginsTab />

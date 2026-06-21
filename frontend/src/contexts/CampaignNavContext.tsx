@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -31,6 +32,8 @@ export function CampaignNavProvider({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsedState] = useState(() =>
     getSidebarCollapsedPreference(),
   );
+  const sidebarCollapsedRef = useRef(sidebarCollapsed);
+  sidebarCollapsedRef.current = sidebarCollapsed;
 
   const openSidebar = useCallback(() => setSidebarOpen(true), []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
@@ -38,29 +41,33 @@ export function CampaignNavProvider({ children }: { children: ReactNode }) {
 
   const setSidebarCollapsed = useCallback((collapsed: boolean) => {
     setSidebarCollapsedState(collapsed);
-    setSidebarCollapsedPreference(collapsed);
   }, []);
 
   const toggleSidebarCollapsed = useCallback(() => {
-    setSidebarCollapsedState((prev) => {
-      const next = !prev;
-      setSidebarCollapsedPreference(next);
-      return next;
-    });
+    setSidebarCollapsedState((prev) => !prev);
   }, []);
+
+  useEffect(() => {
+    setSidebarCollapsedPreference(sidebarCollapsed);
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     const handleCustom = (event: Event) => {
       const custom = event as CustomEvent<boolean>;
       if (typeof custom.detail === 'boolean') {
+        if (custom.detail === sidebarCollapsedRef.current) return;
         setSidebarCollapsedState(custom.detail);
       } else {
-        setSidebarCollapsedState(getSidebarCollapsedPreference());
+        const next = getSidebarCollapsedPreference();
+        if (next === sidebarCollapsedRef.current) return;
+        setSidebarCollapsedState(next);
       }
     };
     const handleStorage = (event: StorageEvent) => {
       if (event.key === SIDEBAR_COLLAPSED_STORAGE_KEY) {
-        setSidebarCollapsedState(getSidebarCollapsedPreference());
+        const next = getSidebarCollapsedPreference();
+        if (next === sidebarCollapsedRef.current) return;
+        setSidebarCollapsedState(next);
       }
     };
 

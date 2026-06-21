@@ -48,6 +48,7 @@ import {
   getWikiOutlinks,
   getWikiLinkIntegrity,
   togglePinnedPageShortcut,
+  previewCreatePageMarkdownImport,
 } from '../controllers/wikiController.js';
 import {
   createWikiPageAlias,
@@ -1101,6 +1102,12 @@ campaignScopedRouter.get(
   '/wiki/session-notes/player/:playerId',
   requireGamemasterSettings,
   getPlayerSessionSummary,
+);
+
+campaignScopedRouter.post(
+  '/wiki/import-markdown-preview',
+  requireNonObserverMember,
+  previewCreatePageMarkdownImport,
 );
 
 campaignScopedRouter.post(

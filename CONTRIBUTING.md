@@ -38,6 +38,12 @@ Before submitting:
 - Update documentation for user-facing changes.
 - Avoid unrelated refactors.
 
+### AI-assisted contributions
+
+AI tools may propose changes (branches, commits when you direct them, pull requests) but must not merge, approve, or publish releases. Human maintainers review and merge.
+
+Read [AGENTS.md](./AGENTS.md) for product policy and git workflow. Mechanical enforcement (PR required, approval, CI) is defined in [.github/rulesets/develop-main.json](./.github/rulesets/develop-main.json) and activated per [GOVERNANCE.md](./GOVERNANCE.md).
+
 ## Working in the codebase
 
 The technical side of development (environment setup, build commands, testing, database workflows, and release processes) lives in [DEVELOPMENT.md](./DEVELOPMENT.md).
@@ -70,6 +76,7 @@ Esiana is a TypeScript monorepo:
 
 ## Additional resources
 
+- Agent policy: [AGENTS.md](./AGENTS.md)
 - Governance: [GOVERNANCE.md](./GOVERNANCE.md)
 - Security reporting: [SECURITY.md](./SECURITY.md)
 - Maintainer releases: [DEVELOPMENT.md](./DEVELOPMENT.md#maintainer-release) · [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases)

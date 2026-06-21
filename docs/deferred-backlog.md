@@ -127,7 +127,7 @@ These appeared in plan "out of scope" or deferral notes but have since landed �
 | Tag color picker UI (schema field exists)                              | `open`    | —              | [wiki_tagging_system](../../docs/plans/wiki_tagging_system_8af5e06f.plan.md)                                                                                               |
 | `/wiki/tags` URL segment                                               | `open`    | —              | [wiki_tagging_system](../../docs/plans/wiki_tagging_system_8af5e06f.plan.md)                                                                                               |
 | Entity inspector field search (`searchKeywords`)                       | `open`    | —              | [entity-inspector-ux.md](./plans/entity-inspector-ux.md)                                                                                                                   |
-| Per-game-system sidebar presets and stat-block templates               | `open`    | Future release | [gamesystems.md](../../docs/gamesystems.md)                                                                                                                                |
+| Per-game-system sidebar presets and stat-block templates               | `open`    | Future release | [gamesystems.md](../../docs/reference/gamesystems.md)                                                                                                                                |
 | Cached visual atlas manifests / incremental invalidation on wiki save  | `open`    | Post-v1        | Visual Atlas v1 on-demand projection                                                                                                                                       |
 | Quick Access sidebar (DM/Co-DM campaign shortcuts)                     | `in-todo` | v1.1+          | [todo.md](../todo.md) — distinct from personal dashboard pins (`PageShortcut`)                                                                                             |
 | CampaignQuickAccess data model + `/wiki/quick-access` CRUD             | `in-todo` | v1.1+          | [todo.md](../todo.md)                                                                                                                                                      |
@@ -234,7 +234,7 @@ These appeared in plan "out of scope" or deferral notes but have since landed �
 | ------------------------------------------------------------------- | ------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Optional local Ollama/RAG pipeline (privacy-first lore auditing)    | `plugin-only` | Plugin-first      | `legacy: Phase 17`                                                                                                                                                                 |
 | Redis read-cache pipeline (wiki blocks, templates, asset metadata)  | `plugin-only` | Phase 16          | `legacy: Phase 16`                                                                                                                                                                 |
-| Perspective-bound player journals (contradictory PC memories)     | `plugin-only` | Phase 23          | [`plugins/player-journal`](../plugins/player-journal)                                                                                                                              |
+| Perspective-bound player journals (contradictory PC memories)     | `plugin-only` | Phase 23          | [`community-plugins/examples/player-journal`](../../community-plugins/examples/player-journal)                                                                                                                              |
 | `registerEntityAction` / entity page overflow hooks               | `won't-do`    | Post-1.0          | [pre-1.0-plugin-platform.md](./plans/pre-1.0-plugin-platform.md) — revisit as strict `registerContextAction` on known menus only                                                   |
 | Plugin-to-plugin service registry (`registerService` / `consumeService`) | `won't-do` | Post-1.0          | [pre-1.0-plugin-platform.md](./plans/pre-1.0-plugin-platform.md) — 1.0 pattern: domain reads + domain events                                                                      |
 | Plugin resource guardrails (isolate_vm / workers)                   | `partial`     | Phase 10.5        | Worker sandbox + limits; `isolated-vm` deferred                                                                                                                                    |
@@ -267,7 +267,6 @@ These appeared in plan "out of scope" or deferral notes but have since landed �
 | Item                                                                                                                                          | Status    | Target                         | Source                                                                                                                      |
 | --------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | Wizard ingest: Notion backend                                                                                                                 | `plugin-only` | —                              | [wizard_import_source_boxes](../../docs/plans/wizard_import_source_boxes_26e2a64f.plan.md) — use Obsidian Markdown ZIP path |
-| Wizard ingest: Kanka backend                                                                                                                  | `plugin-only` | —                              | [wizard_import_source_boxes](../../docs/plans/wizard_import_source_boxes_26e2a64f.plan.md)                                  |
 | Wizard ingest: OneNote backend                                                                                                                | `plugin-only` | —                              | [wizard_import_source_boxes](../../docs/plans/wizard_import_source_boxes_26e2a64f.plan.md)                                  |
 | Wizard ingest: Esiana backup restore in wizard                                                                                                | `shipped` | —                              | [wizard_import_source_boxes](../../docs/plans/wizard_import_source_boxes_26e2a64f.plan.md)                                  |
 | Separate wizard steps per import source                                                                                                       | `open`    | —                              | [wizard_import_source_boxes](../../docs/plans/wizard_import_source_boxes_26e2a64f.plan.md)                                  |
@@ -286,6 +285,19 @@ These appeared in plan "out of scope" or deferral notes but have since landed �
 - Future asset imports — instance branding (logo, favicon, OG), OIDC avatar/logo cache when scoped
 - DNS rebinding / IP pinning at connect time — deferred (TOCTOU; `redirect: 'error'` + ssrfGuard reduces pivot risk)
 - Standardize remaining paths on [networkFetch.ts](../backend/src/lib/networkFetch.ts) + [ssrfGuard.ts](../backend/src/lib/ssrfGuard.ts)
+
+### Localization & community translations
+
+
+| Item                                                                                     | Status    | Target | Source                                                                 |
+| ---------------------------------------------------------------------------------------- | --------- | ------ | ---------------------------------------------------------------------- |
+| UI locale foundation (Phases 0–3)                                                        | `shipped` | —      | [localization.md](./localization.md)                                   |
+| In-repo community locale tree + starter `fr/` slice (Phase 4)                            | `shipped` | —      | [translating.md](./translating.md)                                     |
+| Instance default UI locale (`ESIANA_DEFAULT_LOCALE`)                                     | `shipped` | —      | [localization.md](./localization.md)                                   |
+| Hosted translation platform (Weblate / Crowdin) + automated sync                         | `open`    | —      | Deferred until active non-English contributors; architecture compatible |
+| Maintainer locale completion dashboard (hosted / gating)                                 | `open`    | —      | Use `pnpm --filter frontend report:i18n` locally until then            |
+| Full `fr/` (and other locale) coverage of all domain files                                | `open`    | —      | Incremental community PRs                                              |
+
 
 ### Recruitment & hub UX
 
@@ -445,7 +457,7 @@ Open and deferred items only (`open`, `partial`, `in-todo`) — shipped, won't-d
 | PDF / print CSS (session snapshot)                   | open    | —            | session_snapshot_unified_path      |
 | Per-author ReferencesWidget filter                   | in-todo | —            | todo.md                            |
 | Per-campaign notification overrides                  | open    | —            | phase_8_notifications              |
-| Per-game-system wiki presets                         | open    | Future       | gamesystems.md                     |
+| Per-game-system wiki presets                         | open    | Future       | [reference/gamesystems.md](../../docs/reference/gamesystems.md) |
 | Per-resource ACL overrides / custom campaign roles   | open    | Post-1.0     | campaign-access-model              |
 | Perspectives API → derive from columns               | open    | —            | session_snapshot_unified_path      |
 | Phase 6 capacity profiling block                     | in-todo | 13           | todo.md                            |

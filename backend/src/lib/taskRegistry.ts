@@ -126,6 +126,7 @@ export function updateBackgroundTask(
     progress?: number;
     errorMessage?: string | null;
     abortable?: boolean;
+    taskName?: string;
     metaMerge?: Record<string, unknown>;
   },
 ): BackgroundTaskRecord | null {
@@ -159,6 +160,10 @@ export function updateBackgroundTask(
 
   if (patch.abortable !== undefined) {
     task.abortable = patch.abortable;
+  }
+
+  if (patch.taskName !== undefined) {
+    task.taskName = patch.taskName;
   }
 
   if (patch.metaMerge) {

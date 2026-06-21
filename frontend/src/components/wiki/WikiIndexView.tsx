@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import {
@@ -50,8 +51,7 @@ import {
   type CategoryIndexViewMode,
 } from '@/lib/categoryIndexBrowseStorage';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { resolveVisibilityTierLabel } from '@/lib/campaignAffordances';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 import {
   getCategoryDefaultView,
   isEntityCatalogCategory,
@@ -83,6 +83,7 @@ export function EntityBrowserView({
   categoryPageId,
   categoryTitle,
 }: WikiIndexViewProps) {
+  const { t } = useTranslation();
   const params = useParams<{ campaignHandle?: string }>();
   const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign } =
     useWiki();
@@ -141,12 +142,14 @@ export function EntityBrowserView({
       setChildren(data.children ?? []);
       setDiscoverySummary(data.discoverySummary ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load index');
+      setError(
+        err instanceof Error ? err.message : t('campaign.characters.loadIndexFailed'),
+      );
       setChildren([]);
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, categoryPageId]);
+  }, [campaignHandle, categoryPageId, t]);
 
   useEffect(() => {
     loadIndex();
@@ -307,7 +310,11 @@ export function EntityBrowserView({
   }
 
   if (loading) {
-    return <LoadingSpinner label={`Loading ${categoryTitle}…`} />;
+    return (
+      <LoadingSpinner
+        label={t('campaign.characters.loadingIndex', { title: categoryTitle })}
+      />
+    );
   }
 
   return (
@@ -483,6 +490,7 @@ function IndexCardView({
   campaignHandle,
   pageById,
 }: CardViewProps) {
+  const isDMUser = useElevatedNarrativeView();
   const displayMetadata = getDisplayMetadata(child.metadata, categoryTitle);
   const locationTrailLabel =
     child.locationTrailLabel ??
@@ -505,11 +513,10 @@ function IndexCardView({
           {child.title}
         </h3>
         <DiscoveryStateBadge discovery={child.discovery} surface="browse" compact />
-        <VisibilityTierChip
-          tier={resolveVisibilityTierLabel({
-            pageVisibility: child.visibility,
-            narrativeStatus: child.narrativeStatus?.status ?? null,
-          })}
+        <BrowseVisibilityIndicator
+          pageVisibility={child.visibility}
+          narrativeStatus={child.narrativeStatus?.status ?? null}
+          showWhenElevated={isDMUser}
           compact
         />
       </div>

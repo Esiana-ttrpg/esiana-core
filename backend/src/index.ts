@@ -8,4 +8,5 @@ app.listen(env.port, () => {
   console.log(`  uploads: ${env.uploadsDir}`);
   console.log(`  plugins: ${env.pluginsDir}`);
   console.log(`  database: ${env.databaseProvider}`);
+  console.log(`  core version: ${env.coreVersion}`);
 });

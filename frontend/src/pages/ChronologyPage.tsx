@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom';
 import { Loader2, Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChronologyEventSidebar } from '@/components/chronology/ChronologyEventSidebar';
 import { FantasyDatePicker } from '@/components/chronology/FantasyDatePicker';
 import { ConditionTreeBuilder } from '@/components/chronology/ConditionTreeBuilder';
@@ -64,6 +65,7 @@ function parseActiveView(raw: string | null): ChronologyView {
 }
 
 export function ChronologyPage() {
+  const { t } = useTranslation();
   const { campaignHandle, campaign, can } = useWiki();
   const [searchParams] = useSearchParams();
   const requestedView = searchParams.get('view');
@@ -247,7 +249,7 @@ export function ChronologyPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load chronology');
+      setError(err instanceof Error ? err.message : t('campaign.timeline.loadFailed'));
       setBundle(null);
       setTimeBundle(null);
       setOverlayBundle(null);
@@ -263,6 +265,7 @@ export function ChronologyPage() {
     activeView,
     feedDomainsParam,
     sessionLinkedOnly,
+    t,
   ]);
 
   const handleEventMutated = useCallback(async () => {
@@ -305,7 +308,7 @@ export function ChronologyPage() {
   async function handleCreateEvent() {
     if (!campaignHandle || !bundle) return;
     if (!createTitle.trim()) {
-      window.alert('Title is required.');
+      window.alert(t('campaign.timeline.titleRequired'));
       return;
     }
     const calendarId =
@@ -374,7 +377,7 @@ export function ChronologyPage() {
         bundle?.occurrences.find((row) => row.baseEventId === created.id) ?? null,
       );
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Failed to create event.');
+      window.alert(err instanceof Error ? err.message : t('campaign.timeline.createEventFailed'));
     } finally {
       setCreating(false);
     }
@@ -391,7 +394,9 @@ export function ChronologyPage() {
       setNewCategoryName('');
       await load();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Failed to create category.');
+      window.alert(
+        err instanceof Error ? err.message : t('campaign.timeline.createCategoryFailed'),
+      );
     } finally {
       setCreatingCategory(false);
     }
@@ -399,7 +404,9 @@ export function ChronologyPage() {
 
   const categoryFooter = canManageChronologyAccess && bundle ? (
     <div className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Categories</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+        {t('campaign.timeline.categoriesLabel')}
+      </p>
       <div className="flex flex-wrap gap-1">
         {bundle.categories.map((category) => (
           <span
@@ -430,7 +437,7 @@ export function ChronologyPage() {
           onClick={() => void handleCreateCategory()}
           className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
         >
-          Add
+          {t('campaign.timeline.addCategory')}
         </button>
       </div>
     </div>
@@ -454,7 +461,7 @@ export function ChronologyPage() {
       {loading && (
         <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted">
           <Loader2 className="size-4 animate-spin" />
-          Loading chronology data...
+          {t('campaign.timeline.loadingChronology')}
         </div>
       )}
 
@@ -559,7 +566,9 @@ export function ChronologyPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl border border-border bg-background p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Create Chronology Event</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                {t('campaign.timeline.createEventTitle')}
+              </h2>
               <button
                 type="button"
                 onClick={() => {
@@ -575,7 +584,9 @@ export function ChronologyPage() {
             </div>
             <div className="space-y-3 text-sm">
               <label className="block space-y-1">
-                <span className="text-xs font-semibold text-muted">Title</span>
+                <span className="text-xs font-semibold text-muted">
+                  {t('campaign.timeline.fieldTitle')}
+                </span>
                 <input
                   type="text"
                   value={createTitle}
@@ -585,7 +596,9 @@ export function ChronologyPage() {
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-semibold text-muted">Description</span>
+                <span className="text-xs font-semibold text-muted">
+                  {t('campaign.timeline.fieldDescription')}
+                </span>
                 <textarea
                   value={createDescription}
                   onChange={(event) => setCreateDescription(event.target.value)}

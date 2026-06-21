@@ -29,6 +29,7 @@ Engineering records and internal platform specs for **maintainers**. User-facing
 | [`release/`](./release/) | RC checklists |
 | [`plans/`](./plans/) | Internal design evolution |
 | [`deferred-backlog.md`](./deferred-backlog.md) | Deferred scope ledger |
+| [`known-gaps-1.0.md`](./known-gaps-1.0.md) | Pre-1.0 documentation gap ledger |
 
 ---
 

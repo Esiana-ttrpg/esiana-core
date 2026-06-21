@@ -30,7 +30,7 @@ Lore claims + historical aliases now round-trip in sovereign ZIP — [pre-1.0-ex
 
 ## Doc drift fixes
 
-- [.cursor/rules/esiana-roadmap.mdc](../../.cursor/rules/esiana-roadmap.mdc) updated — fog/atlas no longer listed as open gates
+- [AGENTS.md](../../AGENTS.md) §6 — fog/atlas no longer listed as open gates (roadmap context)
 - [data-backup-and-export.md](../../../docs/features/data-backup-and-export.md) aligned with sovereign `knowledge.json`
 
 Reader-facing summary: [docs/architecture/narrative-foundation.md](../../../docs/architecture/narrative-foundation.md)

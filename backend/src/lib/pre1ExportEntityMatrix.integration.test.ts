@@ -304,7 +304,7 @@ test('pre-1.0 export matrix: Obsidian import resolves template types from module
   assert.equal(resolveImportTemplateType('Characters', {}), 'CHARACTER');
   assert.equal(resolveImportTemplateType('Locations', {}), 'LOCATION');
   assert.equal(
-    resolveImportTemplateType('Wiki/Generic', { templateType: 'ARC' }),
+    resolveImportTemplateType('Characters', { templateType: 'ARC' }),
     'ARC',
   );
   assert.equal(resolveImportEntityCategory('Characters', {}), 'characters');

@@ -1,0 +1,12 @@
+{
+  "home.pageTitleAuthenticated": "Hub des campagnes",
+  "home.pageTitleGuest": "Explorer Esiana",
+  "home.pageSubtitleAuthenticated": "Vos mondes vous attendent — reprenez vos histoires, toutes vos tables au même endroit.",
+  "home.pageSubtitleGuest": "Parcourez les campagnes visibles publiquement de la communauté.",
+  "home.createCampaign": "Créer une campagne",
+  "home.loadFailed": "Échec du chargement des campagnes",
+  "home.emptyTitle": "Aucune campagne",
+  "home.emptyDescription": "Créez une campagne pour bâtir votre premier monde.",
+  "home.explorePublicTitle": "Campagnes publiques",
+  "home.explorePublicDescription": "Découvrez les mondes partagés par la communauté."
+}

@@ -86,9 +86,8 @@ For production deployments, reverse proxies, HTTPS, OIDC, object storage, and pl
 
 ## Documentation
 
-- User Guide
-- Self-Hosting Guide
-- Plugin Development
-- API Documentation (`/api/docs`)
-- Roadmap
-- Discussions
+- [Documentation wiki](https://github.com/Esiana-ttrpg/docs) — operators, GMs, integrators, plugin authors
+- [Self-hosting installation](https://github.com/Esiana-ttrpg/docs/blob/main/self-hosting/installation.md)
+- [Plugin development](https://github.com/Esiana-ttrpg/docs/blob/main/plugin-development/getting-started.md)
+- [API guides](https://github.com/Esiana-ttrpg/docs/blob/main/api/overview.md) — live reference at `/api/docs` on your instance
+- [Roadmap](https://github.com/Esiana-ttrpg/esiana-core/issues) · [Discussions](https://github.com/Esiana-ttrpg/esiana-core/discussions)

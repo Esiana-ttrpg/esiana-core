@@ -189,7 +189,7 @@ export function CampaignPluginsSettingsTab({
       {noServerPlugins ? (
         <p className="rounded-xl border border-border bg-background/50 px-5 py-4 text-sm text-muted">
           No campaign plugins are installed on this server. Ask your server administrator
-          to install campaign plugins from Admin → Plugins & Integrations.
+          to install campaign plugins from Admin → Plugins.
         </p>
       ) : null}
 

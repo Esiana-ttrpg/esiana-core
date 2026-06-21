@@ -35,6 +35,7 @@ export interface UserProfile extends UserSocialLinks {
   allowCampaignSystemOverride?: boolean;
   timezone?: string | null;
   effectiveTimezone?: string;
+  uiLocale?: string | null;
 }
 
 export interface UserProfileUpdateInput extends Partial<UserSocialLinks> {
@@ -48,4 +49,5 @@ export interface UserProfileUpdateInput extends Partial<UserSocialLinks> {
   appearanceProfile?: ThemeProfile | null;
   allowCampaignSystemOverride?: boolean;
   timezone?: string | null;
+  uiLocale?: string | null;
 }

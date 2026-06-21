@@ -1,0 +1,15 @@
+{
+  "campaign.recruitment.pageTitle": "Recruitment Directory",
+  "campaign.recruitment.pageSubtitle": "Explore open tables, compare play styles, and join your next story arc.",
+  "campaign.recruitment.filterGameSystem": "Game System",
+  "campaign.recruitment.filterAllSystems": "All Systems",
+  "campaign.recruitment.filterSeatsAvailable": "Seats Available",
+  "campaign.recruitment.filterShowAllGames": "Show All Games",
+  "campaign.recruitment.filterHideFullGames": "Hide Full Games",
+  "campaign.recruitment.filterSortBy": "Sort by",
+  "campaign.recruitment.sortNewest": "Newest",
+  "campaign.recruitment.sortNextSession": "Next Session",
+  "campaign.recruitment.paginationPrev": "Prev",
+  "campaign.recruitment.paginationNext": "Next",
+  "campaign.recruitment.paginationLabel": "Page {{page}} / {{totalPages}}"
+}

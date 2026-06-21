@@ -13,19 +13,26 @@ export function ToggleRow({
   checked,
   onChange,
   description,
+  disabled = false,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   description?: string;
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex items-start gap-3 rounded-lg border border-border bg-background/60 px-4 py-3">
+    <label
+      className={`flex items-start gap-3 rounded-lg border border-border bg-background/60 px-4 py-3 ${
+        disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+      }`}
+    >
       <input
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 shrink-0 rounded border-border bg-background text-primary focus:ring-primary/40"
+        className="mt-0.5 size-4 shrink-0 rounded border-border bg-background text-primary focus:ring-primary/40 disabled:cursor-not-allowed"
       />
       <span>
         <span className="block text-sm font-medium text-foreground">{label}</span>

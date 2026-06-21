@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
   ChevronDown,
@@ -69,6 +70,7 @@ function noteMatchesSearch(page: SessionNotesNotebookPage, query: string): boole
 }
 
 export function SessionNotesView() {
+  const { t } = useTranslation();
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const navigate = useNavigate();
   const { campaign, flatPages } = useWiki();
@@ -124,7 +126,7 @@ export function SessionNotesView() {
       const payload = await fetchSessionNotesIndex(campaignHandle);
       setData(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load notes index.');
+      setError(err instanceof Error ? err.message : t('campaign.timeline.sessionNotesLoadFailed'));
     } finally {
       setLoading(false);
     }
@@ -227,7 +229,9 @@ export function SessionNotesView() {
       setNewArcTitle('');
       setShowCreateArcDialog(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create notebook.');
+      setError(
+        err instanceof Error ? err.message : t('campaign.timeline.sessionNotesCreateNotebookFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -251,7 +255,9 @@ export function SessionNotesView() {
       setEditingId(null);
       setTitleInput('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update title.');
+      setError(
+        err instanceof Error ? err.message : t('campaign.timeline.sessionNotesUpdateTitleFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -266,7 +272,9 @@ export function SessionNotesView() {
       await deleteNotebookArc(campaignHandle, notebookId);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete header.');
+      setError(
+        err instanceof Error ? err.message : t('campaign.timeline.sessionNotesDeleteHeaderFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -284,7 +292,9 @@ export function SessionNotesView() {
       setPageTitleInput('');
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to rename note.');
+      setError(
+        err instanceof Error ? err.message : t('campaign.timeline.sessionNotesRenameNoteFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -307,7 +317,9 @@ export function SessionNotesView() {
       await deleteSessionNotePage(campaignHandle, pageId);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete note.');
+      setError(
+        err instanceof Error ? err.message : t('campaign.timeline.sessionNotesDeleteNoteFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -391,7 +403,9 @@ export function SessionNotesView() {
       setSelectedNoteIds([]);
       setBulkDestinationBookId('__uncategorized__');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to move selected notes.');
+      setError(
+        err instanceof Error ? err.message : t('campaign.timeline.sessionNotesMoveNotesFailed'),
+      );
     } finally {
       setSaving(false);
     }
@@ -409,13 +423,15 @@ export function SessionNotesView() {
       setBulkDestinationBookId('__uncategorized__');
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete selected notes.');
+      setError(
+        err instanceof Error ? err.message : t('campaign.timeline.sessionNotesDeleteNotesFailed'),
+      );
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) return <LoadingSpinner label="Loading session notes index…" />;
+  if (loading) return <LoadingSpinner label={t('campaign.timeline.sessionNotesLoading')} />;
   if (error) return <p className="text-sm text-red-300">{error}</p>;
   if (!data) return null;
 
@@ -429,9 +445,11 @@ export function SessionNotesView() {
       <header className={SURFACE_PRIMARY_CLASS}>
         <div className="flex flex-col items-stretch justify-between gap-3 border-b border-border/40 pb-4 md:flex-row md:items-center">
           <div className="min-w-0 shrink-0 space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Session Notes</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+              {t('campaign.timeline.sessionNotesPageTitle')}
+            </h1>
             <p className={SURFACE_RECESSED_CLASS}>
-              Session notes grouped by books, arcs, or sidequests.
+              {t('campaign.timeline.sessionNotesPageSubtitle')}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 md:flex-nowrap md:gap-3">
@@ -442,9 +460,9 @@ export function SessionNotesView() {
                   type="search"
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search notes for words or phrases..."
+                  placeholder={t('campaign.timeline.sessionNotesSearchPlaceholder')}
                   className="h-10 w-full rounded-lg bg-transparent py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted outline-none"
-                  aria-label="Search session notes"
+                  aria-label={t('campaign.timeline.sessionNotesSearchAria')}
                 />
               </label>
             )}
@@ -470,7 +488,7 @@ export function SessionNotesView() {
                     }`}
                   >
                     <FolderInput className="size-4" />
-                    Organize
+                    {t('campaign.timeline.sessionNotesOrganize')}
                   </button>
                 )}
                 <button
@@ -479,7 +497,7 @@ export function SessionNotesView() {
                   className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface/40 px-3 py-2 text-sm text-foreground hover:bg-surface"
                 >
                   <FileUp className="size-4" />
-                  Upload Page
+                  {t('campaign.timeline.sessionNotesUploadPage')}
                 </button>
                 <div className="relative shrink-0" ref={createMenuRef}>
                   <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-surface/40 text-sm text-foreground transition-colors hover:bg-surface">
@@ -487,7 +505,7 @@ export function SessionNotesView() {
                       type="button"
                       onClick={openCreatePageDialog}
                       className="flex cursor-pointer items-center justify-center border-r border-border px-3 py-2"
-                      aria-label="Create new page"
+                      aria-label={t('campaign.timeline.sessionNotesCreatePageAria')}
                     >
                       <Plus className="size-4" />
                     </button>
@@ -495,7 +513,7 @@ export function SessionNotesView() {
                       type="button"
                       onClick={() => setIsCreateMenuOpen((open) => !open)}
                       className="flex cursor-pointer items-center justify-center px-2 py-2 hover:bg-elevated/80"
-                      aria-label="Open create menu"
+                      aria-label={t('campaign.timeline.sessionNotesOpenCreateMenuAria')}
                       aria-expanded={isCreateMenuOpen}
                     >
                       <ChevronDown className="size-3.5" />
@@ -509,7 +527,7 @@ export function SessionNotesView() {
                         className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
                       >
                         <span aria-hidden>📝</span>
-                        Create New Page
+                        {t('campaign.timeline.sessionNotesCreateNewPage')}
                       </button>
                       {canManageRole ? (
                         <button
@@ -518,7 +536,7 @@ export function SessionNotesView() {
                           className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
                         >
                           <span aria-hidden>📅</span>
-                          Create New Session
+                          {t('campaign.timeline.sessionNotesCreateNewSession')}
                         </button>
                       ) : null}
                       {canManage && (
@@ -662,7 +680,7 @@ export function SessionNotesView() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  title="Rename header"
+                  title={t('campaign.timeline.sessionNotesRenameHeader')}
                   onClick={() => {
                     setEditingId(notebook.id);
                     setTitleInput(notebook.title);
@@ -673,7 +691,7 @@ export function SessionNotesView() {
                 </button>
                 <button
                   type="button"
-                  title="Delete header"
+                  title={t('campaign.timeline.sessionNotesDeleteHeader')}
                   onClick={() => void handleDeleteHeader(notebook.id)}
                   className="rounded p-1 text-muted transition-colors hover:text-red-400"
                 >
@@ -727,7 +745,7 @@ export function SessionNotesView() {
                       {page.canEdit && (
                         <button
                           type="button"
-                          title="Rename note"
+                          title={t('campaign.timeline.sessionNotesRenameNote')}
                           onClick={() => {
                             setEditingPageId(page.id);
                             setPageTitleInput(page.title);
@@ -740,7 +758,7 @@ export function SessionNotesView() {
                       {page.canDelete && (
                         <button
                           type="button"
-                          title="Delete note"
+                          title={t('campaign.timeline.sessionNotesDeleteNote')}
                           onClick={() => void handleDeletePage(page.id, page.title)}
                           className="rounded p-1 text-muted hover:bg-red-950/40 hover:text-red-300"
                         >
@@ -802,7 +820,7 @@ export function SessionNotesView() {
                     {page.canEdit && (
                       <button
                         type="button"
-                        title="Rename note"
+                        title={t('campaign.timeline.sessionNotesRenameNote')}
                         onClick={() => {
                           setEditingPageId(page.id);
                           setPageTitleInput(page.title);
@@ -815,7 +833,7 @@ export function SessionNotesView() {
                     {page.canDelete && (
                       <button
                         type="button"
-                        title="Delete note"
+                        title={t('campaign.timeline.sessionNotesDeleteNote')}
                         onClick={() => void handleDeletePage(page.id, page.title)}
                         className="rounded p-1 text-muted hover:bg-red-950/40 hover:text-red-300"
                       >

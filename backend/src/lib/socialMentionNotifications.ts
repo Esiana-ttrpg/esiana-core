@@ -1,6 +1,6 @@
 import { prisma } from './prisma.js';
 import type { ExtractedSocialMention } from './wikiLinkExtract.js';
-import { notifyUsersAsync } from './notifications/notificationService.js';
+import { notifyUsersFromTemplateAsync } from './notifications/notificationService.js';
 import { NotificationType } from './notifications/types.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
 import { wikiPageHrefSelect } from './wikiPageHrefSelect.js';
@@ -48,15 +48,19 @@ export async function dispatchSocialMentionNotifications(input: {
         ? NotificationType.CHARACTER_REFERENCED_IN_PAGE
         : NotificationType.MENTION_IN_PAGE;
 
-    notifyUsersAsync({
+    notifyUsersFromTemplateAsync({
       userIds: [targetUserId],
       campaignId: input.campaignId,
       type,
-      title:
+      vars:
         mention.mentionType === 'CHARACTER'
-          ? `${mention.label} was referenced`
-          : 'You were mentioned',
-      body: `In "${sourcePage.title}"`,
+          ? {
+              characterLabel: mention.label,
+              sourcePageTitle: sourcePage.title,
+            }
+          : {
+              sourcePageTitle: sourcePage.title,
+            },
       linkUrl,
       metadata: {
         sourcePageId: input.sourcePageId,

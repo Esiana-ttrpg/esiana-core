@@ -1,7 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronRight, X } from 'lucide-react';
+import { SidebarCollapseToggle } from '@/components/layout/SidebarCollapseToggle';
 import { useWiki } from '@/contexts/WikiContext';
 import {
   campaignCategoryChildPath,
@@ -40,12 +42,18 @@ import {
   SIDEBAR_TOP_FIXED_IDS,
   SIDEBAR_UTILITY_STUB_IDS,
   TIME_TRACKING_WIKI_TITLES,
-  getSidebarItemDisplayLabel,
   isFixedSectionVisible,
   type SidebarConfig,
   type SidebarOrderItem,
   type SidebarSectionId,
 } from '@/lib/sidebarConfig';
+import {
+  translateSidebarItemLabel,
+  translateSidebarSectionLabel,
+  translateSidebarStatusLabel,
+  translateSidebarZoneHeader,
+  translateTimelineNavLabel,
+} from '@/i18n/sidebarLabels';
 import { SidebarNavIcon } from '@/components/SidebarNavIcon';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PluginSlotHost } from '@/plugins/slots';
@@ -166,7 +174,7 @@ function AdventureNavGroup({
     if (childActive) setExpanded(true);
   }, [childActive, location.pathname, location.search]);
 
-  const label = getSidebarItemDisplayLabel(item);
+  const label = translateSidebarItemLabel(item);
 
   if (collapsed) {
     return (
@@ -271,7 +279,7 @@ function DowntimeNavGroup({
     if (childActive) setExpanded(true);
   }, [childActive, location.pathname, location.search]);
 
-  const label = getSidebarItemDisplayLabel(item);
+  const label = translateSidebarItemLabel(item);
 
   if (collapsed) {
     return (
@@ -358,6 +366,7 @@ export function Sidebar({
   onClose,
   collapsed = false,
 }: SidebarProps) {
+  useTranslation();
   const {
     campaignHandle,
     campaign,
@@ -433,11 +442,11 @@ export function Sidebar({
         <NavItem
           key={sectionId}
           to={campaignPartyPath(campaignHandle)}
-          label={meta.label}
+          label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
           onNavigate={onNavigate}
-          statusLabel={meta.statusLabel}
+          statusLabel={translateSidebarStatusLabel(meta.statusLabel)}
           collapsed={collapsed}
         />
       );
@@ -448,11 +457,11 @@ export function Sidebar({
         <NavItem
           key={sectionId}
           to={campaignVisualAtlasPath(campaignHandle)}
-          label={meta.label}
+          label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
           onNavigate={onNavigate}
-          statusLabel={meta.statusLabel}
+          statusLabel={translateSidebarStatusLabel(meta.statusLabel)}
           collapsed={collapsed}
         />
       );
@@ -463,7 +472,7 @@ export function Sidebar({
         <NavItem
           key={sectionId}
           to={campaignRelationsPath(campaignHandle)}
-          label={meta.label}
+          label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
           onNavigate={onNavigate}
@@ -478,11 +487,11 @@ export function Sidebar({
         <NavItem
           key={sectionId}
           to={campaignProgressionPath(campaignHandle)}
-          label={meta.label}
+          label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
           onNavigate={onNavigate}
-          statusLabel={meta.statusLabel}
+          statusLabel={translateSidebarStatusLabel(meta.statusLabel)}
           collapsed={collapsed}
         />
       );
@@ -493,11 +502,11 @@ export function Sidebar({
         <NavItem
           key={sectionId}
           to={campaignRecentChangesPath(campaignHandle)}
-          label={meta.label}
+          label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
           onNavigate={onNavigate}
-          statusLabel={meta.statusLabel}
+          statusLabel={translateSidebarStatusLabel(meta.statusLabel)}
           collapsed={collapsed}
         />
       );
@@ -509,11 +518,11 @@ export function Sidebar({
         <NavItem
           key={sectionId}
           to={campaignSettingsPath(campaignHandle)}
-          label={meta.label}
+          label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
           onNavigate={onNavigate}
-          statusLabel={meta.statusLabel}
+          statusLabel={translateSidebarStatusLabel(meta.statusLabel)}
           collapsed={collapsed}
         />
       );
@@ -524,11 +533,11 @@ export function Sidebar({
         <NavItem
           key={sectionId}
           to={wikiHrefForSection(sectionId, meta.wikiTitle)}
-          label={meta.label}
+          label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
           onNavigate={onNavigate}
-          statusLabel={meta.statusLabel}
+          statusLabel={translateSidebarStatusLabel(meta.statusLabel)}
           collapsed={collapsed}
         />
       );
@@ -546,7 +555,7 @@ export function Sidebar({
       <NavItem
         key={item.id}
         to={wikiHrefForSection(sectionId, meta.wikiTitle)}
-        label={getSidebarItemDisplayLabel(item)}
+        label={translateSidebarItemLabel(item)}
         sectionId={sectionId}
         config={sidebarConfig}
         onNavigate={onNavigate}
@@ -567,7 +576,7 @@ export function Sidebar({
         <NavItem
           key={`timeline-${title}`}
           to={campaignChronologyPath(campaignHandle, view)}
-          label={title}
+          label={translateTimelineNavLabel(title)}
           sectionId="timeTracking"
           config={sidebarConfig}
           onNavigate={onNavigate}
@@ -584,7 +593,7 @@ export function Sidebar({
       <NavItem
         key={item.id}
         to={campaignNotesPath(campaignHandle)}
-        label={getSidebarItemDisplayLabel(item)}
+        label={translateSidebarItemLabel(item)}
         sectionId={sectionId}
         config={sidebarConfig}
         onNavigate={onNavigate}
@@ -628,11 +637,13 @@ export function Sidebar({
         <NavItem
           key={item.id}
           to={campaignProgressionPath(campaignHandle)}
-          label={getSidebarItemDisplayLabel(item)}
+          label={translateSidebarItemLabel(item)}
           sectionId="progression"
           config={sidebarConfig}
           onNavigate={onNavigate}
-          statusLabel={SIDEBAR_SECTION_META.progression.statusLabel}
+          statusLabel={translateSidebarStatusLabel(
+            SIDEBAR_SECTION_META.progression.statusLabel,
+          )}
           collapsed={collapsed}
         />
       );
@@ -650,7 +661,7 @@ export function Sidebar({
         <NavItem
           key={item.id}
           to={campaignRelationsPath(campaignHandle)}
-          label={getSidebarItemDisplayLabel(item)}
+          label={translateSidebarItemLabel(item)}
           sectionId="relations"
           config={sidebarConfig}
           onNavigate={onNavigate}
@@ -697,7 +708,10 @@ export function Sidebar({
   function renderPlaySection() {
     return (
       <>
-        <ZoneHeading title={sidebarConfig.headers.play} collapsed={collapsed} />
+        <ZoneHeading
+          title={translateSidebarZoneHeader('play', sidebarConfig.headers.play)}
+          collapsed={collapsed}
+        />
         {sidebarConfig.playOrder.map((item) => renderPlayBucketItem(item))}
         {renderPluginSidebarItems('play')}
       </>
@@ -707,7 +721,10 @@ export function Sidebar({
   function renderWorldSection() {
     return (
       <>
-        <ZoneHeading title={sidebarConfig.headers.world} collapsed={collapsed} />
+        <ZoneHeading
+          title={translateSidebarZoneHeader('world', sidebarConfig.headers.world)}
+          collapsed={collapsed}
+        />
         {sidebarConfig.worldLoreOrder.map((item) => renderWorldBucketItem(item))}
         {renderPluginSidebarItems('world')}
       </>
@@ -717,7 +734,10 @@ export function Sidebar({
   function renderTimelineSection() {
     return (
       <>
-        <ZoneHeading title={sidebarConfig.headers.timeline} collapsed={collapsed} />
+        <ZoneHeading
+          title={translateSidebarZoneHeader('timeline', sidebarConfig.headers.timeline)}
+          collapsed={collapsed}
+        />
         {renderTimelineLinks()}
         {renderPluginSidebarItems('timeline')}
       </>
@@ -727,7 +747,10 @@ export function Sidebar({
   function renderToolsSection() {
     return (
       <>
-        <ZoneHeading title={sidebarConfig.headers.tools} collapsed={collapsed} />
+        <ZoneHeading
+          title={translateSidebarZoneHeader('tools', sidebarConfig.headers.tools)}
+          collapsed={collapsed}
+        />
         {sidebarConfig.toolsOrder.map((item) => renderToolsBucketItem(item))}
         {renderPluginSidebarItems('tools')}
         {SIDEBAR_TOOLS_FIXED_IDS.map((id) => renderFixedSection(id))}
@@ -738,7 +761,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`${SIDEBAR_ATMOSPHERE_CLASS} sidebar-shell flex h-full shrink-0 flex-col transition-[width] duration-200 ${
+      className={`${SIDEBAR_ATMOSPHERE_CLASS} sidebar-shell relative flex h-full shrink-0 flex-col transition-[width] duration-200 ${
         collapsed
           ? 'sidebar-shell--collapsed w-14 max-w-14'
           : 'w-72 max-w-[min(18rem,85vw)]'
@@ -763,7 +786,11 @@ export function Sidebar({
         </p>
       ) : null}
 
-      <nav className={`flex-1 overflow-y-auto py-2 ${collapsed ? 'px-0.5' : 'px-1'}`}>
+      <nav
+        className={`flex-1 overflow-y-auto py-2 ${collapsed ? 'px-0.5' : 'px-1'} ${
+          !onClose ? 'lg:pr-3.5' : ''
+        }`}
+      >
         {loading && !campaign ? (
           <div className="py-8">
             <LoadingSpinner label="Loading navigation…" />
@@ -791,6 +818,8 @@ export function Sidebar({
           }}
         />
       ) : null}
+
+      {!onClose ? <SidebarCollapseToggle /> : null}
     </aside>
   );
 }

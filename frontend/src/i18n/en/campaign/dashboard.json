@@ -1,0 +1,25 @@
+{
+  "campaign.dashboard.loadingCampaignHome": "Loading campaign home…",
+  "campaign.dashboard.campaignNotFound": "Campaign not found",
+  "campaign.dashboard.campaignNotFoundDescription": "Missing campaign slug in the URL.",
+  "campaign.dashboard.loadFailed": "Unable to load campaign",
+  "campaign.dashboard.loadFailedDescription": "This campaign may be private or unavailable.",
+  "campaign.dashboard.loadError": "Failed to load campaign",
+  "campaign.dashboard.layoutSaveFailed": "Failed to save dashboard layout.",
+  "campaign.dashboard.widgetBank": "Widget bank",
+
+  "campaign.dashboard.widgetSessionSchedule": "Session Schedule",
+  "campaign.dashboard.widgetWorldChronometer": "World Chronometer",
+  "campaign.dashboard.widgetCampaignBulletin": "Campaign Bulletin",
+  "campaign.dashboard.widgetRecentLore": "Recent Lore",
+  "campaign.dashboard.widgetQuestLedger": "Quest Ledger",
+  "campaign.dashboard.widgetLivingThreads": "Living Threads",
+  "campaign.dashboard.widgetParty": "The Party",
+  "campaign.dashboard.widgetCampaignPulse": "Campaign Pulse",
+  "campaign.dashboard.widgetLastSessionNotes": "Last Session",
+  "campaign.dashboard.widgetQuickUtilityNav": "Quick Links",
+  "campaign.dashboard.widgetContinueWhereYouLeftOff": "Continue Your Journey",
+  "campaign.dashboard.widgetPinnedItems": "Pinned Pages",
+  "campaign.dashboard.widgetFantasyCalendar": "Fantasy Calendar",
+  "campaign.dashboard.widgetWorldPressureForecast": "World Pressure Forecast"
+}

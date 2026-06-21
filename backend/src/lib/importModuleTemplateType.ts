@@ -19,7 +19,6 @@ const MODULE_TEMPLATE_TYPE: Record<string, string> = {
   'Game/Calendars': 'DEFAULT',
   'Game/Timelines': 'DEFAULT',
   'Game/Events': 'DEFAULT',
-  'Wiki/Generic': 'DEFAULT',
 };
 
 const MODULE_ENTITY_CATEGORY: Record<string, string> = {
@@ -32,6 +31,9 @@ const MODULE_ENTITY_CATEGORY: Record<string, string> = {
   Ancestries: 'ancestries',
   Objects: 'objects',
   Maps: 'maps',
+  'Game/Rules & Resources': 'rules-resources',
+  'Game/Journals': 'journals',
+  'Game/Quests': 'quests',
 };
 
 export function resolveImportTemplateType(

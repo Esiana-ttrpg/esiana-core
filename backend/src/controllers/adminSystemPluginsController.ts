@@ -25,12 +25,20 @@ import {
   readManifestForRecord,
   reloadPluginHost,
   syncInstalledPluginEnabled,
+  assertPluginCanEnable,
 } from '../plugins/pluginManager.js';
 import {
-  collectAdminDiscoverablePluginEntries,
-  mergeDiscoverablePluginEntries,
+  collectLocalRegistryFallback,
 } from '../lib/bundledPlugins.js';
+import { DEFAULT_PLUGIN_REGISTRY_URL } from '../lib/pluginManifest.js';
+import {
+  deriveInstalledFrom,
+} from '../lib/pluginProvenance.js';
 import { prisma } from '../lib/prisma.js';
+import { env } from '../config/env.js';
+import {
+  isPluginEngineMismatchError,
+} from '../lib/plugins/pluginEngineMismatchError.js';
 
 function parseConfigBody(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -47,6 +55,11 @@ function parseRegistryEntryBody(body: unknown): PluginRegistryEntry | null {
   return result.ok ? result.entry : null;
 }
 
+function resolveConfiguredRegistryUrl(settings: { pluginRegistryUrl: string | null }): string {
+  const trimmed = settings.pluginRegistryUrl?.trim();
+  return trimmed || DEFAULT_PLUGIN_REGISTRY_URL;
+}
+
 function enrichPluginWithRuntime(
   plugin: ReturnType<typeof serializeSystemPlugin>,
   installed?: {
@@ -57,8 +70,11 @@ function enrichPluginWithRuntime(
     manifestChecksum: string;
     trustedInstall: boolean;
     commitSha: string;
+    sourceRepo: string;
+    githubUrl: string;
   },
   runtimeManifest?: ReturnType<typeof readManifestForRecord>,
+  registryUrl?: string,
 ) {
   const isCampaignGenerator = runtimeManifest?.capabilities?.includes('campaignGenerator');
   const isDevelopmentProvider = runtimeManifest?.capabilities?.includes('developmentProvider');
@@ -68,8 +84,17 @@ function enrichPluginWithRuntime(
   } else if (isDevelopmentProvider) {
     adminDisplayLabel = `${plugin.name} (World Development provider)`;
   }
+
+  const engines =
+    runtimeManifest?.engines && Object.keys(runtimeManifest.engines).length
+      ? runtimeManifest.engines
+      : plugin.engines;
+  const compatibility = runtimeManifest?.compatibility ?? plugin.compatibility;
+
   return {
     ...plugin,
+    engines,
+    ...(compatibility ? { compatibility } : {}),
     ...(adminDisplayLabel ? { adminDisplayLabel } : {}),
     runtimeStatus: installed?.runtimeStatus ?? 'active',
     quarantineReason: installed?.quarantineReason ?? null,
@@ -78,6 +103,13 @@ function enrichPluginWithRuntime(
     manifestChecksum: installed?.manifestChecksum ?? '',
     trustedInstall: installed?.trustedInstall ?? false,
     commitSha: installed?.commitSha ?? '',
+    installedFrom: deriveInstalledFrom({
+      commitSha: installed?.commitSha,
+      sourceRepo: installed?.sourceRepo,
+      githubUrl: installed?.githubUrl,
+      trustedInstall: installed?.trustedInstall,
+      registryUrl,
+    }),
   };
 }
 
@@ -85,10 +117,16 @@ export async function listAdminPlugins(
   _req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
-  const [globalPlugins, campaignCapabilities] = await Promise.all([
+  const settings = await getOrCreateSystemSettings();
+  const registryUrl = resolveConfiguredRegistryUrl(settings);
+
+  const [globalPlugins, campaignCapabilities, campaignSystemRows] = await Promise.all([
     listSystemPluginsByScope(PluginScopes.GLOBAL),
     listAvailableCampaignPlugins(),
+    listSystemPluginsByScope(PluginScopes.CAMPAIGN),
   ]);
+
+  const campaignSystemById = new Map(campaignSystemRows.map((row) => [row.id, row]));
 
   const installedRows = await prisma.installedPlugin.findMany({
     where: {
@@ -103,23 +141,36 @@ export async function listAdminPlugins(
   const installedByName = new Map(installedRows.map((row) => [row.name, row]));
 
   res.json({
+    hostCoreVersion: env.coreVersion,
     plugins: globalPlugins.map((plugin) => {
       const installed = installedByName.get(plugin.id);
       const serialized = serializeSystemPlugin(plugin);
       const runtimeManifest = installed ? readManifestForRecord(installed) : null;
-      return enrichPluginWithRuntime(serialized, installed, runtimeManifest);
+      return enrichPluginWithRuntime(serialized, installed, runtimeManifest, registryUrl);
     }),
     campaignCapabilities: campaignCapabilities.map((capability) => {
       const installed = installedByName.get(capability.id);
       const runtimeManifest = installed ? readManifestForRecord(installed) : null;
+      const systemRow = campaignSystemById.get(capability.id);
+      const compatibility = runtimeManifest?.compatibility;
       return {
         ...capability,
+        ...(compatibility ? { compatibility } : {}),
+        installedAt: systemRow?.installedAt.toISOString(),
+        updatedAt: systemRow?.updatedAt.toISOString(),
         runtimeStatus: installed?.runtimeStatus ?? 'active',
         quarantineReason: installed?.quarantineReason ?? null,
         quarantinedAt: installed?.quarantinedAt?.toISOString() ?? null,
         commitSha: installed?.commitSha ?? '',
         trustedInstall: installed?.trustedInstall ?? false,
         uiSlots: runtimeManifest?.uiSlots ?? capability.uiSlots,
+        installedFrom: deriveInstalledFrom({
+          commitSha: installed?.commitSha,
+          sourceRepo: installed?.sourceRepo,
+          githubUrl: installed?.githubUrl,
+          trustedInstall: installed?.trustedInstall,
+          registryUrl,
+        }),
       };
     }),
   });
@@ -130,23 +181,29 @@ export async function fetchAdminPluginRegistry(
   res: Response,
 ): Promise<void> {
   const settings = await getOrCreateSystemSettings();
-  const target = parseTargetUrl(settings.pluginRegistryUrl);
+  const registryUrl = resolveConfiguredRegistryUrl(settings);
+  const target = parseTargetUrl(registryUrl);
 
-  const localDiscoverable = collectAdminDiscoverablePluginEntries();
-  const warnings = [...localDiscoverable.warnings];
-  let registryUrl = localDiscoverable.registryUrl;
-  let plugins = localDiscoverable.plugins;
+  const warnings: string[] = [];
+  let plugins: PluginRegistryEntry[] = [];
 
   if (target) {
     const fetched = await fetchAndParsePluginRegistry(target);
     if (fetched.ok) {
-      registryUrl = target.toString();
-      plugins = mergeDiscoverablePluginEntries(plugins, fetched.plugins);
+      plugins = fetched.plugins;
     } else {
       warnings.push(`Remote registry unavailable: ${fetched.error}`);
+      const fallback = collectLocalRegistryFallback();
+      if (fallback.plugins.length > 0) {
+        plugins = fallback.plugins;
+      }
+      warnings.push(...fallback.warnings);
     }
   } else {
-    warnings.push('System plugin registry URL is not configured — showing on-disk and local catalog only.');
+    warnings.push('System plugin registry URL is not configured.');
+    const fallback = collectLocalRegistryFallback();
+    plugins = fallback.plugins;
+    warnings.push(...fallback.warnings);
   }
 
   res.json({
@@ -235,10 +292,30 @@ export async function saveAdminPluginConfig(
     return;
   }
 
+  if (isEnabled === true) {
+    try {
+      await assertPluginCanEnable(pluginId);
+    } catch (err) {
+      if (isPluginEngineMismatchError(err)) {
+        res.status(409).json({ error: err.message, code: err.code });
+        return;
+      }
+      throw err;
+    }
+  }
+
   const row = await updateSystemPluginConfig(pluginId, config, isEnabled);
 
   if (isEnabled !== undefined) {
-    await syncInstalledPluginEnabled(pluginId, isEnabled);
+    try {
+      await syncInstalledPluginEnabled(pluginId, isEnabled);
+    } catch (err) {
+      if (isPluginEngineMismatchError(err)) {
+        res.status(409).json({ error: err.message, code: err.code });
+        return;
+      }
+      throw err;
+    }
   }
 
   res.json({ plugin: serializeSystemPlugin(row) });

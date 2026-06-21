@@ -695,6 +695,7 @@ export async function createWikiPage(
     templateType?: string;
     visibility?: 'Public' | 'Party' | 'DM_Only';
     initialThreadLifecycle?: string;
+    tags?: WikiTagInput[];
   },
 ): Promise<WikiTreeNode> {
   const data = await apiFetch<{ page: WikiTreeNode }>(

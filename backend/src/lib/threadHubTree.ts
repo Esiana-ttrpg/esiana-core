@@ -1,6 +1,5 @@
-import type { CampaignMemberRole } from '../types/domain.js';
-import { canViewWikiPage } from './wikiTree.js';
 import { compareWikiTitles } from './wikiSort.js';
+import { type HubVisibilityViewer, isHubPageVisible } from './hubVisibility.js';
 
 export type ThreadHubPageRow = {
   id: string;
@@ -35,7 +34,7 @@ export function isDescendantOfThreadsRoot(
 export function collectVisibleThreadSubtreeRows(
   rows: ThreadHubPageRow[],
   threadsRootId: string,
-  role: CampaignMemberRole | null,
+  viewer: HubVisibilityViewer,
 ): ThreadHubPageRow[] {
   const parentById = new Map(
     rows.map((row) => [row.id, { parentId: row.parentId }]),
@@ -50,7 +49,7 @@ export function collectVisibleThreadSubtreeRows(
       visited.add(current);
       const node = rowById.get(current);
       if (!node) return false;
-      if (!canViewWikiPage(node.visibility, role)) return false;
+      if (!isHubPageVisible(node.visibility, viewer)) return false;
       current = node.parentId;
     }
     return true;
@@ -61,7 +60,7 @@ export function collectVisibleThreadSubtreeRows(
     if (!isDescendantOfThreadsRoot(row.id, threadsRootId, parentById)) {
       return false;
     }
-    if (!canViewWikiPage(row.visibility, role)) return false;
+    if (!isHubPageVisible(row.visibility, viewer)) return false;
     if (!row.parentId || row.parentId === threadsRootId) return true;
     return hasVisibleAncestryChain(row.parentId);
   });

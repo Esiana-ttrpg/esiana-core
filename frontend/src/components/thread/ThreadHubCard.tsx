@@ -4,8 +4,8 @@ import { campaignWikiPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
 import { ThreadKindBadge } from '@/components/thread/ThreadKindBadge';
 import { ThreadStatusBadge } from '@/components/thread/ThreadStatusBadge';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { resolveVisibilityTierLabel } from '@/lib/campaignAffordances';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
+import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import {
   THREAD_SIGNAL_CHIP_CLASS,
   threadSignalLabel,
@@ -25,11 +25,8 @@ export function ThreadHubCard({
 }: ThreadHubCardProps) {
   const navigate = useNavigate();
   const { flatPages } = useWiki();
+  const isDMUser = useElevatedNarrativeView();
   const signals = (node.threadSignals ?? []) as ThreadSignalId[];
-  const visibilityTier = resolveVisibilityTierLabel({
-    pageVisibility: node.visibility,
-    narrativeStatus: node.lifecycleState,
-  });
 
   return (
     <button
@@ -41,8 +38,13 @@ export function ThreadHubCard({
         <span className="min-w-0 flex-1 font-medium text-foreground">{node.title}</span>
         <div className="flex flex-wrap items-center gap-1">
           <ThreadStatusBadge status={node.thread.threadStatus} />
-          <VisibilityTierChip tier={visibilityTier} compact />
-          {showLifecycle && node.lifecycleState && visibilityTier !== 'draft' ? (
+          <BrowseVisibilityIndicator
+            pageVisibility={node.visibility}
+            narrativeStatus={node.lifecycleState}
+            showWhenElevated={isDMUser}
+            compact
+          />
+          {showLifecycle && node.lifecycleState ? (
             <span className="rounded border border-border px-1.5 py-0.5 text-[9px] uppercase text-muted">
               {node.lifecycleState}
             </span>

@@ -19,8 +19,8 @@ import { resolveCharacterStatus } from '@/lib/characterMetadata';
 import { formatCharacterDisplayName } from '@/lib/characterDisplayName';
 import { NarrativeStatusBadge } from '@/components/wiki/NarrativeStatusBadge';
 import { DiscoveryStateBadge } from '@/components/wiki/indexBrowse/CategoryIndexDiscoveryBanner';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { resolveVisibilityTierLabel } from '@/lib/campaignAffordances';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
+import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { CharacterLifeStatusBadge } from '@/components/entity/CharacterLifeStatusBadge';
 
 interface EntityCatalogTileProps {
@@ -39,6 +39,7 @@ export function EntityCatalogTile({
   pageById,
 }: EntityCatalogTileProps) {
   const { flatPages } = useWiki();
+  const isDMUser = useElevatedNarrativeView();
   const [expanded, setExpanded] = useState(false);
   const isCharactersCategory = categoryTitle === 'Characters';
   const columnDefs = getCategoryColumnDefs(categoryTitle);
@@ -88,11 +89,10 @@ export function EntityCatalogTile({
           <CharacterLifeStatusBadge status={characterStatus} compact />
         ) : null}
         <DiscoveryStateBadge discovery={child.discovery} surface="browse" compact />
-        <VisibilityTierChip
-          tier={resolveVisibilityTierLabel({
-            pageVisibility: child.visibility,
-            narrativeStatus: child.narrativeStatus?.status ?? null,
-          })}
+        <BrowseVisibilityIndicator
+          pageVisibility={child.visibility}
+          narrativeStatus={child.narrativeStatus?.status ?? null}
+          showWhenElevated={isDMUser}
           compact
         />
       </div>

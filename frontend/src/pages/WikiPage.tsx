@@ -35,7 +35,8 @@ import {
   resolveCanonicalPagePath,
 } from '@/lib/campaignPaths';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
-import { useCampaignPolicy } from '@/hooks/useCampaignPolicy';
+import { isWikiVisibilityVisibleToViewer } from '@shared/narrativeProjection';
+import { useCampaignActor } from '@/hooks/useCampaignActor';
 import { EventConsequencesEditor } from '@/components/chronology/EventConsequencesEditor';
 import { resolveCategoryIndexTitleForPage } from '@/lib/wikiCategories';
 import type {
@@ -406,21 +407,8 @@ export function WikiPage() {
     isPageUnderNarrativeThreadsCategory(pageId, flatPages);
   const tagsDirty = !wikiTagsInputsEqual(pageTags, savedPageTags);
 
-  const policySource = campaign ?? wikiCampaign;
-  const campaignPolicy = useCampaignPolicy(
-    policySource?.campaignOwnerUserId
-      ? {
-          role: policySource.role ?? undefined,
-          campaignOwnerUserId: policySource.campaignOwnerUserId,
-          discoverability: policySource.discoverability,
-          allowPlayerChronologyManagement:
-            policySource.allowPlayerChronologyManagement,
-          chronologyContributor: policySource.chronologyContributor,
-          partyId: policySource.partyId,
-        }
-      : null,
-  );
-  const isDMUser = campaignPolicy.hasElevatedView ?? false;
+  const { viewerContext, isElevated } = useCampaignActor();
+  const isDMUser = isElevated();
 
   const codexDiagnosticsEnabled = Boolean(pageId && pageData && !isTagsHub);
   const pageCodexDiagnostics = usePageCodexDiagnostics(
@@ -1364,7 +1352,7 @@ export function WikiPage() {
     return <Navigate to={campaignDashboardPath(campaignHandle)} replace />;
   }
 
-  if (resolvedVisibility === 'DM_Only' && !isDMUser) {
+  if (!isWikiVisibilityVisibleToViewer(resolvedVisibility, viewerContext)) {
     return (
       <MascotErrorPanel
         code={403}

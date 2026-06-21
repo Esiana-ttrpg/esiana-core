@@ -1,4 +1,5 @@
 import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { workspaceSegmentFromCampaignPath } from '@/lib/resolveWikiRoutePageId';
 import { readCampaignHandle, campaignDashboardPath } from '@/lib/campaignPaths';
 import { resolveWorkspaceRoute } from '@/lib/campaignWorkspaceRoutes';
@@ -36,6 +37,7 @@ function resolveCategoryPageId(
 }
 
 export function WorkspaceIndexPage() {
+  const { t } = useTranslation();
   const params = useParams<{ campaignHandle?: string }>();
   const location = useLocation();
   const campaignHandle = readCampaignHandle(params);
@@ -48,7 +50,7 @@ export function WorkspaceIndexPage() {
   }
 
   if (loading) {
-    return <LoadingSpinner label="Loading workspace…" />;
+    return <LoadingSpinner label={t('campaign.core.workspaceLoading')} />;
   }
 
   const categoryPageId = resolveCategoryPageId(

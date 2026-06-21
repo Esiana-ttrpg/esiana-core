@@ -6,13 +6,22 @@ Area-specific guidance for `/backend`. General setup, CI, and branch workflow: [
 
 ## Prisma conventions
 
-- Default provider in `schema.prisma` is **postgresql**; SQLite is supported for solo dev
-- Migrations and queries must stay portable — no PostgreSQL-only or SQLite-only SQL, triggers, or engine-specific behavior
-- After schema changes: `npm run db:generate` (from repo root), then `db:push` or `db:migrate`, then restart the backend
+- **PostgreSQL** is the committed default (`schema.prisma` `provider = "postgresql"`).
+- **SQLite** is supported for solo dev — requires a local provider switch and `db:migrate:deploy:sqlite` (see [prisma/README.md](./prisma/README.md)).
+- Migrations and queries must stay portable — no PostgreSQL-only or SQLite-only SQL, triggers, or engine-specific behavior in application code.
+
+### After schema changes
+
+| Engine | From repo root |
+|--------|----------------|
+| PostgreSQL | `pnpm run db:generate` → `pnpm run db:migrate:deploy` (or `db:migrate`) |
+| SQLite | Local `provider = "sqlite"` → `pnpm run db:generate` → `pnpm run db:migrate:deploy:sqlite` |
+
+Restart the backend so Prisma Client reloads.
 
 References:
 
-- [prisma/README.md](./prisma/README.md) — provider switching, registry URL migration
+- [prisma/README.md](./prisma/README.md) — Postgres vs SQLite paths, registry URL migration
 - [engineeringprinciples.md](../engineeringprinciples.md) — database agnosticism
 - [docs/audits/database-portability-audit.md](../docs/audits/database-portability-audit.md)
 - [docs/audits/migration-audit.md](../docs/audits/migration-audit.md) — schema change review
@@ -57,7 +66,7 @@ Match existing controllers and services in `backend/src/` before introducing new
 From `backend/`:
 
 ```bash
-npm test
+pnpm test
 ```
 
 CI runs the full suite against SQLite and PostgreSQL. Add `*.test.ts` beside the module under test when behavior changes.

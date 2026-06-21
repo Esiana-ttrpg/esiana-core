@@ -1,6 +1,6 @@
-/** Official community plugin catalog index. */
+/** Official community plugin catalog index (blob link — normalized to raw on fetch). */
 export const DEFAULT_PLUGIN_REGISTRY_URL =
-  'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/registry.json';
+  'https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json';
 
 /** Monorepo / dev default — same catalog, local file fallback in bundledPlugins. */
 export const DEV_PLUGIN_REGISTRY_URL = DEFAULT_PLUGIN_REGISTRY_URL;
@@ -8,10 +8,10 @@ export const DEV_PLUGIN_REGISTRY_URL = DEFAULT_PLUGIN_REGISTRY_URL;
 /** Previous placeholder URLs replaced by {@link DEFAULT_PLUGIN_REGISTRY_URL}. */
 export const LEGACY_PLUGIN_REGISTRY_URLS = [
   'https://raw.githubusercontent.com/esiana-app/core-plugins/main/registry.json',
+  'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/registry.json',
   'https://github.com/esiana-ttrpg/community-plugins/registry.json',
   'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/manifest.json',
   'https://github.com/Esiana-ttrpg/community-plugins/blob/main/manifest.json',
-  'https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json',
   'https://raw.githubusercontent.com/esiana-ttrpg/esiana/main/plugins/registry.json',
 ] as const;
 
@@ -124,6 +124,13 @@ export interface PluginConfigTemplateField {
   options?: string[];
 }
 
+export interface PluginCompatibilityMeta {
+  /** ISO 8601 — when the plugin was last confirmed working in runtime. */
+  lastVerified?: string;
+  /** Product version active at last verification (informational snapshot). */
+  lastVerifiedCore?: string;
+}
+
 export interface PluginManifest {
   id: string;
   name: string;
@@ -138,8 +145,14 @@ export interface PluginManifest {
   githubUrl?: string;
   /** Declared capabilities (storage:provider, plugin:data, network:fetch, …). */
   permissions?: string[];
-  /** Host compatibility, e.g. { "esiana-core": "^0.8.0" }. */
+  /** Host compatibility, e.g. { "esiana-core": "^0.8.0" }. Hard runtime constraint. */
   engines?: Record<string, string>;
+  /** Informational trust signal — never enforced at runtime. */
+  compatibility?: PluginCompatibilityMeta;
+  /** ISO 8601 — when the plugin artifact last changed. */
+  lastUpdated?: string;
+  /** Discovery tags (max 5). */
+  tags?: string[];
   /** Inline JSON Schema subset for settings UI (Phase 10D auto-render). */
   configSchema?: Record<string, unknown>;
   /** Phase 10 stub — auto-render settings from remote schema (not implemented). */
@@ -218,6 +231,9 @@ export interface PluginRegistryEntry {
   engines?: Record<string, string>;
   configSchema?: Record<string, unknown>;
   configSchemaUrl?: string;
+  compatibility?: PluginCompatibilityMeta;
+  lastUpdated?: string;
+  tags?: string[];
 }
 
 export interface StoredPluginManifestMeta {
@@ -229,6 +245,7 @@ export interface StoredPluginManifestMeta {
   configSchemaUrl?: string;
   permissions?: string[];
   engines?: Record<string, string>;
+  compatibility?: PluginCompatibilityMeta;
   uiSlots?: PluginUiSlotId[];
 }
 
@@ -607,6 +624,69 @@ function parseEngines(raw: unknown, errors: string[]): Record<string, string> | 
   return engines;
 }
 
+const CORE_VERSION_PATTERN = /^\d+\.\d+\.\d+/;
+
+function parseCompatibility(
+  raw: unknown,
+  errors: string[],
+): PluginCompatibilityMeta | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) {
+    errors.push('compatibility must be an object');
+    return undefined;
+  }
+  const lastVerifiedCore =
+    typeof raw.lastVerifiedCore === 'string' ? raw.lastVerifiedCore.trim() : undefined;
+  if (lastVerifiedCore !== undefined && !CORE_VERSION_PATTERN.test(lastVerifiedCore)) {
+    errors.push('compatibility.lastVerifiedCore must be a semver string (e.g. 1.0.0)');
+  }
+  const lastVerified =
+    typeof raw.lastVerified === 'string' ? raw.lastVerified.trim() : undefined;
+  if (lastVerified !== undefined && Number.isNaN(Date.parse(lastVerified))) {
+    errors.push('compatibility.lastVerified must be a valid ISO 8601 date string');
+  }
+  if (!lastVerifiedCore && !lastVerified) return undefined;
+  return {
+    ...(lastVerified ? { lastVerified } : {}),
+    ...(lastVerifiedCore ? { lastVerifiedCore } : {}),
+  };
+}
+
+function parseLastUpdated(raw: unknown, errors: string[]): string | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'string' || !raw.trim()) {
+    errors.push('lastUpdated must be a non-empty ISO 8601 date string');
+    return undefined;
+  }
+  const value = raw.trim();
+  if (Number.isNaN(Date.parse(value))) {
+    errors.push('lastUpdated must be a valid ISO 8601 date string');
+    return undefined;
+  }
+  return value;
+}
+
+function parseTags(raw: unknown, errors: string[]): string[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) {
+    errors.push('tags must be an array of strings');
+    return undefined;
+  }
+  const tags: string[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const item = raw[i];
+    if (typeof item !== 'string' || !item.trim()) {
+      errors.push(`tags[${i}] must be a non-empty string`);
+      continue;
+    }
+    tags.push(item.trim());
+  }
+  if (tags.length > 5) {
+    errors.push('tags must contain at most 5 entries');
+  }
+  return tags.length > 0 ? tags.slice(0, 5) : undefined;
+}
+
 export function validatePluginManifest(raw: unknown): ManifestValidationResult {
   const errors: string[] = [];
 
@@ -651,6 +731,9 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
     typeof raw.configSchemaUrl === 'string' ? raw.configSchemaUrl.trim() : undefined;
   const permissions = parseStringArray(raw.permissions, 'permissions', errors);
   const engines = parseEngines(raw.engines, errors);
+  const compatibility = parseCompatibility(raw.compatibility, errors);
+  const lastUpdated = parseLastUpdated(raw.lastUpdated, errors);
+  const tags = parseTags(raw.tags, errors);
   const configSchema =
     raw.configSchema !== undefined && isRecord(raw.configSchema)
       ? (raw.configSchema as Record<string, unknown>)
@@ -714,6 +797,9 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
       ...(githubUrl ? { githubUrl } : {}),
       ...(permissions?.length ? { permissions } : {}),
       ...(engines && Object.keys(engines).length ? { engines } : {}),
+      ...(compatibility ? { compatibility } : {}),
+      ...(lastUpdated ? { lastUpdated } : {}),
+      ...(tags?.length ? { tags } : {}),
       ...(configSchema ? { configSchema } : {}),
       ...(configSchemaUrl ? { configSchemaUrl } : {}),
       ...(uiSlots?.length ? { uiSlots } : {}),
@@ -885,6 +971,18 @@ export function extractManifestMeta(
     raw.engines && typeof raw.engines === 'object' && !Array.isArray(raw.engines)
       ? (raw.engines as Record<string, string>)
       : undefined;
+  const compatibilityRaw = raw.compatibility;
+  const compatibility =
+    compatibilityRaw &&
+    typeof compatibilityRaw === 'object' &&
+    !Array.isArray(compatibilityRaw) &&
+    typeof (compatibilityRaw as Record<string, unknown>).lastVerifiedCore === 'string'
+      ? {
+          lastVerifiedCore: (
+            (compatibilityRaw as Record<string, unknown>).lastVerifiedCore as string
+          ).trim(),
+        }
+      : undefined;
   const configSchema =
     raw.configSchema && typeof raw.configSchema === 'object' && !Array.isArray(raw.configSchema)
       ? (raw.configSchema as Record<string, unknown>)
@@ -904,6 +1002,7 @@ export function extractManifestMeta(
     ...(configSchemaUrl ? { configSchemaUrl } : {}),
     ...(permissions?.length ? { permissions } : {}),
     ...(engines ? { engines } : {}),
+    ...(compatibility ? { compatibility } : {}),
     ...(uiSlots?.length ? { uiSlots } : {}),
   };
 }

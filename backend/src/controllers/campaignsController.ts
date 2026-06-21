@@ -415,6 +415,7 @@ export async function getCampaign(
 
 type WizardImportManifest = {
   themes?: string[];
+  importFormat?: 'obsidian' | 'kanka-json';
   folderMappings?: Array<{
     sourceFolderName: string;
     targetModule: string;
@@ -513,19 +514,26 @@ function parseWizardImport(body: unknown): WizardImportManifest | null {
 
   const generator = parseWizardGenerator(root.generator);
   const bootstrap = parseCampaignBootstrapSpec(root.bootstrap);
+  const importFormatRaw = root.importFormat;
+  const importFormat =
+    importFormatRaw === 'kanka-json' || importFormatRaw === 'obsidian'
+      ? importFormatRaw
+      : undefined;
 
   if (
     themes.length === 0 &&
     folderMappings.length === 0 &&
     !hasUserDefaults &&
     !generator &&
-    !bootstrap
+    !bootstrap &&
+    !importFormat
   ) {
     return null;
   }
 
   return {
     ...(themes.length > 0 && { themes }),
+    ...(importFormat ? { importFormat } : {}),
     ...(folderMappings.length > 0 && { folderMappings }),
     ...(hasUserDefaults ? { userDefaults } : {}),
     ...(generator ? { generator } : {}),

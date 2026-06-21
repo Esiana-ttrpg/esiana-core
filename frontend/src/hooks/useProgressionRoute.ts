@@ -11,6 +11,12 @@ export interface ProgressionRouteContext {
   activeSection: ProgressionSectionId;
 }
 
+const PROGRESSION_INDEX_PATH = /^\/campaigns\/[^/]+\/progression\/?$/;
+
+export function isProgressionIndexPath(pathname: string): boolean {
+  return PROGRESSION_INDEX_PATH.test(pathname.split('?')[0] ?? '');
+}
+
 export function useProgressionRoute(): ProgressionRouteContext | null {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const location = useLocation();
@@ -18,10 +24,7 @@ export function useProgressionRoute(): ProgressionRouteContext | null {
   return useMemo(() => {
     if (!campaignHandle) return null;
 
-    const onProgressionIndex = /^\/campaigns\/[^/]+\/progression\/?$/.test(
-      location.pathname.split('?')[0] ?? '',
-    );
-    if (!onProgressionIndex) return null;
+    if (!isProgressionIndexPath(location.pathname)) return null;
 
     return {
       basePath: campaignProgressionPath(campaignHandle),

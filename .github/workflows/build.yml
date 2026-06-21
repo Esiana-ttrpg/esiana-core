@@ -26,6 +26,10 @@ jobs:
       - name: Build workspaces
         run: pnpm build
 
+      - name: Validate i18n locale keys
+        working-directory: frontend
+        run: node scripts/validate-i18n-keys.mjs
+
       - name: Verify compiled backend shared modules are ESM
         working-directory: backend
         run: node scripts/verify-dist-esm.mjs
@@ -50,11 +54,10 @@ jobs:
       - name: Prepare SQLite test database
         working-directory: backend
         run: |
-          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
-          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/migrations/migration_lock.toml
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
+          DATABASE_URL=file:./ci-test.db node prisma/scripts/deploy-sqlite-migrations.mjs --reset
+          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
           pnpm exec prisma generate
-          pnpm exec prisma migrate deploy
 
       - name: Run backend tests
         working-directory: backend

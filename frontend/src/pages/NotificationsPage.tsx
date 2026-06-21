@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PageContainer } from '@/components/layout/PageContainer';
 import {
   dismissNotification,
@@ -9,6 +10,7 @@ import {
   resolveNotificationHref,
 } from '@/lib/notifications';
 import type { NotificationRecord } from '@/types/notifications';
+import { renderNotificationContent } from '@/i18n/renderNotification';
 
 function formatWhen(iso: string): string {
   const date = new Date(iso);
@@ -17,6 +19,7 @@ function formatWhen(iso: string): string {
 }
 
 export function NotificationsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [items, setItems] = useState<NotificationRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -63,8 +66,10 @@ export function NotificationsPage() {
     <PageContainer>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Notifications</h1>
-          <p className="mt-1 text-sm text-muted">Your in-app inbox across all campaigns.</p>
+          <h1 className="text-2xl font-bold">{t('profile.notifications.pageTitle')}</h1>
+          <p className="mt-1 text-sm text-muted">
+            {t('profile.notifications.pageSubtitle')}
+          </p>
         </div>
         <button
           type="button"
@@ -75,25 +80,27 @@ export function NotificationsPage() {
           }}
           className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-elevated"
         >
-          Mark all read
+          {t('profile.notifications.markAllRead')}
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <p className="text-sm text-muted">{t('common.loading')}</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-muted">No notifications yet.</p>
+        <p className="text-sm text-muted">{t('profile.notifications.empty')}</p>
       ) : (
         <ul className="divide-y divide-border rounded-xl border border-border">
-          {items.map((item) => (
+          {items.map((item) => {
+            const content = renderNotificationContent(item);
+            return (
             <li key={item.id} className="flex items-start gap-3 px-4 py-4">
               <button
                 type="button"
                 onClick={() => void openItem(item)}
                 className={`min-w-0 flex-1 text-left ${item.isRead ? '' : 'font-medium'}`}
               >
-                <p className="text-sm">{item.title}</p>
-                {item.body ? <p className="mt-1 text-sm text-muted">{item.body}</p> : null}
+                <p className="text-sm">{content.title}</p>
+                {content.body ? <p className="mt-1 text-sm text-muted">{content.body}</p> : null}
                 <p className="mt-2 text-xs text-muted">{formatWhen(item.createdAt)}</p>
               </button>
               <button
@@ -105,10 +112,11 @@ export function NotificationsPage() {
                 }
                 className="shrink-0 text-xs text-muted hover:text-foreground"
               >
-                Dismiss
+                {t('common.dismiss')}
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 
@@ -120,7 +128,7 @@ export function NotificationsPage() {
             onClick={() => void load(nextCursor)}
             className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-elevated disabled:opacity-50"
           >
-            {loadingMore ? 'Loading…' : 'Load more'}
+            {loadingMore ? t('common.loading') : t('common.loadMore')}
           </button>
         </div>
       ) : null}

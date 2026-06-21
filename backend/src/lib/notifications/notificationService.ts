@@ -11,6 +11,9 @@ import {
   resolveChannelPrefs,
 } from './preferences.js';
 import type { NotificationTypeValue } from './types.js';
+import { renderStoredNotification } from './templateCatalog.js';
+import { buildNotifyUsersInput } from './notifyFromTemplate.js';
+import type { NotifyFromTemplateInput } from './notifyFromTemplate.js';
 
 export interface NotifyUsersInput {
   userIds: string[];
@@ -33,7 +36,7 @@ async function deliverToUser(
 ): Promise<void> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true },
+    select: { id: true, email: true, uiLocale: true },
   });
   if (!user) return;
 
@@ -64,6 +67,12 @@ async function deliverToUser(
   if (channelPrefs.email && (await isSmtpConfigured())) {
     const settings = await getOrCreateSystemSettings();
     const appTitle = settings.globalTitle ?? DEFAULT_GLOBAL_TITLE;
+    const rendered = renderStoredNotification(
+      input.type,
+      input.metadata,
+      { title: input.title, body: input.body },
+      user.uiLocale ?? 'en',
+    );
     const absoluteLink = input.linkUrl?.startsWith('http')
       ? input.linkUrl
       : input.linkUrl
@@ -71,11 +80,11 @@ async function deliverToUser(
         : null;
     await sendMail({
       to: user.email,
-      subject: input.title,
-      text: [input.body?.trim(), absoluteLink].filter(Boolean).join('\n\n'),
+      subject: rendered.title,
+      text: [rendered.body?.trim(), absoluteLink].filter(Boolean).join('\n\n'),
       html: buildNotificationEmailHtml({
-        title: input.title,
-        body: input.body,
+        title: rendered.title,
+        body: rendered.body,
         linkUrl: absoluteLink,
         appTitle,
       }),
@@ -103,6 +112,13 @@ export function notifyUsersAsync(input: NotifyUsersInput): void {
     void notifyUsers(input);
   });
 }
+
+export function notifyUsersFromTemplateAsync(input: NotifyFromTemplateInput): void {
+  notifyUsersAsync(buildNotifyUsersInput(input));
+}
+
+export type { NotifyFromTemplateInput } from './notifyFromTemplate.js';
+export { buildNotifyUsersInput } from './notifyFromTemplate.js';
 
 export async function getOperationalManagerUserIds(
   campaignId: string,

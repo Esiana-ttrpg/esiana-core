@@ -44,6 +44,8 @@ model User {
   allowCampaignSystemOverride Boolean @default(true)
   /// IANA timezone for session scheduling and date display (e.g. America/New_York).
   timezone String?
+  /// BCP 47 UI locale (e.g. en, fr). Null = auto-detect from browser.
+  uiLocale String?
 
   campaignMembers    CampaignMember[]
   ownedCampaigns     Campaign[] @relation("CampaignOwner")
@@ -187,7 +189,7 @@ model SystemSetting {
   systemBannerText        String?
   systemBannerExpiresAt   DateTime?
 
-  pluginRegistryUrl String @default("https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/registry.json")
+  pluginRegistryUrl String @default("https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json")
 
   globalTitle        String @default("Esiana")
   globalLogoUrl      String?

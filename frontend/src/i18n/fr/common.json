@@ -1,0 +1,13 @@
+{
+  "common.save": "Enregistrer",
+  "common.cancel": "Annuler",
+  "common.saving": "Enregistrement…",
+  "common.loading": "Chargement…",
+  "common.loadMore": "Charger plus",
+  "common.loadFailed": "Échec du chargement.",
+  "common.dismiss": "Ignorer",
+  "common.justNow": "À l'instant",
+  "common.minutesAgo": "Il y a {{count}} min",
+  "common.hoursAgo": "Il y a {{count}} h",
+  "common.daysAgo": "Il y a {{count}} j"
+}

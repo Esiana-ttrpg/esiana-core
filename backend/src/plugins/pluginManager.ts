@@ -19,6 +19,7 @@ import {
   type PluginRegisterFn,
 } from '../lib/plugins/pluginHostContext.js';
 import { validatePluginEngines } from '../lib/plugins/pluginEngine.js';
+import { PluginEngineMismatchError } from '../lib/plugins/pluginEngineMismatchError.js';
 import {
   clearInterceptorRegistry,
   setPluginHostReloader,
@@ -252,6 +253,21 @@ function engineMismatch(manifest: PluginManifest | null): string | null {
   return validatePluginEngines(env.coreVersion, manifest.engines);
 }
 
+export function getEngineMismatchFromManifest(
+  manifest: PluginManifest | null,
+): string | null {
+  return engineMismatch(manifest);
+}
+
+export async function assertPluginCanEnable(name: string): Promise<void> {
+  const record = await prisma.installedPlugin.findUnique({ where: { name } });
+  if (!record) return;
+  const mismatch = engineMismatch(readManifestForRecord(record));
+  if (mismatch) {
+    throw new PluginEngineMismatchError(mismatch);
+  }
+}
+
 function isSyncableManifest(manifest: PluginManifest | null): manifest is PluginManifest {
   if (!manifest) return false;
   if (!manifest.backendEntry?.trim() && !isDataOnlyContentPackPlugin(manifest)) return false;
@@ -431,7 +447,7 @@ export async function setPluginEnabled(
       const manifest = readManifestForRecord(record);
       const mismatch = engineMismatch(manifest);
       if (mismatch) {
-        throw new Error(mismatch);
+        throw new PluginEngineMismatchError(mismatch);
       }
     }
   }

@@ -8,6 +8,7 @@ import { DEFAULT_PLUGIN_REGISTRY_URL } from './pluginManifest.js';
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { DEFAULT_TIMEZONE } from './timezone.js';
+import { resolveInstanceDefaultUiLocale } from '../../../shared/uiLocale.js';
 
 export const SYSTEM_SETTINGS_ID = 'GLOBAL_CONFIG';
 
@@ -130,6 +131,7 @@ export function serializePublicSystemSettings(row: SystemSetting) {
     ),
     footer: serializeFooter(row),
     defaultTimezone: row.defaultTimezone ?? DEFAULT_TIMEZONE,
+    defaultUiLocale: resolveInstanceDefaultUiLocale(env.defaultUiLocale),
   };
 }
 

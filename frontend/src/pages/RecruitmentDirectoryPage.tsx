@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PageContainer, PagePanel } from '@/components/layout/PageContainer';
 import { PageShell, SHOWCASE_MAX_WIDTH_CLASS } from '@/components/layout/PageShell';
 import { CampaignPresenceCard } from '@/components/campaign-presence/CampaignPresenceCard';
@@ -72,6 +73,7 @@ function nextSessionDate(campaign: PublicDirectoryCampaign): Date | null {
 }
 
 export function RecruitmentDirectoryPage() {
+  const { t } = useTranslation();
   const [campaigns, setCampaigns] = useState<PublicDirectoryCampaign[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -135,17 +137,17 @@ export function RecruitmentDirectoryPage() {
       >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Recruitment Directory</h1>
-          <p className="mt-1 text-sm text-muted">
-            Explore open tables, compare play styles, and join your next story arc.
-          </p>
+          <h1 className="text-2xl font-bold text-foreground">{t('campaign.recruitment.pageTitle')}</h1>
+          <p className="mt-1 text-sm text-muted">{t('campaign.recruitment.pageSubtitle')}</p>
         </div>
         <PlatformGuideLinks slugs={RECRUITMENT_DIRECTORY_GUIDE_SLUGS} />
       </div>
 
       <PagePanel className="flex flex-wrap items-end gap-3 p-4">
         <label className="flex min-w-[180px] flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted">Game System</span>
+          <span className="text-xs uppercase tracking-wide text-muted">
+            {t('campaign.recruitment.filterGameSystem')}
+          </span>
           <select
             value={gameSystem}
             onChange={(e) => {
@@ -154,7 +156,7 @@ export function RecruitmentDirectoryPage() {
             }}
             className="h-10 rounded border border-border bg-background px-3 text-sm text-foreground"
           >
-            <option value="">All Systems</option>
+            <option value="">{t('campaign.recruitment.filterAllSystems')}</option>
             {GAME_SYSTEM_CATEGORIES.map((category) => {
               const entries = filterSystems.filter((entry) => entry.category === category);
               if (entries.length === 0) return null;
@@ -180,26 +182,30 @@ export function RecruitmentDirectoryPage() {
         />
 
         <label className="flex min-w-[180px] flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted">Seats Available</span>
+          <span className="text-xs uppercase tracking-wide text-muted">
+            {t('campaign.recruitment.filterSeatsAvailable')}
+          </span>
           <select
             value={hideFullGames ? 'open-only' : 'all'}
             onChange={(e) => setHideFullGames(e.target.value === 'open-only')}
             className="h-10 rounded border border-border bg-background px-3 text-sm text-foreground"
           >
-            <option value="all">Show All Games</option>
-            <option value="open-only">Hide Full Games</option>
+            <option value="all">{t('campaign.recruitment.filterShowAllGames')}</option>
+            <option value="open-only">{t('campaign.recruitment.filterHideFullGames')}</option>
           </select>
         </label>
 
         <label className="flex min-w-[180px] flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted">Sort by</span>
+          <span className="text-xs uppercase tracking-wide text-muted">
+            {t('campaign.recruitment.filterSortBy')}
+          </span>
           <select
             value={sortMode}
             onChange={(e) => setSortMode(e.target.value as SortMode)}
             className="h-10 rounded border border-border bg-background px-3 text-sm text-foreground"
           >
-            <option value="newest">Newest</option>
-            <option value="next-session">Next Session</option>
+            <option value="newest">{t('campaign.recruitment.sortNewest')}</option>
+            <option value="next-session">{t('campaign.recruitment.sortNextSession')}</option>
           </select>
         </label>
       </PagePanel>
@@ -216,9 +222,9 @@ export function RecruitmentDirectoryPage() {
         ))}
       </div>
       <div className="flex items-center justify-center gap-3">
-        <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded border border-border px-3 py-1 text-sm text-foreground disabled:opacity-50">Prev</button>
-        <span className="text-sm text-muted">Page {page} / {totalPages}</span>
-        <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded border border-border px-3 py-1 text-sm text-foreground disabled:opacity-50">Next</button>
+        <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded border border-border px-3 py-1 text-sm text-foreground disabled:opacity-50">{t('campaign.recruitment.paginationPrev')}</button>
+        <span className="text-sm text-muted">{t('campaign.recruitment.paginationLabel', { page, totalPages })}</span>
+        <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded border border-border px-3 py-1 text-sm text-foreground disabled:opacity-50">{t('campaign.recruitment.paginationNext')}</button>
       </div>
       </PageShell>
     </PageContainer>
