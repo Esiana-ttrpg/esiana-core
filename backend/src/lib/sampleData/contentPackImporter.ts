@@ -139,7 +139,10 @@ export async function importContentPack(
 
   let importedCampaignConfig = false;
   if (discovered.campaign) {
-    await applyPackCampaignConfig(campaignId, discovered.campaign, { slugToPageId });
+    await applyPackCampaignConfig(campaignId, discovered.campaign, {
+      slugToPageId,
+      assetPathToId: packAssetPathToId,
+    });
     importedCampaignConfig = true;
   }
 

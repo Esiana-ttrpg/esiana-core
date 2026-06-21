@@ -48,8 +48,14 @@ export interface DashboardWidgetPlacement {
   config?: Record<string, unknown>;
 }
 
+export interface DashboardImportManifestAssets {
+  coverImageAssetId?: string;
+  markdownZipAssetId?: string;
+  backupZipAssetId?: string;
+}
+
 export interface DashboardImportManifest {
-  assets?: Record<string, unknown>;
+  assets?: DashboardImportManifestAssets;
   startingLocationPageId?: string;
 }
 
@@ -292,7 +298,29 @@ function parseImportManifest(raw: unknown): DashboardImportManifest | undefined 
   const result: DashboardImportManifest = {};
   const assetsRaw = manifest.assets;
   if (assetsRaw && typeof assetsRaw === 'object') {
-    result.assets = assetsRaw as Record<string, unknown>;
+    const assetsObj = assetsRaw as Record<string, unknown>;
+    const assets: DashboardImportManifestAssets = {};
+    if (
+      typeof assetsObj.coverImageAssetId === 'string' &&
+      assetsObj.coverImageAssetId.trim()
+    ) {
+      assets.coverImageAssetId = assetsObj.coverImageAssetId.trim();
+    }
+    if (
+      typeof assetsObj.markdownZipAssetId === 'string' &&
+      assetsObj.markdownZipAssetId.trim()
+    ) {
+      assets.markdownZipAssetId = assetsObj.markdownZipAssetId.trim();
+    }
+    if (
+      typeof assetsObj.backupZipAssetId === 'string' &&
+      assetsObj.backupZipAssetId.trim()
+    ) {
+      assets.backupZipAssetId = assetsObj.backupZipAssetId.trim();
+    }
+    if (Object.keys(assets).length > 0) {
+      result.assets = assets;
+    }
   }
   if (
     typeof manifest.startingLocationPageId === 'string' &&

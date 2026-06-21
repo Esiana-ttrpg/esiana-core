@@ -133,7 +133,7 @@ GbM flagship ships lore claims, aliases, and conflicting sources tied to active 
 | `emblemAssetId` | `asset:` or slug | asset map |
 | `mapAssetId` / `mapAssetPath` | `asset:maps/x.webp` | `WikiPage.mapAssetId` |
 | Body images | `![alt](asset:path)` | existing rewrite |
-| Campaign banner/cover | `campaign.json` reserved keys | **Deferred** — manifest + pages only in 2B |
+| Campaign banner/cover | `campaign.json` `coverImagePath` | `importManifest.assets.coverImageAssetId` → Campaign Home hero |
 
 Tests: `resolveAppearanceAssetRefs` in [`pageMetadataRoundTrip.test.ts`](../../backend/src/lib/pageMetadataRoundTrip.test.ts).
 
