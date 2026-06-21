@@ -5,6 +5,7 @@ export interface PackCampaignConfigV1 {
   campaignHomeIntro?: string;
   startingDate?: string;
   startingLocationPageSlug?: string;
+  coverImagePath?: string;
 }
 
 export function parsePackCampaignConfig(raw: unknown): PackCampaignConfigV1 | null {
@@ -32,6 +33,9 @@ export function parsePackCampaignConfig(raw: unknown): PackCampaignConfigV1 | nu
     obj.startingLocationPageSlug.trim()
   ) {
     config.startingLocationPageSlug = obj.startingLocationPageSlug.trim();
+  }
+  if (typeof obj.coverImagePath === 'string' && obj.coverImagePath.trim()) {
+    config.coverImagePath = obj.coverImagePath.trim();
   }
   return config;
 }

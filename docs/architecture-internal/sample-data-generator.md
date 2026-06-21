@@ -113,7 +113,8 @@ packPath/
   "description": "optional Campaign Home blurb",
   "campaignHomeIntro": "optional — reserved",
   "startingDate": "optional — reserved chronology anchor",
-  "startingLocationPageSlug": "optional — reserved slug ref"
+  "startingLocationPageSlug": "optional — reserved slug ref",
+  "coverImagePath": "optional — relative to assets/ (e.g. assets/banner.webp) → Campaign Home cover"
 }
 ```
 

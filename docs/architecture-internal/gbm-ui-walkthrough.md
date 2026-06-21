@@ -22,9 +22,11 @@ Manual verification checklist after importing `girl-by-moonlight-one-shot` from 
 | Haven ↔ Project | `project-repair-observatory` → `haven-school-rooftop`; `project-community-trust` → haven |
 | Timeline ↔ entities | `event-founding-ritual`, `event-recent-eclipse`, `event-future-convergence` reference orgs/locations |
 | Knowledge ↔ Quest | `lore-directorate-secret` (DM-only); `lore-moon-curse` party-visible; `knowledge.json` claims |
-| Map ↔ Location | `map-city-overview` pins resolve to `loc-shirogane-campus`, `haven-school-rooftop` |
+| Map ↔ Location | `map-city-overview` **illustrated map** with pins for academy, directorate, broadcast, observatory, shrine, ashvale, rooftop haven |
 | Object ↔ Quest | `obj-lunar-idol` tied to `quest-find-idol` |
 | Bestiary ↔ Location | `beast-moon-hound` inhabits `loc-old-shrine` |
+| Scene ↔ Quest | `scene-rooftop-confession` (PLAYED) and `scene-yuki-room-gathering` (PLANNED) link quests/threads |
+| Fifth Witness | Seeds across eclipse event, founding ritual, idol quest, city-secret thread, rooftop scene, journals — unresolved |
 
 ## UI state coverage
 
@@ -39,9 +41,9 @@ Manual verification checklist after importing `girl-by-moonlight-one-shot` from 
 
 | Surface | Expected content |
 |---------|------------------|
-| Campaign Home | Tagline from `campaignHomeIntro`; At a Glance (date, session, party count, location); Current Story (arc, quest, thread); Party roster (4 PCs); Recent Activity; deep systems collapsed below |
-| Party | 4 PCs with appearance forms, portraits, goals |
-| Adventure Hub | Multiple quests, arc, scenes |
+| Campaign Home | Hero **cover image** from `campaign.json` `coverImagePath`; tagline from `campaignHomeIntro`; At a Glance; Current Story; Party roster (4 PCs with **portraits**); Recent Activity |
+| Party | 4 PCs with appearance forms, **wired portrait URLs**, personal stakes in prose |
+| Adventure Hub | Multiple quests, arc, **two scenes** (rooftop PLAYED + Yuki room PLANNED) |
 | Thread Hub | Four threads in varied states |
 | Timeline / Chronology | Past, recent, future event pages |
 | Organizations | 6 orgs with diplomatic relations |
@@ -51,8 +53,8 @@ Manual verification checklist after importing `girl-by-moonlight-one-shot` from 
 | Maps | City overview with pins |
 | Projects | Three projects |
 | Havens | Three havens |
-| Journals | Party recap + private journal |
-| Session Notes | Session zero |
+| Journals | Party recap + private journal — **primary story delivery** |
+| Session Notes | **Session zero** — campaign entry point (5–6 paragraphs) |
 | Bestiary | Moon hound |
 | Objects | Lunar idol |
 | Discovery / Lore | Claims from `knowledge.json` where UI exposes them |
