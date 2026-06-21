@@ -161,7 +161,11 @@ export function StorySection({ campaignHandle, categoryPageId }: StorySectionPro
   const viewContent = (() => {
     if (activeView === 'quests') {
       return (
-        <BoardSection campaignHandle={campaignHandle} categoryPageId={categoryPageId} />
+        <BoardSection
+          campaignHandle={campaignHandle}
+          categoryPageId={categoryPageId}
+          playerPreview={playerPreview}
+        />
       );
     }
     if (loading) {

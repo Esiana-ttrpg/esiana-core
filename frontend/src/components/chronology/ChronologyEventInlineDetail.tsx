@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom';
-import { VisibilityTierChipFromPage } from '@/components/narrative/VisibilityTierChip';
+import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
+import {
+  resolveVisibilityTierLabel,
+  shouldShowVisibilityTierChip,
+} from '@shared/visibilityTier';
 import { ChronologyEventManagePanel } from '@/components/chronology/ChronologyEventManagePanel';
 import { ChronologyLoreLink } from '@/components/chronology/ChronologyLoreLink';
 import { ConditionTreeReadOnly } from '@/components/chronology/ConditionTreeReadOnly';
@@ -37,6 +41,11 @@ export function ChronologyEventInlineDetail({
   onDeleted,
 }: ChronologyEventInlineDetailProps) {
   const descriptionPreview = truncateChronologyDescription(baseEvent.description);
+  const visibilityTier = resolveVisibilityTierLabel({
+    pageVisibility: baseEvent.visibility,
+  });
+  const showVisibilityRow =
+    canManage && shouldShowVisibilityTierChip(visibilityTier);
 
   return (
     <div className="space-y-3 border-t border-border pt-3" onClick={(event) => event.stopPropagation()}>
@@ -70,11 +79,20 @@ export function ChronologyEventInlineDetail({
         Tags: {baseEvent.tags.length ? baseEvent.tags.join(' ') : '—'}
       </p>
 
+      {showVisibilityRow ? (
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+          <dt className="text-muted">Visibility</dt>
+          <dd className="text-foreground">
+            <BrowseVisibilityIndicator
+              pageVisibility={baseEvent.visibility}
+              showWhenElevated={canManage}
+              compact
+            />
+          </dd>
+        </dl>
+      ) : null}
+
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-        <dt className="text-muted">Visibility</dt>
-        <dd className="text-foreground">
-          <VisibilityTierChipFromPage pageVisibility={baseEvent.visibility} compact />
-        </dd>
         <dt className="text-muted">Duration</dt>
         <dd className="text-foreground">{baseEvent.duration} day(s)</dd>
         {calendarName && (

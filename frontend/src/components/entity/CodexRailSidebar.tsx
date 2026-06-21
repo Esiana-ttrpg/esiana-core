@@ -28,7 +28,6 @@ import {
   saveInspectorWidth,
 } from '@/lib/inspectorWidthPreference';
 import { fetchWikiBacklinks, fetchWikiOutlinks } from '@/lib/wiki';
-import { formatWikiVisibilityLabel } from '@/lib/wikiPageHeaderMeta';
 import { isCharacterWikiPage } from '@/lib/characterMetadata';
 import type { WikiPageParentRef } from '@/types/wiki';
 import type { WorkspaceMode } from '@/lib/surfaceDensityProfile';
@@ -286,10 +285,10 @@ function CodexRailBody({
           railCompact={railCompact}
         />
         <dl className="space-y-2 text-xs text-contextual-foreground/90">
-          <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-2">
-            <dt className={TYPE_META_CLASS}>Access</dt>
-            <dd>
-              {isEditingPage && onVisibilityChange ? (
+          {isEditingPage && onVisibilityChange ? (
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-2">
+              <dt className={TYPE_META_CLASS}>Access</dt>
+              <dd>
                 <select
                   value={pageVisibility}
                   onChange={(e) =>
@@ -302,13 +301,16 @@ function CodexRailBody({
                 >
                   <option value="Public">Public</option>
                   <option value="Party">Party-visible</option>
-                  <option value="DM_Only">DM only</option>
+                  <option value="DM_Only">Private (staff only)</option>
                 </select>
-              ) : (
-                formatWikiVisibilityLabel(pageVisibility)
-              )}
-            </dd>
-          </div>
+              </dd>
+            </div>
+          ) : isDMUser && pageVisibility === 'DM_Only' ? (
+            <div className="flex flex-col gap-1 sm:flex-row sm:justify-between sm:gap-2">
+              <dt className={TYPE_META_CLASS}>Access</dt>
+              <dd>Private</dd>
+            </div>
+          ) : null}
           {parentTitle ? (
             <div className="flex justify-between gap-2">
               <dt className={TYPE_META_CLASS}>Parent</dt>

@@ -20,6 +20,7 @@ import {
   syncEventLoreDescriptionFromBlocks,
 } from '../lib/eventLoreWiki.js';
 import { buildWikiTree, canViewWikiPage } from '../lib/wikiTree.js';
+import { isHubPageVisible } from '../lib/hubVisibility.js';
 import { normalizeSidebarConfig, isSidebarConfigBlank } from '../lib/sidebarConfig.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import type { Prisma } from '@prisma/client';
@@ -3242,17 +3243,20 @@ async function buildQuestHubResponse(
     updatedAt: row.updatedAt,
   }));
 
-  const visibleRows = collectVisibleQuestSubtreeRows(
-    questRows,
-    questsRootId,
-    ctx.role,
-  );
-
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
-  const lifecycleViewerCtx =
+  const effectiveViewerCtx =
     viewerCtx && previewAsPlayer && canManage
       ? { ...viewerCtx, perspective: 'party' as const }
       : viewerCtx;
+  const visibilityViewer = effectiveViewerCtx ?? ctx.role;
+
+  const visibleRows = collectVisibleQuestSubtreeRows(
+    questRows,
+    questsRootId,
+    visibilityViewer,
+  );
+
+  const lifecycleViewerCtx = effectiveViewerCtx;
   const lifecycleMap = await getLifecycleStates(
     ctx.campaignId,
     NarrativeLifecycleSubjectKinds.QUEST,
@@ -3286,7 +3290,7 @@ async function buildQuestHubResponse(
 
   const refById = new Map(
     refPages
-      .filter((page) => canViewWikiPage(page.visibility, ctx.role))
+      .filter((page) => isHubPageVisible(page.visibility, visibilityViewer))
       .map((page) => [page.id, page]),
   );
 
@@ -3492,17 +3496,20 @@ async function buildThreadHubResponse(
     updatedAt: row.updatedAt,
   }));
 
-  const visibleRows = collectVisibleThreadSubtreeRows(
-    threadRows,
-    threadsRootId,
-    ctx.role,
-  );
-
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
-  const lifecycleViewerCtx =
+  const effectiveViewerCtx =
     viewerCtx && previewAsPlayer && canManage
       ? { ...viewerCtx, perspective: 'party' as const }
       : viewerCtx;
+  const visibilityViewer = effectiveViewerCtx ?? ctx.role;
+
+  const visibleRows = collectVisibleThreadSubtreeRows(
+    threadRows,
+    threadsRootId,
+    visibilityViewer,
+  );
+
+  const lifecycleViewerCtx = effectiveViewerCtx;
   const lifecycleMap = await getLifecycleStates(
     ctx.campaignId,
     NarrativeLifecycleSubjectKinds.OPEN_THREAD,
@@ -3553,7 +3560,7 @@ async function buildThreadHubResponse(
 
   const refById = new Map(
     refPages
-      .filter((page) => canViewWikiPage(page.visibility, ctx.role))
+      .filter((page) => isHubPageVisible(page.visibility, visibilityViewer))
       .map((page) => [page.id, page]),
   );
 

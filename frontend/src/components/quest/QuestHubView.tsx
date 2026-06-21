@@ -39,7 +39,7 @@ import {
   type QuestHubStatusFilters,
   type QuestHubTypeFilters,
 } from '@/lib/questHubFilters';
-import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
+import { useCampaignActor } from '@/hooks/useCampaignActor';
 import type { QuestHubNode, QuestHubPayload, WikiTreeNode } from '@/types/wiki';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
@@ -69,6 +69,7 @@ interface QuestHubViewProps {
   /** When true, render quest workspace only (inside Adventure shell). */
   embedded?: boolean;
   storyFilters?: StoryFilterState;
+  playerPreview?: boolean;
 }
 
 function questNodesToSimilarChildren(nodes: QuestHubNode[]): CategoryIndexChild[] {
@@ -86,15 +87,21 @@ export function QuestHubView({
   campaignHandle,
   categoryPageId,
   embedded = false,
+  playerPreview: playerPreviewProp,
 }: QuestHubViewProps) {
   const { flatPages, refresh, campaign } = useWiki();
   const navigate = useNavigate();
+  const [playerPreviewLocal, setPlayerPreviewLocal] = useState(false);
+  const playerPreview = playerPreviewProp ?? playerPreviewLocal;
+  const { previewAsPlayer, isElevated } = useCampaignActor({
+    previewAsPlayer: playerPreview,
+  });
+  const isDMUser = isElevated();
 
   const [data, setData] = useState<QuestHubPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<QuestHubViewMode>(readStoredQuestHubViewMode);
-  const [playerPreview, setPlayerPreview] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createInitialTitle, setCreateInitialTitle] = useState<string | null>(null);
   const [calendarLike, setCalendarLike] = useState<FantasyCalendarLike | null>(null);
@@ -106,8 +113,6 @@ export function QuestHubView({
   const [typeFilters, setTypeFilters] = useState<QuestHubTypeFilters>(
     () => ({ ...DEFAULT_QUEST_HUB_TYPE_FILTERS }),
   );
-
-  const isDMUser = useElevatedNarrativeView();
 
   const canCreate = true;
   const categoryTitle = data?.category.title ?? 'Adventure';
@@ -139,7 +144,7 @@ export function QuestHubView({
     try {
       const payload = await fetchQuestHub(campaignHandle, {
         pageId: categoryPageId,
-        previewAsPlayer: isDMUser && playerPreview,
+        previewAsPlayer,
       });
       setData(payload);
     } catch (err) {
@@ -148,7 +153,7 @@ export function QuestHubView({
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, categoryPageId, isDMUser, playerPreview]);
+  }, [campaignHandle, categoryPageId, previewAsPlayer]);
 
   useEffect(() => {
     void loadHub();
@@ -494,7 +499,7 @@ export function QuestHubView({
             {isDMUser && !embedded ? (
               <button
                 type="button"
-                onClick={() => setPlayerPreview((prev) => !prev)}
+                onClick={() => setPlayerPreviewLocal((prev) => !prev)}
                 className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                   playerPreview
                     ? 'border-primary/50 bg-primary/10 text-primary'
