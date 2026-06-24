@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 RUN corepack enable
@@ -37,7 +37,7 @@ RUN set -eux; \
   node_modules/.bin/prisma --version; \
   node --input-type=module -e "import('@prisma/client').then((m) => { if (!m.PrismaClient) process.exit(1); })"
 
-FROM node:20-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 
 ARG ESIANA_PRODUCT_VERSION
