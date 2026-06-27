@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { ENSEMBLE_SPOTLIGHT_RANDOM, type EnsembleConfig } from '@/lib/ensembleConfig';
@@ -61,7 +62,7 @@ export function EnsembleEditDrawer({
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4">
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Party name
             </span>
             <input
@@ -73,7 +74,7 @@ export function EnsembleEditDrawer({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Tagline
             </span>
             <textarea
@@ -85,7 +86,7 @@ export function EnsembleEditDrawer({
           </label>
 
           <div className="space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Party banner
             </span>
             <ImportImageUrlField
@@ -100,7 +101,7 @@ export function EnsembleEditDrawer({
           </div>
 
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Party arc
             </span>
             <input
@@ -111,7 +112,7 @@ export function EnsembleEditDrawer({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Themes (comma-separated)
             </span>
             <input
@@ -129,7 +130,7 @@ export function EnsembleEditDrawer({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Known for (one per line)
             </span>
             <textarea
@@ -147,7 +148,7 @@ export function EnsembleEditDrawer({
           </label>
 
           <div className="space-y-2 border-t border-border pt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Spotlight</p>
+            <p className={META_SECTION_LABEL_CLASS}>Spotlight</p>
             <label className="block space-y-1">
               <span className="text-xs text-muted">Featured member</span>
               <select
@@ -193,7 +194,7 @@ export function EnsembleEditDrawer({
           </div>
 
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Featured quest page IDs (comma-separated)
             </span>
             <input
@@ -211,7 +212,7 @@ export function EnsembleEditDrawer({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Tension notes (one per line)
             </span>
             <textarea
@@ -229,7 +230,7 @@ export function EnsembleEditDrawer({
           </label>
 
           <label className="block space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Campaign landing page
             </span>
             <select

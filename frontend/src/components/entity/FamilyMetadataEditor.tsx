@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
@@ -106,7 +107,7 @@ export function FamilyMetadataEditor({
       <>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Type
           </span>
           <input
@@ -117,7 +118,7 @@ export function FamilyMetadataEditor({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Status
           </span>
           <input
@@ -128,7 +129,7 @@ export function FamilyMetadataEditor({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Region
           </span>
           <input
@@ -139,7 +140,7 @@ export function FamilyMetadataEditor({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             House branch
           </span>
           <input
@@ -150,7 +151,7 @@ export function FamilyMetadataEditor({
           />
         </label>
         <label className="space-y-1 sm:col-span-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Coat of arms
           </span>
           <input
@@ -163,7 +164,7 @@ export function FamilyMetadataEditor({
       </div>
 
       <div className="space-y-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <span className={META_SECTION_LABEL_CLASS}>
           Inherited traits
         </span>
         <div className="flex gap-1">
@@ -212,7 +213,7 @@ export function FamilyMetadataEditor({
       {showLineage ? (
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Current head
           </span>
           <IdentityPagePicker
@@ -224,7 +225,7 @@ export function FamilyMetadataEditor({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Seat
           </span>
           <IdentityPagePicker
@@ -260,7 +261,7 @@ export function FamilyMetadataEditor({
   return (
     <section className="space-y-3 rounded-lg border border-border bg-surface/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Dynasty registry
         </h3>
         {saving && <Loader2 className="size-3.5 animate-spin text-muted" />}

@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { DashboardHeroConfig } from './dashboardConfig';
+import { TYPE_DISPLAY_CLASS } from './surfaceLayout';
 
 export const HERO_MODES = ['compact', 'standard', 'cinematic'] as const;
 export type HeroMode = (typeof HERO_MODES)[number];
@@ -19,7 +20,7 @@ export const HERO_MODE_META: Record<HeroMode, HeroModeMeta> = {
     description: 'Short banner — great for mobile-heavy tables and long dashboards.',
     sectionMinHeight: 'min-h-[140px] sm:min-h-[160px]',
     contentPadding: 'px-5 pb-5 pt-1 sm:px-6 sm:pb-6',
-    titleClass: 'text-2xl font-bold tracking-tight sm:text-3xl',
+    titleClass: TYPE_DISPLAY_CLASS,
     taglineClass: 'max-w-3xl text-sm leading-relaxed text-foreground/90',
   },
   standard: {
@@ -27,7 +28,7 @@ export const HERO_MODE_META: Record<HeroMode, HeroModeMeta> = {
     description: 'Balanced presentation — the default campaign home look.',
     sectionMinHeight: 'min-h-[200px] sm:min-h-[240px]',
     contentPadding: 'px-6 pb-6 pt-2 sm:px-8 sm:pb-8',
-    titleClass: 'text-3xl font-bold tracking-tight sm:text-4xl',
+    titleClass: TYPE_DISPLAY_CLASS,
     taglineClass: 'max-w-3xl text-sm leading-relaxed text-foreground/90 sm:text-base',
   },
   cinematic: {
@@ -35,7 +36,7 @@ export const HERO_MODE_META: Record<HeroMode, HeroModeMeta> = {
     description: 'Tall immersive banner — best for strong art and atmospheric worlds.',
     sectionMinHeight: 'min-h-[280px] sm:min-h-[360px]',
     contentPadding: 'px-6 pb-8 pt-3 sm:px-8 sm:pb-10',
-    titleClass: 'text-3xl font-bold tracking-tight sm:text-[2.5rem] sm:leading-tight',
+    titleClass: TYPE_DISPLAY_CLASS,
     taglineClass: 'max-w-3xl text-base leading-relaxed text-foreground/90 sm:text-lg',
   },
 };

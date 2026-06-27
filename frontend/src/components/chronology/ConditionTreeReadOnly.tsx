@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { ConditionNode } from '@/lib/chronologyApi';
 
 interface ConditionTreeReadOnlyProps {
@@ -11,7 +12,7 @@ export function ConditionTreeReadOnly({ value }: ConditionTreeReadOnlyProps) {
 
   return (
     <div className="space-y-2 rounded border border-border bg-background/40 p-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">Conditions</p>
+      <p className={META_SECTION_LABEL_CLASS}>Conditions</p>
       <NodeView node={value} depth={0} />
     </div>
   );

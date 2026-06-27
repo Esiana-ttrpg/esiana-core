@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import { HavenAssetIdField } from '@/components/downtime/HavenAssetIdField';
 import { uploadCampaignImage } from '@/lib/campaigns';
@@ -34,7 +35,7 @@ export function OrganizationEmblemField({
 
   return (
     <div className="space-y-2">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+      <span className={META_SECTION_LABEL_CLASS}>
         Crest / shield / logo
       </span>
       <div className="flex flex-wrap items-start gap-3">

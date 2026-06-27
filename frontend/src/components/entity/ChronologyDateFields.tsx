@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { ChronologyDateParts } from '@/lib/entityRelationTypes';
 
 const fieldClass =
@@ -35,7 +36,7 @@ export function ChronologyDateFields({
 
   return (
     <div className="space-y-1">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+      <span className={META_FIELD_LABEL_CLASS}>
         {label}
       </span>
       <div className="grid grid-cols-3 gap-1">

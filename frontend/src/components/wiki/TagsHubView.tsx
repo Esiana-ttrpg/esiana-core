@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Hash, FileText } from 'lucide-react';
@@ -81,7 +82,7 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
       )}
 
       <section>
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted">
+        <h2 className={`mb-3 flex items-center gap-2 ${META_SECTION_LABEL_CLASS}`}>
           <Hash className="size-4" aria-hidden />
           Tag cloud
         </h2>
@@ -117,7 +118,7 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+        <h2 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
           {selectedTag
             ? `Pages tagged “${selectedTag.label}”`
             : 'Tagged pages'}

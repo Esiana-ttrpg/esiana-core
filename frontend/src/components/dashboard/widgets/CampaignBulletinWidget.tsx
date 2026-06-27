@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Megaphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -55,7 +56,7 @@ export function CampaignBulletinWidget({
 
         {bulletin.activity.length > 0 ? (
           <div className="border-t border-border pt-3">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+            <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
               Recent activity
             </p>
             <ul className="space-y-2">

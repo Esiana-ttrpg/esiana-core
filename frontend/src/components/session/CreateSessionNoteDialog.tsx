@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -55,7 +56,7 @@ export function CreateSessionNoteDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-background p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Create New Page</h2>
+          <h2 className={TYPE_DISPLAY_CLASS}>Create New Page</h2>
           <button
             type="button"
             onClick={onClose}

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { TrendingUp } from 'lucide-react';
 import {
@@ -50,7 +51,7 @@ export function WorldPressureForecastWidget({
 
           {!preview.paused && preview.risingTensions.length > 0 ? (
             <section className="space-y-2">
-              <h4 className="text-xs font-medium uppercase tracking-wide text-muted">
+              <h4 className={META_SECTION_LABEL_CLASS}>
                 {BREWING_CONFLICTS_LABEL}
               </h4>
               <ul className="space-y-1.5">

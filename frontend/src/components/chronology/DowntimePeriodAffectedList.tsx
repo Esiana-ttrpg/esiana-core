@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import {
   formatDowntimeAnnotationRoleLabel,
@@ -75,7 +76,7 @@ export function DowntimePeriodAffectedList({
 
   return (
     <div className={compact ? 'mt-1' : 'mt-2'}>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+      <p className={META_SECTION_LABEL_CLASS}>
         Affected
       </p>
       <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">

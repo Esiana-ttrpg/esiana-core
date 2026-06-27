@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Eye, User, X } from 'lucide-react';
@@ -132,7 +133,7 @@ export function PlayerSessionNotesPage() {
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
           <section className="space-y-3 xl:col-span-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            <h2 className={META_SECTION_LABEL_CLASS}>
               Writing Canvas
             </h2>
             <div className="rounded-xl border border-border bg-background/60 p-4">
@@ -146,7 +147,7 @@ export function PlayerSessionNotesPage() {
           </section>
 
           <aside className="xl:col-span-1">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+            <h2 className="mb-3 META_SECTION_LABEL_CLASS">
               Party Perspectives
             </h2>
             <div className="flex flex-col gap-2">
@@ -194,7 +195,7 @@ export function PlayerSessionNotesPage() {
           />
           <aside className="fixed inset-y-0 right-0 w-full max-w-xl border-l border-border bg-background p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-lg font-semibold text-foreground">
+              <h3 className={TYPE_DISPLAY_CLASS}>
                 {playerLabel}
               </h3>
               <button

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Database,
@@ -199,7 +200,7 @@ export function AdminUtilitiesPage() {
           {storage && !storageLoading && (
             <dl className="mb-4 grid grid-cols-2 gap-3 text-sm">
               <div className="rounded-lg border border-border bg-background/50 px-3 py-2">
-                <dt className="text-xs uppercase tracking-wider text-muted">
+                <dt className={META_SECTION_LABEL_CLASS}>
                   Total on disk
                 </dt>
                 <dd className="mt-1 font-mono text-lg text-foreground">
@@ -207,7 +208,7 @@ export function AdminUtilitiesPage() {
                 </dd>
               </div>
               <div className="rounded-lg border border-border bg-background/50 px-3 py-2">
-                <dt className="text-xs uppercase tracking-wider text-muted">
+                <dt className={META_SECTION_LABEL_CLASS}>
                   Reclaimable
                 </dt>
                 <dd className="mt-1 font-mono text-lg text-primary">
@@ -215,13 +216,13 @@ export function AdminUtilitiesPage() {
                 </dd>
               </div>
               <div className="rounded-lg border border-border bg-background/50 px-3 py-2">
-                <dt className="text-xs uppercase tracking-wider text-muted">
+                <dt className={META_SECTION_LABEL_CLASS}>
                   Files tracked
                 </dt>
                 <dd className="mt-1 font-mono text-foreground">{storage.totalFiles}</dd>
               </div>
               <div className="rounded-lg border border-border bg-background/50 px-3 py-2">
-                <dt className="text-xs uppercase tracking-wider text-muted">
+                <dt className={META_SECTION_LABEL_CLASS}>
                   Orphan files
                 </dt>
                 <dd className="mt-1 font-mono text-foreground">{storage.orphanFiles}</dd>

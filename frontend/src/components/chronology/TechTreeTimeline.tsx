@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { SURFACE_SILENT_CLASS, narrativeFocalClass } from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, SURFACE_SILENT_CLASS, narrativeFocalClass } from '@/lib/surfaceLayout';
 import { formatOccurrenceDateLabel } from '@/lib/chronologyDates';
 import type {
   TimelineCalendarRecord,
@@ -63,7 +63,7 @@ export function TechTreeTimeline({
         className="grid min-w-max"
         style={{ gridTemplateColumns: `220px repeat(${Math.max(columns.length, 1)}, minmax(300px, 1fr))` }}
       >
-        <div className="sticky left-0 top-0 z-30 border-b border-r border-border bg-surface px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
+        <div className="sticky left-0 top-0 z-30 border-b border-r border-border bg-surface px-4 py-3 META_SECTION_LABEL_CLASS">
           Calendar Track
         </div>
         {columns.map((category) => (

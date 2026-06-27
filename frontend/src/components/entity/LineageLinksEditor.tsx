@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Plus, Trash2 } from 'lucide-react';
 import type { LineageLink } from '@/lib/characterLineageMetadata';
 import type { WikiTreeNode } from '@/types/wiki';
@@ -25,7 +26,7 @@ export function LineageLinksEditor({
   return (
     <div className="space-y-2 rounded-md border border-border/50 bg-surface/30 p-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <span className={META_SECTION_LABEL_CLASS}>
           {title}
         </span>
         <button

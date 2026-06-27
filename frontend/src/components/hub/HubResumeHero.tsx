@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { ArrowRight } from 'lucide-react';
 import type { HubContinueCandidate, HubUpcomingChip } from '@/types/hub';
 import { buildCampaignWorldPresentation } from '@/lib/buildCampaignWorldPresentation';
@@ -72,15 +73,15 @@ function ResumePanel({
         <div className="absolute right-3 top-3">
           <CampaignPinButton pinned={pinned} onToggle={onPinToggle} className="!opacity-70 group-hover:!opacity-100" />
         </div>
-        <p className="text-[11px] font-medium uppercase tracking-wider text-foreground/70">
+        <p className={META_SECTION_LABEL_CLASS}>
           {campaign.name}
         </p>
         {presentation.arcTitle ? (
-          <h3 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h3 className={`mt-1 ${TYPE_DISPLAY_CLASS}`}>
             {presentation.arcTitle}
           </h3>
         ) : (
-          <h3 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{campaign.name}</h3>
+          <h3 className={`mt-1 ${TYPE_DISPLAY_CLASS}`}>{campaign.name}</h3>
         )}
         {presentation.tensionLine ? (
           <p className="mt-2 line-clamp-2 text-sm italic text-foreground/85">

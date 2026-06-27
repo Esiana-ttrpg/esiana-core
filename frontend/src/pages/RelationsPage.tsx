@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { GitBranch, Loader2 } from 'lucide-react';
@@ -225,7 +226,7 @@ export function RelationsPage() {
       <div className="grid gap-6 lg:grid-cols-[200px_1fr_260px]">
         <nav className="space-y-4">
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Lens</p>
+            <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>Lens</p>
             <ul className="space-y-1">
               {LENS_OPTIONS.map((opt) => (
                 <li key={opt.id}>
@@ -252,7 +253,7 @@ export function RelationsPage() {
           </div>
           {lens === 'social' ? (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">View</p>
+              <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>View</p>
               <ul className="space-y-1">
                 {SOCIAL_MODES.map((m) => (
                   <li key={m.id}>
@@ -279,7 +280,7 @@ export function RelationsPage() {
           ) : null}
           {lens === 'structure' ? (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">View</p>
+              <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>View</p>
               <ul className="space-y-1">
                 {STRUCTURE_MODES.map((m) => (
                   <li key={m.id}>
@@ -307,7 +308,7 @@ export function RelationsPage() {
           ) : null}
           {lens === 'kinship' ? (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">View</p>
+              <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>View</p>
               <ul className="space-y-1">
                 {KINSHIP_MODES.map((m) => (
                   <li key={m.id}>

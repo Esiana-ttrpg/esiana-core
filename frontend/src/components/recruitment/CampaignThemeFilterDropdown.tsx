@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search, X } from 'lucide-react';
 import {
@@ -67,7 +68,7 @@ export function CampaignThemeFilterDropdown({
 
   return (
     <div ref={rootRef} className="relative min-w-[220px] flex-1 sm:max-w-xs">
-      <span className="mb-1 block text-xs uppercase tracking-wide text-muted">Genre themes</span>
+      <span className="mb-1 block META_SECTION_LABEL_CLASS">Genre themes</span>
       <button
         type="button"
         id={id}

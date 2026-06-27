@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { TagChip } from './TagChip';
 import { IconAppearancePicker } from '@/components/ui/IconAppearancePicker';
@@ -81,7 +82,7 @@ export function TagAppearanceEditor({
   return (
     <div className="rounded-lg border border-border bg-surface/50 p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Tag appearance
         </h3>
         <TagChip
@@ -94,7 +95,7 @@ export function TagAppearanceEditor({
       </div>
 
       <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <span className={META_SECTION_LABEL_CLASS}>
           Color
         </span>
         <div className="flex flex-wrap gap-2">

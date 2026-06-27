@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 /**
  * wikiLink inline node view.
  *
@@ -51,7 +52,7 @@ function WikiLinkMarginNote({
   return (
     <span className="wiki-link-margin-note pointer-events-none absolute left-0 top-full z-50 mt-1 w-56 rounded border border-border bg-background/95 p-2 text-xs shadow-md">
       {typeLabel ? (
-        <span className="block text-[10px] font-medium uppercase tracking-wider text-muted">
+        <span className={META_SECTION_LABEL_CLASS}>
           {typeLabel}
         </span>
       ) : null}

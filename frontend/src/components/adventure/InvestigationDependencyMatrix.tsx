@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
@@ -107,7 +108,7 @@ export function InvestigationDependencyMatrix({
         <table className="min-w-max w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              <th className="sticky left-0 z-20 min-w-[180px] border-r border-border bg-muted/40 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <th className="sticky left-0 z-20 min-w-[180px] border-r border-border bg-muted/40 px-3 py-2 text-left META_SECTION_LABEL_CLASS-foreground">
                 Clue / Lead
               </th>
               {visibleColumnGroups.map((group) => {
@@ -117,7 +118,7 @@ export function InvestigationDependencyMatrix({
                   <th
                     key={group}
                     colSpan={cols.length}
-                    className="border-r border-border px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    className="border-r border-border px-2 py-2 text-center META_SECTION_LABEL_CLASS-foreground"
                   >
                     {COLUMN_GROUP_LABELS[group] ?? group}
                   </th>

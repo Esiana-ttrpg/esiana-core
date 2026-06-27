@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import type { PublicDirectoryCampaign } from '@/types/recruitment';
 import {
@@ -54,7 +55,7 @@ export function RecruitmentSidebar({ campaign, onRequestSeat, isFull }: Recruitm
   return (
     <aside className="h-fit space-y-4 lg:sticky lg:top-24">
       <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-        <p className="text-xs uppercase tracking-wider text-muted">At the table</p>
+        <p className={META_SECTION_LABEL_CLASS}>At the table</p>
         <p className="text-2xl font-semibold text-foreground">
           {tableCapacity > 0
             ? `${r.filledSeats}/${tableCapacity} players`
@@ -111,7 +112,7 @@ export function RecruitmentSidebar({ campaign, onRequestSeat, isFull }: Recruitm
                 key={sessionDate.toISOString()}
                 className="rounded-lg border border-border/70 bg-background/50 px-3 py-2"
               >
-                <p className="text-xs uppercase tracking-wide text-muted">Next {idx === 0 ? '' : `+${idx} `}session</p>
+                <p className={META_SECTION_LABEL_CLASS}>Next {idx === 0 ? '' : `+${idx} `}session</p>
                 <p className="text-sm text-foreground">
                   {formatSessionDate(sessionDate, r.scheduleTimezone)}
                 </p>

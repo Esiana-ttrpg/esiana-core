@@ -1,11 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
-import {
-  SURFACE_FLOAT_CLASS,
-  TYPE_DISPLAY_CLASS,
-  TYPE_META_CLASS,
-  TYPE_PROSE_CLASS,
-} from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, SURFACE_FLOAT_CLASS, TYPE_DISPLAY_CLASS, TYPE_META_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
 
 interface CampaignStateCardProps {
   campaignState: CampaignNarrativeSnapshot['campaignState'];
@@ -24,7 +19,7 @@ function StateFact({
   const isEmpty = Boolean(fact.emptyPrompt);
   const content = (
     <div className="space-y-1">
-      <p className={`${TYPE_META_CLASS} font-semibold uppercase tracking-wider text-focal-muted`}>
+      <p className={META_SECTION_LABEL_CLASS}>
         {fact.label}
       </p>
       <p
@@ -66,7 +61,7 @@ export function CampaignStateCard({ campaignState }: CampaignStateCardProps) {
   return (
     <div className={`${SURFACE_FLOAT_CLASS} region-depth-2 overflow-hidden rounded-xl`}>
       <div className="border-b border-border/20 px-6 py-4 sm:px-8">
-        <h2 className={`${TYPE_DISPLAY_CLASS} text-lg font-semibold text-focal-foreground sm:text-xl`}>
+        <h2 className={TYPE_DISPLAY_CLASS}>
           Campaign at a Glance
         </h2>
       </div>

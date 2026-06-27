@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2, Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -566,7 +567,7 @@ export function ChronologyPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl border border-border bg-background p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className={TYPE_DISPLAY_CLASS}>
                 {t('campaign.timeline.createEventTitle')}
               </h2>
               <button

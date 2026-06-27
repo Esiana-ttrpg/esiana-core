@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { controlClasses } from '@/components/ui/formStyles';
@@ -45,7 +46,7 @@ export function DeleteCampaignModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-xl">
-        <h2 className="text-xl font-semibold text-foreground">Delete Campaign</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Delete Campaign</h2>
         <p className="mt-2 text-sm text-muted">
           Permanently delete <span className="font-semibold text-foreground">{campaignName}</span>.
           Type <span className="font-semibold text-foreground">DELETE</span> to confirm.

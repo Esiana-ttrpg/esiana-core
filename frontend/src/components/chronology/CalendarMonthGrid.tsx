@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { getClimateAspectHeaderIcon, type ClimateAspect } from '@/lib/climateAspect';
 import type { MonthGridRow } from '@/lib/timeEngine';
 
@@ -26,7 +27,7 @@ function MonthTitleBanner({
 }) {
   const icon = climateAspect ? getClimateAspectHeaderIcon(climateAspect) : null;
   return (
-    <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-xs font-semibold uppercase tracking-wide text-muted">
+    <p className="mb-2 flex items-center justify-center gap-1.5 text-center META_SECTION_LABEL_CLASS">
       {icon ? (
         <span className="text-[10px] text-muted-foreground/60" aria-hidden>
           {icon}

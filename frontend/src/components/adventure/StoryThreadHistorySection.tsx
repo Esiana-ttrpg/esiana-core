@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo, useState } from 'react';
 import type { ForeshadowingStage } from '@shared/narrativeForeshadowingTracker';
 import type { StoryThreadHistoryProjection } from '@shared/storyThreadHistoryProjection';
@@ -86,7 +87,7 @@ export function StoryThreadHistorySection({
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-elevated/20 p-3">
         <div className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="META_SECTION_LABEL_CLASS-foreground">
             Kind
           </span>
           <div className="flex flex-wrap gap-1">
@@ -111,7 +112,7 @@ export function StoryThreadHistorySection({
         </div>
 
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="META_SECTION_LABEL_CLASS-foreground">
             Stage
           </span>
           <select

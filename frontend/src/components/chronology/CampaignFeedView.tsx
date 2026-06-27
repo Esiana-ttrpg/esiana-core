@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -312,7 +313,7 @@ export function CampaignFeedView({
           <div className="space-y-4">
             {dateGroups.map((group) => (
               <section key={group.dateLabel}>
-                <h3 className="sticky top-0 z-10 bg-background/95 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                <h3 className="sticky top-0 z-10 bg-background/95 py-1 META_SECTION_LABEL_CLASS">
                   {group.dateLabel}
                 </h3>
                 <div className="space-y-2 pl-1">

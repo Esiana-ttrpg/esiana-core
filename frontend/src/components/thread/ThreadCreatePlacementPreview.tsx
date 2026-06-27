@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   isPlayerTheoryThread,
   THREAD_KIND_GROUP_LABELS,
@@ -27,7 +28,7 @@ export function ThreadCreatePlacementPreview({
   const label = threadCreatePlacementLabel(threadKind, playerSubmitted);
   return (
     <div className="rounded-lg border border-border/80 bg-surface/40 px-3 py-2 text-sm">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted">
+      <p className={META_FIELD_LABEL_CLASS}>
         Appears in
       </p>
       <p className="mt-1 text-foreground">{label}</p>

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import type { MapSceneObjectDto } from '@/types/maps';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
@@ -360,7 +361,7 @@ export function MapObjectTemporalPanel({
 
       {supportsKeyframes ? (
         <div className="space-y-2 border-t border-border/60 pt-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+          <h4 className={META_SECTION_LABEL_CLASS}>
             Keyframes (sparse overrides)
           </h4>
           <p className="text-xs text-muted">

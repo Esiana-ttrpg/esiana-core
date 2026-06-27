@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo, useState } from 'react';
 import {
   CAMPAIGN_THEME_CATEGORIES,
@@ -123,7 +124,7 @@ export function CampaignThemeMultiSelect({
 
         return (
           <div key={category}>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
               {category}
             </p>
             {categoryBody}

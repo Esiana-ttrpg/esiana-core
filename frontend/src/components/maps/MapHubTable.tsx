@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { MapPin, Settings, Trash2 } from 'lucide-react';
 import type { CampaignMapAsset } from '@/types/maps';
@@ -34,7 +35,7 @@ export function MapHubTable({
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-border bg-elevated/40 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+          <tr className="border-b border-border bg-elevated/40 text-left META_SECTION_LABEL_CLASS">
             <th className="px-3 py-2.5">Map</th>
             <th className="hidden px-3 py-2.5 sm:table-cell">Location</th>
             <th className="px-3 py-2.5">Size</th>

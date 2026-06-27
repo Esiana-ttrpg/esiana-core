@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Link2, Unlink } from 'lucide-react';
 import { FieldHint, FieldLabel } from '@/components/settings/settingsFormHelpers';
@@ -128,7 +129,7 @@ export function UserLinkedIdentitySection({
       <div className="rounded-xl border border-border bg-surface p-4">
         <div className="mb-3 flex items-center gap-2">
           <Link2 className="size-4 shrink-0 text-primary/90" />
-          <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+          <h2 className={META_FIELD_LABEL_CLASS}>
             Linked identity providers
           </h2>
         </div>
@@ -200,7 +201,7 @@ export function UserLinkedIdentitySection({
           onSubmit={handleAddPassword}
           className="rounded-xl border border-primary/25 bg-surface/90 p-4"
         >
-          <h2 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted">
+          <h2 className={`mb-3 ${META_FIELD_LABEL_CLASS}`}>
             Add password sign-in
           </h2>
           <div className="space-y-3">
@@ -239,7 +240,7 @@ export function UserLinkedIdentitySection({
 
       {passwordEnabled && (data?.linked.length ?? 0) > 0 && (
         <div className="rounded-xl border border-border bg-surface/90 p-4">
-          <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted">
+          <h2 className={`mb-2 ${META_FIELD_LABEL_CLASS}`}>
             Password-only sign-in
           </h2>
           <p className="mb-3 text-sm text-muted">

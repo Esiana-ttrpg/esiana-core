@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
@@ -68,7 +69,7 @@ export function ArcMetadataEditor({
         questlines contain quests.
       </p>
       <label className="block space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Arc kind</span>
+        <span className={META_FIELD_LABEL_CLASS}>Arc kind</span>
         <select
           className={fieldClass}
           value={draft.arcKind}
@@ -96,7 +97,7 @@ export function ArcMetadataEditor({
         }}
       />
       <label className="block space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Act index
         </span>
         <input
@@ -118,7 +119,7 @@ export function ArcMetadataEditor({
         />
       </label>
       <label className="block space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Pacing target
         </span>
         <input

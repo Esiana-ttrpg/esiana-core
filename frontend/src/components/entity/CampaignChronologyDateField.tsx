@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, X } from 'lucide-react';
 import { FantasyDatePicker } from '@/components/chronology/FantasyDatePicker';
@@ -103,7 +104,7 @@ export function CampaignChronologyDateField({
 
   return (
     <div className="space-y-1" ref={popoverRef}>
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+      <span className={META_FIELD_LABEL_CLASS}>
         {label}
       </span>
       <div className="relative">

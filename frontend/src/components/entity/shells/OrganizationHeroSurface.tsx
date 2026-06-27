@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { OrganizationMetadataEditor } from '@/components/entity/OrganizationMetadataEditor';
 import { OrganizationSymbolGlyph } from '@/components/entity/shells/OrganizationSymbolGlyph';
@@ -78,7 +79,7 @@ export function OrganizationHeroSurface({
         style={tint ? { borderLeftWidth: 4, borderLeftColor: tint } : undefined}
       >
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Organization identity
           </h2>
           <NarrativeVisibilityBadge
@@ -123,7 +124,7 @@ export function OrganizationHeroSurface({
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h1 className="text-2xl font-semibold text-focal-foreground sm:text-3xl">
+              <h1 className={TYPE_DISPLAY_CLASS}>
                 {displayName}
               </h1>
               {identityProjection?.identityLine ? (

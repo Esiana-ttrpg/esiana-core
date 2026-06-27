@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { AppearanceDetailsFields } from '@shared/appearanceMetadata';
 
 export const appearanceFieldClass =
@@ -5,7 +6,7 @@ export const appearanceFieldClass =
 
 export function SectionLabel({ children }: { children: string }) {
   return (
-    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted">{children}</h4>
+    <h4 className={META_SECTION_LABEL_CLASS}>{children}</h4>
   );
 }
 

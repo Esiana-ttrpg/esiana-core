@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Key, Trash2 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -99,7 +100,7 @@ export function DeveloperApiKeysSection() {
     <section className="rounded-xl border border-border bg-surface/80 p-6">
       <div className="mb-4 flex items-center gap-2">
         <Key className="size-5 text-primary/90" />
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Developer API Keys
         </h2>
       </div>
@@ -175,7 +176,7 @@ export function DeveloperApiKeysSection() {
       )}
 
       <div className="mt-6">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+        <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
           Active keys
         </h3>
 

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CalendarDays,
@@ -406,7 +407,7 @@ export function CalendarWidget({
 
             <div className="rounded-lg border border-border bg-background/80 px-3 py-2 text-sm text-foreground">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span className="text-lg font-semibold text-foreground">
+                <span className={TYPE_DISPLAY_CLASS}>
                   Year {state.year}
                 </span>
                 <span className="text-muted">·</span>
@@ -464,7 +465,7 @@ export function CalendarWidget({
                     ) : (
                       chronicleByYear.map(([yearLabel, items]) => (
                         <section key={yearLabel} className="rounded-lg border border-border bg-background/40 p-3">
-                          <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">
+                          <h4 className={META_SECTION_LABEL_CLASS}>
                             {yearLabel}
                           </h4>
                           <ul className="mt-2 space-y-2">
@@ -487,7 +488,7 @@ export function CalendarWidget({
                     )}
                     {recurrencePreviewRows.length > 0 && (
                       <section className="rounded-lg border border-dashed border-border bg-background/20 p-3">
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                        <h4 className={META_SECTION_LABEL_CLASS}>
                           Projected Recurrence Preview
                         </h4>
                         <ul className="mt-2 space-y-2">
@@ -509,7 +510,7 @@ export function CalendarWidget({
                   onClick={() => setAgendaOpen((v) => !v)}
                   className="flex w-full items-center justify-between text-left"
                 >
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-foreground">
+                  <span className="inline-flex items-center gap-1 META_SECTION_LABEL_CLASS">
                     <Newspaper className="size-3.5 text-primary" /> Agenda
                   </span>
                   <ChevronDown
@@ -561,7 +562,7 @@ export function CalendarWidget({
                 )}
                 {canManageTime && (
                   <div className="mt-3 border-t border-border pt-3">
-                    <p className="mb-2 text-[10px] uppercase tracking-wide text-muted">
+                    <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
                       Quick-add event
                     </p>
                     <input
@@ -598,7 +599,7 @@ export function CalendarWidget({
 
       {canManageTime && !loading && !error && data && data.calendars.length > 0 && (
         <div className="mt-auto border-t border-border pt-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+          <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             DM time controls
           </p>
           <div className="flex flex-wrap gap-2">

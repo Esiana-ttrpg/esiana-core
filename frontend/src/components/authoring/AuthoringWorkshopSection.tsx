@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { parseAuthoringContextFromSearch } from '@shared/authoringContext';
@@ -40,7 +41,7 @@ export function AuthoringWorkshopSection({
     <div className="space-y-8">
       {!embedded ? (
         <header className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">Authoring Workshop</h2>
+          <h2 className={TYPE_DISPLAY_CLASS}>Authoring Workshop</h2>
           <p className="text-sm text-muted-foreground">
             Long-horizon narrative authoring — structured overlays on top of the universal editor,
             never the default for every page.

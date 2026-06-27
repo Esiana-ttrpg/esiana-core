@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ExternalLink, Map, ScrollText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { DowntimeHavenOverviewReference } from '@shared/downtimeHub';
@@ -70,7 +71,7 @@ export function HavenReferencesSection({
       </div>
       {relatedPages.length > 0 ? (
         <div className="mt-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="META_SECTION_LABEL_CLASS-foreground">
             Related pages
           </p>
           <div className="mt-2 flex flex-wrap gap-2">

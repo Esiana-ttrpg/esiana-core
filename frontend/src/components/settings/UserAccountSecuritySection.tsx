@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent } from 'react';
 import { KeyRound, Shield } from 'lucide-react';
 import { FieldHint, FieldLabel } from '@/components/settings/settingsFormHelpers';
@@ -61,7 +62,7 @@ export function UserAccountSecuritySection({
       >
         <div className="mb-4 flex items-center gap-2">
           <Shield className="size-4 shrink-0 text-primary/90" />
-          <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+          <h2 className={META_FIELD_LABEL_CLASS}>
             Account Details
           </h2>
         </div>
@@ -81,19 +82,19 @@ export function UserAccountSecuritySection({
 
         <dl className="mt-5 space-y-3 border-t border-border pt-4 text-sm">
           <div>
-            <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">
+            <dt className={META_FIELD_LABEL_CLASS}>
               System Username
             </dt>
             <dd className="mt-0.5 break-all font-mono text-foreground">@{profile.username}</dd>
           </div>
           <div>
-            <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">
+            <dt className={META_FIELD_LABEL_CLASS}>
               Member Since
             </dt>
             <dd className="mt-0.5 text-muted">{memberSince}</dd>
           </div>
           <div>
-            <dt className="text-[11px] font-bold uppercase tracking-wider text-muted">
+            <dt className={META_FIELD_LABEL_CLASS}>
               Account Age
             </dt>
             <dd className="mt-0.5 text-muted">
@@ -121,7 +122,7 @@ export function UserAccountSecuritySection({
         >
           <div className="mb-4 flex items-center gap-2">
             <KeyRound className="size-4 shrink-0 text-primary/90" />
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+            <h2 className={META_FIELD_LABEL_CLASS}>
               Change Password
             </h2>
           </div>
@@ -179,7 +180,7 @@ export function UserAccountSecuritySection({
         <div className="rounded-xl border border-border bg-surface/90 p-4">
           <div className="mb-2 flex items-center gap-2">
             <KeyRound className="size-4 shrink-0 text-primary/90" />
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted">
+            <h2 className={META_FIELD_LABEL_CLASS}>
               Password Sign-In
             </h2>
           </div>
@@ -190,7 +191,7 @@ export function UserAccountSecuritySection({
       )}
 
       <div className="rounded-xl border border-red-900/40 bg-red-950/20 p-4">
-        <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-red-300">
+        <h2 className={`mb-2 ${META_FIELD_LABEL_CLASS} text-red-300`}>
           Danger Zone
         </h2>
         <p className="mb-3 text-xs text-muted">

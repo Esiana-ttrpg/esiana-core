@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { PendingDevelopmentRow, WorldDevelopmentPresentation } from '@shared/worldDevelopmentPresentation';
@@ -148,7 +149,7 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className={TYPE_DISPLAY_CLASS}>
             Pending Developments ({data.pendingCount})
           </h2>
           {mode !== 'off' ? (

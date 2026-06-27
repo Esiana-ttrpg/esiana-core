@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { DowntimeHavenSituationCard } from '@shared/downtimeHub';
 
@@ -29,7 +30,7 @@ export function DowntimeHavenCard({ card }: DowntimeHavenCardProps) {
 
       {card.recentActivity.length > 0 ? (
         <div className="mt-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="META_SECTION_LABEL_CLASS-foreground">
             Recently
           </p>
           <ul className="mt-2 space-y-1 text-sm text-foreground/90">

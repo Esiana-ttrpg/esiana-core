@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DevelopmentHistoryRow } from '@shared/worldDevelopmentPresentation';
@@ -62,7 +63,7 @@ export function DevelopmentHistorySection({ campaignHandle }: DevelopmentHistory
   return (
     <div className="space-y-4">
       <header>
-        <h2 className="text-lg font-semibold text-foreground">Development History</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Development History</h2>
         <p className="text-sm text-muted-foreground">
           Audit trail for resolved developments — filtered by outcome, not a mixed archive.
         </p>

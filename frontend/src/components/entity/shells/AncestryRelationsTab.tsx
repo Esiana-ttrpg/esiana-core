@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { ReactNode } from 'react';
 import { EntityRelationshipsWidget } from '@/components/wiki/widgets/EntityRelationshipsWidget';
 import type { WikiPageBlock, WikiTreeNode } from '@/types/wiki';
@@ -31,7 +32,7 @@ export function AncestryRelationsTab({
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-border/60 bg-surface/40 p-4">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+        <h3 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
           Graph relationships
         </h3>
         <EntityRelationshipsWidget
@@ -48,7 +49,7 @@ export function AncestryRelationsTab({
 
       {hasBacklinks ? (
         <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Connected knowledge
           </h3>
           {wikiPageRenderer}

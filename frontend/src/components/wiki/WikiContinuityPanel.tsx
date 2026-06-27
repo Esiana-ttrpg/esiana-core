@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type {
@@ -120,7 +121,7 @@ export function WikiContinuityPanel({
   return (
     <div className="space-y-6 p-4 text-sm">
       <header>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Codex health
         </h3>
         <p className="mt-1 font-medium text-foreground">{pageTitle}</p>
@@ -135,7 +136,7 @@ export function WikiContinuityPanel({
 
       {(issuesBySeverity.get('critical')?.length ?? 0) > 0 ? (
         <section className="space-y-2">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+          <h4 className={META_FIELD_LABEL_CLASS}>
             {SEVERITY_LABELS.critical}
           </h4>
           <ContinuityIssueGroups
@@ -148,7 +149,7 @@ export function WikiContinuityPanel({
 
       {actionableUnresolved.length > 0 ? (
         <section className="space-y-2">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+          <h4 className={META_FIELD_LABEL_CLASS}>
             Unresolved references
           </h4>
           <ul
@@ -228,7 +229,7 @@ export function WikiContinuityPanel({
 
       {(issuesBySeverity.get('warning')?.length ?? 0) > 0 ? (
         <section className="space-y-2">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+          <h4 className={META_FIELD_LABEL_CLASS}>
             {SEVERITY_LABELS.warning}
           </h4>
           <ContinuityIssueGroups
@@ -240,7 +241,7 @@ export function WikiContinuityPanel({
 
       {(issuesBySeverity.get('info')?.length ?? 0) > 0 ? (
         <section className="space-y-2">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+          <h4 className={META_FIELD_LABEL_CLASS}>
             {SEVERITY_LABELS.info}
           </h4>
           <ContinuityIssueGroups
@@ -251,7 +252,7 @@ export function WikiContinuityPanel({
       ) : null}
 
       <section className="space-y-1 border-t border-border/60 pt-4">
-        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+        <h4 className={META_FIELD_LABEL_CLASS}>
           Suggestions
         </h4>
         <p className="text-xs text-muted">None yet.</p>

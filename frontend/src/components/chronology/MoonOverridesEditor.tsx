@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { MoonOverride } from '@/lib/chronologyApi';
 
 interface MoonOverridesEditorProps {
@@ -10,7 +11,7 @@ export function MoonOverridesEditor({ value, onChange }: MoonOverridesEditorProp
   return (
     <div className="space-y-2 rounded-lg border border-border bg-background/60 p-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Moon Overrides</p>
+        <p className={META_SECTION_LABEL_CLASS}>Moon Overrides</p>
         <button
           type="button"
           className="rounded border border-border px-2 py-1 text-[11px] text-foreground hover:bg-elevated"

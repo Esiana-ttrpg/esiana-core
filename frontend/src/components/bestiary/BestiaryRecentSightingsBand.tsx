@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { CategoryIndexChild } from '@/lib/wiki';
 import { CreatureCodexTile } from './CreatureCodexTile';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
@@ -23,7 +24,7 @@ export function BestiaryRecentSightingsBand({
   return (
     <section className="mb-6 space-y-3">
       <header>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Recent Sightings
         </h2>
         <p className="text-xs text-muted/80">Recently updated expedition records</p>

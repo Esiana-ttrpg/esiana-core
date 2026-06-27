@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import {
   DragDropContext,
@@ -179,7 +180,7 @@ export function QuestKanbanBoard({
                 className="flex min-h-[14rem] flex-col rounded-lg border border-border bg-elevated/30"
               >
                 <header className="border-b border-border px-3 py-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  <h2 className={META_SECTION_LABEL_CLASS}>
                     {column.label}
                   </h2>
                   <p className="text-[10px] text-muted">{quests.length} quests</p>

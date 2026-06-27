@@ -15,7 +15,7 @@ export function CampaignPartySurface({ roster }: CampaignPartySurfaceProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between gap-3 px-1">
-        <h2 className={`${TYPE_DISPLAY_CLASS} text-lg font-semibold text-focal-foreground sm:text-xl`}>
+        <h2 className={TYPE_DISPLAY_CLASS}>
           Party
         </h2>
         {roster.members.length > 0 ? (

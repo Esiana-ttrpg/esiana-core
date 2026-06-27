@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { X } from 'lucide-react';
 import { ContinuitySection } from '@/components/adventure/ContinuitySection';
 import type { NarrativePressureItem } from '@/lib/sceneMetadata';
@@ -30,7 +31,7 @@ export function ContinuityDrawer({
         aria-label="Continuity diagnostics"
       >
         <div className="mb-4 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="META_SECTION_LABEL_CLASS-foreground">
             Continuity
           </h2>
           <button

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { OrganizationMetadataEditor } from '@/components/entity/OrganizationMetadataEditor';
@@ -94,7 +95,7 @@ export function OrganizationRelationsTab({
             key={group.relationType}
             className="rounded-lg border border-border/60 bg-surface/40 p-4"
           >
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
               {group.relationType}
             </h3>
             <ul className="space-y-2">
@@ -122,7 +123,7 @@ export function OrganizationRelationsTab({
 
       {hasBacklinks ? (
         <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Connected knowledge
           </h3>
           {wikiPageRenderer}

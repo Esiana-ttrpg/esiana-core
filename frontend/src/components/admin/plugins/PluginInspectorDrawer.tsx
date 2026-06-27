@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { ToggleRow } from '@/components/admin/AdminSectionCard';
@@ -27,7 +28,7 @@ function InspectorSection({
 }) {
   return (
     <section className="space-y-2 border-b border-border pb-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">{title}</h3>
+      <h3 className={META_SECTION_LABEL_CLASS}>{title}</h3>
       {children}
     </section>
   );

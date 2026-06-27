@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { AncestryInheritancePanel } from './AncestryInheritancePanel';
 import {
@@ -28,7 +29,7 @@ export function AncestryLineagesTab({
     <div className="space-y-4">
       {projection.parentChain.length > 1 ? (
         <section className="rounded-lg border border-border/60 bg-surface/40 p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Ancestry chain
           </h3>
           <ol className="flex flex-wrap items-center gap-1 text-sm">
@@ -53,7 +54,7 @@ export function AncestryLineagesTab({
 
       {isRoot ? (
         <section className="rounded-lg border border-border/60 bg-surface/40 p-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
             Child lineages
           </h3>
           {projection.childLineages.length > 0 ? (
@@ -88,7 +89,7 @@ export function AncestryLineagesTab({
         </section>
       ) : (
         <section className="rounded-lg border border-border/60 bg-surface/40 p-4">
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
             Inherited traits & physiology
           </h3>
           <AncestryInheritancePanel pageId={pageId} flatPages={flatPages} />

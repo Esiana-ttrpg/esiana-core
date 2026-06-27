@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent, useEffect, useState } from 'react';
 import {
   DEFAULT_THEME_PRESET,
@@ -104,7 +105,7 @@ export function CampaignThemeSettingsTab({
         </div>
 
         <div className="rounded border border-border bg-background p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          <p className={META_SECTION_LABEL_CLASS}>
             Registered themes
           </p>
           <ul className="mt-2 space-y-1 text-sm text-muted">

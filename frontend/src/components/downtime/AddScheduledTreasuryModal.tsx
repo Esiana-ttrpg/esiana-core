@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import {
@@ -116,7 +117,7 @@ export function AddScheduledTreasuryModal({
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 id="scheduled-treasury-title" className="text-lg font-semibold text-foreground">
+            <h2 id="scheduled-treasury-title" className={TYPE_DISPLAY_CLASS}>
               Add recurring treasury schedule
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">

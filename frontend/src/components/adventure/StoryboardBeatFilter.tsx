@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { SceneBeatType } from '@/lib/sceneMetadata';
 import {
   BEATS_BY_DRAMATIC_GROUP,
@@ -32,7 +33,7 @@ export function StoryboardBeatFilter({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="META_SECTION_LABEL_CLASS-foreground">
           Beat filter
         </span>
         {!readOnly && selectedBeatTypes.length > 0 ? (

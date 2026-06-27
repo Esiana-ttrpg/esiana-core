@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -40,7 +41,7 @@ export function RecruitmentBeforeYouApply({ documentation }: RecruitmentBeforeYo
   return (
     <section className="space-y-4 border-b border-border/60 pb-8">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Before you apply</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Before you apply</h2>
         <p className="mt-1 text-sm text-muted">
           Read these before you request a seat—they explain how this table runs.
         </p>

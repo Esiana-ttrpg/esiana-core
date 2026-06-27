@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { User } from 'lucide-react';
 import { campaignCategoryChildPath } from '@/lib/campaignPaths';
@@ -47,10 +48,10 @@ export function PartySpotlightHero({ spotlight, campaignHandle }: PartySpotlight
 
         <div className="flex min-w-0 flex-col justify-center space-y-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80">
+            <p className={META_SECTION_LABEL_CLASS}>
               In the spotlight
             </p>
-            <h2 className="mt-1 font-serif text-2xl font-bold text-foreground sm:text-3xl">
+            <h2 className={`mt-1 ${TYPE_DISPLAY_CLASS}`}>
               {primary}
               {pronounSuffix ? (
                 <span className="ml-2 text-lg font-normal text-muted">{pronounSuffix}</span>
@@ -94,7 +95,7 @@ export function PartySpotlightHero({ spotlight, campaignHandle }: PartySpotlight
               >
                 {linkedPursuit.title}
               </Link>
-              <span className="ml-2 text-xs uppercase tracking-wide text-muted">
+              <span className="ml-2 META_SECTION_LABEL_CLASS">
                 {linkedPursuit.statusLabel}
               </span>
             </p>

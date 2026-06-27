@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import {
   buildOrganizationPeopleProjection,
@@ -55,7 +56,7 @@ export function OrganizationPeopleTab({
       ) : (
         groups.map((group) => (
           <section key={group.archetype} className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={META_SECTION_LABEL_CLASS}>
               {group.label}
             </h3>
             <ul className="space-y-2">

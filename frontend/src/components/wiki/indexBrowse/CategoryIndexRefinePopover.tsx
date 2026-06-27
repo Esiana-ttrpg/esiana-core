@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import type {
@@ -101,7 +102,7 @@ export function CategoryIndexRefinePopover({
                 const facetState = refineState[facet.id] ?? {};
                 return (
                   <div key={facet.id}>
-                    <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+                    <p className="mb-1.5 META_SECTION_LABEL_CLASS">
                       {facet.label}
                     </p>
                     <div className="flex flex-wrap gap-1">

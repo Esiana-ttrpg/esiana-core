@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Eye, EyeOff, LayoutGrid, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { MemberIdentityLabel } from '@/components/campaign/MemberIdentityLabel';
@@ -45,7 +46,7 @@ export function SessionNotesSidebar({
   return (
     <aside className="flex min-h-0 flex-col gap-4">
       <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className="mb-3 META_SECTION_LABEL_CLASS">
           Session notes
         </h2>
         <button

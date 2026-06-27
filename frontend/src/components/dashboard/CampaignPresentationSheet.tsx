@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Palette, X } from 'lucide-react';
@@ -83,7 +84,7 @@ export function CampaignPresentationSheet({
           <div>
             <h2
               id="campaign-presentation-title"
-              className="text-lg font-semibold text-foreground"
+              className={TYPE_DISPLAY_CLASS}
             >
               Campaign Presentation
             </h2>

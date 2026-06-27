@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
@@ -266,7 +267,7 @@ export function CharacterLineageEditor({
             }
           />
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={META_SECTION_LABEL_CLASS}>
               Social links
             </h3>
             <p className="text-xs text-muted">
@@ -315,7 +316,7 @@ export function CharacterLineageEditor({
       {showDynastic ? (
         <div className="space-y-2">
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Lineage role
             </span>
             <select
@@ -336,7 +337,7 @@ export function CharacterLineageEditor({
             </select>
           </label>
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               House branch
             </span>
             <input
@@ -347,7 +348,7 @@ export function CharacterLineageEditor({
             />
           </label>
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Bloodline status
             </span>
             <select
@@ -367,7 +368,7 @@ export function CharacterLineageEditor({
             </select>
           </label>
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Legitimacy
             </span>
             <select
@@ -410,7 +411,7 @@ export function CharacterLineageEditor({
   return (
     <section className="space-y-3 rounded-lg border border-border bg-surface/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Lineage & affiliations
         </h3>
         {saving && <Loader2 className="size-3.5 animate-spin text-muted" />}

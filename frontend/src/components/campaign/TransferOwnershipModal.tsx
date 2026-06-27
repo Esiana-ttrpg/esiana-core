@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -101,7 +102,7 @@ export function TransferOwnershipModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-2xl border border-border bg-background p-6 shadow-xl">
-        <h2 className="text-xl font-semibold text-foreground">Transfer Ownership</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Transfer Ownership</h2>
         <p className="mt-2 text-sm text-muted">
           Offer primary Game Master ownership of <span className="font-semibold">{campaignName}</span> to a
           Writer. They must accept the offer.

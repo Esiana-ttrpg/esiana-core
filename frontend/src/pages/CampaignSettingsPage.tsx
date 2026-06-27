@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, RefreshCw, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -761,10 +762,10 @@ export function CampaignSettingsPage() {
                 <table className="min-w-full divide-y divide-border bg-background">
                   <thead className="bg-surface">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">User</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">Identity page</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">Current Role</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">Actions</th>
+                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">User</th>
+                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">Identity page</th>
+                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">Current Role</th>
+                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">

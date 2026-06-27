@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
@@ -164,7 +165,7 @@ export function EntityReadContextPanel({
       {hasContent || debugEnabled ? (
         <>
           <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h2 className={META_SECTION_LABEL_CLASS}>
               {emphasisTitle}
             </h2>
             {onViewStructure && slotConfig?.structureLinkLabel ? (

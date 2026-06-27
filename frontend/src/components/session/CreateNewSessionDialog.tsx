@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -92,7 +93,7 @@ export function CreateNewSessionDialog({
       <div className="w-full max-w-lg rounded-xl border border-border bg-background p-5 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2 className={TYPE_DISPLAY_CLASS}>
               {view === 'preview' ? 'Create New Session' : 'Advance Time'}
             </h2>
             {view === 'preview' ? (

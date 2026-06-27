@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { fetchWorkshopDrafts, countWordsInMarkdown } from '@/lib/workshopDrafts';
 
@@ -34,7 +35,7 @@ export function WorkshopWritingPulse({ campaignHandle }: WorkshopWritingPulsePro
 
   return (
     <section className="space-y-1.5">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className="META_SECTION_LABEL_CLASS-foreground">
         Writing pulse
       </h3>
       <ul className="space-y-1 text-sm text-muted-foreground">

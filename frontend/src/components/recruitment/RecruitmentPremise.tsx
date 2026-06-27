@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import ReactMarkdown from 'react-markdown';
 import type { PublicDirectoryCampaign } from '@/types/recruitment';
 
@@ -13,7 +14,7 @@ export function RecruitmentPremise({ campaign }: RecruitmentPremiseProps) {
 
   return (
     <section className="space-y-3 border-b border-border/60 pb-8">
-      <h2 className="text-lg font-semibold text-foreground">
+      <h2 className={TYPE_DISPLAY_CLASS}>
         {premise ? 'Campaign premise' : 'About this campaign'}
       </h2>
       <div className="prose prose-invert max-w-3xl text-base leading-relaxed text-foreground/95 prose-p:my-3">

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
-import { TYPE_META_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, TYPE_META_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
 
 interface CampaignHomeDeepSystemsProps {
   deepSystems: NonNullable<CampaignNarrativeSnapshot['deepSystems']>;
@@ -16,7 +16,7 @@ export function CampaignHomeDeepSystems({ deepSystems }: CampaignHomeDeepSystems
   return (
     <details className="region-depth-1 rounded-lg border border-border/20 px-4 py-3">
       <summary
-        className={`${TYPE_META_CLASS} cursor-pointer list-none font-semibold uppercase tracking-wider text-recessed-foreground marker:content-none [&::-webkit-details-marker]:hidden`}
+        className={`${META_SECTION_LABEL_CLASS} cursor-pointer list-none text-recessed-foreground marker:content-none [&::-webkit-details-marker]:hidden`}
       >
         World &amp; continuity
       </summary>

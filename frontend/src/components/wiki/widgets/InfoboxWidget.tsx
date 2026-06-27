@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import { useOptionalWiki } from '@/contexts/WikiContext';
@@ -91,7 +92,7 @@ function ProjectedInfoboxPreview({
       aria-readonly="true"
     >
       {isEditingLayout ? (
-        <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+        <div className="flex items-center gap-1.5 META_SECTION_LABEL_CLASS">
           <Lock className="size-3" aria-hidden />
           Synced from metadata
         </div>
@@ -246,7 +247,7 @@ export function InfoboxWidget({
       }
     >
       {isEditingLayout && (
-        <div className="rounded-t-lg bg-surface/90 px-4 py-2 text-xs uppercase tracking-wide text-muted">
+        <div className="rounded-t-lg bg-surface/90 px-4 py-2 META_SECTION_LABEL_CLASS">
           Metadata
         </div>
       )}
@@ -287,7 +288,7 @@ export function InfoboxWidget({
               </>
             ) : (
               <>
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className={META_SECTION_LABEL_CLASS}>
                   {f.key}
                 </div>
                 <div className="text-sm text-foreground">

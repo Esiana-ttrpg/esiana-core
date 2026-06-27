@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { PageIdListEditor, codexFieldClass } from '@/components/entity/codexMetadataEditorShared';
 import {
@@ -203,7 +204,7 @@ export function OrganizationPresenceTab({
       ) : (
         projection?.sections.map((section) => (
           <section key={section.label} className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={META_SECTION_LABEL_CLASS}>
               {section.label}
             </h3>
             <ul className="flex flex-wrap gap-2">

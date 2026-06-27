@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { BestiaryMetadataEditor } from '@/components/entity/BestiaryMetadataEditor';
 import type { DiscoveryStateProjection } from '@shared/discoveryProjection';
 import type {
@@ -65,7 +66,7 @@ export function CreatureHeroSurface({
     return (
       <section className="mb-4 rounded-xl border border-border/60 bg-surface/30 p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Creature identity
           </h2>
           <NarrativeVisibilityBadge
@@ -87,7 +88,7 @@ export function CreatureHeroSurface({
           focusField={focusField ?? null}
         />
         <div className="mt-4 border-t border-border/40 pt-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Ecology & combat intel
           </h3>
           <BestiaryMetadataEditor
@@ -138,7 +139,7 @@ export function CreatureHeroSurface({
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h1 className="text-2xl font-semibold text-focal-foreground sm:text-3xl">
+              <h1 className={TYPE_DISPLAY_CLASS}>
                 {displayName}
               </h1>
               {identityProjection?.identityLine && !intelProjection.showSilhouette ? (
