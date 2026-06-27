@@ -4,7 +4,7 @@
 
 If you copy an existing component and it uses these patterns, you are copying **legacy UI language**. Converge to the replacement.
 
-Related: [design-philosophy.md](../design-philosophy.md), [density-doctrine.md](./density-doctrine.md), [design-philosophy-checklist.md](./design-philosophy-checklist.md).
+Related: [design-philosophy.md](../design-philosophy.md), [density-doctrine.md](./density-doctrine.md), [design-philosophy-checklist.md](./design-philosophy-checklist.md), [experience-doctrine.md](./experience-doctrine.md).
 
 | # | Stop introducing | Why | Use instead | Legacy examples |
 |---|------------------|-----|-------------|-----------------|
@@ -22,3 +22,11 @@ Related: [design-philosophy.md](../design-philosophy.md), [density-doctrine.md](
 | 12 | **Ultrawide column proliferation** — more grid columns/panels as viewport widens | Density creep on large monitors | Margins, capped measure, one receded collapsible rail | `DashboardGrid`, `grid-cols-*` escalation at `2xl` |
 | 13 | **Nested scroll on primary reading surfaces** — `max-h-*` + `overflow-y-auto` on rails, widget lists, hub bodies | Fractures spatial memory; app-like competing scroll contexts | Single vertical scroll on campaign workspace column; document-flow rails/lists; sticky optional | `CodexRailSidebar` inline rail (legacy), `ReferencesWidget` capped lists |
 | 14 | **`overflow-x-auto` on narrative/catalog primary surfaces** — horizontal scroll wrappers on entity detail, catalogs, lore | Information hierarchy mismatched to container; spreadsheet feel | Content priority collapse + responsive reflow (`contentPriorityCollapse.ts`); `min-w-0` + `flex-wrap` / grid stack | `IndexGridView` table wrapper (legacy), mobile tab strips |
+| 15 | **"Needs Attention" / attention queue sections** — hub or campaign surfaces with alarmist aggregate status | Equal-weight signals; no gravitational center; classic AI dashboard IA | Single "Continue" or continuity pulse line at focal weight; demote or remove queue | `HubAttentionQueue.tsx` |
+| 16 | **Insights / Recommendations blocks** on narrative routes | Secondary analytics competing with campaign state | Fold into continuity stream or recess below focal column | `InsightsSection.tsx`, `ProgressionPage.tsx` |
+| 17 | **Duplicate activity feeds** — Recent Activity on hub when Campaign Home owns continuity | Summary explosion; split attention | Campaign Home `CampaignContinuityStream` / `CampaignRecentActivity` only; hub shows resume line | `HubRecentActivity.tsx` |
+| 18 | **Summary explosion** — Overview + Highlights + Activity + Insights visible at equal prominence | No gravity; four summaries | One summary region at focal weight; rest progressive disclosure | Entity overview + hero + rail |
+| 19 | **Overview dashboard card grids** — equal `DashboardCard` peers on entity Overview tab | Equal visual weight; meta headers shout | Hero as anchor; overview as prose lede + recessed deep links | `*OverviewDashboard.tsx` shells |
+| 20 | **Persistent rail as co-primary** — contextual rail same visual weight as focal column in Reading mode | Rail competes for gravity | Rail inspect-only, Writing mode, or dismissed; focal owns center | Codex/entity rails at full density |
+
+IA patterns #15–#20 are **symptoms of gravity failure** per [experience-doctrine.md](./experience-doctrine.md). See also [audits/experience-scorecard.md](./audits/experience-scorecard.md).
