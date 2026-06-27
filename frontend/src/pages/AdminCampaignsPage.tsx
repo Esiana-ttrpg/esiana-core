@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ChevronLeft,
@@ -218,7 +219,7 @@ export function AdminCampaignsPage() {
       </header>
 
       <div className="rounded-xl border-2 border-primary/40 bg-gradient-to-r from-primary/15 to-surface/60 px-6 py-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-primary/90">
+        <p className={`${META_SECTION_LABEL_CLASS} text-primary/90`}>
           Instance overview
         </p>
         <p className="mt-2 text-2xl font-bold text-foreground">
@@ -240,7 +241,7 @@ export function AdminCampaignsPage() {
 
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface/40 p-4 sm:flex-row sm:items-end">
         <label className="min-w-0 flex-1">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Search campaigns
           </span>
           <div className="relative">
@@ -255,7 +256,7 @@ export function AdminCampaignsPage() {
           </div>
         </label>
         <label className="w-full sm:w-64">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Sort by
           </span>
           <select
@@ -284,7 +285,7 @@ export function AdminCampaignsPage() {
         <div className="overflow-hidden rounded-xl border border-border bg-surface/40">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface/80 text-xs uppercase tracking-wider text-muted">
+              <thead className={`border-b border-border bg-surface/80 ${META_SECTION_LABEL_CLASS}`}>
                 <tr>
                   <th className="px-4 py-3 font-semibold">Title</th>
                   <th className="px-4 py-3 font-semibold">Created</th>
@@ -412,7 +413,7 @@ export function AdminCampaignsPage() {
               to confirm.
             </p>
             <label className="mt-4 block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Confirm title
               </span>
               <input

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { FileText, Plus } from 'lucide-react';
@@ -67,7 +68,7 @@ export function CategoryIndexEmptyStatePanel({
 
       {similar.length > 0 && (
         <div className="mx-auto mt-4 max-w-md text-left">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+          <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Similar entries
           </p>
           <ul className="space-y-1 text-sm">

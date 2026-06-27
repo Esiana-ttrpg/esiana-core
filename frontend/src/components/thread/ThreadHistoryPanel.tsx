@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import type { StoryThreadHistoryEntry } from '@shared/storyThreadHistoryProjection';
 import { StoryThreadHistoryCard } from '@/components/adventure/StoryThreadHistoryCard';
@@ -54,7 +55,7 @@ export function ThreadHistoryPanel({
 
   return (
     <section className="mt-6 space-y-2 border-t border-border pt-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="META_SECTION_LABEL_CLASS-foreground">
         Thread history
       </h3>
       <StoryThreadHistoryCard campaignHandle={campaignHandle} entry={entry} />

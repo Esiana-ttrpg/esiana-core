@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ArrowRight, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -35,7 +36,7 @@ function DashboardCard({
   return (
     <article className="rounded-lg border border-border/60 bg-surface/40 p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">{title}</h3>
+        <h3 className={META_SECTION_LABEL_CLASS}>{title}</h3>
         {isEditingPage && editMode === 'jump-to-tab' && onJump ? (
           <button
             type="button"

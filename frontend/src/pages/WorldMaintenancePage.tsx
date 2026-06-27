@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { ContinuityIssue } from '@shared/continuityIssue';
@@ -139,7 +140,7 @@ export function WorldMaintenancePage() {
   return (
     <article className="mx-auto max-w-2xl space-y-8 p-6">
       <header>
-        <h1 className="text-lg font-semibold text-foreground">
+        <h1 className={TYPE_DISPLAY_CLASS}>
           World maintenance
         </h1>
         <p className="mt-1 text-sm text-muted">
@@ -209,7 +210,7 @@ export function WorldMaintenancePage() {
 
       {unlinkedIssues.length > 0 ? (
         <section className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Unlinked lore
           </h2>
           <p className="text-xs text-muted">
@@ -236,7 +237,7 @@ export function WorldMaintenancePage() {
 
       {aliasIssues.length > 0 ? (
         <section className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Alias conflicts
           </h2>
           <ul className="space-y-1.5">
@@ -255,7 +256,7 @@ export function WorldMaintenancePage() {
       {orphanIssues.length > 0 ? (
         <section className="space-y-4">
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h2 className={META_SECTION_LABEL_CLASS}>
               Orphaned content
             </h2>
             <p className="mt-1 text-xs text-muted">
@@ -268,7 +269,7 @@ export function WorldMaintenancePage() {
             if (!list?.length) return null;
             return (
               <div key={isolation} className="space-y-2">
-                <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted">
+                <h3 className={META_SECTION_LABEL_CLASS}>
                   {NARRATIVE_ISOLATION_LABELS[isolation]}
                 </h3>
                 <ul className="max-h-48 space-y-1 overflow-y-auto">
@@ -295,7 +296,7 @@ export function WorldMaintenancePage() {
 
       {clueIssues.length > 0 ? (
         <section className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Clue paths
           </h2>
           <ul className="max-h-48 space-y-1 overflow-y-auto">
@@ -319,7 +320,7 @@ export function WorldMaintenancePage() {
 
       {foreshadowingIssues.length > 0 ? (
         <section className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Foreshadowing progression
           </h2>
           <ul className="max-h-48 space-y-1 overflow-y-auto">
@@ -344,7 +345,7 @@ export function WorldMaintenancePage() {
       {coreNarrativeIssues.length > 0 ? (
         <section className="space-y-4">
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h2 className={META_SECTION_LABEL_CLASS}>
               Narrative structure
             </h2>
             <p className="mt-1 text-xs text-muted">
@@ -357,7 +358,7 @@ export function WorldMaintenancePage() {
             if (!categoryIssues?.length) return null;
             return (
               <div key={category} className="space-y-2">
-                <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted">
+                <h3 className={META_SECTION_LABEL_CLASS}>
                   {NARRATIVE_CONTINUITY_CATEGORY_LABELS[category]}
                 </h3>
                 <ul className="max-h-64 space-y-1 overflow-y-auto">
@@ -418,7 +419,7 @@ export function WorldMaintenancePage() {
       ) : null}
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Unresolved references
         </h2>
         {unresolved.length === 0 ? (

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   TAG_ICON_CATALOG,
   TAG_ICON_CATALOG_NAMES,
@@ -39,7 +40,7 @@ export function IconAppearancePicker({
 
       <div className="space-y-2">
         {!compact && (
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className={META_SECTION_LABEL_CLASS}>
             Lucide icon
           </span>
         )}

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -163,7 +164,7 @@ export function QuestCard({
         <div className="border-t border-border px-4 py-3 text-sm">
           {node.quest.rewardsText && (
             <div className="mb-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+              <p className={META_SECTION_LABEL_CLASS}>
                 Rewards
               </p>
               <p className="mt-1 whitespace-pre-wrap text-foreground">
@@ -183,7 +184,7 @@ export function QuestCard({
           )}
           {node.recentActivity.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+              <p className={META_SECTION_LABEL_CLASS}>
                 Recent activity
               </p>
               <ul className="mt-2 space-y-1.5">

@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   KinshipEdge,
@@ -137,7 +138,7 @@ export function RelationsKinshipView({
 
       {generations.map((row) => (
         <div key={row.generation} className="relative z-10 space-y-2">
-          <h3 className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <h3 className={META_FIELD_LABEL_CLASS}>
             Generation {row.generation + 1}
           </h3>
           <div

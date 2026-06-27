@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
@@ -171,7 +172,7 @@ export function CharacterIdentityEditor({
         <>
           <div id="character-field-title" className="grid gap-2">
             <label className="block space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Title
               </span>
               <input
@@ -183,7 +184,7 @@ export function CharacterIdentityEditor({
               />
             </label>
             <label className="block space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Profession / role
               </span>
               <input
@@ -197,7 +198,7 @@ export function CharacterIdentityEditor({
           </div>
 
           <label id="character-field-pronouns" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Pronouns
             </span>
             <input
@@ -222,7 +223,7 @@ export function CharacterIdentityEditor({
           </label>
 
           <label id="character-field-knownFor" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Known for
             </span>
             <textarea
@@ -235,7 +236,7 @@ export function CharacterIdentityEditor({
           </label>
 
           <label id="character-field-activeArc" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Active arc
             </span>
             <input
@@ -248,7 +249,7 @@ export function CharacterIdentityEditor({
           </label>
 
           <label id="character-field-motivation" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Motivation
             </span>
             <input
@@ -261,7 +262,7 @@ export function CharacterIdentityEditor({
           </label>
 
           <label id="character-field-ancestryId" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Ancestry
             </span>
             <IdentityPagePicker
@@ -285,7 +286,7 @@ export function CharacterIdentityEditor({
           </label>
 
           <label id="character-field-lineageId" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Lineage
             </span>
             <IdentityPagePicker
@@ -321,7 +322,7 @@ export function CharacterIdentityEditor({
           id="character-field-partyParticipation"
           className="space-y-2 rounded-md border border-border/60 bg-background/40 p-2.5"
         >
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <p className={META_SECTION_LABEL_CLASS}>
             Participation
           </p>
           <label className="flex items-center gap-2">
@@ -342,7 +343,7 @@ export function CharacterIdentityEditor({
           </label>
           {draft.partyParticipation.active ? (
             <label className="block space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Role
               </span>
               <select
@@ -375,7 +376,7 @@ export function CharacterIdentityEditor({
       {showPresence ? (
         <div id="character-field-status" className="space-y-2">
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Life status
             </span>
             <select
@@ -396,7 +397,7 @@ export function CharacterIdentityEditor({
             </select>
           </label>
           <label id="character-field-primaryAffiliationId" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Primary affiliation
             </span>
             <IdentityPagePicker
@@ -407,7 +408,7 @@ export function CharacterIdentityEditor({
             />
           </label>
           <label id="character-field-currentLocationId" className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Current location
             </span>
             <IdentityPagePicker
@@ -423,7 +424,7 @@ export function CharacterIdentityEditor({
       {showAppearance ? (
         <div id="character-field-appearance.summary" className="space-y-2">
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Identity Summary
             </span>
             <textarea
@@ -471,7 +472,7 @@ export function CharacterIdentityEditor({
   return (
     <section className="space-y-4 rounded-lg border border-border bg-surface/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Character identity
         </h3>
         {saving && <Loader2 className="size-3.5 animate-spin text-muted" />}

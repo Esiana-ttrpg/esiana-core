@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   Flame,
   MapPin,
@@ -21,7 +22,7 @@ interface IntelChipProps {
 function IntelChip({ label, value, icon }: IntelChipProps) {
   return (
     <div className="flex min-w-[7rem] shrink-0 flex-col gap-1 rounded-lg border border-border/50 bg-surface/40 px-3 py-2 transition-colors hover:border-primary/30 hover:bg-surface/60">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+      <span className={META_SECTION_LABEL_CLASS}>
         {label}
       </span>
       <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">

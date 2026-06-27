@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -48,7 +49,7 @@ export function ResetPasswordPage() {
   return (
     <PageContainer className="py-10">
       <div className="mx-auto w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-lg">
-        <h1 className="text-xl font-semibold text-foreground">Choose a new password</h1>
+        <h1 className={TYPE_DISPLAY_CLASS}>Choose a new password</h1>
         <p className="mt-2 text-sm text-muted">
           Enter a new password for your account. Reset links expire after one hour.
         </p>

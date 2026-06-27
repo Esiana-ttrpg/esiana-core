@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageContainer, PagePanel } from '@/components/layout/PageContainer';
@@ -137,7 +138,7 @@ export function RecruitmentDirectoryPage() {
       >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t('campaign.recruitment.pageTitle')}</h1>
+          <h1 className={TYPE_DISPLAY_CLASS}>{t('campaign.recruitment.pageTitle')}</h1>
           <p className="mt-1 text-sm text-muted">{t('campaign.recruitment.pageSubtitle')}</p>
         </div>
         <PlatformGuideLinks slugs={RECRUITMENT_DIRECTORY_GUIDE_SLUGS} />
@@ -145,7 +146,7 @@ export function RecruitmentDirectoryPage() {
 
       <PagePanel className="flex flex-wrap items-end gap-3 p-4">
         <label className="flex min-w-[180px] flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted">
+          <span className={META_SECTION_LABEL_CLASS}>
             {t('campaign.recruitment.filterGameSystem')}
           </span>
           <select
@@ -182,7 +183,7 @@ export function RecruitmentDirectoryPage() {
         />
 
         <label className="flex min-w-[180px] flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted">
+          <span className={META_SECTION_LABEL_CLASS}>
             {t('campaign.recruitment.filterSeatsAvailable')}
           </span>
           <select
@@ -196,7 +197,7 @@ export function RecruitmentDirectoryPage() {
         </label>
 
         <label className="flex min-w-[180px] flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted">
+          <span className={META_SECTION_LABEL_CLASS}>
             {t('campaign.recruitment.filterSortBy')}
           </span>
           <select

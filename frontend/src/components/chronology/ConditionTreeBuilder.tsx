@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { ConditionNode } from '@/lib/chronologyApi';
 
 interface ConditionTreeBuilderProps {
@@ -13,7 +14,7 @@ export function ConditionTreeBuilder({ value, onChange }: ConditionTreeBuilderPr
   return (
     <div className="space-y-2 rounded-lg border border-border bg-background/60 p-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Conditions</p>
+        <p className={META_SECTION_LABEL_CLASS}>Conditions</p>
         {!value ? (
           <button
             type="button"

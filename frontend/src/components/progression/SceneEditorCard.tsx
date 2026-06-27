@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useId, useRef, useState } from 'react';
 import { ChevronDown, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -145,7 +146,7 @@ export function SceneEditorCard({
       {isExpanded ? (
         <div id={`${summaryId}-panel`} className="space-y-3 border-t border-border px-3 py-3">
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Summary
             </span>
             <textarea

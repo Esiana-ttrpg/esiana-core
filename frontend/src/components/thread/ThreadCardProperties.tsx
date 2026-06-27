@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import type {
   ThreadMetadataFields,
@@ -73,7 +74,7 @@ export function ThreadCardProperties({
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Kind
           </span>
           <select
@@ -100,7 +101,7 @@ export function ThreadCardProperties({
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Lifecycle
           </span>
           <select
@@ -120,7 +121,7 @@ export function ThreadCardProperties({
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Status
           </span>
           <select
@@ -146,7 +147,7 @@ export function ThreadCardProperties({
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Narrative weight
           </span>
           <select
@@ -199,7 +200,7 @@ export function ThreadCardProperties({
       />
 
       <div className="space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Payoff page
         </span>
         <IdentityPagePicker
@@ -215,7 +216,7 @@ export function ThreadCardProperties({
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Introduced session
           </span>
           <input
@@ -233,7 +234,7 @@ export function ThreadCardProperties({
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Last advanced
           </span>
           <input
@@ -251,7 +252,7 @@ export function ThreadCardProperties({
           />
         </label>
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Resolved session
           </span>
           <input

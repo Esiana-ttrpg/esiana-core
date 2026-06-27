@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { PartyQuestPursuit } from '@/lib/buildPartyProjection';
 import { campaignWikiPath } from '@/lib/campaignPaths';
@@ -26,7 +27,7 @@ export function PartyPursuitsStrip({ pursuits, campaignHandle }: PartyPursuitsSt
               <span className="font-medium text-foreground group-hover:text-primary">
                 {quest.title}
               </span>
-              <span className="ml-2 text-xs uppercase tracking-wide text-muted">
+              <span className="ml-2 META_SECTION_LABEL_CLASS">
                 {quest.statusLabel}
               </span>
               {quest.snippet ? (

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
 import {
@@ -145,7 +146,7 @@ export function CodexPartyLinkSection({
       {isEditingPage ? (
         <div className="space-y-2">
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Assign to player
             </span>
             <select

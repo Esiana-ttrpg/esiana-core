@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Map, Trash2 } from 'lucide-react';
@@ -220,7 +221,7 @@ export function MapSettingsPage() {
       ) : null}
 
       <section className="rounded-xl border border-border bg-surface/50 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Map name
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -245,7 +246,7 @@ export function MapSettingsPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-surface/50 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Map visibility
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -270,7 +271,7 @@ export function MapSettingsPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-surface/50 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Image credit
         </h2>
         <ImageCreditEditor
@@ -289,7 +290,7 @@ export function MapSettingsPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-surface/50 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Preview
         </h2>
         <div className="mt-3 flex gap-4">
@@ -315,7 +316,7 @@ export function MapSettingsPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-surface/50 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Linked location
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -370,7 +371,7 @@ export function MapSettingsPage() {
       </section>
 
       <section className="rounded-xl border border-border bg-surface/50 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Nested maps
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -414,7 +415,7 @@ export function MapSettingsPage() {
 
       {(detail.map.nestedInMaps?.length ?? 0) > 0 ? (
         <section className="rounded-xl border border-border bg-surface/50 p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Nested in
           </h2>
           <p className="mt-1 text-sm text-muted">
@@ -436,7 +437,7 @@ export function MapSettingsPage() {
       ) : null}
 
       <section className="rounded-xl border border-border bg-surface/50 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Pins
         </h2>
         <p className="mt-1 text-sm text-muted">

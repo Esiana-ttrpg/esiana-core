@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { WikiEditorTab, WikiPageContent } from '@/types/wiki';
 import { WikiContentTabs } from './WikiContentTabs';
 import { WikiMarkdown } from './WikiMarkdown';
@@ -19,7 +20,7 @@ export function WikiReadPanel({
         {activeTab === 'official' && (
           <>
             <section>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+              <h2 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
                 DM Canon
               </h2>
               <WikiMarkdown
@@ -28,7 +29,7 @@ export function WikiReadPanel({
               />
             </section>
             <section>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
+              <h2 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
                 Party Discoveries
               </h2>
               <WikiMarkdown

@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Pause, Play, Trash2 } from 'lucide-react';
@@ -77,7 +78,7 @@ export function ScheduledNarrativePanel({
     <div className="space-y-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Narrative schedules</h2>
+          <h2 className={TYPE_DISPLAY_CLASS}>Narrative schedules</h2>
           <p className="text-sm text-muted-foreground">
             Seasonal world-event and haven-threat prompts that fire when campaign time advances.
             Requires{' '}

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -91,7 +92,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       <div className="flex min-h-full items-center justify-center p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 id="auth-modal-title" className="text-lg font-semibold text-foreground">
+          <h2 id="auth-modal-title" className={TYPE_DISPLAY_CLASS}>
             {title}
           </h2>
           <button
@@ -117,7 +118,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
 
           {showFederated && (
             <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">
+              <p className={META_SECTION_LABEL_CLASS}>
                 Organization sign-in
               </p>
               {providers.map((provider) => (

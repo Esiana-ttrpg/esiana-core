@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Settings2 } from 'lucide-react';
 import type { DowntimeHubLedgerPayload, LedgerSuggestionLine, LedgerTransactionLine } from '@shared/downtimeHub';
@@ -181,7 +182,7 @@ export function DowntimeLedgerSection({
       </div>
 
       <div className="rounded-lg border border-border bg-background/60 p-4">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Treasury</p>
+        <p className={META_SECTION_LABEL_CLASS}>Treasury</p>
         <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
           {data.treasury.balanceLabel}
         </p>

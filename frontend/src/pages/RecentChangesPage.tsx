@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, FolderOpen, History } from 'lucide-react';
@@ -221,7 +222,7 @@ export function RecentChangesPage() {
       <header className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <History className="size-5 text-primary" strokeWidth={1.5} />
-          <h1 className="text-xl font-semibold text-foreground">Recent Changes</h1>
+          <h1 className={TYPE_DISPLAY_CLASS}>Recent Changes</h1>
         </div>
         <button
           type="button"

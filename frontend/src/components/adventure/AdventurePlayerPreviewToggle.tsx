@@ -1,7 +1,7 @@
 import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 
 const segmentClass =
-  'rounded-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wide transition-colors';
+  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors';
 
 export function AdventurePlayerPreviewToggle({ className = '' }: { className?: string }) {
   const workspace = useOptionalAdventureWorkspace();

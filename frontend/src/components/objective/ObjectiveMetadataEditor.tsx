@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
@@ -74,7 +75,7 @@ export function ObjectiveMetadataEditor({
         </p>
       ) : null}
       <label className="block space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Status</span>
+        <span className={META_FIELD_LABEL_CLASS}>Status</span>
         <select
           className={fieldClass}
           value={draft.objectiveStatus}
@@ -90,7 +91,7 @@ export function ObjectiveMetadataEditor({
         </select>
       </label>
       <label className="block space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Summary</span>
+        <span className={META_FIELD_LABEL_CLASS}>Summary</span>
         <textarea
           className={`${fieldClass} min-h-[60px]`}
           value={draft.summary ?? ''}

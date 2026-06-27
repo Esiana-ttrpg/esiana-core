@@ -1,5 +1,5 @@
 export const WORKSPACE_RAIL_TAB_CLASS =
-  'inline-flex shrink-0 snap-start items-center rounded-t-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors';
+  'inline-flex shrink-0 snap-start items-center rounded-t-lg px-3 py-1.5 text-xs font-medium transition-colors';
 
 export function workspaceRailTabClass(isActive: boolean): string {
   return `${WORKSPACE_RAIL_TAB_CLASS} ${

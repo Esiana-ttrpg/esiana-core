@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { ContinuityIssue } from '@shared/continuityIssue';
 import { campaignWikiPath } from '@/lib/campaignPaths';
@@ -143,7 +144,7 @@ export function ContinuityIssueGroups({
         if (!categoryIssues?.length) return null;
         return (
           <div key={category} className="space-y-1.5">
-            <h5 className="text-[10px] font-medium uppercase tracking-wider text-muted">
+            <h5 className={META_SECTION_LABEL_CLASS}>
               {NARRATIVE_CONTINUITY_CATEGORY_LABELS[category]}
             </h5>
             <IssueList

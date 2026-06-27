@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { campaignRelationsPath } from '@/lib/campaignPaths';
 import { buildOrganizationStructureProjection } from '@/lib/organizationStructureProjection';
@@ -57,7 +58,7 @@ export function OrganizationStructureTab({
 
       {structure.parentOrgId && structure.parentTitle ? (
         <section className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Parent organization
           </h2>
           <EntityRelationChip
@@ -74,7 +75,7 @@ export function OrganizationStructureTab({
       <FactionGossipSection campaignHandle={campaignHandle} orgPageId={orgPageId} />
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Leadership
         </h2>
         {leader ? (
@@ -93,7 +94,7 @@ export function OrganizationStructureTab({
 
       {structure.childrenByRole.map((group) => (
         <section key={group.roleLabel} className="space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             {group.roleLabel}
           </h2>
           <ul className="space-y-2">

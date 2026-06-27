@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { HubRecentEditItem } from '@/types/hub';
 import { HubSectionHeader } from '@/components/hub/HubSectionHeader';
@@ -20,7 +21,7 @@ export function HubRecentlyEdited({ items }: HubRecentlyEditedProps) {
               to={item.href}
               className="hub-recent-row block rounded-lg border px-3 py-2"
             >
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <p className={META_FIELD_LABEL_CLASS}>
                 {item.campaignName}
               </p>
               <p className="mt-0.5 line-clamp-1 text-sm font-medium text-foreground">

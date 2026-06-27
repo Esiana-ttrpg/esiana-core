@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Loader2, RotateCcw } from 'lucide-react';
 import {
@@ -224,7 +225,7 @@ export function QuestMetadataEditor({
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <label className="block min-w-0 space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Location
           </span>
           <input
@@ -244,7 +245,7 @@ export function QuestMetadataEditor({
         </label>
 
         <div className="min-w-0 space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Quest giver (NPC)
           </span>
           <IdentityPagePicker
@@ -260,7 +261,7 @@ export function QuestMetadataEditor({
         </div>
 
         <div className="min-w-0 space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Faction / organization
           </span>
           <IdentityPagePicker
@@ -290,7 +291,7 @@ export function QuestMetadataEditor({
       <>
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         <label className="block min-w-0 space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Public rewards
           </span>
           <textarea
@@ -310,7 +311,7 @@ export function QuestMetadataEditor({
         </label>
 
         <label className="block min-w-0 space-y-0.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-400/90">
+          <span className={`${META_SECTION_LABEL_CLASS} text-amber-400/90`}>
             DM-only rewards
           </span>
           <textarea
@@ -331,7 +332,7 @@ export function QuestMetadataEditor({
       </div>
 
       <details className="rounded border border-border/60 p-2">
-        <summary className="cursor-pointer text-[10px] font-medium uppercase tracking-wide text-muted">
+        <summary className="cursor-pointer META_SECTION_LABEL_CLASS">
           Treasury reward (optional)
         </summary>
         <p className="mt-2 text-[11px] text-muted-foreground">
@@ -339,7 +340,7 @@ export function QuestMetadataEditor({
           never an automatic balance change.
         </p>
         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <label className="block space-y-0.5 text-[10px] uppercase tracking-wide text-muted">
+          <label className={`block space-y-0.5 ${META_FIELD_LABEL_CLASS}`}>
             Amount
             <input
               className={fieldClass}
@@ -368,7 +369,7 @@ export function QuestMetadataEditor({
               placeholder="700"
             />
           </label>
-          <label className="block space-y-0.5 text-[10px] uppercase tracking-wide text-muted">
+          <label className={`block space-y-0.5 ${META_FIELD_LABEL_CLASS}`}>
             Recipient
             <select
               className={fieldClass}
@@ -422,7 +423,7 @@ export function QuestMetadataEditor({
   return (
     <section className="space-y-2 rounded-lg border border-border bg-surface/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Quest properties
         </h3>
         {saving && <Loader2 className="size-3.5 animate-spin text-muted" />}

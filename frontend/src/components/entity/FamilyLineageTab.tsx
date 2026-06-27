@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { campaignRelationsPath } from '@/lib/campaignPaths';
@@ -163,7 +164,7 @@ export function FamilyLineageTab({
         Explore house in Relations
       </Link>
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Living members
         </h2>
         {members.length === 0 ? (
@@ -188,7 +189,7 @@ export function FamilyLineageTab({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Generations
         </h2>
         {generations.length === 0 ? (

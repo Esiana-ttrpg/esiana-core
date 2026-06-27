@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { ProfileIdentityHeader } from '@/components/profile/ProfileIdentityHeader';
@@ -27,7 +28,7 @@ export function ProfileHeaderPreview({ userId, username, draft }: ProfileHeaderP
       className="group block cursor-pointer rounded-xl border border-border bg-background p-4 transition-all duration-200 hover:border-indigo-500/50 hover:bg-background/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-muted">
+        <p className={META_FIELD_LABEL_CLASS}>
           Live profile header preview
         </p>
         <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-muted transition-colors group-hover:text-indigo-400">

@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import type { AdvanceTimeResponse } from '@/lib/timeTrackingApi';
@@ -35,7 +36,7 @@ export function SessionTimeAdvanceModal({
       <div className="w-full max-w-lg rounded-lg border border-border bg-background p-4 shadow-lg">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">How much time passed?</h2>
+            <h2 className={TYPE_DISPLAY_CLASS}>How much time passed?</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Advance the campaign clock to reflect in-world downtime between sessions.
             </p>

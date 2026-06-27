@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
 import { useRegisterBlockDraft } from '@/contexts/PageBlockDraftRegistry';
@@ -92,7 +93,7 @@ export function LocationMetadataEditor({
       {showIdentity ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'locationType')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Type</span>
+            <span className={META_FIELD_LABEL_CLASS}>Type</span>
             <input
               className={codexFieldClass}
               value={draft.locationType ?? ''}
@@ -101,7 +102,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'region')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Region</span>
+            <span className={META_FIELD_LABEL_CLASS}>Region</span>
             <input
               className={codexFieldClass}
               value={draft.region ?? ''}
@@ -110,7 +111,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'regionKey')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Region key</span>
+            <span className={META_FIELD_LABEL_CLASS}>Region key</span>
             <input
               className={codexFieldClass}
               value={draft.regionKey ?? ''}
@@ -120,7 +121,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'regionPageId')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Region page</span>
+            <span className={META_FIELD_LABEL_CLASS}>Region page</span>
             <IdentityPagePicker
               flatPages={flatPages}
               lookupPages={locationPages}
@@ -130,7 +131,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'dangerLevel')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Danger (1–5)</span>
+            <span className={META_FIELD_LABEL_CLASS}>Danger (1–5)</span>
             <input
               type="number"
               min={1}
@@ -150,7 +151,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'climate')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Climate</span>
+            <span className={META_FIELD_LABEL_CLASS}>Climate</span>
             <input
               className={codexFieldClass}
               value={draft.climate ?? ''}
@@ -159,7 +160,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'knownFor')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Known for</span>
+            <span className={META_FIELD_LABEL_CLASS}>Known for</span>
             <input
               className={codexFieldClass}
               value={draft.knownFor ?? ''}
@@ -173,7 +174,7 @@ export function LocationMetadataEditor({
       {showAtlas ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1" id={codexFieldId(focusField, 'rulerOrAuthority')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Ruler / authority</span>
+            <span className={META_FIELD_LABEL_CLASS}>Ruler / authority</span>
             <input
               className={codexFieldClass}
               value={draft.rulerOrAuthority ?? ''}
@@ -182,7 +183,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'population')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Population</span>
+            <span className={META_FIELD_LABEL_CLASS}>Population</span>
             <input
               className={codexFieldClass}
               value={draft.population ?? ''}
@@ -191,7 +192,7 @@ export function LocationMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'mapPageId')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Map page</span>
+            <span className={META_FIELD_LABEL_CLASS}>Map page</span>
             <IdentityPagePicker
               flatPages={flatPages}
               lookupPages={flatPages}

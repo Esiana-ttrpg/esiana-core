@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import type { ReputationSuggestionLine } from '@shared/downtimeHub';
 
@@ -91,7 +92,7 @@ export function PendingReputationSuggestionsPanel({
             </div>
             {editingId === suggestion.id ? (
               <label className="mt-2 block space-y-1">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="META_SECTION_LABEL_CLASS-foreground">
                   Narrative reason
                 </span>
                 <textarea

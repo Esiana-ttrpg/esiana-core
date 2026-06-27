@@ -38,13 +38,7 @@ import type {
   SessionNotesNotebook,
   SessionNotesNotebookPage,
 } from '@/types/wiki';
-import {
-  SECTION_GAP_CLASS,
-  SURFACE_OPERATIONAL_CLASS,
-  SURFACE_PRIMARY_CLASS,
-  SURFACE_SILENT_CLASS,
-  SURFACE_RECESSED_CLASS,
-} from '@/lib/surfaceLayout';
+import { SECTION_GAP_CLASS, SURFACE_OPERATIONAL_CLASS, SURFACE_PRIMARY_CLASS, SURFACE_RECESSED_CLASS, SURFACE_SILENT_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 
 function pageHref(
   campaignHandle: string,
@@ -605,7 +599,7 @@ export function SessionNotesView() {
           <div className="mb-3 flex justify-center">
             <BookOpen className="size-8 text-muted" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className={TYPE_DISPLAY_CLASS}>
             No session notes yet
           </h2>
           <p className={`mt-2 ${SURFACE_RECESSED_CLASS}`}>
@@ -673,7 +667,7 @@ export function SessionNotesView() {
                 </button>
               </div>
             ) : (
-              <h2 className="text-lg font-semibold text-foreground">{notebook.title}</h2>
+              <h2 className={TYPE_DISPLAY_CLASS}>{notebook.title}</h2>
             )}
 
             {canManage && editingId !== notebook.id && (
@@ -852,7 +846,7 @@ export function SessionNotesView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl border border-border bg-background p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className={TYPE_DISPLAY_CLASS}>
                 Create New Heading/Group
               </h2>
               <button
@@ -913,7 +907,7 @@ export function SessionNotesView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-xl rounded-xl border border-border bg-background p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Upload Page</h2>
+              <h2 className={TYPE_DISPLAY_CLASS}>Upload Page</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -1053,7 +1047,7 @@ export function SessionNotesView() {
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl border border-red-900/50 bg-background p-5 shadow-2xl">
-            <h2 className="text-lg font-semibold text-foreground">Delete session notes</h2>
+            <h2 className={TYPE_DISPLAY_CLASS}>Delete session notes</h2>
             <p className="mt-3 text-sm leading-relaxed text-foreground">
               Are you sure you want to permanently erase {selectedNoteIds.length} selected
               session notes? This action will destroy all connected player logs and cannot

@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import type { NarrativeScheduledEffectKind } from '@shared/scheduledEffectMetadata';
@@ -126,7 +127,7 @@ export function AddScheduledNarrativeModal({
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 id="scheduled-narrative-title" className="text-lg font-semibold text-foreground">
+            <h2 id="scheduled-narrative-title" className={TYPE_DISPLAY_CLASS}>
               Add narrative schedule
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">

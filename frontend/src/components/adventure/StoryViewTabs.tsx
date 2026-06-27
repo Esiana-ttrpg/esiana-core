@@ -41,7 +41,7 @@ export function StoryViewTabs({ basePath, activeView, isDMUser: isDMUserProp }: 
   }, [menuOpen]);
 
   const tabClass = (isActive: boolean) =>
-    `rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+    `rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
       isActive
         ? 'bg-accent/15 text-accent'
         : 'text-muted hover:bg-elevated/60 hover:text-foreground'

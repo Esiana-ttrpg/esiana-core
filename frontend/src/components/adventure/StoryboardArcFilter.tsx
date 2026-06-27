@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 interface StoryboardArcFilterProps {
   arcOptions: Array<{ id: string; title: string }>;
   selectedArcIds: string[];
@@ -15,7 +16,7 @@ export function StoryboardArcFilter({
 
   return (
     <div className="space-y-1">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="META_SECTION_LABEL_CLASS-foreground">
         Filter by campaign arc
       </p>
       <div className="flex flex-wrap gap-1.5">

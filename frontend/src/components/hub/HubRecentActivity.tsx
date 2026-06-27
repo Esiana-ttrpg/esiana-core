@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -97,7 +98,7 @@ export function HubRecentActivity({ items: externalItems, loading: externalLoadi
 
   return (
     <PagePanel className="flex h-full flex-col rounded-2xl p-5">
-      <h2 className="text-lg font-semibold text-foreground">Recent Activity</h2>
+      <h2 className={TYPE_DISPLAY_CLASS}>Recent Activity</h2>
       <div className="mt-4 flex-1">
         {isLoading ? (
           <p className="text-sm text-muted">Loading activity…</p>

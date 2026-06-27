@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
@@ -144,7 +145,7 @@ export function FantasyDatePicker({
 
       <div className="grid grid-cols-3 gap-2">
         <label className="block space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Year</span>
+          <span className={META_SECTION_LABEL_CLASS}>Year</span>
           <input
             type="number"
             min={1}
@@ -157,7 +158,7 @@ export function FantasyDatePicker({
         </label>
 
         <label className="block space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Month</span>
+          <span className={META_SECTION_LABEL_CLASS}>Month</span>
           <select
             disabled={disabled || monthOptions.length === 0}
             value={selectedMonthIndex}
@@ -180,7 +181,7 @@ export function FantasyDatePicker({
         </label>
 
         <label className="block space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Day</span>
+          <span className={META_SECTION_LABEL_CLASS}>Day</span>
           <select
             disabled={disabled || dayOptions.length === 0}
             value={clampedValue.day ?? 1}

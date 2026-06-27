@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent } from 'react';
 import { ProfileHeaderPreview } from '@/components/profile/ProfileHeaderPreview';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -207,7 +208,7 @@ export function UserProfileIdentitySection({
       </label>
 
       <fieldset className="min-w-0 rounded-xl border border-border bg-surface/50 p-4">
-        <legend className="mb-3 px-1 text-[11px] font-bold uppercase tracking-wider text-muted">
+        <legend className={`mb-3 px-1 ${META_FIELD_LABEL_CLASS}`}>
           Social Links
         </legend>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -228,7 +229,7 @@ export function UserProfileIdentitySection({
       </fieldset>
 
       <fieldset className="min-w-0 rounded-xl border border-border bg-surface/50 p-4">
-        <legend className="mb-3 px-1 text-[11px] font-bold uppercase tracking-wider text-muted">
+        <legend className={`mb-3 px-1 ${META_FIELD_LABEL_CLASS}`}>
           Regional
         </legend>
         <label className="block min-w-0">

@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { BookMarked } from 'lucide-react';
 import {
@@ -102,7 +103,7 @@ export function CodexNarrativeStatusSection({
       ) : (
         <>
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Canon status
             </span>
             <select
@@ -124,7 +125,7 @@ export function CodexNarrativeStatusSection({
             </select>
           </label>
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Reason (optional)
             </span>
             <textarea

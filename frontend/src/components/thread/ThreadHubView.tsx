@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, GitBranch, Network } from 'lucide-react';
@@ -150,7 +151,7 @@ export function ThreadHubView({
         <button
           type="button"
           onClick={() => onThreadsLensChange('all')}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
             threadsLens === 'all'
               ? 'bg-accent/15 text-accent'
               : 'text-muted hover:bg-elevated/60'
@@ -161,7 +162,7 @@ export function ThreadHubView({
         <button
           type="button"
           onClick={() => onThreadsLensChange('activity')}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
             threadsLens === 'activity'
               ? 'bg-accent/15 text-accent'
               : 'text-muted hover:bg-elevated/60'
@@ -199,7 +200,7 @@ export function ThreadHubView({
         <div className="space-y-8">
           <section className={THREAD_HUB_ZONE_CLASS.authored}>
             {!embedded ? (
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-foreground">
+              <h2 className={`mb-4 ${META_SECTION_LABEL_CLASS}`}>
                 Narrative Threads
               </h2>
             ) : null}
@@ -213,7 +214,7 @@ export function ThreadHubView({
                     <div key={kind}>
                       <button
                         type="button"
-                        className="mb-3 flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                        className="mb-3 flex w-full items-center justify-between text-left META_SECTION_LABEL_CLASS"
                         onClick={() => {
                           setCollapsedKinds((prev) => ({
                             ...prev,
@@ -246,7 +247,7 @@ export function ThreadHubView({
 
           {theories.length > 0 ? (
             <section className={THREAD_HUB_ZONE_CLASS.theories}>
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-cyan-200/90">
+              <h2 className={`mb-4 ${META_SECTION_LABEL_CLASS} text-cyan-200/90`}>
                 Player Theories
               </h2>
               <p className="mb-3 text-xs text-muted">

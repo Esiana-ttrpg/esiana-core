@@ -34,12 +34,7 @@ import type { WorkspaceMode } from '@/lib/surfaceDensityProfile';
 import { getWorkspaceOrchestration } from '@/lib/workspaceOrchestration';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import type { UnresolvedWikilinkRow } from '@/lib/wikiLoreGraph';
-import {
-  SURFACE_CONTEXTUAL_CLASS,
-  SURFACE_CONTEXTUAL_INLINE_CLASS,
-  SURFACE_RECESSED_CLASS,
-  TYPE_META_CLASS,
-} from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, SURFACE_CONTEXTUAL_CLASS, SURFACE_CONTEXTUAL_INLINE_CLASS, SURFACE_RECESSED_CLASS, TYPE_META_CLASS } from '@/lib/surfaceLayout';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 
 export type CodexRailLayout = 'overlay' | 'inline' | 'stacked';
@@ -102,7 +97,7 @@ function CodexRailSection({
         compact ? 'space-y-2' : 'space-y-3'
       } ${pulse ? 'codex-rail-continuity-pulse' : ''}`}
     >
-      <h3 className={`${TYPE_META_CLASS} flex items-center gap-1.5 font-semibold uppercase tracking-wider text-contextual-foreground/85 opacity-75`}>
+      <h3 className={`flex items-center gap-1.5 ${META_SECTION_LABEL_CLASS} text-contextual-foreground/85 opacity-75`}>
         {icon}
         {title}
       </h3>

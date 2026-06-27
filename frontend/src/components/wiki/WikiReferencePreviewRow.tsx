@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
@@ -141,7 +142,7 @@ export function WikiReferencePreviewRow({
           className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-background p-3 text-xs shadow-lg"
         >
           {breadcrumbLabel ? (
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <p className={META_FIELD_LABEL_CLASS}>
               Appears in: {breadcrumbLabel}
             </p>
           ) : null}

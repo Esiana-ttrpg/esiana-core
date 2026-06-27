@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
@@ -108,7 +109,7 @@ export function PluginPageHost() {
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6">
       <header className="mb-4 border-b border-border/40 pb-3">
-        <p className="text-xs uppercase tracking-wide text-muted">{descriptor.name}</p>
+        <p className={META_SECTION_LABEL_CLASS}>{descriptor.name}</p>
         <h1 className="font-display text-2xl text-foreground">{page.title}</h1>
       </header>
       <PluginErrorBoundary pluginId={pluginId}>

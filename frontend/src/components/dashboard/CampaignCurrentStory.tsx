@@ -1,12 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
-import {
-  SURFACE_FLOAT_CLASS,
-  TYPE_DISPLAY_CLASS,
-  TYPE_META_CLASS,
-  TYPE_PROSE_CLASS,
-  narrativeFocalClass,
-} from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, SURFACE_FLOAT_CLASS, TYPE_DISPLAY_CLASS, TYPE_META_CLASS, TYPE_PROSE_CLASS, narrativeFocalClass } from '@/lib/surfaceLayout';
 
 interface CampaignCurrentStoryProps {
   story: CampaignNarrativeSnapshot['currentStory'];
@@ -24,7 +18,7 @@ function StoryBeat({
       to={beat.href}
       className={`block rounded-lg border border-border/25 p-4 transition-colors hover:border-primary/30 hover:bg-focal-elevated/50 ${narrativeFocalClass(emphasized)}`}
     >
-      <p className={`${TYPE_META_CLASS} font-semibold uppercase tracking-wider text-focal-muted`}>
+      <p className={META_SECTION_LABEL_CLASS}>
         {beat.roleLabel}
       </p>
       <p className="mt-1 text-base font-semibold leading-snug text-focal-foreground sm:text-lg">
@@ -48,7 +42,7 @@ export function CampaignCurrentStory({ story }: CampaignCurrentStoryProps) {
       <div
         className={`${SURFACE_FLOAT_CLASS} region-depth-2 flex min-h-[14rem] flex-col items-center justify-center rounded-xl border border-dashed border-border/40 px-8 py-12 text-center`}
       >
-        <h2 className={`${TYPE_DISPLAY_CLASS} text-xl font-semibold text-focal-foreground`}>
+        <h2 className={TYPE_DISPLAY_CLASS}>
           Current Story
         </h2>
         <p className={`${TYPE_PROSE_CLASS} mt-3 max-w-md text-prose-muted`}>{story.emptyPrompt}</p>
@@ -67,12 +61,12 @@ export function CampaignCurrentStory({ story }: CampaignCurrentStoryProps) {
       className={`${SURFACE_FLOAT_CLASS} region-depth-2 rounded-xl ${narrativeFocalClass(true)}`}
     >
       <div className="px-6 py-5 sm:px-10 sm:py-8">
-        <p className={`${TYPE_META_CLASS} font-semibold uppercase tracking-wider text-focal-muted`}>
+        <p className={META_SECTION_LABEL_CLASS}>
           Current Story
         </p>
         {story.arcTitle ? (
           <h2
-            className={`${TYPE_DISPLAY_CLASS} mt-2 text-2xl font-bold tracking-tight text-display-foreground sm:text-3xl`}
+            className={`mt-2 ${TYPE_DISPLAY_CLASS}`}
           >
             {story.arcTitle.replace(/^Arc:\s*/i, '')}
           </h2>

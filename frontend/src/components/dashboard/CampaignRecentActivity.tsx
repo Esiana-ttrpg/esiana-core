@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
 import { formatRelativeUpdated } from '@/utils/formatDate';
-import {
-  SURFACE_SILENT_CLASS,
-  TYPE_META_CLASS,
-  TYPE_PROSE_CLASS,
-} from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, SURFACE_SILENT_CLASS, TYPE_META_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
 
 interface CampaignRecentActivityProps {
   activity: CampaignNarrativeSnapshot['recentActivity'];
@@ -14,7 +10,7 @@ interface CampaignRecentActivityProps {
 export function CampaignRecentActivity({ activity }: CampaignRecentActivityProps) {
   return (
     <div className={`${SURFACE_SILENT_CLASS} region-depth-1 rounded-xl px-4 py-5 sm:px-6`}>
-      <h2 className={`${TYPE_META_CLASS} font-semibold uppercase tracking-wider text-focal-muted`}>
+      <h2 className={META_SECTION_LABEL_CLASS}>
         Recent Activity
       </h2>
       {activity.items.length === 0 ? (

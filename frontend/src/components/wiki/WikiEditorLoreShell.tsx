@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor, Extensions } from '@tiptap/react';
@@ -203,7 +204,7 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
             }
           }}
         >
-          <div className="border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <div className={`border-b border-border px-3 py-2 ${META_SECTION_LABEL_CLASS}`}>
             Mention
           </div>
           <ul className="max-h-48 overflow-y-auto py-1">

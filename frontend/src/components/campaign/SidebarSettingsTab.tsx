@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -45,7 +46,7 @@ const ITEM_LABEL_INPUT_CLASS =
   'min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-xs text-foreground transition-all hover:border-border focus:border-primary focus:outline-none';
 
 const HEADER_INPUT_CLASS =
-  'mb-3 w-full rounded border border-transparent bg-transparent px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted transition-all hover:border-border focus:border-primary focus:outline-none';
+  'type-meta mb-3 w-full rounded border border-transparent bg-transparent px-2 py-1 font-medium text-muted transition-all hover:border-border focus:border-primary focus:outline-none';
 
 function BucketHeading({
   value,
@@ -236,7 +237,7 @@ function FixedNavIconSection({
 }) {
   return (
     <section className="border-t border-border/60 pt-4">
-      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted">
+      <h3 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
         {title}
       </h3>
       <ul className="space-y-2">
@@ -263,7 +264,7 @@ function FixedNavIconSection({
                     {meta.label}
                   </span>
                   {meta.statusLabel ? (
-                    <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+                    <span className="shrink-0 rounded bg-elevated px-1.5 py-0.5 META_SECTION_LABEL_CLASS">
                       {meta.statusLabel}
                     </span>
                   ) : null}
@@ -468,7 +469,7 @@ export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) 
           </p>
         </div>
         {(saving || iconBusy) && (
-          <span className="text-xs font-medium uppercase tracking-wide text-primary">
+          <span className={`${META_SECTION_LABEL_CLASS} text-primary`}>
             Saving…
           </span>
         )}

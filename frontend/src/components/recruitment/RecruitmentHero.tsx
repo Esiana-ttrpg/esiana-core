@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import type { PublicDirectoryCampaign } from '@/types/recruitment';
 import { RecruitmentMetaChips } from './RecruitmentMetaChips';
 import { getContinuityLine } from './recruitmentContinuity';
@@ -25,7 +26,7 @@ export function RecruitmentHero({ campaign }: RecruitmentHeroProps) {
             : undefined
         }
       >
-        <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+        <h1 className={TYPE_DISPLAY_CLASS}>
           {campaign.name}
         </h1>
         {tagline ? (

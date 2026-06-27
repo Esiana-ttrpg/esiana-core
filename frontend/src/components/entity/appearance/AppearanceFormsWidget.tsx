@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useRef, useState } from 'react';
 import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
 import { ImageCreditEditor } from '@/components/media/ImageCreditEditor';
@@ -256,7 +257,7 @@ export function AppearanceFormsEditor({
                   className="size-3.5"
                   aria-label={`Set ${entry.label} as primary`}
                 />
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+                <span className={META_FIELD_LABEL_CLASS}>
                   Primary
                 </span>
               </label>
@@ -271,7 +272,7 @@ export function AppearanceFormsEditor({
             </div>
 
             <label className="space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Form name
               </span>
               <input
@@ -289,7 +290,7 @@ export function AppearanceFormsEditor({
             </label>
 
             <div className="space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Portrait
               </span>
             {campaignHandle ? (
@@ -327,7 +328,7 @@ export function AppearanceFormsEditor({
             />
 
             <label className="space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Presentation type
               </span>
               <select
@@ -350,7 +351,7 @@ export function AppearanceFormsEditor({
             </label>
 
             <label className="space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Tags (mood/aesthetic)
               </span>
               <input
@@ -376,7 +377,7 @@ export function AppearanceFormsEditor({
             </label>
 
             <label className="space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 While in this form…
               </span>
               <textarea
@@ -397,7 +398,7 @@ export function AppearanceFormsEditor({
             </label>
 
             <label className="space-y-1">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Timeline pin (optional)
               </span>
               <input

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Calendar, X } from 'lucide-react';
 import { FantasyDatePicker } from '@/components/chronology/FantasyDatePicker';
@@ -23,7 +24,7 @@ const fieldClass =
 const settingsInputClass = `${fieldClass} h-7 w-full min-w-0 px-2 py-0.5 text-xs`;
 
 const settingsLabelClass =
-  'text-[10px] font-medium uppercase tracking-wide text-muted';
+  META_SECTION_LABEL_CLASS;
 
 interface QuestCardPropertiesProps {
   quest: QuestMetadataFields;

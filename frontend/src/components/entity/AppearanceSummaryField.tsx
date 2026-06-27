@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -44,7 +45,7 @@ export function AppearanceSummaryField({
 
   return (
     <div className="space-y-1" id={id}>
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+      <span className={META_FIELD_LABEL_CLASS}>
         Appearance summary
       </span>
       <textarea

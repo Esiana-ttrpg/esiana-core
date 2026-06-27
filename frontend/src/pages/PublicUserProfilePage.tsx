@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { campaignDashboardPath, resolveCampaignLinkHandle } from '@/lib/campaignPaths';
@@ -107,7 +108,7 @@ export function PublicUserProfilePage() {
       </header>
 
       <PagePanel className="p-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">
+        <h2 className={`mb-3 ${META_SECTION_LABEL_CLASS}`}>
           About Me
         </h2>
         {profile.publicBio?.trim() ? (

@@ -1,11 +1,8 @@
 import type { ReactNode } from 'react';
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 
 export function FieldLabel({ children }: { children: ReactNode }) {
-  return (
-    <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
-      {children}
-    </span>
-  );
+  return <span className={META_FIELD_LABEL_CLASS}>{children}</span>;
 }
 
 export function FieldHint({ children }: { children: ReactNode }) {

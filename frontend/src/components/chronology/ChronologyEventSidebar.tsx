@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ChronologyEventManagePanel } from '@/components/chronology/ChronologyEventManagePanel';
 import { ChronologyLoreLink } from '@/components/chronology/ChronologyLoreLink';
 import type { TimelineBaseEventRecord, TimelineCategoryRecord } from '@/lib/chronologyApi';
@@ -46,7 +47,7 @@ export function ChronologyEventSidebar({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex-1 space-y-3 overflow-y-auto p-4 text-sm">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+                <h2 className={META_SECTION_LABEL_CLASS}>
                   Event Details
                 </h2>
                 <button

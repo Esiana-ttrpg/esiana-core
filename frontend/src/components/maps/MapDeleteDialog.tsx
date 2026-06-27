@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 
 interface MapDeleteDialogProps {
@@ -26,7 +27,7 @@ export function MapDeleteDialog({
         aria-modal="true"
         aria-label="Delete map"
       >
-        <h3 className="text-lg font-semibold text-foreground">Delete map?</h3>
+        <h3 className={TYPE_DISPLAY_CLASS}>Delete map?</h3>
         <p className="mt-2 text-sm text-muted">
           This permanently removes <strong>{mapTitle}</strong>, all pins on it,
           and stored image files. This cannot be undone.

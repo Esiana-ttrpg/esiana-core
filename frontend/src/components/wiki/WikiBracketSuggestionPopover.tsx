@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { createPortal } from 'react-dom';
 import type { WikiLinkIndexEntry } from '@/lib/wikiLoreGraph';
 import type { BracketSuggestionState } from './extensions/wikiBracketSuggestionPlugin';
@@ -33,7 +34,7 @@ export function WikiBracketSuggestionPopover({
         }
       }}
     >
-      <div className="border-b border-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+      <div className={`border-b border-border px-3 py-2 ${META_SECTION_LABEL_CLASS}`}>
         Link to codex
       </div>
       <ul className="max-h-48 overflow-y-auto py-1">

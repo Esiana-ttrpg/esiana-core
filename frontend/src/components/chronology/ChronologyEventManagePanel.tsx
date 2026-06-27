@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Save, Trash2 } from 'lucide-react';
 import { ChronologyDescriptionEditor } from '@/components/chronology/ChronologyDescriptionEditor';
@@ -65,7 +66,7 @@ export function ChronologyEventManagePanel({
       onClick={(event) => event.stopPropagation()}
     >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Manage event</h3>
+        <h3 className={META_SECTION_LABEL_CLASS}>Manage event</h3>
         {editor.isDirty ? (
           <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-200">
             Unsaved changes
@@ -74,7 +75,7 @@ export function ChronologyEventManagePanel({
       </div>
 
       <div className="space-y-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Date</span>
+        <span className={META_SECTION_LABEL_CLASS}>Date</span>
         {showReanchorBanner ? (
           <div
             role="alert"

@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, FileText } from 'lucide-react';
@@ -131,7 +132,7 @@ export function UserCampaignDefaultsSection() {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       <header className="space-y-1">
-        <h2 className="text-lg font-semibold text-foreground">How I usually run games</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>How I usually run games</h2>
         <p className="text-sm text-muted">
           Reusable table preferences and recruitment documents. Import these when creating a new
           campaign.

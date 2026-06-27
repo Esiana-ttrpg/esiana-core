@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Activity,
@@ -191,9 +192,9 @@ export function AdminBackgroundTasksPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-border bg-surface/50 p-4">
-          <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted">
+          <p className={`flex items-center gap-2 ${META_SECTION_LABEL_CLASS}`}>
             <Activity className="size-4 text-primary" />
-            Total Running Workers
+            Total running workers
           </p>
           <p className="mt-2 text-3xl font-semibold text-foreground">
             {snapshot?.metrics.totalRunningWorkers ?? 0}
@@ -201,9 +202,9 @@ export function AdminBackgroundTasksPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-surface/50 p-4">
-          <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted">
+          <p className={`flex items-center gap-2 ${META_SECTION_LABEL_CLASS}`}>
             <Cpu className="size-4 text-primary" />
-            System CPU / Memory
+            System CPU / memory
           </p>
           <p className="mt-2 text-sm text-foreground">
             CPU {snapshot?.metrics.system.cpuUsagePercent ?? 0}% | Memory{' '}
@@ -213,9 +214,9 @@ export function AdminBackgroundTasksPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-surface/50 p-4">
-          <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted">
+          <p className={`flex items-center gap-2 ${META_SECTION_LABEL_CLASS}`}>
             <HardDrive className="size-4 text-primary" />
-            Disk Space Optimized This Week
+            Disk space optimized this week
           </p>
           <p className="mt-2 text-2xl font-semibold text-emerald-200">
             {snapshot?.metrics.janitor.freedFormattedThisWeek ?? '0 B'}
@@ -308,7 +309,7 @@ export function AdminBackgroundTasksPage() {
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-surface/90 text-left text-xs uppercase tracking-wider text-muted">
+              <thead className={`bg-surface/90 text-left ${META_SECTION_LABEL_CLASS}`}>
                 <tr>
                   <th className="px-4 py-3">Task</th>
                   <th className="px-4 py-3">Scope</th>
@@ -426,7 +427,7 @@ export function AdminBackgroundTasksPage() {
           <>
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="min-w-full divide-y divide-border text-sm">
-                <thead className="bg-surface/90 text-left text-xs uppercase tracking-wider text-muted">
+                <thead className={`bg-surface/90 text-left ${META_SECTION_LABEL_CLASS}`}>
                   <tr>
                     <th className="px-4 py-3">Task</th>
                     <th className="px-4 py-3">Started</th>

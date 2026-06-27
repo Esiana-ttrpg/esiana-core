@@ -76,6 +76,17 @@ export const TYPE_DISPLAY_CLASS = 'type-display';
 export const TYPE_PROSE_CLASS = 'type-prose';
 export const TYPE_META_CLASS = 'type-meta';
 
+/** Sentence-case section label — meta tier, no uppercase */
+export const META_SECTION_LABEL_CLASS =
+  `${TYPE_META_CLASS} block font-medium text-muted`;
+
+/** Inline field label in forms */
+export const META_FIELD_LABEL_CLASS =
+  `${TYPE_META_CLASS} mb-1 block font-medium text-muted`;
+
+/** Table column header — sentence-case, meta weight (no uppercase) */
+export const META_TABLE_HEAD_CLASS = 'text-sm font-medium text-muted';
+
 /** Compact workspace header chrome — hubs and entity surfaces */
 export const WORKSPACE_HEADER_COMPACT_CLASS = 'mb-1 pb-1';
 

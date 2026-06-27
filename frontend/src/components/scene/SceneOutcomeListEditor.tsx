@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Plus, Trash2 } from 'lucide-react';
 import type { SceneOutcome, SceneOutcomeEntry } from '@/lib/sceneMetadata';
 import { SCENE_OUTCOMES } from '@/lib/sceneMetadata';
@@ -41,7 +42,7 @@ export function SceneOutcomeListEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Outcomes
         </span>
         {!disabled ? (

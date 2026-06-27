@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_TABLE_HEAD_CLASS } from '@/lib/surfaceLayout';
 import { Fragment, useMemo, useState } from 'react';
 import { ChevronDown, RefreshCw, Search } from 'lucide-react';
 import { controlClasses } from '@/components/admin/adminFormStyles';
@@ -136,7 +137,7 @@ export function PluginDiscoveryTable({
     <section className="space-y-4">
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface/40 p-4 lg:flex-row lg:items-end">
         <label className="min-w-0 flex-1">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Search catalog
           </span>
           <div className="relative">
@@ -172,7 +173,7 @@ export function PluginDiscoveryTable({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
         <label className="w-full sm:w-44">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Scope
           </span>
           <select
@@ -186,7 +187,7 @@ export function PluginDiscoveryTable({
           </select>
         </label>
         <label className="w-full sm:w-44">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Sort
           </span>
           <select
@@ -261,22 +262,22 @@ export function PluginDiscoveryTable({
         <table className="min-w-full divide-y divide-border text-sm">
           <thead className="bg-surface/60">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted">
+              <th className={`px-4 py-3 text-left ${META_TABLE_HEAD_CLASS}`}>
                 Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted">
+              <th className={`px-4 py-3 text-left ${META_TABLE_HEAD_CLASS}`}>
                 Scope
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted">
+              <th className={`px-4 py-3 text-left ${META_TABLE_HEAD_CLASS}`}>
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted">
+              <th className={`px-4 py-3 text-left ${META_TABLE_HEAD_CLASS}`}>
                 Version
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted">
+              <th className={`px-4 py-3 text-left ${META_TABLE_HEAD_CLASS}`}>
                 Last updated
               </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted">
+              <th className={`px-4 py-3 text-right ${META_TABLE_HEAD_CLASS}`}>
                 Actions
               </th>
             </tr>

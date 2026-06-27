@@ -5,6 +5,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react';
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { formatCommaList, parseCommaList, parseCommaListDraft } from '@/components/entity/appearance/appearanceShared';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
@@ -18,6 +19,26 @@ import type { WikiTreeNode } from '@/types/wiki';
 
 export const codexFieldClass =
   'w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-primary/60';
+
+export function CodexSectionLabel({
+  children,
+  as: Tag = 'h4',
+  className = '',
+}: {
+  children: ReactNode;
+  as?: 'h2' | 'h3' | 'h4' | 'span';
+  className?: string;
+}) {
+  return (
+    <Tag className={className ? `${META_SECTION_LABEL_CLASS} ${className}` : META_SECTION_LABEL_CLASS}>
+      {children}
+    </Tag>
+  );
+}
+
+export function CodexFieldLabel({ children }: { children: ReactNode }) {
+  return <span className={META_FIELD_LABEL_CLASS}>{children}</span>;
+}
 
 interface CodexEditorShellProps {
   saving: boolean;
@@ -90,7 +111,7 @@ export function PageIdListEditor({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <span className={META_SECTION_LABEL_CLASS}>
           {label}
         </span>
         <button
@@ -180,7 +201,7 @@ export function PortraitImageEditor({
 }: PortraitImageEditorProps) {
   return (
     <div className="grid gap-2">
-      <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted">Portrait</h4>
+      <h4 className={META_SECTION_LABEL_CLASS}>Portrait</h4>
       <ImportImageUrlField
         campaignHandle={campaignHandle}
         value={portraitUrl ?? ''}
@@ -247,11 +268,11 @@ export function AppearanceEditor({
     <div className="grid gap-4">
       {showIdentity ? (
         <div className="grid gap-2">
-          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <h4 className={META_SECTION_LABEL_CLASS}>
             Identity &amp; presence
           </h4>
           <label className="space-y-1" id="appearance.gender">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Gender
             </span>
             <input
@@ -268,7 +289,7 @@ export function AppearanceEditor({
             />
           </label>
           <label className="space-y-1" id="appearance.presentation">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Presentation
             </span>
             <input
@@ -289,7 +310,7 @@ export function AppearanceEditor({
 
       <div className="grid gap-2">
         {showIdentity && showPortrait ? (
-          <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <h4 className={META_SECTION_LABEL_CLASS}>
             Physical / embodied
           </h4>
         ) : null}
@@ -321,7 +342,7 @@ export function AppearanceEditor({
       />
       {showTags ? (
         <label className="space-y-1" id={tagsFieldId}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Appearance tags
           </span>
           <input

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
 import { ImageCreditEditor } from '@/components/media/ImageCreditEditor';
 import { ImportImageUrlField } from '@/components/media/ImportImageUrlField';
@@ -47,7 +48,7 @@ export function ImageDisplayWidget({
   return (
     <div className={isEditingLayout ? 'flex h-full flex-col overflow-hidden rounded-lg border border-border bg-background/60' : ''}>
       {isEditingLayout && (
-        <div className="bg-surface/90 px-4 py-2 text-xs uppercase tracking-wide text-muted">
+        <div className="bg-surface/90 px-4 py-2 META_SECTION_LABEL_CLASS">
           Image Display
         </div>
       )}

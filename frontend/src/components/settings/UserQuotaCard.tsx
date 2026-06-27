@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Info, Zap } from 'lucide-react';
 import { fetchUserQuota, type UserQuota } from '@/lib/quota';
@@ -55,7 +56,7 @@ export function UserQuotaCard({
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Zap className="size-5 text-indigo-300" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h3 className={META_SECTION_LABEL_CLASS}>
             API quota (account)
           </h3>
         </div>
@@ -83,7 +84,7 @@ export function UserQuotaCard({
         <div className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+              <p className={META_SECTION_LABEL_CLASS}>
                 Usage
               </p>
               <p className="mt-1 font-mono text-2xl font-bold text-foreground">
@@ -91,7 +92,7 @@ export function UserQuotaCard({
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+              <p className={META_SECTION_LABEL_CLASS}>
                 Cycle resets in
               </p>
               <p className="mt-1 font-mono text-lg font-bold text-foreground">

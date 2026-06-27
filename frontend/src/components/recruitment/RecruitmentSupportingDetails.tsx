@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { PublicDirectoryRecruitment } from '@/types/recruitment';
 
 interface RecruitmentSupportingDetailsProps {
@@ -11,7 +12,7 @@ export function RecruitmentSupportingDetails({ recruitment }: RecruitmentSupport
 
   return (
     <section className="space-y-4 pb-8 text-sm text-muted">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Table logistics</h2>
+      <h2 className={META_SECTION_LABEL_CLASS}>Table logistics</h2>
       {tools.length > 0 ? (
         <p>
           <span className="text-foreground/80">Tools:</span>{' '}

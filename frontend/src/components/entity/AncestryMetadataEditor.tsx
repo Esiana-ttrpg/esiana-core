@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
 import { useRegisterBlockDraft } from '@/contexts/PageBlockDraftRegistry';
@@ -128,7 +129,7 @@ export function AncestryMetadataEditor({
       {showIdentity ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1" id={codexFieldId(focusField, 'entityKind')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Kind</span>
+            <span className={META_FIELD_LABEL_CLASS}>Kind</span>
             <select
               className={codexFieldClass}
               value={draft.entityKind}
@@ -146,7 +147,7 @@ export function AncestryMetadataEditor({
             </select>
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'parentAncestryId')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Parent ancestry</span>
+            <span className={META_FIELD_LABEL_CLASS}>Parent ancestry</span>
             <IdentityPagePicker
               flatPages={ancestryPages}
               lookupPages={flatPages}
@@ -157,7 +158,7 @@ export function AncestryMetadataEditor({
           </label>
           {draft.entityKind === 'hybrid' ? (
             <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'secondaryParentAncestryId')}>
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+              <span className={META_FIELD_LABEL_CLASS}>
                 Secondary parent
               </span>
               <IdentityPagePicker
@@ -170,7 +171,7 @@ export function AncestryMetadataEditor({
             </label>
           ) : null}
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'identitySummary')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Identity summary
             </span>
             <textarea
@@ -181,7 +182,7 @@ export function AncestryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'ancestryType')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Type</span>
+            <span className={META_FIELD_LABEL_CLASS}>Type</span>
             <input
               className={codexFieldClass}
               value={draft.ancestryType ?? ''}
@@ -190,7 +191,7 @@ export function AncestryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'homeland')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Homeland</span>
+            <span className={META_FIELD_LABEL_CLASS}>Homeland</span>
             <input
               className={codexFieldClass}
               value={draft.homeland ?? ''}
@@ -199,7 +200,7 @@ export function AncestryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'region')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Region</span>
+            <span className={META_FIELD_LABEL_CLASS}>Region</span>
             <input
               className={codexFieldClass}
               value={draft.region ?? ''}
@@ -208,7 +209,7 @@ export function AncestryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'knownFor')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Known for</span>
+            <span className={META_FIELD_LABEL_CLASS}>Known for</span>
             <input
               className={codexFieldClass}
               value={draft.knownFor ?? ''}
@@ -217,7 +218,7 @@ export function AncestryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'language')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Language</span>
+            <span className={META_FIELD_LABEL_CLASS}>Language</span>
             <input
               className={codexFieldClass}
               value={draft.language ?? ''}
@@ -231,7 +232,7 @@ export function AncestryMetadataEditor({
       {showCulture ? (
         <div className="grid gap-2">
           <label className="space-y-1" id={codexFieldId(focusField, 'traditions')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Traditions</span>
+            <span className={META_FIELD_LABEL_CLASS}>Traditions</span>
             <textarea
               className={`${codexFieldClass} min-h-[3rem] resize-y`}
               value={draft.traditions ?? ''}
@@ -240,7 +241,7 @@ export function AncestryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'values')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Values</span>
+            <span className={META_FIELD_LABEL_CLASS}>Values</span>
             <textarea
               className={`${codexFieldClass} min-h-[3rem] resize-y`}
               value={draft.values ?? ''}
@@ -249,7 +250,7 @@ export function AncestryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'reputation')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Reputation</span>
+            <span className={META_FIELD_LABEL_CLASS}>Reputation</span>
             <input
               className={codexFieldClass}
               value={draft.reputation ?? ''}

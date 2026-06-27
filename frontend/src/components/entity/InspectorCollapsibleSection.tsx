@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { loreSectionLabel } from '@/components/entity/lore/LoreKnowledgeUi';
@@ -54,7 +55,7 @@ export function InspectorCollapsibleSection({
           className={
             useLoreLabel
               ? `${loreSectionLabel} normal-case tracking-[0.08em] text-foreground`
-              : 'text-xs font-semibold uppercase tracking-wide text-foreground'
+              : META_SECTION_LABEL_CLASS
           }
         >
           {label}

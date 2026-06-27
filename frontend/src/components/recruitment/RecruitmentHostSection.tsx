@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import type { PublicDirectoryHost } from '@/types/recruitment';
@@ -13,7 +14,7 @@ export function RecruitmentHostSection({ host }: RecruitmentHostSectionProps) {
   return (
     <section className="space-y-4 border-b border-border/60 pb-8">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Your DM</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Your DM</h2>
         <p className="mt-1 text-sm text-muted">
           People join tables as much as campaigns — here is who runs this one.
         </p>
@@ -36,7 +37,7 @@ export function RecruitmentHostSection({ host }: RecruitmentHostSectionProps) {
               {host.label}
             </Link>
           ) : (
-            <p className="text-xl font-semibold text-foreground">{host.label}</p>
+            <p className={TYPE_DISPLAY_CLASS}>{host.label}</p>
           )}
           {host.pronouns?.trim() ? (
             <p className="mt-0.5 text-sm text-muted">{host.pronouns}</p>

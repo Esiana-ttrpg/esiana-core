@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Activity, BarChart3, Shield, Siren, TrendingUp } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -81,7 +82,7 @@ export function UsageAnalyticsPage() {
       {!loading && !error && analytics && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-xl border border-border bg-surface/70 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <p className={META_SECTION_LABEL_CLASS}>
               Requests (last 24h)
             </p>
             <p className="mt-2 font-mono text-3xl font-bold text-foreground">
@@ -95,7 +96,7 @@ export function UsageAnalyticsPage() {
 
           <div className="rounded-xl border border-primary/20 bg-primary/10 p-5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary/80">
+              <p className={`${META_SECTION_LABEL_CLASS} text-primary/80`}>
                 Rate-limit drops
               </p>
               <Siren className="size-4 text-primary/80" />
@@ -110,7 +111,7 @@ export function UsageAnalyticsPage() {
 
           <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-200/80">
+              <p className={`${META_SECTION_LABEL_CLASS} text-indigo-200/80`}>
                 Health signal
               </p>
               <TrendingUp className="size-4 text-indigo-300/80" />
@@ -130,7 +131,7 @@ export function UsageAnalyticsPage() {
       {!loading && !error && analytics && (
         <section className="rounded-xl border border-border bg-surface/60 p-6">
           <div className="mb-4 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+            <h2 className={META_SECTION_LABEL_CLASS}>
               Traffic volume (hourly)
             </h2>
             <span className="text-xs text-muted">Last 24h · UTC</span>
@@ -157,7 +158,7 @@ export function UsageAnalyticsPage() {
 
       {!loading && !error && analytics && (
         <section className="rounded-xl border border-border bg-surface/60 p-6">
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
+          <h2 className={`mb-4 ${META_SECTION_LABEL_CLASS}`}>
             Top resource spikers (campaigns)
           </h2>
           {analytics.topSpikers.length === 0 ? (
@@ -169,7 +170,7 @@ export function UsageAnalyticsPage() {
                   key={row.campaignId}
                   className="rounded-lg border border-border bg-background/60 p-4"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  <p className={META_SECTION_LABEL_CLASS}>
                     Campaign
                   </p>
                   <p className="mt-1 break-all font-mono text-xs text-foreground">
@@ -187,7 +188,7 @@ export function UsageAnalyticsPage() {
 
       {!loading && !error && leaders.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Top developer accounts (tracked endpoints)
           </h2>
           <ol className="space-y-3">
@@ -203,7 +204,7 @@ export function UsageAnalyticsPage() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-widest text-primary/90">
+                    <p className={`${META_SECTION_LABEL_CLASS} text-primary/90`}>
                       #{index + 1}
                     </p>
                     <p className="mt-1 truncate text-lg font-bold text-foreground">
@@ -212,7 +213,7 @@ export function UsageAnalyticsPage() {
                     <p className="truncate text-xs text-muted">{leader.email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="flex items-center justify-end gap-1 text-xs uppercase tracking-wider text-muted">
+                    <p className={`flex items-center justify-end gap-1 ${META_SECTION_LABEL_CLASS}`}>
                       <Activity className="size-3.5" />
                       Requests
                     </p>

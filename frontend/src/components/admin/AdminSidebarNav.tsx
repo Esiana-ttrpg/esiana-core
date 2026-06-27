@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { Shield, X } from 'lucide-react';
@@ -40,7 +41,7 @@ export function AdminSidebarNav({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-primary">
             <Shield className="size-5" strokeWidth={1.5} />
-            <p className="text-xs font-bold uppercase tracking-widest text-muted">
+            <p className={META_SECTION_LABEL_CLASS}>
               System Config
             </p>
           </div>
@@ -108,7 +109,7 @@ export function AdminSidebarNav({
           className={adminVersionFooterClass(isUpdateAvailable)}
           aria-live="polite"
         >
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
+          <p className={META_SECTION_LABEL_CLASS}>
             Esiana v{productVersion}
           </p>
           {isUpdateAvailable && latestVersion && (
@@ -117,7 +118,7 @@ export function AdminSidebarNav({
             </p>
           )}
         </div>
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-muted">
+        <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
           RESOURCES
         </p>
         <a

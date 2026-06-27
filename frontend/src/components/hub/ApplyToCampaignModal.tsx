@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent, useEffect, useState } from 'react';
 import { applyToCampaignRecruitment } from '@/lib/campaigns';
 
@@ -59,7 +60,7 @@ export function ApplyToCampaignModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-xl">
-        <h2 className="text-lg font-semibold text-foreground">Introduce yourself</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Introduce yourself</h2>
         <p className="mt-1 text-sm text-muted">
           {campaignName} — tell the DM what drew you to this table.
         </p>

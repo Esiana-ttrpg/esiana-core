@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { CreatePageModal } from '@/components/CreatePageModal';
 import { PageIdListEditor, codexFieldClass } from '@/components/entity/codexMetadataEditorShared';
@@ -107,7 +108,7 @@ export function AncestryPresenceTab({
       <>
         <div className="space-y-4 rounded-lg border border-border/60 bg-surface/40 p-4">
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Population distribution
             </span>
             <select
@@ -141,7 +142,7 @@ export function AncestryPresenceTab({
           />
 
           <label className="block space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Homeland notes
             </span>
             <input
@@ -216,7 +217,7 @@ export function AncestryPresenceTab({
             key={section.label}
             className="rounded-lg border border-border/60 bg-surface/40 p-4"
           >
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
               {section.label}
             </h3>
             <ul className="flex flex-wrap gap-2">
@@ -238,7 +239,7 @@ export function AncestryPresenceTab({
         ))
       ) : projection.legacyHomeland || projection.legacyRegion ? (
         <section className="rounded-lg border border-border/60 bg-surface/40 p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Legacy notes
           </h3>
           <p className="text-sm">
@@ -251,7 +252,7 @@ export function AncestryPresenceTab({
 
       {projection.campaignInferred.length > 0 ? (
         <section className="rounded-lg border border-border/60 bg-surface/40 p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Inferred from characters
           </h3>
           <ul className="flex flex-wrap gap-2">

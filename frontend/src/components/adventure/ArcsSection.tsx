@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { ArcHierarchyProjection } from '@/lib/arcMetadata';
 import { ArcHierarchyTree } from '@/components/adventure/ArcHierarchyTree';
 
@@ -26,7 +27,7 @@ export function ArcsSection({
       ) : null}
       {actLanes.length > 0 ? (
         <div className="rounded border border-dashed border-border p-3">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 ${META_SECTION_LABEL_CLASS}-foreground">
             Storyboard act lanes
           </p>
           <ul className="flex flex-wrap gap-2">

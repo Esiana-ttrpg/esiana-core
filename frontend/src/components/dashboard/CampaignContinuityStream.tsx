@@ -6,13 +6,7 @@ import { campaignWikiPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
 import { RecentEntityFeed } from '@/components/dashboard/widgets/RecentEntityFeed';
 import { WorldPressureForecastContent } from '@/components/dashboard/WorldPressureForecastContent';
-import {
-  CANVAS_RECESS_CLASS,
-  REGION_DEPTH_3_CLASS,
-  SECTION_GAP_CLASS,
-  TYPE_META_CLASS,
-  TYPE_PROSE_CLASS,
-} from '@/lib/surfaceLayout';
+import { CANVAS_RECESS_CLASS, META_SECTION_LABEL_CLASS, REGION_DEPTH_3_CLASS, SECTION_GAP_CLASS, TYPE_META_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
 
 interface CampaignContinuityStreamProps {
   /** When true, omits outer focal surface — parent owns the workspace field */
@@ -33,7 +27,7 @@ function ContinuitySection({
 }) {
   return (
     <section className="space-y-3">
-      <h2 className={`${TYPE_META_CLASS} flex items-center gap-1.5 font-semibold uppercase tracking-wider text-focal-muted`}>
+      <h2 className={`flex items-center gap-1.5 ${META_SECTION_LABEL_CLASS}`}>
         {icon}
         {title}
       </h2>

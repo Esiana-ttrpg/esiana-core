@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Loader2, Plus, Trash2 } from 'lucide-react';
 import type {
@@ -107,7 +108,7 @@ export function QuestTimePressureEditor({
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="META_SECTION_LABEL_CLASS-foreground">
           Time & pressure
         </p>
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" /> : null}

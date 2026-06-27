@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { CategoryMetadata, CharacterMetadata, WikiEditorTab, WikiPageContent } from '@/types/wiki';
 import type { WikiTreeNode } from '@/types/wiki';
 import { getCategoryColumns, hasCustomMetadata } from '@/lib/metadataConfig';
@@ -89,7 +90,7 @@ export function WikiEditPanel({
         {/* Character description (brief) */}
         {isCharacterMetadata && charMetadata && (
           <section>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+            <h2 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
               Quick Info Description
             </h2>
             <label className="block">
@@ -112,13 +113,13 @@ export function WikiEditPanel({
         {/* Show Page Properties for non-Character pages with metadata */}
         {shouldShowMetadata && (
           <section>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+            <h2 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
               Page Properties
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {metadataKeys.map((key) => (
                 <label key={key} className="block space-y-1">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  <span className={META_SECTION_LABEL_CLASS}>
                     {key}
                   </span>
                   <input
@@ -143,7 +144,7 @@ export function WikiEditPanel({
         {activeTab === 'official' && (
           <>
             <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              <h2 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
                 DM Canon
               </h2>
               <WikiTipTapEditor
@@ -155,7 +156,7 @@ export function WikiEditPanel({
               />
             </section>
             <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+              <h2 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
                 Party Discoveries
               </h2>
               <WikiTipTapEditor
@@ -180,7 +181,7 @@ export function WikiEditPanel({
         {/* DM-only secrets: show in sidebar for DM users and also expose in DM-Secrets tab */}
         {isCharacterMetadata && charMetadata && isDMUser && (
           <section>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+            <h2 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
               DM Secrets (Private)
             </h2>
             <DMSecretsPanel

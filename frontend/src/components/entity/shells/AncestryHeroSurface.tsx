@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { AncestryMetadataEditor } from '@/components/entity/AncestryMetadataEditor';
 import {
@@ -64,7 +65,7 @@ export function AncestryHeroSurface({
     return (
       <section className="mb-4 rounded-xl border border-border/60 bg-surface/30 p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Ancestry identity
           </h2>
           <NarrativeVisibilityBadge
@@ -111,7 +112,7 @@ export function AncestryHeroSurface({
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h1 className="text-2xl font-semibold text-focal-foreground sm:text-3xl">
+              <h1 className={TYPE_DISPLAY_CLASS}>
                 {displayName}
               </h1>
               {identityProjection?.identityLine ? (

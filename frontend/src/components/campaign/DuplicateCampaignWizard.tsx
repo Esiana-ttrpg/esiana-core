@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, X } from 'lucide-react';
@@ -269,7 +270,7 @@ export function DuplicateCampaignWizard({
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-background shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">Duplicate Campaign</h2>
+            <h2 className={TYPE_DISPLAY_CLASS}>Duplicate Campaign</h2>
             <p className="text-sm text-muted">From {source.name}</p>
           </div>
           <button

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { DMSecretsData, WikiTreeNode } from '@/types/wiki';
 import { WikiTipTapEditor } from './WikiTipTapEditor';
 
@@ -29,7 +30,7 @@ export function DMSecretsPanel({
   return (
     <div className="space-y-4">
       <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+        <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
           Wants and Needs
         </h3>
         <WikiTipTapEditor
@@ -42,7 +43,7 @@ export function DMSecretsPanel({
       </section>
 
       <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">
+        <h3 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
           Secret or Obstacle
         </h3>
         <WikiTipTapEditor
@@ -56,7 +57,7 @@ export function DMSecretsPanel({
 
       <section>
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <span className={META_SECTION_LABEL_CLASS}>
             Quest Relation
           </span>
           <input

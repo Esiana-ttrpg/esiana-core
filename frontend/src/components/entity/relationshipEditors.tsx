@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Plus } from 'lucide-react';
 import { IdentityPagePicker } from '@/components/campaign/IdentityPagePicker';
 import { RELATION_VISIBILITIES } from '@/lib/entityRelationTypes';
@@ -25,7 +26,7 @@ export function OrgAffiliationsEditor({
   return (
     <div className="space-y-2 rounded-md border border-border/50 bg-surface/30 p-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <span className={META_SECTION_LABEL_CLASS}>
           Organization affiliations
         </span>
         <button
@@ -105,7 +106,7 @@ export function FamilyPickerEditor({
   return (
     <div className="rounded-md border border-border/50 bg-surface/30 p-2">
       <label id="character-field-familyId" className="block space-y-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <span className={META_SECTION_LABEL_CLASS}>
           Family
         </span>
         <IdentityPagePicker

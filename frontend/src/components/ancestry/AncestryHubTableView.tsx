@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { IndexGridView } from '@/components/IndexGridView';
 import type { AncestryHubSection } from '@/lib/ancestryHubGrouping';
 import type { WikiTreeNode } from '@/types/wiki';
@@ -29,7 +30,7 @@ export function AncestryHubTableView({
         <div key={section.label || '__all__'} className="space-y-3">
           {section.label ? (
             <header className="border-b border-border/80 pb-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-focal-muted">
+              <h2 className={META_SECTION_LABEL_CLASS}>
                 {section.label}
               </h2>
             </header>

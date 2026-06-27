@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { ArrowRight, Pencil } from 'lucide-react';
 import { parseBestiaryMetadata } from '@/lib/bestiaryMetadata';
 import type { BestiaryIntelProjection } from '@/lib/bestiaryIdentityProjection';
@@ -32,7 +33,7 @@ function DashboardCard({
       className={`rounded-lg border border-border/60 bg-surface/40 p-4 ${className}`}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           {title}
         </h3>
         {isEditingPage && editMode === 'jump-to-tab' && onJump ? (

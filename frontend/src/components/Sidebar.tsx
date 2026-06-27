@@ -63,12 +63,7 @@ import {
   pluginPagePath,
   type PluginSidebarSection,
 } from '@/lib/pluginNavigation';
-import {
-  SIDEBAR_ATMOSPHERE_CLASS,
-  SIDEBAR_NAV_ITEM_CLASS,
-  SIDEBAR_NAV_PRIMARY_CLASS,
-  TYPE_META_CLASS,
-} from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, SIDEBAR_ATMOSPHERE_CLASS, SIDEBAR_NAV_ITEM_CLASS, SIDEBAR_NAV_PRIMARY_CLASS } from '@/lib/surfaceLayout';
 
 function NavItem({
   to,
@@ -122,7 +117,7 @@ function NavItem({
         <>
           <span className="min-w-0 truncate">{label}</span>
           {statusLabel ? (
-            <span className="shrink-0 rounded bg-elevated/40 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted/80">
+            <span className="shrink-0 rounded bg-elevated/40 px-1.5 py-0.5 META_SECTION_LABEL_CLASS/80">
               {statusLabel}
             </span>
           ) : null}
@@ -136,7 +131,7 @@ function ZoneHeading({ title, collapsed = false }: { title: string; collapsed?: 
   if (collapsed) return null;
   return (
     <div className="mt-4 px-3 first:mt-2">
-      <p className={`${TYPE_META_CLASS} uppercase`}>{title}</p>
+      <p className={META_SECTION_LABEL_CLASS}>{title}</p>
     </div>
   );
 }
