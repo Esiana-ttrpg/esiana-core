@@ -16,6 +16,7 @@ Area-specific guidance for `/frontend`. General setup, CI, and branch workflow: 
 References:
 
 - [AGENTS.md](../AGENTS.md) — §4 Domain behavior guidance (Frontend)
+- [docs/experience-doctrine.md](../docs/experience-doctrine.md) — gravity test, 15 principles, typographic roles
 - [docs/deprecated-ui-patterns.md](../docs/deprecated-ui-patterns.md)
 
 ---
@@ -36,6 +37,8 @@ Visual roles (canvas, focal, contextual, operational, overlay) define where UI c
 - [docs/surface-hierarchy.md](../docs/surface-hierarchy.md)
 - **Codex mode:** Reading (consume, lower chrome) | Writing (edit, orchestration)
 - **Layout:** Standard | Wide (measure + margins only)
+
+- `TYPE_DISPLAY_CLASS`, `TYPE_PROSE_CLASS`, `TYPE_META_CLASS` in `surfaceLayout.ts` — see [experience-doctrine.md](../docs/experience-doctrine.md#typographic-roles)
 
 Default campaign entry is **codex/wiki**; Campaign Home is the secondary overview.
 

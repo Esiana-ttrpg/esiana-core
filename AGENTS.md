@@ -113,7 +113,8 @@ Mechanical enforcement (PR required, approvals, CI, no force-push) lives in [.gi
 | [.github/rulesets/develop-main.json](./.github/rulesets/develop-main.json) | Machine-enforceable git workflow |
 | [philosophy.md](./philosophy.md) | Product identity |
 | [engineeringprinciples.md](./engineeringprinciples.md) | Engineering guardrails |
-| [docs/deferred-backlog.md](./docs/deferred-backlog.md) | Deferred, won't-do, plugin-only scope |
+| [docs/experience-doctrine.md](./docs/experience-doctrine.md) | UI decision rules — gravity test, principles, action placement |
+| [docs/audits/experience-scorecard.md](./docs/audits/experience-scorecard.md) | Route-level UX baseline scores |
 | [docs/plans/](./docs/plans/) | Plan snapshots |
 | [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues) / [Milestones](https://github.com/Esiana-ttrpg/esiana-core/milestones) | Open work |
 

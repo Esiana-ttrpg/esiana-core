@@ -4,6 +4,8 @@ Engine/product identity and anti-goals: [philosophy.md](./philosophy.md).
 
 Enforcement (density limits, deprecated UI patterns, PR checklist, terminology): [docs/density-doctrine.md](./docs/density-doctrine.md), [docs/deprecated-ui-patterns.md](./docs/deprecated-ui-patterns.md), [docs/design-philosophy-checklist.md](./docs/design-philosophy-checklist.md), [docs/terminology.md](./docs/terminology.md).
 
+**Decision rules (gravity test, 15 principles, action placement):** [docs/experience-doctrine.md](./docs/experience-doctrine.md).
+
 ## Experience Identity
 
 Esiana is not a dashboard.
