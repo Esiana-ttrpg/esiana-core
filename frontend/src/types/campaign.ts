@@ -1,4 +1,5 @@
 import type { CampaignDiscoverabilityValue } from '@shared/campaignPolicy/discoverability';
+import type { CampaignIntegrations } from '@shared/campaignIntegrations';
 import type { CampaignMemberRole, UserRole } from './domain';
 import type { SidebarConfig } from '@/lib/sidebarConfig';
 import type { ThemeProfile } from '@/lib/theme';
@@ -61,6 +62,7 @@ export interface CampaignDetail extends CampaignSummary {
   genreThemes?: string[];
   genreThemeLabels?: string[];
   externalTools?: string[];
+  campaignIntegrations?: CampaignIntegrations | null;
   safetyTools?: string | null;
   contentWarnings?: string | null;
   equipmentNeeded?: string | null;

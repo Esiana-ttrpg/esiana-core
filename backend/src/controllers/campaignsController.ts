@@ -45,6 +45,11 @@ import {
   sanitizeRecruitmentText,
 } from '../lib/recruitment.js';
 import { extractHeroImageUrl, parseTableStyleTags } from '../lib/recruitmentListing.js';
+import {
+  parseCampaignIntegrations,
+  resolveExternalToolLabels,
+  sanitizeCampaignIntegrations,
+} from '../../../shared/campaignIntegrations.js';
 import { sanitizeGenreThemes } from '../lib/campaignThemeValidation.js';
 import { applyUserCampaignDefaults } from '../lib/applyUserCampaignDefaults.js';
 import { sanitizeUserDefaultsImportSelection } from '../lib/userCampaignDefaults.js';
@@ -169,6 +174,7 @@ export function campaignSelect() {
     maxPlayers: true,
     genreThemes: true,
     externalTools: true,
+    campaignIntegrations: true,
     safetyTools: true,
     contentWarnings: true,
     equipmentNeeded: true,
@@ -211,6 +217,7 @@ function serializeCampaignRecruitmentFields<T extends Record<string, unknown>>(c
     typeof campaign.customGameSystemName === 'string'
       ? campaign.customGameSystemName
       : null;
+  const campaignIntegrations = parseCampaignIntegrations(campaign.campaignIntegrations);
   return {
     ...campaign,
     isArchived: campaign.archivedAt != null,
@@ -218,7 +225,11 @@ function serializeCampaignRecruitmentFields<T extends Record<string, unknown>>(c
     genreThemeLabels: resolveCampaignThemeLabels(
       parseRecruitmentStringArray(campaign.genreThemes),
     ),
-    externalTools: parseRecruitmentStringArray(campaign.externalTools),
+    campaignIntegrations,
+    externalTools: resolveExternalToolLabels(
+      campaignIntegrations,
+      campaign.externalTools,
+    ),
     tableStyleTags: parseTableStyleTags(campaign.tableStyleTags),
     recruitmentSettings: {
       type: (campaign.campaignFormat as string | null | undefined) ?? null,
@@ -1147,10 +1158,19 @@ export async function updateCampaign(
     body.genreThemes !== undefined
       ? sanitizeGenreThemes(body.genreThemes)
       : undefined;
-  const externalTools =
-    body.externalTools !== undefined
-      ? sanitizeRecruitmentStringArray(body.externalTools)
-      : undefined;
+
+  let campaignIntegrations: ReturnType<typeof sanitizeCampaignIntegrations> | undefined;
+  if (body.campaignIntegrations !== undefined) {
+    try {
+      campaignIntegrations = sanitizeCampaignIntegrations(body.campaignIntegrations);
+    } catch (error) {
+      res.status(400).json({
+        error:
+          error instanceof Error ? error.message : 'Invalid campaign integrations.',
+      });
+      return;
+    }
+  }
 
   const nestedSettings =
     body.recruitmentSettings && typeof body.recruitmentSettings === 'object'
@@ -1356,8 +1376,11 @@ export async function updateCampaign(
       ...(genreThemes !== undefined && {
         genreThemes: genreThemes as unknown as object,
       }),
-      ...(externalTools !== undefined && {
-        externalTools: externalTools as unknown as object,
+      ...(campaignIntegrations !== undefined && {
+        campaignIntegrations:
+          campaignIntegrations === null
+            ? Prisma.JsonNull
+            : toInputJsonValue(campaignIntegrations),
       }),
       ...(body.safetyTools !== undefined && {
         safetyTools: sanitizeRecruitmentText(body.safetyTools, 4000),

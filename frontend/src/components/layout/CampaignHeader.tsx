@@ -6,6 +6,7 @@ import { useWiki } from '@/contexts/WikiContext';
 import { useCampaignHeaderStatus } from '@/hooks/useCampaignHeaderStatus';
 import { CampaignSearch } from '@/components/campaign/CampaignSearch';
 import { CampaignIdentityLink } from '@/components/layout/CampaignIdentityLink';
+import { CampaignHeaderIntegrations } from '@/components/layout/CampaignHeaderIntegrations';
 import { HeaderAccountNav } from '@/components/layout/HeaderAccountNav';
 
 const headerControlClass =
@@ -107,6 +108,8 @@ export function CampaignHeader() {
           <Search className="size-4" strokeWidth={1.5} />
         </button>
 
+        <CampaignHeaderIntegrations integrations={campaign?.campaignIntegrations} />
+
         {accountNav}
       </div>
 
@@ -121,11 +124,14 @@ export function CampaignHeader() {
           />
         </div>
 
-        <CampaignSearch
-          campaignHandle={campaignHandle}
-          alignControlsToAvatar
-          className="w-full min-w-0 justify-self-center sm:max-w-md lg:max-w-lg"
-        />
+        <div className="flex min-w-0 items-center justify-center gap-2 justify-self-center sm:max-w-md lg:max-w-lg">
+          <CampaignSearch
+            campaignHandle={campaignHandle}
+            alignControlsToAvatar
+            className="w-full min-w-0"
+          />
+          <CampaignHeaderIntegrations integrations={campaign?.campaignIntegrations} />
+        </div>
 
         <div className="justify-self-end">{accountNav}</div>
       </div>

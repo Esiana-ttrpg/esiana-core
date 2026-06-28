@@ -1,4 +1,5 @@
 import type { PageNarrativeStatusProjection } from '@shared/pageNarrativeStatus';
+import type { CampaignIntegrations } from '@shared/campaignIntegrations';
 
 export interface WikiTreeNode {
   id: string;
@@ -33,6 +34,7 @@ export interface WikiCampaignMeta {
   themePreset?: string;
   appearanceProfile?: import('@/lib/theme').ThemeProfile | null;
   sessionDuration?: string | null;
+  campaignIntegrations?: CampaignIntegrations | null;
 }
 
 export interface WikiPlayerEntry {

@@ -67,7 +67,9 @@ export interface UpdateCampaignBody {
   maxSeats?: number;
   maxPlayers?: number;
   genreThemes?: string[];
+  /** @deprecated Ignored on write — derived from campaignIntegrations at read time */
   externalTools?: string[];
+  campaignIntegrations?: import('../../../shared/campaignIntegrations.js').CampaignIntegrations | null;
   safetyTools?: string | null;
   contentWarnings?: string | null;
   equipmentNeeded?: string | null;

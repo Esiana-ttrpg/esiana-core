@@ -212,7 +212,7 @@ export async function duplicateCampaign(
           maxSeats: source.maxSeats,
           maxPlayers: source.maxPlayers,
           genreThemes: source.genreThemes as Prisma.InputJsonValue,
-          externalTools: source.externalTools as Prisma.InputJsonValue,
+          campaignIntegrations: source.campaignIntegrations as Prisma.InputJsonValue,
           equipmentNeeded: source.equipmentNeeded,
           allowPlayerChronologyManagement: source.allowPlayerChronologyManagement,
         },
