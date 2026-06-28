@@ -111,7 +111,7 @@ export function HeaderAccountNav({
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-primary"
               >
                 <LogIn className="size-4" />
-                {t('accountMenu.signIn')}
+                {t('navigation.account.signIn')}
               </button>
             )}
           </>

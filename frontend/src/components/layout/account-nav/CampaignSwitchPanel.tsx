@@ -53,20 +53,20 @@ export function CampaignSwitchPanel({
         className="flex items-center gap-1 rounded-md px-2 py-2 text-sm text-muted transition-colors hover:bg-elevated hover:text-foreground"
       >
         <ChevronLeft className="size-4 shrink-0" aria-hidden />
-        {t('accountMenu.switchCampaign')}
+        {t('navigation.account.switchCampaign')}
       </button>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-1">
         {loading ? (
-          <p className="px-2 py-2 text-sm text-muted">{t('accountMenu.loadingCampaigns')}</p>
+          <p className="px-2 py-2 text-sm text-muted">{t('navigation.account.loadingCampaigns')}</p>
         ) : loadError ? (
-          <p className="px-2 py-2 text-sm text-red-300">{t('accountMenu.loadError')}</p>
+          <p className="px-2 py-2 text-sm text-red-300">{t('navigation.account.loadError')}</p>
         ) : (
           <>
             {recent.length > 0 ? (
               <section className="mb-3">
                 <p className={`px-2 pb-1 ${META_SECTION_LABEL_CLASS}`}>
-                  {t('accountMenu.recent')}
+                  {t('navigation.account.recent')}
                 </p>
                 <div className="space-y-0.5">
                   {recent.map((campaign) => (
@@ -92,10 +92,10 @@ export function CampaignSwitchPanel({
                 onClick={onClose}
                 className={`block px-2 pb-1 transition-colors hover:text-foreground ${META_SECTION_LABEL_CLASS}`}
               >
-                {t('accountMenu.yourCampaigns')}
+                {t('navigation.account.yourCampaigns')}
               </Link>
               {roster.length === 0 ? (
-                <p className="px-2 py-2 text-sm text-muted">{t('accountMenu.noCampaigns')}</p>
+                <p className="px-2 py-2 text-sm text-muted">{t('navigation.account.noCampaigns')}</p>
               ) : (
                 <div className="space-y-0.5">
                   {roster.map((campaign) => (
@@ -120,7 +120,7 @@ export function CampaignSwitchPanel({
           className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground transition-colors hover:bg-elevated"
         >
           <Plus className="size-4 shrink-0" aria-hidden />
-          {t('accountMenu.createCampaign')}
+          {t('navigation.account.createCampaign')}
         </button>
       </div>
     </div>

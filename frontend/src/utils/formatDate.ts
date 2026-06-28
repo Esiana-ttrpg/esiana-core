@@ -40,7 +40,7 @@ export function formatRelativeUpdated(iso: string | undefined): string {
 export function formatLastOpened(iso: string | undefined): string {
   const relative = formatRelativeUpdated(iso);
   if (!iso || relative === '—') return '';
-  return i18n.t('accountMenu.lastOpened', { when: relative });
+  return i18n.t('navigation.account.lastOpened', { when: relative });
 }
 
 export function formatFaintRecency(iso: string | undefined): string {

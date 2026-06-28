@@ -53,7 +53,7 @@ export function CampaignSwitchRecentRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{campaign.name}</p>
         {isCurrent ? (
-          <p className="text-xs font-medium text-primary">{t('accountMenu.current')}</p>
+          <p className="text-xs font-medium text-primary">{t('navigation.account.current')}</p>
         ) : null}
         {lastOpenedLabel ? (
           <p className="text-xs text-muted">{lastOpenedLabel}</p>

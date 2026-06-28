@@ -57,7 +57,7 @@ export function AccountMenu({
         onClick={() => setPanel('switchCampaign')}
         className={`${menuItemClass} flex items-center justify-between`}
       >
-        <span>{t('accountMenu.switchCampaign')}</span>
+        <span>{t('navigation.account.switchCampaign')}</span>
         <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
       </button>
 
@@ -69,7 +69,7 @@ export function AccountMenu({
         onClick={onClose}
         className={menuItemClass}
       >
-        {t('accountMenu.profile')}
+        {t('navigation.account.profile')}
       </Link>
       <Link
         to="/settings"
@@ -77,7 +77,7 @@ export function AccountMenu({
         onClick={onClose}
         className={menuItemClass}
       >
-        {t('accountMenu.settings')}
+        {t('navigation.account.settings')}
       </Link>
 
       {showAdminLink && user.role === UserRoles.SYSTEM_ADMIN ? (
@@ -89,7 +89,7 @@ export function AccountMenu({
             onClick={onClose}
             className={menuItemClass}
           >
-            {t('accountMenu.administration')}
+            {t('navigation.account.administration')}
           </Link>
         </>
       ) : null}
@@ -104,7 +104,7 @@ export function AccountMenu({
         }}
         className={menuItemClass}
       >
-        {t('accountMenu.logOut')}
+        {t('navigation.account.logOut')}
       </button>
     </div>
   );
