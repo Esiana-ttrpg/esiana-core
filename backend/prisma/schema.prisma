@@ -445,6 +445,7 @@ model Campaign {
   maxPlayers        Int     @default(5)
   genreThemes       Json?
   externalTools     Json?
+  campaignIntegrations Json?
   safetyTools       String?
   contentWarnings   String?
   equipmentNeeded   String?

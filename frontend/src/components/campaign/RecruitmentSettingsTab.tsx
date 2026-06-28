@@ -12,17 +12,24 @@ import {
   updateCampaignSettings,
 } from '@/lib/campaigns';
 import { fetchWikiTreePayload, flattenWikiTree } from '@/lib/wiki';
+import { useOptionalWiki } from '@/contexts/WikiContext';
 import type { CampaignJoinRequestRow } from '@/types/recruitment';
 import { CampaignThemeMultiSelect } from '@/components/campaign/CampaignThemeMultiSelect';
 import { GmStyleTagMultiSelect } from '@/components/settings/GmStyleTagMultiSelect';
 import { JoinRequestDeclineDialog } from '@/components/recruitment/JoinRequestDeclineDialog';
 import { JoinRequestReviewCard } from '@/components/recruitment/JoinRequestReviewCard';
+import {
+  CampaignIntegrationsEditor,
+  validateCampaignIntegrationsDraft,
+} from '@/components/campaign/CampaignIntegrationsEditor';
 import { RECRUITMENT_BEFORE_APPLY_NOTE_MAX } from '@/components/recruitment/RecruitmentBeforeApplyNote';
 import { controlClasses } from '@/components/ui/formStyles';
 import {
   normalizeRecruitmentDocTitle,
   RECRUITMENT_DOC_ALIASES,
 } from '@shared/recruitmentDocAliases';
+import type { CampaignIntegrations } from '@shared/campaignIntegrations';
+import { hasConfiguredIntegrations } from '@shared/campaignIntegrations';
 
 interface RecruitmentSettingsTabProps {
   campaignHandle: string;
@@ -44,6 +51,7 @@ function StatusDot({ state }: { state: 'configured' | 'needsSetup' }) {
 }
 
 export function RecruitmentSettingsTab({ campaignHandle }: RecruitmentSettingsTabProps) {
+  const wiki = useOptionalWiki();
   const [activeSection, setActiveSection] = useState<
     'listing' | 'tablePreferences' | 'safetyTools' | 'applications'
   >('listing');
@@ -62,8 +70,9 @@ export function RecruitmentSettingsTab({ campaignHandle }: RecruitmentSettingsTa
   const [maxSeats, setMaxSeats] = useState(4);
   const [maxPlayers, setMaxPlayers] = useState(5);
   const [genreThemes, setGenreThemes] = useState<string[]>([]);
-  const [externalTools, setExternalTools] = useState<string[]>([]);
-  const [externalToolsInput, setExternalToolsInput] = useState('');
+  const [campaignIntegrations, setCampaignIntegrations] = useState<CampaignIntegrations | null>(
+    null,
+  );
   const [safetyTools, setSafetyTools] = useState('');
   const [contentWarnings, setContentWarnings] = useState('');
   const [equipmentNeeded, setEquipmentNeeded] = useState('');
@@ -131,7 +140,7 @@ export function RecruitmentSettingsTab({ campaignHandle }: RecruitmentSettingsTa
         setMaxSeats(campaign.maxSeats ?? 0);
         setMaxPlayers(campaign.maxPlayers ?? 5);
         setGenreThemes(campaign.genreThemes ?? []);
-        setExternalTools(campaign.externalTools ?? []);
+        setCampaignIntegrations(campaign.campaignIntegrations ?? null);
         setSafetyTools(campaign.safetyTools ?? '');
         setContentWarnings(campaign.contentWarnings ?? '');
         setEquipmentNeeded(campaign.equipmentNeeded ?? '');
@@ -215,12 +224,19 @@ export function RecruitmentSettingsTab({ campaignHandle }: RecruitmentSettingsTa
     setSuccess(false);
 
     try {
+      const integrationError = validateCampaignIntegrationsDraft(campaignIntegrations);
+      if (integrationError) {
+        setError(integrationError);
+        setSaving(false);
+        return;
+      }
+
       await updateCampaignSettings(campaignId, {
         isLookingForGroup,
         maxSeats: Number(maxSeats) || 0,
         maxPlayers: Number(maxPlayers) || 5,
         genreThemes,
-        externalTools,
+        campaignIntegrations,
         safetyTools: safetyTools.trim() || null,
         contentWarnings: contentWarnings.trim() || null,
         equipmentNeeded: equipmentNeeded.trim() || null,
@@ -250,6 +266,7 @@ export function RecruitmentSettingsTab({ campaignHandle }: RecruitmentSettingsTa
           : false,
       });
       setSuccess(true);
+      void wiki?.refresh();
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save recruitment settings.');
@@ -320,7 +337,8 @@ export function RecruitmentSettingsTab({ campaignHandle }: RecruitmentSettingsTa
   const safetyToolsConfigured =
     safetyTools.trim().length > 0 ||
     contentWarnings.trim().length > 0 ||
-    externalTools.length > 0;
+    hasConfiguredIntegrations(campaignIntegrations) ||
+    equipmentNeeded.trim().length > 0;
 
   const configuredItems: string[] = [];
   const needsSetupItems: string[] = ['DM profile'];
@@ -679,29 +697,11 @@ export function RecruitmentSettingsTab({ campaignHandle }: RecruitmentSettingsTa
                 title="Tools & equipment"
                 description="External tools and what players need at the table."
               />
-              <div>
-                <label className="mb-1 block text-xs text-muted">External tools</label>
-                <input
-                  type="text"
-                  value={externalToolsInput}
-                  onChange={(e) => setExternalToolsInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ',') {
-                      e.preventDefault();
-                      const v = externalToolsInput.trim();
-                      if (v && !externalTools.includes(v)) setExternalTools([...externalTools, v]);
-                      setExternalToolsInput('');
-                    }
-                  }}
-                  placeholder="Discord, Foundry VTT, Roll20"
-                  className={controlClasses}
-                />
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {externalTools.map((item) => (
-                    <button key={item} type="button" onClick={() => setExternalTools(externalTools.filter((x) => x !== item))} className="rounded-full border border-border bg-surface px-2 py-1 text-xs text-foreground">{item}</button>
-                  ))}
-                </div>
-              </div>
+              <CampaignIntegrationsEditor
+                key={campaignId}
+                value={campaignIntegrations}
+                onChange={setCampaignIntegrations}
+              />
               <div>
                 <label className="mb-1 block text-xs text-muted">Equipment needed</label>
                 <textarea value={equipmentNeeded} onChange={(e) => setEquipmentNeeded(e.target.value)} rows={2} placeholder="Dice, mic, character sheet, etc." className="w-full rounded border border-border bg-elevated px-3 py-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary" />

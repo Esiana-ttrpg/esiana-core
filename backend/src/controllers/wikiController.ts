@@ -48,6 +48,7 @@ import {
   validateWikiBlocksAssetReferences,
 } from '../lib/assetReferenceValidation.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
+import { parseCampaignIntegrations } from '../../../shared/campaignIntegrations.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { canManageNotebooksFromActor, hasElevatedNarrativeView } from '../lib/acl.js';
 import { resolveDefaultPageOwnership } from '../lib/pageOwnershipDefaults.js';
@@ -803,6 +804,7 @@ export async function getWikiTree(
         themePreset: true,
         appearanceProfile: true,
         allowPlayerChronologyManagement: true,
+        campaignIntegrations: true,
       },
     }),
     prisma.wikiPage.findMany({
@@ -864,6 +866,7 @@ export async function getWikiTree(
         resolveCampaignAppearanceProfile(campaign),
       ),
       allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement,
+      campaignIntegrations: parseCampaignIntegrations(campaign.campaignIntegrations),
     },
     players: members.map((m, index) => {
       const identity = mapMemberToIdentityFields(m, index);

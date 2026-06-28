@@ -22,6 +22,10 @@ import {
   extractHeroImageUrl,
   parseTableStyleTags,
 } from '../lib/recruitmentListing.js';
+import {
+  parseCampaignIntegrations,
+  resolveExternalToolLabels,
+} from '../../../shared/campaignIntegrations.js';
 import { getGmStyleTagLabel } from '../lib/gmStyleTags.js';
 import {
   normalizeRecruitmentDocTitle,
@@ -85,6 +89,7 @@ function selectPublicRecruitmentCampaign() {
     maxPlayers: true,
     genreThemes: true,
     externalTools: true,
+    campaignIntegrations: true,
     safetyTools: true,
     contentWarnings: true,
     equipmentNeeded: true,
@@ -196,7 +201,10 @@ function mapRecruitmentCampaign(campaign: any) {
       genreThemeLabels: resolveCampaignThemeLabels(
         parseRecruitmentStringArray(campaign.genreThemes),
       ),
-      externalTools: parseRecruitmentStringArray(campaign.externalTools),
+      externalTools: resolveExternalToolLabels(
+        parseCampaignIntegrations(campaign.campaignIntegrations),
+        campaign.externalTools,
+      ),
       safetyTools: campaign.safetyTools,
       contentWarnings: campaign.contentWarnings,
       equipmentNeeded: campaign.equipmentNeeded,
