@@ -1,5 +1,6 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Archive,
   BookOpen,
@@ -627,13 +628,14 @@ export function NewCampaignWizard({
     }
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/70"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-campaign-wizard-title"
     >
+      <div className="flex min-h-full items-center justify-center p-4">
       <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
@@ -1642,6 +1644,8 @@ export function NewCampaignWizard({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

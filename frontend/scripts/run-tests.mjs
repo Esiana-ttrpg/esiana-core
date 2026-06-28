@@ -48,6 +48,7 @@ const result = spawnSync(
     'src/lib/characterConnectionProjection.test.ts',
     'src/lib/categoryIndexBrowse.test.ts',
     'src/lib/campaignHeaderSubtitle.test.ts',
+    'src/lib/campaignRecency.test.ts',
     'src/hooks/useCampaignSearch.test.ts',
     'src/lib/characterHubGrouping.test.ts',
     'src/lib/characterHubRailWidthPreference.test.ts',

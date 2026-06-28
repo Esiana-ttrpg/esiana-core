@@ -134,6 +134,22 @@ Related: [experience-doctrine.md](../experience-doctrine.md), [deprecated-ui-pat
 
 ---
 
+## P2 — Global chrome
+
+### Account nav and campaign switcher
+
+**Failure:** Campaign switcher lives in the left identity cluster (`CampaignPicker`); account menu duplicates “Your Campaigns” as a flat link; doctrine places switcher in global top-right.
+
+**Direction:**
+
+1. Slim primary account menu: Switch Campaign sub-panel, Profile, Settings, Administration, Log out.
+2. Switch panel as routing-only surface: Recent (3) + membership roster + Create Campaign.
+3. Campaign header left cluster: identity link only (no chevron picker).
+
+Plan: [header-account-nav.md](../plans/header-account-nav.md).
+
+---
+
 ## Success metrics
 
 | Metric | Baseline (2026-06) | Target (2 cycles) |
