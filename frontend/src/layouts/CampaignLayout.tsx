@@ -1,6 +1,7 @@
 import { Outlet, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from '@/components/layout/AppHeader';
+import { CampaignRecencyRecorder } from '@/components/layout/CampaignRecencyRecorder';
 import { Footer } from '@/components/layout/Footer';
 import { SystemAnnouncementBanner } from '@/components/layout/SystemAnnouncementBanner';
 import { WikiProvider, useWiki } from '@/contexts/WikiContext';
@@ -210,6 +211,7 @@ function CampaignLayoutShell() {
       data-sidebar-collapsed={sidebarCollapsed ? 'true' : undefined}
     >
       <CampaignThemeBridge />
+      <CampaignRecencyRecorder />
       <InviteJoinBridge />
       <SystemAnnouncementBanner />
       <AppHeader />

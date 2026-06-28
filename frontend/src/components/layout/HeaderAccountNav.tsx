@@ -1,13 +1,14 @@
-import { Link } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserRoles } from '@/types/domain';
 import { getUserDisplayName } from '@/utils/userDisplayName';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { CreateCampaignWizardHost } from '@/components/hub/CreateCampaignWizardHost';
 import { PluginSlotHost } from '@/plugins/slots';
+import { AccountMenu } from '@/components/layout/account-nav/AccountMenu';
 
 interface HeaderAccountNavProps {
   showAdminLink?: boolean;
@@ -23,9 +24,11 @@ export function HeaderAccountNav({
   campaignHandle,
   alignControlsToAvatar = false,
 }: HeaderAccountNavProps) {
+  const { t } = useTranslation();
   const { user, isAuthenticated, logout, loading } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -83,59 +86,22 @@ export function HeaderAccountNav({
                       size="sm"
                     />
                   </button>
-                  {profileMenuOpen && (
+                  {profileMenuOpen && user ? (
                     <div
                       role="menu"
-                      className={`absolute right-0 top-10 z-50 min-w-44 rounded-lg border border-border bg-surface p-1 shadow-xl`}
+                      className="absolute right-0 top-10 z-50 rounded-lg border border-border bg-surface p-1 shadow-xl"
                     >
-                      <Link
-                        to={`/users/${user?.id ?? 'me'}`}
-                        role="menuitem"
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-elevated"
-                      >
-                        User Profile
-                      </Link>
-                      <Link
-                        to="/campaigns"
-                        role="menuitem"
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-elevated"
-                      >
-                        Your Campaigns
-                      </Link>
-                      <Link
-                        to="/settings"
-                        role="menuitem"
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-elevated"
-                      >
-                        User Settings
-                      </Link>
-                      {showAdminLink && user?.role === UserRoles.SYSTEM_ADMIN ? (
-                        <Link
-                          to="/admin/settings/general"
-                          role="menuitem"
-                          onClick={() => setProfileMenuOpen(false)}
-                          className="block rounded-md px-3 py-2 text-sm text-foreground hover:bg-elevated"
-                        >
-                          Admin
-                        </Link>
-                      ) : null}
-                      <div className="my-1 border-t border-border" />
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setProfileMenuOpen(false);
-                          logout();
-                        }}
-                        className="block w-full rounded-md px-3 py-2 text-left text-sm text-foreground hover:bg-elevated"
-                      >
-                        Log out
-                      </button>
+                      <AccountMenu
+                        user={user}
+                        showAdminLink={showAdminLink}
+                        activeCampaignId={campaignId}
+                        activeCampaignHandle={campaignHandle}
+                        onClose={() => setProfileMenuOpen(false)}
+                        onLogout={logout}
+                        onCreateCampaign={() => setCreateWizardOpen(true)}
+                      />
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -145,13 +111,17 @@ export function HeaderAccountNav({
                 className="inline-flex items-center gap-1.5 rounded-lg bg-primary/90 px-3 py-1.5 text-sm font-medium text-background transition-colors hover:bg-primary"
               >
                 <LogIn className="size-4" />
-                Sign in
+                {t('accountMenu.signIn')}
               </button>
             )}
           </>
         )}
       </nav>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <CreateCampaignWizardHost
+        open={createWizardOpen}
+        onClose={() => setCreateWizardOpen(false)}
+      />
     </>
   );
 }

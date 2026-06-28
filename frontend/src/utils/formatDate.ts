@@ -37,6 +37,18 @@ export function formatRelativeUpdated(iso: string | undefined): string {
   return formatCreatedDate(iso);
 }
 
+export function formatLastOpened(iso: string | undefined): string {
+  const relative = formatRelativeUpdated(iso);
+  if (!iso || relative === '—') return '';
+  return i18n.t('accountMenu.lastOpened', { when: relative });
+}
+
+export function formatFaintRecency(iso: string | undefined): string {
+  const relative = formatRelativeUpdated(iso);
+  if (!iso || relative === '—') return '';
+  return relative;
+}
+
 export function formatDurationMs(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || !Number.isFinite(ms)) return '—';
   const totalSeconds = Math.floor(ms / 1000);

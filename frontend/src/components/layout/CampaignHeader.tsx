@@ -5,7 +5,7 @@ import { useCampaignNav } from '@/contexts/CampaignNavContext';
 import { useWiki } from '@/contexts/WikiContext';
 import { useCampaignHeaderStatus } from '@/hooks/useCampaignHeaderStatus';
 import { CampaignSearch } from '@/components/campaign/CampaignSearch';
-import { CampaignPicker } from '@/components/layout/CampaignPicker';
+import { CampaignIdentityLink } from '@/components/layout/CampaignIdentityLink';
 import { HeaderAccountNav } from '@/components/layout/HeaderAccountNav';
 
 const headerControlClass =
@@ -28,12 +28,10 @@ function GlobalHomeLink() {
 
 function CampaignIdentityCluster({
   campaignHandle,
-  campaignId,
   campaignName,
   subtitle,
 }: {
   campaignHandle: string;
-  campaignId?: string;
   campaignName: string | null;
   subtitle: string | null;
 }) {
@@ -45,9 +43,8 @@ function CampaignIdentityCluster({
           className="h-5 w-px shrink-0 bg-[rgb(var(--color-border-warm-rgb)/0.2)]"
           aria-hidden
         />
-        <CampaignPicker
+        <CampaignIdentityLink
           campaignHandle={campaignHandle}
-          campaignId={campaignId}
           campaignName={campaignName}
         />
       </div>
@@ -96,7 +93,6 @@ export function CampaignHeader() {
 
         <CampaignIdentityCluster
           campaignHandle={campaignHandle}
-          campaignId={campaign?.id}
           campaignName={campaignName}
           subtitle={subtitle}
         />
@@ -120,7 +116,6 @@ export function CampaignHeader() {
         <div className="flex min-w-0 max-w-[min(100%,36%)] items-center justify-self-start">
           <CampaignIdentityCluster
             campaignHandle={campaignHandle}
-            campaignId={campaign?.id}
             campaignName={campaignName}
             subtitle={subtitle}
           />
