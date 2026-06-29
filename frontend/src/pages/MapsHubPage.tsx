@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, Plus } from 'lucide-react';
 import { useWiki } from '@/contexts/WikiContext';
 import { fetchCampaign } from '@/lib/campaigns';
@@ -24,11 +24,15 @@ import {
 } from '@/lib/wiki';
 import { WikiPageBreadcrumbs } from '@/components/wiki/WikiPageBreadcrumbs';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
-import { WikiWorkspaceShell } from '@/components/layout/WikiWorkspaceShell';
+import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
+import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
+import { CategoryIndexEmptyStatePanel } from '@/components/wiki/indexBrowse/CategoryIndexEmptyStatePanel';
+import { WORKSPACE_CREATE_BUTTON_CLASS } from '@/components/layout/WorkspaceActionBar';
 import {
-  TYPE_DISPLAY_CLASS,
-  TYPE_PROSE_CLASS,
-} from '@/lib/surfaceLayout';
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
+import { resolveCategoryIndexEmptyVariant } from '@/lib/categoryIndexEmptyState';
 import {
   filterMapsBySearch,
   type MapsBrowseViewMode,
@@ -46,6 +50,7 @@ interface MapsHubPageProps {
 
 export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps) {
   const { flatPages } = useWiki();
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [maps, setMaps] = useState<CampaignMapAsset[]>([]);
   const [discoverySummary, setDiscoverySummary] =
     useState<CategoryDiscoverySummary | null>(null);
@@ -60,7 +65,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
 
   const pageById = buildWikiPageLookup(flatPages);
   const parentChain = resolveWikiParentChain(categoryPageId, null, pageById);
-  const breadcrumbs = buildWikiBreadcrumbs(parentChain, {
+  const indexBreadcrumbs = buildWikiBreadcrumbs(parentChain, {
     id: categoryPageId,
     title: 'Maps',
   });
@@ -118,17 +123,40 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
     [maps, searchQuery],
   );
 
+  const hasActiveSearch = searchQuery.trim().length > 0;
+  const countNouns = resolveCategoryCountNouns('Maps');
+
   const resultCountLabel = useMemo(() => {
     if (discoverySummary && !canManage) {
       const total =
         discoverySummary.discoveredCount + discoverySummary.undiscoveredCount;
       return `Showing ${discoverySummary.discoveredCount} of ${total} maps`;
     }
-    if (filteredMaps.length === maps.length && !searchQuery.trim()) {
-      return null;
-    }
-    return `Showing ${filteredMaps.length} of ${maps.length}`;
-  }, [discoverySummary, canManage, filteredMaps.length, maps.length, searchQuery]);
+    return formatWorkspaceHubCountHint({
+      total: maps.length,
+      matching: filteredMaps.length,
+      singular: countNouns.singular,
+      plural: countNouns.plural,
+      searchQuery,
+      hasActiveRefine: hasActiveSearch,
+    });
+  }, [
+    discoverySummary,
+    canManage,
+    maps.length,
+    filteredMaps.length,
+    searchQuery,
+    hasActiveSearch,
+    countNouns,
+  ]);
+
+  const emptyVariant = resolveCategoryIndexEmptyVariant({
+    totalCount: maps.length,
+    filteredCount: filteredMaps.length,
+    searchQuery,
+    hasActiveRefine: false,
+    canCreate: canManage,
+  });
 
   const onUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -146,67 +174,75 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
     }
   };
 
-  const cardSize: MapCardSize = 'expanded';
-  const gridClass =
-    'grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
-
   const uploadControl = canManage ? (
-    <label className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-background hover:bg-primary-hover disabled:opacity-50">
-      <Plus className="size-4" />
-      {uploading ? 'Uploading…' : 'Upload map'}
+    <>
       <input
+        ref={uploadInputRef}
         type="file"
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
         disabled={uploading}
         onChange={onUpload}
       />
-    </label>
+      <button
+        type="button"
+        disabled={uploading}
+        onClick={() => uploadInputRef.current?.click()}
+        className={WORKSPACE_CREATE_BUTTON_CLASS}
+      >
+        <Plus className="size-4" />
+        {uploading ? 'Uploading…' : 'Upload map'}
+      </button>
+    </>
   ) : null;
 
+  const cardSize: MapCardSize = 'expanded';
+  const gridClass =
+    'grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+
   return (
-    <WikiWorkspaceShell
+    <CategoryHubShell
       composition="studio"
-      header={
-        <div className="mb-4 border-b border-border/40 pb-4">
-          <WikiPageBreadcrumbs crumbs={breadcrumbs} campaignHandle={campaignHandle} />
-          {maps.length > 0 ? (
-            <div className="mt-4">
-              <CategoryIndexToolbar
-                createLabel="Upload map"
-                onCreate={() => {}}
-                createAction={canManage ? uploadControl : null}
-                searchValue={searchQuery}
-                searchPlaceholder="Search maps…"
-                onSearchChange={setSearchQuery}
-                resultCountLabel={resultCountLabel}
-                refineControl={null}
-                viewMode={viewMode}
-                onViewModeChange={(mode) =>
-                  setViewMode(mode as MapsBrowseViewMode)
-                }
-              />
-            </div>
-          ) : null}
-          {maps.length === 0 && canManage ? (
-            <div className="mt-4">{uploadControl}</div>
-          ) : null}
-        </div>
+      catalogGridClass="space-y-6"
+      breadcrumbs={
+        <WikiPageBreadcrumbs
+          crumbs={indexBreadcrumbs}
+          campaignHandle={campaignHandle}
+        />
+      }
+      breadcrumbCrumbs={indexBreadcrumbs}
+      title={
+        <>
+          <Map className="size-6 text-primary" strokeWidth={1.25} />
+          Maps
+        </>
+      }
+      actions={
+        <CategoryIndexToolbar
+          createLabel="Upload map"
+          onCreate={() => uploadInputRef.current?.click()}
+          createAction={canManage ? uploadControl : null}
+          resultCountLabel={resultCountLabel}
+          refineControl={
+            <CategoryIndexRefinePopover
+              facetDefs={[]}
+              refineState={{}}
+              children={[]}
+              categoryTitle="Maps"
+              onRefineChange={() => {}}
+              customBody={<div />}
+              activeCount={hasActiveSearch ? 1 : undefined}
+              onResetRefine={() => setSearchQuery('')}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search maps…"
+            />
+          }
+          viewMode={viewMode}
+          onViewModeChange={(mode) => setViewMode(mode as MapsBrowseViewMode)}
+        />
       }
     >
-      <div>
-        <h1
-          className={`${TYPE_DISPLAY_CLASS} flex items-center gap-2 text-2xl text-focal-foreground sm:text-3xl`}
-        >
-          <Map className="size-7 text-primary" strokeWidth={1.25} />
-          Maps
-        </h1>
-        <p className={`${TYPE_PROSE_CLASS} mt-2 text-sm text-focal-muted`}>
-          Campaign cartography — upload, link to locations, nest detail maps,
-          and place pins.
-        </p>
-      </div>
-
       {error ? (
         <p className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
           {error}
@@ -225,27 +261,24 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
         <div className="flex justify-center py-16">
           <LoadingSpinner />
         </div>
-      ) : maps.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-16 text-center">
-          <Map className="mx-auto mb-3 size-10 text-muted" />
-          <p className="text-muted">No maps uploaded yet.</p>
-          {canManage ? (
-            <p className="mt-2 text-sm text-muted">
-              Upload a PNG, JPEG, or WebP to get started.
-            </p>
-          ) : null}
-        </div>
-      ) : filteredMaps.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-12 text-center">
-          <p className="text-muted">No maps match your search.</p>
-          <button
-            type="button"
-            onClick={() => setSearchQuery('')}
-            className="mt-3 text-sm text-primary hover:underline"
-          >
-            Clear search
-          </button>
-        </div>
+      ) : emptyVariant ? (
+        <CategoryIndexEmptyStatePanel
+          categoryTitle="Maps"
+          itemLabel="Map"
+          campaignHandle={campaignHandle}
+          similarEntries={[]}
+          totalCount={maps.length}
+          filteredCount={filteredMaps.length}
+          searchQuery={searchQuery}
+          hasActiveRefine={false}
+          canCreate={canManage}
+          onCreate={() => uploadInputRef.current?.click()}
+          onCreateFromSearch={() => {}}
+          onClearSearch={() => setSearchQuery('')}
+          onResetRefine={() => setSearchQuery('')}
+          headerCreateLabel="Upload map"
+          icon={<Map className="mx-auto mb-3 size-10 text-muted" />}
+        />
       ) : viewMode === 'table' ? (
         <MapHubTable
           maps={filteredMaps}
@@ -287,6 +320,6 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
           await reload();
         }}
       />
-    </WikiWorkspaceShell>
+    </CategoryHubShell>
   );
 }

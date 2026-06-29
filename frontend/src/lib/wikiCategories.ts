@@ -21,6 +21,7 @@ export const CATEGORY_INDEX_TITLES = new Set([
   'Relations',
   'Recent Changes',
   'Recent changes',
+  'Tags',
 ]);
 
 export function isCategoryIndexPage(title: string): boolean {

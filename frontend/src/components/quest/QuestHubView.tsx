@@ -61,6 +61,10 @@ import {
 } from '@/lib/categoryIndexBrowseStorage';
 import { resolveCategoryIndexEmptyVariant } from '@/lib/categoryIndexEmptyState';
 import type { CategoryIndexChild } from '@/lib/wiki';
+import {
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import type { StoryFilterState } from '@/lib/workspacePersistence';
 
 interface QuestHubViewProps {
@@ -295,10 +299,14 @@ export function QuestHubView({
   const filteredQuestCount =
     viewMode === 'list' ? filteredListNodes.length : filteredBoardCount;
 
-  const resultCountLabel =
-    filteredQuestCount === totalQuestCount && !searchQuery.trim() && !hasActiveRefine
-      ? null
-      : `Showing ${filteredQuestCount} of ${totalQuestCount}`;
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: totalQuestCount,
+    matching: filteredQuestCount,
+    singular: resolveCategoryCountNouns(categoryTitle).singular,
+    plural: resolveCategoryCountNouns(categoryTitle).plural,
+    searchQuery,
+    hasActiveRefine,
+  });
 
   const emptyVariant = resolveCategoryIndexEmptyVariant({
     totalCount: totalQuestCount,
@@ -358,6 +366,7 @@ export function QuestHubView({
           itemLabel="Quest"
           campaignHandle={campaignHandle}
           similarEntries={[]}
+          headerCreateLabel="New quest"
           onCreate={handleCreate}
           onCreateFromSearch={handleCreateFromSearch}
           onClearSearch={() => setSearchQuery('')}
@@ -378,6 +387,7 @@ export function QuestHubView({
           itemLabel="Quest"
           campaignHandle={campaignHandle}
           similarEntries={similarEntries}
+          headerCreateLabel="New quest"
           onCreate={handleCreate}
           onCreateFromSearch={handleCreateFromSearch}
           onClearSearch={() => setSearchQuery('')}
@@ -435,10 +445,6 @@ export function QuestHubView({
       <CategoryIndexToolbar
         createLabel="New quest"
         onCreate={handleCreate}
-        searchValue={searchQuery}
-        searchPlaceholder="Search quests…"
-        onSearchChange={setSearchQuery}
-        showSearch
         resultCountLabel={resultCountLabel}
         refineControl={
           <CategoryIndexRefinePopover
@@ -447,15 +453,18 @@ export function QuestHubView({
             children={[]}
             categoryTitle={categoryTitle}
             onRefineChange={() => {}}
-            activeCount={countActiveQuestHubRefine(
-              statusFilters,
-              typeFilters,
-              showStatusRefine,
-            )}
+            activeCount={
+              countActiveQuestHubRefine(statusFilters, typeFilters, showStatusRefine) +
+                (searchQuery.trim() ? 1 : 0) || undefined
+            }
             onResetRefine={() => {
               setStatusFilters({ ...DEFAULT_QUEST_HUB_STATUS_FILTERS });
               setTypeFilters({ ...DEFAULT_QUEST_HUB_TYPE_FILTERS });
+              setSearchQuery('');
             }}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Filter quests…"
             customBody={
               <QuestHubFilters
                 statusFilters={statusFilters}
@@ -467,54 +476,53 @@ export function QuestHubView({
             }
           />
         }
-        trailing={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-elevated/50 p-1">
-              <button
-                type="button"
-                onClick={() => handleViewModeChange('list')}
-                className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm ${
-                  viewMode === 'list'
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-muted hover:text-foreground'
-                }`}
-              >
-                <List className="size-4" />
-                List
-              </button>
-              <button
-                type="button"
-                onClick={() => handleViewModeChange('board')}
-                className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm ${
-                  viewMode === 'board'
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-muted hover:text-foreground'
-                }`}
-              >
-                <LayoutGrid className="size-4" />
-                Board
-              </button>
-            </div>
-
-            {isDMUser && !embedded ? (
-              <button
-                type="button"
-                onClick={() => setPlayerPreviewLocal((prev) => !prev)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                  playerPreview
-                    ? 'border-primary/50 bg-primary/10 text-primary'
-                    : 'border-border text-muted hover:text-foreground'
-                }`}
-              >
-                {playerPreview ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-                Player preview
-              </button>
-            ) : null}
+        viewControl={
+          <div className="flex items-center gap-1 rounded-lg border border-border bg-elevated/50 p-1">
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('list')}
+              className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm ${
+                viewMode === 'list'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-muted hover:text-foreground'
+              }`}
+            >
+              <List className="size-4" />
+              List
+            </button>
+            <button
+              type="button"
+              onClick={() => handleViewModeChange('board')}
+              className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm ${
+                viewMode === 'board'
+                  ? 'bg-primary/20 text-primary'
+                  : 'text-muted hover:text-foreground'
+              }`}
+            >
+              <LayoutGrid className="size-4" />
+              Board
+            </button>
           </div>
+        }
+        trailing={
+          isDMUser && !embedded ? (
+            <button
+              type="button"
+              onClick={() => setPlayerPreviewLocal((prev) => !prev)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                playerPreview
+                  ? 'border-primary/50 bg-primary/10 text-primary'
+                  : 'border-border text-muted hover:text-foreground'
+              }`}
+            >
+              {playerPreview ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
+              Player preview
+            </button>
+          ) : null
         }
       />
     ) : null;
@@ -547,14 +555,15 @@ export function QuestHubView({
             campaignHandle={campaignHandle}
           />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <ScrollText className="size-6 text-primary" strokeWidth={1.25} />
             {categoryTitle}
           </>
         }
-        toolbar={toolbar}
-        afterToolbar={refineChips}
+        actions={toolbar}
+        activeFilters={refineChips}
       >
       {workspace}
       </CategoryHubShell>

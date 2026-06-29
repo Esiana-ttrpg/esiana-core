@@ -140,6 +140,7 @@ export interface CharacterHubPayload {
   recentlySeenBySession: CharacterHubRecentlySeenSession[];
   locationCounts: CharacterHubLocationCount[];
   characterContext: Record<string, CharacterCastContext>;
+  previewAsPlayer?: boolean;
 }
 
 const ACTIVE_QUEST_STATUSES = new Set<QuestStatus>(['ACTIVE', 'AVAILABLE']);
@@ -267,15 +268,34 @@ export function buildCoSeenMap(input: {
   return result;
 }
 
+export function resolveCharacterHubEffectiveView(input: {
+  role: string | null;
+  previewAsPlayer?: boolean;
+}): {
+  canManage: boolean;
+  isElevated: boolean;
+  previewAsPlayer: boolean;
+} {
+  const canManage = canManageNotebooks(input.role);
+  const previewAsPlayer = Boolean(input.previewAsPlayer) && canManage;
+  return {
+    canManage: canManage && !previewAsPlayer,
+    isElevated: isElevatedWikiRole(input.role) && !previewAsPlayer,
+    previewAsPlayer,
+  };
+}
+
 export async function loadCharacterHubPayload(input: {
   campaignId: string;
   campaignHandle: string;
   categoryPageId: string;
   role: string | null;
+  previewAsPlayer?: boolean;
 }): Promise<CharacterHubPayload | null> {
-  const canManage = canManageNotebooks(input.role);
-  const visibilityWhere = wikiPageVisibilityFilter(hasElevatedView(input.role));
-  const isElevated = isElevatedWikiRole(input.role);
+  const { canManage, isElevated, previewAsPlayer } = resolveCharacterHubEffectiveView(
+    input,
+  );
+  const visibilityWhere = wikiPageVisibilityFilter(isElevated);
   const peerVisibility = wikiLinkPeerVisibilityFilter(isElevated);
 
   const category = await prisma.wikiPage.findFirst({
@@ -746,5 +766,6 @@ export async function loadCharacterHubPayload(input: {
     recentlySeenBySession,
     locationCounts: buildLocationCounts(characterContextMap),
     characterContext: Object.fromEntries(characterContextMap),
+    previewAsPlayer: previewAsPlayer || undefined,
   };
 }

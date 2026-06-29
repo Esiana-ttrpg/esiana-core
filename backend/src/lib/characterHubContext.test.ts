@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildCoSeenMap,
   buildLocationCounts,
+  resolveCharacterHubEffectiveView,
   resolveKnownThrough,
   resolvePresenceTier,
 } from './characterHubContext.js';
@@ -32,6 +33,23 @@ describe('characterHubContext', () => {
 
     assert.equal(result?.kind, 'quest');
     assert.equal(result?.title, 'Ghost Coin Investigation');
+  });
+
+  it('resolveCharacterHubEffectiveView disables manage when previewing as party', () => {
+    const elevated = resolveCharacterHubEffectiveView({
+      role: 'GAMEMASTER',
+      previewAsPlayer: true,
+    });
+    assert.equal(elevated.previewAsPlayer, true);
+    assert.equal(elevated.canManage, false);
+    assert.equal(elevated.isElevated, false);
+
+    const dm = resolveCharacterHubEffectiveView({
+      role: 'GAMEMASTER',
+      previewAsPlayer: false,
+    });
+    assert.equal(dm.canManage, true);
+    assert.equal(dm.isElevated, true);
   });
 
   it('resolveKnownThrough falls back to session', () => {

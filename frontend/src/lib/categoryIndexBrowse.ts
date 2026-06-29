@@ -13,6 +13,10 @@ import { parseCharacterMetadata } from '@/lib/characterMetadata';
 import { parseBestiaryMetadata } from '@/lib/bestiaryMetadata';
 import { parseAncestryMetadata } from '@/lib/ancestryMetadata';
 import { parseObjectMetadata } from '@/lib/objectMetadata';
+import {
+  formatWorkspaceCountLabel,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import { parseLocationMetadata } from '@/lib/locationMetadata';
 import { parseRuleResourceMetadata } from '@/lib/ruleResourceMetadata';
 import {
@@ -486,8 +490,19 @@ export function formatCategoryIndexResultCount(
 ): string | null {
   const hasSearch = normalizeQuery(searchQuery).length > 0;
   if (!hasSearch && !hasActiveRefine && matching === total) return null;
-  if (matching === total) return `${total} ${categoryTitle.toLowerCase()}`;
+  const { singular, plural } = resolveCategoryCountNouns(categoryTitle);
+  if (matching === total) return formatWorkspaceCountLabel(total, singular, plural);
   return `Showing ${matching} of ${total}`;
+}
+
+/** @deprecated Use formatWorkspaceHubCountHint — subtitle reserved for rich meta only */
+export function formatWorkspaceHubSubtitle(
+  count: number,
+  categoryTitle: string,
+): string | undefined {
+  if (count <= 0) return undefined;
+  const { singular, plural } = resolveCategoryCountNouns(categoryTitle);
+  return formatWorkspaceCountLabel(count, singular, plural);
 }
 
 export function isBrowseActive(

@@ -8,12 +8,15 @@ export async function getCharacterHubIndex(
 ): Promise<void> {
   const ctx = req.campaign!;
   const categoryPageId = String(req.params.pageId);
+  const previewAsPlayer =
+    req.query.previewAsPlayer === 'true' || req.query.previewAsPlayer === '1';
 
   const payload = await loadCharacterHubPayload({
     campaignId: ctx.campaignId,
     campaignHandle: ctx.campaignHandle ?? '',
     categoryPageId,
     role: ctx.role ?? null,
+    previewAsPlayer,
   });
 
   if (!payload) {

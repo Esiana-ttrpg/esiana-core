@@ -2,6 +2,7 @@ import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { GitBranch, Loader2 } from 'lucide-react';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { useWiki } from '@/contexts/WikiContext';
 import { useRelationsProjection } from '@/hooks/useRelationsProjection';
 import { RelationsNarrativeSummary } from '@/components/relations/RelationsNarrativeSummary';
@@ -109,13 +110,14 @@ export function RelationsPage() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
-      <header className="space-y-2">
-        <div className="flex items-center gap-2">
-          <GitBranch className="size-6 text-primary" aria-hidden />
-          <h1 className="text-2xl font-semibold text-foreground">Relations</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-muted">Different lenses. One world.</p>
-      </header>
+      <WorkspaceHeader
+        title={
+          <>
+            <GitBranch className="size-6 text-primary" aria-hidden />
+            Relations
+          </>
+        }
+      />
 
       {showPresets ? (
         <section className="rounded-lg border border-border bg-surface/30 p-6">

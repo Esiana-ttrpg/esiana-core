@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-import { Calendar, ExternalLink } from 'lucide-react';
 import type { DowntimeHubWorldEventsPayload } from '@/lib/downtime';
 import { WorldEventNarrativeFeed } from '@/components/downtime/WorldEventNarrativeFeed';
 import { PendingWorldEventPromptsPanel } from '@/components/downtime/PendingWorldEventPromptsPanel';
@@ -39,28 +37,12 @@ export function DowntimeWorldEventsSection({
 
   return (
     <div className="flex min-h-[480px] w-full flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">World events</h2>
-          <p className="text-sm text-muted-foreground">
-            Chronological feed of world movement — adapted for downtime perspective.
-            {data.pendingConsequenceCount != null && data.pendingConsequenceCount > 0 ? (
-              <span className="mt-1 block text-amber-600 dark:text-amber-400">
-                {data.pendingConsequenceCount} world impact
-                {data.pendingConsequenceCount === 1 ? '' : 's'} need review on event lore pages.
-              </span>
-            ) : null}
-          </p>
-        </div>
-        <Link
-          to={data.chronologyHref}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-        >
-          <Calendar className="size-3.5 text-primary" />
-          Open Chronology Hub
-          <ExternalLink className="size-3" />
-        </Link>
-      </div>
+      {data.pendingConsequenceCount != null && data.pendingConsequenceCount > 0 ? (
+        <p className="text-sm text-amber-600 dark:text-amber-400">
+          {data.pendingConsequenceCount} world impact
+          {data.pendingConsequenceCount === 1 ? '' : 's'} need review on event lore pages.
+        </p>
+      ) : null}
 
       {canManage && pendingSuggestions.length > 0 ? (
         <PendingWorldEventPromptsPanel
