@@ -176,7 +176,7 @@ export function PublicUserProfilePage() {
           <>
             <ProfileCreatorStatsOverview
               attribution={attribution}
-              displayName={profile.displayName}
+              displayName={profile.displayName ?? profile.username}
               isSelf={isSelf}
             />
 
