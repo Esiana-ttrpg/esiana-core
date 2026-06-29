@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CreatorAttributionResponse } from '@shared/statsTypes';
+import type { MetricId } from '@shared/metricRegistry';
+import type { MetricValue } from '@shared/metricValue';
 import { readMetricAmount } from '@shared/metricValue';
 import { formatCompactCount } from '@/lib/metricDisplayPolicy';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
@@ -83,8 +85,8 @@ function formatFavoriteHour(hourUtc: number, locale: string): string {
 }
 
 function renderMetricValue(
-  metricId: string,
-  value: CreatorAttributionResponse['metrics'][string] | undefined,
+  metricId: MetricId,
+  value: MetricValue | undefined,
   t: (key: string, opts?: Record<string, unknown>) => string,
   locale: string,
 ): ReactNode {
