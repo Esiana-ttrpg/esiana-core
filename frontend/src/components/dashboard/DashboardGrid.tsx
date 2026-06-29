@@ -28,6 +28,7 @@ import { RecentLoreWidget } from '@/components/dashboard/widgets/RecentLoreWidge
 import { SessionScheduleCard } from '@/components/dashboard/widgets/SessionScheduleCard';
 import { WorldChronometerWidget } from '@/components/dashboard/widgets/WorldChronometerWidget';
 import { WorldPressureForecastWidget } from '@/components/dashboard/widgets/WorldPressureForecastWidget';
+import { WorldSnapshotWidget } from '@/components/dashboard/widgets/WorldSnapshotWidget';
 import { getCompositionProfile } from '@/lib/compositionDoctrine';
 import {
   buildPluginWidgetPlacementId,
@@ -489,6 +490,10 @@ function DashboardWidgetRenderer({
         />
       );
     }
+    case 'worldSnapshot':
+      return (
+        <WorldSnapshotWidget campaignHandle={campaignHandle} {...shellProps} />
+      );
     case 'worldPressureForecast':
       return (
         <WorldPressureForecastWidget

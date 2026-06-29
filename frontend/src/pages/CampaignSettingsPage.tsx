@@ -6,8 +6,6 @@ import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-
 import { useAuth } from '@/contexts/AuthContext';
 import { useWiki } from '@/contexts/WikiContext';
 import { StatusTab } from '@/components/StatusTab';
-import { WorldActivityView } from '@/components/wiki/WorldActivityView';
-import { WritingPulseView } from '@/components/wiki/WritingPulseView';
 import { CampaignBackupTab } from '@/components/campaign/CampaignBackupTab';
 import { CampaignPluginsSettingsTab } from '@/components/campaign/CampaignPluginsSettingsTab';
 import { RecruitmentSettingsTab } from '@/components/campaign/RecruitmentSettingsTab';
@@ -933,16 +931,10 @@ export function CampaignSettingsPage() {
           <div className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-2 text-lg font-semibold text-white">Advanced</h2>
             <p className="text-sm text-muted">
-              Review campaign metrics and backup controls.
+              Capacity guidance, file audit, and backup controls.
             </p>
           </div>
           <StatusTab />
-          <div className="rounded-lg border border-border bg-surface">
-            <WorldActivityView campaignHandle={campaignHandle} />
-          </div>
-          <div className="rounded-lg border border-border bg-surface">
-            <WritingPulseView campaignHandle={campaignHandle} />
-          </div>
           {canManageSidebar ? (
             <CampaignBackupTab campaignHandle={campaignHandle} />
           ) : (

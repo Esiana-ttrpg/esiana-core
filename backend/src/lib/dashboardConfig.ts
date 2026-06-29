@@ -26,7 +26,7 @@ export type DashboardWidgetId =
   | 'pinnedItems'
   | 'fantasyCalendar'
   | 'worldPressureForecast'
-  /** @deprecated migrated silently */
+  | 'worldSnapshot'
   | 'sessionClock'
   /** @deprecated migrated silently */
   | 'worldClock'
@@ -80,6 +80,7 @@ const CANONICAL_WIDGET_IDS: DashboardWidgetId[] = [
   'pinnedItems',
   'fantasyCalendar',
   'worldPressureForecast',
+  'worldSnapshot',
 ];
 
 const LEGACY_WIDGET_ID_MAP: Record<string, DashboardWidgetId> = {
@@ -104,6 +105,7 @@ const WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   pinnedItems: 'Pinned Pages',
   fantasyCalendar: 'Fantasy Calendar',
   worldPressureForecast: 'World Pressure Forecast',
+  worldSnapshot: 'World Snapshot',
   sessionClock: 'Session Schedule',
   worldClock: 'World Chronometer',
   announcements: 'Campaign Bulletin',
@@ -149,14 +151,15 @@ export function getDefaultDashboardConfig(): DashboardConfig {
     widgets: [
       defaultPlacement('sessionSchedule', 0, 0, 4, 4),
       defaultPlacement('campaignPulse', 4, 0, 4, 3),
-      defaultPlacement('campaignBulletin', 8, 0, 4, 4, {
+      defaultPlacement('worldSnapshot', 8, 0, 4, 4),
+      defaultPlacement('campaignBulletin', 0, 4, 4, 4, {
         config: {
           body: 'Pin house rules, reminders, and campaign notices here.',
         },
       }),
-      defaultPlacement('recentLore', 0, 4, 4, 4),
-      defaultPlacement('worldChronometer', 4, 4, 4, 3),
-      defaultPlacement('lastSessionNotes', 8, 4, 4, 4),
+      defaultPlacement('recentLore', 4, 4, 4, 4),
+      defaultPlacement('worldChronometer', 8, 4, 4, 3),
+      defaultPlacement('lastSessionNotes', 0, 8, 4, 4),
       defaultPlacement('questLedger', 0, 8, 6, 4, { enabled: false }),
       defaultPlacement('livingThreads', 6, 8, 6, 4, { enabled: false }),
       defaultPlacement('party', 0, 12, 3, 4, { enabled: false }),
