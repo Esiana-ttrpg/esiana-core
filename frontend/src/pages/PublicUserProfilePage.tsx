@@ -84,11 +84,11 @@ export function PublicUserProfilePage() {
 
   const sections = useMemo(() => {
     const items = [
-      { id: 'overview', label: t('profile.creatorStats.tabOverview'), icon: User },
-      { id: 'campaigns', label: t('profile.creatorStats.tabCampaigns'), icon: LayoutGrid },
+      { id: 'overview', label: t('profile.creatorstats.tabOverview'), icon: User },
+      { id: 'campaigns', label: t('profile.creatorstats.tabCampaigns'), icon: LayoutGrid },
     ];
     if (isSelf) {
-      items.push({ id: 'writing', label: t('profile.creatorStats.tabWriting'), icon: PenLine });
+      items.push({ id: 'writing', label: t('profile.creatorstats.tabWriting'), icon: PenLine });
     }
     return items;
   }, [isSelf, t]);
@@ -167,8 +167,8 @@ export function PublicUserProfilePage() {
             sections={sections}
             activeId={activeTab}
             onChange={(tab) => switchTab(tab as ProfileTab)}
-            ariaLabel={t('profile.creatorStats.sectionNavAria')}
-            mobileLabel={t('profile.creatorStats.sectionNavMobile')}
+            ariaLabel={t('profile.creatorstats.sectionNavAria')}
+            mobileLabel={t('profile.creatorstats.sectionNavMobile')}
           />
         </header>
 
@@ -199,7 +199,7 @@ export function PublicUserProfilePage() {
           <section className="space-y-4">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <BookOpen className="size-5 text-primary" />
-              {t('profile.creatorStats.tabCampaigns')}
+              {t('profile.creatorstats.tabCampaigns')}
               <span className="text-sm font-normal text-muted">({linkableCampaigns.length})</span>
             </h2>
 

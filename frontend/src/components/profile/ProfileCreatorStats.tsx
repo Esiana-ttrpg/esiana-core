@@ -37,7 +37,7 @@ export function ProfileCreatorStatsOverview({
 
   if (words === 0 && pages === 0) {
     return (
-      <p className="text-sm text-muted">{t('profile.creatorStats.emptyEarly')}</p>
+      <p className="text-sm text-muted">{t('profile.creatorstats.emptyEarly')}</p>
     );
   }
 
@@ -48,11 +48,11 @@ export function ProfileCreatorStatsOverview({
     <section className="space-y-2">
       <p className="text-sm text-foreground">
         {isSelf
-          ? t('profile.creatorStats.headlineSelf', {
+          ? t('profile.creatorstats.headlineSelf', {
               words: formatCompactCount(words, i18n.language),
               pages: formatCompactCount(pages, i18n.language),
             })
-          : t('profile.creatorStats.headlineOther', {
+          : t('profile.creatorstats.headlineOther', {
               name: displayName,
               words: formatCompactCount(words, i18n.language),
               pages: formatCompactCount(pages, i18n.language),
@@ -60,12 +60,12 @@ export function ProfileCreatorStatsOverview({
       </p>
       {mixLabels.length > 0 ? (
         <p className="text-sm text-muted">
-          {t('profile.creatorStats.mixLead', { types: mixLabels.join(' & ') })}
+          {t('profile.creatorstats.mixLead', { types: mixLabels.join(' & ') })}
         </p>
       ) : null}
       {campaigns > 0 ? (
         <p className="text-xs text-muted">
-          {t('profile.creatorStats.campaignsContributed', { count: campaigns })}
+          {t('profile.creatorstats.campaignsContributed', { count: campaigns })}
         </p>
       ) : null}
     </section>
@@ -80,7 +80,7 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
   const { t, i18n } = useTranslation();
 
   if (!attribution) {
-    return <p className="text-sm text-muted">{t('profile.creatorStats.emptyEarly')}</p>;
+    return <p className="text-sm text-muted">{t('profile.creatorstats.emptyEarly')}</p>;
   }
 
   const rows = [
@@ -96,7 +96,7 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">{t('profile.creatorStats.writingIntro')}</p>
+      <p className="text-sm text-muted">{t('profile.creatorstats.writingIntro')}</p>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {rows.map((metricId) => {
           const value = attribution.metrics[metricId];
@@ -104,15 +104,15 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
           if (amount == null && value?.status === 'unavailable') {
             return (
               <div key={metricId} className="rounded border border-border p-3">
-                <dt className="text-xs text-muted">{t(`profile.creatorStats.metric.${metricId.replace('attribution.', '')}`)}</dt>
-                <dd className="text-sm text-muted">{t('profile.creatorStats.notYetTracked')}</dd>
+                <dt className="text-xs text-muted">{t(`profile.creatorstats.${metricId.replace('attribution.', '')}`)}</dt>
+                <dd className="text-sm text-muted">{t('profile.creatorstats.notYetTracked')}</dd>
               </div>
             );
           }
           return (
             <div key={metricId} className="rounded border border-border p-3">
               <dt className="text-xs text-muted">
-                {t(`profile.creatorStats.metric.${metricId.replace('attribution.', '')}`)}
+                {t(`profile.creatorstats.${metricId.replace('attribution.', '')}`)}
               </dt>
               <dd className="text-lg font-semibold text-foreground">
                 {formatCompactCount(amount ?? 0, i18n.language)}
