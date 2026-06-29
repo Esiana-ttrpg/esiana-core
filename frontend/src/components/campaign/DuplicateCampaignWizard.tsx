@@ -17,6 +17,7 @@ import { campaignDashboardPath } from '@/lib/campaignPaths';
 import type { UserProfileCampaign } from '@/types/user';
 import type { CampaignDiscoverabilityValue } from '@/types/campaign';
 import { CampaignDiscoverability } from '@shared/campaignPolicy/discoverability';
+import { getCampaignNameHandleError } from '@shared/campaignHandle';
 
 interface DuplicateCampaignWizardProps {
   open: boolean;
@@ -203,6 +204,7 @@ export function DuplicateCampaignWizard({
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const titleHandleError = name.trim() ? getCampaignNameHandleError(name) : null;
 
   useEffect(() => {
     if (!open) return;
@@ -244,6 +246,10 @@ export function DuplicateCampaignWizard({
   }
 
   async function handleSubmit() {
+    if (titleHandleError) {
+      setError(titleHandleError);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -305,6 +311,9 @@ export function DuplicateCampaignWizard({
                 <p className="mt-1 text-xs text-muted">
                   The campaign URL is generated automatically from this name.
                 </p>
+                {titleHandleError ? (
+                  <p className="mt-1 text-xs text-red-300">{titleHandleError}</p>
+                ) : null}
               </div>
               <div>
                 <p className="mb-2 text-sm font-medium text-foreground">Discoverability</p>
@@ -341,7 +350,7 @@ export function DuplicateCampaignWizard({
               </div>
               <button
                 type="button"
-                disabled={!name.trim()}
+                disabled={!name.trim() || Boolean(titleHandleError)}
                 onClick={() => setStep(2)}
                 className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
               >
@@ -397,7 +406,7 @@ export function DuplicateCampaignWizard({
           {step === 2 ? (
             <button
               type="button"
-              disabled={busy || !name.trim()}
+              disabled={busy || !name.trim() || Boolean(titleHandleError)}
               onClick={() => void handleSubmit()}
               className="rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
             >
