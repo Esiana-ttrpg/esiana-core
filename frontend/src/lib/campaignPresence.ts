@@ -1,5 +1,3 @@
-import type { IconType } from 'react-icons';
-import { SiDiscord, SiFoundryvirtualtabletop, SiRoll20 } from 'react-icons/si';
 import type { PublicDirectoryCampaign } from '@/types/recruitment';
 import {
   getLobbyTableCapacity,
@@ -85,12 +83,4 @@ export function buildTableSocialState(campaign: PublicDirectoryCampaign): TableS
     .join(', ');
 
   return { headline, ariaLabel };
-}
-
-export function externalToolIcon(tool: string): IconType | null {
-  const normalized = tool.trim().toLowerCase();
-  if (normalized.includes('discord')) return SiDiscord;
-  if (normalized.includes('roll20')) return SiRoll20;
-  if (normalized.includes('foundry')) return SiFoundryvirtualtabletop;
-  return null;
 }

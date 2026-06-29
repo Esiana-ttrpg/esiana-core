@@ -190,6 +190,22 @@ export function deriveExternalToolLabels(
   return labels;
 }
 
+/** Public recruitment projection — provider ids only when URL is configured. */
+export function deriveIntegrationProviders(
+  integrations: CampaignIntegrations | null | undefined,
+): IntegrationProviderId[] {
+  if (!integrations) return [];
+
+  const providers: IntegrationProviderId[] = [];
+  for (const slot of INTEGRATION_SLOTS) {
+    const link = integrations[slot];
+    if (link?.provider && link.url?.trim()) {
+      providers.push(link.provider);
+    }
+  }
+  return providers;
+}
+
 export function parseLegacyExternalTools(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();

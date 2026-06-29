@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   deriveExternalToolLabels,
+  deriveIntegrationProviders,
   resolveExternalToolLabels,
   sanitizeCampaignIntegrations,
   validateIntegrationUrl,
@@ -45,6 +46,27 @@ describe('campaignIntegrations', () => {
       chat: { provider: 'slack', url: 'https://slack.com/app' },
     });
     assert.deepEqual(labels, ['Slack', 'Roll20']);
+  });
+
+  it('derives integration providers only when URL is configured', () => {
+    assert.deepEqual(
+      deriveIntegrationProviders({
+        chat: { provider: 'discord', url: 'https://discord.gg/test' },
+        tabletop: { provider: 'foundry', url: '' },
+      }),
+      ['discord'],
+    );
+    assert.deepEqual(deriveIntegrationProviders(null), []);
+  });
+
+  it('derives providers in slot order', () => {
+    assert.deepEqual(
+      deriveIntegrationProviders({
+        tabletop: { provider: 'roll20', url: 'https://app.roll20.net/join/1' },
+        chat: { provider: 'slack', url: 'https://slack.com/app' },
+      }),
+      ['slack', 'roll20'],
+    );
   });
 
   it('falls back to legacy external tools when integrations empty', () => {

@@ -83,21 +83,17 @@ export function CampaignIntegrationsEditor({
   }, [drafts]);
 
   function updateDraft(slot: IntegrationSlotId, patch: Partial<SlotDraft>) {
-    setDrafts((current) => {
-      const next = { ...current, [slot]: { ...current[slot], ...patch } };
-      onChange(buildIntegrationsFromDrafts(next));
-      return next;
-    });
+    const next = { ...drafts, [slot]: { ...drafts[slot], ...patch } };
+    setDrafts(next);
     setSlotErrors((current) => ({ ...current, [slot]: undefined }));
+    onChange(buildIntegrationsFromDrafts(next));
   }
 
   function clearSlot(slot: IntegrationSlotId) {
-    setDrafts((current) => {
-      const next = { ...current, [slot]: { provider: '', url: '' } };
-      onChange(buildIntegrationsFromDrafts(next));
-      return next;
-    });
+    const next = { ...drafts, [slot]: { provider: '', url: '' } };
+    setDrafts(next);
     setSlotErrors((current) => ({ ...current, [slot]: undefined }));
+    onChange(buildIntegrationsFromDrafts(next));
   }
 
   function validateDrafts(): boolean {
