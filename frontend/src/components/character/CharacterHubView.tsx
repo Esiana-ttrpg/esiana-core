@@ -25,7 +25,6 @@ import {
   createDefaultRefineState,
   deriveFacetOptions,
   findSimilarCategoryIndexEntries,
-  formatCategoryIndexResultCount,
   getCategoryIndexFacetDefs,
   getCategoryIndexSearchPlaceholder,
   hasActiveCategoryIndexRefine,
@@ -35,6 +34,11 @@ import {
   resetCategoryIndexRefine,
   type CategoryIndexRefineState,
 } from '@/lib/categoryIndexBrowse';
+import { PlayerPerspectiveToggle } from '@/components/layout/PlayerPerspectiveToggle';
+import {
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import {
   readCategoryIndexBrowseSnapshot,
   writeCategoryIndexBrowseSnapshot,
@@ -108,6 +112,7 @@ export function CharacterHubView({
   const [railOpen, setRailOpen] = useState(readLargeScreenDefault);
   const [isLargeScreen, setIsLargeScreen] = useState(readLargeScreenDefault);
   const [railWidth, setRailWidth] = useState(loadCharacterHubRailWidth);
+  const [playerPreview, setPlayerPreview] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)');
@@ -124,10 +129,11 @@ export function CharacterHubView({
   const isDMUser =
     campaign?.role === CampaignMemberRoles.GAMEMASTER ||
     campaign?.role === CampaignMemberRoles.WRITER;
+  const showDmChrome = isDMUser && !playerPreview;
 
   const facetDefs = useMemo(
-    () => getCategoryIndexFacetDefs(categoryTitle, isDMUser),
-    [isDMUser],
+    () => (showDmChrome ? getCategoryIndexFacetDefs(categoryTitle, true) : []),
+    [showDmChrome],
   );
 
   const pageById = useMemo(
@@ -145,7 +151,9 @@ export function CharacterHubView({
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchCharacterHub(resolvedSlug, categoryPageId);
+      const data = await fetchCharacterHub(resolvedSlug, categoryPageId, {
+        previewAsPlayer: isDMUser && playerPreview,
+      });
       setPayload(data);
       setSelectedCharacterId((prev) => prev ?? resolveSpotlightCharacterId(data));
     } catch (err) {
@@ -153,7 +161,7 @@ export function CharacterHubView({
     } finally {
       setLoading(false);
     }
-  }, [resolvedSlug, categoryPageId]);
+  }, [resolvedSlug, categoryPageId, isDMUser, playerPreview]);
 
   useEffect(() => {
     void loadHub();
@@ -259,13 +267,15 @@ export function CharacterHubView({
       ),
     [refineState, facetDefs, children, categoryTitle],
   );
-  const resultCountLabel = formatCategoryIndexResultCount(
-    children.length,
-    filteredChildren.length,
-    categoryTitle,
+  const countNouns = resolveCategoryCountNouns(categoryTitle);
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: children.length,
+    matching: filteredChildren.length,
+    singular: countNouns.singular,
+    plural: countNouns.plural,
     searchQuery,
     hasActiveRefine,
-  );
+  });
   const emptyVariant = resolveCategoryIndexEmptyVariant({
     totalCount: children.length,
     filteredCount: filteredChildren.length,
@@ -331,7 +341,7 @@ export function CharacterHubView({
     return <LoadingSpinner label="Loading Characters…" />;
   }
 
-  const showInlineRail = railOpen && isLargeScreen;
+  const showInlineRail = showDmChrome && railOpen && isLargeScreen;
   const narrativeLayoutStyle = showInlineRail
     ? ({
         '--character-hub-rail-width': `${railWidth}px`,
@@ -364,20 +374,27 @@ export function CharacterHubView({
             campaignHandle={resolvedSlug}
           />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <Users className="size-6 text-primary" strokeWidth={1.25} />
             Campaign Cast
           </>
         }
-        toolbar={
+        beforeActions={
+          isDMUser ? (
+            <PlayerPerspectiveToggle
+              value={playerPreview ? 'party' : 'dm'}
+              onChange={(next) => setPlayerPreview(next === 'party')}
+              ariaLabel="Character cast view perspective"
+            />
+          ) : null
+        }
+        actions={
           <CategoryIndexToolbar
             createLabel={`Create ${itemLabel}`}
             onCreate={handleCreate}
-            searchValue={searchQuery}
-            searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
-            onSearchChange={setSearchQuery}
-            resultCountLabel={children.length > 0 ? resultCountLabel : null}
+            resultCountLabel={resultCountLabel}
             refineControl={
               facetDefs.length > 0 ? (
                 <CategoryIndexRefinePopover
@@ -386,6 +403,15 @@ export function CharacterHubView({
                   children={children}
                   categoryTitle={categoryTitle}
                   onRefineChange={setRefineState}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
+                  onResetRefine={() => {
+                    setRefineState(
+                      resetCategoryIndexRefine(facetDefs, children, categoryTitle),
+                    );
+                    setSearchQuery('');
+                  }}
                 />
               ) : null
             }
@@ -394,21 +420,23 @@ export function CharacterHubView({
             allowedViews={allowedViews}
             tableViewTitle="Power-user spreadsheet view"
             trailing={
-              <button
-                type="button"
-                onClick={() => setRailOpen((prev) => !prev)}
-                aria-pressed={railOpen}
-                title={railOpen ? 'Close campaign context' : 'Open campaign context'}
-                className={contextRailToggleClass(railOpen)}
-              >
-                <PanelRight className="size-4" />
-                <span className="sr-only">Campaign context</span>
-              </button>
+              showDmChrome ? (
+                <button
+                  type="button"
+                  onClick={() => setRailOpen((prev) => !prev)}
+                  aria-pressed={railOpen}
+                  title={railOpen ? 'Close campaign context' : 'Open campaign context'}
+                  className={contextRailToggleClass(railOpen)}
+                >
+                  <PanelRight className="size-4" />
+                  <span className="sr-only">Campaign context</span>
+                </button>
+              ) : null
             }
           />
         }
-        afterToolbar={
-          children.length > 0 ? (
+        activeFilters={
+          activeRefineChips.length > 0 ? (
             <CategoryIndexActiveRefineChips
               chips={activeRefineChips}
               onRemove={(facetId, optionValue) =>
@@ -457,6 +485,7 @@ export function CharacterHubView({
             itemLabel={itemLabel}
             campaignHandle={resolvedSlug}
             similarEntries={similarEntries}
+            headerCreateLabel={`Create ${itemLabel}`}
             onCreate={handleCreate}
             onCreateFromSearch={handleCreateFromSearch}
             onClearSearch={() => setSearchQuery('')}
@@ -489,7 +518,7 @@ export function CharacterHubView({
         )}
       </CategoryHubShell>
 
-      {railContentProps && railOpen && !isLargeScreen ? (
+      {showDmChrome && railContentProps && railOpen && !isLargeScreen ? (
         <CharacterHubContextRail
           layout="overlay"
           open

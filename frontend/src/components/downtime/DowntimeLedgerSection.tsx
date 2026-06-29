@@ -1,6 +1,11 @@
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { useEffect, useMemo, useState } from 'react';
-import { Plus, Settings2 } from 'lucide-react';
 import type { DowntimeHubLedgerPayload, LedgerSuggestionLine, LedgerTransactionLine } from '@shared/downtimeHub';
 import type { WikiTreeNode } from '@/types/wiki';
 import {
@@ -18,6 +23,12 @@ import { ScheduledTreasuryPanel } from '@/components/downtime/ScheduledTreasuryP
 import { consumeScheduledTreasuryPrefill } from '@/lib/downtimeScheduledEffects';
 import type { ScheduledTreasuryPrefill } from '@/lib/downtimeScheduledEffects';
 
+export type DowntimeLedgerSectionHandle = {
+  openSettings: () => void;
+  openAdd: () => void;
+  openQuickAction: (action: LedgerQuickActionPreset) => void;
+};
+
 interface DowntimeLedgerSectionProps {
   data: DowntimeHubLedgerPayload;
   campaignHandle: string;
@@ -25,16 +36,28 @@ interface DowntimeLedgerSectionProps {
   canManage: boolean;
   canContribute: boolean;
   onChanged: () => void | Promise<void>;
+  feedLines?: LedgerTransactionLine[];
+  browseActive?: boolean;
+  onClearBrowse?: () => void;
 }
 
-export function DowntimeLedgerSection({
-  data,
-  campaignHandle,
-  flatPages,
-  canManage,
-  canContribute,
-  onChanged,
-}: DowntimeLedgerSectionProps) {
+export const DowntimeLedgerSection = forwardRef<
+  DowntimeLedgerSectionHandle,
+  DowntimeLedgerSectionProps
+>(function DowntimeLedgerSection(
+  {
+    data,
+    campaignHandle,
+    flatPages,
+    canManage,
+    canContribute,
+    onChanged,
+    feedLines,
+    browseActive = false,
+    onClearBrowse,
+  },
+  ref,
+) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingLine, setEditingLine] = useState<LedgerTransactionLine | null>(null);
@@ -44,6 +67,8 @@ export function DowntimeLedgerSection({
   const [schedulePrefill, setSchedulePrefill] = useState<ScheduledTreasuryPrefill | null>(
     null,
   );
+
+  const displayFeed = feedLines ?? data.feed;
 
   useEffect(() => {
     const prefill = consumeScheduledTreasuryPrefill();
@@ -63,7 +88,9 @@ export function DowntimeLedgerSection({
   const emptyMessage =
     data.feed.length === 0
       ? `${data.framing.headline} ${data.framing.body[0] ?? ''}`
-      : undefined;
+      : browseActive && displayFeed.length === 0
+        ? 'No entries match your filters.'
+        : undefined;
 
   async function handleChanged() {
     await onChanged();
@@ -81,6 +108,23 @@ export function DowntimeLedgerSection({
     setEntryDraft(presetForQuickAction(action));
     setIsAddOpen(true);
   }
+
+  function openAdd() {
+    setEditingLine(null);
+    setAcceptingSuggestion(null);
+    setEntryDraft(null);
+    setIsAddOpen(true);
+  }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openSettings: () => setIsSettingsOpen(true),
+      openAdd,
+      openQuickAction,
+    }),
+    [],
+  );
 
   function openSuggestionEdit(suggestion: LedgerSuggestionLine) {
     setEditingLine(null);
@@ -120,67 +164,6 @@ export function DowntimeLedgerSection({
 
   return (
     <div className="flex min-h-[480px] w-full flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Ledger</h2>
-          <p className="text-sm text-muted-foreground">
-            Major income, expenses, debts, and project costs — narrative line items, not a spreadsheet.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canManage ? (
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-            >
-              <Settings2 className="size-3.5" />
-              Settings
-            </button>
-          ) : null}
-          {canContribute && data.treasury.sharedTreasuryEnabled ? (
-            <>
-              <button
-                type="button"
-                onClick={() => openQuickAction('contribute')}
-                className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                Contribute
-              </button>
-              <button
-                type="button"
-                onClick={() => openQuickAction('withdraw')}
-                className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                Withdraw
-              </button>
-              <button
-                type="button"
-                onClick={() => openQuickAction('fund_project')}
-                className="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              >
-                Fund project
-              </button>
-            </>
-          ) : null}
-          {canContribute ? (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingLine(null);
-                setAcceptingSuggestion(null);
-                setEntryDraft(null);
-                setIsAddOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              <Plus className="size-3.5" />
-              Add entry
-            </button>
-          ) : null}
-        </div>
-      </div>
-
       <div className="rounded-lg border border-border bg-background/60 p-4">
         <p className={META_SECTION_LABEL_CLASS}>Treasury</p>
         <p className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
@@ -213,21 +196,34 @@ export function DowntimeLedgerSection({
 
       <div className="min-w-0 flex-1 rounded-lg border border-border bg-background p-4">
         <h3 className="mb-3 text-sm font-medium text-foreground">Recent transactions</h3>
-        <LedgerTransactionFeed
-          lines={data.feed}
-          emptyMessage={emptyMessage}
-          onEdit={
-            canContribute
-              ? (line) => {
-                  setAcceptingSuggestion(null);
-                  setEntryDraft(null);
-                  setEditingLine(line);
-                  setIsAddOpen(true);
-                }
-              : undefined
-          }
-          onDelete={canContribute ? (line) => void handleDelete(line) : undefined}
-        />
+        {browseActive && displayFeed.length === 0 && data.feed.length > 0 && onClearBrowse ? (
+          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+            <p className="text-sm text-muted">No entries match your filters.</p>
+            <button
+              type="button"
+              onClick={onClearBrowse}
+              className="mt-3 text-sm text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <LedgerTransactionFeed
+            lines={displayFeed}
+            emptyMessage={emptyMessage}
+            onEdit={
+              canContribute
+                ? (line) => {
+                    setAcceptingSuggestion(null);
+                    setEntryDraft(null);
+                    setEditingLine(line);
+                    setIsAddOpen(true);
+                  }
+                : undefined
+            }
+            onDelete={canContribute ? (line) => void handleDelete(line) : undefined}
+          />
+        )}
       </div>
 
       <AddLedgerEntryModal
@@ -253,4 +249,4 @@ export function DowntimeLedgerSection({
       ) : null}
     </div>
   );
-}
+});

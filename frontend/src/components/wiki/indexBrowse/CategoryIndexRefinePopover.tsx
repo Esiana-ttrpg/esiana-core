@@ -1,6 +1,7 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
+import { CategoryIndexSearchInput } from '@/components/wiki/indexBrowse/CategoryIndexSearchInput';
 import type {
   CategoryIndexFacetDef,
   CategoryIndexRefineState,
@@ -22,6 +23,10 @@ interface CategoryIndexRefinePopoverProps {
   customBody?: ReactNode;
   activeCount?: number;
   onResetRefine?: () => void;
+  /** In-popover list filter — only when meaningful refine (facets or custom body) exists */
+  searchQuery?: string;
+  onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
 }
 
 function chipClass(active: boolean): string {
@@ -39,19 +44,24 @@ export function CategoryIndexRefinePopover({
   customBody,
   activeCount,
   onResetRefine,
+  searchQuery,
+  onSearchChange,
+  searchPlaceholder,
 }: CategoryIndexRefinePopoverProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const hasTextFilter = Boolean(onSearchChange && (searchQuery?.trim() ?? '').length > 0);
+  const hasFacetRefine = hasActiveCategoryIndexRefine(
+    refineState,
+    facetDefs,
+    children,
+    categoryTitle,
+  );
   const hasActive =
     activeCount !== undefined
       ? activeCount > 0
-      : hasActiveCategoryIndexRefine(
-          refineState,
-          facetDefs,
-          children,
-          categoryTitle,
-        );
+      : hasFacetRefine || hasTextFilter;
 
   useEffect(() => {
     if (!open) return;
@@ -65,6 +75,8 @@ export function CategoryIndexRefinePopover({
   }, [open]);
 
   if (facetDefs.length === 0 && !customBody) return null;
+
+  const showInPopoverSearch = Boolean(onSearchChange && searchPlaceholder);
 
   return (
     <div ref={rootRef} className="relative">
@@ -94,6 +106,16 @@ export function CategoryIndexRefinePopover({
           aria-label="Refine results"
           className="absolute right-0 z-30 mt-2 max-h-[min(70vh,24rem)] w-[min(100vw-2rem,22rem)] overflow-y-auto rounded-lg border border-border bg-elevated p-3 shadow-lg"
         >
+          {showInPopoverSearch ? (
+            <div className="mb-3">
+              <CategoryIndexSearchInput
+                value={searchQuery ?? ''}
+                placeholder={searchPlaceholder ?? 'Filter list…'}
+                onChange={onSearchChange!}
+              />
+            </div>
+          ) : null}
+
           {customBody ?? (
             <div className="space-y-4">
               {facetDefs.map((facet) => {
@@ -102,9 +124,7 @@ export function CategoryIndexRefinePopover({
                 const facetState = refineState[facet.id] ?? {};
                 return (
                   <div key={facet.id}>
-                    <p className="mb-1.5 META_SECTION_LABEL_CLASS">
-                      {facet.label}
-                    </p>
+                    <p className={`mb-1.5 ${META_SECTION_LABEL_CLASS}`}>{facet.label}</p>
                     <div className="flex flex-wrap gap-1">
                       {options.map((option) => (
                         <label
@@ -146,12 +166,17 @@ export function CategoryIndexRefinePopover({
                     resetCategoryIndexRefine(facetDefs, children, categoryTitle),
                   );
                 }
+                onSearchChange?.('');
               }}
               className="mt-3 text-xs text-muted underline-offset-2 hover:text-primary hover:underline"
             >
               Reset refine
             </button>
           )}
+
+          <p className="mt-3 text-[11px] text-muted">
+            Jump anywhere — <kbd className="rounded border border-border px-1">Ctrl+K</kbd>
+          </p>
         </div>
       )}
     </div>

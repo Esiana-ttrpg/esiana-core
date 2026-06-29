@@ -20,17 +20,12 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CreatePageModal } from '@/components/CreatePageModal';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { WorkspaceModeToggle } from '@/components/layout/WorkspaceModeToggle';
+import { projectCategoryIndexBrowseChildren } from '@/lib/categoryIndexBrowse';
 import {
-  createDefaultRefineState,
-  formatCategoryIndexResultCount,
-  getCategoryIndexFacetDefs,
-  getCategoryIndexSearchPlaceholder,
-  hasActiveCategoryIndexRefine,
-  mergeRefineStateWithNewOptions,
-  projectCategoryIndexBrowseChildren,
-  type CategoryIndexRefineState,
-} from '@/lib/categoryIndexBrowse';
-import { CampaignMemberRoles } from '@/types/domain';
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import { parseOrganizationMetadata } from '@/lib/organizationMetadata';
 import { fetchDowntimeHub } from '@/lib/downtime';
 import type { ReputationStandingCard } from '@shared/downtimeHub';
@@ -50,15 +45,13 @@ export function OrganizationHubView({
   campaignHandle,
 }: OrganizationHubViewProps) {
   const params = useParams<{ campaignHandle?: string }>();
-  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign } = useWiki();
+  const { campaignHandle: wikiCampaignSlug, flatPages, refresh } = useWiki();
   const resolvedSlug = readCampaignHandle(params) || wikiCampaignSlug || campaignHandle;
   const navigate = useNavigate();
 
   const [children, setChildren] = useState<CategoryIndexChild[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [refineState, setRefineState] = useState<CategoryIndexRefineState>({});
   const [groupMode, setGroupMode] = useState<OrganizationGroupMode>('hierarchy');
   const [standings, setStandings] = useState<ReputationStandingCard[]>([]);
 
@@ -68,15 +61,6 @@ export function OrganizationHubView({
   }, [flatPages, categoryPageId]);
 
   const itemLabel = createItemLabel(categoryTitle);
-
-  const isDMUser =
-    campaign?.role === CampaignMemberRoles.GAMEMASTER ||
-    campaign?.role === CampaignMemberRoles.WRITER;
-
-  const facetDefs = useMemo(
-    () => getCategoryIndexFacetDefs(categoryTitle, isDMUser),
-    [categoryTitle, isDMUser],
-  );
 
   const loadChildren = useCallback(async () => {
     setLoading(true);
@@ -98,42 +82,15 @@ export function OrganizationHubView({
       .catch(() => setStandings([]));
   }, [resolvedSlug]);
 
-  useEffect(() => {
-    if (children.length === 0 || facetDefs.length === 0) return;
-    setRefineState((prev) => {
-      const hasKeys = Object.keys(prev).length > 0;
-      if (!hasKeys) {
-        return createDefaultRefineState(facetDefs, children, categoryTitle);
-      }
-      return mergeRefineStateWithNewOptions(
-        prev,
-        facetDefs,
-        children,
-        categoryTitle,
-      );
-    });
-  }, [children, facetDefs, categoryTitle]);
-
-  const hasActiveRefine = useMemo(
-    () =>
-      hasActiveCategoryIndexRefine(
-        refineState,
-        facetDefs,
-        children,
-        categoryTitle,
-      ),
-    [refineState, facetDefs, children, categoryTitle],
-  );
-
   const projected = useMemo(
     () =>
       projectCategoryIndexBrowseChildren(children, {
-        searchQuery,
-        refineState,
-        facetDefs,
+        searchQuery: '',
+        refineState: {},
+        facetDefs: [],
         categoryTitle,
       }),
-    [children, searchQuery, refineState, facetDefs, categoryTitle],
+    [children, categoryTitle],
   );
 
   const sections = useMemo(
@@ -159,13 +116,13 @@ export function OrganizationHubView({
     });
   }, [categoryPageId, categoryTitle, pageById]);
 
-  const resultCountLabel = formatCategoryIndexResultCount(
-    children.length,
-    projected.length,
-    categoryTitle,
-    searchQuery,
-    hasActiveRefine,
-  );
+  const countNouns = resolveCategoryCountNouns(categoryTitle);
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: children.length,
+    matching: projected.length,
+    singular: countNouns.singular,
+    plural: countNouns.plural,
+  });
 
   function handleCreate() {
     setIsCreateOpen(true);
@@ -183,40 +140,26 @@ export function OrganizationHubView({
         breadcrumbs={
           <WikiPageBreadcrumbs crumbs={indexBreadcrumbs} campaignHandle={resolvedSlug} />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <Building2 className="size-6 text-primary" strokeWidth={1.25} />
             Powers &amp; Factions
           </>
         }
-        toolbar={
+        actions={
           <CategoryIndexToolbar
             createLabel={`Catalog ${itemLabel}`}
             onCreate={handleCreate}
-            searchValue={searchQuery}
-            searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
-            onSearchChange={setSearchQuery}
-            resultCountLabel={children.length > 0 ? resultCountLabel : null}
-            refineControl={null}
+            resultCountLabel={resultCountLabel}
+            modeControl={
+              <WorkspaceModeToggle
+                options={['hierarchy', 'world-state', 'region'] as const}
+                value={groupMode}
+                onChange={setGroupMode}
+              />
+            }
           />
-        }
-        afterToolbar={
-          <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-elevated/50 p-1">
-            {(['hierarchy', 'world-state', 'region'] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => setGroupMode(mode)}
-                className={`rounded px-2.5 py-1 text-xs capitalize transition-colors ${
-                  groupMode === mode
-                    ? 'bg-primary/20 text-primary'
-                    : 'text-muted hover:text-foreground'
-                }`}
-              >
-                {mode.replace('-', ' ')}
-              </button>
-            ))}
-          </div>
         }
       >
         {sections.map((section) => (

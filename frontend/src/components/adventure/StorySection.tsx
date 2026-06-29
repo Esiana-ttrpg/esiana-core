@@ -23,8 +23,10 @@ import {
   type StoryFilterState,
 } from '@/lib/workspacePersistence';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { StoryWorkspaceShell } from '@/components/adventure/StoryWorkspaceShell';
-import { StoryNarrativeToolbar } from '@/components/adventure/StoryNarrativeToolbar';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
+import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
+import { StoryNarrativeFilterPanel } from '@/components/adventure/StoryNarrativeFilterPanel';
 import { StoryViewTabs } from '@/components/adventure/StoryViewTabs';
 import { BoardSection } from '@/components/adventure/BoardSection';
 import { ArcsSection } from '@/components/adventure/ArcsSection';
@@ -247,21 +249,44 @@ export function StorySection({ campaignHandle, categoryPageId }: StorySectionPro
     return null;
   })();
 
+  const storyRefineActive =
+    Boolean(filters.recent) || Boolean((filters.search ?? '').trim().length > 0);
+
   return (
-    <StoryWorkspaceShell
-      viewTabs={
-        <StoryViewTabs basePath={basePath} activeView={activeView} />
-      }
-      toolbar={
-        showStoryToolbar ? (
-          <StoryNarrativeToolbar
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-          />
-        ) : undefined
-      }
-    >
-      {viewContent}
-    </StoryWorkspaceShell>
+    <>
+      <WorkspaceHeader
+        title="Adventure Board"
+        belowToolbar={
+          <StoryViewTabs basePath={basePath} activeView={activeView} isDMUser={isDMUser} />
+        }
+        actions={
+          showStoryToolbar ? (
+            <WorkspaceActionBar
+              refine={
+                <CategoryIndexRefinePopover
+                  facetDefs={[]}
+                  refineState={{}}
+                  children={[]}
+                  categoryTitle="Adventure"
+                  onRefineChange={() => {}}
+                  activeCount={storyRefineActive ? 1 : undefined}
+                  onResetRefine={() => handleFiltersChange({ search: '', recent: false })}
+                  searchQuery={filters.search ?? ''}
+                  onSearchChange={(value) => handleFiltersChange({ search: value })}
+                  searchPlaceholder="Filter narrative state…"
+                  customBody={
+                    <StoryNarrativeFilterPanel
+                      filters={filters}
+                      onFiltersChange={handleFiltersChange}
+                    />
+                  }
+                />
+              }
+            />
+          ) : undefined
+        }
+      />
+      <div className="story-workspace__content min-h-[480px]">{viewContent}</div>
+    </>
   );
 }

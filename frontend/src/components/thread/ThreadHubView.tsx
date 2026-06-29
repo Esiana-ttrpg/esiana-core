@@ -16,6 +16,10 @@ import type { ThreadHubPayload } from '@/types/wiki';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
+import {
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import { ThreadHubCard } from '@/components/thread/ThreadHubCard';
 import { ThreadHubFiltersPanel } from '@/components/thread/ThreadHubFilters';
 import {
@@ -271,20 +275,22 @@ export function ThreadHubView({
     </>
   );
 
+  const totalThreadCount = data?.threads.length ?? 0;
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: totalThreadCount,
+    matching: filteredNodes.length,
+    singular: resolveCategoryCountNouns(categoryTitle).singular,
+    plural: resolveCategoryCountNouns(categoryTitle).plural,
+    searchQuery,
+    hasActiveRefine: refineCount > 0,
+  });
+
   const toolbar = (
     <CategoryIndexToolbar
       createLabel="New thread"
       onCreate={() => setIsCreateOpen(true)}
       createAction={isDMUser ? undefined : null}
-      searchValue={searchQuery}
-      searchPlaceholder="Search threads…"
-      onSearchChange={setSearchQuery}
-      showSearch={!embedded}
-      resultCountLabel={
-        filteredNodes.length > 0
-          ? `${filteredNodes.length} thread${filteredNodes.length === 1 ? '' : 's'}`
-          : null
-      }
+      resultCountLabel={resultCountLabel}
       refineControl={
         <CategoryIndexRefinePopover
           facetDefs={[]}
@@ -293,7 +299,13 @@ export function ThreadHubView({
           categoryTitle={categoryTitle}
           onRefineChange={() => {}}
           activeCount={refineCount}
-          onResetRefine={() => setFilters(defaultThreadHubFilters())}
+          onResetRefine={() => {
+            setFilters(defaultThreadHubFilters());
+            setSearchQuery('');
+          }}
+          searchQuery={embedded ? undefined : searchQuery}
+          onSearchChange={embedded ? undefined : setSearchQuery}
+          searchPlaceholder={embedded ? undefined : 'Filter threads…'}
           customBody={
             <ThreadHubFiltersPanel
               filters={filters}
@@ -381,19 +393,23 @@ export function ThreadHubView({
         breadcrumbs={
           <WikiPageBreadcrumbs crumbs={indexBreadcrumbs} campaignHandle={campaignHandle} />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <GitBranch className="size-6 text-amber-400" strokeWidth={1.25} />
             {categoryTitle}
           </>
         }
-        toolbar={toolbar}
-        afterToolbar={
+        actions={toolbar}
+        activeFilters={
           refineCount > 0 ? (
             <button
               type="button"
-              className="mt-2 text-xs text-muted hover:text-foreground"
-              onClick={() => setFilters(defaultThreadHubFilters())}
+              className="text-xs text-muted hover:text-foreground"
+              onClick={() => {
+                setFilters(defaultThreadHubFilters());
+                setSearchQuery('');
+              }}
             >
               Clear filters ({refineCount})
             </button>

@@ -18,6 +18,7 @@ import { createItemLabel } from '@/lib/wikiLabels';
 import type { WikiTreeNode } from '@/types/wiki';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CreatePageModal } from '@/components/CreatePageModal';
+import { WorkspaceModeToggle } from '@/components/layout/WorkspaceModeToggle';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
@@ -27,7 +28,6 @@ import {
   clearRefineChip,
   createDefaultRefineState,
   findSimilarCategoryIndexEntries,
-  formatCategoryIndexResultCount,
   getCategoryIndexFacetDefs,
   getCategoryIndexSearchPlaceholder,
   hasActiveCategoryIndexRefine,
@@ -37,6 +37,10 @@ import {
   resetCategoryIndexRefine,
   type CategoryIndexRefineState,
 } from '@/lib/categoryIndexBrowse';
+import {
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import {
   readCategoryIndexBrowseSnapshot,
   writeCategoryIndexBrowseSnapshot,
@@ -246,13 +250,14 @@ export function AncestryHubView({
     [refineState, facetDefs, children, categoryTitle],
   );
 
-  const resultCountLabel = formatCategoryIndexResultCount(
-    children.length,
-    filteredChildren.length,
-    categoryTitle,
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: children.length,
+    matching: filteredChildren.length,
+    singular: resolveCategoryCountNouns(categoryTitle).singular,
+    plural: resolveCategoryCountNouns(categoryTitle).plural,
     searchQuery,
     hasActiveRefine,
-  );
+  });
 
   const emptyVariant = resolveCategoryIndexEmptyVariant({
     totalCount: children.length,
@@ -343,20 +348,18 @@ export function AncestryHubView({
             campaignHandle={resolvedSlug}
           />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <Users className="size-6 text-primary" strokeWidth={1.25} />
             Peoples &amp; Lineages
           </>
         }
-        toolbar={
+        actions={
           <CategoryIndexToolbar
             createLabel={`Catalog ${itemLabel}`}
             onCreate={handleCreate}
-            searchValue={searchQuery}
-            searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
-            onSearchChange={setSearchQuery}
-            resultCountLabel={children.length > 0 ? resultCountLabel : null}
+            resultCountLabel={resultCountLabel}
             refineControl={
               facetDefs.length > 0 ? (
                 <CategoryIndexRefinePopover
@@ -365,10 +368,19 @@ export function AncestryHubView({
                   children={children}
                   categoryTitle={categoryTitle}
                   onRefineChange={setRefineState}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
+                  onResetRefine={() => {
+                    setRefineState(
+                      resetCategoryIndexRefine(facetDefs, children, categoryTitle),
+                    );
+                    setSearchQuery('');
+                  }}
                 />
               ) : null
             }
-            trailing={
+            viewControl={
               <BestiaryBrowseModeToggle
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
@@ -376,53 +388,24 @@ export function AncestryHubView({
             }
           />
         }
-        afterToolbar={
+        belowToolbar={
           children.length > 0 && viewMode === 'card' ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 rounded-lg border border-border bg-elevated/50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setGroupMode('taxonomy')}
-                    className={`rounded px-2.5 py-1 text-xs transition-colors ${
-                      groupMode === 'taxonomy'
-                        ? 'bg-primary/20 text-primary'
-                        : 'text-muted hover:text-foreground'
-                    }`}
-                    aria-pressed={groupMode === 'taxonomy'}
-                  >
-                    Taxonomy
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGroupMode('homelands')}
-                    className={`rounded px-2.5 py-1 text-xs transition-colors ${
-                      groupMode === 'homelands'
-                        ? 'bg-primary/20 text-primary'
-                        : 'text-muted hover:text-foreground'
-                    }`}
-                    aria-pressed={groupMode === 'homelands'}
-                  >
-                    Group by Homeland
-                  </button>
-                </div>
-              </div>
-              <CategoryIndexActiveRefineChips
-                chips={activeRefineChips}
-                onRemove={(facetId, optionValue) =>
-                  setRefineState((prev) =>
-                    clearRefineChip(prev, facetId, optionValue),
-                  )
-                }
-              />
-            </div>
-          ) : children.length > 0 ? (
+            <WorkspaceModeToggle
+              options={['taxonomy', 'homelands'] as const}
+              value={groupMode}
+              onChange={setGroupMode}
+              formatLabel={(mode) =>
+                mode === 'taxonomy' ? 'Taxonomy' : 'Group by homeland'
+              }
+            />
+          ) : null
+        }
+        activeFilters={
+          activeRefineChips.length > 0 ? (
             <CategoryIndexActiveRefineChips
               chips={activeRefineChips}
               onRemove={(facetId, optionValue) =>
-                setRefineState((prev) =>
-                  clearRefineChip(prev, facetId, optionValue),
-                )
+                setRefineState((prev) => clearRefineChip(prev, facetId, optionValue))
               }
             />
           ) : null
@@ -455,6 +438,7 @@ export function AncestryHubView({
             itemLabel={itemLabel}
             campaignHandle={resolvedSlug}
             similarEntries={similarEntries}
+            headerCreateLabel={`Catalog ${itemLabel}`}
             onCreate={handleCreate}
             onCreateFromSearch={handleCreateFromSearch}
             onClearSearch={() => setSearchQuery('')}

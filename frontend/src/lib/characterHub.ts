@@ -73,13 +73,20 @@ export interface CharacterHubPayload {
   recentlySeenBySession: CharacterHubRecentlySeenSession[];
   locationCounts: CharacterHubLocationCount[];
   characterContext: Record<string, CharacterCastContext>;
+  previewAsPlayer?: boolean;
 }
 
 export async function fetchCharacterHub(
   campaignHandle: string,
   categoryPageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<CharacterHubPayload> {
+  const params = new URLSearchParams();
+  if (options?.previewAsPlayer) {
+    params.set('previewAsPlayer', 'true');
+  }
+  const query = params.toString();
   return apiFetch<CharacterHubPayload>(
-    `/campaigns/${campaignHandle}/wiki/character-hub/${categoryPageId}`,
+    `/campaigns/${campaignHandle}/wiki/character-hub/${categoryPageId}${query ? `?${query}` : ''}`,
   );
 }

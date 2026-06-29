@@ -19,6 +19,7 @@ import type { WikiTreeNode } from '@/types/wiki';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CreatePageModal } from '@/components/CreatePageModal';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { WorkspaceModeToggle } from '@/components/layout/WorkspaceModeToggle';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
 import { CategoryIndexActiveRefineChips } from '@/components/wiki/indexBrowse/CategoryIndexActiveRefineChips';
@@ -27,7 +28,6 @@ import {
   clearRefineChip,
   createDefaultRefineState,
   findSimilarCategoryIndexEntries,
-  formatCategoryIndexResultCount,
   getCategoryIndexFacetDefs,
   getCategoryIndexSearchPlaceholder,
   hasActiveCategoryIndexRefine,
@@ -37,6 +37,10 @@ import {
   resetCategoryIndexRefine,
   type CategoryIndexRefineState,
 } from '@/lib/categoryIndexBrowse';
+import {
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import {
   readCategoryIndexBrowseSnapshot,
   writeCategoryIndexBrowseSnapshot,
@@ -290,13 +294,14 @@ export function BestiaryHubView({
     [refineState, facetDefs, children, categoryTitle],
   );
 
-  const resultCountLabel = formatCategoryIndexResultCount(
-    children.length,
-    filteredChildren.length,
-    categoryTitle,
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: children.length,
+    matching: filteredChildren.length,
+    singular: resolveCategoryCountNouns(categoryTitle).singular,
+    plural: resolveCategoryCountNouns(categoryTitle).plural,
     searchQuery,
-    hasActiveRefine || onlyCatalogued,
-  );
+    hasActiveRefine: hasActiveRefine || onlyCatalogued,
+  });
 
   const emptyVariant = resolveCategoryIndexEmptyVariant({
     totalCount: children.length,
@@ -405,20 +410,18 @@ export function BestiaryHubView({
             campaignHandle={resolvedSlug}
           />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <Skull className="size-6 text-primary" strokeWidth={1.25} />
             Hunter Catalog
           </>
         }
-        toolbar={
+        actions={
           <CategoryIndexToolbar
             createLabel={`Catalog ${itemLabel}`}
             onCreate={handleCreate}
-            searchValue={searchQuery}
-            searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
-            onSearchChange={setSearchQuery}
-            resultCountLabel={children.length > 0 ? resultCountLabel : null}
+            resultCountLabel={resultCountLabel}
             refineControl={
               facetDefs.length > 0 ? (
                 <CategoryIndexRefinePopover
@@ -427,83 +430,74 @@ export function BestiaryHubView({
                   children={children}
                   categoryTitle={categoryTitle}
                   onRefineChange={setRefineState}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
+                  onResetRefine={() => {
+                    setRefineState(
+                      resetCategoryIndexRefine(facetDefs, children, categoryTitle),
+                    );
+                    setSearchQuery('');
+                  }}
                 />
               ) : null
             }
+            viewControl={
+              <BestiaryBrowseModeToggle
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+              />
+            }
             trailing={
-              <>
-                <BestiaryBrowseModeToggle
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                />
-                <button
-                  type="button"
-                  onClick={() => setRailOpen((prev) => !prev)}
-                  aria-pressed={railOpen}
-                  title={railOpen ? 'Close field intel' : 'Open field intel'}
-                  className={contextRailToggleClass(railOpen)}
-                >
-                  <PanelRight className="size-4" />
-                  <span className="sr-only">Field intel</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setRailOpen((prev) => !prev)}
+                aria-pressed={railOpen}
+                title={railOpen ? 'Close field intel' : 'Open field intel'}
+                className={contextRailToggleClass(railOpen)}
+              >
+                <PanelRight className="size-4" />
+                <span className="sr-only">Field intel</span>
+              </button>
             }
           />
         }
-        afterToolbar={
+        belowToolbar={
           children.length > 0 ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 rounded-lg border border-border bg-elevated/50 p-1">
-                  <button
-                    type="button"
-                    onClick={() => setGroupMode('habitat')}
-                    className={`rounded px-2.5 py-1 text-xs transition-colors ${
-                      groupMode === 'habitat'
-                        ? 'bg-primary/20 text-primary'
-                        : 'text-muted hover:text-foreground'
-                    }`}
-                    aria-pressed={groupMode === 'habitat'}
-                  >
-                    Group by Habitat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGroupMode('type')}
-                    className={`rounded px-2.5 py-1 text-xs transition-colors ${
-                      groupMode === 'type'
-                        ? 'bg-primary/20 text-primary'
-                        : 'text-muted hover:text-foreground'
-                    }`}
-                    aria-pressed={groupMode === 'type'}
-                  >
-                    Group by Type
-                  </button>
-                </div>
-                {!isDMUser ? (
-                  <button
-                    type="button"
-                    onClick={() => setOnlyCatalogued((prev) => !prev)}
-                    className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                      onlyCatalogued
-                        ? 'border-primary/40 bg-primary/15 text-primary'
-                        : 'border-border text-muted hover:text-foreground'
-                    }`}
-                    aria-pressed={onlyCatalogued}
-                  >
-                    Only catalogued
-                  </button>
-                ) : null}
-              </div>
-              <CategoryIndexActiveRefineChips
-                chips={activeRefineChips}
-                onRemove={(facetId, optionValue) =>
-                  setRefineState((prev) =>
-                    clearRefineChip(prev, facetId, optionValue),
-                  )
+            <div className="flex flex-wrap items-center gap-2">
+              <WorkspaceModeToggle
+                options={['habitat', 'type'] as const}
+                value={groupMode}
+                onChange={setGroupMode}
+                formatLabel={(mode) =>
+                  mode === 'habitat' ? 'Group by habitat' : 'Group by type'
                 }
               />
+              {!isDMUser ? (
+                <button
+                  type="button"
+                  onClick={() => setOnlyCatalogued((prev) => !prev)}
+                  className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                    onlyCatalogued
+                      ? 'border-primary/40 bg-primary/15 text-primary'
+                      : 'border-border text-muted hover:text-foreground'
+                  }`}
+                  aria-pressed={onlyCatalogued}
+                >
+                  Only catalogued
+                </button>
+              ) : null}
             </div>
+          ) : null
+        }
+        activeFilters={
+          activeRefineChips.length > 0 ? (
+            <CategoryIndexActiveRefineChips
+              chips={activeRefineChips}
+              onRemove={(facetId, optionValue) =>
+                setRefineState((prev) => clearRefineChip(prev, facetId, optionValue))
+              }
+            />
           ) : null
         }
         contextual={
@@ -546,6 +540,7 @@ export function BestiaryHubView({
             itemLabel={itemLabel}
             campaignHandle={resolvedSlug}
             similarEntries={similarEntries}
+            headerCreateLabel={`Catalog ${itemLabel}`}
             onCreate={handleCreate}
             onCreateFromSearch={handleCreateFromSearch}
             onClearSearch={() => setSearchQuery('')}
