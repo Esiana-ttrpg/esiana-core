@@ -8,6 +8,21 @@ import {
 import type { MetricId } from '../../../../shared/metricRegistry.js';
 import { metricValue } from '../../../../shared/metricValue.js';
 import type { CampaignWorldStatsResponse } from '../../../../shared/statsTypes.js';
+import { buildCampaignRecentEditors } from './buildCampaignRecentEditors.js';
+
+function sumPositiveWordDeltasFromEvents(
+  events: Array<{ metadata: unknown }>,
+): number {
+  let sum = 0;
+  for (const event of events) {
+    if (!event.metadata || typeof event.metadata !== 'object') continue;
+    const raw = (event.metadata as Record<string, unknown>).wordDelta;
+    if (typeof raw === 'number' && Number.isFinite(raw) && raw > 0) {
+      sum += raw;
+    }
+  }
+  return sum;
+}
 
 async function countPeriodEntityCreates(
   campaignId: string,
@@ -48,7 +63,8 @@ export async function buildCampaignWorldStats(
 ): Promise<CampaignWorldStatsResponse> {
   const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
 
-  const [sizeSnapshot, wordAgg, connectionCount, activity] = await Promise.all([
+  const [sizeSnapshot, wordAgg, connectionCount, activity, editedEvents, recentEditors] =
+    await Promise.all([
     buildCampaignSizeSnapshot(campaignId),
     prisma.wikiPageStats.aggregate({
       where: {
@@ -64,6 +80,16 @@ export async function buildCampaignWorldStats(
       },
     }),
     getSpoilerSafeWorldActivitySummary(campaignId, since),
+    prisma.narrativeEvent.findMany({
+      where: {
+        campaignId,
+        type: NarrativeEventType.PAGE_EDITED,
+        source: 'user',
+        createdAt: { gte: since },
+      },
+      select: { metadata: true },
+    }),
+    buildCampaignRecentEditors(campaignId, periodDays),
   ]);
 
   const snapshot: Partial<Record<MetricId, ReturnType<typeof metricValue>>> = {
@@ -86,6 +112,7 @@ export async function buildCampaignWorldStats(
     'period.connectionsCreated': metricValue(activity.linksCreated),
     'period.pagesCreated': metricValue(0), // filled below if we can count PAGE_CREATED
     'period.wordsGrowthEstimate': metricValue(0),
+    'period.wordsAdded': metricValue(sumPositiveWordDeltasFromEvents(editedEvents)),
     'period.charactersCreated': metricValue(charactersCreated),
     'period.locationsCreated': metricValue(locationsCreated),
   };
@@ -108,6 +135,7 @@ export async function buildCampaignWorldStats(
     },
     select: { wordCount: true },
   });
+  // Legacy estimate — superseded by period.wordsAdded when save deltas exist
   period['period.wordsGrowthEstimate'] = metricValue(
     editedPageStats.reduce((sum, row) => sum + row.wordCount, 0),
   );
@@ -118,6 +146,7 @@ export async function buildCampaignWorldStats(
     periodDays,
     snapshot,
     period,
+    recentEditors,
   };
 }
 

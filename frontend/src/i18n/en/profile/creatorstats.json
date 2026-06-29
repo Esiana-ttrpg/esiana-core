@@ -2,6 +2,7 @@
   "profile.creatorstats.tabOverview": "Overview",
   "profile.creatorstats.tabCampaigns": "Campaigns",
   "profile.creatorstats.tabWriting": "Writing",
+  "profile.creatorstats.tabActivity": "Activity",
   "profile.creatorstats.sectionNavAria": "Profile sections",
   "profile.creatorstats.sectionNavMobile": "Profile section",
   "profile.creatorstats.writingIntro": "Private reflection on your lore across every table — not shared or ranked.",
@@ -21,5 +22,19 @@
   "profile.creatorstats.locationsCreated": "Locations",
   "profile.creatorstats.organizationsCreated": "Organizations",
   "profile.creatorstats.connectionsCreated": "Connections",
-  "profile.creatorstats.campaignsContributedCount": "Tables contributed to"
+  "profile.creatorstats.campaignsContributedCount": "Tables contributed to",
+  "profile.creatorstats.wordsAdded": "Words added (30 days)",
+  "profile.creatorstats.wordsAddedDescription": "New words you've added across all tables — including private work.",
+  "profile.creatorstats.writingStreak": "Writing streak",
+  "profile.creatorstats.writingStreakDescription": "Consecutive days with lore activity.",
+  "profile.creatorstats.writingStreakDays": "{{count}} days",
+  "profile.creatorstats.writingCadence": "Weekly rhythm",
+  "profile.creatorstats.writingCadenceDescription": "Average active days per week over the last month.",
+  "profile.creatorstats.writingCadenceDays": "{{count}} days per week",
+  "profile.creatorstats.substantialRevisions": "Deep rewrites (30 days)",
+  "profile.creatorstats.substantialRevisionsDescription": "Pages where you reshaped a large share of the text.",
+  "profile.creatorstats.favoriteWritingHour": "Favorite writing time",
+  "profile.creatorstats.favoriteWritingHourDescription": "When you tend to write most, based on recent sessions.",
+  "profile.creatorstats.favoriteWritingHourValue": "Around {{hour}}",
+  "profile.creatorstats.habitsSection": "Habits"
 }

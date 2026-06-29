@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, BookOpen, LayoutGrid, PenLine, User } from 'lucide-react';
+import { ArrowLeft, BookOpen, History, LayoutGrid, PenLine, User } from 'lucide-react';
 import { campaignDashboardPath, resolveCampaignLinkHandle } from '@/lib/campaignPaths';
 import { fetchPublicUserProfile } from '@/lib/user';
 import { fetchOwnerCreatorAttribution, fetchPublicCreatorAttribution } from '@/lib/statsApi';
@@ -16,16 +16,17 @@ import {
   ProfileCreatorStatsOverview,
   ProfileWritingTab,
 } from '@/components/profile/ProfileCreatorStats';
+import { ProfileActivityTab } from '@/components/profile/ProfileActivityTab';
 import { ResponsiveSectionNav } from '@/components/settings/ResponsiveSectionNav';
 import { PageContainer, PagePanel } from '@/components/layout/PageContainer';
 import { PageShell, SHOWCASE_MAX_WIDTH_CLASS } from '@/components/layout/PageShell';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useAuth } from '@/contexts/AuthContext';
 
-type ProfileTab = 'overview' | 'campaigns' | 'writing';
+type ProfileTab = 'overview' | 'campaigns' | 'writing' | 'activity';
 
 function parseProfileTab(value: string | null): ProfileTab {
-  if (value === 'campaigns' || value === 'writing') return value;
+  if (value === 'campaigns' || value === 'writing' || value === 'activity') return value;
   return 'overview';
 }
 
@@ -86,6 +87,7 @@ export function PublicUserProfilePage() {
     const items = [
       { id: 'overview', label: t('profile.creatorstats.tabOverview'), icon: User },
       { id: 'campaigns', label: t('profile.creatorstats.tabCampaigns'), icon: LayoutGrid },
+      { id: 'activity', label: t('profile.creatorstats.tabActivity'), icon: History },
     ];
     if (isSelf) {
       items.push({ id: 'writing', label: t('profile.creatorstats.tabWriting'), icon: PenLine });
@@ -230,6 +232,12 @@ export function PublicUserProfilePage() {
         {activeTab === 'writing' && isSelf ? (
           <PagePanel className="p-6">
             <ProfileWritingTab attribution={attribution} />
+          </PagePanel>
+        ) : null}
+
+        {activeTab === 'activity' ? (
+          <PagePanel className="p-6">
+            <ProfileActivityTab userId={id} isSelf={isSelf} />
           </PagePanel>
         ) : null}
       </PageShell>

@@ -10,6 +10,13 @@ import type { MetricId } from '../../../shared/metricRegistry.js';
 import type { MetricValue } from '../../../shared/metricValue.js';
 import { buildUserCreatorAttribution } from '../lib/stats/buildUserCreatorAttribution.js';
 import { getCachedCampaignWorldStats } from '../lib/stats/campaignWorldStatsCache.js';
+import { buildUserActivityFeed } from '../lib/stats/buildUserActivityFeed.js';
+
+function parseActivityLimit(raw: unknown): number {
+  const n = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : NaN;
+  if (!Number.isFinite(n)) return 20;
+  return Math.max(1, Math.min(50, Math.floor(n)));
+}
 
 function stripMetricsForContext(
   metrics: Partial<Record<MetricId, MetricValue>>,
@@ -46,7 +53,9 @@ export async function getOwnerCreatorAttribution(
   res: Response,
 ): Promise<void> {
   const userId = req.user!.id;
-  const payload = await buildUserCreatorAttribution(userId, userId);
+  const payload = await buildUserCreatorAttribution(userId, userId, {
+    includeOwnerHabits: true,
+  });
   res.json({
     computedAt: payload.computedAt,
     refreshCadence: payload.refreshCadence,
@@ -82,5 +91,48 @@ export async function getCampaignWorldStats(
     periodDays: payload.periodDays,
     snapshot,
     period,
+    recentEditors: payload.recentEditors ?? [],
   });
+}
+
+export async function getPublicUserActivity(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const userId = String(req.params.id ?? '').trim();
+  if (!userId) {
+    res.status(400).json({ error: 'User id is required' });
+    return;
+  }
+
+  const viewerId = (req as AuthenticatedRequest).user?.id ?? null;
+  const limit = parseActivityLimit(req.query.limit);
+  const before =
+    typeof req.query.before === 'string' ? req.query.before : null;
+
+  const payload = await buildUserActivityFeed({
+    profileUserId: userId,
+    viewerUserId: viewerId,
+    limit,
+    before,
+  });
+  res.json(payload);
+}
+
+export async function getOwnerUserActivity(
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const userId = req.user!.id;
+  const limit = parseActivityLimit(req.query.limit);
+  const before =
+    typeof req.query.before === 'string' ? req.query.before : null;
+
+  const payload = await buildUserActivityFeed({
+    profileUserId: userId,
+    viewerUserId: userId,
+    limit,
+    before,
+  });
+  res.json(payload);
 }

@@ -1,0 +1,10 @@
+{
+  "profile.activity.tabActivity": "Activity",
+  "profile.activity.intro": "Recent lore work across tables you can see — not a scoreboard.",
+  "profile.activity.empty": "No recent activity to show yet.",
+  "profile.activity.loadMore": "Load earlier activity",
+  "profile.activity.inCampaign": "in {{campaign}}",
+  "profile.activity.in": "in",
+  "profile.activity.today": "Today",
+  "profile.activity.yesterday": "Yesterday"
+}

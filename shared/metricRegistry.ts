@@ -68,7 +68,13 @@ export type MetricId =
   | 'period.wordsGrowthEstimate'
   | 'period.connectionsCreated'
   | 'period.charactersCreated'
-  | 'period.locationsCreated';
+  | 'period.locationsCreated'
+  | 'period.wordsAdded'
+  | 'attribution.wordsAdded'
+  | 'attribution.writingStreak'
+  | 'attribution.writingCadence'
+  | 'attribution.substantialRevisions'
+  | 'attribution.favoriteWritingHour';
 
 export type MetricContext =
   | 'publicProfile'
@@ -452,6 +458,118 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     i18nDescriptionKey: 'campaign.worldstats.periodLocationsCreatedDescription',
     displayPolicy: 'adaptive',
     relevanceThreshold: DEFAULT_ADAPTIVE_THRESHOLD,
+  },
+  'period.wordsAdded': {
+    id: 'period.wordsAdded',
+    kind: 'period',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: false,
+      campaignMember: true,
+      publicApi: false,
+    },
+    aggregation:
+      'SUM(max(metadata.wordDelta, 0)) from NarrativeEvent PAGE_EDITED in window',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'cached_5m',
+    i18nLabelKey: 'campaign.worldstats.periodWordsAdded',
+    i18nDescriptionKey: 'campaign.worldstats.periodWordsAddedDescription',
+    availableFrom: '1.3.0',
+    displayPolicy: 'always',
+  },
+  'attribution.wordsAdded': {
+    id: 'attribution.wordsAdded',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation: 'SUM(UserWritingDailyRollup.wordsAdded) in window',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.wordsAdded',
+    i18nDescriptionKey: 'profile.creatorstats.wordsAddedDescription',
+    availableFrom: '1.3.0',
+    displayPolicy: 'always',
+  },
+  'attribution.writingStreak': {
+    id: 'attribution.writingStreak',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation:
+      'Consecutive UTC days with editsCount > 0 or wordsAdded > 0 in UserWritingDailyRollup',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.writingStreak',
+    i18nDescriptionKey: 'profile.creatorstats.writingStreakDescription',
+    availableFrom: '1.3.0',
+    displayPolicy: 'always',
+  },
+  'attribution.writingCadence': {
+    id: 'attribution.writingCadence',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation: 'Active writing days per week over 30d from UserWritingDailyRollup',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.writingCadence',
+    i18nDescriptionKey: 'profile.creatorstats.writingCadenceDescription',
+    availableFrom: '1.3.0',
+    displayPolicy: 'always',
+  },
+  'attribution.substantialRevisions': {
+    id: 'attribution.substantialRevisions',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation:
+      'SUM(UserWritingDailyRollup.substantialRevisions) in 30d; threshold 40% word change per save',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.substantialRevisions',
+    i18nDescriptionKey: 'profile.creatorstats.substantialRevisionsDescription',
+    availableFrom: '1.3.0',
+    displayPolicy: 'always',
+  },
+  'attribution.favoriteWritingHour': {
+    id: 'attribution.favoriteWritingHour',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation:
+      'peakHourUtc weighted by sessionMinutes from UserWritingDailyRollup over 30d',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.favoriteWritingHour',
+    i18nDescriptionKey: 'profile.creatorstats.favoriteWritingHourDescription',
+    availableFrom: '1.3.0',
+    displayPolicy: 'always',
   },
 };
 

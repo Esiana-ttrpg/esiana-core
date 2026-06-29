@@ -52,7 +52,13 @@ function restoreDir(backup, to) {
 }
 
 const reset = process.argv.includes('--reset') || process.env.SQLITE_DB_RESET === '1';
-const dbUrl = process.env.DATABASE_URL ?? 'file:./dev.db';
+const envDbUrl = process.env.DATABASE_URL ?? 'file:./dev.db';
+const dbUrl = envDbUrl.startsWith('file:') ? envDbUrl : 'file:./dev.db';
+if (dbUrl !== envDbUrl) {
+  console.warn(
+    `SQLite deploy: ignoring non-file DATABASE_URL (${envDbUrl}); using ${dbUrl}`,
+  );
+}
 const dbFile = dbUrl.replace(/^file:\.\//, '');
 const dbPath = path.join(prismaRoot, dbFile);
 
@@ -77,7 +83,14 @@ try {
     env: { ...process.env, DATABASE_URL: dbUrl },
   });
 
+  execSync('npx prisma generate', {
+    cwd: backendRoot,
+    stdio: 'inherit',
+    env: { ...process.env, DATABASE_URL: dbUrl },
+  });
+
   console.log(`SQLite migrations applied to ${dbUrl}`);
+  console.log('Prisma Client generated for SQLite.');
 } finally {
   fs.writeFileSync(schemaPath, schema);
   restoreDir(migrationsBackup, migrationsRoot);

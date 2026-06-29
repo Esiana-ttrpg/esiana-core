@@ -1,5 +1,8 @@
+import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CreatorAttributionResponse } from '@shared/statsTypes';
+import type { MetricId } from '@shared/metricRegistry';
+import type { MetricValue } from '@shared/metricValue';
 import { readMetricAmount } from '@shared/metricValue';
 import { formatCompactCount } from '@/lib/metricDisplayPolicy';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
@@ -76,6 +79,49 @@ interface ProfileWritingTabProps {
   attribution: CreatorAttributionResponse | null;
 }
 
+function formatFavoriteHour(hourUtc: number, locale: string): string {
+  const date = new Date(Date.UTC(2020, 0, 1, hourUtc, 0));
+  return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric' }).format(date);
+}
+
+function renderMetricValue(
+  metricId: MetricId,
+  value: MetricValue | undefined,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  locale: string,
+): ReactNode {
+  const key = metricId.replace('attribution.', '');
+  const amount = readMetricAmount(value);
+  if (amount == null && value?.status === 'unavailable') {
+    return (
+      <>
+        <dt className="text-xs text-muted">{t(`profile.creatorstats.${key}`)}</dt>
+        <dd className="text-sm text-muted">{t('profile.creatorstats.notYetTracked')}</dd>
+      </>
+    );
+  }
+
+  let display: string;
+  if (metricId === 'attribution.writingStreak') {
+    display = t('profile.creatorstats.writingStreakDays', { count: amount ?? 0 });
+  } else if (metricId === 'attribution.writingCadence') {
+    display = t('profile.creatorstats.writingCadenceDays', { count: amount ?? 0 });
+  } else if (metricId === 'attribution.favoriteWritingHour' && amount != null) {
+    display = t('profile.creatorstats.favoriteWritingHourValue', {
+      hour: formatFavoriteHour(amount, locale),
+    });
+  } else {
+    display = formatCompactCount(amount ?? 0, locale);
+  }
+
+  return (
+    <>
+      <dt className="text-xs text-muted">{t(`profile.creatorstats.${key}`)}</dt>
+      <dd className="text-lg font-semibold text-foreground">{display}</dd>
+    </>
+  );
+}
+
 export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
   const { t, i18n } = useTranslation();
 
@@ -83,7 +129,7 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
     return <p className="text-sm text-muted">{t('profile.creatorstats.emptyEarly')}</p>;
   }
 
-  const rows = [
+  const lifetimeRows = [
     'attribution.totalWordsCreated',
     'attribution.pagesCreated',
     'attribution.totalEdits',
@@ -94,33 +140,34 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
     'attribution.campaignsContributedCount',
   ] as const;
 
+  const habitRows = [
+    'attribution.wordsAdded',
+    'attribution.writingStreak',
+    'attribution.writingCadence',
+    'attribution.substantialRevisions',
+    'attribution.favoriteWritingHour',
+  ] as const;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <p className="text-sm text-muted">{t('profile.creatorstats.writingIntro')}</p>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {rows.map((metricId) => {
-          const value = attribution.metrics[metricId];
-          const amount = readMetricAmount(value);
-          if (amount == null && value?.status === 'unavailable') {
-            return (
-              <div key={metricId} className="rounded border border-border p-3">
-                <dt className="text-xs text-muted">{t(`profile.creatorstats.${metricId.replace('attribution.', '')}`)}</dt>
-                <dd className="text-sm text-muted">{t('profile.creatorstats.notYetTracked')}</dd>
-              </div>
-            );
-          }
-          return (
-            <div key={metricId} className="rounded border border-border p-3">
-              <dt className="text-xs text-muted">
-                {t(`profile.creatorstats.${metricId.replace('attribution.', '')}`)}
-              </dt>
-              <dd className="text-lg font-semibold text-foreground">
-                {formatCompactCount(amount ?? 0, i18n.language)}
-              </dd>
-            </div>
-          );
-        })}
+        {lifetimeRows.map((metricId) => (
+          <div key={metricId} className="rounded border border-border p-3">
+            {renderMetricValue(metricId, attribution.metrics[metricId], t, i18n.language)}
+          </div>
+        ))}
       </dl>
+      <section className="space-y-3">
+        <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.habitsSection')}</h3>
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {habitRows.map((metricId) => (
+            <div key={metricId} className="rounded border border-border p-3">
+              {renderMetricValue(metricId, attribution.metrics[metricId], t, i18n.language)}
+            </div>
+          ))}
+        </dl>
+      </section>
     </div>
   );
 }

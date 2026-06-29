@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { logCampaignActivity } from '../lib/campaignActivity.js';
+import { incrementDailyRollup } from '../lib/stats/userWritingDailyRollup.js';
 import { isSceneMetadataPresent } from '../lib/sceneMetadata.js';
 import { parseThreadMetadata } from '../lib/threadMetadata.js';
 function isQuestLikeMetadata(metadata: unknown): boolean {
@@ -75,6 +76,18 @@ export async function postWritingSession(
       linksAdded,
     }),
     deltaBytes: wordDelta > 0 ? wordDelta : null,
+  });
+
+  const sessionAt = new Date();
+  await incrementDailyRollup(prisma, {
+    userId,
+    at: sessionAt,
+    wordsAdded: Math.max(0, wordDelta),
+    wordsRemoved: Math.abs(Math.min(0, wordDelta)),
+    linksCreated: linksAdded,
+    sessionCount: 1,
+    sessionMinutes: Math.max(1, Math.round(durationMs / 60_000)),
+    sessionHourUtc: sessionAt.getUTCHours(),
   });
 
   res.status(204).end();

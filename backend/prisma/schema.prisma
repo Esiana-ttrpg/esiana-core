@@ -57,6 +57,7 @@ model User {
   joinRequests       CampaignJoinRequest[]
   sessionTimelinePoints CampaignSessionTimeline[]
   campaignActivities    CampaignActivity[]
+  writingDailyRollups   UserWritingDailyRollup[]
   apiLogs               ApiLog[]
   apiRequestLogs        ApiRequestLog[]
   sessionAttendance     SessionAttendance[]
@@ -1076,6 +1077,31 @@ model CampaignActivity {
   @@index([campaignId])
   @@index([campaignId, createdAt])
   @@index([campaignId, entityType, entityId])
+  @@index([userId, createdAt])
+}
+
+model UserWritingDailyRollup {
+  id                   String   @id @default(cuid())
+  userId               String
+  /// UTC calendar date bucket (midnight UTC).
+  date                 DateTime
+  wordsAdded           Int      @default(0)
+  wordsRemoved         Int      @default(0)
+  editsCount           Int      @default(0)
+  linksCreated         Int      @default(0)
+  sessionCount         Int      @default(0)
+  sessionMinutes       Int      @default(0)
+  /// Hour of day (0–23 UTC) with the most session minutes this day.
+  peakHourUtc          Int?
+  substantialRevisions Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 model FantasyCalendar {
@@ -1722,6 +1748,7 @@ model NarrativeEvent {
   @@index([campaignId, createdAt])
   @@index([campaignId, type, createdAt])
   @@index([campaignId, source, createdAt])
+  @@index([actorUserId, createdAt])
 }
 
 model UnresolvedWikilink {
