@@ -39,6 +39,7 @@ import type { ImportModuleTarget } from '@shared/importSkeletonKeys';
 import { KANKA_SKIP_REASON_LABELS } from '@shared/importSkipPolicy';
 import type { KankaFolderDiscovery } from '@shared/importZipStructure';
 import JSZip from 'jszip';
+import { getCampaignNameHandleError } from '@shared/campaignHandle';
 import { fetchUserCampaignDefaults } from '@/lib/userCampaignDefaults';
 import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
 
@@ -299,6 +300,9 @@ export function NewCampaignWizard({
   }, [open]);
 
   const titleMissing = !payload.identity.title.trim();
+  const titleHandleError = payload.identity.title.trim()
+    ? getCampaignNameHandleError(payload.identity.title)
+    : null;
   const customGameSystemMissing =
     payload.identity.gameSystem === 'other' &&
     !payload.identity.customGameSystemName?.trim();
@@ -307,11 +311,13 @@ export function NewCampaignWizard({
     payload.imports.folderMappings.some((mapping) => !mapping.targetModule);
   const wizardErrors = {
     titleMissing,
+    titleHandleError,
     customGameSystemMissing,
     hasUnmappedFolders,
   };
   const isValid =
     !wizardErrors.titleMissing &&
+    !wizardErrors.titleHandleError &&
     !wizardErrors.customGameSystemMissing &&
     !wizardErrors.hasUnmappedFolders;
 
@@ -537,6 +543,10 @@ export function NewCampaignWizard({
       setError('A campaign title is required before creating your campaign.');
       return;
     }
+    if (titleHandleError) {
+      setError(titleHandleError);
+      return;
+    }
     if (hasUnmappedFolders) {
       setError('Please map all imported folders before creating your campaign.');
       return;
@@ -728,6 +738,9 @@ export function NewCampaignWizard({
                       <span className="text-xs text-red-300">
                         A campaign title is required to continue.
                       </span>
+                    )}
+                    {titleTouched && !titleMissing && titleHandleError && (
+                      <span className="text-xs text-red-300">{titleHandleError}</span>
                     )}
                   </label>
 

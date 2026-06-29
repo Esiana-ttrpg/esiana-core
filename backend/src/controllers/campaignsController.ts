@@ -28,7 +28,12 @@ import {
   FantasyCalendarImportError,
   parseFantasyCalendarExport,
 } from '../lib/fantasyCalendarImport.js';
-import { generateHandle, isValidHandle, makeUniqueHandle } from '../lib/handleUtils.js';
+import {
+  generateHandle,
+  getCampaignNameHandleError,
+  isValidHandle,
+  makeUniqueHandle,
+} from '../lib/handleUtils.js';
 import { getDefaultSidebarConfig, isSidebarConfigBlank, normalizeSidebarConfig } from '../lib/sidebarConfig.js';
 import { enrichSidebarConfigWithIconUrls } from '../lib/sidebarIconEnrich.js';
 import { getDefaultDashboardConfig } from '../lib/dashboardConfig.js';
@@ -588,6 +593,12 @@ export async function createCampaign(
 
   if (!name?.trim()) {
     res.status(400).json({ error: 'Campaign name is required' });
+    return;
+  }
+
+  const handleError = getCampaignNameHandleError(name.trim());
+  if (handleError) {
+    res.status(400).json({ error: handleError });
     return;
   }
 
