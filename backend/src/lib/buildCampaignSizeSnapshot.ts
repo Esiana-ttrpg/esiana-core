@@ -60,6 +60,12 @@ export async function buildCampaignSizeSnapshot(campaignId: string): Promise<Cam
     }
     if (row.templateType === 'ORGANIZATION') {
       organizationCount += 1;
+    } else if (
+      typeof row.metadata === 'object' &&
+      row.metadata !== null &&
+      (row.metadata as Record<string, unknown>).entityCategory === 'organizations'
+    ) {
+      organizationCount += 1;
     }
     if (row.templateType === 'SESSION_NOTE') {
       sessionCount += 1;

@@ -57,7 +57,7 @@ export async function getPublicUserProfile(
       hostedCampaigns: dmMemberships.map((row) => ({
         id: row.campaign.id,
         name: row.campaign.name,
-        slug: row.campaign.handle,
+        handle: row.campaign.handle,
         createdAt: row.campaign.createdAt.toISOString(),
         isLookingForGroup: row.campaign.isLookingForGroup,
       })),

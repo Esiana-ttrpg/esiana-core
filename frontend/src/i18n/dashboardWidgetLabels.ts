@@ -16,6 +16,7 @@ const WIDGET_LABEL_KEYS: Record<DashboardWidgetId, string> = {
   pinnedItems: 'campaign.dashboard.widgetPinnedItems',
   fantasyCalendar: 'campaign.dashboard.widgetFantasyCalendar',
   worldPressureForecast: 'campaign.dashboard.widgetWorldPressureForecast',
+  worldSnapshot: 'campaign.dashboard.widgetWorldSnapshot',
   sessionClock: 'campaign.dashboard.widgetSessionSchedule',
   worldClock: 'campaign.dashboard.widgetWorldChronometer',
   announcements: 'campaign.dashboard.widgetCampaignBulletin',
