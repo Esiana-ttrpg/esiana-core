@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { PublicDirectoryCampaign } from '@/types/recruitment';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { getContinuityLine } from '@/components/recruitment/recruitmentContinuity';
@@ -10,7 +11,7 @@ import {
   buildScheduleLine,
   buildTableSocialState,
 } from '@/lib/campaignPresence';
-import { ExternalToolIcons } from './ExternalToolIcons';
+import { RecruitmentIntegrationIcons } from '@/components/recruitment/RecruitmentIntegrationIcons';
 import { TableSeatRow } from './TableSeatRow';
 
 export type CampaignPresenceVariant = 'featured' | 'directory';
@@ -21,21 +22,22 @@ interface CampaignPresenceCardProps {
   cta?: { label: string; href: string };
 }
 
-const DEFAULT_CTA = {
-  featured: { label: 'Enter Lobby', href: '' },
-  directory: { label: 'View Campaign Hub →', href: '' },
-};
+const DEFAULT_CTA_KEY = {
+  featured: 'campaign.recruitment.enterLobby',
+  directory: 'campaign.recruitment.viewLobby',
+} as const;
 
 export function CampaignPresenceCard({
   campaign,
   variant,
   cta,
 }: CampaignPresenceCardProps) {
+  const { t } = useTranslation();
   const r = campaign.recruitment;
   const lobbyHref = `/recruitment/${campaign.handle}`;
   const resolvedCta = {
-    label: cta?.label ?? DEFAULT_CTA[variant].label,
-    href: cta?.href ?? lobbyHref,
+    label: cta?.label ?? t(DEFAULT_CTA_KEY[variant]),
+    href: cta?.href || lobbyHref,
   };
 
   const cover = campaign.heroImageUrl?.trim();
@@ -128,15 +130,15 @@ export function CampaignPresenceCard({
           </div>
         ) : null}
 
-        {r.externalTools.length > 0 ? (
+        {r.integrationProviders.length > 0 ? (
           <div className={cultureChips.length > 0 ? 'mt-2' : 'mt-3'}>
-            <ExternalToolIcons tools={r.externalTools} />
+            <RecruitmentIntegrationIcons providers={r.integrationProviders} />
           </div>
         ) : null}
 
         <p
           className={`text-sm text-foreground ${
-            cultureChips.length > 0 || r.externalTools.length > 0 ? 'mt-2' : 'mt-3'
+            cultureChips.length > 0 || r.integrationProviders.length > 0 ? 'mt-2' : 'mt-3'
           }`}
         >
           {scheduleLine}

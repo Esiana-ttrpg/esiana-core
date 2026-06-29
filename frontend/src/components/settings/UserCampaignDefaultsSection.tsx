@@ -9,6 +9,7 @@ import {
   TABLE_DEFAULT_LABELS,
 } from '@shared/userCampaignDefaults';
 import { CampaignThemeMultiSelect } from '@/components/campaign/CampaignThemeMultiSelect';
+import { CampaignIntegrationsEditor } from '@/components/campaign/CampaignIntegrationsEditor';
 import { GmStyleTagMultiSelect } from '@/components/settings/GmStyleTagMultiSelect';
 import { ToggleChipGroup } from '@/components/settings/ToggleChipGroup';
 import { SettingsStickyActions } from '@/components/settings/SettingsStickyActions';
@@ -195,6 +196,23 @@ export function UserCampaignDefaultsSection() {
               recruitmentPrefs: {
                 ...(current.recruitmentPrefs ?? {}),
                 genreThemes,
+              },
+            }))
+          }
+        />
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border bg-surface/50 p-4">
+        <FieldLabel>Default chat and tabletop links</FieldLabel>
+        <FieldHint>Applied to new campaigns when you import recruitment preferences.</FieldHint>
+        <CampaignIntegrationsEditor
+          value={prefs.recruitmentPrefs?.campaignIntegrations ?? null}
+          onChange={(campaignIntegrations) =>
+            setPrefs((current) => ({
+              ...current,
+              recruitmentPrefs: {
+                ...(current.recruitmentPrefs ?? {}),
+                campaignIntegrations,
               },
             }))
           }

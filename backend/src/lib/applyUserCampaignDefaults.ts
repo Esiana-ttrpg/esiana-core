@@ -8,6 +8,8 @@ import {
   type UserDefaultsImportSelection,
   type UserTemplateResourceKind,
 } from '../lib/userCampaignDefaults.js';
+import { hasConfiguredIntegrations } from '../../../shared/campaignIntegrations.js';
+import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import { WikiVisibility } from '../types/domain.js';
 
 function markdownWikiBlocks(markdown: string) {
@@ -100,8 +102,8 @@ export async function applyUserCampaignDefaults(
     if (safetyTools) {
       campaignPatch.safetyTools = safetyTools;
     }
-    if (recruitment.externalTools?.length) {
-      campaignPatch.externalTools = recruitment.externalTools;
+    if (hasConfiguredIntegrations(recruitment.campaignIntegrations)) {
+      campaignPatch.campaignIntegrations = toInputJsonValue(recruitment.campaignIntegrations);
     }
     if (recruitment.contentWarnings) {
       campaignPatch.contentWarnings = recruitment.contentWarnings;

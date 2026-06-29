@@ -1,3 +1,5 @@
+import type { IntegrationProviderId } from '@shared/campaignIntegrations';
+
 export interface CampaignRecruitmentSettings {
   isLookingForGroup: boolean;
   isPublic: boolean;
@@ -54,7 +56,7 @@ export interface PublicDirectoryRecruitment {
   followerCount: number;
   genreThemes: string[];
   genreThemeLabels?: string[];
-  externalTools: string[];
+  integrationProviders: IntegrationProviderId[];
   safetyTools: string | null;
   contentWarnings: string | null;
   equipmentNeeded: string | null;
