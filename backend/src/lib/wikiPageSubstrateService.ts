@@ -13,6 +13,8 @@ import {
 } from './narrativeEventService.js';
 import { wikiLinkPeerVisibilityFilter, isElevatedWikiRole } from './wikiLinkService.js';
 import type { WriteProvenance } from './temporalProvenance.js';
+import { buildSaveWordDeltaMetadata } from './stats/revisionMetrics.js';
+import { incrementDailyRollup } from './stats/userWritingDailyRollup.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -44,6 +46,19 @@ export async function syncWikiPageSubstrate(
     select: { targetPageId: true },
   });
   const previousTargetIds = new Set(previousLinks.map((l) => l.targetPageId));
+
+  const existingStats = await tx.wikiPageStats.findUnique({
+    where: { pageId: input.sourcePageId },
+    select: { wordCount: true },
+  });
+  const previousWordCount = existingStats?.wordCount ?? 0;
+  const { wordCount, characterCount } = countWordsInBlocks(input.blocks);
+  const wordDeltaMeta = buildSaveWordDeltaMetadata(
+    previousWordCount,
+    wordCount,
+    !input.isInitialCreate,
+  );
+  const newLinkCount = targetPageIds.filter((id) => !previousTargetIds.has(id)).length;
 
   await tx.wikiLink.deleteMany({
     where: { sourcePageId: input.sourcePageId },
@@ -83,6 +98,7 @@ export async function syncWikiPageSubstrate(
         ...eventBase,
         type: NarrativeEventType.PAGE_CREATED,
         pageId: input.sourcePageId,
+        metadata: wordDeltaMeta,
       });
     }
 
@@ -101,6 +117,7 @@ export async function syncWikiPageSubstrate(
         ...eventBase,
         type: NarrativeEventType.PAGE_EDITED,
         pageId: input.sourcePageId,
+        metadata: wordDeltaMeta,
       });
     }
   }
@@ -184,7 +201,6 @@ export async function syncWikiPageSubstrate(
     });
   }
 
-  const { wordCount, characterCount } = countWordsInBlocks(input.blocks);
   const outboundLinkCount = targetPageIds.length;
   const inboundLinkCount = await tx.wikiLink.count({
     where: { targetPageId: input.sourcePageId },
@@ -237,6 +253,26 @@ export async function syncWikiPageSubstrate(
     ...targetPageIds,
     ...previousLinks.map((l) => l.targetPageId),
   ]);
+
+  const narrativeSource = input.narrativeSource ?? 'user';
+  if (
+    input.actorUserId &&
+    narrativeSource === 'user' &&
+    input.emitEvents !== false
+  ) {
+    const rollupAt = input.eventAt ?? now;
+    const positiveDelta = Math.max(0, wordDeltaMeta.wordDelta);
+    const negativeDelta = Math.abs(Math.min(0, wordDeltaMeta.wordDelta));
+    await incrementDailyRollup(tx, {
+      userId: input.actorUserId,
+      at: rollupAt,
+      wordsAdded: positiveDelta,
+      wordsRemoved: negativeDelta,
+      editsCount: input.isInitialCreate ? 0 : 1,
+      linksCreated: newLinkCount,
+      substantialRevisions: wordDeltaMeta.substantialRevision ? 1 : 0,
+    });
+  }
 
   const { syncEntityRelationsForWikiPage } = await import('./entityRelationSyncService.js');
   await syncEntityRelationsForWikiPage(tx, input.campaignId, input.sourcePageId);

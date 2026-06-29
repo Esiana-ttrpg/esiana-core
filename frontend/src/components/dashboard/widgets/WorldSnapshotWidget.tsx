@@ -11,6 +11,7 @@ import {
   type CampaignActivitySignals,
 } from '@/lib/metricDisplayPolicy';
 import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface WorldSnapshotWidgetProps {
   campaignHandle: string;
@@ -30,6 +31,7 @@ const COMPOSITION_METRICS: MetricId[] = [
 const GROWTH_METRICS: MetricId[] = [
   'period.pagesCreated',
   'period.pagesEdited',
+  'period.wordsAdded',
   'period.locationsCreated',
   'period.connectionsCreated',
 ];
@@ -170,6 +172,37 @@ export function WorldSnapshotWidget({
               </p>
             )}
           </section>
+
+          {stats.recentEditors && stats.recentEditors.length > 0 ? (
+            <section className="space-y-2">
+              <h4 className="text-xs font-medium uppercase tracking-wide text-muted">
+                {t('campaign.worldstats.sectionContributors')}
+              </h4>
+              <ul className="space-y-2">
+                {stats.recentEditors.map((editor) => (
+                  <li
+                    key={editor.userId}
+                    className="flex items-center gap-2 rounded border border-border/60 px-2 py-1.5"
+                  >
+                    <UserAvatar
+                      name={editor.displayName}
+                      avatarUrl={editor.avatarUrl}
+                      userId={editor.userId}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {editor.displayName}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {t('campaign.worldstats.editorEdits', { count: editor.editsInPeriod })}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           {expanded && visibleBreakdownMetrics.length > 0 ? (
             <section className="space-y-2 border-t border-border/50 pt-3">

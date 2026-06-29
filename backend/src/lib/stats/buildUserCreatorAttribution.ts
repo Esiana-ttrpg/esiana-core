@@ -8,6 +8,8 @@ import type {
   WorldbuildingMixEntry,
 } from '../../../../shared/statsTypes.js';
 import { resolveLinkableCampaigns } from './resolveLinkableCampaigns.js';
+import { buildRollupHabits } from './buildRollupHabits.js';
+import { metricUnavailable } from '../../../../shared/metricValue.js';
 
 function countByCodexType(
   pages: Array<{ templateType: string; metadata: unknown }>,
@@ -42,6 +44,7 @@ function buildWorldbuildingMix(
 export async function buildUserCreatorAttribution(
   userId: string,
   viewerUserId?: string | null,
+  options?: { includeOwnerHabits?: boolean },
 ): Promise<CreatorAttributionResponse> {
   const memberships = await prisma.campaignMember.findMany({
     where: {
@@ -54,10 +57,7 @@ export async function buildUserCreatorAttribution(
 
   if (campaignIds.length === 0) {
     const linkableCampaigns = await resolveLinkableCampaigns(userId, viewerUserId);
-    return {
-      computedAt: new Date().toISOString(),
-      refreshCadence: 'realtime',
-      metrics: {
+    const metrics: Partial<Record<MetricId, ReturnType<typeof metricValue>>> = {
         'attribution.totalWordsCreated': metricValue(0),
         'attribution.pagesCreated': metricValue(0),
         'attribution.totalEdits': metricValue(0),
@@ -66,7 +66,23 @@ export async function buildUserCreatorAttribution(
         'attribution.organizationsCreated': metricValue(0),
         'attribution.connectionsCreated': metricValue(0),
         'attribution.campaignsContributedCount': metricValue(0),
-      },
+      };
+
+    const includeHabits =
+      options?.includeOwnerHabits === true ||
+      (viewerUserId != null && viewerUserId === userId);
+    if (includeHabits) {
+      metrics['attribution.wordsAdded'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.writingStreak'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.writingCadence'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.substantialRevisions'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.favoriteWritingHour'] = metricUnavailable('not_yet_tracked');
+    }
+
+    return {
+      computedAt: new Date().toISOString(),
+      refreshCadence: 'realtime',
+      metrics,
       worldbuildingMix: [],
       linkableCampaigns,
     };
@@ -143,6 +159,32 @@ export async function buildUserCreatorAttribution(
   };
 
   const linkableCampaigns = await resolveLinkableCampaigns(userId, viewerUserId);
+
+  const includeHabits =
+    options?.includeOwnerHabits === true ||
+    (viewerUserId != null && viewerUserId === userId);
+
+  if (includeHabits) {
+    const habits = await buildRollupHabits(userId);
+    if (habits.hasRollupData) {
+      metrics['attribution.wordsAdded'] = metricValue(habits.wordsAdded30d);
+      metrics['attribution.writingStreak'] = metricValue(habits.writingStreak);
+      metrics['attribution.writingCadence'] = metricValue(habits.writingCadence);
+      metrics['attribution.substantialRevisions'] = metricValue(
+        habits.substantialRevisions30d,
+      );
+      metrics['attribution.favoriteWritingHour'] =
+        habits.favoriteWritingHour != null
+          ? metricValue(habits.favoriteWritingHour)
+          : metricUnavailable('insufficient_data');
+    } else {
+      metrics['attribution.wordsAdded'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.writingStreak'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.writingCadence'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.substantialRevisions'] = metricUnavailable('not_yet_tracked');
+      metrics['attribution.favoriteWritingHour'] = metricUnavailable('not_yet_tracked');
+    }
+  }
 
   return {
     computedAt: new Date().toISOString(),

@@ -22,5 +22,9 @@
   "campaign.worldstats.periodWordsGrowth": "Words touched",
   "campaign.worldstats.periodConnectionsCreated": "New connections",
   "campaign.worldstats.periodCharactersCreated": "Characters added",
-  "campaign.worldstats.periodLocationsCreated": "Locations added"
+  "campaign.worldstats.periodLocationsCreated": "Locations added",
+  "campaign.worldstats.periodWordsAdded": "Words added",
+  "campaign.worldstats.periodWordsAddedDescription": "New words added to lore pages in this period.",
+  "campaign.worldstats.sectionContributors": "Contributors",
+  "campaign.worldstats.editorEdits": "Shaped {{count}} updates"
 }

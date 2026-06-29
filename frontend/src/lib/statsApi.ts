@@ -1,4 +1,8 @@
-import type { CreatorAttributionResponse, CampaignWorldStatsResponse } from '@shared/statsTypes';
+import type {
+  CreatorAttributionResponse,
+  CampaignWorldStatsResponse,
+  UserActivityResponse,
+} from '@shared/statsTypes';
 import { apiFetch } from './api';
 
 export async function fetchPublicCreatorAttribution(
@@ -18,4 +22,27 @@ export async function fetchCampaignWorldStats(
   return apiFetch<CampaignWorldStatsResponse>(
     `/campaigns/${encodeURIComponent(campaignHandle)}/world-stats?days=${days}`,
   );
+}
+
+export async function fetchPublicUserActivity(
+  userId: string,
+  options?: { limit?: number; before?: string },
+): Promise<UserActivityResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.before) params.set('before', options.before);
+  const qs = params.toString();
+  return apiFetch<UserActivityResponse>(
+    `/users/${userId}/activity${qs ? `?${qs}` : ''}`,
+  );
+}
+
+export async function fetchOwnerUserActivity(
+  options?: { limit?: number; before?: string },
+): Promise<UserActivityResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.before) params.set('before', options.before);
+  const qs = params.toString();
+  return apiFetch<UserActivityResponse>(`/user/activity${qs ? `?${qs}` : ''}`);
 }
