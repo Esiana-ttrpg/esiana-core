@@ -36,8 +36,8 @@ const GROWTH_METRICS: MetricId[] = [
 
 function growthDescriptor(pagesEdited: number, t: (key: string) => string): string | null {
   if (pagesEdited <= 0) return null;
-  if (pagesEdited <= 10) return t('campaign.worldStats.growthSteady');
-  return t('campaign.worldStats.growthActive');
+  if (pagesEdited <= 10) return t('campaign.worldstats.growthSteady');
+  return t('campaign.worldstats.growthActive');
 }
 
 function buildGrowthSummaryParts(
@@ -116,19 +116,19 @@ export function WorldSnapshotWidget({
 
   return (
     <DashboardWidgetShell
-      title={t('campaign.worldStats.widgetTitle')}
+      title={t('campaign.worldstats.widgetTitle')}
       icon={<Globe2 className="size-4 text-emerald-300/90" />}
       customizeMode={customizeMode}
       onHide={onHide}
       loading={loading}
     >
       {!stats ? (
-        <p className="text-sm text-muted">{t('campaign.worldStats.growthQuiet')}</p>
+        <p className="text-sm text-muted">{t('campaign.worldstats.growthQuiet')}</p>
       ) : (
         <div className="space-y-4 text-sm">
           <section className="space-y-2">
             <h4 className="text-xs font-medium uppercase tracking-wide text-muted">
-              {t('campaign.worldStats.sectionComposition')}
+              {t('campaign.worldstats.sectionComposition')}
             </h4>
             <dl className="grid grid-cols-2 gap-2">
               {COMPOSITION_METRICS.map((metricId) => {
@@ -144,7 +144,7 @@ export function WorldSnapshotWidget({
                     <dt className="text-xs text-muted">{t(METRIC_REGISTRY[metricId].i18nLabelKey)}</dt>
                     <dd className="font-medium text-foreground">
                       {mode === 'empty_state_encouraging'
-                        ? t('campaign.worldStats.notYetTracked')
+                        ? t('campaign.worldstats.notYetTracked')
                         : formatCompactCount(amount, i18n.language)}
                     </dd>
                   </div>
@@ -155,7 +155,7 @@ export function WorldSnapshotWidget({
 
           <section className="space-y-1">
             <h4 className="text-xs font-medium uppercase tracking-wide text-muted">
-              {t('campaign.worldStats.sectionGrowth')}
+              {t('campaign.worldstats.sectionGrowth')}
             </h4>
             {hasGrowthActivity ? (
               <>
@@ -166,7 +166,7 @@ export function WorldSnapshotWidget({
               </>
             ) : (
               <p className="text-muted">
-                {t('campaign.worldStats.noGrowthInPeriod', { days: periodDays })}
+                {t('campaign.worldstats.noGrowthInPeriod', { days: periodDays })}
               </p>
             )}
           </section>
@@ -198,8 +198,8 @@ export function WorldSnapshotWidget({
               className="text-xs text-primary hover:underline"
             >
               {expanded
-                ? t('campaign.worldStats.collapseDetails')
-                : t('campaign.worldStats.expandDetails')}
+                ? t('campaign.worldstats.collapseDetails')
+                : t('campaign.worldstats.expandDetails')}
             </button>
           ) : null}
         </div>
