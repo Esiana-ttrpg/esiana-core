@@ -10,6 +10,8 @@ describe('campaignHandle', () => {
   it('normalizes display names into handle seeds', () => {
     assert.equal(normalizeCampaignHandleSeed('My Campaign'), 'my-campaign');
     assert.equal(normalizeCampaignHandleSeed('  Shards!!! '), 'shards');
+    assert.equal(normalizeCampaignHandleSeed('--- hello'), 'hello');
+    assert.equal(normalizeCampaignHandleSeed('a'.repeat(10_000) + '-' + 'b'.repeat(10_000)), 'a'.repeat(10_000) + '-' + 'b'.repeat(10_000));
   });
 
   it('rejects names that cannot produce a 3+ character handle', () => {
