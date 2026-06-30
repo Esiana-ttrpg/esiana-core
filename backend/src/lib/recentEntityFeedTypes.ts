@@ -35,6 +35,8 @@ export interface RecentEntityFeedItem {
 export interface RecentEntityFeedOptions {
   entityTypes?: RecentEntityType[];
   limit?: number;
+  /** When true, reserved system/utility wiki pages are omitted (lore feeds). */
+  excludeSystemWikiPages?: boolean;
 }
 
 export interface RecentEntityFeedResult {

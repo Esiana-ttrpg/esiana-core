@@ -6,6 +6,7 @@ import { updateDashboardLayout } from '@/lib/dashboard';
 import {
   DASHBOARD_MAX_ENABLED_WIDGETS,
   DASHBOARD_WIDGET_LABELS,
+  RETIRED_DASHBOARD_WIDGET_BANK_IDS,
   type DashboardConfig,
   type DashboardThreadBundle,
   type DashboardQuestPage,
@@ -14,12 +15,16 @@ import {
 } from '@/lib/dashboardConfig';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
 import type { DashboardSummary } from '@/lib/dashboardSummary';
+import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
+import type {
+  DashboardWorldEventsFeedResult,
+  FactionConflictFeedResult,
+  RecentEntitiesFeedResult,
+} from '@/lib/dashboardWidgetFeeds';
 import { CalendarWidget } from '@/components/dashboard/widgets/CalendarWidget';
-import { CampaignBulletinWidget } from '@/components/dashboard/widgets/CampaignBulletinWidget';
 import { CampaignPulseWidget } from '@/components/dashboard/widgets/CampaignPulseWidget';
 import { ContinueWhereYouLeftOffWidget } from '@/components/dashboard/widgets/ContinueWhereYouLeftOffWidget';
 import { LastSessionNotesWidget } from '@/components/dashboard/widgets/LastSessionNotesWidget';
-import { PartyWidget } from '@/components/dashboard/widgets/PartyWidget';
 import { PinnedItemsWidget } from '@/components/dashboard/widgets/PinnedItemsWidget';
 import { QuestLedgerWidget } from '@/components/dashboard/widgets/QuestLedgerWidget';
 import { LivingThreadsWidget } from '@/components/dashboard/widgets/LivingThreadsWidget';
@@ -29,6 +34,14 @@ import { SessionScheduleCard } from '@/components/dashboard/widgets/SessionSched
 import { WorldChronometerWidget } from '@/components/dashboard/widgets/WorldChronometerWidget';
 import { WorldPressureForecastWidget } from '@/components/dashboard/widgets/WorldPressureForecastWidget';
 import { WorldSnapshotWidget } from '@/components/dashboard/widgets/WorldSnapshotWidget';
+import { CampaignAtAGlanceWidget } from '@/components/dashboard/widgets/CampaignAtAGlanceWidget';
+import { CurrentStoryWidget } from '@/components/dashboard/widgets/CurrentStoryWidget';
+import { PartyRosterWidget } from '@/components/dashboard/widgets/PartyRosterWidget';
+import { RecentActivityWidget } from '@/components/dashboard/widgets/RecentActivityWidget';
+import { ExploreWidget } from '@/components/dashboard/widgets/ExploreWidget';
+import { RecentEntitiesWidget } from '@/components/dashboard/widgets/RecentEntitiesWidget';
+import { WorldEventsWidget } from '@/components/dashboard/widgets/WorldEventsWidget';
+import { FactionsAtWarWidget } from '@/components/dashboard/widgets/FactionsAtWarWidget';
 import { getCompositionProfile } from '@/lib/compositionDoctrine';
 import {
   buildPluginWidgetPlacementId,
@@ -55,6 +68,10 @@ export interface DashboardGridProps {
   canManageTime: boolean;
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
+  narrativeSnapshot?: CampaignNarrativeSnapshot;
+  recentEntities?: RecentEntitiesFeedResult | null;
+  worldEvents?: DashboardWorldEventsFeedResult | null;
+  factionConflict?: FactionConflictFeedResult | null;
   customizeMode: boolean;
   onConfigChange: (config: DashboardConfig) => void;
   onLayoutSavingChange?: (saving: boolean) => void;
@@ -71,6 +88,10 @@ export function DashboardGrid({
   canManageTime,
   isLookingForGroup,
   sessionDuration,
+  narrativeSnapshot,
+  recentEntities,
+  worldEvents,
+  factionConflict,
   customizeMode,
   onConfigChange,
   onLayoutSavingChange,
@@ -85,7 +106,11 @@ export function DashboardGrid({
     [config.widgets],
   );
   const hiddenWidgets = useMemo(
-    () => config.widgets.filter((widget) => !widget.enabled),
+    () =>
+      config.widgets.filter(
+        (widget) =>
+          !widget.enabled && !RETIRED_DASHBOARD_WIDGET_BANK_IDS.has(widget.id),
+      ),
     [config.widgets],
   );
   const pluginWidgetBank = useMemo(
@@ -161,7 +186,7 @@ export function DashboardGrid({
     [config, scheduleSave],
   );
 
-  const handleLayoutChange = useCallback(
+  const handleLayoutCommit = useCallback(
     (layout: Layout[]) => {
       if (!customizeMode) return;
       const nextWidgets = config.widgets.map((widget) => {
@@ -260,7 +285,8 @@ export function DashboardGrid({
             isDraggable={customizeMode}
             isResizable={customizeMode}
             draggableHandle=".dashboard-drag-handle"
-            onLayoutChange={handleLayoutChange}
+            onDragStop={handleLayoutCommit}
+            onResizeStop={handleLayoutCommit}
             margin={[16, 16]}
             useCSSTransforms
           >
@@ -276,6 +302,10 @@ export function DashboardGrid({
                   canManageTime={canManageTime}
                   isLookingForGroup={isLookingForGroup}
                   sessionDuration={sessionDuration}
+                  narrativeSnapshot={narrativeSnapshot}
+                  recentEntities={recentEntities}
+                  worldEvents={worldEvents}
+                  factionConflict={factionConflict}
                   personalizeContinue={personal?.continueWhereYouLeftOff ?? []}
                   personalizePinned={personal?.pinned ?? []}
                   customizeMode={customizeMode}
@@ -354,6 +384,10 @@ interface DashboardWidgetRendererProps {
   canManageTime: boolean;
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
+  narrativeSnapshot?: CampaignNarrativeSnapshot;
+  recentEntities?: RecentEntitiesFeedResult | null;
+  worldEvents?: DashboardWorldEventsFeedResult | null;
+  factionConflict?: FactionConflictFeedResult | null;
   personalizeContinue: NonNullable<DashboardSummary['personal']>['continueWhereYouLeftOff'];
   personalizePinned: NonNullable<DashboardSummary['personal']>['pinned'];
   customizeMode: boolean;
@@ -374,6 +408,10 @@ function DashboardWidgetRenderer({
   canManageTime,
   isLookingForGroup,
   sessionDuration,
+  narrativeSnapshot,
+  recentEntities,
+  worldEvents,
+  factionConflict,
   personalizeContinue,
   personalizePinned,
   customizeMode,
@@ -406,16 +444,6 @@ function DashboardWidgetRenderer({
           {...shellProps}
         />
       );
-    case 'campaignBulletin':
-    case 'announcements':
-      return (
-        <CampaignBulletinWidget
-          bulletin={summary.bulletin}
-          config={widget.config}
-          onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}
-          {...shellProps}
-        />
-      );
     case 'recentLore':
     case 'activityLoop':
       return (
@@ -438,12 +466,9 @@ function DashboardWidgetRenderer({
         />
       );
     case 'party':
+    case 'partyRoster':
       return (
-        <PartyWidget
-          campaignHandle={campaignHandle}
-          members={summary.party.members}
-          {...shellProps}
-        />
+        <PartyRosterWidget snapshot={narrativeSnapshot} {...shellProps} />
       );
     case 'campaignPulse':
       return (
@@ -462,6 +487,8 @@ function DashboardWidgetRenderer({
         <QuickUtilityNav
           campaignHandle={campaignHandle}
           isLookingForGroup={isLookingForGroup}
+          config={widget.config}
+          onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}
           {...shellProps}
         />
       );
@@ -501,6 +528,54 @@ function DashboardWidgetRenderer({
           preview={summary.worldPressurePreview ?? null}
           nextSession={summary.nextSession}
           nextSessionInDays={summary.campaignPulse.nextSessionInDays}
+          {...shellProps}
+        />
+      );
+    case 'campaignAtAGlance':
+      return (
+        <CampaignAtAGlanceWidget
+          snapshot={narrativeSnapshot}
+          {...shellProps}
+        />
+      );
+    case 'currentStory':
+      return (
+        <CurrentStoryWidget snapshot={narrativeSnapshot} {...shellProps} />
+      );
+    case 'recentActivity':
+      return (
+        <RecentActivityWidget snapshot={narrativeSnapshot} {...shellProps} />
+      );
+    case 'explore':
+      return (
+        <ExploreWidget campaignHandle={campaignHandle} {...shellProps} />
+      );
+    case 'recentEntities':
+      return (
+        <RecentEntitiesWidget
+          feed={recentEntities}
+          config={widget.config}
+          onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}
+          {...shellProps}
+        />
+      );
+    case 'worldEvents':
+      return (
+        <WorldEventsWidget
+          campaignHandle={campaignHandle}
+          feed={worldEvents}
+          config={widget.config}
+          onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}
+          {...shellProps}
+        />
+      );
+    case 'factionsAtWar':
+      return (
+        <FactionsAtWarWidget
+          campaignHandle={campaignHandle}
+          feed={factionConflict}
+          config={widget.config}
+          onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}
           {...shellProps}
         />
       );

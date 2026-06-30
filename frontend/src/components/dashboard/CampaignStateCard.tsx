@@ -4,6 +4,8 @@ import { META_SECTION_LABEL_CLASS, SURFACE_FLOAT_CLASS, TYPE_DISPLAY_CLASS, TYPE
 
 interface CampaignStateCardProps {
   campaignState: CampaignNarrativeSnapshot['campaignState'];
+  /** Omit section chrome when rendered inside DashboardWidgetShell */
+  embedded?: boolean;
 }
 
 function StateFact({
@@ -50,13 +52,23 @@ function StateFact({
   return <div className="p-4">{content}</div>;
 }
 
-export function CampaignStateCard({ campaignState }: CampaignStateCardProps) {
+export function CampaignStateCard({ campaignState, embedded = false }: CampaignStateCardProps) {
   const facts = [
     campaignState.calendarDate,
     campaignState.nextSession,
     campaignState.partySummary,
     campaignState.location,
   ];
+
+  const factGrid = (
+    <div className="grid gap-0 sm:grid-cols-2">
+      {facts.map((fact) => (
+        <StateFact key={fact.label} fact={fact} />
+      ))}
+    </div>
+  );
+
+  if (embedded) return factGrid;
 
   return (
     <div className={`${SURFACE_FLOAT_CLASS} region-depth-2 overflow-hidden rounded-xl`}>
@@ -65,11 +77,7 @@ export function CampaignStateCard({ campaignState }: CampaignStateCardProps) {
           Campaign at a Glance
         </h2>
       </div>
-      <div className="grid gap-0 sm:grid-cols-2">
-        {facts.map((fact) => (
-          <StateFact key={fact.label} fact={fact} />
-        ))}
-      </div>
+      {factGrid}
     </div>
   );
 }

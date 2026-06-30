@@ -47,6 +47,8 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       __ESIANA_VERSION__: JSON.stringify(esianaVersion),
+      // react-draggable@4.6 logs via process.env.DRAGGABLE_DEBUG (undefined in browser without shim)
+      'process.env.DRAGGABLE_DEBUG': JSON.stringify(''),
     },
     plugins: [sharedTypescriptResolve(), react(), tailwindcss()],
     resolve: {
@@ -67,6 +69,13 @@ export default defineConfig(({ mode }) => {
         '/uploads': {
           target: apiTarget,
           changeOrigin: true,
+        },
+      },
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        define: {
+          'process.env.DRAGGABLE_DEBUG': JSON.stringify(''),
         },
       },
     },

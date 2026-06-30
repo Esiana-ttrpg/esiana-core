@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { DashboardSchedule } from '@/lib/dashboardConfig';
 import type { DashboardSessionSummary } from '@/lib/dashboardSummary';
-import { campaignNotePath } from '@/lib/campaignPaths';
+import { campaignNotePath, campaignSettingsPath } from '@/lib/campaignPaths';
 import { patchMySessionAttendance } from '@/lib/notifications';
 import type { SessionAttendanceStatus } from '@/types/notifications';
+import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
 import { DashboardWidgetShell } from '../DashboardWidgetShell';
 
 interface SessionScheduleCardProps {
@@ -44,6 +46,7 @@ export function SessionScheduleCard({
   customizeMode,
   onHide,
 }: SessionScheduleCardProps) {
+  const { t } = useTranslation();
   const [rsvp, setRsvp] = useState<SessionAttendanceStatus>('ATTENDING');
   const [rsvpBusy, setRsvpBusy] = useState(false);
   const [, tick] = useState(0);
@@ -52,6 +55,10 @@ export function SessionScheduleCard({
     const interval = window.setInterval(() => tick((v) => v + 1), 60_000);
     return () => window.clearInterval(interval);
   }, []);
+
+  const hasRecurringSchedule = Boolean(schedule.day && schedule.time);
+  const showSchedulingCta =
+    !nextSession && !hasRecurringSchedule && canManageCampaign && !customizeMode;
 
   const countdownLabel = useMemo(() => {
     if (nextSession?.plannedStartAt) {
@@ -67,16 +74,16 @@ export function SessionScheduleCard({
           : '';
       return `${formatCountdown(when)} until ${nextSession.title} — ${campaignWhen}${tzNote}`;
     }
-    if (schedule.day && schedule.time) {
+    if (hasRecurringSchedule) {
       const freq = schedule.frequency ? `${schedule.frequency} · ` : '';
       const tz = schedule.timezone ? ` ${schedule.timezone}` : '';
       return `${freq}${schedule.day} at ${schedule.time}${tz}`;
     }
     if (canManageCampaign) {
-      return 'Schedule your first session from Session Notes.';
+      return t('campaign.dashboard.sessionScheduleGmEmpty');
     }
-    return 'No upcoming session published yet.';
-  }, [nextSession, schedule, canManageCampaign, tick]);
+    return t('campaign.dashboard.sessionSchedulePlayerEmpty');
+  }, [nextSession, schedule, canManageCampaign, hasRecurringSchedule, t, tick]);
 
   async function updateRsvp(next: SessionAttendanceStatus) {
     setRsvp(next);
@@ -93,7 +100,7 @@ export function SessionScheduleCard({
 
   return (
     <DashboardWidgetShell
-      title="Upcoming Session"
+      title={translateDashboardWidgetLabel('sessionSchedule', 'Session Schedule')}
       icon={<CalendarClock className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
@@ -101,12 +108,21 @@ export function SessionScheduleCard({
       <div className="space-y-4">
         <p className="text-base font-semibold leading-snug text-primary">{countdownLabel}</p>
 
+        {showSchedulingCta ? (
+          <Link
+            to={campaignSettingsPath(campaignHandle, 'scheduling')}
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {t('campaign.dashboard.sessionScheduleSetupLink')}
+          </Link>
+        ) : null}
+
         {nextSession ? (
           <Link
             to={campaignNotePath(campaignHandle, nextSession.timelinePointId)}
             className="text-xs text-primary hover:underline"
           >
-            Open session page
+            {t('campaign.dashboard.sessionScheduleOpenSession')}
           </Link>
         ) : null}
 

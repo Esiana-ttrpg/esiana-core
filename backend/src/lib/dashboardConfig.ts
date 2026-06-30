@@ -3,6 +3,32 @@
  */
 
 import {
+  DEFAULT_DASHBOARD_QUICK_LINKS,
+  sanitizeQuickUtilityNavConfig,
+  parseDashboardQuickLinkKeys,
+} from '../../../shared/dashboardQuickLinkCatalog.js';
+import {
+  sanitizeRecentEntitiesConfig,
+  parseRecentEntitiesConfig,
+} from '../../../shared/dashboardRecentEntitiesCatalog.js';
+import {
+  sanitizeWorldEventsConfig,
+  parseWorldEventsConfig,
+} from '../../../shared/dashboardWorldEventsCatalog.js';
+import {
+  sanitizeFactionConflictConfig,
+  parseFactionConflictConfig,
+} from '../../../shared/dashboardFactionConflictCatalog.js';
+import {
+  DEFAULT_RECENT_ENTITIES_CONFIG,
+} from '../../../shared/dashboardRecentEntitiesCatalog.js';
+import {
+  DEFAULT_WORLD_EVENTS_CONFIG,
+} from '../../../shared/dashboardWorldEventsCatalog.js';
+import {
+  DEFAULT_FACTION_CONFLICT_CONFIG,
+} from '../../../shared/dashboardFactionConflictCatalog.js';
+import {
   createDefaultHeroConfig,
   normalizeHeroConfig,
   type DashboardHeroConfig,
@@ -27,6 +53,14 @@ export type DashboardWidgetId =
   | 'fantasyCalendar'
   | 'worldPressureForecast'
   | 'worldSnapshot'
+  | 'campaignAtAGlance'
+  | 'currentStory'
+  | 'partyRoster'
+  | 'recentActivity'
+  | 'explore'
+  | 'recentEntities'
+  | 'worldEvents'
+  | 'factionsAtWar'
   | 'sessionClock'
   /** @deprecated migrated silently */
   | 'worldClock'
@@ -81,6 +115,14 @@ const CANONICAL_WIDGET_IDS: DashboardWidgetId[] = [
   'fantasyCalendar',
   'worldPressureForecast',
   'worldSnapshot',
+  'campaignAtAGlance',
+  'currentStory',
+  'partyRoster',
+  'recentActivity',
+  'explore',
+  'recentEntities',
+  'worldEvents',
+  'factionsAtWar',
 ];
 
 const LEGACY_WIDGET_ID_MAP: Record<string, DashboardWidgetId> = {
@@ -88,7 +130,15 @@ const LEGACY_WIDGET_ID_MAP: Record<string, DashboardWidgetId> = {
   worldClock: 'worldChronometer',
   announcements: 'campaignBulletin',
   activityLoop: 'recentLore',
+  party: 'partyRoster',
 };
+
+/** Retired widgets — never shown in widget bank; bulletin always disabled. */
+export const RETIRED_DASHBOARD_WIDGET_BANK_IDS = new Set<DashboardWidgetId>([
+  'campaignBulletin',
+  'party',
+  'announcements',
+]);
 
 const WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   sessionSchedule: 'Session Schedule',
@@ -106,6 +156,14 @@ const WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   fantasyCalendar: 'Fantasy Calendar',
   worldPressureForecast: 'World Pressure Forecast',
   worldSnapshot: 'World Snapshot',
+  campaignAtAGlance: 'Campaign at a Glance',
+  currentStory: 'Current Story',
+  partyRoster: 'Party',
+  recentActivity: 'Recent Activity',
+  explore: 'Explore',
+  recentEntities: 'Recent Entities',
+  worldEvents: 'World Events',
+  factionsAtWar: 'Factions at War',
   sessionClock: 'Session Schedule',
   worldClock: 'World Chronometer',
   announcements: 'Campaign Bulletin',
@@ -116,6 +174,73 @@ const PERSONAL_WIDGET_IDS = new Set<DashboardWidgetId>([
   'continueWhereYouLeftOff',
   'pinnedItems',
 ]);
+
+const NARRATIVE_BRIEFING_WIDGET_IDS: DashboardWidgetId[] = [
+  'campaignAtAGlance',
+  'currentStory',
+  'partyRoster',
+  'recentActivity',
+  'explore',
+];
+
+const LEGACY_OPERATIONAL_DEFAULT_IDS: DashboardWidgetId[] = [
+  'sessionSchedule',
+  'campaignPulse',
+  'worldSnapshot',
+  'recentLore',
+  'worldChronometer',
+  'lastSessionNotes',
+];
+
+function applyRetiredWidgetPolicy(
+  widgets: DashboardWidgetPlacement[],
+): DashboardWidgetPlacement[] {
+  return widgets.map((widget) => {
+    if (widget.id === 'campaignBulletin') {
+      return { ...widget, enabled: false };
+    }
+    if (widget.id === 'party') {
+      return { ...widget, enabled: false };
+    }
+    if (widget.id === 'quickUtilityNav') {
+      return { ...widget, config: sanitizeQuickUtilityNavConfig(widget.config) };
+    }
+    if (widget.id === 'recentEntities') {
+      return { ...widget, config: sanitizeRecentEntitiesConfig(widget.config) };
+    }
+    if (widget.id === 'worldEvents') {
+      return { ...widget, config: sanitizeWorldEventsConfig(widget.config) };
+    }
+    if (widget.id === 'factionsAtWar') {
+      return { ...widget, config: sanitizeFactionConflictConfig(widget.config) };
+    }
+    return widget;
+  });
+}
+
+function needsNarrativeBriefingActivation(
+  saved: DashboardWidgetPlacement[],
+): boolean {
+  return !saved.some((item) =>
+    NARRATIVE_BRIEFING_WIDGET_IDS.includes(migrateWidgetId(item.id)),
+  );
+}
+
+function applyLegacyBriefingWidgetMigration(
+  widgets: DashboardWidgetPlacement[],
+): DashboardWidgetPlacement[] {
+  const defaults = getDefaultDashboardConfig();
+  return widgets.map((widget) => {
+    if (NARRATIVE_BRIEFING_WIDGET_IDS.includes(widget.id)) {
+      const defaultPlacement = defaults.widgets.find((w) => w.id === widget.id);
+      return defaultPlacement ? { ...defaultPlacement, enabled: true } : widget;
+    }
+    if (LEGACY_OPERATIONAL_DEFAULT_IDS.includes(widget.id)) {
+      return { ...widget, enabled: false };
+    }
+    return widget;
+  });
+}
 
 export function getWidgetLabel(id: DashboardWidgetId): string {
   return WIDGET_LABELS[id] ?? id;
@@ -145,35 +270,59 @@ function defaultPlacement(
   };
 }
 
+function retiredWidgetFallback(id: DashboardWidgetId): DashboardWidgetPlacement | undefined {
+  if (id === 'campaignBulletin') {
+    return defaultPlacement('campaignBulletin', 0, 0, 4, 4, { enabled: false });
+  }
+  if (id === 'party') {
+    return defaultPlacement('party', 0, 0, 3, 4, { enabled: false });
+  }
+  return undefined;
+}
+
 export function getDefaultDashboardConfig(): DashboardConfig {
   return {
     hero: createDefaultHeroConfig(),
     widgets: [
-      defaultPlacement('sessionSchedule', 0, 0, 4, 4),
-      defaultPlacement('campaignPulse', 4, 0, 4, 3),
-      defaultPlacement('worldSnapshot', 8, 0, 4, 4),
-      defaultPlacement('campaignBulletin', 0, 4, 4, 4, {
-        config: {
-          body: 'Pin house rules, reminders, and campaign notices here.',
-        },
+      defaultPlacement('campaignAtAGlance', 0, 0, 12, 2),
+      defaultPlacement('currentStory', 0, 2, 12, 4),
+      defaultPlacement('partyRoster', 0, 6, 8, 3),
+      defaultPlacement('explore', 8, 6, 4, 3),
+      defaultPlacement('recentActivity', 0, 9, 12, 3),
+      defaultPlacement('sessionSchedule', 0, 12, 4, 4, { enabled: false }),
+      defaultPlacement('campaignPulse', 4, 12, 4, 3, { enabled: false }),
+      defaultPlacement('worldSnapshot', 8, 12, 4, 4, { enabled: false }),
+      defaultPlacement('recentLore', 0, 16, 4, 4, { enabled: false }),
+      defaultPlacement('worldChronometer', 4, 16, 4, 3, { enabled: false }),
+      defaultPlacement('lastSessionNotes', 8, 16, 4, 4, { enabled: false }),
+      defaultPlacement('questLedger', 0, 20, 6, 4, { enabled: false }),
+      defaultPlacement('livingThreads', 6, 20, 6, 4, { enabled: false }),
+      defaultPlacement('quickUtilityNav', 0, 24, 3, 4, {
+        enabled: false,
+        config: { links: [...DEFAULT_DASHBOARD_QUICK_LINKS] },
       }),
-      defaultPlacement('recentLore', 4, 4, 4, 4),
-      defaultPlacement('worldChronometer', 8, 4, 4, 3),
-      defaultPlacement('lastSessionNotes', 0, 8, 4, 4),
-      defaultPlacement('questLedger', 0, 8, 6, 4, { enabled: false }),
-      defaultPlacement('livingThreads', 6, 8, 6, 4, { enabled: false }),
-      defaultPlacement('party', 0, 12, 3, 4, { enabled: false }),
-      defaultPlacement('quickUtilityNav', 3, 12, 3, 4, { enabled: false }),
-      defaultPlacement('continueWhereYouLeftOff', 6, 12, 6, 3, {
+      defaultPlacement('continueWhereYouLeftOff', 6, 24, 6, 3, {
         enabled: false,
         scope: 'personal',
       }),
-      defaultPlacement('pinnedItems', 0, 15, 6, 3, {
+      defaultPlacement('pinnedItems', 0, 27, 6, 3, {
         enabled: false,
         scope: 'personal',
       }),
-      defaultPlacement('fantasyCalendar', 6, 15, 6, 5, { enabled: false }),
-      defaultPlacement('worldPressureForecast', 0, 18, 6, 4, { enabled: false }),
+      defaultPlacement('fantasyCalendar', 6, 27, 6, 5, { enabled: false }),
+      defaultPlacement('worldPressureForecast', 0, 32, 6, 4, { enabled: false }),
+      defaultPlacement('recentEntities', 0, 36, 6, 4, {
+        enabled: false,
+        config: { ...DEFAULT_RECENT_ENTITIES_CONFIG },
+      }),
+      defaultPlacement('worldEvents', 6, 36, 6, 4, {
+        enabled: false,
+        config: { ...DEFAULT_WORLD_EVENTS_CONFIG },
+      }),
+      defaultPlacement('factionsAtWar', 0, 40, 12, 4, {
+        enabled: false,
+        config: { ...DEFAULT_FACTION_CONFLICT_CONFIG },
+      }),
     ],
   };
 }
@@ -276,7 +425,9 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
 
   for (const id of CANONICAL_WIDGET_IDS) {
     if (!byCanonicalId.has(id)) {
-      const fallback = getDefaultDashboardConfig().widgets.find((w) => w.id === id);
+      const fallback =
+        getDefaultDashboardConfig().widgets.find((w) => w.id === id) ??
+        retiredWidgetFallback(id);
       if (fallback) {
         widgets.push({
           ...fallback,
@@ -286,11 +437,17 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
     }
   }
 
+  const migratedWidgets = needsNarrativeBriefingActivation(saved)
+    ? applyLegacyBriefingWidgetMigration(widgets)
+    : widgets;
+
+  const finalWidgets = applyRetiredWidgetPolicy(migratedWidgets);
+
   const importManifest = parseImportManifest(parsed.importManifest);
 
   return {
     hero: normalizeHero(parsed.hero),
-    widgets,
+    widgets: finalWidgets,
     ...(importManifest ? { importManifest } : {}),
   };
 }
@@ -340,10 +497,36 @@ export function parseDashboardLayoutPayload(body: unknown): DashboardConfig | nu
   if (!Array.isArray(parsed.widgets) || parsed.widgets.length === 0) return null;
   if (!parsed.widgets.every(isPlacement)) return null;
 
+  for (const widget of parsed.widgets) {
+    if (
+      isPlacement(widget) &&
+      widget.id === 'quickUtilityNav' &&
+      widget.config?.links !== undefined
+    ) {
+      if (!parseDashboardQuickLinkKeys(widget.config.links)) return null;
+    }
+    if (isPlacement(widget) && widget.id === 'recentEntities' && widget.config) {
+      if (!parseRecentEntitiesConfig(widget.config)) return null;
+    }
+    if (isPlacement(widget) && widget.id === 'worldEvents' && widget.config) {
+      if (!parseWorldEventsConfig(widget.config)) return null;
+    }
+    if (isPlacement(widget) && widget.id === 'factionsAtWar' && widget.config) {
+      if (!parseFactionConflictConfig(widget.config)) return null;
+    }
+  }
+
   const normalized = normalizeDashboardConfig(parsed);
   const seen = new Set(normalized.widgets.map((w) => w.id));
   for (const id of CANONICAL_WIDGET_IDS) {
     if (!seen.has(id)) return null;
+  }
+
+  for (const widget of normalized.widgets) {
+    if (widget.id === 'quickUtilityNav' && widget.config?.links !== undefined) {
+      const links = parseDashboardQuickLinkKeys(widget.config.links);
+      if (!links) return null;
+    }
   }
 
   return normalized;
