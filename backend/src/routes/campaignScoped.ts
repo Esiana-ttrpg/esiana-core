@@ -294,6 +294,7 @@ import {
   getCampaignGrowthMetrics,
   postWritingSession,
 } from '../controllers/authoringController.js';
+import { getCampaignWorldStats } from '../controllers/statsController.js';
 import {
   createWorkshopDraftHandler,
   formalizeWorkshopDraftHandler,
@@ -969,6 +970,7 @@ campaignScopedRouter.patch(
 );
 
 campaignScopedRouter.get('/status', getCampaignStatus);
+campaignScopedRouter.get('/world-stats', getCampaignWorldStats);
 campaignScopedRouter.get('/capacity-hint', getCampaignCapacityHint);
 campaignScopedRouter.get('/files', getCampaignFiles);
 campaignScopedRouter.get('/backup', requireGamemasterSettings, downloadCampaignBackup);

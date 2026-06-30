@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { LayoutGrid, Swords } from 'lucide-react';
@@ -90,7 +91,7 @@ export function YourCampaignsPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-primary/30 bg-primary/10 px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-primary/80">
+                <p className={`${META_SECTION_LABEL_CLASS} text-primary/80`}>
                   Dungeon Master
                 </p>
                 <p className="mt-1 text-2xl font-bold text-primary">
@@ -99,7 +100,7 @@ export function YourCampaignsPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-sky-200/80">
+                <p className={`${META_SECTION_LABEL_CLASS} text-sky-200/80`}>
                   Player
                 </p>
                 <p className="mt-1 text-2xl font-bold text-sky-100">
@@ -111,7 +112,7 @@ export function YourCampaignsPage() {
 
             {dmCampaigns.length > 0 ? (
               <section className="rounded-xl border border-border bg-surface/80 p-6">
-                <h2 className="text-lg font-semibold text-foreground">Campaigns you run</h2>
+                <h2 className={TYPE_DISPLAY_CLASS}>Campaigns you run</h2>
                 <p className="mt-1 mb-4 text-sm text-muted">
                   Tables where you are the primary Dungeon Master.
                 </p>
@@ -129,7 +130,7 @@ export function YourCampaignsPage() {
 
             {archivedDmCampaigns.length > 0 ? (
               <section className="rounded-xl border border-dashed border-border bg-surface/40 p-6">
-                <h2 className="text-lg font-semibold text-foreground">Archived</h2>
+                <h2 className={TYPE_DISPLAY_CLASS}>Archived</h2>
                 <p className="mt-1 mb-4 text-sm text-muted">
                   Hidden from the hub and recruitment. Open or manage from here.
                 </p>
@@ -149,7 +150,7 @@ export function YourCampaignsPage() {
               <div className="mb-5 flex items-center gap-2">
                 <Swords className="size-5 text-primary/90" />
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <h2 className={TYPE_DISPLAY_CLASS}>
                     {playerCampaigns.length > 0 ? 'Campaigns you play' : 'Memberships'}
                   </h2>
                   <p className="text-sm text-muted">

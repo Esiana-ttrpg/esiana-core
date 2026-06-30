@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
@@ -99,7 +100,7 @@ function TocListView({ editor }: { editor: Editor | null }) {
 
   return (
     <div className="rounded-lg border border-border bg-background/40 p-3">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+      <div className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
         Table of Contents
       </div>
       {headings.length ? <TocUl items={tocTree} /> : null}

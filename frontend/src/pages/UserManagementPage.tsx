@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Shield, Trash2, UserCog, Users } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -145,7 +146,7 @@ export function UserManagementPage() {
         <div className="overflow-hidden rounded-xl border border-border bg-surface/40">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="border-b border-border bg-surface/80 text-xs uppercase tracking-wider text-muted">
+              <thead className={`border-b border-border bg-surface/80 ${META_SECTION_LABEL_CLASS}`}>
                 <tr>
                   <th className="px-4 py-3 font-semibold">Member</th>
                   <th className="px-4 py-3 font-semibold">Role</th>

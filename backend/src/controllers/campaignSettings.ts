@@ -20,6 +20,7 @@ import {
 import { UploadValidationError } from '../lib/uploadValidation.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { buildCampaignSizeSnapshot } from '../lib/buildCampaignSizeSnapshot.js';
+import { sumCampaignWordCount } from '../lib/stats/buildCampaignWorldStats.js';
 import {
   classifyCampaignTier,
   recommendedDeploymentForTier,
@@ -47,32 +48,7 @@ export async function getCampaignStatus(
   }
 
   const snapshot = await buildCampaignSizeSnapshot(campaignId);
-
-  const wordCount = await prisma.wikiPage
-    .findMany({
-      where: { campaignId },
-      select: { blocks: true },
-    })
-    .then((pages) =>
-      pages.reduce((sum, page) => {
-        const blocks = Array.isArray(page.blocks) ? page.blocks : [];
-        const text = blocks
-          .filter((block: unknown) => {
-            return (
-              typeof block === 'object' &&
-              block !== null &&
-              (block as Record<string, unknown>).type === 'text-tiptap'
-            );
-          })
-          .map((block: unknown) => {
-            const content = (block as { content?: { markdown?: string } }).content;
-            return content?.markdown ?? '';
-          })
-          .join(' ');
-        return sum + text.split(/\s+/).filter(Boolean).length;
-      }, 0),
-    );
-
+  const wordCount = await sumCampaignWordCount(campaignId);
   const pluginCount = await prisma.installedPlugin.count({
     where: { isEnabled: true },
   });

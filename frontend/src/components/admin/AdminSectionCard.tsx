@@ -1,11 +1,8 @@
+import { META_FIELD_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import type { LucideIcon } from 'lucide-react';
 
 export function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
-      {children}
-    </span>
-  );
+  return <span className={META_FIELD_LABEL_CLASS}>{children}</span>;
 }
 
 export function ToggleRow({
@@ -62,7 +59,7 @@ export function AdminSectionCard({
           <Icon className="size-5" strokeWidth={1.5} />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <h2 className={TYPE_DISPLAY_CLASS}>{title}</h2>
           <p className="mt-1 text-sm text-muted">{description}</p>
         </div>
       </div>

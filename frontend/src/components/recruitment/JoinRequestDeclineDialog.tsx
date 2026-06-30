@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent, useState } from 'react';
 import {
   JOIN_REQUEST_DECLINE_REASONS,
@@ -43,7 +44,7 @@ export function JoinRequestDeclineDialog({
         aria-labelledby="decline-dialog-title"
         className="w-full max-w-md rounded-xl border border-border bg-surface p-6 shadow-xl"
       >
-        <h3 id="decline-dialog-title" className="text-lg font-semibold text-foreground">
+        <h3 id="decline-dialog-title" className={TYPE_DISPLAY_CLASS}>
           Decline application
         </h3>
         <p className="mt-1 text-sm text-muted">

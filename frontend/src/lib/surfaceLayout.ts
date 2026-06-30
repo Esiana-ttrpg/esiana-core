@@ -76,11 +76,34 @@ export const TYPE_DISPLAY_CLASS = 'type-display';
 export const TYPE_PROSE_CLASS = 'type-prose';
 export const TYPE_META_CLASS = 'type-meta';
 
+/** Sentence-case section label — meta tier, no uppercase */
+export const META_SECTION_LABEL_CLASS =
+  `${TYPE_META_CLASS} block font-medium text-muted`;
+
+/** Inline field label in forms */
+export const META_FIELD_LABEL_CLASS =
+  `${TYPE_META_CLASS} mb-1 block font-medium text-muted`;
+
+/** Table column header — sentence-case, meta weight (no uppercase) */
+export const META_TABLE_HEAD_CLASS = 'text-sm font-medium text-muted';
+
 /** Compact workspace header chrome — hubs and entity surfaces */
 export const WORKSPACE_HEADER_COMPACT_CLASS = 'mb-1 pb-1';
 
 export const WORKSPACE_TITLE_COMPACT_CLASS =
   'text-xl text-focal-foreground sm:text-2xl';
+
+/** Unified workspace page header rhythm — see workspace-header in index.css */
+export const WORKSPACE_HEADER_ROOT_CLASS = 'workspace-header';
+
+export const WORKSPACE_HEADER_TITLE_ACTIONS_CLASS =
+  'workspace-header__title-actions flex flex-wrap items-start justify-between gap-3';
+
+export const WORKSPACE_HEADER_BELOW_TOOLBAR_CLASS = 'workspace-header__below-toolbar';
+
+export const WORKSPACE_HEADER_CHIPS_CLASS = 'workspace-header__chips';
+
+export const WORKSPACE_HEADER_CONTENT_GAP_CLASS = 'workspace-header__content-gap';
 
 export const WORKSPACE_FOCAL_COMPACT_CLASS = 'wiki-focal-region--compact';
 

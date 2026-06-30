@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   buildAncestryInheritanceProjection,
   type InheritanceMarker,
@@ -88,7 +89,7 @@ export function AncestryInheritancePanel({
 
       {showEffectiveTraits && projection.effectiveTraits.length > 0 ? (
         <div>
-          <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+          <h4 className={`mb-1.5 ${META_SECTION_LABEL_CLASS}`}>
             Effective traits
           </h4>
           <ul className="flex flex-wrap gap-1.5">

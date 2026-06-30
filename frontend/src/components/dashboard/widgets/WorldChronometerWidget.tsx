@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { Globe2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { DashboardChronometerSummary } from '@/lib/dashboardSummary';
@@ -33,11 +34,11 @@ export function WorldChronometerWidget({
       ) : (
         <div className="space-y-3">
           {chronometer.season ? (
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">
+            <p className={META_SECTION_LABEL_CLASS}>
               {chronometer.season}
             </p>
           ) : null}
-          <p className="text-lg font-semibold text-foreground">{chronometer.label}</p>
+          <p className={TYPE_DISPLAY_CLASS}>{chronometer.label}</p>
           {chronometer.moonPhase ? (
             <p className="text-sm text-muted">{chronometer.moonPhase}</p>
           ) : null}

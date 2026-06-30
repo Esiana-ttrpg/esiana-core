@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import type { SceneMetadataFields, SceneStatus, SceneBeatType, SceneKind, SceneNarrativeWeight } from '@/lib/sceneMetadata';
 import {
@@ -78,7 +79,7 @@ export function SceneCardProperties({
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Status
           </span>
           <select
@@ -100,7 +101,7 @@ export function SceneCardProperties({
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Lifecycle
           </span>
           <select
@@ -120,7 +121,7 @@ export function SceneCardProperties({
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Weight
           </span>
           <select
@@ -142,7 +143,7 @@ export function SceneCardProperties({
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Beat
           </span>
           <select
@@ -172,7 +173,7 @@ export function SceneCardProperties({
         </label>
 
         <label className="space-y-0.5 sm:col-span-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Kind
           </span>
           <select
@@ -197,7 +198,7 @@ export function SceneCardProperties({
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="block space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Tone
           </span>
           <input
@@ -213,7 +214,7 @@ export function SceneCardProperties({
         </label>
 
         <label className="block space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Pacing tags
           </span>
           <input
@@ -234,7 +235,7 @@ export function SceneCardProperties({
       </div>
 
       <label className="block space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Summary
         </span>
         <textarea
@@ -248,7 +249,7 @@ export function SceneCardProperties({
       </label>
 
       <label className="block space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           GM notes
         </span>
         <textarea
@@ -292,7 +293,7 @@ export function SceneCardProperties({
       />
 
       <div className="space-y-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Location
         </span>
         <IdentityPagePicker
@@ -330,7 +331,7 @@ export function SceneCardProperties({
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Planned session
           </span>
           <SessionTimelineSelect
@@ -345,7 +346,7 @@ export function SceneCardProperties({
         </label>
 
         <label className="space-y-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Played session
           </span>
           <SessionTimelineSelect

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 function newId(): string {
@@ -211,7 +212,7 @@ export function WorldAdvancePage() {
   return (
     <article className="mx-auto max-w-3xl space-y-8 p-6">
       <header>
-        <h1 className="text-lg font-semibold text-foreground">Advance world</h1>
+        <h1 className={TYPE_DISPLAY_CLASS}>Advance world</h1>
         <p className="mt-1 text-sm text-muted">
           Batch living-world changes with chronology audit, derived conditions, and
           narrative synthesis (projection only — not wiki canon).
@@ -357,7 +358,7 @@ export function WorldAdvancePage() {
           </p>
 
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={META_SECTION_LABEL_CLASS}>
               Narrative synthesis (projection)
             </h3>
             <p className="text-sm font-medium text-foreground">{preview.narrativeSynthesis.headline}</p>
@@ -370,7 +371,7 @@ export function WorldAdvancePage() {
 
           {preview.conditionSurfaces.length > 0 ? (
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+              <h3 className={META_SECTION_LABEL_CLASS}>
                 Derived conditions
               </h3>
               <WorldAdvanceConditionPanel preview={preview} effects={effects} />

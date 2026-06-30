@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
-import type { Asset } from '@prisma/client';
+import type { Asset, Prisma } from '@prisma/client';
 import { prisma } from './prisma.js';
 import {
   assetReferenceUrl,
@@ -62,6 +62,8 @@ export async function ingestImageBuffer(input: {
   /** When omitted, detected from buffer magic bytes. */
   mimeType?: string;
   ext?: string;
+  /** Use when creating assets inside an open transaction (SQLite FK visibility). */
+  db?: Prisma.TransactionClient;
 }): Promise<IngestImageResult> {
   const detected = await detectImageFromBuffer(input.buffer);
   const mimeType = input.mimeType ?? detected.mimeType;
@@ -75,7 +77,8 @@ export async function ingestImageBuffer(input: {
     const keys: AssetStorageKeys = { original: key };
     const location = buildAssetLocation(keys, driver);
 
-    const asset = await prisma.asset.create({
+    const db = input.db ?? prisma;
+    const asset = await db.asset.create({
       data: {
         ...(input.assetId ? { id: input.assetId } : {}),
         campaignId: input.campaignId,

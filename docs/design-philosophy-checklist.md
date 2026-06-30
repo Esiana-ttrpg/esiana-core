@@ -1,6 +1,13 @@
 # Design philosophy PR checklist
 
-Mandatory gate for **frontend UI PRs** before merge. Source: [design-philosophy.md](../design-philosophy.md).
+Mandatory gate for **frontend UI PRs** before merge. Source: [design-philosophy.md](../design-philosophy.md), [experience-doctrine.md](./experience-doctrine.md).
+
+## Experience doctrine (gate first)
+
+- [ ] **Gravity test** — Where does attention settle on this screen? Can you name the gravitational center in 2 seconds?
+- [ ] **Campaign-state object** — What state does this page show? Is representation type correct (narrative / canvas / timeline / stream)?
+- [ ] **Principles** — Which of the [15 principles](./experience-doctrine.md#fifteen-principles) does this PR touch? Justify any violation.
+- [ ] **Typographic roles** — One `TYPE_DISPLAY` anchor? Prose for state? Meta recessed (no uppercase-competing labels)?
 
 ## Checklist
 

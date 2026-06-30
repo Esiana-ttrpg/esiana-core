@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo, useState } from 'react';
 import { GM_STYLE_TAGS, getGmStyleTagLabel } from '@shared/gmStyleTags';
 import { controlClasses } from '@/components/ui/formStyles';
@@ -47,7 +48,7 @@ export function GmStyleTagMultiSelect({ values, onChange }: GmStyleTagMultiSelec
       ) : null}
 
       <label className="block md:hidden">
-        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Add style tag
         </span>
         <input

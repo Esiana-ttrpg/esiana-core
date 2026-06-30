@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchWritingPulse } from '@/lib/wikiLoreGraph';
@@ -25,7 +26,7 @@ export function WritingPulseView({ campaignHandle }: WritingPulseViewProps) {
   return (
     <div className="space-y-4 p-4">
       <header>
-        <h2 className="text-lg font-semibold text-foreground">Writing pulse</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Writing pulse</h2>
         <p className="text-sm text-muted">
           Private reflection on your lore cadence — not shared or ranked.
         </p>
@@ -41,7 +42,7 @@ export function WritingPulseView({ campaignHandle }: WritingPulseViewProps) {
         </div>
       </dl>
       <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Recently expanded
         </h3>
         <ul className="mt-2 space-y-1">

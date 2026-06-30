@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
@@ -125,7 +126,7 @@ export function ProgressionPage() {
     >
       {!isWorkshop ? (
         <header className="space-y-1">
-          <h1 className="text-xl font-semibold text-foreground">Progression</h1>
+          <h1 className={TYPE_DISPLAY_CLASS}>Progression</h1>
           <p className="text-sm text-muted-foreground">
             Shape the story — write scenes, prep sessions, read campaign momentum.
           </p>

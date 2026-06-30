@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
@@ -119,7 +120,7 @@ export function WikiPageDeleteDialog({
         role="dialog"
         aria-labelledby="wiki-delete-title"
       >
-        <h2 id="wiki-delete-title" className="text-lg font-semibold text-foreground">
+        <h2 id="wiki-delete-title" className={TYPE_DISPLAY_CLASS}>
           Delete “{pageTitle}”
         </h2>
 

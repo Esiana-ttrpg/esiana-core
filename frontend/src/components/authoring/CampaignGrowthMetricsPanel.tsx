@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { fetchCampaignGrowthMetrics, type CampaignGrowthMetrics } from '@/lib/authoringApi';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -57,7 +58,7 @@ export function CampaignGrowthMetricsPanel({ campaignHandle }: CampaignGrowthMet
         {rows.map((row) => (
           <div key={row.label} className="rounded border border-border p-3">
             <dt className="text-xs text-muted-foreground">{row.label}</dt>
-            <dd className="text-lg font-semibold text-foreground">{row.value}</dd>
+            <dd className={TYPE_DISPLAY_CLASS}>{row.value}</dd>
           </div>
         ))}
       </dl>

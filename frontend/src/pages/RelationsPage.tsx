@@ -1,6 +1,8 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { GitBranch, Loader2 } from 'lucide-react';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { useWiki } from '@/contexts/WikiContext';
 import { useRelationsProjection } from '@/hooks/useRelationsProjection';
 import { RelationsNarrativeSummary } from '@/components/relations/RelationsNarrativeSummary';
@@ -108,13 +110,14 @@ export function RelationsPage() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
-      <header className="space-y-2">
-        <div className="flex items-center gap-2">
-          <GitBranch className="size-6 text-primary" aria-hidden />
-          <h1 className="text-2xl font-semibold text-foreground">Relations</h1>
-        </div>
-        <p className="max-w-2xl text-sm text-muted">Different lenses. One world.</p>
-      </header>
+      <WorkspaceHeader
+        title={
+          <>
+            <GitBranch className="size-6 text-primary" aria-hidden />
+            Relations
+          </>
+        }
+      />
 
       {showPresets ? (
         <section className="rounded-lg border border-border bg-surface/30 p-6">
@@ -225,7 +228,7 @@ export function RelationsPage() {
       <div className="grid gap-6 lg:grid-cols-[200px_1fr_260px]">
         <nav className="space-y-4">
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">Lens</p>
+            <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>Lens</p>
             <ul className="space-y-1">
               {LENS_OPTIONS.map((opt) => (
                 <li key={opt.id}>
@@ -252,7 +255,7 @@ export function RelationsPage() {
           </div>
           {lens === 'social' ? (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">View</p>
+              <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>View</p>
               <ul className="space-y-1">
                 {SOCIAL_MODES.map((m) => (
                   <li key={m.id}>
@@ -279,7 +282,7 @@ export function RelationsPage() {
           ) : null}
           {lens === 'structure' ? (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">View</p>
+              <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>View</p>
               <ul className="space-y-1">
                 {STRUCTURE_MODES.map((m) => (
                   <li key={m.id}>
@@ -307,7 +310,7 @@ export function RelationsPage() {
           ) : null}
           {lens === 'kinship' ? (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">View</p>
+              <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>View</p>
               <ul className="space-y-1">
                 {KINSHIP_MODES.map((m) => (
                   <li key={m.id}>

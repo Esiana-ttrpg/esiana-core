@@ -1,3 +1,6 @@
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { formatWorkspaceCountLabel } from '@/lib/workspaceHeaderPolicy';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, FolderOpen, History } from 'lucide-react';
@@ -218,20 +221,38 @@ export function RecentChangesPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-2 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <History className="size-5 text-primary" strokeWidth={1.5} />
-          <h1 className="text-xl font-semibold text-foreground">Recent Changes</h1>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load(page)}
-          disabled={loading}
-          className="text-xs text-muted hover:text-primary disabled:opacity-50"
-        >
-          Refresh
-        </button>
-      </header>
+      <WorkspaceHeader
+        title={
+          <>
+            <History className="size-5 text-primary" strokeWidth={1.5} />
+            Recent Changes
+          </>
+        }
+        actions={
+          <CategoryIndexToolbar
+            createLabel="Refresh"
+            onCreate={() => void load(page)}
+            resultCountLabel={
+              pagination
+                ? formatWorkspaceCountLabel(pagination.totalCount, 'change', 'changes')
+                : rows.length > 0
+                  ? formatWorkspaceCountLabel(rows.length, 'change', 'changes')
+                  : null
+            }
+            trailing={
+              <button
+                type="button"
+                onClick={() => void load(page)}
+                disabled={loading}
+                className="text-xs text-muted hover:text-primary disabled:opacity-50"
+              >
+                Refresh
+              </button>
+            }
+            createAction={null}
+          />
+        }
+      />
 
       {error && (
         <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">

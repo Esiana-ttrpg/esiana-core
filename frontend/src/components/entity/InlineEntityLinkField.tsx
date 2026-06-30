@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo, useState } from 'react';
 import { Link2 } from 'lucide-react';
 import type { WikiTreeNode } from '@/types/wiki';
@@ -49,7 +50,7 @@ export function InlineEntityLinkField({
 
   return (
     <div className="relative space-y-1">
-      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted">
+      <div className="flex items-center gap-1.5 META_SECTION_LABEL_CLASS">
         <Link2 className="size-3" aria-hidden />
         <span>Quick link</span>
       </div>

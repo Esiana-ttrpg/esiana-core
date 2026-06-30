@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
 import { useRegisterBlockDraft } from '@/contexts/PageBlockDraftRegistry';
@@ -89,7 +90,7 @@ export function RuleResourceMetadataEditor({
     <CodexEditorShell saving={saving} error={error} bare={bare}>
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'resourceType')}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Type</span>
+          <span className={META_FIELD_LABEL_CLASS}>Type</span>
           <input
             className={codexFieldClass}
             value={draft.resourceType ?? ''}
@@ -98,7 +99,7 @@ export function RuleResourceMetadataEditor({
           />
         </label>
         <label className="space-y-1" id={codexFieldId(focusField, 'scope')}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Scope</span>
+          <span className={META_FIELD_LABEL_CLASS}>Scope</span>
           <input
             className={codexFieldClass}
             value={draft.scope ?? ''}
@@ -107,7 +108,7 @@ export function RuleResourceMetadataEditor({
           />
         </label>
         <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'summary')}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Summary</span>
+          <span className={META_FIELD_LABEL_CLASS}>Summary</span>
           <textarea
             className={`${codexFieldClass} min-h-[4rem] resize-y`}
             value={draft.summary ?? ''}
@@ -116,7 +117,7 @@ export function RuleResourceMetadataEditor({
           />
         </label>
         <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'topicTags')}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Topic tags</span>
+          <span className={META_FIELD_LABEL_CLASS}>Topic tags</span>
           <input
             className={codexFieldClass}
             value={tagsDraft || draft.topicTags.join(', ')}

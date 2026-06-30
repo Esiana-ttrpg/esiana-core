@@ -1,6 +1,6 @@
 {
   "name": "esiana",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "Self-hosted, multi-campaign TTRPG manager",
   "license": "AGPL-3.0-only",
@@ -10,6 +10,7 @@
     "dev:frontend": "pnpm --filter frontend dev",
     "build": "pnpm --filter @esiana/backend --filter frontend --filter @esiana/ssrf-guard --filter @esiana/plugin-source-policy build",
     "db:generate": "pnpm --filter backend db:generate",
+    "db:generate:sqlite": "pnpm --filter backend db:generate:sqlite",
     "db:migrate": "pnpm --filter backend db:migrate",
     "db:migrate:deploy:sqlite": "pnpm --filter backend db:migrate:deploy:sqlite",
     "db:push": "pnpm --filter backend db:push",

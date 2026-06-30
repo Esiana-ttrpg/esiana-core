@@ -36,7 +36,6 @@ import {
   createDefaultRefineState,
   projectCategoryIndexBrowseChildren,
   findSimilarCategoryIndexEntries,
-  formatCategoryIndexResultCount,
   getCategoryIndexFacetDefs,
   getCategoryIndexSearchPlaceholder,
   hasActiveCategoryIndexRefine,
@@ -45,6 +44,10 @@ import {
   resetCategoryIndexRefine,
   type CategoryIndexRefineState,
 } from '@/lib/categoryIndexBrowse';
+import {
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import {
   readCategoryIndexBrowseSnapshot,
   writeCategoryIndexBrowseSnapshot,
@@ -248,13 +251,14 @@ export function EntityBrowserView({
       }
       return base;
     }
-    return formatCategoryIndexResultCount(
-      children.length,
-      filteredChildren.length,
-      categoryTitle,
+    return formatWorkspaceHubCountHint({
+      total: children.length,
+      matching: filteredChildren.length,
+      singular: resolveCategoryCountNouns(categoryTitle).singular,
+      plural: resolveCategoryCountNouns(categoryTitle).plural,
       searchQuery,
       hasActiveRefine,
-    );
+    });
   }, [
     discoverySummary,
     isDMUser,
@@ -331,20 +335,18 @@ export function EntityBrowserView({
             campaignHandle={campaignHandle}
           />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <FolderOpen className="size-6 text-primary" strokeWidth={1.25} />
             {categoryTitle}
           </>
         }
-        toolbar={
+        actions={
           <CategoryIndexToolbar
             createLabel={`Create ${itemLabel}`}
             onCreate={handleCreate}
-            searchValue={searchQuery}
-            searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
-            onSearchChange={setSearchQuery}
-            resultCountLabel={children.length > 0 ? resultCountLabel : null}
+            resultCountLabel={resultCountLabel}
             refineControl={
               facetDefs.length > 0 ? (
                 <CategoryIndexRefinePopover
@@ -353,6 +355,15 @@ export function EntityBrowserView({
                   children={children}
                   categoryTitle={categoryTitle}
                   onRefineChange={setRefineState}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
+                  onResetRefine={() => {
+                    setRefineState(
+                      resetCategoryIndexRefine(facetDefs, children, categoryTitle),
+                    );
+                    setSearchQuery('');
+                  }}
                 />
               ) : null
             }
@@ -360,8 +371,8 @@ export function EntityBrowserView({
             onViewModeChange={setViewMode}
           />
         }
-        afterToolbar={
-          children.length > 0 ? (
+        activeFilters={
+          activeRefineChips.length > 0 ? (
             <CategoryIndexActiveRefineChips
               chips={activeRefineChips}
               onRemove={(facetId, optionValue) =>
@@ -398,6 +409,7 @@ export function EntityBrowserView({
           itemLabel={itemLabel}
           campaignHandle={campaignHandle}
           similarEntries={similarEntries}
+          headerCreateLabel={`Create ${itemLabel}`}
           onCreate={handleCreate}
           onCreateFromSearch={handleCreateFromSearch}
           onClearSearch={() => setSearchQuery('')}

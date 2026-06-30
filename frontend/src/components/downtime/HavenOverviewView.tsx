@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DowntimeHavenOverviewPayload } from '@shared/downtimeHub';
@@ -168,7 +169,7 @@ export function HavenOverviewView({
       ) : null}
 
       <section className="rounded-lg border border-primary/20 bg-primary/5 p-5">
-        <h2 className="text-lg font-semibold text-foreground">Recent changes</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Recent changes</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           What happened here — the living memory of this haven.
         </p>

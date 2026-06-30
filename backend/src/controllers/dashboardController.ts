@@ -15,6 +15,18 @@ import { buildDashboardThreadBundle } from '../lib/dashboardThreadLedger.js';
 import { buildDashboardSummary } from '../lib/buildDashboardSummary.js';
 import { buildRecentLoreFeed } from '../lib/buildRecentEntityFeed.js';
 import { buildCampaignNarrativeSnapshot } from '../lib/buildCampaignNarrativeSnapshot.js';
+import { buildRecentEntitiesFeed } from '../lib/buildRecentEntitiesFeed.js';
+import { buildDashboardWorldEventsFeed } from '../lib/buildDashboardWorldEventsFeed.js';
+import { buildFactionConflictFeed } from '../lib/buildFactionConflictFeed.js';
+import {
+  normalizeRecentEntitiesConfig,
+} from '../../../shared/dashboardRecentEntitiesCatalog.js';
+import {
+  normalizeWorldEventsConfig,
+} from '../../../shared/dashboardWorldEventsCatalog.js';
+import {
+  normalizeFactionConflictConfig,
+} from '../../../shared/dashboardFactionConflictCatalog.js';
 
 export async function getDashboardBundle(
   req: CampaignScopedRequest & AuthenticatedRequest,
@@ -33,6 +45,7 @@ export async function getDashboardBundle(
       scheduleTime: true,
       scheduleFrequency: true,
       scheduleTimezone: true,
+      allowPlayerChronologyManagement: true,
     },
   });
 
@@ -45,7 +58,19 @@ export async function getDashboardBundle(
   const campaignHandle =
     req.campaign!.campaignHandle ?? campaign.handle ?? req.params.campaignHandle ?? '';
 
-  const [questPages, threadBundle, summary, recentLore] = await Promise.all([
+  const enabledIds = new Set(
+    dashboardConfig.widgets.filter((w) => w.enabled).map((w) => w.id),
+  );
+  const recentEntitiesPlacement = dashboardConfig.widgets.find(
+    (w) => w.id === 'recentEntities',
+  );
+  const worldEventsPlacement = dashboardConfig.widgets.find((w) => w.id === 'worldEvents');
+  const factionsAtWarPlacement = dashboardConfig.widgets.find(
+    (w) => w.id === 'factionsAtWar',
+  );
+
+  const [questPages, threadBundle, summary, recentLore, recentEntities, worldEvents, factionConflict] =
+    await Promise.all([
     buildDashboardQuestLedgerEntries(campaignId, role, { limit: 8 }),
     buildDashboardThreadBundle(campaignId, role),
     buildDashboardSummary({
@@ -53,9 +78,34 @@ export async function getDashboardBundle(
       campaignHandle,
       role,
       viewerUserId: req.user?.id ?? null,
-      dashboardConfig,
     }),
     buildRecentLoreFeed(campaignId, campaignHandle, role, 3),
+    enabledIds.has('recentEntities')
+      ? buildRecentEntitiesFeed({
+          campaignId,
+          campaignHandle,
+          role,
+          config: normalizeRecentEntitiesConfig(recentEntitiesPlacement?.config),
+        })
+      : Promise.resolve(null),
+    enabledIds.has('worldEvents')
+      ? buildDashboardWorldEventsFeed({
+          campaignId,
+          campaignHandle,
+          role,
+          allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement ?? false,
+          config: normalizeWorldEventsConfig(worldEventsPlacement?.config),
+        })
+      : Promise.resolve(null),
+    enabledIds.has('factionsAtWar')
+      ? buildFactionConflictFeed({
+          campaignId,
+          campaignHandle,
+          role,
+          allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement ?? false,
+          config: normalizeFactionConflictConfig(factionsAtWarPlacement?.config),
+        })
+      : Promise.resolve(null),
   ]);
 
   const recentActivity = recentLore.items.map((item) => ({
@@ -87,6 +137,9 @@ export async function getDashboardBundle(
     recentActivity,
     summary,
     narrativeSnapshot,
+    ...(recentEntities ? { recentEntities } : {}),
+    ...(worldEvents ? { worldEvents } : {}),
+    ...(factionConflict ? { factionConflict } : {}),
   });
 }
 

@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { fetchWorldActivity } from '@/lib/wikiLoreGraph';
 
@@ -21,7 +22,7 @@ export function WorldActivityView({ campaignHandle }: WorldActivityViewProps) {
   return (
     <div className="space-y-4 p-4">
       <header>
-        <h2 className="text-lg font-semibold text-foreground">World activity</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>World activity</h2>
         <p className="text-sm text-muted">
           How your campaign memory grew in the last {data.periodDays} days.
         </p>
@@ -32,15 +33,15 @@ export function WorldActivityView({ campaignHandle }: WorldActivityViewProps) {
       <dl className="grid grid-cols-3 gap-3 text-center text-sm">
         <div className="rounded border border-border p-3">
           <dt className="text-muted">Pages expanded</dt>
-          <dd className="text-xl font-semibold text-foreground">{data.pagesEdited}</dd>
+          <dd className={TYPE_DISPLAY_CLASS}>{data.pagesEdited}</dd>
         </div>
         <div className="rounded border border-border p-3">
           <dt className="text-muted">New connections</dt>
-          <dd className="text-xl font-semibold text-foreground">{data.linksCreated}</dd>
+          <dd className={TYPE_DISPLAY_CLASS}>{data.linksCreated}</dd>
         </div>
         <div className="rounded border border-border p-3">
           <dt className="text-muted">References resolved</dt>
-          <dd className="text-xl font-semibold text-foreground">{data.stubsResolved}</dd>
+          <dd className={TYPE_DISPLAY_CLASS}>{data.stubsResolved}</dd>
         </div>
       </dl>
     </div>

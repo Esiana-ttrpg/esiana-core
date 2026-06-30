@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
@@ -85,7 +86,7 @@ export function WorldAdvanceBatchPage() {
             Advance world
           </Link>
         </p>
-        <h1 className="text-lg font-semibold text-foreground">{event.title}</h1>
+        <h1 className={TYPE_DISPLAY_CLASS}>{event.title}</h1>
         <p className="text-xs text-muted">
           Epoch {event.targetEpochMinute} · {payload.effects.length} effects · batch{' '}
           <span className="font-mono">{payload.batchId}</span>

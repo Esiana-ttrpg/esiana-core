@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { RefreshCw, X } from 'lucide-react';
 import { FieldLabel } from '@/components/admin/AdminSectionCard';
 import { controlClasses } from '@/components/admin/adminFormStyles';
@@ -70,7 +71,7 @@ export function PluginSourcesDrawer({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-6">
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={META_SECTION_LABEL_CLASS}>
               Registry source
             </h3>
             <div>
@@ -98,7 +99,7 @@ export function PluginSourcesDrawer({
           </section>
 
           <section className="space-y-3 border-t border-border pt-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <h3 className={META_SECTION_LABEL_CLASS}>
               Diagnostics
             </h3>
             <dl className="space-y-2">

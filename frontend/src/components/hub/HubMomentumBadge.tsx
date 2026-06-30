@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { HUB_MOMENTUM_TONES, type HubMomentumLabel } from '@/lib/hubAmbientTheme';
 
 interface HubMomentumBadgeProps {
@@ -34,7 +35,7 @@ export function HubRoleMomentumMeta({ role, momentum, className = '' }: HubRoleM
   return (
     <span className={`inline-flex flex-wrap items-center gap-1.5 ${className}`.trim()}>
       {role ? (
-        <span className="text-[11px] font-medium uppercase tracking-wide text-muted">{role}</span>
+        <span className={META_SECTION_LABEL_CLASS}>{role}</span>
       ) : null}
       {role && momentum ? <span className="text-[10px] text-muted/60">·</span> : null}
       {momentum ? <HubMomentumBadge label={momentum} /> : null}

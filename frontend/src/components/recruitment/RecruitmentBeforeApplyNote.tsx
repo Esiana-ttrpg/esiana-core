@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { PublicDirectoryCampaign } from '@/types/recruitment';
 
 export const RECRUITMENT_BEFORE_APPLY_NOTE_MAX = 500;
@@ -18,7 +19,7 @@ export function RecruitmentBeforeApplyNote({
     <div
       className={`rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 ${className}`.trim()}
     >
-      <p className="text-xs font-semibold uppercase tracking-wider text-primary/90">
+      <p className={`${META_SECTION_LABEL_CLASS} text-primary/90`}>
         Before you apply
       </p>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/95">

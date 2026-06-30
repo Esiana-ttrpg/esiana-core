@@ -1,3 +1,6 @@
+import type { CampaignIntegrations } from './campaignIntegrations.js';
+import { parseCampaignIntegrations } from './campaignIntegrations.js';
+
 export const TABLE_DEFAULT_KEYS = [
   'beginnerFriendly',
   'inclusiveTable',
@@ -143,7 +146,7 @@ export type BooleanToggleMap = Record<string, boolean>;
 export type UserCampaignDefaultsRecruitmentPrefs = {
   genreThemes?: string[];
   safetyToolsText?: string | null;
-  externalTools?: string[];
+  campaignIntegrations?: CampaignIntegrations | null;
   contentWarnings?: string | null;
   equipmentNeeded?: string | null;
 };
@@ -283,13 +286,12 @@ export function sanitizeUserCampaignDefaultsPrefs(input: unknown): UserCampaignD
         ...(typeof recruitmentRaw.safetyToolsText === 'string'
           ? { safetyToolsText: recruitmentRaw.safetyToolsText.trim() || null }
           : {}),
-        ...(Array.isArray(recruitmentRaw.externalTools)
+        ...(recruitmentRaw.campaignIntegrations !== undefined
           ? {
-              externalTools: recruitmentRaw.externalTools
-                .filter((entry): entry is string => typeof entry === 'string')
-                .map((entry) => entry.trim())
-                .filter(Boolean)
-                .slice(0, 24),
+              campaignIntegrations:
+                recruitmentRaw.campaignIntegrations === null
+                  ? null
+                  : parseCampaignIntegrations(recruitmentRaw.campaignIntegrations),
             }
           : {}),
         ...(typeof recruitmentRaw.contentWarnings === 'string'

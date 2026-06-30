@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { AuthoringContext } from '@shared/authoringContext';
 import { getAuthoringOverlay } from '@/components/authoring/overlayRegistry';
@@ -24,7 +25,7 @@ export function AuthoringOverlayRail({ campaignHandle, context }: AuthoringOverl
   return (
     <aside className="space-y-4 rounded border border-border bg-muted/20 p-4 lg:min-w-[240px] lg:max-w-xs">
       <header>
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="META_SECTION_LABEL_CLASS-foreground">
           Structured overlays
         </h2>
         <p className="mt-1 text-[11px] text-muted-foreground">

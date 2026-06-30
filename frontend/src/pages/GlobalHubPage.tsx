@@ -19,7 +19,7 @@ import type { UserHubResponse } from '@/types/hub';
 
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
-import { NewCampaignWizard } from '@/components/hub/NewCampaignWizard';
+import { CreateCampaignWizardHost } from '@/components/hub/CreateCampaignWizardHost';
 
 import { CampaignCard } from '@/components/hub/CampaignCard';
 
@@ -417,18 +417,12 @@ export function GlobalHubPage() {
 
 
 
-      <NewCampaignWizard
-
+      <CreateCampaignWizardHost
         open={createOpen}
-
         onClose={() => setCreateOpen(false)}
-
         onCreated={() => {
-
           void loadCampaigns();
-
         }}
-
       />
 
     </PageShell>

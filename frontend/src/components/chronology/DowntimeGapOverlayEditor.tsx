@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import type { DowntimeGapOverlay } from '@shared/downtimeAnnotations';
 import { putDowntimeGapOverlay } from '@/lib/downtimeGapOverlayApi';
@@ -46,7 +47,7 @@ export function DowntimeGapOverlayEditor({
 
   return (
     <div className="mt-2 space-y-2 rounded border border-border/60 bg-surface/30 p-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+      <p className={META_SECTION_LABEL_CLASS}>
         Annotate period
       </p>
       <label className="block space-y-1">

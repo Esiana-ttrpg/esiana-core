@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import {
   campaignDowntimeHubPath,
@@ -42,7 +43,7 @@ export function AdvanceTimeSection({ campaignHandle }: AdvanceTimeSectionProps) 
   return (
     <div className="space-y-6">
       <header>
-        <h2 className="text-lg font-semibold text-foreground">Advance Time</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Advance Time</h2>
         <p className="text-sm text-muted-foreground">
           Guided between-sessions ritual — advance time, then resolve simulation outputs in order.
         </p>

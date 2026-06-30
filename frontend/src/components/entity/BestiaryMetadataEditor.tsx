@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
@@ -113,7 +114,7 @@ export function BestiaryMetadataEditor({
       {showIdentity ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 sm:col-span-2" id={fieldId('creatureType')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Creature type
             </span>
             <input
@@ -124,7 +125,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={fieldId('region')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Region
             </span>
             <input
@@ -135,7 +136,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('knownFor')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Known for
             </span>
             <input
@@ -146,7 +147,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('alsoKnownAs')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Also known as
             </span>
             <input
@@ -162,7 +163,7 @@ export function BestiaryMetadataEditor({
       {showHabitat ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 sm:col-span-2" id={fieldId('habitat')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Habitat
             </span>
             <input
@@ -173,7 +174,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={fieldId('threatLevel')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Threat level
             </span>
             <input
@@ -184,7 +185,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={fieldId('intelligence')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Intelligence
             </span>
             <input
@@ -195,7 +196,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('behaviorSummary')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Behavior
             </span>
             <textarea
@@ -213,7 +214,7 @@ export function BestiaryMetadataEditor({
       {showEcology ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1" id={fieldId('temperament')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Temperament
             </span>
             <input
@@ -224,7 +225,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={fieldId('encounterRate')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Encounter rate
             </span>
             <input
@@ -235,7 +236,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('encounterConditions')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Encounter conditions
             </span>
             <input
@@ -248,7 +249,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('activePeriods')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Active periods (comma-separated)
             </span>
             <input
@@ -267,7 +268,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('weaknesses')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Weaknesses (comma-separated)
             </span>
             <input
@@ -286,7 +287,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('resistances')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Resistances (comma-separated)
             </span>
             <input
@@ -305,7 +306,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={fieldId('immunities')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Immunities (comma-separated)
             </span>
             <input
@@ -324,7 +325,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={fieldId('factionAlignment')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Faction alignment
             </span>
             <input
@@ -337,7 +338,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={fieldId('corruptionAffinity')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Corruption affinity
             </span>
             <input
@@ -356,7 +357,7 @@ export function BestiaryMetadataEditor({
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+              <span className={META_SECTION_LABEL_CLASS}>
                 Related creatures
               </span>
               <button
@@ -407,7 +408,7 @@ export function BestiaryMetadataEditor({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+              <span className={META_SECTION_LABEL_CLASS}>
                 Related locations
               </span>
               <button
@@ -477,7 +478,7 @@ export function BestiaryMetadataEditor({
             }}
           />
           <label className="space-y-1" id={fieldId('appearance.summary')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Appearance summary
             </span>
             <textarea
@@ -500,7 +501,7 @@ export function BestiaryMetadataEditor({
             />
           </label>
           <label className="space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Appearance tags (comma-separated)
             </span>
             <input

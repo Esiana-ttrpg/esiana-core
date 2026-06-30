@@ -8,6 +8,7 @@ import {
   createDefaultRefineState,
   filterAndSortCategoryIndexChildren,
   findSimilarCategoryIndexEntries,
+  formatCategoryIndexResultCount,
   getCategoryIndexFacetDefs,
   hasActiveCategoryIndexRefine,
   matchesCategoryIndexSearch,
@@ -138,5 +139,32 @@ describe('categoryIndexEmptyState', () => {
     });
     assert.equal(state.showCreateFromSearch, false);
     assert.equal(state.showResetRefine, true);
+  });
+});
+
+describe('formatCategoryIndexResultCount', () => {
+  it('uses singular noun when browse is active and one row matches', () => {
+    assert.equal(
+      formatCategoryIndexResultCount(5, 1, 'Characters', 'aria', false),
+      'Showing 1 of 5',
+    );
+    assert.equal(
+      formatCategoryIndexResultCount(1, 1, 'Characters', 'aria', false),
+      '1 character',
+    );
+  });
+
+  it('uses plural noun when all rows match during search', () => {
+    assert.equal(
+      formatCategoryIndexResultCount(317, 317, 'Characters', 'aria', false),
+      '317 characters',
+    );
+  });
+
+  it('returns null when browse is inactive and all rows match', () => {
+    assert.equal(
+      formatCategoryIndexResultCount(12, 12, 'Organizations', '', false),
+      null,
+    );
   });
 });

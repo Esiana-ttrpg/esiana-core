@@ -5,7 +5,8 @@ import { useCampaignNav } from '@/contexts/CampaignNavContext';
 import { useWiki } from '@/contexts/WikiContext';
 import { useCampaignHeaderStatus } from '@/hooks/useCampaignHeaderStatus';
 import { CampaignSearch } from '@/components/campaign/CampaignSearch';
-import { CampaignPicker } from '@/components/layout/CampaignPicker';
+import { CampaignIdentityLink } from '@/components/layout/CampaignIdentityLink';
+import { CampaignHeaderIntegrations } from '@/components/layout/CampaignHeaderIntegrations';
 import { HeaderAccountNav } from '@/components/layout/HeaderAccountNav';
 
 const headerControlClass =
@@ -28,12 +29,10 @@ function GlobalHomeLink() {
 
 function CampaignIdentityCluster({
   campaignHandle,
-  campaignId,
   campaignName,
   subtitle,
 }: {
   campaignHandle: string;
-  campaignId?: string;
   campaignName: string | null;
   subtitle: string | null;
 }) {
@@ -45,9 +44,8 @@ function CampaignIdentityCluster({
           className="h-5 w-px shrink-0 bg-[rgb(var(--color-border-warm-rgb)/0.2)]"
           aria-hidden
         />
-        <CampaignPicker
+        <CampaignIdentityLink
           campaignHandle={campaignHandle}
-          campaignId={campaignId}
           campaignName={campaignName}
         />
       </div>
@@ -96,7 +94,6 @@ export function CampaignHeader() {
 
         <CampaignIdentityCluster
           campaignHandle={campaignHandle}
-          campaignId={campaign?.id}
           campaignName={campaignName}
           subtitle={subtitle}
         />
@@ -111,6 +108,8 @@ export function CampaignHeader() {
           <Search className="size-4" strokeWidth={1.5} />
         </button>
 
+        <CampaignHeaderIntegrations integrations={campaign?.campaignIntegrations} />
+
         {accountNav}
       </div>
 
@@ -120,17 +119,19 @@ export function CampaignHeader() {
         <div className="flex min-w-0 max-w-[min(100%,36%)] items-center justify-self-start">
           <CampaignIdentityCluster
             campaignHandle={campaignHandle}
-            campaignId={campaign?.id}
             campaignName={campaignName}
             subtitle={subtitle}
           />
         </div>
 
-        <CampaignSearch
-          campaignHandle={campaignHandle}
-          alignControlsToAvatar
-          className="w-full min-w-0 justify-self-center sm:max-w-md lg:max-w-lg"
-        />
+        <div className="flex min-w-0 items-center justify-center gap-2 justify-self-center sm:max-w-md lg:max-w-lg">
+          <CampaignSearch
+            campaignHandle={campaignHandle}
+            alignControlsToAvatar
+            className="w-full min-w-0"
+          />
+          <CampaignHeaderIntegrations integrations={campaign?.campaignIntegrations} />
+        </div>
 
         <div className="justify-self-end">{accountNav}</div>
       </div>

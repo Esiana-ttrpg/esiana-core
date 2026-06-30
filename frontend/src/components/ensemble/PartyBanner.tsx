@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import type { EnsembleConfig } from '@/lib/ensembleConfig';
 
 interface PartyBannerProps {
@@ -35,7 +36,7 @@ export function PartyBanner({ campaignName, config }: PartyBannerProps) {
             ))}
           </div>
         ) : null}
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h1 className={TYPE_DISPLAY_CLASS}>
           {displayName}
         </h1>
         {summary ? (

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { campaignRelationsPath } from '@/lib/campaignPaths';
@@ -113,7 +114,7 @@ export function OrganizationStructureTab({
       </Link>
       <FactionGossipSection campaignHandle={campaignHandle} orgPageId={orgPageId} />
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Leadership
         </h2>
         {leader ? (
@@ -132,7 +133,7 @@ export function OrganizationStructureTab({
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Members
         </h2>
         {members.length === 0 ? (
@@ -169,7 +170,7 @@ export function OrganizationStructureTab({
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Sub-organizations
         </h2>
         {childOrgs.length === 0 ? (
@@ -194,7 +195,7 @@ export function OrganizationStructureTab({
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Relations (current)
         </h2>
         {relationsByType.length === 0 ? (

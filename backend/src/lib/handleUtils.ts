@@ -1,3 +1,10 @@
+import {
+  buildCampaignHandleFromName,
+  getCampaignNameHandleError,
+} from '../../../shared/campaignHandle.js';
+
+export { getCampaignNameHandleError };
+
 /**
  * Handle utilities: validation, generation, and normalization.
  * Handles are URL-safe identifiers: lowercase, alphanumeric + hyphens, 3-50 chars.
@@ -23,29 +30,7 @@ export function generateHandle(name: string): string {
     throw new Error('Campaign name is required to generate handle');
   }
 
-  let handle = name
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
-  if (handle.length < 3) {
-    throw new Error(
-      'Campaign name must contain at least 3 alphanumeric characters',
-    );
-  }
-
-  if (handle.length > 50) {
-    handle = handle.substring(0, 50);
-    handle = handle.replace(/-+$/, '');
-    if (handle.length < 3) {
-      throw new Error('Campaign name too short after handle generation');
-    }
-  }
-
-  return handle;
+  return buildCampaignHandleFromName(name);
 }
 
 /**

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 interface StatField {
   key: string;
   value: string;
@@ -55,7 +56,7 @@ export function StatBlockWidget({
       }
     >
       {isEditingLayout && (
-        <div className="bg-surface/90 px-4 py-2 text-xs uppercase tracking-wide text-muted rounded-t-lg">
+        <div className="bg-surface/90 px-4 py-2 META_SECTION_LABEL_CLASS rounded-t-lg">
           Stat Block
         </div>
       )}
@@ -81,7 +82,7 @@ export function StatBlockWidget({
             </div>
           ) : (
             <div key={`${field.key}-${index}`} className="grid gap-2 sm:grid-cols-[1fr_1fr]">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <div className={META_SECTION_LABEL_CLASS}>
                 {field.key.trim().length > 0 ? field.key : 'Stat'}
               </div>
               <div className="text-sm text-foreground">{field.value}</div>

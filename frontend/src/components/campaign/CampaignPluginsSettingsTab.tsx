@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Puzzle } from 'lucide-react';
 import {
@@ -195,7 +196,7 @@ export function CampaignPluginsSettingsTab({
 
       {available.length > 0 ? (
         <section className="space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+          <h3 className={`${META_SECTION_LABEL_CLASS} text-foreground`}>
             Available plugins
           </h3>
           <div className="grid gap-4">
@@ -226,7 +227,7 @@ export function CampaignPluginsSettingsTab({
       ) : null}
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">
+        <h3 className={`${META_SECTION_LABEL_CLASS} text-foreground`}>
           Active plugins
         </h3>
         {active.length === 0 ? (

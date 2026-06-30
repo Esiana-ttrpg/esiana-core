@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Eye } from 'lucide-react';
 import {
@@ -179,7 +180,7 @@ export function CodexDiscoverySection({
       ) : (
         <>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Party presence
             </span>
             <select
@@ -205,7 +206,7 @@ export function CodexDiscoverySection({
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-muted">
+            <span className={META_SECTION_LABEL_CLASS}>
               Available from (epoch minute)
             </span>
             <input

@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight, GitBranch, Lightbulb } from 'lucide-react';
@@ -109,7 +110,7 @@ export function LivingThreadsWidget({
         <div className="space-y-4">
           {hasLiving ? (
             <section>
-              <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+              <h4 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
                 Narrative pressure
               </h4>
               <ul className="space-y-2">
@@ -127,7 +128,7 @@ export function LivingThreadsWidget({
 
           {hasTheories ? (
             <section className={THREAD_HUB_ZONE_CLASS.theories}>
-              <h4 className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-cyan-200/80">
+              <h4 className={`mb-2 flex items-center gap-1.5 ${META_SECTION_LABEL_CLASS} text-cyan-200/80`}>
                 <Lightbulb className="size-3" aria-hidden />
                 Player theories
               </h4>
@@ -149,7 +150,7 @@ export function LivingThreadsWidget({
               <button
                 type="button"
                 onClick={() => setResolvedOpen((open) => !open)}
-                className="mb-2 flex w-full items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted hover:text-foreground"
+                className={`mb-2 flex w-full items-center gap-1 ${META_SECTION_LABEL_CLASS} hover:text-foreground`}
               >
                 {resolvedOpen ? (
                   <ChevronDown className="size-3" aria-hidden />

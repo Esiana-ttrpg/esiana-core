@@ -144,6 +144,9 @@ html {
   --text-measure-max-ch: 96;
   --space-section: 1.5rem;
   --space-group: 0.75rem;
+  --workspace-header-top: 2rem;
+  --workspace-header-title-to-toolbar: 1rem;
+  --workspace-header-to-content: 1.25rem;
   --motion-duration: 180ms;
   --motion-ease: ease-out;
   --breakpoint-ultrawide: 1920px;
@@ -448,6 +451,23 @@ html[data-atmosphere-gradient-behavior='horizon_fog'] .canvas-atmosphere {
 
 .workspace-gutter[data-workspace-rail='true'] {
   padding-block-start: 0.75rem;
+}
+
+.workspace-header {
+  padding-block-start: var(--workspace-header-top, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--workspace-header-title-to-toolbar, 1rem);
+  margin-block-end: var(--workspace-header-to-content, 1.25rem);
+}
+
+.workspace-header__below-toolbar,
+.workspace-header__chips {
+  min-width: 0;
+}
+
+.workspace-header__chips:empty {
+  display: none;
 }
 
 .workspace-rail {

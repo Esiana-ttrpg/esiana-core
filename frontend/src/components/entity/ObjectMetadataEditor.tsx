@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useMemo, useState } from 'react';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
 import { useRegisterBlockDraft } from '@/contexts/PageBlockDraftRegistry';
@@ -109,7 +110,7 @@ export function ObjectMetadataEditor({
       {showIdentity ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'objectType')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Type</span>
+            <span className={META_FIELD_LABEL_CLASS}>Type</span>
             <input
               className={codexFieldClass}
               value={draft.objectType ?? ''}
@@ -118,7 +119,7 @@ export function ObjectMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'knownFor')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Known for</span>
+            <span className={META_FIELD_LABEL_CLASS}>Known for</span>
             <input
               className={codexFieldClass}
               value={draft.knownFor ?? ''}
@@ -127,7 +128,7 @@ export function ObjectMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'investedOrMagical')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Invested / magical</span>
+            <span className={META_FIELD_LABEL_CLASS}>Invested / magical</span>
             <input
               className={codexFieldClass}
               value={draft.investedOrMagical ?? ''}
@@ -136,7 +137,7 @@ export function ObjectMetadataEditor({
             />
           </label>
           <label className="space-y-1 sm:col-span-2" id={codexFieldId(focusField, 'powersSummary')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Powers</span>
+            <span className={META_FIELD_LABEL_CLASS}>Powers</span>
             <textarea
               className={`${codexFieldClass} min-h-[3rem] resize-y`}
               value={draft.powersSummary ?? ''}
@@ -150,7 +151,7 @@ export function ObjectMetadataEditor({
       {showProvenance ? (
         <div className="grid gap-2">
           <label className="space-y-1" id={codexFieldId(focusField, 'provenance')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Provenance</span>
+            <span className={META_FIELD_LABEL_CLASS}>Provenance</span>
             <textarea
               className={`${codexFieldClass} min-h-[3rem] resize-y`}
               value={draft.provenance ?? ''}
@@ -159,7 +160,7 @@ export function ObjectMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'historicalSignificance')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Historical significance</span>
+            <span className={META_FIELD_LABEL_CLASS}>Historical significance</span>
             <input
               className={codexFieldClass}
               value={draft.historicalSignificance ?? ''}
@@ -170,7 +171,7 @@ export function ObjectMetadataEditor({
             />
           </label>
           <label className="space-y-1" id={codexFieldId(focusField, 'currentHolderId')}>
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Current holder</span>
+            <span className={META_FIELD_LABEL_CLASS}>Current holder</span>
             <IdentityPagePicker
               flatPages={holderPages}
               lookupPages={flatPages}

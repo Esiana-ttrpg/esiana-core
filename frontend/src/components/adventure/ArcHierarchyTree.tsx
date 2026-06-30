@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type {
@@ -191,7 +192,7 @@ export function ArcHierarchyTree({ campaignHandle, projection }: ArcHierarchyTre
       ))}
       {projection.orphans.quests.length > 0 ? (
         <div className="mt-4 rounded border border-dashed border-border p-2">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="mb-1 META_SECTION_LABEL_CLASS-foreground">
             Quests outside arc overlays
           </p>
           <ul className="space-y-0.5">

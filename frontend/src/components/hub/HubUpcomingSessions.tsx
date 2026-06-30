@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { CalendarClock } from 'lucide-react';
 import type { HubContinueCandidate } from '@/types/hub';
@@ -41,7 +42,7 @@ export function HubUpcomingSessions({ sessions }: HubUpcomingSessionsProps) {
             to={session.href}
             className="min-w-[220px] snap-start rounded-xl border border-border bg-surface/80 px-4 py-3 transition-colors hover:border-primary/40 hover:bg-elevated lg:min-w-0"
           >
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+            <p className={META_SECTION_LABEL_CLASS}>
               {session.campaignName}
             </p>
             <p className="mt-1 text-sm font-medium text-foreground">{session.title}</p>

@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
@@ -234,7 +235,7 @@ export function OrganizationMetadataEditor({
       {showIdentity ? (
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Type
           </span>
           <input
@@ -245,7 +246,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Region
           </span>
           <input
@@ -256,7 +257,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className="space-y-1 sm:col-span-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Motto
           </span>
           <input
@@ -267,7 +268,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className={`space-y-1 sm:col-span-2 ${focusClass('publicPurpose')}`}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Public purpose
           </span>
           <input
@@ -285,7 +286,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className={`space-y-1 sm:col-span-2 ${focusClass('publicReputation')}`}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Street belief
           </span>
           <input
@@ -297,7 +298,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className={`space-y-1 ${focusClass('worldState')}`}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             World state
           </span>
           <select
@@ -320,7 +321,7 @@ export function OrganizationMetadataEditor({
           </select>
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Scale
           </span>
           <select
@@ -343,7 +344,7 @@ export function OrganizationMetadataEditor({
           </select>
         </label>
         <label className="space-y-1 sm:col-span-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Known methods
           </span>
           <input
@@ -355,7 +356,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Influence mode
           </span>
           <select
@@ -378,7 +379,7 @@ export function OrganizationMetadataEditor({
           </select>
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Social visibility
           </span>
           <select
@@ -401,7 +402,7 @@ export function OrganizationMetadataEditor({
           </select>
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Structural role
           </span>
           <select
@@ -424,7 +425,7 @@ export function OrganizationMetadataEditor({
           </select>
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Lifecycle status
           </span>
           <select
@@ -453,7 +454,7 @@ export function OrganizationMetadataEditor({
           onChange={(next) => void persist({ statusEffectiveDate: next })}
         />
         <label className="space-y-1 sm:col-span-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Status reason
           </span>
           <input
@@ -479,7 +480,7 @@ export function OrganizationMetadataEditor({
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Symbol preset
             </span>
             <select
@@ -502,7 +503,7 @@ export function OrganizationMetadataEditor({
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Doctrine tint
             </span>
             <input
@@ -518,7 +519,7 @@ export function OrganizationMetadataEditor({
 
       {showPressures ? (
         <div className={`space-y-2 ${focusClass('currentPressures')}`}>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <span className={META_SECTION_LABEL_CLASS}>
             Current pressures
           </span>
           {draft.currentPressures.map((pressure, index) => (
@@ -571,7 +572,7 @@ export function OrganizationMetadataEditor({
 
       {showDuality ? (
         <label className={`space-y-1 ${focusClass('privateAgenda')}`}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Private agenda (DM only)
           </span>
           <textarea
@@ -587,7 +588,7 @@ export function OrganizationMetadataEditor({
       {showLeadership ? (
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Leader
           </span>
           <IdentityPagePicker
@@ -599,7 +600,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Headquarters
           </span>
           <IdentityPagePicker
@@ -611,7 +612,7 @@ export function OrganizationMetadataEditor({
           />
         </label>
         <label className="space-y-1 sm:col-span-2">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Parent organization
           </span>
           <IdentityPagePicker
@@ -628,7 +629,7 @@ export function OrganizationMetadataEditor({
       {showDiplomacy ? (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <span className={META_SECTION_LABEL_CLASS}>
             Relation ledger
           </span>
           <button
@@ -704,7 +705,7 @@ export function OrganizationMetadataEditor({
                       }
                     />
                     <label className="space-y-1">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+                      <span className={META_FIELD_LABEL_CLASS}>
                         Relation type
                       </span>
                       <select
@@ -724,7 +725,7 @@ export function OrganizationMetadataEditor({
                       </select>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+                      <span className={META_FIELD_LABEL_CLASS}>
                         Stance
                       </span>
                       <select
@@ -744,7 +745,7 @@ export function OrganizationMetadataEditor({
                       </select>
                     </label>
                     <label className="space-y-1">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+                      <span className={META_FIELD_LABEL_CLASS}>
                         Visibility
                       </span>
                       <select
@@ -764,7 +765,7 @@ export function OrganizationMetadataEditor({
                       </select>
                     </label>
                     <label className="space-y-1 sm:col-span-2">
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+                      <span className={META_FIELD_LABEL_CLASS}>
                         Note
                       </span>
                       <input
@@ -823,7 +824,7 @@ export function OrganizationMetadataEditor({
   return (
     <section className="space-y-3 rounded-lg border border-border bg-surface/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+        <h3 className={META_SECTION_LABEL_CLASS}>
           Organization registry
         </h3>
         {saving && <Loader2 className="size-3.5 animate-spin text-muted" />}

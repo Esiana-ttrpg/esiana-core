@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Check, HardDrive, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -71,7 +72,7 @@ function MetricsPanel({
     <section className="rounded-xl border border-border bg-surface/40 p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Usage</h2>
+          <h2 className={META_SECTION_LABEL_CLASS}>Usage</h2>
           <p className="mt-1 text-lg font-medium text-foreground">
             {metrics.totalBytesFormatted}
             {metrics.accuracy === 'estimate' ? (
@@ -116,7 +117,7 @@ function MetricsPanel({
       </div>
 
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">By category</h3>
+        <h3 className={META_SECTION_LABEL_CLASS}>By category</h3>
         <ul className="mt-2 grid gap-1 text-sm sm:grid-cols-2">
           <li>Maps: {metrics.categories.maps}</li>
           <li>Images: {metrics.categories.images}</li>
@@ -128,7 +129,7 @@ function MetricsPanel({
 
       {metrics.largestAssets.length > 0 ? (
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h3 className={META_SECTION_LABEL_CLASS}>
             Largest assets
           </h3>
           <ul className="mt-2 space-y-1 text-sm">
@@ -238,7 +239,7 @@ export function AdminStoragePage() {
 
       <section className="rounded-xl border border-border bg-surface/40 p-6 space-y-6">
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Active Driver
           </h2>
           <p className="mt-1 text-lg font-medium text-foreground">{activeDriver.displayName}</p>
@@ -252,7 +253,7 @@ export function AdminStoragePage() {
         </div>
 
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Capabilities
           </h2>
           <div className="mt-3">
@@ -261,7 +262,7 @@ export function AdminStoragePage() {
         </div>
 
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Configuration
           </h2>
           <ul className="mt-2 space-y-1 text-sm text-muted">
@@ -276,14 +277,14 @@ export function AdminStoragePage() {
         </div>
 
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Driver Version
           </h2>
           <p className="mt-1 text-sm text-foreground">{activeDriver.version}</p>
         </div>
 
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+          <h2 className={META_SECTION_LABEL_CLASS}>
             Registered Providers
           </h2>
           <ul className="mt-2 space-y-3 text-sm">

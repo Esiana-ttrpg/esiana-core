@@ -9,21 +9,31 @@ import {
 
 interface CampaignPartySurfaceProps {
   roster: CampaignNarrativeSnapshot['partyRoster'];
+  /** Omit section chrome when rendered inside DashboardWidgetShell */
+  embedded?: boolean;
 }
 
-export function CampaignPartySurface({ roster }: CampaignPartySurfaceProps) {
+export function CampaignPartySurface({ roster, embedded = false }: CampaignPartySurfaceProps) {
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline justify-between gap-3 px-1">
-        <h2 className={`${TYPE_DISPLAY_CLASS} text-lg font-semibold text-focal-foreground sm:text-xl`}>
-          Party
-        </h2>
-        {roster.members.length > 0 ? (
-          <Link to={roster.href} className="text-sm text-primary hover:underline">
+    <div className={embedded ? 'space-y-3' : 'space-y-4'}>
+      {!embedded ? (
+        <div className="flex items-baseline justify-between gap-3 px-1">
+          <h2 className={TYPE_DISPLAY_CLASS}>
+            Party
+          </h2>
+          {roster.members.length > 0 ? (
+            <Link to={roster.href} className="text-sm text-primary hover:underline">
+              All characters
+            </Link>
+          ) : null}
+        </div>
+      ) : roster.members.length > 0 ? (
+        <div className="flex justify-end">
+          <Link to={roster.href} className="text-xs text-primary hover:underline">
             All characters
           </Link>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {roster.members.length === 0 ? (
         <div
           className={`${REGION_DEPTH_3_CLASS} rounded-xl border border-dashed border-border/40 px-6 py-8 text-center`}

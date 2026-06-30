@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
@@ -169,7 +170,7 @@ export function DocumentSectionEditor({
       <div className="space-y-1.5">
         <label
           htmlFor="wiki-parent-picker"
-          className="text-[10px] font-medium uppercase tracking-wide text-muted"
+          className={META_FIELD_LABEL_CLASS}
         >
           Belongs within
         </label>
@@ -238,7 +239,7 @@ export function DocumentSectionEditor({
       <div className="grid gap-3">
         {showTemplate ? (
           <label className="space-y-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Entity type
             </span>
             <select
@@ -257,7 +258,7 @@ export function DocumentSectionEditor({
         ) : null}
 
         <label className="space-y-1">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Visibility
           </span>
           <select
@@ -278,7 +279,7 @@ export function DocumentSectionEditor({
 
       {canManageWiki ? (
         <div className="space-y-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Codex aliases
           </span>
           <WikiPageAliasesEditor
@@ -291,7 +292,7 @@ export function DocumentSectionEditor({
 
       {showTags ? (
         <div className="space-y-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Tags
           </span>
           <WikiPageTagsInput

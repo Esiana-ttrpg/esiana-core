@@ -11,5 +11,7 @@
   "campaign.recruitment.sortNextSession": "Next Session",
   "campaign.recruitment.paginationPrev": "Prev",
   "campaign.recruitment.paginationNext": "Next",
-  "campaign.recruitment.paginationLabel": "Page {{page}} / {{totalPages}}"
+  "campaign.recruitment.paginationLabel": "Page {{page}} / {{totalPages}}",
+  "campaign.recruitment.viewLobby": "View Lobby",
+  "campaign.recruitment.enterLobby": "Enter Lobby"
 }

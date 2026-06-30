@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Images } from 'lucide-react';
@@ -100,7 +101,7 @@ export function VisualAtlasPage() {
         <>
           {showCampaignBanners ? (
             <section className="space-y-3">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+              <h2 className={META_SECTION_LABEL_CLASS}>
                 Campaign imagery
               </h2>
               <div className="grid gap-4 md:grid-cols-2">

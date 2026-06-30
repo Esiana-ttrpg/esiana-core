@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import type { ContinueCandidate } from '@/lib/hubPrioritization';
@@ -67,7 +68,7 @@ function ContinueEntityItem({ item }: { item: HubContinueEntityItem }) {
       className="group flex items-start gap-3 rounded-lg border border-border/80 bg-background/50 px-3 py-2.5 transition-colors hover:border-primary/30 hover:bg-elevated/60"
     >
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+        <p className={META_SECTION_LABEL_CLASS}>
           {item.campaignName}
         </p>
         <p className="mt-0.5 text-sm font-medium text-foreground group-hover:text-primary">
@@ -92,7 +93,7 @@ export function HubContinueRow({ candidates, entityFeed = [] }: HubContinueRowPr
   return (
     <section className="space-y-3">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Continue</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>Continue</h2>
         <p className="text-sm text-muted">Pick up where your stories left off.</p>
       </div>
 

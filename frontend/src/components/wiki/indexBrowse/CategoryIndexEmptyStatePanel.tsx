@@ -1,6 +1,8 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { FileText, Plus } from 'lucide-react';
+import { WORKSPACE_CREATE_BUTTON_CLASS } from '@/components/layout/WorkspaceActionBar';
 import {
   getCategoryEmptyState,
   mapSimilarEntries,
@@ -19,6 +21,8 @@ interface CategoryIndexEmptyStatePanelProps extends CategoryIndexEmptyStateInput
   onCreateFromSearch: (title: string) => void;
   onClearSearch: () => void;
   onResetRefine: () => void;
+  /** Label for the header create action — empty states educate, headers initiate */
+  headerCreateLabel?: string;
   icon?: ReactNode;
 }
 
@@ -31,6 +35,7 @@ export function CategoryIndexEmptyStatePanel({
   onCreateFromSearch,
   onClearSearch,
   onResetRefine,
+  headerCreateLabel,
   icon,
   ...input
 }: CategoryIndexEmptyStatePanelProps) {
@@ -46,17 +51,16 @@ export function CategoryIndexEmptyStatePanel({
   const similar = mapSimilarEntries(similarEntries);
 
   if (state.variant === 'no_entries') {
+    const createLabel = headerCreateLabel ?? `+ ${itemLabel}`;
     return (
       <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-16 text-center">
         {icon ?? <FileText className="mx-auto mb-3 size-10 text-muted" />}
         <p className="text-muted">{state.message}</p>
-        <button
-          type="button"
-          onClick={onCreate}
-          className="mt-4 text-sm text-primary hover:underline"
-        >
-          Create your first {itemLabel.toLowerCase()}
-        </button>
+        <p className="mx-auto mt-3 max-w-md text-sm text-muted">
+          Use{' '}
+          <span className="font-medium text-foreground">{createLabel}</span> in the header to add
+          your first {itemLabel.toLowerCase()}.
+        </p>
       </div>
     );
   }
@@ -67,7 +71,7 @@ export function CategoryIndexEmptyStatePanel({
 
       {similar.length > 0 && (
         <div className="mx-auto mt-4 max-w-md text-left">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+          <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Similar entries
           </p>
           <ul className="space-y-1 text-sm">
@@ -113,9 +117,9 @@ export function CategoryIndexEmptyStatePanel({
           <button
             type="button"
             onClick={() => onCreateFromSearch(input.searchQuery.trim())}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-background hover:bg-primary-hover"
+            className={WORKSPACE_CREATE_BUTTON_CLASS}
           >
-            <Plus className="size-4" />
+            <Plus className="size-4" aria-hidden />
             {state.createLabel}
           </button>
         )}

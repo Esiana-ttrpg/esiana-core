@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
@@ -279,7 +280,7 @@ export function TimeTrackingManagement() {
 
       <div className="grid min-h-[480px] gap-6 lg:grid-cols-[minmax(220px,280px)_1fr]">
         <aside className="rounded-xl border border-border bg-surface/40 p-3">
-          <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+          <h2 className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
             Timelines
           </h2>
           {calendars.length === 0 ? (

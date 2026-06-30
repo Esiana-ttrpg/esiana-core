@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import type { AppearanceDetailsFields } from '@shared/appearanceMetadata';
 import type { AppearanceDetailsViewModel } from '@/lib/entityAppearanceProjection';
@@ -111,7 +112,7 @@ export function AppearanceDetailsEditor({
       </div>
 
       <label className="space-y-1" id="appearance.atAGlance">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           At a glance
         </span>
         <textarea
@@ -128,7 +129,7 @@ export function AppearanceDetailsEditor({
 
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="space-y-1" id="appearance.build">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Build
           </span>
           <input
@@ -140,7 +141,7 @@ export function AppearanceDetailsEditor({
           />
         </label>
         <label className="space-y-1" id="appearance.voice">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             Voice
           </span>
           <input
@@ -154,7 +155,7 @@ export function AppearanceDetailsEditor({
       </div>
 
       <label className="space-y-1" id="appearance.vibeImpression">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Vibe / impression
         </span>
         <input
@@ -169,7 +170,7 @@ export function AppearanceDetailsEditor({
       </label>
 
       <label className="space-y-1" id="appearance.clothingMotifs">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Clothing motifs
         </span>
         <input
@@ -184,7 +185,7 @@ export function AppearanceDetailsEditor({
       </label>
 
       <label className="space-y-1" id="appearance.distinguishingFeatures">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Distinguishing features
         </span>
         <input
@@ -208,7 +209,7 @@ export function AppearanceDetailsEditor({
       </label>
 
       <label className="space-y-1" id="appearance.visibleInjuries">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+        <span className={META_FIELD_LABEL_CLASS}>
           Visible injuries
         </span>
         <input

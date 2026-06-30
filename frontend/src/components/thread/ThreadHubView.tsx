@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, GitBranch, Network } from 'lucide-react';
@@ -15,6 +16,10 @@ import type { ThreadHubPayload } from '@/types/wiki';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
+import {
+  formatWorkspaceHubCountHint,
+  resolveCategoryCountNouns,
+} from '@/lib/workspaceHeaderPolicy';
 import { ThreadHubCard } from '@/components/thread/ThreadHubCard';
 import { ThreadHubFiltersPanel } from '@/components/thread/ThreadHubFilters';
 import {
@@ -150,7 +155,7 @@ export function ThreadHubView({
         <button
           type="button"
           onClick={() => onThreadsLensChange('all')}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
             threadsLens === 'all'
               ? 'bg-accent/15 text-accent'
               : 'text-muted hover:bg-elevated/60'
@@ -161,7 +166,7 @@ export function ThreadHubView({
         <button
           type="button"
           onClick={() => onThreadsLensChange('activity')}
-          className={`rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-wider ${
+          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
             threadsLens === 'activity'
               ? 'bg-accent/15 text-accent'
               : 'text-muted hover:bg-elevated/60'
@@ -199,7 +204,7 @@ export function ThreadHubView({
         <div className="space-y-8">
           <section className={THREAD_HUB_ZONE_CLASS.authored}>
             {!embedded ? (
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-foreground">
+              <h2 className={`mb-4 ${META_SECTION_LABEL_CLASS}`}>
                 Narrative Threads
               </h2>
             ) : null}
@@ -213,7 +218,7 @@ export function ThreadHubView({
                     <div key={kind}>
                       <button
                         type="button"
-                        className="mb-3 flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                        className="mb-3 flex w-full items-center justify-between text-left META_SECTION_LABEL_CLASS"
                         onClick={() => {
                           setCollapsedKinds((prev) => ({
                             ...prev,
@@ -246,7 +251,7 @@ export function ThreadHubView({
 
           {theories.length > 0 ? (
             <section className={THREAD_HUB_ZONE_CLASS.theories}>
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-cyan-200/90">
+              <h2 className={`mb-4 ${META_SECTION_LABEL_CLASS} text-cyan-200/90`}>
                 Player Theories
               </h2>
               <p className="mb-3 text-xs text-muted">
@@ -270,20 +275,22 @@ export function ThreadHubView({
     </>
   );
 
+  const totalThreadCount = data?.threads.length ?? 0;
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: totalThreadCount,
+    matching: filteredNodes.length,
+    singular: resolveCategoryCountNouns(categoryTitle).singular,
+    plural: resolveCategoryCountNouns(categoryTitle).plural,
+    searchQuery,
+    hasActiveRefine: refineCount > 0,
+  });
+
   const toolbar = (
     <CategoryIndexToolbar
       createLabel="New thread"
       onCreate={() => setIsCreateOpen(true)}
       createAction={isDMUser ? undefined : null}
-      searchValue={searchQuery}
-      searchPlaceholder="Search threads…"
-      onSearchChange={setSearchQuery}
-      showSearch={!embedded}
-      resultCountLabel={
-        filteredNodes.length > 0
-          ? `${filteredNodes.length} thread${filteredNodes.length === 1 ? '' : 's'}`
-          : null
-      }
+      resultCountLabel={resultCountLabel}
       refineControl={
         <CategoryIndexRefinePopover
           facetDefs={[]}
@@ -292,7 +299,13 @@ export function ThreadHubView({
           categoryTitle={categoryTitle}
           onRefineChange={() => {}}
           activeCount={refineCount}
-          onResetRefine={() => setFilters(defaultThreadHubFilters())}
+          onResetRefine={() => {
+            setFilters(defaultThreadHubFilters());
+            setSearchQuery('');
+          }}
+          searchQuery={embedded ? undefined : searchQuery}
+          onSearchChange={embedded ? undefined : setSearchQuery}
+          searchPlaceholder={embedded ? undefined : 'Filter threads…'}
           customBody={
             <ThreadHubFiltersPanel
               filters={filters}
@@ -380,19 +393,23 @@ export function ThreadHubView({
         breadcrumbs={
           <WikiPageBreadcrumbs crumbs={indexBreadcrumbs} campaignHandle={campaignHandle} />
         }
+        breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
             <GitBranch className="size-6 text-amber-400" strokeWidth={1.25} />
             {categoryTitle}
           </>
         }
-        toolbar={toolbar}
-        afterToolbar={
+        actions={toolbar}
+        activeFilters={
           refineCount > 0 ? (
             <button
               type="button"
-              className="mt-2 text-xs text-muted hover:text-foreground"
-              onClick={() => setFilters(defaultThreadHubFilters())}
+              className="text-xs text-muted hover:text-foreground"
+              onClick={() => {
+                setFilters(defaultThreadHubFilters());
+                setSearchQuery('');
+              }}
             >
               Clear filters ({refineCount})
             </button>

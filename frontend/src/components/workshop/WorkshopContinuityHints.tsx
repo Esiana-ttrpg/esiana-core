@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo } from 'react';
 import { useWiki } from '@/contexts/WikiContext';
 import type { WorkshopDocument } from '@shared/workshopDocument';
@@ -34,7 +35,7 @@ export function WorkshopContinuityHints({ draft }: WorkshopContinuityHintsProps)
 
   return (
     <section className="space-y-1.5">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className="META_SECTION_LABEL_CLASS-foreground">
         Continuity
       </h3>
       <ul className="space-y-1 text-sm text-muted-foreground">

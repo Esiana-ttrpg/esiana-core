@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   memo,
   useCallback,
@@ -45,7 +46,7 @@ function PaletteSwatchPreview({
   const palette = getProfilePreviewPalette(profile);
   return (
     <div className="mt-3 rounded-lg border border-border bg-background p-3">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+      <p className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
         Live preview
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -268,7 +269,7 @@ function AppearanceBuilderInner({
               aria-selected={isActive}
               disabled={disabled}
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+              className={`inline-flex items-center gap-2 rounded-t-lg px-4 py-2.5 text-xs font-medium transition-colors disabled:opacity-50 ${
                 isActive
                   ? 'border-b-2 border-accent bg-accent/10 text-accent'
                   : 'border-b-2 border-transparent text-muted hover:text-accent'

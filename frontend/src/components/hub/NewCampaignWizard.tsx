@@ -1,4 +1,6 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Archive,
   BookOpen,
@@ -37,6 +39,7 @@ import type { ImportModuleTarget } from '@shared/importSkeletonKeys';
 import { KANKA_SKIP_REASON_LABELS } from '@shared/importSkipPolicy';
 import type { KankaFolderDiscovery } from '@shared/importZipStructure';
 import JSZip from 'jszip';
+import { getCampaignNameHandleError } from '@shared/campaignHandle';
 import { fetchUserCampaignDefaults } from '@/lib/userCampaignDefaults';
 import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
 
@@ -297,6 +300,9 @@ export function NewCampaignWizard({
   }, [open]);
 
   const titleMissing = !payload.identity.title.trim();
+  const titleHandleError = payload.identity.title.trim()
+    ? getCampaignNameHandleError(payload.identity.title)
+    : null;
   const customGameSystemMissing =
     payload.identity.gameSystem === 'other' &&
     !payload.identity.customGameSystemName?.trim();
@@ -305,11 +311,13 @@ export function NewCampaignWizard({
     payload.imports.folderMappings.some((mapping) => !mapping.targetModule);
   const wizardErrors = {
     titleMissing,
+    titleHandleError,
     customGameSystemMissing,
     hasUnmappedFolders,
   };
   const isValid =
     !wizardErrors.titleMissing &&
+    !wizardErrors.titleHandleError &&
     !wizardErrors.customGameSystemMissing &&
     !wizardErrors.hasUnmappedFolders;
 
@@ -535,6 +543,10 @@ export function NewCampaignWizard({
       setError('A campaign title is required before creating your campaign.');
       return;
     }
+    if (titleHandleError) {
+      setError(titleHandleError);
+      return;
+    }
     if (hasUnmappedFolders) {
       setError('Please map all imported folders before creating your campaign.');
       return;
@@ -626,13 +638,14 @@ export function NewCampaignWizard({
     }
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/70"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-campaign-wizard-title"
     >
+      <div className="flex min-h-full items-center justify-center p-4">
       <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
@@ -725,6 +738,9 @@ export function NewCampaignWizard({
                       <span className="text-xs text-red-300">
                         A campaign title is required to continue.
                       </span>
+                    )}
+                    {titleTouched && !titleMissing && titleHandleError && (
+                      <span className="text-xs text-red-300">{titleHandleError}</span>
                     )}
                   </label>
 
@@ -895,7 +911,7 @@ export function NewCampaignWizard({
 
                 {contentPackCards.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    <h4 className={META_SECTION_LABEL_CLASS}>
                       Content Packs
                     </h4>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -981,7 +997,7 @@ export function NewCampaignWizard({
                 {sampleDataProfiles.length > 0 && (
                   <div className="space-y-3 rounded-xl border border-dashed border-border/80 bg-background/30 p-4">
                     <div className="flex items-center gap-2">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      <h4 className={META_SECTION_LABEL_CLASS}>
                         Sample Data
                       </h4>
                       <span className="rounded-full border border-border bg-elevated px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">
@@ -1130,7 +1146,7 @@ export function NewCampaignWizard({
                         {provider.description && (
                           <p className="text-xs text-muted">{provider.description}</p>
                         )}
-                        <p className="text-[10px] uppercase tracking-wide text-muted">
+                        <p className={META_SECTION_LABEL_CLASS}>
                           {provider.pluginId}
                           {provider.requiresFile ? ' · file required' : ''}
                         </p>
@@ -1317,7 +1333,7 @@ export function NewCampaignWizard({
                   </div>
                   <div className="overflow-x-auto bg-background/60">
                     <table className="min-w-full divide-y divide-border text-sm">
-                      <thead className="bg-surface/80 text-left text-xs uppercase tracking-wide text-muted">
+                      <thead className="bg-surface/80 text-left META_SECTION_LABEL_CLASS">
                         <tr>
                           <th className="px-4 py-3">Source Folder Name</th>
                           <th className="px-4 py-3">Target Module</th>
@@ -1641,6 +1657,8 @@ export function NewCampaignWizard({
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

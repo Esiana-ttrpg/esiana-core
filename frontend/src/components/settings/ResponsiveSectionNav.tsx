@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -120,7 +121,7 @@ export function ResponsiveSectionNav<T extends string = string>({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => onChange(section.id as T)}
-                className={`inline-flex shrink-0 snap-start items-center gap-2 rounded-t-lg px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                className={`inline-flex shrink-0 snap-start items-center gap-2 rounded-t-lg px-4 py-2.5 text-xs font-medium transition-colors ${
                   isActive
                     ? 'border-b-2 border-accent bg-accent/10 text-accent'
                     : 'border-b-2 border-transparent text-muted hover:bg-elevated/60 hover:text-accent'
@@ -140,7 +141,7 @@ export function ResponsiveSectionNav<T extends string = string>({
 
       {/* Mobile: icon-aware listbox dropdown */}
       <div className="relative pb-3 md:hidden">
-        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted">
+        <p className={`mb-1.5 ${META_FIELD_LABEL_CLASS}`}>
           {mobileLabel}
         </p>
         <button

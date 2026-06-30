@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarClock, Megaphone } from 'lucide-react';
 import {
@@ -140,7 +141,7 @@ export function SessionScheduleEditor({
       {canManage ? (
         <div className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Start (local)
             </span>
             <input
@@ -151,7 +152,7 @@ export function SessionScheduleEditor({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Timezone
             </span>
             <TimezoneSelect
@@ -161,7 +162,7 @@ export function SessionScheduleEditor({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Venue type
             </span>
             <select
@@ -175,7 +176,7 @@ export function SessionScheduleEditor({
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Venue label
             </span>
             <input
@@ -186,7 +187,7 @@ export function SessionScheduleEditor({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+            <span className={META_FIELD_LABEL_CLASS}>
               Link
             </span>
             <input

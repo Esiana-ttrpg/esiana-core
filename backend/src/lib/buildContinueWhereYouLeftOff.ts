@@ -66,39 +66,6 @@ export async function buildContinueWhereYouLeftOff(
     });
   }
 
-  const shortcuts = await prisma.pageShortcut.findMany({
-    where: { userId, campaignId },
-    include: {
-      page: {
-        select: {
-          id: true,
-          title: true,
-          parentId: true,
-          visibility: true,
-          updatedAt: true,
-          templateType: true,
-          workspace: true,
-          pathKey: true,
-          metadata: true,
-        },
-      },
-    },
-    orderBy: { sortOrder: 'asc' },
-    take: 10,
-  });
-
-  for (const shortcut of shortcuts) {
-    if (!canViewWikiPage(shortcut.page.visibility, role)) continue;
-    push({
-      entityType: 'WIKI_PAGE',
-      entityId: shortcut.page.id,
-      title: shortcut.page.title,
-      href: campaignWikiHref(campaignHandle, shortcut.page),
-      reason: 'Pinned by you',
-      updatedAt: shortcut.page.updatedAt.toISOString(),
-    });
-  }
-
   const touched = await prisma.wikiPageStats.findMany({
     where: {
       campaignId,

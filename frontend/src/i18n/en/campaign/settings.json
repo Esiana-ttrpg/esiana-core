@@ -14,5 +14,8 @@
   "campaign.settings.saveSuccess": "Campaign settings saved successfully.",
   "campaign.settings.loadFailed": "Failed to load campaign settings",
   "campaign.settings.saveFailed": "Failed to save campaign settings",
-  "campaign.settings.nameRequired": "Campaign name is required"
+  "campaign.settings.nameRequired": "Campaign name is required",
+  "campaign.settings.integrations.clear": "Clear",
+  "campaign.settings.integrations.httpWarning": "This link uses HTTP. HTTPS is recommended when available.",
+  "campaign.settings.integrations.pairRequired": "Choose a provider and enter a URL, or clear both."
 }

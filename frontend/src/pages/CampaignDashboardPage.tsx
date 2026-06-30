@@ -15,12 +15,9 @@ import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MascotErrorPanel } from '@/components/errors/MascotErrorPanel';
 import { CampaignDashboardHero } from '@/components/dashboard/CampaignDashboardHero';
-import { CampaignHomeBriefing } from '@/components/dashboard/CampaignHomeBriefing';
 import { CampaignContinuityStream } from '@/components/dashboard/CampaignContinuityStream';
-import { CampaignContextRail } from '@/components/dashboard/CampaignContextRail';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { LinkYourCharacterCard } from '@/components/dashboard/LinkYourCharacterCard';
-import { NarrativeLayout } from '@/components/layout/NarrativeLayout';
 import { PluginSlotHost, PluginUiSlots } from '@/plugins/slots';
 import { useDeclaredPluginSlot } from '@/plugins/useDeclaredPluginSlot';
 
@@ -136,6 +133,7 @@ function CampaignDashboardContent({
   const canManageCampaign = canManageTime;
 
   const dashboardConfig = normalizeDashboardConfig(bundle.dashboardConfig);
+  const hasEnabledWidgets = dashboardConfig.widgets.some((widget) => widget.enabled);
 
   const persistConfig = useCallback(
     async (nextConfig: DashboardConfig) => {
@@ -223,104 +221,58 @@ function CampaignDashboardContent({
   return (
     <div className="space-y-4">
       <LinkYourCharacterCard campaignHandle={campaignHandle} />
-      {customizeMode ? (
-        <>
-          <CampaignDashboardHero
-            campaignHandle={campaignHandle}
-            campaign={campaign}
-            campaignName={displayName}
-            fallbackDescription={bundle.campaignDescription}
-            hero={dashboardConfig.hero}
-            statusStrip={bundle.summary.statusStrip}
-            canManage={canManageCampaign}
-            customizeMode={customizeMode}
-            layoutSaving={layoutSaving}
-            onCustomizeModeChange={setCustomizeMode}
-            onHeroChange={handleHeroChange}
-          />
-          {hasDashboardSlot && campaign ? (
-            <PluginSlotHost
-              slot={PluginUiSlots.DASHBOARD}
-              context={{
-                campaignId: campaign.id,
-                campaignHandle: campaign.handle,
-                config: {},
-              }}
-            />
-          ) : null}
-          <DashboardGrid
-            campaignHandle={campaignHandle}
-            config={dashboardConfig}
-            summary={bundle.summary}
-            questPages={bundle.questPages}
-            threadBundle={threadBundle}
-            canEditLayout={canEditLayout}
-            canManageCampaign={canManageCampaign}
-            canManageTime={canManageTime}
-            isLookingForGroup={Boolean(campaign.isLookingForGroup)}
-            sessionDuration={campaign.sessionDuration}
-            customizeMode={customizeMode}
-            onConfigChange={handleConfigChange}
-            onLayoutSavingChange={setLayoutSaving}
-          />
-        </>
-      ) : (
-        <NarrativeLayout
-          composition="dashboard"
-          inlineContextual
-          focal={
-            <div className="wiki-focal-region wiki-focal-region--canvas flex w-full min-w-0 flex-col overflow-hidden">
-              <CampaignDashboardHero
-                embedded
-                campaignHandle={campaignHandle}
-                campaign={campaign}
-                campaignName={displayName}
-                fallbackDescription={bundle.campaignDescription}
-                hero={dashboardConfig.hero}
-                statusStrip={bundle.summary.statusStrip}
-                canManage={canManageCampaign}
-                customizeMode={customizeMode}
-                layoutSaving={layoutSaving}
-                onCustomizeModeChange={setCustomizeMode}
-                onHeroChange={handleHeroChange}
-              />
-              {hasDashboardSlot && campaign ? (
-                <PluginSlotHost
-                  slot={PluginUiSlots.DASHBOARD}
-                  context={{
-                    campaignId: campaign.id,
-                    campaignHandle: campaign.handle,
-                    config: {},
-                  }}
-                />
-              ) : null}
-              {bundle.narrativeSnapshot ? (
-                <CampaignHomeBriefing snapshot={bundle.narrativeSnapshot} />
-              ) : (
-                <CampaignContinuityStream
-                  embedded
-                  campaignHandle={campaignHandle}
-                  summary={bundle.summary}
-                  questPages={bundle.questPages}
-                />
-              )}
-              <details className="group pt-3 lg:hidden">
-                <summary className="cursor-pointer list-none px-1 py-2 text-sm font-medium text-focal-muted marker:content-none [&::-webkit-details-marker]:hidden">
-                  Explore
-                </summary>
-                <div className="mt-2">
-                  <CampaignContextRail campaignHandle={campaignHandle} layout="elevated" />
-                </div>
-              </details>
-            </div>
-          }
-          contextual={
-            <div className="narrative-chrome-recede hidden lg:block">
-              <CampaignContextRail campaignHandle={campaignHandle} layout="inline" />
-            </div>
-          }
+      <CampaignDashboardHero
+        embedded={!customizeMode}
+        campaignHandle={campaignHandle}
+        campaign={campaign}
+        campaignName={displayName}
+        fallbackDescription={bundle.campaignDescription}
+        hero={dashboardConfig.hero}
+        statusStrip={bundle.summary.statusStrip}
+        canManage={canManageCampaign}
+        customizeMode={customizeMode}
+        layoutSaving={layoutSaving}
+        onCustomizeModeChange={setCustomizeMode}
+        onHeroChange={handleHeroChange}
+      />
+      {hasDashboardSlot && campaign ? (
+        <PluginSlotHost
+          slot={PluginUiSlots.DASHBOARD}
+          context={{
+            campaignId: campaign.id,
+            campaignHandle: campaign.handle,
+            config: {},
+          }}
         />
-      )}
+      ) : null}
+      <DashboardGrid
+        campaignHandle={campaignHandle}
+        config={dashboardConfig}
+        summary={bundle.summary}
+        questPages={bundle.questPages}
+        threadBundle={threadBundle}
+        canEditLayout={canEditLayout}
+        canManageCampaign={canManageCampaign}
+        canManageTime={canManageTime}
+        isLookingForGroup={Boolean(campaign.isLookingForGroup)}
+        sessionDuration={campaign.sessionDuration}
+        narrativeSnapshot={bundle.narrativeSnapshot}
+        recentEntities={bundle.recentEntities}
+        worldEvents={bundle.worldEvents}
+        factionConflict={bundle.factionConflict}
+        customizeMode={customizeMode}
+        onConfigChange={handleConfigChange}
+        onLayoutSavingChange={setLayoutSaving}
+      />
+      {!hasEnabledWidgets && !bundle.narrativeSnapshot ? (
+        <CampaignContinuityStream
+          embedded
+          campaignHandle={campaignHandle}
+          summary={bundle.summary}
+          questPages={bundle.questPages}
+        />
+      ) : null}
     </div>
   );
 }
+

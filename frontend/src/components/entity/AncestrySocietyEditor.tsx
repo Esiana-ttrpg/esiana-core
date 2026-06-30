@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   PageIdListEditor,
   codexFieldClass,
@@ -31,7 +32,7 @@ export function AncestrySocietyEditor({
     <div className="space-y-3 rounded-lg border border-border/60 bg-surface/30 p-3">
       <div className="flex items-start justify-between gap-2">
         <label className="min-w-0 flex-1 space-y-1" id={codexFieldId(focusField, `society:${society.id}:name`)}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Society name</span>
+          <span className={META_FIELD_LABEL_CLASS}>Society name</span>
           <input
             className={codexFieldClass}
             value={society.name}
@@ -50,7 +51,7 @@ export function AncestrySocietyEditor({
       </div>
 
       <label className="block space-y-1" id={codexFieldId(focusField, `society:${society.id}:summary`)}>
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Summary</span>
+        <span className={META_FIELD_LABEL_CLASS}>Summary</span>
         <textarea
           className={`${codexFieldClass} min-h-[3rem] resize-y`}
           value={society.summary ?? ''}
@@ -59,7 +60,7 @@ export function AncestrySocietyEditor({
       </label>
 
       <label className="block space-y-1" id={codexFieldId(focusField, `society:${society.id}:customs`)}>
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Customs</span>
+        <span className={META_FIELD_LABEL_CLASS}>Customs</span>
         <textarea
           className={`${codexFieldClass} min-h-[3rem] resize-y`}
           value={society.customs ?? ''}
@@ -69,7 +70,7 @@ export function AncestrySocietyEditor({
 
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="space-y-1" id={codexFieldId(focusField, `society:${society.id}:values`)}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Values</span>
+          <span className={META_FIELD_LABEL_CLASS}>Values</span>
           <input
             className={codexFieldClass}
             value={society.values ?? ''}
@@ -77,7 +78,7 @@ export function AncestrySocietyEditor({
           />
         </label>
         <label className="space-y-1" id={codexFieldId(focusField, `society:${society.id}:reputation`)}>
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Reputation</span>
+          <span className={META_FIELD_LABEL_CLASS}>Reputation</span>
           <input
             className={codexFieldClass}
             value={society.reputation ?? ''}
@@ -87,7 +88,7 @@ export function AncestrySocietyEditor({
       </div>
 
       <label className="block space-y-1" id={codexFieldId(focusField, `society:${society.id}:religion`)}>
-        <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Religion</span>
+        <span className={META_FIELD_LABEL_CLASS}>Religion</span>
         <input
           className={codexFieldClass}
           value={society.religion ?? ''}

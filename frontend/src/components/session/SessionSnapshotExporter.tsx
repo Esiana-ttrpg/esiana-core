@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useMemo, useState } from 'react';
 import { Copy, Download } from 'lucide-react';
 import { formatSessionSnapshotMarkdown } from '@/lib/sessionSnapshotFormat';
@@ -44,7 +45,7 @@ export function SessionSnapshotExporter({
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Session snapshot</h2>
+          <h2 className={TYPE_DISPLAY_CLASS}>Session snapshot</h2>
           <p className="text-sm text-muted">
             Chronological export for reading or sharing (Markdown).
           </p>

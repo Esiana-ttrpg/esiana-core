@@ -1,3 +1,4 @@
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
 import type { CreativeDriftScanResult } from '@shared/creativeDrift';
 import { AttachToThreadModal } from '@/components/creativeDrift/AttachToThreadModal';
@@ -72,7 +73,7 @@ export function CreativeDriftContent({
     <div className={embedded ? 'space-y-6' : 'mx-auto max-w-2xl space-y-8 p-6'}>
       {!embedded ? (
         <header className="space-y-3">
-          <h1 className="text-lg font-semibold text-foreground">Unresolved</h1>
+          <h1 className={TYPE_DISPLAY_CLASS}>Unresolved</h1>
           {data.summary.totalActive > 0 ? (
             <p className="text-xs text-muted">{formatUnresolvedSummary(data.summary.totalActive)}</p>
           ) : null}

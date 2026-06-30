@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -111,7 +112,7 @@ export function UserNotificationsSection() {
         <p className="mb-4 text-sm text-muted">{t('profile.notifications.preferencesIntro')}</p>
 
         <label className="mb-6 block">
-          <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted">
+          <span className={META_FIELD_LABEL_CLASS}>
             {t('profile.notifications.muteUntilLabel')}
           </span>
           <input
@@ -130,7 +131,7 @@ export function UserNotificationsSection() {
             </h3>
             <div className="overflow-hidden rounded-lg border border-border">
               <table className="w-full text-sm">
-                <thead className="bg-elevated/60 text-left text-xs uppercase tracking-wide text-muted">
+                <thead className="bg-elevated/60 text-left META_SECTION_LABEL_CLASS">
                   <tr>
                     <th className="px-3 py-2">{t('profile.notifications.columnEvent')}</th>
                     <th className="px-3 py-2">{t('profile.notifications.columnInApp')}</th>

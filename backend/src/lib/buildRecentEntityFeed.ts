@@ -1,3 +1,4 @@
+import { isReservedSystemWikiPage } from './wikiSystemPages.js';
 import { prisma } from './prisma.js';
 import { canViewWikiPage } from './wikiTree.js';
 import { campaignWikiHref } from './dashboardPaths.js';
@@ -32,6 +33,7 @@ async function fetchWikiFeedItems(
   role: CampaignMemberRole | null,
   campaignHandle: string,
   limit: number,
+  options?: { excludeSystemPages?: boolean },
 ): Promise<RecentEntityFeedItem[]> {
   const rows = await prisma.wikiPage.findMany({
     where: { campaignId },
@@ -47,6 +49,12 @@ async function fetchWikiFeedItems(
   const items: RecentEntityFeedItem[] = [];
   for (const row of rows) {
     if (!canViewWikiPage(row.visibility, role)) continue;
+    if (
+      options?.excludeSystemPages &&
+      isReservedSystemWikiPage({ title: row.title, templateType: row.templateType })
+    ) {
+      continue;
+    }
     const updatedAt = row.updatedAt;
     items.push({
       entityType: 'WIKI_PAGE',
@@ -196,7 +204,11 @@ export async function buildRecentEntityFeed(
   const buckets: RecentEntityFeedItem[] = [];
 
   if (wantsType(types, 'WIKI_PAGE')) {
-    buckets.push(...(await fetchWikiFeedItems(campaignId, role, campaignHandle, limit)));
+    buckets.push(
+      ...(await fetchWikiFeedItems(campaignId, role, campaignHandle, limit, {
+        excludeSystemPages: options?.excludeSystemWikiPages,
+      })),
+    );
   }
   if (wantsType(types, 'QUEST')) {
     buckets.push(...(await fetchQuestFeedItems(campaignId, role, campaignHandle, limit)));
@@ -224,5 +236,6 @@ export async function buildRecentLoreFeed(
   return buildRecentEntityFeed(campaignId, campaignHandle, role, null, {
     entityTypes: ['WIKI_PAGE'],
     limit,
+    excludeSystemWikiPages: true,
   });
 }

@@ -45,13 +45,6 @@ export function DowntimeReputationSection({
 
   return (
     <div className="flex min-h-[480px] w-full flex-col gap-4">
-      <div>
-        <h2 className="text-lg font-semibold">Reputation</h2>
-        <p className="text-sm text-muted-foreground">
-          Faction trust, notoriety, and rumor — narrative shifts with reasons, not scores.
-        </p>
-      </div>
-
       {canManage && data.pendingSuggestions.length > 0 ? (
         <PendingReputationSuggestionsPanel
           suggestions={data.pendingSuggestions}

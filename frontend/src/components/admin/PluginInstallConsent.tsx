@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   summarizeRegistryEntryNetworkAccess,
   summarizeRegistryEntryPermissions,
@@ -17,7 +18,7 @@ export function PluginInstallConsent({ entry }: { entry: PluginRegistryEntry }) 
       <p className="font-medium text-amber-200">This plugin requests:</p>
       {permissions.length > 0 ? (
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-amber-300/80">Capabilities</p>
+          <p className={`${META_SECTION_LABEL_CLASS} text-amber-300/80`}>Capabilities</p>
           <ul className="mt-1 list-inside list-disc font-mono text-[11px]">
             {permissions.map((permission) => (
               <li key={permission}>{permission}</li>
@@ -27,7 +28,7 @@ export function PluginInstallConsent({ entry }: { entry: PluginRegistryEntry }) 
       ) : null}
       {network.length > 0 ? (
         <div>
-          <p className="text-[10px] uppercase tracking-wider text-amber-300/80">
+          <p className={`${META_SECTION_LABEL_CLASS} text-amber-300/80`}>
             Outbound network access
           </p>
           <ul className="mt-1 list-inside list-disc font-mono text-[11px]">

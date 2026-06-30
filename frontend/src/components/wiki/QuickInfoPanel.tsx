@@ -1,3 +1,4 @@
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { Plus, X } from 'lucide-react';
 import type { MetadataField } from '@/types/wiki';
 
@@ -41,7 +42,7 @@ export function QuickInfoPanel({
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        <h2 className={META_SECTION_LABEL_CLASS}>
           Quick Info
         </h2>
         <button

@@ -22,6 +22,10 @@ import {
   extractHeroImageUrl,
   parseTableStyleTags,
 } from '../lib/recruitmentListing.js';
+import {
+  deriveIntegrationProviders,
+  parseCampaignIntegrations,
+} from '../../../shared/campaignIntegrations.js';
 import { getGmStyleTagLabel } from '../lib/gmStyleTags.js';
 import {
   normalizeRecruitmentDocTitle,
@@ -84,7 +88,7 @@ function selectPublicRecruitmentCampaign() {
     maxSeats: true,
     maxPlayers: true,
     genreThemes: true,
-    externalTools: true,
+    campaignIntegrations: true,
     safetyTools: true,
     contentWarnings: true,
     equipmentNeeded: true,
@@ -145,7 +149,7 @@ function mapRecruitmentCampaign(campaign: any) {
   return {
     id: campaign.id,
     name: campaign.name,
-    slug: campaign.handle,
+    handle: campaign.handle,
     description: campaign.description,
     recruitmentTagline: campaign.recruitmentTagline ?? null,
     recruitmentPremise: campaign.recruitmentPremise ?? null,
@@ -196,7 +200,9 @@ function mapRecruitmentCampaign(campaign: any) {
       genreThemeLabels: resolveCampaignThemeLabels(
         parseRecruitmentStringArray(campaign.genreThemes),
       ),
-      externalTools: parseRecruitmentStringArray(campaign.externalTools),
+      integrationProviders: deriveIntegrationProviders(
+        parseCampaignIntegrations(campaign.campaignIntegrations),
+      ),
       safetyTools: campaign.safetyTools,
       contentWarnings: campaign.contentWarnings,
       equipmentNeeded: campaign.equipmentNeeded,
@@ -276,7 +282,9 @@ export async function getAllRecruitmentCampaigns(req: Request, res: Response): P
     if (tool) {
       const normalized = tool.trim().toLowerCase();
       campaigns = campaigns.filter((entry) =>
-        entry.recruitment.externalTools.some((value: string) => value.toLowerCase() === normalized),
+        entry.recruitment.integrationProviders.some(
+          (provider: string) => provider.toLowerCase() === normalized,
+        ),
       );
     }
     return campaigns;

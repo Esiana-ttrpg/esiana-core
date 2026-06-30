@@ -28,10 +28,15 @@ import {
   FantasyCalendarImportError,
   parseFantasyCalendarExport,
 } from '../lib/fantasyCalendarImport.js';
-import { generateHandle, isValidHandle, makeUniqueHandle } from '../lib/handleUtils.js';
+import {
+  generateHandle,
+  getCampaignNameHandleError,
+  isValidHandle,
+  makeUniqueHandle,
+} from '../lib/handleUtils.js';
 import { getDefaultSidebarConfig, isSidebarConfigBlank, normalizeSidebarConfig } from '../lib/sidebarConfig.js';
 import { enrichSidebarConfigWithIconUrls } from '../lib/sidebarIconEnrich.js';
-import { getDefaultDashboardConfig } from '../lib/dashboardConfig.js';
+import { getDefaultDashboardConfig, normalizeDashboardConfig } from '../lib/dashboardConfig.js';
 import { DEFAULT_GAME_SYSTEM_SLUG } from '../lib/gameSystems.js';
 import { validateGameSystemFields, resolveGameSystemLabel } from '../lib/gameSystemValidation.js';
 import {
@@ -45,6 +50,11 @@ import {
   sanitizeRecruitmentText,
 } from '../lib/recruitment.js';
 import { extractHeroImageUrl, parseTableStyleTags } from '../lib/recruitmentListing.js';
+import {
+  parseCampaignIntegrations,
+  resolveExternalToolLabels,
+  sanitizeCampaignIntegrations,
+} from '../../../shared/campaignIntegrations.js';
 import { sanitizeGenreThemes } from '../lib/campaignThemeValidation.js';
 import { applyUserCampaignDefaults } from '../lib/applyUserCampaignDefaults.js';
 import { sanitizeUserDefaultsImportSelection } from '../lib/userCampaignDefaults.js';
@@ -169,6 +179,7 @@ export function campaignSelect() {
     maxPlayers: true,
     genreThemes: true,
     externalTools: true,
+    campaignIntegrations: true,
     safetyTools: true,
     contentWarnings: true,
     equipmentNeeded: true,
@@ -211,6 +222,7 @@ function serializeCampaignRecruitmentFields<T extends Record<string, unknown>>(c
     typeof campaign.customGameSystemName === 'string'
       ? campaign.customGameSystemName
       : null;
+  const campaignIntegrations = parseCampaignIntegrations(campaign.campaignIntegrations);
   return {
     ...campaign,
     isArchived: campaign.archivedAt != null,
@@ -218,7 +230,11 @@ function serializeCampaignRecruitmentFields<T extends Record<string, unknown>>(c
     genreThemeLabels: resolveCampaignThemeLabels(
       parseRecruitmentStringArray(campaign.genreThemes),
     ),
-    externalTools: parseRecruitmentStringArray(campaign.externalTools),
+    campaignIntegrations,
+    externalTools: resolveExternalToolLabels(
+      campaignIntegrations,
+      campaign.externalTools,
+    ),
     tableStyleTags: parseTableStyleTags(campaign.tableStyleTags),
     recruitmentSettings: {
       type: (campaign.campaignFormat as string | null | undefined) ?? null,
@@ -580,6 +596,12 @@ export async function createCampaign(
     return;
   }
 
+  const handleError = getCampaignNameHandleError(name.trim());
+  if (handleError) {
+    res.status(400).json({ error: handleError });
+    return;
+  }
+
   const bootstrapSpec = wizardImport ? resolveWizardBootstrapSpec(wizardImport) : null;
 
   if (bootstrapSpec?.kind === 'sampleData') {
@@ -718,6 +740,17 @@ export async function createCampaign(
     : null;
 
   let parsedCalendarConfig: ReturnType<typeof parseFantasyCalendarExport> | null = null;
+  let coverImageBuffer: Buffer | null = null;
+  if (coverImageFile) {
+    try {
+      const coverPath = path.join(env.uploadsDir, coverImageFile.filename);
+      coverImageBuffer = await fsPromises.readFile(coverPath);
+    } catch (error) {
+      console.error('Error reading cover image for campaign', error);
+      res.status(400).json({ error: 'Failed to read cover image file.' });
+      return;
+    }
+  }
   if (calendarConfigFile) {
     try {
       const filePath = path.join(env.uploadsDir, calendarConfigFile.filename);
@@ -834,23 +867,8 @@ export async function createCampaign(
       }
 
       // Persist uploaded artifacts as assets associated with this campaign.
-      let coverImageAssetId: string | null = null;
       let markdownZipAssetId: string | null = null;
       let backupZipAssetId: string | null = null;
-
-      if (coverImageFile) {
-        const coverPath = path.join(env.uploadsDir, coverImageFile.filename);
-        const coverBuffer = await fsPromises.readFile(coverPath);
-        const { ingestImageBuffer } = await import('../lib/assetIngest.js');
-        const ingested = await ingestImageBuffer({
-          campaignId: created.id,
-          buffer: coverBuffer,
-          type: 'campaign-cover',
-          uploadedByUserId: req.user!.id,
-        });
-        coverImageAssetId = ingested.asset.id;
-        await deleteUploadedFileSafe(coverImageFile.filename);
-      }
 
       if (markdownZipFile) {
         if (importTask) {
@@ -926,7 +944,6 @@ export async function createCampaign(
       // Optionally, embed import manifest + asset references into dashboardConfig JSON.
       if (
         !wizardImport &&
-        !coverImageAssetId &&
         !markdownZipAssetId &&
         !backupZipAssetId
       ) {
@@ -937,7 +954,6 @@ export async function createCampaign(
         ...(wizardImport ?? {}),
         ...(bootstrapSpec ? { bootstrap: bootstrapSpec } : {}),
         assets: {
-          ...(coverImageAssetId ? { coverImageAssetId } : {}),
           ...(markdownZipAssetId ? { markdownZipAssetId } : {}),
           ...(backupZipAssetId ? { backupZipAssetId } : {}),
         },
@@ -968,12 +984,42 @@ export async function createCampaign(
       return updated;
     });
 
+    let campaignResult = campaign;
+    if (coverImageBuffer && coverImageFile) {
+      const { ingestImageBuffer } = await import('../lib/assetIngest.js');
+      const ingested = await ingestImageBuffer({
+        campaignId: campaign.id,
+        buffer: coverImageBuffer,
+        type: 'campaign-cover',
+        uploadedByUserId: req.user!.id,
+      });
+      await deleteUploadedFileSafe(coverImageFile.filename);
+
+      const baseDashboardConfig = normalizeDashboardConfig(campaign.dashboardConfig);
+      campaignResult = await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: {
+          dashboardConfig: toInputJsonValue({
+            ...baseDashboardConfig,
+            importManifest: {
+              ...(baseDashboardConfig.importManifest ?? {}),
+              assets: {
+                ...(baseDashboardConfig.importManifest?.assets ?? {}),
+                coverImageAssetId: ingested.asset.id,
+              },
+            },
+          }),
+        },
+        select: campaignSelect(),
+      });
+    }
+
     if (importTask) {
       updateBackgroundTask(importTask.id, {
         progress: 15,
         metaMerge: { phase: 'queued', requestedByUserId: req.user!.id },
       });
-      enqueueCampaignImportZip(campaign.id, importTask.id);
+      enqueueCampaignImportZip(campaignResult.id, importTask.id);
     }
 
     if (restoreTask) {
@@ -981,7 +1027,7 @@ export async function createCampaign(
         progress: 15,
         metaMerge: { phase: 'queued-restore', requestedByUserId: req.user!.id },
       });
-      enqueueCampaignBackupRestore(campaign.id, restoreTask.id);
+      enqueueCampaignBackupRestore(campaignResult.id, restoreTask.id);
     }
 
     if (bootstrapTask && bootstrapSpec) {
@@ -990,7 +1036,7 @@ export async function createCampaign(
         metaMerge: { phase: 'queued-bootstrap', requestedByUserId: req.user!.id },
       });
       enqueueCampaignBootstrap(
-        campaign.id,
+        campaignResult.id,
         req.user!.id,
         bootstrapTask.id,
         bootstrapSpec,
@@ -999,10 +1045,10 @@ export async function createCampaign(
 
     dispatchDomainEvent({
       type: CoreDomainEvents.CAMPAIGN_CREATED,
-      campaignId: campaign.id,
+      campaignId: campaignResult.id,
       payload: {
-        campaignId: campaign.id,
-        handle: campaign.handle,
+        campaignId: campaignResult.id,
+        handle: campaignResult.handle,
         ...(bootstrapSpec ? { bootstrap: bootstrapSpec } : {}),
         ...(wizardImport?.generator ? { generator: wizardImport.generator } : {}),
       },
@@ -1010,8 +1056,8 @@ export async function createCampaign(
 
     res.status(201).json({
       campaign: {
-        ...serializeCampaignRecruitmentFields(campaign as any),
-        sidebarConfig: normalizeSidebarConfig(campaign.sidebarConfig),
+        ...serializeCampaignRecruitmentFields(campaignResult as any),
+        sidebarConfig: normalizeSidebarConfig(campaignResult.sidebarConfig),
         role: CampaignMemberRoles.GAMEMASTER,
         isMember: true,
       },
@@ -1147,10 +1193,19 @@ export async function updateCampaign(
     body.genreThemes !== undefined
       ? sanitizeGenreThemes(body.genreThemes)
       : undefined;
-  const externalTools =
-    body.externalTools !== undefined
-      ? sanitizeRecruitmentStringArray(body.externalTools)
-      : undefined;
+
+  let campaignIntegrations: ReturnType<typeof sanitizeCampaignIntegrations> | undefined;
+  if (body.campaignIntegrations !== undefined) {
+    try {
+      campaignIntegrations = sanitizeCampaignIntegrations(body.campaignIntegrations);
+    } catch (error) {
+      res.status(400).json({
+        error:
+          error instanceof Error ? error.message : 'Invalid campaign integrations.',
+      });
+      return;
+    }
+  }
 
   const nestedSettings =
     body.recruitmentSettings && typeof body.recruitmentSettings === 'object'
@@ -1356,8 +1411,11 @@ export async function updateCampaign(
       ...(genreThemes !== undefined && {
         genreThemes: genreThemes as unknown as object,
       }),
-      ...(externalTools !== undefined && {
-        externalTools: externalTools as unknown as object,
+      ...(campaignIntegrations !== undefined && {
+        campaignIntegrations:
+          campaignIntegrations === null
+            ? Prisma.JsonNull
+            : toInputJsonValue(campaignIntegrations),
       }),
       ...(body.safetyTools !== undefined && {
         safetyTools: sanitizeRecruitmentText(body.safetyTools, 4000),

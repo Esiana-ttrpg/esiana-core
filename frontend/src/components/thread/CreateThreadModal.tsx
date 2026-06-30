@@ -1,3 +1,4 @@
+import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, GitBranch, Plus, X } from 'lucide-react';
@@ -368,7 +369,7 @@ export function CreateThreadModal({
                   onChange={setRelatedPageIds}
                 />
                 <div className="space-y-0.5">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted">
+                  <span className={META_FIELD_LABEL_CLASS}>
                     Payoff page
                   </span>
                   <IdentityPagePicker

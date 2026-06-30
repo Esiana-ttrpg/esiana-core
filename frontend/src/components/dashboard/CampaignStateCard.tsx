@@ -1,14 +1,11 @@
 import { Link } from 'react-router-dom';
 import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
-import {
-  SURFACE_FLOAT_CLASS,
-  TYPE_DISPLAY_CLASS,
-  TYPE_META_CLASS,
-  TYPE_PROSE_CLASS,
-} from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, SURFACE_FLOAT_CLASS, TYPE_DISPLAY_CLASS, TYPE_META_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
 
 interface CampaignStateCardProps {
   campaignState: CampaignNarrativeSnapshot['campaignState'];
+  /** Omit section chrome when rendered inside DashboardWidgetShell */
+  embedded?: boolean;
 }
 
 function StateFact({
@@ -24,7 +21,7 @@ function StateFact({
   const isEmpty = Boolean(fact.emptyPrompt);
   const content = (
     <div className="space-y-1">
-      <p className={`${TYPE_META_CLASS} font-semibold uppercase tracking-wider text-focal-muted`}>
+      <p className={META_SECTION_LABEL_CLASS}>
         {fact.label}
       </p>
       <p
@@ -55,7 +52,7 @@ function StateFact({
   return <div className="p-4">{content}</div>;
 }
 
-export function CampaignStateCard({ campaignState }: CampaignStateCardProps) {
+export function CampaignStateCard({ campaignState, embedded = false }: CampaignStateCardProps) {
   const facts = [
     campaignState.calendarDate,
     campaignState.nextSession,
@@ -63,18 +60,24 @@ export function CampaignStateCard({ campaignState }: CampaignStateCardProps) {
     campaignState.location,
   ];
 
+  const factGrid = (
+    <div className="grid gap-0 sm:grid-cols-2">
+      {facts.map((fact) => (
+        <StateFact key={fact.label} fact={fact} />
+      ))}
+    </div>
+  );
+
+  if (embedded) return factGrid;
+
   return (
     <div className={`${SURFACE_FLOAT_CLASS} region-depth-2 overflow-hidden rounded-xl`}>
       <div className="border-b border-border/20 px-6 py-4 sm:px-8">
-        <h2 className={`${TYPE_DISPLAY_CLASS} text-lg font-semibold text-focal-foreground sm:text-xl`}>
+        <h2 className={TYPE_DISPLAY_CLASS}>
           Campaign at a Glance
         </h2>
       </div>
-      <div className="grid gap-0 sm:grid-cols-2">
-        {facts.map((fact) => (
-          <StateFact key={fact.label} fact={fact} />
-        ))}
-      </div>
+      {factGrid}
     </div>
   );
 }

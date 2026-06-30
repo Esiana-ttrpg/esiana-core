@@ -7,7 +7,6 @@ import {
   FolderInput,
   Plus,
   Save,
-  Search,
   Settings,
   Trash2,
   X,
@@ -38,13 +37,11 @@ import type {
   SessionNotesNotebook,
   SessionNotesNotebookPage,
 } from '@/types/wiki';
-import {
-  SECTION_GAP_CLASS,
-  SURFACE_OPERATIONAL_CLASS,
-  SURFACE_PRIMARY_CLASS,
-  SURFACE_SILENT_CLASS,
-  SURFACE_RECESSED_CLASS,
-} from '@/lib/surfaceLayout';
+import { SECTION_GAP_CLASS, SURFACE_OPERATIONAL_CLASS, SURFACE_RECESSED_CLASS, SURFACE_SILENT_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
+import { formatWorkspaceHubCountHint } from '@/lib/workspaceHeaderPolicy';
 
 function pageHref(
   campaignHandle: string,
@@ -187,6 +184,22 @@ export function SessionNotesView() {
       isSearching: normalizedQuery.length > 0,
     };
   }, [data, searchQuery]);
+
+  const totalNoteCount = useMemo(() => {
+    if (!data) return 0;
+    return (
+      data.notebooks.reduce((sum, notebook) => sum + notebook.pages.length, 0) +
+      data.uncategorized.length
+    );
+  }, [data]);
+
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: totalNoteCount,
+    matching: filteredIndex?.totalMatches ?? totalNoteCount,
+    singular: 'note',
+    searchQuery,
+    hasActiveRefine: Boolean(filteredIndex?.isSearching),
+  });
 
   const organizableNoteIds = useMemo(() => {
     if (!filteredIndex) return [];
@@ -442,124 +455,127 @@ export function SessionNotesView() {
 
   return (
     <div className={`w-full min-w-0 flex flex-col ${SECTION_GAP_CLASS}`}>
-      <header className={SURFACE_PRIMARY_CLASS}>
-        <div className="flex flex-col items-stretch justify-between gap-3 border-b border-border/40 pb-4 md:flex-row md:items-center">
-          <div className="min-w-0 shrink-0 space-y-2">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {t('campaign.timeline.sessionNotesPageTitle')}
-            </h1>
-            <p className={SURFACE_RECESSED_CLASS}>
-              {t('campaign.timeline.sessionNotesPageSubtitle')}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 md:flex-nowrap md:gap-3">
-            {hasAnyNotes && (
-              <label className="relative flex w-full shrink-0 items-center rounded-lg border border-border bg-surface transition-all focus-within:border-indigo-500 md:w-64">
-                <Search className="pointer-events-none absolute left-3 size-4 text-muted" />
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={t('campaign.timeline.sessionNotesSearchPlaceholder')}
-                  className="h-10 w-full rounded-lg bg-transparent py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted outline-none"
-                  aria-label={t('campaign.timeline.sessionNotesSearchAria')}
+      <WorkspaceHeader
+        title={t('campaign.timeline.sessionNotesPageTitle')}
+        actions={
+          <CategoryIndexToolbar
+            createLabel={t('campaign.timeline.sessionNotesCreateNewPage')}
+            onCreate={openCreatePageDialog}
+            createAction={campaign?.isMember ? undefined : null}
+            resultCountLabel={hasAnyNotes ? resultCountLabel : null}
+            refineControl={
+              hasAnyNotes ? (
+                <CategoryIndexRefinePopover
+                  facetDefs={[]}
+                  refineState={{}}
+                  children={[]}
+                  categoryTitle="Session Notes"
+                  onRefineChange={() => {}}
+                  customBody={<div />}
+                  activeCount={searchQuery.trim() ? 1 : undefined}
+                  onResetRefine={() => setSearchQuery('')}
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  searchPlaceholder={t('campaign.timeline.sessionNotesSearchPlaceholder')}
                 />
-              </label>
-            )}
-            {campaign?.isMember && (
-              <>
-                {canManage && (
+              ) : null
+            }
+            trailing={
+              campaign?.isMember ? (
+                <>
+                  {canManage ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOrganizing((prev) => {
+                          const next = !prev;
+                          if (!next) {
+                            setSelectedNoteIds([]);
+                            setBulkDestinationBookId('__uncategorized__');
+                          }
+                          return next;
+                        });
+                      }}
+                      className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-colors ${
+                        isOrganizing
+                          ? 'border-indigo-500/70 bg-indigo-600/15 text-indigo-200'
+                          : 'border-border bg-surface/40 text-foreground hover:bg-surface'
+                      }`}
+                    >
+                      <FolderInput className="size-4" />
+                      {t('campaign.timeline.sessionNotesOrganize')}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsOrganizing((prev) => {
-                        const next = !prev;
-                        if (!next) {
-                          setSelectedNoteIds([]);
-                          setBulkDestinationBookId('__uncategorized__');
-                        }
-                        return next;
-                      });
-                    }}
-                    className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-colors ${
-                      isOrganizing
-                        ? 'border-indigo-500/70 bg-indigo-600/15 text-indigo-200'
-                        : 'border-border bg-surface/40 text-foreground hover:bg-surface'
-                    }`}
+                    onClick={() => setShowUploadModal(true)}
+                    className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface/40 px-3 py-2 text-sm text-foreground hover:bg-surface"
                   >
-                    <FolderInput className="size-4" />
-                    {t('campaign.timeline.sessionNotesOrganize')}
+                    <FileUp className="size-4" />
+                    {t('campaign.timeline.sessionNotesUploadPage')}
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowUploadModal(true)}
-                  className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface/40 px-3 py-2 text-sm text-foreground hover:bg-surface"
-                >
-                  <FileUp className="size-4" />
-                  {t('campaign.timeline.sessionNotesUploadPage')}
-                </button>
-                <div className="relative shrink-0" ref={createMenuRef}>
-                  <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-surface/40 text-sm text-foreground transition-colors hover:bg-surface">
-                    <button
-                      type="button"
-                      onClick={openCreatePageDialog}
-                      className="flex cursor-pointer items-center justify-center border-r border-border px-3 py-2"
-                      aria-label={t('campaign.timeline.sessionNotesCreatePageAria')}
-                    >
-                      <Plus className="size-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsCreateMenuOpen((open) => !open)}
-                      className="flex cursor-pointer items-center justify-center px-2 py-2 hover:bg-elevated/80"
-                      aria-label={t('campaign.timeline.sessionNotesOpenCreateMenuAria')}
-                      aria-expanded={isCreateMenuOpen}
-                    >
-                      <ChevronDown className="size-3.5" />
-                    </button>
-                  </div>
-                  {isCreateMenuOpen && (
-                    <div className="absolute right-0 z-50 mt-2 w-48 animate-in rounded-lg border border-border bg-surface py-1 shadow-2xl fade-in slide-in-from-top-2">
+                  <div className="relative shrink-0" ref={createMenuRef}>
+                    <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-surface/40 text-sm text-foreground transition-colors hover:bg-surface">
                       <button
                         type="button"
                         onClick={openCreatePageDialog}
-                        className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
+                        className="flex cursor-pointer items-center justify-center border-r border-border px-3 py-2"
+                        aria-label={t('campaign.timeline.sessionNotesCreatePageAria')}
                       >
-                        <span aria-hidden>📝</span>
-                        {t('campaign.timeline.sessionNotesCreateNewPage')}
+                        <Plus className="size-4" />
                       </button>
-                      {canManageRole ? (
-                        <button
-                          type="button"
-                          onClick={openCreateSessionDialog}
-                          className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
-                        >
-                          <span aria-hidden>📅</span>
-                          {t('campaign.timeline.sessionNotesCreateNewSession')}
-                        </button>
-                      ) : null}
-                      {canManage && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsCreateMenuOpen(false);
-                            setShowCreateArcDialog(true);
-                          }}
-                          className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
-                        >
-                          <span aria-hidden>📖</span>
-                          Create New Heading/Group
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsCreateMenuOpen((open) => !open)}
+                        className="flex cursor-pointer items-center justify-center px-2 py-2 hover:bg-elevated/80"
+                        aria-label={t('campaign.timeline.sessionNotesOpenCreateMenuAria')}
+                        aria-expanded={isCreateMenuOpen}
+                      >
+                        <ChevronDown className="size-3.5" />
+                      </button>
                     </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+                    {isCreateMenuOpen ? (
+                      <div className="absolute right-0 z-50 mt-2 w-48 animate-in rounded-lg border border-border bg-surface py-1 shadow-2xl fade-in slide-in-from-top-2">
+                        <button
+                          type="button"
+                          onClick={openCreatePageDialog}
+                          className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
+                        >
+                          <span aria-hidden>📝</span>
+                          {t('campaign.timeline.sessionNotesCreateNewPage')}
+                        </button>
+                        {canManageRole ? (
+                          <button
+                            type="button"
+                            onClick={openCreateSessionDialog}
+                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
+                          >
+                            <span aria-hidden>📅</span>
+                            {t('campaign.timeline.sessionNotesCreateNewSession')}
+                          </button>
+                        ) : null}
+                        {canManage ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCreateMenuOpen(false);
+                              setShowCreateArcDialog(true);
+                            }}
+                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
+                          >
+                            <span aria-hidden>📖</span>
+                            Create New Heading/Group
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              ) : null
+            }
+          />
+        }
+      />
 
       {isOrganizing && hasAnyNotes && !showSearchEmptyState && organizableNoteIds.length > 0 && (
         <div
@@ -605,7 +621,7 @@ export function SessionNotesView() {
           <div className="mb-3 flex justify-center">
             <BookOpen className="size-8 text-muted" />
           </div>
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2 className={TYPE_DISPLAY_CLASS}>
             No session notes yet
           </h2>
           <p className={`mt-2 ${SURFACE_RECESSED_CLASS}`}>
@@ -673,7 +689,7 @@ export function SessionNotesView() {
                 </button>
               </div>
             ) : (
-              <h2 className="text-lg font-semibold text-foreground">{notebook.title}</h2>
+              <h2 className={TYPE_DISPLAY_CLASS}>{notebook.title}</h2>
             )}
 
             {canManage && editingId !== notebook.id && (
@@ -852,7 +868,7 @@ export function SessionNotesView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl border border-border bg-background p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+              <h2 className={TYPE_DISPLAY_CLASS}>
                 Create New Heading/Group
               </h2>
               <button
@@ -913,7 +929,7 @@ export function SessionNotesView() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-xl rounded-xl border border-border bg-background p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Upload Page</h2>
+              <h2 className={TYPE_DISPLAY_CLASS}>Upload Page</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -1053,7 +1069,7 @@ export function SessionNotesView() {
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl border border-red-900/50 bg-background p-5 shadow-2xl">
-            <h2 className="text-lg font-semibold text-foreground">Delete session notes</h2>
+            <h2 className={TYPE_DISPLAY_CLASS}>Delete session notes</h2>
             <p className="mt-3 text-sm leading-relaxed text-foreground">
               Are you sure you want to permanently erase {selectedNoteIds.length} selected
               session notes? This action will destroy all connected player logs and cannot
