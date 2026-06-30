@@ -1,5 +1,6 @@
 import { Route } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import type { ContinueWhereYouLeftOffItem } from '@/lib/dashboardSummary';
 import { DashboardWidgetShell } from '../DashboardWidgetShell';
 
@@ -14,6 +15,8 @@ export function ContinueWhereYouLeftOffWidget({
   customizeMode,
   onHide,
 }: ContinueWhereYouLeftOffWidgetProps) {
+  const { t } = useTranslation();
+
   return (
     <DashboardWidgetShell
       title="Continue Your Journey"
@@ -23,7 +26,7 @@ export function ContinueWhereYouLeftOffWidget({
     >
       {items.length === 0 ? (
         <p className="text-sm text-muted">
-          Pages you pin, edit, or revisit will gather here — your campaign browser tabs.
+          {t('campaign.dashboard.continueWhereYouLeftOffEmpty')}
         </p>
       ) : (
         <ul className="space-y-2">

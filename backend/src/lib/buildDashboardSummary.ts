@@ -1,6 +1,6 @@
 import { prisma } from './prisma.js';
 import { buildEnsembleBundle } from './buildEnsembleBundle.js';
-import { buildRecentEntityFeed } from './buildRecentEntityFeed.js';
+import { buildRecentLoreFeed } from './buildRecentEntityFeed.js';
 import {
   buildDashboardChronometer,
   formatChronometerStatusLabel,
@@ -14,12 +14,9 @@ import {
   buildContinueWhereYouLeftOff,
   buildPersonalPinned,
 } from './buildContinueWhereYouLeftOff.js';
-import { mapCampaignActivityToBulletinItem } from './dashboardActivityCopy.js';
-import { wikiPageHrefSelect } from './wikiPageHrefSelect.js';
 import { getSpoilerSafeWorldActivitySummary } from './narrativeEventService.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import type { CampaignMemberRole } from '../types/domain.js';
-import type { DashboardConfig } from './dashboardConfig.js';
 import type { RecentEntityFeedItem } from './recentEntityFeedTypes.js';
 import type { EnsembleBundleMember } from './buildEnsembleBundle.js';
 import {
@@ -51,10 +48,6 @@ export type DashboardSummary = {
     lines: string[];
   };
   party: { members: EnsembleBundleMember[] };
-  bulletin: {
-    announcementsMarkdown: string | null;
-    activity: ReturnType<typeof mapCampaignActivityToBulletinItem>[];
-  };
   personal: {
     shortcuts: Array<{ pageId: string; title: string; sortOrder: number }>;
     pinned: Array<{ id: string; title: string; href: string; freshnessLabel?: string | null }>;
@@ -87,14 +80,6 @@ function formatCadenceLabel(input: {
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-function extractAnnouncementsMarkdown(dashboardConfig: DashboardConfig): string | null {
-  const bulletin = dashboardConfig.widgets.find((w) => w.id === 'campaignBulletin');
-  const legacy = dashboardConfig.widgets.find((w) => w.id === 'announcements');
-  const widget = bulletin ?? legacy;
-  const body = widget?.config?.body;
-  return typeof body === 'string' && body.trim() ? body.trim() : null;
-}
-
 function isDmRole(role: CampaignMemberRole | null): boolean {
   return role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER;
 }
@@ -104,9 +89,8 @@ export async function buildDashboardSummary(input: {
   campaignHandle: string;
   role: CampaignMemberRole | null;
   viewerUserId: string | null;
-  dashboardConfig: DashboardConfig;
 }): Promise<DashboardSummary> {
-  const { campaignId, campaignHandle, role, viewerUserId, dashboardConfig } = input;
+  const { campaignId, campaignHandle, role, viewerUserId } = input;
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -118,7 +102,6 @@ export async function buildDashboardSummary(input: {
     recentFeed,
     worldActivity,
     ensemble,
-    activityRows,
     unresolvedCount,
     playerMembers,
   ] = await Promise.all([
@@ -135,23 +118,9 @@ export async function buildDashboardSummary(input: {
     fetchNextDashboardSession(campaignId),
     fetchLastDashboardSession(campaignId, role),
     buildDashboardChronometer(campaignId),
-    buildRecentEntityFeed(campaignId, campaignHandle, role, viewerUserId, { limit: 12 }),
+    buildRecentLoreFeed(campaignId, campaignHandle, role, 12),
     getSpoilerSafeWorldActivitySummary(campaignId, weekAgo),
     buildEnsembleBundle(campaignId, role),
-    prisma.campaignActivity.findMany({
-      where: { campaignId },
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-      take: 8,
-      select: {
-        id: true,
-        actionType: true,
-        entityType: true,
-        entityId: true,
-        entityName: true,
-        parentContext: true,
-        createdAt: true,
-      },
-    }),
     isDmRole(role)
       ? prisma.unresolvedWikilink.count({
           where: { campaignId, ignoredAt: null },
@@ -221,26 +190,6 @@ export async function buildDashboardSummary(input: {
       `${unresolvedCount} unresolved ${unresolvedCount === 1 ? 'reference' : 'references'}`,
     );
   }
-
-  const wikiActivityIds = activityRows
-    .filter((row) => row.entityType.toUpperCase() === 'WIKI_PAGE')
-    .map((row) => row.entityId);
-  const wikiPagesForActivity =
-    wikiActivityIds.length > 0
-      ? await prisma.wikiPage.findMany({
-          where: { campaignId, id: { in: wikiActivityIds } },
-          select: wikiPageHrefSelect,
-        })
-      : [];
-  const wikiPageById = new Map(wikiPagesForActivity.map((page) => [page.id, page]));
-
-  const bulletinActivity = activityRows.map((row) =>
-    mapCampaignActivityToBulletinItem(
-      row,
-      campaignHandle,
-      wikiPageById.get(row.entityId),
-    ),
-  );
 
   let personal: DashboardSummary['personal'] = null;
   if (viewerUserId) {
@@ -329,10 +278,6 @@ export async function buildDashboardSummary(input: {
       lines: pulseLines,
     },
     party: { members: ensemble?.members ?? [] },
-    bulletin: {
-      announcementsMarkdown: extractAnnouncementsMarkdown(dashboardConfig),
-      activity: bulletinActivity,
-    },
     personal,
     dmOverlay,
     worldPressurePreview,

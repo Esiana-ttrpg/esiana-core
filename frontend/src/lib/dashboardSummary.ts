@@ -45,13 +45,6 @@ export interface DashboardChronometerSummary {
   upcomingEvents: Array<{ id: string; title: string; startAt: string }>;
 }
 
-export interface BulletinActivityItem {
-  id: string;
-  line: string;
-  href: string | null;
-  createdAt: string;
-}
-
 export interface EnsembleMemberSummary {
   userId: string;
   playerLabel: string;
@@ -86,10 +79,6 @@ export interface DashboardSummary {
     lines: string[];
   };
   party: { members: EnsembleMemberSummary[] };
-  bulletin: {
-    announcementsMarkdown: string | null;
-    activity: BulletinActivityItem[];
-  };
   personal: {
     shortcuts: Array<{ pageId: string; title: string; sortOrder: number }>;
     pinned: Array<{ id: string; title: string; href: string; freshnessLabel?: string | null }>;

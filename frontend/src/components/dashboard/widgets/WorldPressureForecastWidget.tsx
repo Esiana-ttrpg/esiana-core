@@ -6,7 +6,7 @@ import {
   WORLD_PRESSURE_FORECAST_EMPTY_MESSAGE,
 } from '@shared/worldPressurePresentation';
 import type { DashboardSummary } from '@/lib/dashboardSummary';
-import { campaignWikiPath } from '@/lib/campaignPaths';
+import { campaignProgressionPath, campaignWikiPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
 import { DashboardWidgetShell } from '@/components/dashboard/DashboardWidgetShell';
 import { WorldPressureForecastContent } from '@/components/dashboard/WorldPressureForecastContent';
@@ -38,7 +38,15 @@ export function WorldPressureForecastWidget({
       onHide={onHide}
     >
       {!preview ? (
-        <p className="text-sm text-muted">{WORLD_PRESSURE_FORECAST_EMPTY_MESSAGE}</p>
+        <div className="space-y-3 text-sm text-muted">
+          <p>{WORLD_PRESSURE_FORECAST_EMPTY_MESSAGE}</p>
+          <Link
+            to={campaignProgressionPath(campaignHandle, 'insights')}
+            className="font-medium text-primary hover:underline"
+          >
+            Open Progression insights
+          </Link>
+        </div>
       ) : (
         <div className="space-y-4">
           <WorldPressureForecastContent
