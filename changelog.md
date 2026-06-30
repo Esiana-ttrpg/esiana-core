@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## [1.3.0] - 2026-06-30
+
+### Added
+
+- **Campaign Home briefing widgets** — Narrative-first Campaign Home with world events, recent entities, faction conflict, and quick utility navigation; tighter layout and customizable widget grid.
+- **Unified workspace toolbar** — Shared `WorkspaceActionBar` / `CategoryIndexToolbar` across category hubs (characters, organizations, bestiary, quests, maps, tags, and more) with consistent Refine · Sort · View · Create placement.
+- **Writing stats (Phases 1–2)** — Creator attribution, profile activity feed, campaign world snapshot, contributor rollups, and period-accurate word deltas backed by daily writing rollups.
+- **Campaign integrations** — Chat and tabletop integration links on campaigns and recruitment lobby; settings editor for external tool URLs.
+- **Account navigation** — Campaign switcher moved into account dropdown; localized account nav strings.
+
+### Changed
+
+- **Workspace header vocabulary** — Unified hub count hints, breadcrumb policy, and display typography (`META_*` / `TYPE_DISPLAY` roles) across campaign surfaces.
+- **Experience doctrine** — Audit artifacts, scorecard, and convergence backlog for ongoing UX alignment.
+
+### Fixed
+
+- **Campaign creation** — Return 400 when a campaign name cannot produce a handle; linear handle normalization to avoid ReDoS.
+- **Campaign cover ingest** — Ingest cover image after the campaign creation transaction commits.
+- Profile stats TypeScript and i18n key alignment; `displayName` fallback on creator stats overview.
+
+### Database
+
+- Migration `20260627120000_campaign_integrations` — adds `Campaign.campaignIntegrations` JSONB.
+- Migration `20260629120000_user_writing_daily_rollup` — adds `UserWritingDailyRollup` and activity indexes for stats rollups.
+
 ## [1.2.0] - 2026-06-21
 
 ### Added
