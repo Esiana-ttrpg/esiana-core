@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Plus, X } from 'lucide-react';
 import { createCampaign } from '@/lib/campaigns';
+import { getCampaignNameHandleError } from '@shared/campaignHandle';
 import type { CampaignSummary, CampaignDiscoverabilityValue } from '@/types/campaign';
 import {
   CampaignDiscoverability,
@@ -26,11 +27,17 @@ export function CreateCampaignModal({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const titleHandleError = name.trim() ? getCampaignNameHandleError(name) : null;
+
   if (!open) return null;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (titleHandleError) {
+      setError(titleHandleError);
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -91,6 +98,9 @@ export function CreateCampaignModal({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-primary/60"
               placeholder="Curse of the Hollow King"
             />
+            {titleHandleError && (
+              <span className="text-xs text-red-300">{titleHandleError}</span>
+            )}
           </label>
           <label className="block space-y-1">
             <span className="text-sm text-muted">Description</span>
@@ -132,7 +142,7 @@ export function CreateCampaignModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || !name.trim()}
+              disabled={submitting || !name.trim() || Boolean(titleHandleError)}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-background hover:bg-primary-hover disabled:opacity-50"
             >
               {submitting ? 'Creating…' : 'Create campaign'}
