@@ -26,6 +26,8 @@ declare module 'react-grid-layout' {
     containerPadding?: [number, number];
     margin?: [number, number];
     onLayoutChange?: (layout: Layout[]) => void;
+    onDragStop?: (layout: Layout[]) => void;
+    onResizeStop?: (layout: Layout[]) => void;
     draggableHandle?: string;
     useCSSTransforms?: boolean;
     className?: string;

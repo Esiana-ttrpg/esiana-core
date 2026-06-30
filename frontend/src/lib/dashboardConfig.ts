@@ -33,6 +33,11 @@ export type DashboardWidgetId =
   | 'fantasyCalendar'
   | 'worldPressureForecast'
   | 'worldSnapshot'
+  | 'campaignAtAGlance'
+  | 'currentStory'
+  | 'partyRoster'
+  | 'recentActivity'
+  | 'explore'
   | 'sessionClock'
   | 'worldClock'
   | 'announcements'
@@ -95,6 +100,11 @@ export const DASHBOARD_WIDGET_IDS: DashboardWidgetId[] = [
   'fantasyCalendar',
   'worldPressureForecast',
   'worldSnapshot',
+  'campaignAtAGlance',
+  'currentStory',
+  'partyRoster',
+  'recentActivity',
+  'explore',
 ];
 
 const LEGACY_WIDGET_ID_MAP: Record<string, DashboardWidgetId> = {
@@ -108,6 +118,48 @@ const PERSONAL_WIDGET_IDS = new Set<DashboardWidgetId>([
   'continueWhereYouLeftOff',
   'pinnedItems',
 ]);
+
+const NARRATIVE_BRIEFING_WIDGET_IDS: DashboardWidgetId[] = [
+  'campaignAtAGlance',
+  'currentStory',
+  'partyRoster',
+  'recentActivity',
+  'explore',
+];
+
+const LEGACY_OPERATIONAL_DEFAULT_IDS: DashboardWidgetId[] = [
+  'sessionSchedule',
+  'campaignPulse',
+  'worldSnapshot',
+  'campaignBulletin',
+  'recentLore',
+  'worldChronometer',
+  'lastSessionNotes',
+];
+
+function needsNarrativeBriefingActivation(
+  saved: DashboardWidgetPlacement[],
+): boolean {
+  return !saved.some((item) =>
+    NARRATIVE_BRIEFING_WIDGET_IDS.includes(migrateWidgetId(item.id)),
+  );
+}
+
+function applyLegacyBriefingWidgetMigration(
+  widgets: DashboardWidgetPlacement[],
+): DashboardWidgetPlacement[] {
+  const defaults = getDefaultDashboardConfig();
+  return widgets.map((widget) => {
+    if (NARRATIVE_BRIEFING_WIDGET_IDS.includes(widget.id)) {
+      const defaultPlacement = defaults.widgets.find((w) => w.id === widget.id);
+      return defaultPlacement ? { ...defaultPlacement, enabled: true } : widget;
+    }
+    if (LEGACY_OPERATIONAL_DEFAULT_IDS.includes(widget.id)) {
+      return { ...widget, enabled: false };
+    }
+    return widget;
+  });
+}
 
 export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   sessionSchedule: 'Session Schedule',
@@ -125,6 +177,11 @@ export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   fantasyCalendar: 'Fantasy Calendar',
   worldPressureForecast: 'World Pressure Forecast',
   worldSnapshot: 'World Snapshot',
+  campaignAtAGlance: 'Campaign at a Glance',
+  currentStory: 'Current Story',
+  partyRoster: 'Party',
+  recentActivity: 'Recent Activity',
+  explore: 'Explore',
   sessionClock: 'Session Schedule',
   worldClock: 'World Chronometer',
   announcements: 'Campaign Bulletin',
@@ -159,31 +216,37 @@ export function getDefaultDashboardConfig(): DashboardConfig {
   return {
     hero: createDefaultHeroConfig(),
     widgets: [
-      defaultPlacement('sessionSchedule', 0, 0, 4, 4),
-      defaultPlacement('campaignPulse', 4, 0, 4, 3),
-      defaultPlacement('worldSnapshot', 8, 0, 4, 4),
-      defaultPlacement('campaignBulletin', 0, 4, 4, 4, {
+      defaultPlacement('campaignAtAGlance', 0, 0, 12, 2),
+      defaultPlacement('currentStory', 0, 2, 12, 4),
+      defaultPlacement('partyRoster', 0, 6, 8, 3),
+      defaultPlacement('explore', 8, 6, 4, 3),
+      defaultPlacement('recentActivity', 0, 9, 12, 3),
+      defaultPlacement('sessionSchedule', 0, 12, 4, 4, { enabled: false }),
+      defaultPlacement('campaignPulse', 4, 12, 4, 3, { enabled: false }),
+      defaultPlacement('worldSnapshot', 8, 12, 4, 4, { enabled: false }),
+      defaultPlacement('campaignBulletin', 0, 16, 4, 4, {
+        enabled: false,
         config: {
           body: 'Pin house rules, reminders, and campaign notices here.',
         },
       }),
-      defaultPlacement('recentLore', 4, 4, 4, 4),
-      defaultPlacement('worldChronometer', 8, 4, 4, 3),
-      defaultPlacement('lastSessionNotes', 0, 8, 4, 4),
-      defaultPlacement('questLedger', 0, 8, 6, 4, { enabled: false }),
-      defaultPlacement('livingThreads', 6, 8, 6, 4, { enabled: false }),
-      defaultPlacement('party', 0, 12, 3, 4, { enabled: false }),
-      defaultPlacement('quickUtilityNav', 3, 12, 3, 4, { enabled: false }),
-      defaultPlacement('continueWhereYouLeftOff', 6, 12, 6, 3, {
+      defaultPlacement('recentLore', 4, 16, 4, 4, { enabled: false }),
+      defaultPlacement('worldChronometer', 8, 16, 4, 3, { enabled: false }),
+      defaultPlacement('lastSessionNotes', 0, 20, 4, 4, { enabled: false }),
+      defaultPlacement('questLedger', 0, 20, 6, 4, { enabled: false }),
+      defaultPlacement('livingThreads', 6, 20, 6, 4, { enabled: false }),
+      defaultPlacement('party', 0, 24, 3, 4, { enabled: false }),
+      defaultPlacement('quickUtilityNav', 3, 24, 3, 4, { enabled: false }),
+      defaultPlacement('continueWhereYouLeftOff', 6, 24, 6, 3, {
         enabled: false,
         scope: 'personal',
       }),
-      defaultPlacement('pinnedItems', 0, 15, 6, 3, {
+      defaultPlacement('pinnedItems', 0, 27, 6, 3, {
         enabled: false,
         scope: 'personal',
       }),
-      defaultPlacement('fantasyCalendar', 6, 15, 6, 5, { enabled: false }),
-      defaultPlacement('worldPressureForecast', 0, 18, 6, 4, { enabled: false }),
+      defaultPlacement('fantasyCalendar', 6, 27, 6, 5, { enabled: false }),
+      defaultPlacement('worldPressureForecast', 0, 32, 6, 4, { enabled: false }),
     ],
   };
 }
@@ -270,10 +333,15 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
       }
     }
   }
+
+  const migratedWidgets = needsNarrativeBriefingActivation(saved)
+    ? applyLegacyBriefingWidgetMigration(widgets)
+    : widgets;
+
   const importManifest = parseImportManifest(parsed.importManifest);
   return {
     hero: normalizeHero(parsed.hero),
-    widgets,
+    widgets: migratedWidgets,
     ...(importManifest ? { importManifest } : {}),
   };
 }

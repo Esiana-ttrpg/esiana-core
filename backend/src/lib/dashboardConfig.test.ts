@@ -19,6 +19,14 @@ test('normalizeDashboardConfig merges duplicate legacy placements', () => {
     hero: { coverImageUrl: null, summary: null },
     widgets: [
       {
+        id: 'campaignAtAGlance',
+        x: 0,
+        y: 0,
+        w: 12,
+        h: 2,
+        enabled: true,
+      },
+      {
         id: 'sessionClock',
         x: 0,
         y: 0,
@@ -103,4 +111,79 @@ test('parseDashboardLayoutPayload accepts worldPressureForecast widget placement
   const parsed = parseDashboardLayoutPayload(payload);
   assert.ok(parsed);
   assert.ok(parsed.widgets.some((w) => w.id === 'worldPressureForecast'));
+});
+
+test('normalizeDashboardConfig migrates legacy layouts to narrative briefing widgets', () => {
+  const normalized = normalizeDashboardConfig({
+    hero: { coverImageUrl: null, summary: null },
+    widgets: [
+      {
+        id: 'sessionSchedule',
+        x: 0,
+        y: 0,
+        w: 4,
+        h: 4,
+        enabled: true,
+      },
+    ],
+  });
+
+  for (const id of [
+    'campaignAtAGlance',
+    'currentStory',
+    'partyRoster',
+    'recentActivity',
+    'explore',
+  ] as const) {
+    const widget = normalized.widgets.find((w) => w.id === id);
+    assert.ok(widget, `expected ${id} widget`);
+    assert.equal(widget.enabled, true);
+  }
+
+  assert.equal(
+    normalized.widgets.find((w) => w.id === 'sessionSchedule')?.enabled,
+    false,
+  );
+});
+
+test('getDefaultDashboardConfig enables narrative briefing widgets', () => {
+  const defaults = normalizeDashboardConfig(null);
+  for (const id of [
+    'campaignAtAGlance',
+    'currentStory',
+    'partyRoster',
+    'recentActivity',
+    'explore',
+  ] as const) {
+    const widget = defaults.widgets.find((w) => w.id === id);
+    assert.ok(widget, `expected ${id} widget`);
+    assert.equal(widget.enabled, true);
+  }
+});
+
+
+test('parseDashboardLayoutPayload accepts narrative briefing widget placements', () => {
+  const payload = normalizeDashboardConfig({
+    hero: {
+      coverImageUrl: null,
+      summary: null,
+      heroMode: 'cinematic',
+      focalPointX: 0.5,
+      focalPointY: 0.5,
+      overlayStrength: 0.65,
+    },
+    widgets: normalizeDashboardConfig(null).widgets,
+  });
+
+  const parsed = parseDashboardLayoutPayload(payload);
+  assert.ok(parsed);
+  for (const id of [
+    'campaignAtAGlance',
+    'currentStory',
+    'partyRoster',
+    'recentActivity',
+    'explore',
+  ] as const) {
+    assert.ok(parsed.widgets.some((w) => w.id === id), `expected ${id} in layout`);
+  }
 });

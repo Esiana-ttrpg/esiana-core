@@ -17,6 +17,8 @@ interface CampaignContextRailProps {
   campaignHandle: string;
   /** Inline rails sit flush on the canvas edge without card chrome */
   layout?: 'inline' | 'elevated';
+  /** Nav links only — for DashboardWidgetShell */
+  embedded?: boolean;
 }
 
 const QUICK_LINKS = [
@@ -27,10 +29,35 @@ const QUICK_LINKS = [
   { label: 'Maps', segment: 'maps', icon: Map },
 ] as const;
 
+function ExploreNavLinks({ campaignHandle }: { campaignHandle: string }) {
+  return (
+    <nav className="flex flex-wrap gap-2" aria-label="Quick links">
+      {QUICK_LINKS.map((link) => {
+        const Icon = link.icon;
+        return (
+          <Link
+            key={link.label}
+            to={campaignPath(campaignHandle, link.segment)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/30 bg-focal/40 px-3 py-1.5 text-xs font-medium text-contextual-foreground/90 transition-colors hover:border-primary/40 hover:text-primary"
+          >
+            <Icon className="size-3.5 shrink-0 opacity-70" aria-hidden />
+            {link.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function CampaignContextRail({
   campaignHandle,
   layout = 'inline',
+  embedded = false,
 }: CampaignContextRailProps) {
+  if (embedded) {
+    return <ExploreNavLinks campaignHandle={campaignHandle} />;
+  }
+
   const surfaceClass =
     layout === 'inline' ? SURFACE_CONTEXTUAL_INLINE_CLASS : SURFACE_FLOAT_CLASS;
 
@@ -45,21 +72,9 @@ export function CampaignContextRail({
           Jump to campaign surfaces
         </p>
       </header>
-      <nav className="flex flex-wrap gap-2 px-3 pb-3" aria-label="Quick links">
-        {QUICK_LINKS.map((link) => {
-          const Icon = link.icon;
-          return (
-            <Link
-              key={link.label}
-              to={campaignPath(campaignHandle, link.segment)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border/30 bg-focal/40 px-3 py-1.5 text-xs font-medium text-contextual-foreground/90 transition-colors hover:border-primary/40 hover:text-primary"
-            >
-              <Icon className="size-3.5 shrink-0 opacity-70" aria-hidden />
-              {link.label}
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="px-3 pb-3">
+        <ExploreNavLinks campaignHandle={campaignHandle} />
+      </div>
     </aside>
   );
 }

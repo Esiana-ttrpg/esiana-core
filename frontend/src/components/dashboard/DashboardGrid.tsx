@@ -14,6 +14,7 @@ import {
 } from '@/lib/dashboardConfig';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
 import type { DashboardSummary } from '@/lib/dashboardSummary';
+import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
 import { CalendarWidget } from '@/components/dashboard/widgets/CalendarWidget';
 import { CampaignBulletinWidget } from '@/components/dashboard/widgets/CampaignBulletinWidget';
 import { CampaignPulseWidget } from '@/components/dashboard/widgets/CampaignPulseWidget';
@@ -29,6 +30,11 @@ import { SessionScheduleCard } from '@/components/dashboard/widgets/SessionSched
 import { WorldChronometerWidget } from '@/components/dashboard/widgets/WorldChronometerWidget';
 import { WorldPressureForecastWidget } from '@/components/dashboard/widgets/WorldPressureForecastWidget';
 import { WorldSnapshotWidget } from '@/components/dashboard/widgets/WorldSnapshotWidget';
+import { CampaignAtAGlanceWidget } from '@/components/dashboard/widgets/CampaignAtAGlanceWidget';
+import { CurrentStoryWidget } from '@/components/dashboard/widgets/CurrentStoryWidget';
+import { PartyRosterWidget } from '@/components/dashboard/widgets/PartyRosterWidget';
+import { RecentActivityWidget } from '@/components/dashboard/widgets/RecentActivityWidget';
+import { ExploreWidget } from '@/components/dashboard/widgets/ExploreWidget';
 import { getCompositionProfile } from '@/lib/compositionDoctrine';
 import {
   buildPluginWidgetPlacementId,
@@ -55,6 +61,7 @@ export interface DashboardGridProps {
   canManageTime: boolean;
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
+  narrativeSnapshot?: CampaignNarrativeSnapshot;
   customizeMode: boolean;
   onConfigChange: (config: DashboardConfig) => void;
   onLayoutSavingChange?: (saving: boolean) => void;
@@ -71,6 +78,7 @@ export function DashboardGrid({
   canManageTime,
   isLookingForGroup,
   sessionDuration,
+  narrativeSnapshot,
   customizeMode,
   onConfigChange,
   onLayoutSavingChange,
@@ -161,7 +169,7 @@ export function DashboardGrid({
     [config, scheduleSave],
   );
 
-  const handleLayoutChange = useCallback(
+  const handleLayoutCommit = useCallback(
     (layout: Layout[]) => {
       if (!customizeMode) return;
       const nextWidgets = config.widgets.map((widget) => {
@@ -260,7 +268,8 @@ export function DashboardGrid({
             isDraggable={customizeMode}
             isResizable={customizeMode}
             draggableHandle=".dashboard-drag-handle"
-            onLayoutChange={handleLayoutChange}
+            onDragStop={handleLayoutCommit}
+            onResizeStop={handleLayoutCommit}
             margin={[16, 16]}
             useCSSTransforms
           >
@@ -276,6 +285,7 @@ export function DashboardGrid({
                   canManageTime={canManageTime}
                   isLookingForGroup={isLookingForGroup}
                   sessionDuration={sessionDuration}
+                  narrativeSnapshot={narrativeSnapshot}
                   personalizeContinue={personal?.continueWhereYouLeftOff ?? []}
                   personalizePinned={personal?.pinned ?? []}
                   customizeMode={customizeMode}
@@ -354,6 +364,7 @@ interface DashboardWidgetRendererProps {
   canManageTime: boolean;
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
+  narrativeSnapshot?: CampaignNarrativeSnapshot;
   personalizeContinue: NonNullable<DashboardSummary['personal']>['continueWhereYouLeftOff'];
   personalizePinned: NonNullable<DashboardSummary['personal']>['pinned'];
   customizeMode: boolean;
@@ -374,6 +385,7 @@ function DashboardWidgetRenderer({
   canManageTime,
   isLookingForGroup,
   sessionDuration,
+  narrativeSnapshot,
   personalizeContinue,
   personalizePinned,
   customizeMode,
@@ -503,6 +515,29 @@ function DashboardWidgetRenderer({
           nextSessionInDays={summary.campaignPulse.nextSessionInDays}
           {...shellProps}
         />
+      );
+    case 'campaignAtAGlance':
+      return (
+        <CampaignAtAGlanceWidget
+          snapshot={narrativeSnapshot}
+          {...shellProps}
+        />
+      );
+    case 'currentStory':
+      return (
+        <CurrentStoryWidget snapshot={narrativeSnapshot} {...shellProps} />
+      );
+    case 'partyRoster':
+      return (
+        <PartyRosterWidget snapshot={narrativeSnapshot} {...shellProps} />
+      );
+    case 'recentActivity':
+      return (
+        <RecentActivityWidget snapshot={narrativeSnapshot} {...shellProps} />
+      );
+    case 'explore':
+      return (
+        <ExploreWidget campaignHandle={campaignHandle} {...shellProps} />
       );
     default: {
       const parsed = parsePluginWidgetPlacementId(widget.id);

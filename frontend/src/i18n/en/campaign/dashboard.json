@@ -22,5 +22,12 @@
   "campaign.dashboard.widgetPinnedItems": "Pinned Pages",
   "campaign.dashboard.widgetFantasyCalendar": "Fantasy Calendar",
   "campaign.dashboard.widgetWorldPressureForecast": "World Pressure Forecast",
-  "campaign.dashboard.widgetWorldSnapshot": "World Snapshot"
+  "campaign.dashboard.widgetWorldSnapshot": "World Snapshot",
+
+  "campaign.dashboard.widgetCampaignAtAGlance": "Campaign at a Glance",
+  "campaign.dashboard.widgetCurrentStory": "Current Story",
+  "campaign.dashboard.widgetPartyRoster": "Party",
+  "campaign.dashboard.widgetRecentActivity": "Recent Activity",
+  "campaign.dashboard.widgetExplore": "Explore",
+  "campaign.dashboard.narrativeSnapshotUnavailable": "Narrative briefing data is not available yet. Add campaign lore to populate this widget."
 }
