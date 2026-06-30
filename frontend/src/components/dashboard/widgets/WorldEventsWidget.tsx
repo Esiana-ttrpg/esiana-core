@@ -14,6 +14,10 @@ import { WORLD_EVENT_TYPE_EMOJI } from '@shared/worldEventWidgetPresentation';
 import type { DashboardWorldEventsFeedResult } from '@/lib/dashboardWidgetFeeds';
 import { campaignChronologyPath } from '@/lib/campaignPaths';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
+import {
+  worldEventSortLabelKey,
+  worldEventTypeLabelKey,
+} from '@/i18n/dashboardCustomizeLabels';
 import { DashboardWidgetShell } from '../DashboardWidgetShell';
 import {
   CustomizeOptionButton,
@@ -78,7 +82,7 @@ export function WorldEventsWidget({
                       onChange={() => toggleType(type)}
                       className="size-3.5 rounded border-border"
                     />
-                    {t(`campaign.dashboard.worldEventType.${type}`)}
+                    {t(worldEventTypeLabelKey(type))}
                   </label>
                 </li>
               ))}
@@ -92,7 +96,7 @@ export function WorldEventsWidget({
                   selected={settings.sortBy === sortBy}
                   onClick={() => updateConfig({ sortBy: sortBy as DashboardWorldEventSortBy })}
                 >
-                  {t(`campaign.dashboard.worldEventSort.${sortBy}`)}
+                  {t(worldEventSortLabelKey(sortBy as DashboardWorldEventSortBy))}
                 </CustomizeOptionButton>
               ))}
             </CustomizeOptionGroup>

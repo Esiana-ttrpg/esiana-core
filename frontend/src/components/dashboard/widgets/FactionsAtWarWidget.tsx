@@ -11,6 +11,7 @@ import {
 import type { FactionConflictFeedResult } from '@/lib/dashboardWidgetFeeds';
 import { campaignPath } from '@/lib/campaignPaths';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
+import { factionConflictSortLabelKey } from '@/i18n/dashboardCustomizeLabels';
 import { DashboardWidgetShell } from '../DashboardWidgetShell';
 import {
   CustomizeOptionButton,
@@ -67,7 +68,7 @@ export function FactionsAtWarWidget({
                     updateConfig({ sortBy: sortBy as DashboardFactionConflictSortBy })
                   }
                 >
-                  {t(`campaign.dashboard.factionConflictSort.${sortBy}`)}
+                  {t(factionConflictSortLabelKey(sortBy as DashboardFactionConflictSortBy))}
                 </CustomizeOptionButton>
               ))}
             </CustomizeOptionGroup>

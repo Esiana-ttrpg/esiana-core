@@ -22,6 +22,10 @@ import {
 } from '@shared/dashboardRecentEntitiesCatalog';
 import type { RecentEntitiesFeedResult } from '@/lib/dashboardWidgetFeeds';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
+import {
+  recentEntityCategoryLabelKey,
+  recentEntitySortLabelKey,
+} from '@/i18n/dashboardCustomizeLabels';
 import { DashboardWidgetShell } from '../DashboardWidgetShell';
 import {
   CustomizeOptionButton,
@@ -96,7 +100,7 @@ export function RecentEntitiesWidget({
                   selected={settings.category === category}
                   onClick={() => updateConfig({ category })}
                 >
-                  {t(`campaign.dashboard.recentEntityCategory.${category}`)}
+                  {t(recentEntityCategoryLabelKey(category))}
                 </CustomizeOptionButton>
               ))}
             </CustomizeOptionGroup>
@@ -109,7 +113,7 @@ export function RecentEntitiesWidget({
                   selected={settings.sortBy === sortBy}
                   onClick={() => updateConfig({ sortBy: sortBy as DashboardRecentEntitySortBy })}
                 >
-                  {t(`campaign.dashboard.recentEntitySort.${sortBy}`)}
+                  {t(recentEntitySortLabelKey(sortBy as DashboardRecentEntitySortBy))}
                 </CustomizeOptionButton>
               ))}
             </CustomizeOptionGroup>

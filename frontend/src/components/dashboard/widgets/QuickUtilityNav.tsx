@@ -10,6 +10,7 @@ import {
 } from '@/lib/dashboardQuickLinkCatalog';
 import { DashboardWidgetShell } from '../DashboardWidgetShell';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
+import { quickLinkLabelKey } from '@/i18n/dashboardCustomizeLabels';
 
 interface QuickUtilityNavProps {
   campaignHandle: string;
@@ -79,7 +80,7 @@ export function QuickUtilityNav({
                       onChange={() => toggleLink(key)}
                       className="size-3.5 rounded border-border"
                     />
-                    {t(`campaign.dashboard.quickLink.${key}`)}
+                    {t(quickLinkLabelKey(key))}
                   </label>
                 </li>
               );
@@ -97,7 +98,7 @@ export function QuickUtilityNav({
                 to={link.to}
                 className="rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-elevated hover:text-primary"
               >
-                {t(`campaign.dashboard.quickLink.${link.key}`, { defaultValue: link.label })}
+                {t(quickLinkLabelKey(link.key), { defaultValue: link.label })}
               </Link>
             ))
           )}
