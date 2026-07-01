@@ -26,7 +26,7 @@ import type { NarrativeViewerContext } from '../../../shared/narrativeProjection
 import { resolveCampaignChronologyNow } from './chronologyDefaults.js';
 import { buildAnalysisSnapshot } from './entityGraphService.js';
 import { getOrCreateSystemSettings } from './systemSettings.js';
-import { prisma } from './prisma.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { ensureCampaignReputation } from './reputationSimulationService.js';
 
 const SOCIAL_KINDS = [
@@ -112,7 +112,11 @@ async function loadReputationMap(
 
 async function loadOrgPages(campaignId: string): Promise<WikiPageSnapshot[]> {
   const pages = await prisma.wikiPage.findMany({
-    where: { campaignId, deletedAt: null, templateType: 'ORGANIZATION' },
+    where: {
+      campaignId,
+      deletedAt: null,
+      ...buildEntityCategoryWhereClause('organizations'),
+    },
     select: { id: true, title: true, templateType: true, metadata: true },
     orderBy: { title: 'asc' },
   });

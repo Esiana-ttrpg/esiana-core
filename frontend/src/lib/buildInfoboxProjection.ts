@@ -9,6 +9,7 @@ import { parseObjectMetadata } from '@/lib/objectMetadata';
 import { parseLocationMetadata } from '@/lib/locationMetadata';
 import { parseRuleResourceMetadata } from '@/lib/ruleResourceMetadata';
 import { formatCharacterStatusLabel, resolveCharacterStatus } from '@/lib/characterMetadata';
+import { readEntityCategoryFromMetadata } from '@shared/wikiTemplateType';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
 import type { WikiTreeNode } from '@/types/wiki';
 
@@ -24,23 +25,28 @@ function pageTitles(flatPages: WikiTreeNode[], ids: string[]): string {
     .join(', ');
 }
 
+function profileKeyFromMetadata(metadata: unknown): SurfaceProfileKey | null {
+  const category = readEntityCategoryFromMetadata(metadata);
+  if (category === 'characters') return 'character';
+  if (category === 'organizations') return 'organization';
+  if (category === 'families') return 'family';
+  if (category === 'bestiary') return 'bestiary';
+  if (category === 'ancestries') return 'ancestry';
+  if (category === 'objects') return 'object';
+  if (category === 'locations') return 'location';
+  if (category === 'rules-resources') return 'rule-resource';
+  return null;
+}
+
 export function buildInfoboxProjection(
-  templateType: string,
+  _templateType: string,
   metadata: unknown,
   flatPages: WikiTreeNode[],
   surfaceProfileKey?: SurfaceProfileKey | null,
 ): InfoboxField[] {
-  const profileKey =
-    surfaceProfileKey ??
-    (templateType === 'CHARACTER'
-      ? 'character'
-      : templateType === 'ORGANIZATION'
-        ? 'organization'
-        : templateType === 'FAMILY'
-          ? 'family'
-          : null);
+  const profileKey = surfaceProfileKey ?? profileKeyFromMetadata(metadata);
 
-  if (profileKey === 'character' || templateType === 'CHARACTER') {
+  if (profileKey === 'character') {
     const identity = parseCharacterMetadata(metadata);
     const lineage = parseCharacterLineageMetadata(metadata);
     const status = resolveCharacterStatus(identity, lineage);
@@ -63,7 +69,7 @@ export function buildInfoboxProjection(
     return fields;
   }
 
-  if (profileKey === 'organization' || templateType === 'ORGANIZATION') {
+  if (profileKey === 'organization') {
     const org = parseOrganizationMetadata(metadata);
     const fields: InfoboxField[] = [];
     if (org.orgType) fields.push({ key: 'Type', value: org.orgType });
@@ -79,7 +85,7 @@ export function buildInfoboxProjection(
     return fields;
   }
 
-  if (profileKey === 'family' || templateType === 'FAMILY') {
+  if (profileKey === 'family') {
     const family = parseFamilyMetadata(metadata);
     const fields: InfoboxField[] = [];
     if (family.familyType) fields.push({ key: 'Type', value: family.familyType });

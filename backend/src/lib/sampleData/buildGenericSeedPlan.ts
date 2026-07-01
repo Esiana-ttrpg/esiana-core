@@ -85,7 +85,6 @@ export function buildGenericSeedPlan(ctx: GenericSeedPlanContext): {
       dmUserId,
       `${renderVoice(VOICES.dm, loc, rng)}\n\nSee also ${link}.`,
       { entityCategory: 'locations' },
-      'LOCATION',
     );
     clock.advanceDays(pickInt(rng, 1, 3));
   }
@@ -101,7 +100,6 @@ export function buildGenericSeedPlan(ctx: GenericSeedPlanContext): {
       dmUserId,
       `${renderVoice(VOICES.dm, fac, rng)} ${fac}`,
       { entityCategory: 'organizations' },
-      'ORGANIZATION',
     );
     clock.advanceDays(1);
   }
@@ -112,7 +110,7 @@ export function buildGenericSeedPlan(ctx: GenericSeedPlanContext): {
     const key = `npc:${slugifyTitle(npc)}`;
     pushCreate(key, npc, SK.characters, dmUserId, renderVoice(VOICES.dm, npc, rng), {
       entityCategory: 'characters',
-    }, 'CHARACTER');
+    });
   }
 
   const sessionCount =

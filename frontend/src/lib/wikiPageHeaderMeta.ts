@@ -95,7 +95,6 @@ export function resolveEntityKindLabel(
   templateType: string,
 ): string | null {
   if (templateType === 'SESSION_NOTE') return 'Session note';
-  if (templateType === 'CHARACTER') return 'Character';
   return NARRATIVE_KIND_BY_PROFILE[profileKey] ?? null;
 }
 

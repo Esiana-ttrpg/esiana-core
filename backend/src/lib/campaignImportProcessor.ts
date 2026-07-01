@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
+import { normalizeWikiPageTemplateFields } from '../../../shared/wikiTemplateType.js';
 import { IMPORT_SK } from '../../../shared/importSkeletonKeys.js';
 import {
   collectMarkdownZipPaths,
@@ -839,17 +840,22 @@ export async function processCampaignImportZip(
         content: { markdown: row.bodyMarkdown },
       }) as const;
 
-    const wikiPageData = (row: PreparedImportRow) =>
-      ({
+    const wikiPageData = (row: PreparedImportRow) => {
+      const normalized = normalizeWikiPageTemplateFields({
+        templateType: row.templateType,
+        metadata: row.metadata,
+      });
+      return {
         title: row.title,
         parentId: row.parentId,
         visibility: row.visibility,
-        templateType: row.templateType,
-        metadata: row.metadata as any,
+        templateType: normalized.templateType,
+        metadata: normalized.metadata as any,
         blocks: [wikiPageBlock(row)] as any,
         ...(row.createdAt ? { createdAt: row.createdAt } : {}),
         ...(row.updatedAt ? { updatedAt: row.updatedAt } : {}),
-      }) as const;
+      } as const;
+    };
 
     const chunkSize = 25;
     for (let offset = 0; offset < preparedRows.length; offset += chunkSize) {

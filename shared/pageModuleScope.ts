@@ -65,7 +65,7 @@ function isPageUnderSystemCategory(
     const node = pageById.get(current);
     if (!node) break;
     if (parseSystemCategoryKey(node.metadata) === systemKey) return true;
-    current = node.parentId;
+    current = node.parentId ?? null;
   }
   return false;
 }
@@ -84,7 +84,7 @@ function isPageUnderCategoryTitle(
     const node = pageById.get(current);
     if (!node) break;
     if (node.title === categoryTitle) return true;
-    current = node.parentId;
+    current = node.parentId ?? null;
   }
   return false;
 }
@@ -121,8 +121,6 @@ export function resolvePageSurfaceKey(
   ) {
     return 'quest';
   }
-
-  if (page.templateType === 'CHARACTER') return 'character';
 
   const entityCategory = readEntityCategory(page.metadata);
   if (entityCategory === 'bestiary' || isPageUnderCategoryTitle(page.id, flatPages, 'Bestiary')) {

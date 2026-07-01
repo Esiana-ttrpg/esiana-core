@@ -13,7 +13,7 @@ const flatPages: WikiTreeNode[] = [
     title: 'Tree Remember',
     parentId: 'chars-root',
     visibility: 'Party',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     workspace: 'CHARACTERS',
     pathKey: 'tree-remember',
     children: [],

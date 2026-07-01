@@ -8,6 +8,7 @@ import {
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { DowntimeHubLedgerPayload, LedgerSuggestionLine, LedgerTransactionLine } from '@shared/downtimeHub';
 import type { WikiTreeNode } from '@/types/wiki';
+import { isCharacterEntityPage } from '@shared/resolveCanonicalEntityCategory';
 import {
   acceptLedgerSuggestion,
   dismissLedgerSuggestion,
@@ -80,7 +81,7 @@ export const DowntimeLedgerSection = forwardRef<
   const characterOptions = useMemo(
     () =>
       flatPages
-        .filter((page) => page.templateType === 'CHARACTER')
+        .filter((page) => isCharacterEntityPage(page, flatPages))
         .map((page) => ({ id: page.id, label: page.title })),
     [flatPages],
   );

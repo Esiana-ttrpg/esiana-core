@@ -3,13 +3,6 @@ import type { AppearanceMode, SurfaceProfileKey } from '@/lib/entitySurfaceProfi
 import { WIKI_GRID_COLS } from './wikiGrid';
 import { createBlockContentForType, getDefaultBlockTitle } from './wikiWidgets';
 
-export type WikiPageTemplateType =
-  | 'DEFAULT'
-  | 'CHARACTER'
-  | 'LOCATION'
-  | 'ORGANIZATION'
-  | 'FAMILY';
-
 export function createWikiBlock(
   type: WikiPageBlock['type'],
   x: number,
@@ -88,12 +81,18 @@ const GENERIC_ONLY_TYPES = new Set([
   'wiki-backlinks',
 ]);
 
+const ENTITY_SURFACE_KEYS = new Set<SurfaceProfileKey>([
+  'character',
+  'organization',
+  'family',
+  'location',
+]);
+
 function hasSemanticBlocks(
-  templateType: WikiPageTemplateType,
+  surfaceKey: SurfaceProfileKey,
   blocks: WikiPageBlock[],
 ): boolean {
-  const t = templateType;
-  if (t === 'CHARACTER') {
+  if (surfaceKey === 'character') {
     return blocks.some((b) =>
       [
         'entity-hero',
@@ -104,17 +103,17 @@ function hasSemanticBlocks(
       ].includes(b.type),
     );
   }
-  if (t === 'ORGANIZATION') {
+  if (surfaceKey === 'organization') {
     return blocks.some((b) =>
       ['entity-org-hero', 'entity-relationships'].includes(b.type),
     );
   }
-  if (t === 'FAMILY') {
+  if (surfaceKey === 'family') {
     return blocks.some((b) =>
       ['entity-family-hero', 'entity-relationships'].includes(b.type),
     );
   }
-  if (t === 'LOCATION') {
+  if (surfaceKey === 'location') {
     return blocks.some((b) => b.type === 'entity-location-hero');
   }
   return true;
@@ -133,26 +132,23 @@ export function ensureUniqueWikiBlockIds(blocks: WikiPageBlock[]): WikiPageBlock
   });
 }
 
-/** Replace legacy/generic layouts with template semantic defaults (destructive). */
+/** Replace legacy/generic layouts with surface semantic defaults (destructive). */
 export function resolveSemanticPageBlocks(
-  templateType: WikiPageTemplateType,
+  surfaceKey: SurfaceProfileKey,
   blocks: WikiPageBlock[],
 ): WikiPageBlock[] {
   if (blocks.length === 0) {
-    return buildDefaultBlocks(templateType).map((b) => ({ ...b, h: 1 }));
+    return buildDefaultBlocks(surfaceKey).map((b) => ({ ...b, h: 1 }));
   }
 
   const genericOnly = blocks.every((b) => GENERIC_ONLY_TYPES.has(b.type));
   const needsSemantic =
-    (templateType === 'CHARACTER' ||
-      templateType === 'ORGANIZATION' ||
-      templateType === 'FAMILY' ||
-      templateType === 'LOCATION') &&
-    (genericOnly || !hasSemanticBlocks(templateType, blocks));
+    ENTITY_SURFACE_KEYS.has(surfaceKey) &&
+    (genericOnly || !hasSemanticBlocks(surfaceKey, blocks));
 
   if (needsSemantic) {
     return ensureUniqueWikiBlockIds(
-      buildDefaultBlocks(templateType).map((b) => ({ ...b, h: 1 })),
+      buildDefaultBlocks(surfaceKey).map((b) => ({ ...b, h: 1 })),
     );
   }
 
@@ -194,14 +190,13 @@ function buildPass2EntityBlocks(surfaceKey: SurfaceProfileKey): WikiPageBlock[] 
 }
 
 export function buildDefaultBlocks(
-  templateType: WikiPageTemplateType,
-  surfaceKey?: SurfaceProfileKey,
+  surfaceKey: SurfaceProfileKey = 'default',
 ): WikiPageBlock[] {
-  if (templateType === 'CHARACTER') {
+  if (surfaceKey === 'character') {
     return buildCharacterEditorialBlocks();
   }
 
-  if (templateType === 'LOCATION') {
+  if (surfaceKey === 'location') {
     return [
       createBlock('entity-location-hero', 0, 0, 3, 1),
       createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
@@ -211,7 +206,7 @@ export function buildDefaultBlocks(
     ];
   }
 
-  if (templateType === 'ORGANIZATION') {
+  if (surfaceKey === 'organization') {
     return [
       createBlock('entity-org-hero', 0, 0, 3, 1),
       createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
@@ -220,7 +215,7 @@ export function buildDefaultBlocks(
     ];
   }
 
-  if (templateType === 'FAMILY') {
+  if (surfaceKey === 'family') {
     return [
       createBlock('entity-family-hero', 0, 0, 3, 1),
       createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
@@ -229,10 +224,8 @@ export function buildDefaultBlocks(
     ];
   }
 
-  if (surfaceKey) {
-    const pass2 = buildPass2EntityBlocks(surfaceKey);
-    if (pass2) return pass2;
-  }
+  const pass2 = buildPass2EntityBlocks(surfaceKey);
+  if (pass2) return pass2;
 
   return [
     createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),

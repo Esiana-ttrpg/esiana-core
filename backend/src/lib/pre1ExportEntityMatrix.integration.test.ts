@@ -23,22 +23,22 @@ const CODEX_TEMPLATE_FIXTURES: Array<{
 }> = [
   {
     label: 'Character',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     metadata: { entityCategory: 'characters', profession: 'Scout', activeArc: 'Find the key' },
   },
   {
     label: 'Location',
-    templateType: 'LOCATION',
+    templateType: 'DEFAULT',
     metadata: { entityCategory: 'locations', locationType: 'city' },
   },
   {
     label: 'Organization',
-    templateType: 'ORGANIZATION',
+    templateType: 'DEFAULT',
     metadata: { entityCategory: 'organizations', orgType: 'guild' },
   },
   {
     label: 'Family',
-    templateType: 'FAMILY',
+    templateType: 'DEFAULT',
     metadata: { entityCategory: 'families' },
   },
   {
@@ -211,7 +211,7 @@ test('pre-1.0 export matrix: sovereign round-trips knowledge.json', async (t) =>
       id: pageId,
       campaignId: campaign.id,
       title: `Hero ${stamp}`,
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
       visibility: 'Party',
       metadata: { entityCategory: 'characters', slug } as never,
       blocks: [] as never,
@@ -301,8 +301,8 @@ test('pre-1.0 export matrix: documents sovereign gaps for map layers and reputat
 });
 
 test('pre-1.0 export matrix: Obsidian import resolves template types from module', () => {
-  assert.equal(resolveImportTemplateType('Characters', {}), 'CHARACTER');
-  assert.equal(resolveImportTemplateType('Locations', {}), 'LOCATION');
+  assert.equal(resolveImportTemplateType('Characters', {}), 'DEFAULT');
+  assert.equal(resolveImportTemplateType('Locations', {}), 'DEFAULT');
   assert.equal(
     resolveImportTemplateType('Characters', { templateType: 'ARC' }),
     'ARC',

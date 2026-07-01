@@ -214,7 +214,9 @@ export function OrganizationPresenceTab({
                     campaignHandle={campaignHandle}
                     pageId={locId}
                     title={section.locationTitles[i] ?? locId}
-                    templateType="LOCATION"
+                    templateType={
+                      snapshots.find((s) => s.id === locId)?.templateType ?? 'DEFAULT'
+                    }
                     flatPages={snapshots}
                     compact
                   />

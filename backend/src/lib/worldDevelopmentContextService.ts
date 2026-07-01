@@ -7,6 +7,7 @@ import {
   type FactionEraTrajectory,
 } from '../../../shared/factionMomentumMetadata.js';
 import { buildCampaignWorldPressureProjection } from './worldPressureProjectionService.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { resolveWorldDevelopmentSettings } from './worldDevelopmentSettingsService.js';
 import { parseOrganizationMetadata } from './organizationMetadata.js';
 import { ensureCampaignMomentum, getCurrentCampaignEra, toCampaignMomentumPayload } from './campaignMomentumService.js';
@@ -52,7 +53,7 @@ export async function buildProjectedFactionStates(
     where: {
       campaignId,
       deletedAt: null,
-      templateType: 'ORGANIZATION',
+      ...buildEntityCategoryWhereClause('organizations'),
     },
     select: { id: true, title: true, metadata: true },
     orderBy: { title: 'asc' },

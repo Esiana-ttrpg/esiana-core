@@ -224,7 +224,7 @@ export function buildTransformedPagePayload(input: {
         ...stripQuestMetadata(stripThreadMetadata(baseMetadata)),
         entityCategory: 'characters',
       },
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
       targetModuleKey: 'characters',
     };
   }

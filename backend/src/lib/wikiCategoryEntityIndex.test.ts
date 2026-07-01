@@ -27,12 +27,11 @@ describe('buildCategoryIndexWhereClause', () => {
     assert.deepEqual(metadataFilter?.path, ['entityCategory']);
   });
 
-  it('includes templateType fallback for Characters', () => {
+  it('does not include legacy templateType fallback', () => {
     const clause = buildCategoryIndexWhereClause('Characters');
-    assert.ok((clause.OR?.length ?? 0) >= 2);
     assert.ok(
-      clause.OR?.some(
-        (entry) => 'templateType' in entry && entry.templateType === 'CHARACTER',
+      !clause.OR?.some(
+        (entry) => 'templateType' in entry,
       ),
     );
   });

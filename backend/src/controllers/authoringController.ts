@@ -6,6 +6,16 @@ import { logCampaignActivity } from '../lib/campaignActivity.js';
 import { incrementDailyRollup } from '../lib/stats/userWritingDailyRollup.js';
 import { isSceneMetadataPresent } from '../lib/sceneMetadata.js';
 import { parseThreadMetadata } from '../lib/threadMetadata.js';
+import { resolveCanonicalEntityCategory } from '../../../shared/resolveCanonicalEntityCategory.js';
+import { readEntityCategoryFromMetadata } from '../../../shared/wikiTemplateType.js';
+
+function isCharactersRoot(row: {
+  metadata: unknown;
+}): boolean {
+  if (typeof row.metadata !== 'object' || row.metadata === null) return false;
+  const meta = row.metadata as Record<string, unknown>;
+  return meta.categoryKey === 'characters' || meta.systemCategoryKey === 'characters';
+}
 function isQuestLikeMetadata(metadata: unknown): boolean {
   if (!metadata || typeof metadata !== 'object') return false;
   const raw = metadata as Record<string, unknown>;
@@ -103,6 +113,7 @@ export async function getCampaignGrowthMetrics(
     where: { campaignId },
     select: {
       id: true,
+      title: true,
       parentId: true,
       templateType: true,
       metadata: true,
@@ -115,21 +126,19 @@ export async function getCampaignGrowthMetrics(
   let activeThreadCount = 0;
   let activeQuestCount = 0;
 
-  const charactersRoot = rows.find(
-    (p) =>
-      p.templateType === 'CHARACTER' ||
-      (typeof p.metadata === 'object' &&
-        p.metadata !== null &&
-        (p.metadata as Record<string, unknown>).categoryKey === 'characters'),
-  );
+  const charactersRoot = rows.find(isCharactersRoot);
 
   const charactersRootId = charactersRoot?.id ?? null;
 
   for (const row of rows) {
-    if (row.templateType === 'CHARACTER' && row.parentId === charactersRootId) {
+    const entityCategory =
+      readEntityCategoryFromMetadata(row.metadata) ??
+      resolveCanonicalEntityCategory(row, rows);
+
+    if (entityCategory === 'characters' && row.parentId === charactersRootId) {
       npcCount += 1;
     }
-    if (row.templateType === 'ORGANIZATION') {
+    if (entityCategory === 'organizations') {
       const meta = row.metadata as Record<string, unknown> | null;
       const status = typeof meta?.organizationStatus === 'string' ? meta.organizationStatus : 'ACTIVE';
       if (status === 'ACTIVE') factionCount += 1;
@@ -145,9 +154,13 @@ export async function getCampaignGrowthMetrics(
     }
   }
 
-  // Fallback NPC count: any CHARACTER template if no characters root
+  // Fallback NPC count: any character entity if no characters root
   if (npcCount === 0) {
-    npcCount = rows.filter((r) => r.templateType === 'CHARACTER').length;
+    npcCount = rows.filter(
+      (row) =>
+        (readEntityCategoryFromMetadata(row.metadata) ??
+          resolveCanonicalEntityCategory(row, rows)) === 'characters',
+    ).length;
   }
 
   res.json({

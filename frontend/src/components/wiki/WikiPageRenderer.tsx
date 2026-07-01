@@ -61,7 +61,6 @@ interface WikiPageRendererProps {
   showGridLines: boolean;
   onShowGridLinesChange?: (show: boolean) => void;
   onBlocksChange: (updater: BlocksUpdater) => void;
-  onTemplateTypeChange: (templateType: string) => void;
   isDirty?: boolean;
   isSaving?: boolean;
   onSaveLayout?: () => void;
@@ -112,7 +111,6 @@ export function WikiPageRenderer({
   showGridLines,
   onShowGridLinesChange,
   onBlocksChange,
-  onTemplateTypeChange,
   isEventLorePage = false,
   readerFirstLayout = false,
   pageMetadata,
@@ -646,7 +644,6 @@ export function WikiPageRenderer({
         onParentChange={onParentChange}
         onTreeRefresh={onTreeRefresh}
         onPageTagsChange={onPageTagsChange}
-        onTemplateTypeChange={onTemplateTypeChange}
         onInteractionStart={() => setInteractionLockedBlockId(block.id)}
         onInteractionEnd={() =>
           setInteractionLockedBlockId((current) =>

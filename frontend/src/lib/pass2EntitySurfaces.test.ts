@@ -48,7 +48,7 @@ describe('pass2 identity projections', () => {
       {
         id: 'l1',
         title: 'Port Azure',
-        templateType: 'LOCATION',
+        templateType: 'DEFAULT',
         metadata: { locationType: 'City', region: 'Coast' },
       },
     ]);
@@ -92,7 +92,7 @@ describe('resolveSurfaceProfileKey pass2', () => {
       id: 'loc-1',
       title: 'Port Azure',
       parentId: 'loc-root',
-      templateType: 'LOCATION',
+      templateType: 'DEFAULT',
       metadata: { entityCategory: 'locations' },
       campaignId: 'c1',
       visibility: 'Party',
@@ -107,7 +107,7 @@ describe('resolveSurfaceProfileKey pass2', () => {
     assert.equal(
       resolveSurfaceProfileKey({
         pageId: 'loc-1',
-        templateType: 'LOCATION',
+        templateType: 'DEFAULT',
         metadata: { entityCategory: 'locations' },
         flatPages,
       }),

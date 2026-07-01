@@ -19,6 +19,10 @@ import {
 import { DOWNTIME_ALTERATIONS_METADATA_KEY } from './appendLocationDowntimeAlteration.js';
 import { parseCharacterLocationHistory } from './characterLocationHistory.js';
 import { prisma } from './prisma.js';
+import {
+  buildEntityCategoryWhereClause,
+  readEntityCategoryFromMetadata,
+} from './wikiCategoryEntityIndex.js';
 
 type WikiPageSnapshot = {
   id: string;
@@ -113,7 +117,11 @@ async function loadWikiSnapshots(campaignId: string): Promise<WikiPageSnapshot[]
   const rows = await prisma.wikiPage.findMany({
     where: {
       campaignId,
-      templateType: { in: ['CHARACTER', 'LOCATION', 'ORGANIZATION'] },
+      OR: [
+        ...(buildEntityCategoryWhereClause('characters').OR ?? []),
+        ...(buildEntityCategoryWhereClause('locations').OR ?? []),
+        ...(buildEntityCategoryWhereClause('organizations').OR ?? []),
+      ],
     },
     select: {
       id: true,
@@ -186,12 +194,12 @@ export function deriveAnnotationsForGap(input: {
   const end = BigInt(input.gap.endEpochMinute);
   const locationTitleById = new Map(
     input.pages
-      .filter((p) => p.templateType === 'LOCATION')
+      .filter((p) => readEntityCategoryFromMetadata(p.metadata) === 'locations')
       .map((p) => [p.id, p.title]),
   );
   const characterTitleById = new Map(
     input.pages
-      .filter((p) => p.templateType === 'CHARACTER')
+      .filter((p) => readEntityCategoryFromMetadata(p.metadata) === 'characters')
       .map((p) => [p.id, p.title]),
   );
 
@@ -199,7 +207,7 @@ export function deriveAnnotationsForGap(input: {
   const derivedMentions: DowntimeLocationMention[] = [];
 
   for (const page of input.pages) {
-    if (page.templateType === 'CHARACTER') {
+    if (readEntityCategoryFromMetadata(page.metadata) === 'characters') {
       const { locationHistory } = parseCharacterLocationHistory(page.metadata);
       for (const event of locationHistory) {
         if (!dateInGap(event.effectiveDate, input.dateBounds)) continue;
@@ -219,7 +227,7 @@ export function deriveAnnotationsForGap(input: {
       }
     }
 
-    if (page.templateType === 'LOCATION') {
+    if (readEntityCategoryFromMetadata(page.metadata) === 'locations') {
       for (const alteration of parseLocationAlterations(page.metadata)) {
         if (!epochInGap(alteration.atEpochMinute, start, end)) continue;
         const note =

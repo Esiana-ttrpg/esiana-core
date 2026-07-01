@@ -15,8 +15,9 @@ const flatPages = [
   {
     id: 'char-a',
     title: 'Alden Sterling',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     metadata: {
+      entityCategory: 'characters',
       ...activeParty(),
       title: 'Exiled Knight',
       pronouns: 'he/they',
@@ -28,8 +29,9 @@ const flatPages = [
   {
     id: 'char-b',
     title: 'Snaks Miller',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     metadata: {
+      entityCategory: 'characters',
       ...activeParty(),
       title: 'Scout',
       pronouns: 'they/them',
@@ -40,7 +42,7 @@ const flatPages = [
   {
     id: 'org-1',
     title: 'Sapphire Order',
-    templateType: 'ORGANIZATION',
+    templateType: 'DEFAULT',
     metadata: {},
   },
   {
@@ -56,14 +58,14 @@ const wikiTreePages = [
     id: 'char-a',
     parentId: null,
     title: 'Alden Sterling',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     metadata: flatPages[0]!.metadata,
   },
   {
     id: 'char-b',
     parentId: null,
     title: 'Snaks Miller',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     metadata: flatPages[1]!.metadata,
   },
   {

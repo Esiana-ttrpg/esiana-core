@@ -18,7 +18,7 @@ export function LinkYourCharacterCard({ campaignHandle }: LinkYourCharacterCardP
   const [error, setError] = useState<string | null>(null);
 
   const characterPages = useMemo(
-    () => flatPages.filter(isCharacterWikiPage),
+    () => flatPages.filter((page) => isCharacterWikiPage(page, flatPages)),
     [flatPages],
   );
 

@@ -194,7 +194,7 @@ export function CreatePageModal({
         title: finalTitle,
         parentId,
         metadata,
-        templateType: config.templateType,
+        templateType: 'DEFAULT',
         visibility: form.visibility,
         blocks: buildCreateBlocks(categoryTitle, form.description),
         ...(importedTags.length > 0 ? { tags: importedTags } : {}),

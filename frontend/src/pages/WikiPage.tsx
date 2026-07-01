@@ -129,7 +129,6 @@ import {
   createWikiBlock,
   ensureAppearanceBlock,
   resolveSemanticPageBlocks,
-  type WikiPageTemplateType,
 } from '@/utils/pageTemplates';
 import { stripHeightsForPersist } from '@/utils/wikiLayoutRuntime';
 import {
@@ -159,9 +158,8 @@ import type { BlocksUpdater } from '@/components/wiki/WikiPageRenderer';
 
 function resolveWikiPageBlocks(
   serverBlocks: WikiPageBlock[] | undefined,
-  template: WikiPageTemplateType,
   wikiPageId: string,
-  surfaceKey?: SurfaceProfileKey,
+  surfaceKey: SurfaceProfileKey,
 ): WikiPageBlock[] {
   if (Array.isArray(serverBlocks) && serverBlocks.length > 0) {
     return serverBlocks;
@@ -169,7 +167,7 @@ function resolveWikiPageBlocks(
   if (isEventLorePageId(wikiPageId)) {
     return buildEventLoreBlocks();
   }
-  return buildDefaultBlocks(template, surfaceKey);
+  return buildDefaultBlocks(surfaceKey);
 }
 
 function getInfoboxFieldValue(blocks: WikiPageBlock[], fieldKey: string): string {
@@ -532,19 +530,19 @@ export function WikiPage() {
   }, [pageData, pageId, displayTitle, pageById]);
 
   const professionSubtitle = useMemo(() => {
-    if (templateType === 'CHARACTER') {
+    if (entitySurfaceProfile.key === 'character') {
       const meta = parseCharacterMetadata(pageData?.metadata);
       return meta.profession?.trim() ?? '';
     }
     return getInfoboxFieldValue(blocks, 'Profession');
-  }, [blocks, pageData?.metadata, templateType]);
+  }, [blocks, pageData?.metadata, entitySurfaceProfile.key]);
 
   const knownForSubtitle = useMemo(() => {
-    if (templateType === 'CHARACTER') {
+    if (entitySurfaceProfile.key === 'character') {
       return parseCharacterMetadata(pageData?.metadata).knownFor?.trim() ?? '';
     }
     return '';
-  }, [pageData?.metadata, templateType]);
+  }, [pageData?.metadata, entitySurfaceProfile.key]);
 
   const campaignNow = useCampaignChronologyNow(campaignHandle);
   const [interpretiveSummary, setInterpretiveSummary] =
@@ -841,7 +839,7 @@ export function WikiPage() {
           navigate(`${canonical}${location.search}`, { replace: true });
         }
         const serverBlocks = result.blocks ?? [];
-        const template = (result.templateType ?? 'DEFAULT') as WikiPageTemplateType;
+        const template = result.templateType ?? 'DEFAULT';
         const profile = resolveEntitySurfaceProfile({
           pageId,
           templateType: template,
@@ -850,11 +848,10 @@ export function WikiPage() {
         });
         let nextBlocks = resolveWikiPageBlocks(
           serverBlocks,
-          template,
           pageId,
           profile.key,
         );
-        nextBlocks = resolveSemanticPageBlocks(template, nextBlocks);
+        nextBlocks = resolveSemanticPageBlocks(profile.key, nextBlocks);
         nextBlocks = ensureAppearanceBlock(nextBlocks, profile.appearanceMode);
         const shell = resolveEntityPageShell(profile.key);
         if (shell) {
@@ -886,7 +883,7 @@ export function WikiPage() {
             const created = await fetchWikiPageLayout(campaignHandle, pageId);
             setPageData(created);
             const serverBlocks = created.blocks ?? [];
-            const template = (created.templateType ?? 'DEFAULT') as WikiPageTemplateType;
+            const template = created.templateType ?? 'DEFAULT';
             const profile = resolveEntitySurfaceProfile({
               pageId,
               templateType: template,
@@ -895,11 +892,10 @@ export function WikiPage() {
             });
             let nextBlocks = resolveWikiPageBlocks(
               serverBlocks,
-              template,
               pageId,
               profile.key,
             );
-            nextBlocks = resolveSemanticPageBlocks(template, nextBlocks);
+            nextBlocks = resolveSemanticPageBlocks(profile.key, nextBlocks);
             nextBlocks = ensureAppearanceBlock(nextBlocks, profile.appearanceMode);
             setBlocks(nextBlocks);
             setTemplateType(created.templateType ?? 'DEFAULT');
@@ -1180,7 +1176,6 @@ export function WikiPage() {
         isEditingPage={isEditingPage}
         showGridLines={showGridLines}
         onShowGridLinesChange={setShowGridLines}
-        onTemplateTypeChange={setTemplateType}
         onBlocksChange={applyBlocksUpdate}
         blockDisplayState={blockDisplayState}
         onBlockDisplayChange={setBlockDisplayState}

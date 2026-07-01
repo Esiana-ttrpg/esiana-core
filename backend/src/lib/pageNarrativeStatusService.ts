@@ -12,6 +12,7 @@ import {
   parseCharacterMetadata,
   resolveCharacterStatus,
 } from './characterMetadata.js';
+import { readEntityCategoryFromMetadata, buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { parseCharacterLineageMetadata } from './characterLineageMetadata.js';
 
 export type StoredPageNarrativeStatus = {
@@ -61,10 +62,9 @@ export async function getPageNarrativeStatus(
 }
 
 function resolveCharacterFallbackForPage(
-  templateType: string,
   metadata: unknown,
 ): PageNarrativeStatusValue | null {
-  if (templateType !== 'CHARACTER') return null;
+  if (readEntityCategoryFromMetadata(metadata) !== 'characters') return null;
   const identity = parseCharacterMetadata(metadata);
   const lineage = parseCharacterLineageMetadata(metadata);
   const lifeStatus = resolveCharacterStatus(identity, lineage);
@@ -73,13 +73,12 @@ function resolveCharacterFallbackForPage(
 
 export function resolveEffectivePageNarrativeStatus(input: {
   stored?: StoredPageNarrativeStatus | null;
-  templateType?: string;
   metadata?: unknown;
 }): PageNarrativeStatusValue {
   if (input.stored) return input.stored.status;
   const fallback =
-    input.templateType != null
-      ? resolveCharacterFallbackForPage(input.templateType, input.metadata)
+    input.metadata != null
+      ? resolveCharacterFallbackForPage(input.metadata)
       : null;
   return fallback ?? PageNarrativeStatuses.ACTIVE;
 }
@@ -100,7 +99,6 @@ export async function buildPageNarrativeStatusProjectionMap(input: {
   ctx: NarrativeViewerContext;
   pages?: ReadonlyArray<{
     id: string;
-    templateType: string;
     metadata: unknown;
   }>;
 }): Promise<Map<string, ReturnType<typeof projectPageNarrativeStatus>>> {
@@ -117,7 +115,6 @@ export async function buildPageNarrativeStatusProjectionMap(input: {
     const meta = pageMeta.get(pageId);
     const effective = resolveEffectivePageNarrativeStatus({
       stored,
-      templateType: meta?.templateType,
       metadata: meta?.metadata,
     });
     result.set(
@@ -178,15 +175,12 @@ export async function backfillPageNarrativeStatusFromCharacterMetadata(
   campaignId: string,
 ): Promise<number> {
   const pages = await prisma.wikiPage.findMany({
-    where: { campaignId, deletedAt: null, templateType: 'CHARACTER' },
-    select: { id: true, templateType: true, metadata: true },
+    where: { campaignId, deletedAt: null, ...buildEntityCategoryWhereClause('characters') },
+    select: { id: true, metadata: true },
   });
   let updated = 0;
   for (const page of pages) {
-    const fallback = resolveCharacterFallbackForPage(
-      page.templateType,
-      page.metadata,
-    );
+    const fallback = resolveCharacterFallbackForPage(page.metadata);
     if (!fallback || fallback === PageNarrativeStatuses.ACTIVE) continue;
     await prisma.pageNarrativeStatus.updateMany({
       where: { wikiPageId: page.id, status: PageNarrativeStatuses.ACTIVE },

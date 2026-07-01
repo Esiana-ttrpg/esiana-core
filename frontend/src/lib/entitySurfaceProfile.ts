@@ -770,15 +770,18 @@ export function resolveSurfaceProfileKey(input: {
   }
   if (isPageUnderOrganizationsCategory(pageId, flatPages)) return 'organization';
   if (isPageUnderFamiliesCategory(pageId, flatPages)) return 'family';
-  if (templateType === 'CHARACTER') return 'character';
-  if (templateType === 'ORGANIZATION') return 'organization';
-  if (templateType === 'FAMILY') return 'family';
 
   const entityCategory = normalizeEntityCategoryKey(
     metadata && typeof metadata === 'object'
       ? (metadata as Record<string, unknown>).entityCategory as string | undefined
       : null,
   );
+  if (
+    entityCategory === 'characters' ||
+    isPageUnderCategoryTitle(pageId, flatPages, 'Characters')
+  ) {
+    return 'character';
+  }
   if (entityCategory === 'bestiary' || isPageUnderCategoryTitle(pageId, flatPages, 'Bestiary')) {
     return 'bestiary';
   }
@@ -792,7 +795,6 @@ export function resolveSurfaceProfileKey(input: {
     return 'object';
   }
   if (
-    templateType === 'LOCATION' ||
     entityCategory === 'locations' ||
     isPageUnderCategoryTitle(pageId, flatPages, 'Locations')
   ) {

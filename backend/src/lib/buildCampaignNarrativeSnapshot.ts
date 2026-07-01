@@ -1,4 +1,4 @@
-import { prisma } from './prisma.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import type { DashboardConfig } from './dashboardConfig.js';
@@ -215,7 +215,7 @@ async function loadPartyRoster(
   role: CampaignMemberRole | null,
 ): Promise<NarrativeSnapshotPartyMember[]> {
   const pages = await prisma.wikiPage.findMany({
-    where: { campaignId, deletedAt: null, templateType: 'CHARACTER' },
+    where: { campaignId, deletedAt: null, ...buildEntityCategoryWhereClause('characters') },
     select: {
       id: true,
       title: true,
