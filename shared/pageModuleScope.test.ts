@@ -50,7 +50,7 @@ const flatPages = [
     id: 'char-1',
     title: 'Aldric',
     parentId: 'chars-root',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     metadata: { entityCategory: 'characters' },
   },
   {

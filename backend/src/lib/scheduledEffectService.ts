@@ -1,6 +1,7 @@
 import type { CampaignScheduledEffect, FantasyCalendar, Prisma, WikiPage } from '@prisma/client';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { prisma } from './prisma.js';
 import { assertScopedMutationCount } from './scopedMutation.js';
 import { toNullableInputJsonValue } from './inputJsonValue.js';
@@ -213,7 +214,7 @@ async function validateOrgLink(
       id: orgPageId,
       campaignId,
       deletedAt: null,
-      templateType: 'ORGANIZATION',
+      ...buildEntityCategoryWhereClause('organizations'),
     },
     select: { id: true },
   });

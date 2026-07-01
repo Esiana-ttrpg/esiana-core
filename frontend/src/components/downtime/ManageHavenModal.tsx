@@ -57,6 +57,11 @@ import { fetchDowntimeHaven, updateDowntimeHaven } from '@/lib/downtime';
 import { storeScheduledTreasuryPrefill } from '@/lib/downtimeScheduledEffects';
 import { downtimeSectionHref } from '@/lib/downtimeLayout';
 import { campaignDowntimeHubPath } from '@/lib/campaignPaths';
+import {
+  filterLocationPages,
+  filterNpcPages,
+  filterOrganizationPages,
+} from '@/lib/questHubLayout';
 import type { WikiTreeNode } from '@/types/wiki';
 
 interface ManageHavenModalProps {
@@ -158,15 +163,15 @@ export function ManageHavenModal({
   const [constructionCost, setConstructionCost] = useState('');
 
   const characterPages = useMemo(
-    () => flatPages.filter((page) => page.templateType === 'CHARACTER'),
+    () => filterNpcPages(flatPages),
     [flatPages],
   );
   const locationPages = useMemo(
-    () => flatPages.filter((page) => page.templateType === 'LOCATION'),
+    () => filterLocationPages(flatPages),
     [flatPages],
   );
   const organizationPages = useMemo(
-    () => flatPages.filter((page) => page.templateType === 'ORGANIZATION'),
+    () => filterOrganizationPages(flatPages),
     [flatPages],
   );
   const wikiPickPages = useMemo(

@@ -30,6 +30,10 @@ import { ensureQuickAccessCategoryTitle } from '../lib/ensureQuickAccessCategory
 import { ensureRemoveLegacyDashboardWikiPage } from '../lib/ensureRemoveLegacyDashboardWikiPage.js';
 import { normalizeEntityCategoryKey } from '../lib/entityCategoryKeys.js';
 import {
+  normalizeWikiPageTemplateFields,
+  readEntityCategoryFromMetadata,
+} from '../../../shared/wikiTemplateType.js';
+import {
   buildContentSnippet,
   isCategoryIndexTitle,
 } from '../lib/wikiCategories.js';
@@ -187,7 +191,6 @@ import {
 } from '../lib/wikiLinkService.js';
 import {
   buildCategoryIndexWhereClause,
-  readEntityCategoryFromMetadata,
 } from '../lib/wikiCategoryEntityIndex.js';
 import { ensureNarrativeThreadsSystemCategoryKey } from '../lib/ensureNarrativeThreadsSystemCategoryKey.js';
 import { ensureNarrativeScenesSystemCategoryKey } from '../lib/ensureNarrativeScenesSystemCategoryKey.js';
@@ -648,7 +651,6 @@ async function formatWikiPageDetailResponse(
     const stored = await getPageNarrativeStatus(options.campaignId, rest.id);
     const effective = resolveEffectivePageNarrativeStatus({
       stored,
-      templateType: rest.templateType,
       metadata,
     });
     const withNarrativeStatus = {
@@ -1015,7 +1017,11 @@ export async function createWikiPage(
     }
   }
 
-  const resolvedTemplate = templateType ?? 'DEFAULT';
+  const initialNormalized = normalizeWikiPageTemplateFields({
+    templateType: templateType ?? 'DEFAULT',
+    metadata: metadata ?? {},
+  });
+  const resolvedTemplate = initialNormalized.templateType;
   let resolvedBlocks: Array<Record<string, unknown>> | null =
     Array.isArray(blocks) && blocks.length > 0 ? blocks : null;
 
@@ -1027,7 +1033,10 @@ export async function createWikiPage(
       );
       resolvedBlocks = buildEventLoreBlocks(eventDescription) as any;
     } else {
-      resolvedBlocks = buildDefaultBlocks(resolvedTemplate) as any;
+      resolvedBlocks = buildDefaultBlocks(
+        resolvedTemplate,
+        readEntityCategoryFromMetadata(initialNormalized.metadata),
+      ) as any;
     }
   }
   const normalizedCreateBlocks = normalizeBlocksWithStableIds(resolvedBlocks);
@@ -1036,8 +1045,8 @@ export async function createWikiPage(
   const sessionNoteAuthorId = req.user?.id ? { sessionNoteAuthorId: req.user.id } : {};
   const baseMetadata =
     resolvedTemplate === 'SESSION_NOTE'
-      ? ({ ...(metadata ?? {}), ...sessionNoteAuthorId } as Record<string, unknown>)
-      : ((metadata ?? {}) as Record<string, unknown>);
+      ? ({ ...initialNormalized.metadata, ...sessionNoteAuthorId } as Record<string, unknown>)
+      : initialNormalized.metadata;
 
   const intercepted = await runWikiDataInterceptors(res, {
     entity: 'wikiPage',
@@ -1140,6 +1149,13 @@ export async function createWikiPage(
     rejectTemporalError(res, err);
     return;
   }
+
+  const persistedTemplate = normalizeWikiPageTemplateFields({
+    templateType: interceptedTemplateType,
+    metadata: interceptedMetadata,
+  });
+  interceptedTemplateType = persistedTemplate.templateType;
+  interceptedMetadata = persistedTemplate.metadata;
 
   const existingRows = await loadCampaignWikiPathKeyRows(ctx.campaignId);
   const pathRouting = lorePageId
@@ -2045,10 +2061,13 @@ export async function updateWikiPageLayout(
   });
   if (!intercepted) return;
 
-  const nextTemplateType =
-    typeof intercepted.templateType === 'string' && intercepted.templateType.trim()
-      ? intercepted.templateType.trim()
-      : templateType ?? page.templateType;
+  const nextTemplateType = normalizeWikiPageTemplateFields({
+    templateType:
+      typeof intercepted.templateType === 'string' && intercepted.templateType.trim()
+        ? intercepted.templateType.trim()
+        : templateType ?? page.templateType,
+    metadata: page.metadata,
+  }).templateType;
 
   const campaignRow = await prisma.campaign.findUnique({
     where: { id: ctx.campaignId },

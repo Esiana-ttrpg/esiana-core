@@ -14,7 +14,7 @@ export function EntityRelationPreviewPopover({
   projection,
   loading = false,
 }: EntityRelationPreviewPopoverProps) {
-  const isCharacter = base?.templateType === 'CHARACTER';
+  const isCharacter = base?.surfaceProfileKey === 'character';
   const displayName = base
     ? formatCharacterDisplayName(base.title, base.pronouns)
     : null;

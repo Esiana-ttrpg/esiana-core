@@ -45,12 +45,12 @@ export function buildFormalizeShell(input: {
   switch (input.target) {
     case 'character':
       return {
-        templateType: 'CHARACTER',
+        templateType: 'DEFAULT',
         blocks: [
           block('entity-hero', 0, 0, 3, 1),
           block('text-biography', 0, 1, 3, 2, { markdown: prose }),
         ],
-        metadata: baseMeta,
+        metadata: { ...baseMeta, entityCategory: 'characters' },
       };
     case 'quest':
       return {

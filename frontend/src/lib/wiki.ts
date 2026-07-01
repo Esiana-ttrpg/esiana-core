@@ -837,7 +837,7 @@ export async function createArcPage(
   const { mergeArcMetadata } = await import('@/lib/arcMetadata');
   const { buildDefaultBlocks } = await import('@/utils/pageTemplates');
   const bodyMarkdown = '## Premise\n\nDescribe the arc scope and stakes.\n';
-  const blocks = buildDefaultBlocks('DEFAULT').map((block) =>
+  const blocks = buildDefaultBlocks('default').map((block) =>
     block.type === 'text-tiptap'
       ? {
           ...block,

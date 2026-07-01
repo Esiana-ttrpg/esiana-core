@@ -96,7 +96,7 @@ export function CampaignSettingsPage() {
     wikiCampaign?.role != null && isElevatedMembershipRole(wikiCampaign.role);
 
   const characterPages = useMemo(
-    () => flatPages.filter(isCharacterWikiPage),
+    () => flatPages.filter((page) => isCharacterWikiPage(page, flatPages)),
     [flatPages],
   );
 

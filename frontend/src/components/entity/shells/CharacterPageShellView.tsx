@@ -100,7 +100,7 @@ export function CharacterPageShellView({
         <CharacterOverviewDashboard
           campaignHandle={campaignHandle}
           pageId={pageId}
-          templateType={pageData.templateType ?? 'CHARACTER'}
+          templateType={pageData.templateType ?? 'DEFAULT'}
           blocks={blocks}
           flatPages={flatPages}
           isEditingPage={isEditingPage}

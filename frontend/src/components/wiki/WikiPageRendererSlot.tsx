@@ -19,7 +19,6 @@ export interface WikiPageRendererSlotProps {
   isEditingPage: boolean;
   showGridLines: boolean;
   onShowGridLinesChange: (next: boolean) => void;
-  onTemplateTypeChange: (templateType: string) => void;
   onBlocksChange: (updater: BlocksUpdater) => void;
   blockDisplayState: BlockDisplayState;
   onBlockDisplayChange: (next: BlockDisplayState) => void;
@@ -74,7 +73,6 @@ export function WikiPageRendererSlot({
       isEditingLayout={props.isEditingPage}
       showGridLines={props.showGridLines}
       onShowGridLinesChange={props.onShowGridLinesChange}
-      onTemplateTypeChange={props.onTemplateTypeChange}
       onBlocksChange={props.onBlocksChange}
       blockDisplayState={props.blockDisplayState}
       onBlockDisplayChange={props.onBlockDisplayChange}

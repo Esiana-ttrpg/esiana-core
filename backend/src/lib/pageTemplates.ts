@@ -33,45 +33,43 @@ function createBlock(
   };
 }
 
+const ENTITY_CATEGORY_LAYOUT: Record<string, WikiBlockSeed[]> = {
+  characters: [
+    createBlock('entity-hero', 0, 0, 3, 1),
+    createBlock('text-biography', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+    createBlock('entity-appearance', 0, 3, 3, 1),
+    createBlock('wiki-backlinks', 0, 4, 3, 1),
+  ],
+  locations: [
+    createBlock('entity-location-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+  ],
+  organizations: [
+    createBlock('entity-org-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+    createBlock('entity-relationships', 0, 3, 3, 1),
+  ],
+  families: [
+    createBlock('entity-family-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+    createBlock('entity-relationships', 0, 3, 3, 1),
+  ],
+};
+
 /**
  * Default block layout for new wiki pages (3-column grid coordinates).
- * Mirrors frontend `buildDefaultBlocks` in `frontend/src/utils/pageTemplates.ts`.
+ * Prefers entityCategory; templateType is structural-only (QUEST, SCENE, etc.).
  */
-export function buildDefaultBlocks(templateType = 'DEFAULT'): WikiBlockSeed[] {
-  if (templateType === 'CHARACTER') {
-    return [
-      createBlock('entity-hero', 0, 0, 3, 1),
-      createBlock('text-biography', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-      createBlock('entity-appearance', 0, 3, 3, 1),
-      createBlock('wiki-backlinks', 0, 4, 3, 1),
-    ];
-  }
-
-  if (templateType === 'LOCATION') {
-    return [
-      createBlock('entity-location-hero', 0, 0, 3, 1),
-      createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-    ];
-  }
-
-  if (templateType === 'ORGANIZATION') {
-    return [
-      createBlock('entity-org-hero', 0, 0, 3, 1),
-      createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-      createBlock('entity-relationships', 0, 3, 3, 1),
-    ];
-  }
-
-  if (templateType === 'FAMILY') {
-    return [
-      createBlock('entity-family-hero', 0, 0, 3, 1),
-      createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-      createBlock('entity-relationships', 0, 3, 3, 1),
-    ];
+export function buildDefaultBlocks(
+  templateType = 'DEFAULT',
+  entityCategory?: string | null,
+): WikiBlockSeed[] {
+  if (entityCategory && ENTITY_CATEGORY_LAYOUT[entityCategory]) {
+    return ENTITY_CATEGORY_LAYOUT[entityCategory];
   }
 
   return [

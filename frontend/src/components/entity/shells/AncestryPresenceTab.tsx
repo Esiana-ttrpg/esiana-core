@@ -227,7 +227,9 @@ export function AncestryPresenceTab({
                     campaignHandle={campaignHandle}
                     pageId={loc.pageId}
                     title={loc.title}
-                    templateType="LOCATION"
+                    templateType={
+                      snapshots.find((s) => s.id === loc.pageId)?.templateType ?? 'DEFAULT'
+                    }
                     flatPages={snapshots}
                     previewContext={{ campaignNow, isDMUser: true, viewerPageId: pageId }}
                     compact
@@ -262,7 +264,9 @@ export function AncestryPresenceTab({
                   campaignHandle={campaignHandle}
                   pageId={loc.pageId}
                   title={loc.title}
-                  templateType="LOCATION"
+                  templateType={
+                    snapshots.find((s) => s.id === loc.pageId)?.templateType ?? 'DEFAULT'
+                  }
                   flatPages={snapshots}
                   previewContext={{ campaignNow, isDMUser: true, viewerPageId: pageId }}
                   compact

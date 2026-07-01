@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import { prisma } from './prisma.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { buildCalendarStates } from './timeTracking.js';
 import type { ChronologyDateParts } from './entityRelationTypes.js';
 import {
@@ -99,7 +100,7 @@ export async function buildCampaignWorldPressureProjection(
       where: {
         campaignId,
         deletedAt: null,
-        templateType: 'ORGANIZATION',
+        ...buildEntityCategoryWhereClause('organizations'),
       },
       select: { id: true, title: true, metadata: true },
       orderBy: { title: 'asc' },

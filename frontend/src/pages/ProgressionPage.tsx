@@ -1,4 +1,5 @@
 import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
+import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
@@ -178,7 +179,9 @@ export function ProgressionPage() {
       {activeSection === 'scheduledEffects' ? (
         <ScheduledEffectsProgressionSection
           campaignHandle={campaignHandle}
-          organizationPages={flatPages.filter((page) => page.templateType === 'ORGANIZATION')}
+          organizationPages={flatPages.filter(
+            (page) => resolveCanonicalEntityCategory(page, flatPages) === 'organizations',
+          )}
           canManage={canAccess}
         />
       ) : null}

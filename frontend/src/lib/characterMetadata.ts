@@ -19,7 +19,7 @@ import {
   normalizeNullableText,
   normalizeStringArray,
 } from './entityRelationTypes';
-import { normalizeEntityCategoryKey } from './entityCategoryKeys';
+import { readEntityCategoryFromMetadata } from '@shared/wikiTemplateType';
 import {
   isCharacterAliveAt,
   parseCharacterLineageMetadata,
@@ -27,14 +27,9 @@ import {
 } from './characterLineageMetadata';
 
 export function isCharacterWikiPage(page: {
-  templateType: string;
   metadata?: unknown;
 }): boolean {
-  if (page.templateType === 'CHARACTER') return true;
-  if (!page.metadata || typeof page.metadata !== 'object') return false;
-  const raw = (page.metadata as Record<string, unknown>).entityCategory;
-  if (typeof raw !== 'string' || !raw.trim()) return false;
-  return normalizeEntityCategoryKey(raw.trim()) === 'characters';
+  return readEntityCategoryFromMetadata(page.metadata) === 'characters';
 }
 
 export type CharacterLifeStatus =

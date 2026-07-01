@@ -39,7 +39,7 @@ export function AncestryRelationsTab({
           blockId={relationsBlock?.id ?? 'entity-relationships'}
           campaignHandle={campaignHandle}
           pageId={pageId}
-          templateType={templateType}
+          surfaceProfileKey="ancestry"
           metadata={pageMetadata}
           flatPages={flatPages}
           isEditingPage={isEditingPage}

@@ -5,6 +5,7 @@ import type {
   QuestStatus,
   WikiTreeNode,
 } from '@/types/wiki';
+import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { sortQuestHubNodesForBoard } from '@/lib/questBoardOrder';
 import { parseSystemCategoryKey, SYSTEM_CATEGORY_QUESTS } from '@/lib/wikiSystemCategory';
 
@@ -58,31 +59,27 @@ export function isPageUnderQuestsCategory(
 }
 
 export function filterNpcPages(flatPages: WikiTreeNode[]): WikiTreeNode[] {
-  return flatPages.filter((page) => {
-    if (page.templateType === 'CHARACTER') return true;
-    return isPageUnderCategoryTitle(page, flatPages, 'Characters');
-  });
+  return flatPages.filter(
+    (page) => resolveCanonicalEntityCategory(page, flatPages) === 'characters',
+  );
 }
 
 export function filterOrganizationPages(flatPages: WikiTreeNode[]): WikiTreeNode[] {
-  return flatPages.filter((page) => {
-    if (page.templateType === 'ORGANIZATION') return true;
-    return isPageUnderCategoryTitle(page, flatPages, 'Organizations');
-  });
+  return flatPages.filter(
+    (page) => resolveCanonicalEntityCategory(page, flatPages) === 'organizations',
+  );
 }
 
 export function filterFamilyPages(flatPages: WikiTreeNode[]): WikiTreeNode[] {
-  return flatPages.filter((page) => {
-    if (page.templateType === 'FAMILY') return true;
-    return isPageUnderCategoryTitle(page, flatPages, 'Families');
-  });
+  return flatPages.filter(
+    (page) => resolveCanonicalEntityCategory(page, flatPages) === 'families',
+  );
 }
 
 export function filterLocationPages(flatPages: WikiTreeNode[]): WikiTreeNode[] {
-  return flatPages.filter((page) => {
-    if (page.templateType === 'LOCATION') return true;
-    return isPageUnderCategoryTitle(page, flatPages, 'Locations');
-  });
+  return flatPages.filter(
+    (page) => resolveCanonicalEntityCategory(page, flatPages) === 'locations',
+  );
 }
 
 export function isPageUnderBestiaryCategory(
@@ -163,8 +160,7 @@ export function isPageUnderOrganizationsCategory(
 ): boolean {
   const page = flatPages.find((p) => p.id === pageId);
   if (!page) return false;
-  if (page.templateType === 'ORGANIZATION') return true;
-  return isPageUnderCategoryTitle(page, flatPages, 'Organizations');
+  return resolveCanonicalEntityCategory(page, flatPages) === 'organizations';
 }
 
 export function isPageUnderFamiliesCategory(
@@ -173,8 +169,7 @@ export function isPageUnderFamiliesCategory(
 ): boolean {
   const page = flatPages.find((p) => p.id === pageId);
   if (!page) return false;
-  if (page.templateType === 'FAMILY') return true;
-  return isPageUnderCategoryTitle(page, flatPages, 'Families');
+  return resolveCanonicalEntityCategory(page, flatPages) === 'families';
 }
 
 function isPageUnderCategoryTitle(

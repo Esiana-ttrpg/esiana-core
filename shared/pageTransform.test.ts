@@ -45,6 +45,17 @@ describe('buildTransformedPagePayload', () => {
     },
   ];
 
+  it('migrates bestiary to character with DEFAULT template type', () => {
+    const result = buildTransformedPagePayload({
+      sourceSurfaceKey: 'bestiary',
+      targetModuleKey: 'characters',
+      blocks: sourceBlocks,
+      metadata: { entityCategory: 'bestiary' },
+    });
+    assert.equal(result.templateType, 'DEFAULT');
+    assert.equal(result.metadata.entityCategory, 'characters');
+  });
+
   it('migrates character prose into bestiary lore', () => {
     const result = buildTransformedPagePayload({
       sourceSurfaceKey: 'character',

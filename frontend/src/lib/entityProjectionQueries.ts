@@ -1,3 +1,4 @@
+import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import {
   type ChronologyDateParts,
   type OrgRelationCategory,
@@ -23,6 +24,23 @@ export interface WikiPageLineageSnapshot {
   title: string;
   templateType: string;
   metadata: unknown;
+  parentId?: string | null;
+}
+
+function snapshotEntityCategory(
+  page: WikiPageLineageSnapshot,
+  flatPages: readonly WikiPageLineageSnapshot[],
+): string | null {
+  return resolveCanonicalEntityCategory(
+    {
+      id: page.id,
+      title: page.title,
+      parentId: page.parentId ?? null,
+      templateType: page.templateType,
+      metadata: page.metadata,
+    },
+    flatPages,
+  );
 }
 
 const TENSION_STANCES: OrgRelationStance[] = ['HOSTILE', 'SECRET_HOSTILE', 'VASSAL'];
@@ -247,7 +265,7 @@ export function orgDiplomaticTensions(
 /** Pure, deterministic, side-effect free */
 export function buildEntityRelationshipProjection(
   pageId: string,
-  templateType: string,
+  _templateType: string,
   flatPages: readonly WikiPageLineageSnapshot[],
   date: ChronologyDateParts,
   isDMUser: boolean,
@@ -269,14 +287,16 @@ export function buildEntityRelationshipProjection(
   const page = flatPages.find((p) => p.id === pageId);
   if (!page) return empty;
 
+  const entityCategory = snapshotEntityCategory(page, flatPages);
+
   const characterPages = sortSnapshots(
-    flatPages.filter((p) => p.templateType === 'CHARACTER'),
+    flatPages.filter((p) => snapshotEntityCategory(p, flatPages) === 'characters'),
   );
   const orgPages = sortSnapshots(
-    flatPages.filter((p) => p.templateType === 'ORGANIZATION'),
+    flatPages.filter((p) => snapshotEntityCategory(p, flatPages) === 'organizations'),
   );
 
-  if (templateType === 'CHARACTER') {
+  if (entityCategory === 'characters') {
     return {
       affiliations: characterAffiliationsAt(page, flatPages, date, isDMUser),
       bloodlineRoots: characterBloodlineRoots(page, flatPages, date, isDMUser),
@@ -285,7 +305,7 @@ export function buildEntityRelationshipProjection(
     };
   }
 
-  if (templateType === 'FAMILY') {
+  if (entityCategory === 'families') {
     return {
       affiliations: [],
       bloodlineRoots: familyBloodlineRoots(
@@ -300,7 +320,7 @@ export function buildEntityRelationshipProjection(
     };
   }
 
-  if (templateType === 'ORGANIZATION') {
+  if (entityCategory === 'organizations') {
     return {
       affiliations: [],
       bloodlineRoots: [],

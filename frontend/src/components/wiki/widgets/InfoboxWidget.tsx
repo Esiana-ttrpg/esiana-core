@@ -31,12 +31,12 @@ function isTagKey(key: string): boolean {
   return normalized === 'tag' || normalized === 'tags';
 }
 
-function getDefaultFields(templateType: string): InfoboxField[] {
-  if (templateType === 'CHARACTER') {
+function getDefaultFields(surfaceKey: SurfaceProfileKey | null): InfoboxField[] {
+  if (surfaceKey === 'character') {
     return [];
   }
 
-  if (templateType === 'LOCATION') {
+  if (surfaceKey === 'location') {
     return [
       { key: 'Type', value: '' },
       { key: 'Ruler/Authority', value: '' },
@@ -45,7 +45,7 @@ function getDefaultFields(templateType: string): InfoboxField[] {
     ];
   }
 
-  if (templateType === 'ORGANIZATION') {
+  if (surfaceKey === 'organization') {
     return [
       { key: 'Type', value: '' },
       { key: 'Region', value: '' },
@@ -54,7 +54,7 @@ function getDefaultFields(templateType: string): InfoboxField[] {
     ];
   }
 
-  if (templateType === 'FAMILY') {
+  if (surfaceKey === 'family') {
     return [
       { key: 'Type', value: '' },
       { key: 'Region', value: '' },
@@ -146,8 +146,7 @@ export function InfoboxWidget({
   const interaction = interactionInputProps({ onInteractionStart, onInteractionEnd });
   const resolvedSurfaceKey = (surfaceProfileKey as SurfaceProfileKey | null) ?? null;
   const usesProjection =
-    (resolvedSurfaceKey && TYPED_INFOBOX_SURFACE_KEYS.has(resolvedSurfaceKey)) ||
-    ['CHARACTER', 'ORGANIZATION', 'FAMILY', 'BESTIARY'].includes(templateType);
+    resolvedSurfaceKey != null && TYPED_INFOBOX_SURFACE_KEYS.has(resolvedSurfaceKey);
 
   const projectedFields = useMemo(() => {
     if (!usesProjection) return [];
@@ -160,8 +159,8 @@ export function InfoboxWidget({
   }, [usesProjection, templateType, pageMetadata, wiki?.flatPages, resolvedSurfaceKey]);
 
   const defaultFields = useMemo(
-    () => getDefaultFields(templateType),
-    [templateType],
+    () => getDefaultFields(resolvedSurfaceKey),
+    [resolvedSurfaceKey],
   );
 
   const parsedContentFields = useMemo(() => {
@@ -190,11 +189,11 @@ export function InfoboxWidget({
 
   useEffect(() => {
     if (!isEditingLayout || usesProjection) return;
-    if (templateType === 'CHARACTER') return;
+    if (resolvedSurfaceKey === 'character') return;
     const raw = (content as { fields?: unknown })?.fields;
     if (Array.isArray(raw) && raw.length > 0) return;
     onChange({ fields: defaultFields });
-  }, [content, defaultFields, isEditingLayout, onChange, templateType, usesProjection]);
+  }, [content, defaultFields, isEditingLayout, onChange, resolvedSurfaceKey, usesProjection]);
 
   const [draft, setDraft] = useState<InfoboxField[]>(editFields);
 

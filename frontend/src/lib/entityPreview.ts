@@ -20,6 +20,7 @@ import { buildObjectIdentityProjection } from './objectIdentityProjection';
 import { buildLocationIdentityProjection } from './locationIdentityProjection';
 import { buildRuleResourceIdentityProjection } from './ruleResourceIdentityProjection';
 import { resolveEntitySurfaceProfile } from './entitySurfaceProfile';
+import type { SurfaceProfileKey } from './entitySurfaceProfile';
 import type { WikiTreeNode } from '@/types/wiki';
 import type { CharacterLifeStatus } from './characterMetadata';
 import type { ChronologyDateParts, OrgRelationCategory, OrgRelationStance } from './entityRelationTypes';
@@ -40,6 +41,7 @@ export interface EntityPreviewBase {
   pageId: string;
   title: string;
   templateType: string;
+  surfaceProfileKey: SurfaceProfileKey;
   emblemUrl?: string | null;
   leaderTitle?: string | null;
   headTitle?: string | null;
@@ -102,13 +104,21 @@ export function buildEntityPreviewBase(
   const page = findPage(flatPages, pageId);
   if (!page) return null;
 
+  const surfaceProfile = resolveEntitySurfaceProfile({
+    pageId,
+    templateType: page.templateType,
+    metadata: page.metadata,
+    flatPages: flatPages as unknown as WikiTreeNode[],
+  });
+
   const base: EntityPreviewBase = {
     pageId: page.id,
     title: page.title,
     templateType: page.templateType,
+    surfaceProfileKey: surfaceProfile.key,
   };
 
-  if (page.templateType === 'ORGANIZATION') {
+  if (surfaceProfile.key === 'organization') {
     const org = parseOrganizationMetadata(page.metadata);
     const orgProjection = buildOrganizationIdentityProjection(pageId, flatPages);
     base.motto = org.motto;
@@ -117,7 +127,7 @@ export function buildEntityPreviewBase(
     base.knownFor = orgProjection?.knownFor ?? null;
   }
 
-  if (page.templateType === 'FAMILY') {
+  if (surfaceProfile.key === 'family') {
     const familyProjection = buildFamilyIdentityProjection(pageId, flatPages);
     base.headTitle = resolveTitle(
       flatPages,
@@ -126,13 +136,6 @@ export function buildEntityPreviewBase(
     base.identitySubtitle = familyProjection?.identityLine ?? null;
     base.knownFor = familyProjection?.knownFor ?? null;
   }
-
-  const surfaceProfile = resolveEntitySurfaceProfile({
-    pageId,
-    templateType: page.templateType,
-    metadata: page.metadata,
-    flatPages: flatPages as unknown as WikiTreeNode[],
-  });
 
   if (surfaceProfile.key === 'bestiary') {
     const bestiaryProjection = buildBestiaryIdentityProjection(pageId, flatPages);
@@ -174,7 +177,7 @@ export function buildEntityPreviewBase(
     }
   }
 
-  if (page.templateType === 'CHARACTER' && context) {
+  if (surfaceProfile.key === 'character' && context) {
     const identityProjection = buildCharacterIdentityProjection(
       pageId,
       flatPages,
@@ -222,9 +225,16 @@ export function buildEntityPreviewProjection(
   const page = findPage(flatPages, pageId);
   if (!page) return {};
 
+  const surfaceProfile = resolveEntitySurfaceProfile({
+    pageId,
+    templateType: page.templateType,
+    metadata: page.metadata,
+    flatPages: flatPages as unknown as WikiTreeNode[],
+  });
+
   const projection: EntityPreviewProjection = {};
 
-  if (page.templateType === 'ORGANIZATION' && viewerOrgId) {
+  if (surfaceProfile.key === 'organization' && viewerOrgId) {
     const org = parseOrganizationMetadata(page.metadata);
     for (const relation of org.relations) {
       if (relation.targetOrgId !== viewerOrgId) continue;
@@ -242,7 +252,7 @@ export function buildEntityPreviewProjection(
     }
   }
 
-  if (page.templateType === 'CHARACTER') {
+  if (surfaceProfile.key === 'character') {
     const lineage = parseCharacterLineageMetadata(page.metadata);
     projection.temporalBadges = buildTemporalBadgesForCharacter(lineage, campaignNow);
 
@@ -298,7 +308,7 @@ export function buildEntityPreviewProjection(
     }
   }
 
-  if (page.templateType === 'ORGANIZATION' || page.templateType === 'FAMILY') {
+  if (surfaceProfile.key === 'organization' || surfaceProfile.key === 'family') {
     const relProjection = buildEntityRelationshipProjection(
       pageId,
       page.templateType,

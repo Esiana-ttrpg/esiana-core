@@ -7,6 +7,7 @@ import {
   updateCampaignMomentum,
 } from '@/lib/progressionApi';
 import { parseOrganizationMetadata } from '@/lib/organizationMetadata';
+import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { resolveFactionTrajectoryForEra } from '@shared/factionMomentumMetadata';
 import { CampaignEraEditor } from '@/components/progression/CampaignEraEditor';
 import { CampaignPacingPanel } from '@/components/progression/CampaignPacingPanel';
@@ -55,7 +56,7 @@ export function ProgressionTrajectoriesSection({
     if (!momentumState || !projection) return [];
     const currentEraId = projection.currentEra.id;
     return flatPages
-      .filter((page) => page.templateType === 'ORGANIZATION')
+      .filter((page) => resolveCanonicalEntityCategory(page, flatPages) === 'organizations')
       .map((page) => {
         const org = parseOrganizationMetadata(page.metadata);
         if (org.organizationStatus !== 'ACTIVE') return null;

@@ -49,7 +49,7 @@ describe('wikiPageHeaderMeta', () => {
     const subtitle = resolvePageIdentitySubtitle({
       pageId: 'char-1',
       profileKey: 'character',
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
       profession: 'Scout merchant',
       players,
       flatPages: [
@@ -65,7 +65,7 @@ describe('wikiPageHeaderMeta', () => {
     const subtitle = resolvePageIdentitySubtitle({
       pageId: 'npc-1',
       profileKey: 'character',
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
       profession: 'Innkeeper',
       players: [],
       flatPages: [

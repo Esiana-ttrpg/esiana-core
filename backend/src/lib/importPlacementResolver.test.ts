@@ -11,7 +11,8 @@ test('explicit frontmatter type beats folder path', () => {
   });
   assert.equal(placement.outcome, 'import');
   if (placement.outcome === 'import') {
-    assert.equal(placement.templateType, 'LOCATION');
+    assert.equal(placement.templateType, 'DEFAULT');
+    assert.equal(placement.entityCategory, 'locations');
   }
 });
 

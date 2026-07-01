@@ -280,7 +280,7 @@ paths:
           application/json:
             example:
               title: The Black Tide
-              templateType: CHARACTER
+              templateType: DEFAULT
               visibility: Party
               parentId: null
               metadata:
@@ -300,7 +300,7 @@ paths:
                 page:
                   id: pg_01WIKI
                   title: The Black Tide
-                  templateType: CHARACTER
+                  templateType: DEFAULT
                   visibility: Party
         '400':
           description: Validation error
@@ -333,7 +333,7 @@ paths:
               example:
                 id: pg_01WIKI
                 title: The Black Tide
-                templateType: CHARACTER
+                templateType: DEFAULT
                 visibility: Party
         '404':
           description: Page not found
@@ -420,7 +420,7 @@ paths:
                     title: The Black Tide
                     label: The Black Tide
                     normalizedLabel: the black tide
-                    templateType: CHARACTER
+                    templateType: DEFAULT
   /api/assets/{assetId}:
     get:
       tags: [Assets]
@@ -658,6 +658,7 @@ components:
           type: string
         templateType:
           type: string
+          description: Structural page kind (QUEST, SCENE, SESSION_NOTE, DOWNTIME_*, etc.) or DEFAULT for entity pages. Entity identity belongs in metadata.entityCategory.
         visibility:
           type: string
     TaskAccepted:

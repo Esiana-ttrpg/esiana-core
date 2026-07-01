@@ -49,7 +49,6 @@ export interface WidgetRegistryContext {
   memberRole?: string;
   allowPlayerChronologyManagement?: boolean;
   onMetadataSaved: (metadata: Record<string, unknown>) => void;
-  onTemplateTypeChange?: (templateType: string) => void;
   onVisibilityChange?: (visibility: 'Public' | 'Party' | 'DM_Only') => void | Promise<void>;
   onParentChange?: (next: {
     parentId: string | null;
@@ -223,7 +222,7 @@ function WidgetRegistryInner({
           blockId={block.id}
           campaignHandle={ctx.campaignHandle}
           pageId={ctx.pageId}
-          templateType={ctx.templateType}
+          surfaceProfileKey={ctx.surfaceProfileKey ?? 'default'}
           metadata={ctx.pageMetadata}
           flatPages={ctx.flatPages}
           isEditingPage={ctx.isEditingPage}

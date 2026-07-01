@@ -130,7 +130,7 @@ describe('blockSemanticIndex', () => {
         orgType: 'Mercenary Company',
         region: 'Northern Marches',
       },
-      { templateType: 'ORGANIZATION', flatPages: [] },
+      { templateType: 'DEFAULT', flatPages: [] },
     );
     assert.ok(index.semanticIndexText.includes('Mercenary Company'));
     assert.ok(index.semanticIndexText.includes('Northern Marches'));

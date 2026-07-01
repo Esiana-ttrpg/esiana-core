@@ -18,6 +18,7 @@ import {
 import { parseHavenSimulationFromHints, formatHavenAxisBand } from '../../../shared/havenSimulation.js';
 import { rowToFields } from './downtimeHavenFields.js';
 import { EntityRelationKinds } from '../../../shared/entityGraph.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 
 export type ReputationSimulationRunResult = {
   entitiesScanned: number;
@@ -91,7 +92,7 @@ async function discoverWatchedFactionPageIds(
       campaignId,
       id: { in: [...ids] },
       deletedAt: null,
-      templateType: 'ORGANIZATION',
+      ...buildEntityCategoryWhereClause('organizations'),
     },
     select: { id: true },
   });
