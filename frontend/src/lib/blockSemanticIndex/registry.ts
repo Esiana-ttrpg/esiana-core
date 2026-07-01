@@ -33,6 +33,7 @@ export const semanticAdapterRegistry = {
   'entity-ancestry-hero': ancestryHeroAdapter,
   'entity-thread-properties': narrativePropertiesAdapter,
   'entity-scene-properties': narrativePropertiesAdapter,
+  'entity-quest-properties': narrativePropertiesAdapter,
   'entity-objective-properties': narrativePropertiesAdapter,
   'entity-arc-properties': narrativePropertiesAdapter,
   'entity-appearance': characterAppearanceAdapter,

@@ -308,7 +308,7 @@ import {
   parseArcMetadata,
   resolveArcMetadataPatchInput,
 } from '../lib/arcMetadata.js';
-import { buildSceneDefaultBlocks, buildObjectiveDefaultBlocks } from '../lib/pageTemplates.js';
+import { buildSceneDefaultBlocks, buildObjectiveDefaultBlocks, buildQuestDefaultBlocks } from '../lib/pageTemplates.js';
 import {
   createDefaultQuestLifecycle,
   createDefaultSceneLifecycle,
@@ -325,7 +325,7 @@ import {
 import {
   DEFAULT_QUEST_LIFECYCLE_STATE,
   NarrativeLifecycleSubjectKinds,
-  publishedQuestStatusToLifecycleHint,
+  initialQuestLifecycleFromWikiVisibility,
 } from '../../../shared/narrativeLifecycle.js';
 import { buildNarrativeViewerContextFromRequest } from '../lib/narrativeProjectionContext.js';
 import { projectHubPageBlocks } from '../lib/publishedNarrativeHub.js';
@@ -1240,14 +1240,21 @@ export async function createWikiPage(
       isDescendantOfQuestsRoot(resolvedParentId, questsRootId, parentById))
   ) {
     const questMeta = parseQuestMetadata(interceptedMetadata);
-    const initialState =
-      questMeta.questStatus && questMeta.questStatus !== 'AVAILABLE'
-        ? publishedQuestStatusToLifecycleHint(questMeta.questStatus)
-        : DEFAULT_QUEST_LIFECYCLE_STATE;
+    const initialState = initialQuestLifecycleFromWikiVisibility({
+      visibility: interceptedVisibility,
+      questStatus: questMeta.questStatus,
+    });
     await createDefaultQuestLifecycle(ctx.campaignId, page.id, {
       initialState,
       actorUserId: req.user?.id,
     });
+    const existingBlocks = Array.isArray(page.blocks) ? (page.blocks as { type?: string }[]) : [];
+    if (!existingBlocks.some((block) => block.type === 'entity-quest-properties')) {
+      await prisma.wikiPage.update({
+        where: { id: page.id },
+        data: { blocks: buildQuestDefaultBlocks() as never },
+      });
+    }
   }
 
   const threadsRootId = await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);

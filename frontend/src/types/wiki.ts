@@ -118,6 +118,7 @@ export type WikiPageBlockType =
   | 'entity-document'
   | 'entity-thread-properties'
   | 'entity-scene-properties'
+  | 'entity-quest-properties'
   | 'entity-objective-properties'
   | 'entity-arc-properties';
 

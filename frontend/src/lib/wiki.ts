@@ -268,6 +268,48 @@ export async function patchThreadLifecycle(
   });
 }
 
+export async function patchQuestLifecycle(
+  campaignHandle: string,
+  pageId: string,
+  lifecycleState: string,
+  entityName?: string,
+): Promise<{
+  lifecycleState: string;
+  questStatus: string | null;
+}> {
+  return apiFetch(`/campaigns/${campaignHandle}/narrative-lifecycle/quest/${pageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      lifecycleState,
+      ...(entityName ? { entityName } : {}),
+    }),
+  });
+}
+
+export async function fetchQuestLifecycleStates(
+  campaignHandle: string,
+  pageIds: string[],
+): Promise<{
+  items: Array<{
+    subjectId: string;
+    lifecycleState: string | null;
+    visible: string | null;
+  }>;
+}> {
+  const params = new URLSearchParams({
+    subjectKind: 'quest',
+    subjectIds: pageIds.join(','),
+  });
+  const data = await apiFetch<{
+    items: Array<{
+      subjectId: string;
+      lifecycleState: string | null;
+      visible: string | null;
+    }>;
+  }>(`/campaigns/${campaignHandle}/narrative-lifecycle?${params.toString()}`);
+  return data;
+}
+
 export async function fetchThreadLifecycleStates(
   campaignHandle: string,
   pageIds: string[],
@@ -759,9 +801,9 @@ export async function createQuestPage(
   questsRootId: string,
   input: CreateQuestPageInput,
 ): Promise<WikiTreeNode> {
-  const { buildDefaultBlocks } = await import('@/utils/pageTemplates');
+  const { buildQuestDefaultBlocks } = await import('@/utils/pageTemplates');
   const { DEFAULT_QUEST_STATUS } = await import('@/lib/questMetadata');
-  const blocks = buildDefaultBlocks('DEFAULT');
+  const blocks = buildQuestDefaultBlocks();
   const metadata: Record<string, unknown> = {
     entityCategory: 'quests',
     questStatus: DEFAULT_QUEST_STATUS,

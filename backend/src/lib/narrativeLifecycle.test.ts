@@ -9,6 +9,7 @@ import {
   publishedQuestStatusToLifecycleHint,
   publishedQuestStatusToLifecycleTarget,
   NarrativeLifecycleTransitionError,
+  initialQuestLifecycleFromWikiVisibility,
 } from '../../../shared/narrativeLifecycle.js';
 
 test('allowedLifecycleTransitions matches matrix', () => {
@@ -90,5 +91,30 @@ test('publishedQuestStatusToLifecycleTarget for kanban', () => {
       NarrativeLifecycleStates.DISCOVERED,
     ),
     'ACTIVE',
+  );
+});
+
+test('initialQuestLifecycleFromWikiVisibility seeds from wiki ACL at create', () => {
+  assert.equal(
+    initialQuestLifecycleFromWikiVisibility({ visibility: 'Party' }),
+    NarrativeLifecycleStates.DISCOVERED,
+  );
+  assert.equal(
+    initialQuestLifecycleFromWikiVisibility({ visibility: 'Public' }),
+    NarrativeLifecycleStates.DISCOVERED,
+  );
+  assert.equal(
+    initialQuestLifecycleFromWikiVisibility({ visibility: 'DM_Only' }),
+    NarrativeLifecycleStates.LOCKED,
+  );
+});
+
+test('initialQuestLifecycleFromWikiVisibility honors non-available quest status hints', () => {
+  assert.equal(
+    initialQuestLifecycleFromWikiVisibility({
+      visibility: 'Party',
+      questStatus: 'ACTIVE',
+    }),
+    NarrativeLifecycleStates.ACTIVE,
   );
 });

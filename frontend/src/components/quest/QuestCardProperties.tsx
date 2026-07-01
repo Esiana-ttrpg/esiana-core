@@ -15,6 +15,11 @@ import {
   type QuestMetadataFields,
   type QuestStatus,
 } from '@/lib/questMetadata';
+import {
+  QUEST_LIFECYCLE_EDITOR_OPTIONS,
+  questLifecycleDisplayLabel,
+  type NarrativeLifecycleState,
+} from '@shared/narrativeLifecycle';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import type { WikiTag, WikiTagInput } from '@/types/wiki';
 
@@ -38,6 +43,8 @@ interface QuestCardPropertiesProps {
   horizontal?: boolean;
   questStatus?: QuestStatus;
   onQuestStatusChange?: (status: QuestStatus) => void;
+  lifecycleState?: NarrativeLifecycleState;
+  onLifecycleChange?: (state: NarrativeLifecycleState) => Promise<void>;
   progressValue?: string;
   onProgressChange?: (value: string) => void;
   onProgressBlur?: () => void;
@@ -74,6 +81,8 @@ export function QuestCardProperties({
   horizontal = false,
   questStatus,
   onQuestStatusChange,
+  lifecycleState,
+  onLifecycleChange,
   progressValue = '',
   onProgressChange,
   onProgressBlur,
@@ -274,8 +283,28 @@ export function QuestCardProperties({
           </datalist>
         </SettingsField>
 
+        {onLifecycleChange && lifecycleState != null && (
+          <SettingsField label="Quest status" className="w-[7.5rem]">
+            <select
+              className={settingsInputClass}
+              value={lifecycleState}
+              disabled={rowDisabled}
+              title="Whether this quest is visible on party quest surfaces"
+              onChange={(event) => {
+                void onLifecycleChange(event.target.value as NarrativeLifecycleState);
+              }}
+            >
+              {QUEST_LIFECYCLE_EDITOR_OPTIONS.map((state) => (
+                <option key={state} value={state}>
+                  {questLifecycleDisplayLabel(state)}
+                </option>
+              ))}
+            </select>
+          </SettingsField>
+        )}
+
         {onQuestStatusChange && questStatus != null && (
-          <SettingsField label="Status" className="w-[6.75rem]">
+          <SettingsField label="Board status" className="w-[6.75rem]">
             <select
               className={settingsInputClass}
               value={questStatus}
