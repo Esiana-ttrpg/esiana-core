@@ -1,15 +1,11 @@
-import { Pencil, Plus, Save, Search } from 'lucide-react';
+import { LayoutGrid, Pencil, Plus, Save, Search } from 'lucide-react';
 import { usePageBlockDraftRegistry } from '@/contexts/PageBlockDraftRegistry';
 import type { WikiPageBlock } from '@/types/wiki';
-import type { WorkspaceMode } from '@/lib/surfaceDensityProfile';
-import { WikiPageEditStatusHint } from '@/components/wiki/WikiPageEditStatusHint';
-import type { BlockDisplayState } from '@/lib/blockDisplayState';
-import type { PageContinuitySummary } from '@/lib/pageCodexDiagnostics';
 import { WikiPageMoreMenu } from '@/components/wiki/WikiPageMoreMenu';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 
 function toolbarButtonClass(active: boolean): string {
-  return `inline-flex size-10 sm:size-8 items-center justify-center rounded-md border transition-all ${
+  return `inline-flex h-8 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-all ${
     active
       ? 'border-primary/50 bg-primary/10 text-primary'
       : 'border-transparent bg-transparent text-muted hover:border-border/60 hover:bg-surface/60 hover:text-foreground'
@@ -24,21 +20,12 @@ interface WikiPageRuntimeToolbarProps {
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;
   isSearchOpen: boolean;
-  isCodexRailOpen: boolean;
   isEditingPage: boolean;
   showGridLines: boolean;
-  workspaceMode: WorkspaceMode;
   canDeleteWikiPage: boolean;
-  blockDisplayState: BlockDisplayState;
   widgetOptions: Array<{ value: string; label: string; group?: string }>;
   onTogglePin: () => void;
   onToggleSearch: () => void;
-  onToggleCodexRail: () => void;
-  onCodexDiagnosticsClick?: () => void;
-  codexDiagnosticsSummary?: PageContinuitySummary | null;
-  codexDiagnosticsLoading?: boolean;
-  codexDiagnosticsError?: string | null;
-  showPlayerCodexRail?: boolean;
   onToggleEditPage: () => void;
   onToggleGridLines: () => void;
   onOpenPageSettings?: () => void;
@@ -54,19 +41,12 @@ export function WikiPageRuntimeToolbar({
   onSavePage,
   isPinned,
   isSearchOpen,
-  isCodexRailOpen,
   isEditingPage,
   showGridLines,
-  workspaceMode,
   canDeleteWikiPage,
-  blockDisplayState,
   widgetOptions,
   onTogglePin,
   onToggleSearch,
-  onToggleCodexRail,
-  onCodexDiagnosticsClick,
-  codexDiagnosticsSummary = null,
-  showPlayerCodexRail = false,
   onToggleEditPage,
   onToggleGridLines,
   onOpenPageSettings,
@@ -78,22 +58,29 @@ export function WikiPageRuntimeToolbar({
   const hasUnsavedWork =
     isLayoutDirty || (draftRegistry?.hasSemanticDirty ?? false);
 
+  const showReadBar = isDMUser || !isTagsHub;
+
+  if (!showReadBar) return null;
+
   return (
-    <div className="flex w-full shrink-0 flex-col items-stretch gap-1.5 sm:w-auto sm:items-end">
+    <div className="flex shrink-0 flex-col items-stretch gap-1.5">
       <div
-        className="flex max-w-full flex-wrap items-center justify-start gap-1 sm:justify-end sm:gap-0.5"
+        className="flex max-w-full flex-wrap items-center justify-end gap-0.5"
         role="toolbar"
         aria-label="Page tools"
       >
-        <button
-          type="button"
-          onClick={onToggleSearch}
-          aria-pressed={isSearchOpen}
-          title="Search page"
-          className={toolbarButtonClass(isSearchOpen)}
-        >
-          <Search className="size-3.5" />
-        </button>
+        {!isTagsHub ? (
+          <button
+            type="button"
+            onClick={onToggleSearch}
+            aria-pressed={isSearchOpen}
+            title="Search page"
+            className={toolbarButtonClass(isSearchOpen)}
+          >
+            <Search className="size-3.5 shrink-0" aria-hidden />
+            <span>Search</span>
+          </button>
+        ) : null}
 
         {isDMUser && !isTagsHub ? (
           <button
@@ -104,41 +91,37 @@ export function WikiPageRuntimeToolbar({
             title={isEditingPage ? 'Done editing' : 'Edit page'}
             className={`${toolbarButtonClass(isEditingPage)} disabled:opacity-50`}
           >
-            <Pencil className="size-3.5" />
+            <Pencil className="size-3.5 shrink-0" aria-hidden />
+            <span>{isEditingPage ? 'Done' : 'Edit'}</span>
           </button>
         ) : null}
 
-        <WikiPageMoreMenu
-          isTagsHub={isTagsHub}
-          isPinned={isPinned}
-          isCodexRailOpen={isCodexRailOpen}
-          isEditingPage={isEditingPage}
-          showGridLines={showGridLines}
-          canDeleteWikiPage={canDeleteWikiPage}
-          onTogglePin={onTogglePin}
-          onToggleCodexRail={onToggleCodexRail}
-          onOpenPageSettings={onOpenPageSettings}
-          onToggleGridLines={onToggleGridLines}
-          onCodexDiagnosticsClick={onCodexDiagnosticsClick}
-          codexDiagnosticsSummary={codexDiagnosticsSummary}
-          onDeletePage={onDeletePage}
-          showPlayerCodexRail={showPlayerCodexRail}
-        />
+        {isDMUser && !isTagsHub ? (
+          <WikiPageMoreMenu
+            isTagsHub={isTagsHub}
+            isPinned={isPinned}
+            canDeleteWikiPage={canDeleteWikiPage}
+            onTogglePin={onTogglePin}
+            onOpenPageSettings={onOpenPageSettings}
+            onDeletePage={onDeletePage}
+          />
+        ) : null}
       </div>
 
       {isDMUser && isEditingPage && !isTagsHub ? (
         <div
-          className="flex w-full flex-wrap items-center justify-start gap-1 border-t border-border/40 pt-1.5 sm:w-auto sm:justify-end sm:gap-0.5 sm:border-0 sm:pt-0"
+          className="flex flex-wrap items-center justify-end gap-0.5"
           role="toolbar"
           aria-label="Editing tools"
         >
           <div className="relative">
             <button
               type="button"
-              title="Add block"
+              title="Add widget"
               className={toolbarButtonClass(false)}
             >
-              <Plus className="size-3.5" />
+              <Plus className="size-3.5 shrink-0" aria-hidden />
+              <span>Add Widget</span>
             </button>
             <select
               value=""
@@ -150,9 +133,9 @@ export function WikiPageRuntimeToolbar({
                 }
               }}
               className="absolute inset-0 cursor-pointer opacity-0"
-              aria-label="Add block"
+              aria-label="Add widget"
             >
-              <option value="">Add block</option>
+              <option value="">Add widget</option>
               {widgetOptions.map((option) => (
                 <option
                   key={`${option.group ?? 'widget'}-${option.value}`}
@@ -164,29 +147,30 @@ export function WikiPageRuntimeToolbar({
             </select>
           </div>
 
-          {hasUnsavedWork && onSavePage ? (
+          <button
+            type="button"
+            onClick={onToggleGridLines}
+            aria-pressed={showGridLines}
+            title={showGridLines ? 'Exit arrange mode' : 'Arrange blocks'}
+            className={toolbarButtonClass(showGridLines)}
+          >
+            <LayoutGrid className="size-3.5 shrink-0" aria-hidden />
+            <span>{showGridLines ? 'Done arranging' : 'Arrange Blocks'}</span>
+          </button>
+
+          {onSavePage ? (
             <button
               type="button"
               onClick={() => void onSavePage()}
-              disabled={isSaving}
+              disabled={isSaving || !hasUnsavedWork}
               title="Save page changes"
-              className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 text-xs font-medium text-primary transition-all hover:bg-primary/15 disabled:opacity-50"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2 text-xs font-medium text-primary transition-all hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Save className="size-3.5" />
+              <Save className="size-3.5 shrink-0" aria-hidden />
               Save
             </button>
           ) : null}
         </div>
-      ) : null}
-
-      {isDMUser && isEditingPage ? (
-        <WikiPageEditStatusHint
-          workspaceMode={workspaceMode}
-          isEditingPage={isEditingPage}
-          showGridLines={showGridLines}
-          blockDisplayState={blockDisplayState}
-          className="max-w-[14rem] text-right"
-        />
       ) : null}
     </div>
   );

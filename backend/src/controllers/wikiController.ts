@@ -52,6 +52,10 @@ import { parseCampaignIntegrations } from '../../../shared/campaignIntegrations.
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { canManageNotebooksFromActor, hasElevatedNarrativeView } from '../lib/acl.js';
 import { resolveDefaultPageOwnership } from '../lib/pageOwnershipDefaults.js';
+import {
+  transformWikiPageInCampaign,
+  validateWikiParentModuleScope,
+} from '../lib/wikiPageTransformService.js';
 import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
 import {
   can as policyCan,
@@ -1533,6 +1537,22 @@ export async function updateWikiPage(
       });
       return;
     }
+
+    try {
+      await validateWikiParentModuleScope(
+        ctx.campaignId,
+        page.id,
+        resolvedParentId ?? null,
+      );
+    } catch (err) {
+      res.status(400).json({
+        error:
+          err instanceof Error
+            ? err.message
+            : 'Parent must stay within the same module',
+      });
+      return;
+    }
   }
 
   const nextTitle = title !== undefined ? title.trim() : undefined;
@@ -1611,6 +1631,73 @@ export async function updateWikiPage(
       role: ctx.role,
     }),
   );
+}
+
+export async function transformWikiPage(
+  req: CampaignScopedRequest & AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const ctx = req.campaign!;
+  const pageId = String(req.params.pageId);
+  const { targetModule } = req.body as { targetModule?: string };
+
+  if (typeof targetModule !== 'string' || !targetModule.trim()) {
+    res.status(400).json({ error: 'targetModule is required' });
+    return;
+  }
+
+  const page = await prisma.wikiPage.findFirst({
+    where: { id: pageId, campaignId: ctx.campaignId },
+    select: {
+      id: true,
+      ownerType: true,
+      ownerUserId: true,
+      ownerPartyId: true,
+    },
+  });
+
+  if (!page) {
+    res.status(404).json({ error: 'Page not found' });
+    return;
+  }
+
+  if (
+    !canEditPage(ctx.actor, {
+      ownerType: page.ownerType as import('../../../shared/campaignPolicy/pageOwnership.js').PageOwnerType,
+      ownerUserId: page.ownerUserId,
+      ownerPartyId: page.ownerPartyId,
+    })
+  ) {
+    res.status(403).json({ error: 'Forbidden: cannot edit this page' });
+    return;
+  }
+
+  try {
+    const result = await transformWikiPageInCampaign({
+      campaignId: ctx.campaignId,
+      pageId,
+      targetModuleKey: targetModule.trim(),
+      actorUserId: req.user?.id,
+      actorRole: ctx.role,
+      partyId: ctx.partyId,
+    });
+
+    if (req.user?.id) {
+      logWikiPageActivity({
+        campaignId: ctx.campaignId,
+        userId: req.user.id,
+        actionType: 'UPDATE',
+        entityId: pageId,
+        entityName: 'Transform page module',
+      });
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : 'Unable to transform page',
+    });
+  }
 }
 
 export async function listCampaignWikiTags(

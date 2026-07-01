@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ContinuityIssue } from '@shared/continuityIssue';
 import {
-  resolveCodexDiagnosticsChipTone,
-  resolveCodexRailSectionOrder,
   resolveCodexRailVariant,
+  resolveSubviewFromCodexDeepLink,
   summarizePageContinuity,
 } from './pageCodexDiagnostics.ts';
 
@@ -115,31 +114,14 @@ describe('resolveCodexRailVariant', () => {
   });
 });
 
-describe('resolveCodexDiagnosticsChipTone', () => {
-  it('maps severity bands', () => {
-    assert.equal(
-      resolveCodexDiagnosticsChipTone(
-        summarizePageContinuity([], [], 'p'),
-      ),
-      'ok',
-    );
-    assert.equal(
-      resolveCodexDiagnosticsChipTone(
-        summarizePageContinuity(
-          [issue({ severity: 'warning', type: 'broken_link' })],
-          [],
-          'p',
-        ),
-      ),
-      'warning',
-    );
+describe('resolveSubviewFromCodexDeepLink', () => {
+  it('maps variants to subview tabs for DM users', () => {
+    assert.equal(resolveSubviewFromCodexDeepLink('diagnostics', true), 'continuity');
+    assert.equal(resolveSubviewFromCodexDeepLink('discovery', true), 'discovery');
+    assert.equal(resolveSubviewFromCodexDeepLink('balanced', true), 'relationships');
   });
-});
 
-describe('resolveCodexRailSectionOrder', () => {
-  it('promotes timeline for diagnostics variant', () => {
-    const order = resolveCodexRailSectionOrder('diagnostics', true);
-    assert.equal(order[0], 'callout');
-    assert.equal(order[1], 'timeline');
+  it('falls back to relationships for non-DM deep links', () => {
+    assert.equal(resolveSubviewFromCodexDeepLink('diagnostics', false), 'relationships');
   });
 });

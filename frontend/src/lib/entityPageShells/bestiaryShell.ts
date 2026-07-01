@@ -58,9 +58,6 @@ export const bestiaryPageShell: EntityPageShell = {
       ghostLabel: 'Field notes',
     },
   ],
-  railSectionOrder: ['callout', 'discovery', 'relations', 'continuity'],
-  railSectionsHidden: ['provenance', 'threads', 'timeline'],
-  defaultRailOpen: false,
   getVisibleSubviews: visibleSubviews,
   isValidSubview(subview, isDMUser) {
     return visibleSubviews(isDMUser).some((t) => t.id === subview);

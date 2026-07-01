@@ -1,44 +1,35 @@
 # Entity inspector / Codex rail UX
 
-Document + Codex rail layout for wiki entity authoring. See [canonical-page-editor.md](./canonical-page-editor.md) for the consolidated model.
+**Status:** Retired — Inspector and Codex rail removed from core wiki pages.
 
-## Controls
+System inference now lives on **subview tabs** only:
 
-- **Edit** (primary, DM): inline block editing + layout drag handles (single `isEditingPage` mode)
-- **Codex rail** (`PanelRight`): read-mostly intelligence overlay (400–640px, resizable)
-  - World consistency (continuity issues)
-  - Linked mentions and backlinks summary
-  - Discovery summary (links to Discovery subview)
-  - Document summary (visibility, template — read-only; “Edit on page” deep links)
-- **Workspace density** (DM): Focused / Balanced / Expanded / Immersive
+| Former Inspector lens | Subview tab |
+|-----------------------|-------------|
+| Relations | Relationships |
+| Status / diagnostics | Continuity |
+| Discovery | Discovery |
 
-## Architecture
+## Current model
 
-| Layer | Role |
-|-------|------|
-| Blocks | Canonical editor (semantic + generic widgets) |
-| Metadata | Structured world state (`WikiPage.metadata`) |
-| Projections | Derived reader UI (hero, infobox, identity strip) |
-| Codex rail | Diagnostics and context — not metadata CRUD |
-| Edit mode | Page composition + layout geometry |
+See [editor-shell-doctrine.md](./editor-shell-doctrine.md).
 
-## Canonical rule
-
-| User intent | Surface |
-|-------------|---------|
-| Edit page content / metadata | Semantic or generic **blocks** |
-| Inspect links, continuity, discovery | **Codex rail** |
+- **Relationships subview** — links, mentions, entity relationships (`wiki-backlinks`, `entity-relationships`)
+- **Continuity subview** — full `WikiContinuityPanel` and continuity blocks (DM continuity issues)
+- **Discovery subview** — party knowledge (`entity-discovery` block)
 
 ## Deep links
 
-- `?openCodex=1` or legacy `?openInspector=1` / `openSettings=1`
-- `?focusBlock=entity-hero&field=profession` (legacy `focusField=` still supported)
-- Rail closes on navigation unless deep-linked
+Legacy query params still handled in [`WikiPage.tsx`](../frontend/src/pages/WikiPage.tsx):
+
+- `?openCodex=1` or `?openInspector=1` — routes to a subview via `resolveSubviewFromCodexDeepLink`
+- `?openSettings=1` — opens page settings drawer
+- `?focusBlock=` / `?focusField=` — focus block or field on page
 
 ## Infobox
 
-Typed templates render metadata projections in `wiki-infobox` blocks with narrative typography (value-first). Edit identity and details in `entity-hero` and related semantic blocks.
+Typed templates render metadata projections in `wiki-infobox` blocks. Edit identity and details in semantic blocks (`entity-hero`, etc.).
 
-## Section config (legacy)
+## Legacy
 
-`frontend/src/lib/entityInspectorSections.ts` — used by block subviews and lore blocks; inspector form routing removed in favor of page blocks.
+`frontend/src/lib/entityInspectorSections.ts` — block subview routing only; no inspector rail.

@@ -351,16 +351,16 @@ function WidgetRegistryInner({
           parentId={ctx.parentId ?? null}
           parentChain={ctx.parentChain}
           flatPages={ctx.flatPages}
-          templateType={ctx.templateType}
+          pageMetadata={ctx.pageMetadata}
           pageVisibility={ctx.pageVisibility ?? 'Party'}
           pageTags={ctx.pageTags ?? []}
           allCampaignTags={ctx.allCampaignTags ?? []}
-          onTemplateTypeChange={ctx.onTemplateTypeChange ?? (() => {})}
           onVisibilityChange={ctx.onVisibilityChange ?? (async () => {})}
           onParentChange={ctx.onParentChange ?? (() => {})}
           onTreeRefresh={ctx.onTreeRefresh ?? (async () => {})}
           onPageTagsChange={ctx.onPageTagsChange ?? (() => {})}
           isEditingPage={ctx.isEditingPage}
+          hideTags={ctx.templateType === 'QUEST'}
         />,
       );
     case 'image-display':

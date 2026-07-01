@@ -75,6 +75,7 @@ export function discoveryControlLabel(state: ContentRevelationState | string): s
 }
 
 const NARRATIVE_KIND_BY_PROFILE: Partial<Record<SurfaceProfileKey, string>> = {
+  character: 'Character',
   organization: 'Organization',
   family: 'Family',
   location: 'Location',
@@ -85,7 +86,18 @@ const NARRATIVE_KIND_BY_PROFILE: Partial<Record<SurfaceProfileKey, string>> = {
   'rule-resource': 'Rule reference',
   quest: 'Quest',
   thread: 'Narrative thread',
+  scene: 'Scene',
 };
+
+/** Singular entity kind for the editor header (below page title). */
+export function resolveEntityKindLabel(
+  profileKey: SurfaceProfileKey,
+  templateType: string,
+): string | null {
+  if (templateType === 'SESSION_NOTE') return 'Session note';
+  if (templateType === 'CHARACTER') return 'Character';
+  return NARRATIVE_KIND_BY_PROFILE[profileKey] ?? null;
+}
 
 /** Closest category-index ancestor title (e.g. Characters, Locations). */
 export function resolveParentCategoryTitle(

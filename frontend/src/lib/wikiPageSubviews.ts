@@ -30,6 +30,14 @@ const READER_SUBVIEWS: WikiPageSubview[] = [
 
 const DM_ONLY_SUBVIEWS: WikiPageSubview[] = ['discovery', 'continuity'];
 
+const NARRATIVE_PROPERTY_BLOCKS: WikiPageBlockType[] = [
+  'entity-quest-properties',
+  'entity-thread-properties',
+  'entity-scene-properties',
+  'entity-arc-properties',
+  'entity-objective-properties',
+];
+
 const SUBVIEW_BLOCK_TYPES: Record<WikiPageSubview, WikiPageBlockType[] | 'all'> = {
   overview: [
     'entity-hero',
@@ -38,6 +46,7 @@ const SUBVIEW_BLOCK_TYPES: Record<WikiPageSubview, WikiPageBlockType[] | 'all'> 
     'entity-location-hero',
     'entity-bestiary-hero',
     'entity-ancestry-hero',
+    ...NARRATIVE_PROPERTY_BLOCKS,
     'text-biography',
     'text-tiptap',
     'image-display',
@@ -91,6 +100,9 @@ export function filterBlocksForSubview(
 }
 
 export function subviewForBlockType(type: WikiPageBlockType): WikiPageSubview {
+  if (NARRATIVE_PROPERTY_BLOCKS.includes(type)) {
+    return 'overview';
+  }
   if (type === 'entity-discovery') {
     return 'discovery';
   }
