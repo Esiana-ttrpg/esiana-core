@@ -40,15 +40,7 @@ export function isPageUnderNarrativeScenesCategory(
   return false;
 }
 
-/** Top-level Adventure workspace sections (workspace rail). */
-export const ADVENTURE_SECTIONS = [
-  { id: 'story', label: 'Story' },
-  { id: 'timeline', label: 'Timeline' },
-] as const;
-
-export type AdventureSectionId = (typeof ADVENTURE_SECTIONS)[number]['id'];
-
-/** Story subviews — lenses within the Story section, not route-level tabs. */
+/** Adventure hub story lenses. */
 export const STORY_VIEWS = [
   { id: 'quests', label: 'Quests' },
   { id: 'arcs', label: 'Arcs' },
@@ -73,7 +65,7 @@ export type AdventureSidebarItem =
       label: string;
     };
 
-/** Sidebar submenu under Adventure — folded into Story subviews. */
+/** Sidebar submenu under Adventure — folded into story lenses. */
 export const ADVENTURE_SIDEBAR_ITEMS: AdventureSidebarItem[] = [];
 
 /** Legacy section ids from pre-restructure Adventure. */
@@ -87,12 +79,13 @@ export const LEGACY_ADVENTURE_SECTIONS = [
   'scene-timeline',
   'thread-history',
   'timeline',
+  'story',
 ] as const;
 
 export type LegacyAdventureSectionId = (typeof LEGACY_ADVENTURE_SECTIONS)[number];
 
 export type AdventureLegacyRedirect =
-  | { kind: 'adventure'; section: AdventureSectionId; view?: StoryViewId; threadsLens?: ThreadsLensId }
+  | { kind: 'adventure'; view?: StoryViewId; threadsLens?: ThreadsLensId }
   | {
       kind: 'progression';
       section: string;
@@ -107,17 +100,18 @@ export function resolveLegacyAdventureSection(
   if (!section) return null;
   switch (section) {
     case 'board':
-      return { kind: 'adventure', section: 'story', view: 'quests' };
+      return { kind: 'adventure', view: 'quests' };
     case 'arcs':
-      return { kind: 'adventure', section: 'story', view: 'arcs' };
+      return { kind: 'adventure', view: 'arcs' };
     case 'investigation':
-      return { kind: 'adventure', section: 'story', view: 'investigation' };
+      return { kind: 'adventure', view: 'investigation' };
     case 'continuity':
-      return { kind: 'adventure', section: 'story' };
+    case 'timeline':
+    case 'story':
+      return { kind: 'adventure', view: 'quests' };
     case 'thread-history':
       return {
         kind: 'adventure',
-        section: 'story',
         view: 'threads',
         threadsLens: 'activity',
       };
@@ -127,32 +121,9 @@ export function resolveLegacyAdventureSection(
       return { kind: 'progression', section: 'scenes', view: 'sequence' };
     case 'sessions':
       return { kind: 'progression', section: 'sessionPrep' };
-    case 'timeline':
-      return { kind: 'adventure', section: 'timeline' };
     default:
       return null;
   }
-}
-
-export function readAdventureSectionFromSearch(search: string): AdventureSectionId {
-  const params = new URLSearchParams(search);
-  const section = params.get('section');
-  if (section === 'story' || section === 'timeline') {
-    return section;
-  }
-  if (section && (LEGACY_ADVENTURE_SECTIONS as readonly string[]).includes(section)) {
-    const redirect = resolveLegacyAdventureSection(section);
-    if (redirect?.kind === 'adventure') {
-      return redirect.section;
-    }
-  }
-  if (!section || section === 'board') {
-    return 'story';
-  }
-  if (ADVENTURE_SECTIONS.some((s) => s.id === section)) {
-    return section as AdventureSectionId;
-  }
-  return 'story';
 }
 
 export function readStoryViewFromSearch(
@@ -168,6 +139,9 @@ export function readStoryViewFromSearch(
   if (legacySection === 'arcs') return 'arcs';
   if (legacySection === 'investigation') return 'investigation';
   if (legacySection === 'board') return 'quests';
+  if (legacySection === 'timeline' || legacySection === 'story' || legacySection === 'continuity') {
+    return 'quests';
+  }
   if (campaignHandle) {
     const sticky = readCampaignWorkspaceState(campaignHandle).adventureStoryView;
     if (sticky && STORY_VIEWS.some((v) => v.id === sticky)) {
@@ -198,7 +172,7 @@ export function readThreadsLensFromSearch(
   return 'all';
 }
 
-/** Maps Story view to adventure-hub API section param. */
+/** Maps story lens to adventure-hub API section param. */
 export function storyViewToApiSection(view: StoryViewId): string {
   switch (view) {
     case 'quests':
@@ -215,35 +189,49 @@ export function storyViewToApiSection(view: StoryViewId): string {
   }
 }
 
-export function adventureSectionHref(
+export function adventureViewHref(
   basePath: string,
-  section: AdventureSectionId,
-  options?: { view?: StoryViewId; threadsLens?: ThreadsLensId },
+  view: StoryViewId = 'quests',
+  threadsLens?: ThreadsLensId,
 ): string {
   const params = new URLSearchParams();
-  params.set('section', section);
-  if (section === 'story' && options?.view) {
-    params.set('view', options.view);
-  }
-  if (options?.threadsLens && options.threadsLens !== 'all') {
-    params.set('threadsLens', options.threadsLens);
+  params.set('view', view);
+  if (threadsLens && threadsLens !== 'all') {
+    params.set('threadsLens', threadsLens);
   }
   return `${basePath}?${params.toString()}`;
 }
 
+/** @deprecated Use adventureViewHref */
 export function storyViewHref(
   basePath: string,
   view: StoryViewId,
   threadsLens?: ThreadsLensId,
 ): string {
-  return adventureSectionHref(basePath, 'story', { view, threadsLens });
+  return adventureViewHref(basePath, view, threadsLens);
 }
 
 export function needsLegacyAdventureRedirect(search: string): AdventureLegacyRedirect | null {
   const params = new URLSearchParams(search);
   const section = params.get('section');
-  if (!section || section === 'story' || section === 'timeline') {
-    return null;
-  }
-  return resolveLegacyAdventureSection(section);
+  if (!section) return null;
+
+  const resolved = resolveLegacyAdventureSection(section);
+  if (resolved?.kind === 'progression') return resolved;
+
+  const explicitView = params.get('view');
+  const view =
+    explicitView && STORY_VIEWS.some((v) => v.id === explicitView)
+      ? (explicitView as StoryViewId)
+      : resolved?.kind === 'adventure'
+        ? (resolved.view ?? 'quests')
+        : readStoryViewFromSearch(search);
+
+  const threadsLens = readThreadsLensFromSearch(search);
+
+  return {
+    kind: 'adventure',
+    view,
+    threadsLens: threadsLens !== 'all' ? threadsLens : undefined,
+  };
 }

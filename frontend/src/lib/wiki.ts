@@ -748,6 +748,80 @@ export async function createThreadPage(
   });
 }
 
+export type CreateQuestPageInput = {
+  title: string;
+  questType?: string | null;
+  visibility?: 'Public' | 'Party' | 'DM_Only';
+};
+
+export async function createQuestPage(
+  campaignHandle: string,
+  questsRootId: string,
+  input: CreateQuestPageInput,
+): Promise<WikiTreeNode> {
+  const { buildDefaultBlocks } = await import('@/utils/pageTemplates');
+  const { DEFAULT_QUEST_STATUS } = await import('@/lib/questMetadata');
+  const blocks = buildDefaultBlocks('DEFAULT');
+  const metadata: Record<string, unknown> = {
+    entityCategory: 'quests',
+    questStatus: DEFAULT_QUEST_STATUS,
+  };
+  const questType = input.questType?.trim();
+  if (questType) {
+    metadata.questType = questType;
+  }
+  return createWikiPage(campaignHandle, {
+    title: input.title.trim(),
+    parentId: questsRootId,
+    metadata,
+    blocks,
+    templateType: 'QUEST',
+    visibility: input.visibility,
+  });
+}
+
+export type CreateArcPageInput = {
+  title: string;
+  arcKind?: import('@/lib/arcMetadata').ArcKind;
+  pacingTarget?: string | null;
+  visibility?: 'Public' | 'Party' | 'DM_Only';
+};
+
+export async function createArcPage(
+  campaignHandle: string,
+  parentId: string,
+  input: CreateArcPageInput,
+): Promise<WikiTreeNode> {
+  const { mergeArcMetadata } = await import('@/lib/arcMetadata');
+  const { buildDefaultBlocks } = await import('@/utils/pageTemplates');
+  const bodyMarkdown = '## Premise\n\nDescribe the arc scope and stakes.\n';
+  const blocks = buildDefaultBlocks('DEFAULT').map((block) =>
+    block.type === 'text-tiptap'
+      ? {
+          ...block,
+          content: {
+            ...(block.content ?? {}),
+            markdown: bodyMarkdown,
+          },
+        }
+      : block,
+  );
+  const metadata = mergeArcMetadata({}, {
+    arcKind: input.arcKind ?? 'campaign_arc',
+    containedPageIds: [],
+    actIndex: null,
+    pacingTarget: input.pacingTarget?.trim() || null,
+  });
+  return createWikiPage(campaignHandle, {
+    title: input.title.trim(),
+    parentId,
+    metadata,
+    blocks,
+    templateType: 'DEFAULT',
+    visibility: input.visibility,
+  });
+}
+
 export async function fetchWikiPageLayout(
   campaignHandle: string,
   pageId: string,

@@ -38,6 +38,8 @@ interface CreatePageModalProps {
   flatPages?: WikiTreeNode[];
   initialTitle?: string | null;
   initialMetadata?: Record<string, string>;
+  /** Merged into POST metadata on submit (after form-built fields). */
+  defaultMetadata?: Record<string, unknown>;
   onClose: () => void;
   onCreated: (page: WikiTreeNode) => void;
 }
@@ -53,6 +55,7 @@ export function CreatePageModal({
   flatPages = [],
   initialTitle = null,
   initialMetadata,
+  defaultMetadata,
   onClose,
   onCreated,
 }: CreatePageModalProps) {
@@ -182,6 +185,8 @@ export function CreatePageModal({
 
     try {
       const metadata = {
+        ...(defaultMetadata ?? {}),
+        ...(initialMetadata ?? {}),
         ...(importedMetadata ?? {}),
         ...buildCreateMetadata(categoryTitle, form),
       };
