@@ -191,7 +191,6 @@ import {
 } from '../lib/wikiLinkService.js';
 import {
   buildCategoryIndexWhereClause,
-  readEntityCategoryFromMetadata,
 } from '../lib/wikiCategoryEntityIndex.js';
 import { ensureNarrativeThreadsSystemCategoryKey } from '../lib/ensureNarrativeThreadsSystemCategoryKey.js';
 import { ensureNarrativeScenesSystemCategoryKey } from '../lib/ensureNarrativeScenesSystemCategoryKey.js';
@@ -652,7 +651,6 @@ async function formatWikiPageDetailResponse(
     const stored = await getPageNarrativeStatus(options.campaignId, rest.id);
     const effective = resolveEffectivePageNarrativeStatus({
       stored,
-      templateType: rest.templateType,
       metadata,
     });
     const withNarrativeStatus = {

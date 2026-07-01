@@ -27,6 +27,7 @@ import { resolveCampaignChronologyNow } from './chronologyDefaults.js';
 import { buildAnalysisSnapshot } from './entityGraphService.js';
 import { getOrCreateSystemSettings } from './systemSettings.js';
 import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
+import { prisma } from './prisma.js';
 import { ensureCampaignReputation } from './reputationSimulationService.js';
 
 const SOCIAL_KINDS = [

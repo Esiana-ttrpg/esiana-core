@@ -44,7 +44,6 @@ export async function getWikiPageNarrativeStatus(
   const stored = await getPageNarrativeStatus(ctx.campaignId, pageId);
   const effective = resolveEffectivePageNarrativeStatus({
     stored,
-    templateType: page.templateType,
     metadata: page.metadata,
   });
   const projection = projectStoredPageNarrativeStatus(

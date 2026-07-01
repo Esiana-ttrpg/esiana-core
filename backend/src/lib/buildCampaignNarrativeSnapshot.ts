@@ -1,4 +1,5 @@
 import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
+import { prisma } from './prisma.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import type { DashboardConfig } from './dashboardConfig.js';

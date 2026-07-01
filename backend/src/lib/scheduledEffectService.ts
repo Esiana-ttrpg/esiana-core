@@ -2,6 +2,7 @@ import type { CampaignScheduledEffect, FantasyCalendar, Prisma, WikiPage } from 
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
+import { prisma } from './prisma.js';
 import { assertScopedMutationCount } from './scopedMutation.js';
 import { toNullableInputJsonValue } from './inputJsonValue.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
