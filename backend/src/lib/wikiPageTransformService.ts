@@ -27,6 +27,7 @@ import {
   createDefaultThreadLifecycle,
 } from './narrativeLifecycleService.js';
 import { resolveDefaultPageOwnership } from './pageOwnershipDefaults.js';
+import type { CampaignMemberRole } from '../types/domain.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -66,7 +67,7 @@ export async function transformWikiPageInCampaign(input: {
   pageId: string;
   targetModuleKey: string;
   actorUserId?: string;
-  actorRole?: string;
+  actorRole?: CampaignMemberRole | null;
   partyId?: string | null;
 }): Promise<TransformWikiPageResult> {
   const { campaignId, pageId, targetModuleKey, actorUserId, actorRole, partyId } = input;
@@ -195,7 +196,7 @@ async function promoteEventLoreToQuest(input: {
   };
   flatPages: PageModuleInput[];
   actorUserId?: string;
-  actorRole?: string;
+  actorRole?: CampaignMemberRole | null;
   partyId?: string | null;
 }): Promise<TransformWikiPageResult> {
   const { campaignId, page, flatPages, actorUserId, actorRole, partyId } = input;
@@ -235,7 +236,7 @@ async function promoteEventLoreToQuest(input: {
   const ownership = actorUserId
     ? resolveDefaultPageOwnership({
         creatorUserId: actorUserId,
-        creatorRole: actorRole ?? 'DM',
+        creatorRole: actorRole ?? null,
         defaultPartyId: partyId ?? null,
         workspace,
         templateType: 'QUEST',
