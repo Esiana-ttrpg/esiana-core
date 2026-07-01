@@ -269,7 +269,6 @@ export function OrganizationOverviewDashboard({
     </div>
   );
 }
-
 function TeaserLink({
   label,
   detail,
@@ -290,3 +289,4 @@ function TeaserLink({
     </button>
   );
 }
+

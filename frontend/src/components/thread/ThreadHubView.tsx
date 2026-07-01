@@ -1,5 +1,5 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, GitBranch, Network } from 'lucide-react';
 import { useWiki } from '@/contexts/WikiContext';
@@ -38,6 +38,7 @@ import { THREAD_HUB_ZONE_CLASS } from '@/lib/threadVisualTokens';
 import { storyViewHref, type ThreadsLensId } from '@/lib/adventureLayout';
 import type { StoryFilterState } from '@/lib/workspacePersistence';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
+import { ThreadsLensViewToggle } from '@/components/thread/ThreadsLensViewToggle';
 import { campaignAdventureHubPath } from '@/lib/campaignPaths';
 
 interface ThreadHubViewProps {
@@ -50,6 +51,8 @@ interface ThreadHubViewProps {
   isDMUser?: boolean;
   playerPreview?: boolean;
   adventureBasePath?: string;
+  /** Hoist toolbar into Adventure hub header when embedded. */
+  onHeaderToolbarChange?: (toolbar: ReactNode | null) => void;
 }
 
 export function ThreadHubView({
@@ -62,6 +65,7 @@ export function ThreadHubView({
   isDMUser: isDMUserProp,
   playerPreview: playerPreviewProp,
   adventureBasePath,
+  onHeaderToolbarChange,
 }: ThreadHubViewProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const { flatPages, refresh, campaign } = useWiki();
@@ -83,9 +87,8 @@ export function ThreadHubView({
     adventureBasePath ?? campaignAdventureHubPath(campaignHandle);
 
   useEffect(() => {
-    if (embedded && storyFilters?.search !== undefined) {
-      setSearchQuery(storyFilters.search);
-    }
+    if (!embedded || storyFilters?.search === undefined) return;
+    setSearchQuery(storyFilters.search);
   }, [embedded, storyFilters?.search]);
 
   const categoryTitle = data?.category.title ?? 'Narrative Threads';
@@ -149,51 +152,132 @@ export function ThreadHubView({
   const refineCount = countActiveThreadHubFilters(filters);
   const showLifecycle = isDMUser && !playerPreview && !data?.previewAsPlayer;
 
-  const threadsLensControl =
-    embedded && isDMUser && !playerPreview && onThreadsLensChange ? (
-      <div className="mb-4 flex gap-1">
-        <button
-          type="button"
-          onClick={() => onThreadsLensChange('all')}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            threadsLens === 'all'
-              ? 'bg-accent/15 text-accent'
-              : 'text-muted hover:bg-elevated/60'
-          }`}
-        >
-          All Threads
-        </button>
-        <button
-          type="button"
-          onClick={() => onThreadsLensChange('activity')}
-          className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            threadsLens === 'activity'
-              ? 'bg-accent/15 text-accent'
-              : 'text-muted hover:bg-elevated/60'
-          }`}
-        >
-          Recent Activity
-        </button>
-      </div>
-    ) : null;
+  const openCreate = useCallback(() => setIsCreateOpen(true), []);
 
-  if (loading && !data) {
-    return <LoadingSpinner label="Loading narrative threads…" />;
-  }
+  const totalThreadCount = data?.threads.length ?? 0;
+  const resultCountLabel = formatWorkspaceHubCountHint({
+    total: totalThreadCount,
+    matching: filteredNodes.length,
+    singular: resolveCategoryCountNouns(categoryTitle).singular,
+    plural: resolveCategoryCountNouns(categoryTitle).plural,
+    searchQuery,
+    hasActiveRefine: refineCount > 0,
+  });
 
-  if (error) {
-    return (
-      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-        {error}
-      </div>
-    );
-  }
+  const threadsLensViewControl = useMemo(
+    () =>
+      embedded && isDMUser && !playerPreview && onThreadsLensChange ? (
+        <ThreadsLensViewToggle
+          threadsLens={threadsLens}
+          onThreadsLensChange={onThreadsLensChange}
+        />
+      ) : null,
+    [embedded, isDMUser, onThreadsLensChange, playerPreview, threadsLens],
+  );
 
-  if (!data) return null;
+  const resetThreadRefine = useCallback(() => {
+    setFilters(defaultThreadHubFilters());
+    setSearchQuery('');
+  }, []);
+
+  const threadHubToolbar = useMemo(
+    () => (
+      <CategoryIndexToolbar
+        createLabel="New thread"
+        onCreate={openCreate}
+        createAction={isDMUser ? undefined : null}
+        resultCountLabel={resultCountLabel}
+        viewControl={threadsLensViewControl}
+        refineControl={
+          <CategoryIndexRefinePopover
+            facetDefs={[]}
+            refineState={{}}
+            children={[]}
+            categoryTitle={categoryTitle}
+            onRefineChange={() => {}}
+            activeCount={refineCount || undefined}
+            onResetRefine={resetThreadRefine}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Filter threads…"
+            customBody={
+              <ThreadHubFiltersPanel
+                filters={filters}
+                isDM={isDMUser}
+                onChange={setFilters}
+              />
+            }
+          />
+        }
+        trailing={
+          isDMUser && !embedded ? (
+            <div className="flex items-center gap-2">
+              {resolvedAdventureBase ? (
+                <Link
+                  to={storyViewHref(resolvedAdventureBase, 'threads')}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
+                >
+                  View in Story
+                </Link>
+              ) : null}
+              {resolvedAdventureBase ? (
+                <Link
+                  to={storyViewHref(resolvedAdventureBase, 'investigation')}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
+                >
+                  <Network className="size-3.5" />
+                  Investigation
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setPlayerPreviewLocal((value) => !value)}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
+              >
+                {playerPreview ? (
+                  <EyeOff className="size-3.5" />
+                ) : (
+                  <Eye className="size-3.5" />
+                )}
+                {playerPreview ? 'Exit party preview' : 'Preview as party'}
+              </button>
+            </div>
+          ) : null
+        }
+      />
+    ),
+    [
+      categoryTitle,
+      embedded,
+      filters,
+      isDMUser,
+      openCreate,
+      playerPreview,
+      refineCount,
+      resolvedAdventureBase,
+      resultCountLabel,
+      resetThreadRefine,
+      searchQuery,
+      threadsLensViewControl,
+    ],
+  );
+
+  const hoistToolbar = embedded && onHeaderToolbarChange != null;
+
+  useEffect(() => {
+    if (!hoistToolbar || !onHeaderToolbarChange) return;
+    if (loading && !data) {
+      onHeaderToolbarChange(null);
+      return;
+    }
+    onHeaderToolbarChange(threadHubToolbar);
+    return () => onHeaderToolbarChange(null);
+  }, [hoistToolbar, onHeaderToolbarChange, loading, data, threadHubToolbar]);
+
+  const toolbar = threadHubToolbar;
 
   const listContent = (
     <>
-      {threadsLensControl}
       {filteredNodes.length === 0 ? (
         <p className="text-sm text-muted">
           {searchQuery || refineCount > 0
@@ -275,84 +359,6 @@ export function ThreadHubView({
     </>
   );
 
-  const totalThreadCount = data?.threads.length ?? 0;
-  const resultCountLabel = formatWorkspaceHubCountHint({
-    total: totalThreadCount,
-    matching: filteredNodes.length,
-    singular: resolveCategoryCountNouns(categoryTitle).singular,
-    plural: resolveCategoryCountNouns(categoryTitle).plural,
-    searchQuery,
-    hasActiveRefine: refineCount > 0,
-  });
-
-  const toolbar = (
-    <CategoryIndexToolbar
-      createLabel="New thread"
-      onCreate={() => setIsCreateOpen(true)}
-      createAction={isDMUser ? undefined : null}
-      resultCountLabel={resultCountLabel}
-      refineControl={
-        <CategoryIndexRefinePopover
-          facetDefs={[]}
-          refineState={{}}
-          children={[]}
-          categoryTitle={categoryTitle}
-          onRefineChange={() => {}}
-          activeCount={refineCount}
-          onResetRefine={() => {
-            setFilters(defaultThreadHubFilters());
-            setSearchQuery('');
-          }}
-          searchQuery={embedded ? undefined : searchQuery}
-          onSearchChange={embedded ? undefined : setSearchQuery}
-          searchPlaceholder={embedded ? undefined : 'Filter threads…'}
-          customBody={
-            <ThreadHubFiltersPanel
-              filters={filters}
-              isDM={isDMUser}
-              onChange={setFilters}
-            />
-          }
-        />
-      }
-      trailing={
-        isDMUser && !embedded ? (
-          <div className="flex items-center gap-2">
-            {resolvedAdventureBase ? (
-              <Link
-                to={storyViewHref(resolvedAdventureBase, 'threads')}
-                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
-              >
-                View in Story
-              </Link>
-            ) : null}
-            {resolvedAdventureBase ? (
-              <Link
-                to={storyViewHref(resolvedAdventureBase, 'investigation')}
-                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
-              >
-                <Network className="size-3.5" />
-                Investigation
-              </Link>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setPlayerPreviewLocal((value) => !value)}
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
-            >
-              {playerPreview ? (
-                <EyeOff className="size-3.5" />
-              ) : (
-                <Eye className="size-3.5" />
-              )}
-              {playerPreview ? 'Exit party preview' : 'Preview as party'}
-            </button>
-          </div>
-        ) : null
-      }
-    />
-  );
-
   const createModal = (
     <CreateThreadModal
       open={isCreateOpen}
@@ -368,11 +374,25 @@ export function ThreadHubView({
     />
   );
 
+  if (loading && !data) {
+    return <LoadingSpinner label="Loading narrative threads…" />;
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        {error}
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
   if (embedded) {
     return (
       <>
-        {toolbar}
-        {refineCount > 0 ? (
+        {!hoistToolbar ? toolbar : null}
+        {!hoistToolbar && refineCount > 0 ? (
           <button
             type="button"
             className="mt-2 text-xs text-muted hover:text-foreground"

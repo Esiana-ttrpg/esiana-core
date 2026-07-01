@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Eye,
@@ -18,7 +18,7 @@ import { fetchTimeTracking } from '@/lib/timeTrackingApi';
 import { resolveMasterCalendarLike } from '@/lib/chronologyCalendar';
 import { campaignCategoryChildPath } from '@/lib/campaignPaths';
 import { WikiPageBreadcrumbs } from '@/components/wiki/WikiPageBreadcrumbs';
-import { CreatePageModal } from '@/components/CreatePageModal';
+import { CreateQuestModal } from '@/components/quest/CreateQuestModal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { QuestCard } from '@/components/quest/QuestCard';
 import { QuestKanbanBoard } from '@/components/quest/QuestKanbanBoard';
@@ -74,6 +74,8 @@ interface QuestHubViewProps {
   embedded?: boolean;
   storyFilters?: StoryFilterState;
   playerPreview?: boolean;
+  /** Hoist toolbar into Adventure hub header when embedded. */
+  onHeaderToolbarChange?: (toolbar: ReactNode | null) => void;
 }
 
 function questNodesToSimilarChildren(nodes: QuestHubNode[]): CategoryIndexChild[] {
@@ -92,6 +94,7 @@ export function QuestHubView({
   categoryPageId,
   embedded = false,
   playerPreview: playerPreviewProp,
+  onHeaderToolbarChange,
 }: QuestHubViewProps) {
   const { flatPages, refresh, campaign } = useWiki();
   const navigate = useNavigate();
@@ -222,10 +225,10 @@ export function QuestHubView({
     setViewMode(mode);
   }
 
-  function handleCreate() {
+  const handleCreate = useCallback(() => {
     setCreateInitialTitle(null);
     setIsCreateOpen(true);
-  }
+  }, []);
 
   function handleCreateFromSearch(title: string) {
     setCreateInitialTitle(title);
@@ -343,10 +346,6 @@ export function QuestHubView({
     }
   }
 
-  if (loading) {
-    return <LoadingSpinner label={embedded ? 'Loading quests…' : 'Loading Adventure…'} />;
-  }
-
   const workspace = (
     <>
       {error && (
@@ -425,7 +424,7 @@ export function QuestHubView({
   );
 
   const createModal = (
-    <CreatePageModal
+    <CreateQuestModal
       open={isCreateOpen}
       onClose={() => {
         setIsCreateOpen(false);
@@ -433,15 +432,13 @@ export function QuestHubView({
       }}
       onCreated={handlePageCreated}
       campaignHandle={campaignHandle}
-      parentId={categoryPageId}
-      categoryTitle={categoryTitle}
-      flatPages={flatPages}
-      initialTitle={createInitialTitle ?? undefined}
+      questsRootId={categoryPageId}
+      initialTitle={createInitialTitle}
     />
   );
 
-  const toolbar =
-    totalQuestCount > 0 ? (
+  const questHubToolbar = useMemo(
+    () => (
       <CategoryIndexToolbar
         createLabel="New quest"
         onCreate={handleCreate}
@@ -525,7 +522,44 @@ export function QuestHubView({
           ) : null
         }
       />
-    ) : null;
+    ),
+    [
+      categoryTitle,
+      embedded,
+      handleCreate,
+      isDMUser,
+      playerPreview,
+      resultCountLabel,
+      searchQuery,
+      showStatusRefine,
+      statusFilters,
+      typeFilters,
+      viewMode,
+    ],
+  );
+
+  const toolbar =
+    embedded && onHeaderToolbarChange
+      ? questHubToolbar
+      : totalQuestCount > 0
+        ? questHubToolbar
+        : null;
+
+  const hoistToolbar = embedded && onHeaderToolbarChange != null;
+
+  useEffect(() => {
+    if (!hoistToolbar || !onHeaderToolbarChange) return;
+    if (loading) {
+      onHeaderToolbarChange(null);
+      return;
+    }
+    onHeaderToolbarChange(questHubToolbar);
+    return () => onHeaderToolbarChange(null);
+  }, [hoistToolbar, onHeaderToolbarChange, loading, questHubToolbar]);
+
+  if (loading) {
+    return <LoadingSpinner label={embedded ? 'Loading quests…' : 'Loading Adventure…'} />;
+  }
 
   const refineChips =
     totalQuestCount > 0 && questRefineChips.length > 0 ? (
@@ -538,7 +572,7 @@ export function QuestHubView({
   if (embedded) {
     return (
       <>
-        {toolbar}
+        {!hoistToolbar ? toolbar : null}
         {refineChips}
         {workspace}
         {createModal}

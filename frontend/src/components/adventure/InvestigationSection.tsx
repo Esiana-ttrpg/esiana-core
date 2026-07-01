@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ExternalLink, GitBranch, AlertTriangle } from 'lucide-react';
 import {
@@ -14,11 +14,15 @@ import type { AdventureHubPayload } from '@/lib/adventure';
 import { campaignWikiPath, campaignWorkspaceIndexPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
 import { InvestigationDependencyMatrix } from '@/components/adventure/InvestigationDependencyMatrix';
+import { CreateThreadModal } from '@/components/thread/CreateThreadModal';
+import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
 
 interface InvestigationSectionProps {
   campaignHandle: string;
   data: AdventureHubPayload['investigation'];
+  threadsCategoryId?: string | null;
   embedded?: boolean;
+  onHeaderActionsChange?: (actions: ReactNode | null) => void;
 }
 
 type InvestigationTab = 'matrix' | 'topology';
@@ -156,12 +160,34 @@ function InvestigationTopologyView({
 export function InvestigationSection({
   campaignHandle,
   data,
+  threadsCategoryId,
   embedded = false,
+  onHeaderActionsChange,
 }: InvestigationSectionProps) {
+  const { flatPages, refresh } = useWiki();
   const [activeTab, setActiveTab] = useState<InvestigationTab>('matrix');
   const [searchQuery, setSearchQuery] = useState('');
   const [spofOnly, setSpofOnly] = useState(false);
   const [unreachableOnly, setUnreachableOnly] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const openCreate = useCallback(() => setIsCreateOpen(true), []);
+
+  const headerToolbar = useMemo(
+    () => (
+      <CategoryIndexToolbar
+        createLabel="New thread"
+        onCreate={openCreate}
+      />
+    ),
+    [openCreate],
+  );
+
+  useEffect(() => {
+    if (!embedded || !onHeaderActionsChange || !threadsCategoryId) return;
+    onHeaderActionsChange(headerToolbar);
+    return () => onHeaderActionsChange(null);
+  }, [embedded, onHeaderActionsChange, threadsCategoryId, headerToolbar]);
 
   if (!data) {
     return <p className="text-sm text-muted-foreground">Loading investigation topology…</p>;
@@ -256,6 +282,20 @@ export function InvestigationSection({
       ) : (
         <InvestigationTopologyView campaignHandle={campaignHandle} data={data} />
       )}
+
+      {threadsCategoryId ? (
+        <CreateThreadModal
+          open={isCreateOpen}
+          campaignHandle={campaignHandle}
+          flatPages={flatPages}
+          context={{ launchSurface: 'hub' }}
+          onClose={() => setIsCreateOpen(false)}
+          onCreated={() => {
+            setIsCreateOpen(false);
+            void refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
