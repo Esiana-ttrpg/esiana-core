@@ -12,8 +12,8 @@ import {
   QuestCardTags,
 } from '@/components/quest/QuestCardPropertySummary';
 import { QuestTimePressureBadges } from '@/components/quest/QuestTimePressureBadges';
-import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
-import { shouldShowQuestDmPrivateChip } from '@/lib/questLifecycleDisplay';
+import { QuestHiddenLifecycleChip } from '@/components/quest/QuestHiddenLifecycleChip';
+import { shouldShowQuestHiddenLifecycleChip } from '@/lib/questLifecycleDisplay';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 
@@ -51,7 +51,7 @@ export function QuestCard({
     !boardMode && calendarLike != null
       ? formatQuestDateLabel(node.quest.questDate, calendarLike)
       : null;
-  const showDmPrivateChip = shouldShowQuestDmPrivateChip({
+  const showHiddenLifecycleChip = shouldShowQuestHiddenLifecycleChip({
     lifecycleState: node.lifecycleState,
     isDMUser,
     playerPreview,
@@ -75,13 +75,9 @@ export function QuestCard({
               >
                 {node.title}
               </Link>
-              <BrowseVisibilityIndicator
-                pageVisibility={node.visibility}
-                narrativeStatus={node.lifecycleState}
-                tierOverride={showDmPrivateChip ? 'draft' : undefined}
-                showWhenElevated={isDMUser && !playerPreview}
-                compact={boardMode}
-              />
+              {showHiddenLifecycleChip ? (
+                <QuestHiddenLifecycleChip compact={boardMode} />
+              ) : null}
               {listDateLabel && (
                 <Link
                   to={campaignChronologyPath(campaignHandle, 'calendar')}

@@ -31,6 +31,7 @@ import type { AncestryIdentityProjection } from '@/lib/ancestryIdentityProjectio
 import { DocumentBlockWidget } from './widgets/DocumentBlockWidget';
 import { EntityThreadPropertiesWidget } from './widgets/EntityThreadPropertiesWidget';
 import { EntityScenePropertiesWidget } from './widgets/EntityScenePropertiesWidget';
+import { EntityQuestPropertiesWidget } from './widgets/EntityQuestPropertiesWidget';
 import { EntityObjectivePropertiesWidget } from './widgets/EntityObjectivePropertiesWidget';
 import { EntityArcPropertiesWidget } from './widgets/EntityArcPropertiesWidget';
 import { getBlockDisplayTitle } from '@/utils/wikiWidgets';
@@ -298,6 +299,23 @@ function WidgetRegistryInner({
           flatPages={ctx.flatPages}
           isEditingPage={ctx.isEditingPage}
           onMetadataSaved={ctx.onMetadataSaved}
+        />,
+      );
+    case 'entity-quest-properties':
+      return wrap(
+        <EntityQuestPropertiesWidget
+          campaignHandle={ctx.campaignHandle}
+          pageId={ctx.pageId}
+          pageTitle={
+            ctx.flatPages.find((page) => page.id === ctx.pageId)?.title ?? 'Quest'
+          }
+          metadata={ctx.pageMetadata}
+          flatPages={ctx.flatPages}
+          pageTags={ctx.pageTags ?? []}
+          allCampaignTags={ctx.allCampaignTags ?? []}
+          isEditingPage={ctx.isEditingPage}
+          onMetadataSaved={ctx.onMetadataSaved}
+          onPageTagsChange={ctx.onPageTagsChange ?? (() => {})}
         />,
       );
     case 'entity-objective-properties':

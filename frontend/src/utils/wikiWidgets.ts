@@ -37,6 +37,16 @@ export function getDefaultBlockTitle(type: WikiPageBlockType): string {
       return 'Ancestry profile';
     case 'entity-document':
       return 'Document settings';
+    case 'entity-quest-properties':
+      return 'Quest details';
+    case 'entity-thread-properties':
+      return 'Thread orchestration';
+    case 'entity-scene-properties':
+      return 'Scene orchestration';
+    case 'entity-arc-properties':
+      return 'Arc details';
+    case 'entity-objective-properties':
+      return 'Objective details';
     default:
       return 'Widget';
   }

@@ -1,5 +1,5 @@
 import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Loader2, RotateCcw } from 'lucide-react';
 import {
   parseQuestMetadata,
@@ -7,10 +7,16 @@ import {
 } from '@/lib/questMetadata';
 import {
   clearQuestMetadata,
+  fetchQuestLifecycleStates,
+  patchQuestLifecycle,
   updateQuestMetadata,
   updateWikiPage,
   updateWikiPageMetadataField,
 } from '@/lib/wiki';
+import {
+  NarrativeLifecycleStates,
+  type NarrativeLifecycleState,
+} from '@shared/narrativeLifecycle';
 import { readCategoryMetadataField } from '@/lib/wikiMetadata';
 import { fetchTimeTracking } from '@/lib/timeTrackingApi';
 import {
@@ -36,6 +42,7 @@ const fieldClass =
 interface QuestMetadataEditorProps {
   campaignHandle: string;
   pageId: string;
+  pageTitle?: string;
   metadata: unknown;
   flatPages: WikiTreeNode[];
   pageTags: WikiTagInput[];
@@ -49,6 +56,7 @@ interface QuestMetadataEditorProps {
 export function QuestMetadataEditor({
   campaignHandle,
   pageId,
+  pageTitle = 'Quest',
   metadata,
   flatPages,
   pageTags,
@@ -60,6 +68,9 @@ export function QuestMetadataEditor({
 }: QuestMetadataEditorProps) {
   const parsed = parseQuestMetadata(metadata);
   const [draft, setDraft] = useState<QuestMetadataFields>(parsed);
+  const [lifecycleState, setLifecycleState] = useState<NarrativeLifecycleState>(
+    NarrativeLifecycleStates.LOCKED,
+  );
   const [tagsDraft, setTagsDraft] = useState<WikiTagInput[]>(pageTags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +114,54 @@ export function QuestMetadataEditor({
     };
   }, [campaignHandle]);
 
+  const loadLifecycle = useCallback(async () => {
+    try {
+      const data = await fetchQuestLifecycleStates(campaignHandle, [pageId]);
+      const row = data.items.find((item) => item.subjectId === pageId);
+      const state = (row?.lifecycleState ?? row?.visible) as NarrativeLifecycleState | null;
+      if (state && (Object.values(NarrativeLifecycleStates) as string[]).includes(state)) {
+        setLifecycleState(state);
+      }
+    } catch {
+      setLifecycleState(NarrativeLifecycleStates.LOCKED);
+    }
+  }, [campaignHandle, pageId]);
+
+  useEffect(() => {
+    void loadLifecycle();
+  }, [loadLifecycle]);
+
+  async function handleLifecycleChange(next: NarrativeLifecycleState) {
+    const previous = lifecycleState;
+    setLifecycleState(next);
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await patchQuestLifecycle(campaignHandle, pageId, next, pageTitle);
+      setLifecycleState(result.lifecycleState as NarrativeLifecycleState);
+      if (result.questStatus) {
+        setDraft((prev) => {
+          const updated = {
+            ...prev,
+            questStatus: result.questStatus as QuestMetadataFields['questStatus'],
+          };
+          const base =
+            metadata && typeof metadata === 'object'
+              ? { ...(metadata as Record<string, unknown>) }
+              : {};
+          onSaved({ ...base, ...updated });
+          return updated;
+        });
+      }
+    } catch (err) {
+      setLifecycleState(previous);
+      setError(err instanceof Error ? err.message : 'Failed to update quest status');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function persist(patch: Partial<QuestMetadataFields>) {
     const previous = { ...draft };
     setDraft((prev) => ({ ...prev, ...patch }));
@@ -113,6 +172,9 @@ export function QuestMetadataEditor({
       const next = parseQuestMetadata(result.metadata);
       setDraft(next);
       onSaved(result.metadata);
+      if (patch.questStatus) {
+        await loadLifecycle();
+      }
     } catch (err) {
       setDraft(previous);
       setError(err instanceof Error ? err.message : 'Failed to save quest data');
@@ -205,6 +267,8 @@ export function QuestMetadataEditor({
             setDraft((prev) => ({ ...prev, questStatus }));
             void persist({ questStatus });
           }}
+          lifecycleState={lifecycleState}
+          onLifecycleChange={handleLifecycleChange}
           progressValue={progressDraft}
           onProgressChange={setProgressDraft}
           onProgressBlur={() => {

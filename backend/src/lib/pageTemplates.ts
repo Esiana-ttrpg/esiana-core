@@ -113,6 +113,14 @@ export function buildSceneDefaultBlocks(options?: { markdown?: string }): WikiBl
   ];
 }
 
+export function buildQuestDefaultBlocks(options?: { markdown?: string }): WikiBlockSeed[] {
+  return [
+    createBlock('entity-quest-properties', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: options?.markdown ?? '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+  ];
+}
+
 /** Default layout for downtime project wiki pages (`DOWNTIME_PROJECT`). */
 export function buildDowntimeProjectDefaultBlocks(options?: {
   markdown?: string;

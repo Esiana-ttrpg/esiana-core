@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { NarrativeLifecycleStates } from '@shared/narrativeLifecycle';
 import {
   isQuestLockedForParty,
-  shouldShowQuestDmPrivateChip,
+  questLifecycleDisplayLabel,
+  shouldShowQuestHiddenLifecycleChip,
 } from './questLifecycleDisplay.ts';
 
 describe('isQuestLockedForParty', () => {
@@ -19,10 +20,18 @@ describe('isQuestLockedForParty', () => {
   });
 });
 
-describe('shouldShowQuestDmPrivateChip', () => {
+describe('questLifecycleDisplayLabel', () => {
+  it('maps lifecycle states to GM-facing labels', () => {
+    assert.equal(questLifecycleDisplayLabel(NarrativeLifecycleStates.LOCKED), 'Hidden');
+    assert.equal(questLifecycleDisplayLabel(NarrativeLifecycleStates.DISCOVERED), 'Available');
+    assert.equal(questLifecycleDisplayLabel(NarrativeLifecycleStates.ACTIVE), 'Active');
+  });
+});
+
+describe('shouldShowQuestHiddenLifecycleChip', () => {
   it('shows for GM with LOCKED quest', () => {
     assert.equal(
-      shouldShowQuestDmPrivateChip({
+      shouldShowQuestHiddenLifecycleChip({
         lifecycleState: NarrativeLifecycleStates.LOCKED,
         isDMUser: true,
         playerPreview: false,
@@ -33,7 +42,7 @@ describe('shouldShowQuestDmPrivateChip', () => {
 
   it('hides for discovered quests', () => {
     assert.equal(
-      shouldShowQuestDmPrivateChip({
+      shouldShowQuestHiddenLifecycleChip({
         lifecycleState: NarrativeLifecycleStates.DISCOVERED,
         isDMUser: true,
         playerPreview: false,
@@ -44,7 +53,7 @@ describe('shouldShowQuestDmPrivateChip', () => {
 
   it('hides in player preview', () => {
     assert.equal(
-      shouldShowQuestDmPrivateChip({
+      shouldShowQuestHiddenLifecycleChip({
         lifecycleState: NarrativeLifecycleStates.LOCKED,
         isDMUser: true,
         playerPreview: true,
@@ -55,7 +64,7 @@ describe('shouldShowQuestDmPrivateChip', () => {
 
   it('hides for non-DM users', () => {
     assert.equal(
-      shouldShowQuestDmPrivateChip({
+      shouldShowQuestHiddenLifecycleChip({
         lifecycleState: NarrativeLifecycleStates.LOCKED,
         isDMUser: false,
         playerPreview: false,

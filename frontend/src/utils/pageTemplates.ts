@@ -240,6 +240,14 @@ export function buildDefaultBlocks(
   ];
 }
 
+export function buildQuestDefaultBlocks(options?: { markdown?: string }): WikiPageBlock[] {
+  return [
+    createBlock('entity-quest-properties', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: options?.markdown ?? '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+  ];
+}
+
 export function buildThreadDefaultBlocks(options?: { markdown?: string }): WikiPageBlock[] {
   return [
     createBlock('entity-thread-properties', 0, 0, 3, 1),
