@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import { DocumentSectionEditor } from '@/components/entity/DocumentSectionEditor';
+import { PageTransformSection } from '@/components/entity/PageTransformSection';
 import type { PageSettingsDrawerProps } from '@/lib/entityPageShells/types';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 
@@ -8,11 +9,11 @@ export function PageSettingsDrawer({
   onClose,
   campaignHandle,
   pageId,
+  pageTitle,
   parentId,
   parentChain,
   flatPages,
-  templateType,
-  onTemplateTypeChange,
+  pageMetadata,
   pageVisibility,
   onVisibilityChange,
   onParentChange,
@@ -20,6 +21,7 @@ export function PageSettingsDrawer({
   pageTags,
   allCampaignTags,
   onPageTagsChange,
+  onPageTransformed,
 }: PageSettingsDrawerProps) {
   useBodyScrollLock(open);
 
@@ -53,11 +55,11 @@ export function PageSettingsDrawer({
           <DocumentSectionEditor
             campaignHandle={campaignHandle}
             pageId={pageId}
+            pageTitle={pageTitle}
             parentId={parentId}
             parentChain={parentChain}
             flatPages={flatPages}
-            templateType={templateType}
-            onTemplateTypeChange={onTemplateTypeChange}
+            pageMetadata={pageMetadata}
             pageVisibility={pageVisibility}
             onVisibilityChange={onVisibilityChange}
             onParentChange={onParentChange}
@@ -66,6 +68,18 @@ export function PageSettingsDrawer({
             allCampaignTags={allCampaignTags}
             onPageTagsChange={onPageTagsChange}
             tagsSaveHint="Changes save when you close editing."
+            transformSection={
+              onPageTransformed ? (
+                <PageTransformSection
+                  campaignHandle={campaignHandle}
+                  pageId={pageId}
+                  pageTitle={pageTitle}
+                  flatPages={flatPages}
+                  pageMetadata={pageMetadata}
+                  onTransformed={onPageTransformed}
+                />
+              ) : null
+            }
           />
         </div>
       </aside>

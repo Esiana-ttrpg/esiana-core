@@ -6,8 +6,7 @@ import {
 import { PageBlockDraftRegistryProvider } from '@/contexts/PageBlockDraftRegistry';
 import type { PageBlockDraftRegistryValue } from '@/contexts/PageBlockDraftRegistry';
 import { PageBlockDraftRegistryBridge } from '@/components/wiki/PageBlockDraftRegistryBridge';
-import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { PanelRight } from 'lucide-react';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { fetchCampaign } from '@/lib/campaigns';
 import { CampaignMemberRoles } from '@/types/domain';
 import { useWiki } from '@/contexts/WikiContext';
@@ -31,8 +30,10 @@ import {
   campaignNotePath,
   campaignWikiPath,
   campaignWikiTagsPath,
+  campaignWorkspaceEntityPath,
   readCampaignHandle,
   resolveCanonicalPagePath,
+  workspaceToSegment,
 } from '@/lib/campaignPaths';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { isWikiVisibilityVisibleToViewer } from '@shared/narrativeProjection';
@@ -61,37 +62,26 @@ import {
   SYSTEM_CATEGORY_QUESTS,
   isDowntimeHubCategoryPage,
 } from '@/lib/wikiSystemCategory';
-import {
-  WikiPageBreadcrumbs,
-} from '@/components/wiki/WikiPageBreadcrumbs';
-import { WikiPageIdentitySubtitle } from '@/components/wiki/WikiPageIdentitySubtitle';
-import { WikiPageRuntimeToolbar } from '@/components/wiki/WikiPageRuntimeToolbar';
+import { WikiPageEditorHeader } from '@/components/wiki/WikiPageEditorHeader';
+import { WikiPageRendererSlot } from '@/components/wiki/WikiPageRendererSlot';
 import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageShellView';
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { OrganizationPageShellView } from '@/components/entity/shells/OrganizationPageShellView';
-import { EntitySubviewNav } from '@/components/entity/shells/EntitySubviewNav';
+import { GenericWikiPageShellView } from '@/components/entity/shells/GenericWikiPageShellView';
 import { PageSettingsDrawer } from '@/components/entity/shells/PageSettingsDrawer';
 import { resolveEntityPageShell } from '@/lib/entityPageShells/registry';
-import {
-  canDeleteBlock,
-  ensureSystemBlocks,
-} from '@/lib/entityPageShells/systemBlocks';
+import { ensureSystemBlocks } from '@/lib/entityPageShells/systemBlocks';
 import type { EntitySubviewId } from '@/lib/entityPageShells/types';
 import {
   getMasterPageWidthPreference,
   MASTER_PAGE_WIDTH_EVENT,
 } from '@/lib/pageWidthPreference';
 import { usePageCodexDiagnostics } from '@/hooks/usePageCodexDiagnostics';
-import { CODEX_RAIL_CONTINUITY_ANCHOR_ID } from '@/lib/pageCodexDiagnostics';
-import {
-  CodexRailSidebar,
-  type CodexRailLayout,
-} from '@/components/entity/CodexRailSidebar';
+import { resolveSubviewFromCodexDeepLink } from '@/lib/pageCodexDiagnostics';
 import { WikiPageDeleteDialog } from '@/components/wiki/WikiPageDeleteDialog';
 import { isReservedSystemWikiPage } from '@/lib/wikiSystemPages';
 import { wikiTagsInputsEqual } from '@/components/wiki/WikiPageTagsInput';
-import { WikiPageRenderer } from '@/components/wiki/WikiPageRenderer';
 import { WikiContinuityPanel } from '@/components/wiki/WikiContinuityPanel';
 import { PluginSlotHost, PluginUiSlots } from '@/plugins/slots';
 import { useDeclaredPluginSlot } from '@/plugins/useDeclaredPluginSlot';
@@ -116,7 +106,6 @@ import {
 } from '@/lib/entitySurfaceProfile';
 import { entityWorkspaceReaderFirst } from '@/lib/entityWorkspaceSlots';
 import { EntityWorkspaceSurface } from '@/components/wiki/EntityWorkspaceSurface';
-import { NarrativeStatusBadge, NarrativeStatusGmBadge } from '@/components/wiki/NarrativeStatusBadge';
 import type { WorkspaceCompositionId } from '@/lib/workspaceComposition';
 import { parseCharacterMetadata } from '@/lib/characterMetadata';
 import { parseOrganizationMetadata } from '@/lib/organizationMetadata';
@@ -126,7 +115,6 @@ import { useSessionCombined } from '@/hooks/useSessionCombined';
 import { parseSessionNoteMetadata } from '@/utils/sessionNote';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MascotErrorPanel } from '@/components/errors/MascotErrorPanel';
-import { InterpretiveLoreHeader } from '@/components/entity/lore/InterpretiveLoreHeader';
 import { InterpretiveLoreReadSection } from '@/components/entity/lore/InterpretiveLoreReadSection';
 import {
   fetchInterpretiveSummary,
@@ -157,21 +145,12 @@ import {
 } from '@/lib/codexWorkspaceUx';
 import { WikiWorkspaceShell } from '@/components/layout/WikiWorkspaceShell';
 import {
-  surfaceHeaderChromeClass,
-  SURFACE_SILENT_CLASS,
-  TYPE_DISPLAY_CLASS,
-} from '@/lib/surfaceLayout';
-import {
   findPrimaryProseBlockId,
   getWorkspaceOrchestration,
   workspaceModeCssVars,
 } from '@/lib/workspaceOrchestration';
 import {
-  filterBlocksForSubview,
-  getVisibleSubviews,
-  isValidSubview,
   shouldShowLoreSemanticSections,
-  WIKI_PAGE_SUBVIEWS,
   type WikiPageSubview,
 } from '@/lib/wikiPageSubviews';
 import { getWikiWidgetOptions } from '@/utils/wikiWidgets';
@@ -304,12 +283,9 @@ export function WikiPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
   const [isEditingPage, setIsEditingPage] = useState(false);
-  const [isCodexRailOpen, setIsCodexRailOpen] = useState(false);
-  const [pulseContinuitySection, setPulseContinuitySection] = useState(false);
-  const pulseContinuityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inspectorFocusField, setInspectorFocusField] = useState<string | null>(null);
   const [_focusBlockType, setFocusBlockType] = useState<string | null>(null);
-  const [pendingCodexOpen, setPendingCodexOpen] = useState(false);
+  const [pendingCodexSubview, setPendingCodexSubview] = useState(false);
   const [pageSubview, setPageSubview] = useState<EntitySubviewId | WikiPageSubview>(
     'overview',
   );
@@ -366,8 +342,12 @@ export function WikiPage() {
   }, [pageId, templateType, pageData?.metadata, flatPages]);
 
   const entityPageShell = useMemo(
-    () => resolveEntityPageShell(entitySurfaceProfile.key),
-    [entitySurfaceProfile.key],
+    () =>
+      resolveEntityPageShell(
+        entitySurfaceProfile.key,
+        entitySurfaceProfile.appearanceMode,
+      ),
+    [entitySurfaceProfile.key, entitySurfaceProfile.appearanceMode],
   );
 
   const wikiComposition: WorkspaceCompositionId = useMemo(
@@ -418,20 +398,6 @@ export function WikiPage() {
     isDMUser,
   );
 
-  const showPlayerCodexRail =
-    !isDMUser &&
-    !isTagsHub &&
-    isEntityWorkspacePage(entitySurfaceProfile.key) &&
-    Boolean(pageData);
-
-  useEffect(() => {
-    return () => {
-      if (pulseContinuityTimerRef.current) {
-        clearTimeout(pulseContinuityTimerRef.current);
-      }
-    };
-  }, [pageId]);
-
   const entityCategoryKey = useMemo(() => {
     const raw =
       pageData?.metadata && typeof pageData.metadata === 'object'
@@ -457,13 +423,6 @@ export function WikiPage() {
   const readerFirstLayout =
     !isDMUser && entityWorkspaceReaderFirst(entitySurfaceProfile.key);
 
-  const visibleSubviews = useMemo(() => {
-    if (entityPageShell) {
-      return entityPageShell.getVisibleSubviews(isDMUser).map((t) => t.id);
-    }
-    return getVisibleSubviews(entitySurfaceProfile.appearanceMode, isDMUser);
-  }, [entityPageShell, entitySurfaceProfile.appearanceMode, isDMUser]);
-
   const showSectionSubviews = Boolean(
     pageData &&
       !isTagsHub &&
@@ -473,17 +432,10 @@ export function WikiPage() {
   );
 
   useEffect(() => {
-    const valid = entityPageShell
-      ? entityPageShell.isValidSubview(pageSubview, isDMUser)
-      : isValidSubview(
-          pageSubview as WikiPageSubview,
-          entitySurfaceProfile.appearanceMode,
-          isDMUser,
-        );
-    if (!valid) {
+    if (!entityPageShell.isValidSubview(pageSubview, isDMUser)) {
       setPageSubview('overview');
     }
-  }, [pageSubview, entityPageShell, entitySurfaceProfile.appearanceMode, isDMUser]);
+  }, [pageSubview, entityPageShell, isDMUser]);
 
   const canDeleteWikiPage =
     isDMUser &&
@@ -714,26 +666,17 @@ export function WikiPage() {
     [blocks],
   );
 
-  const displayBlocks = useMemo(() => {
-    if (entityPageShell) {
-      return entityPageShell.filterBlocksForSubview(
-        blocks,
-        pageSubview,
-        isDMUser,
-      );
-    }
-    return filterBlocksForSubview(
-      blocks,
-      pageSubview as WikiPageSubview,
-      isDMUser,
-    );
-  }, [blocks, pageSubview, isDMUser, entityPageShell]);
+  const displayBlocks = useMemo(
+    () =>
+      entityPageShell.filterBlocksForSubview(blocks, pageSubview, isDMUser),
+    [blocks, pageSubview, isDMUser, entityPageShell],
+  );
 
   const showLoreSemanticSections = useMemo(() => {
-    if (entityPageShell) {
-      if (entityPageShell.key === 'bestiary') {
-        return pageSubview === 'lore' && showSectionSubviews;
-      }
+    if (entityPageShell.key === 'bestiary') {
+      return pageSubview === 'lore' && showSectionSubviews;
+    }
+    if (entityPageShell.key === 'character') {
       return pageSubview === 'biography' && showSectionSubviews;
     }
     return shouldShowLoreSemanticSections(
@@ -741,7 +684,7 @@ export function WikiPage() {
       showSectionSubviews,
       entityDetailTab,
     );
-  }, [pageSubview, showSectionSubviews, entityDetailTab, entityPageShell]);
+  }, [pageSubview, showSectionSubviews, entityDetailTab, entityPageShell.key]);
 
   const loreSemanticPanel = useMemo(() => {
     if (!showLoreSemanticSections || !pageData) return null;
@@ -774,42 +717,18 @@ export function WikiPage() {
     () =>
       getWikiWidgetOptions(templateType, {
         appearanceMode: entitySurfaceProfile.appearanceMode,
+        surfaceKey: entitySurfaceProfile.key,
       }),
-    [templateType, entitySurfaceProfile.appearanceMode],
+    [templateType, entitySurfaceProfile.appearanceMode, entitySurfaceProfile.key],
   );
-
-  const openEditFromStrip = (fieldKey: string) => {
-    setInspectorFocusField(fieldKey);
-    if (fieldKey.startsWith('appearance.')) {
-      setFocusBlockType('entity-appearance');
-      setPageSubview('appearance');
-    } else {
-      setFocusBlockType('entity-hero');
-      setPageSubview('overview');
-    }
-    setIsEditingPage(true);
-  };
 
   function handleFocusBlock(blockType: string, field?: string) {
     setFocusBlockType(blockType);
     if (field) setInspectorFocusField(field);
-    const subview = entityPageShell
-      ? entityPageShell.subviewForBlockType(blockType as WikiPageBlock['type'])
-      : blockType === 'entity-discovery'
-        ? 'discovery'
-        : blockType === 'wiki-backlinks'
-          ? 'continuity'
-          : blockType === 'entity-timeline'
-            ? 'timeline'
-            : blockType === 'entity-relationships'
-              ? 'relationships'
-              : blockType === 'entity-appearance'
-                ? 'appearance'
-                : blockType === 'text-biography' || blockType === 'text-tiptap'
-                  ? 'lore'
-                  : 'overview';
+    const subview = entityPageShell.subviewForBlockType(
+      blockType as WikiPageBlock['type'],
+    );
     setPageSubview(subview);
-    setIsCodexRailOpen(false);
     requestAnimationFrame(() => {
       const el = document.querySelector(`[data-codex-block-type="${blockType}"]`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -832,7 +751,7 @@ export function WikiPage() {
       return;
     }
     if (openCodex) {
-      setPendingCodexOpen(true);
+      setPendingCodexSubview(true);
       if (focusField) setInspectorFocusField(focusField);
       if (focusBlock) setFocusBlockType(focusBlock);
       setSearchParams({}, { replace: true });
@@ -840,11 +759,13 @@ export function WikiPage() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (pendingCodexOpen && pageData) {
-      setIsCodexRailOpen(true);
-      setPendingCodexOpen(false);
+    if (pendingCodexSubview && pageData) {
+      setPageSubview(
+        resolveSubviewFromCodexDeepLink(pageCodexDiagnostics.railVariant, isDMUser),
+      );
+      setPendingCodexSubview(false);
     }
-  }, [pendingCodexOpen, pageData]);
+  }, [pendingCodexSubview, pageData, pageCodexDiagnostics.railVariant, isDMUser]);
 
   useEffect(() => {
     if (
@@ -858,7 +779,6 @@ export function WikiPage() {
 
   useEffect(() => {
     setIsEditingPage(false);
-    setIsCodexRailOpen(false);
     setInspectorFocusField(null);
     setFocusBlockType(null);
     setShowGridLines(false);
@@ -947,9 +867,6 @@ export function WikiPage() {
         setSavedPageTags(loadedTags);
         setIsDirty(false);
         setPageFetchState('ready');
-        if (shell && !shell.defaultRailOpen) {
-          setIsCodexRailOpen(false);
-        }
         if (shouldCreateDraft) {
           setSearchParams({}, { replace: true });
         }
@@ -1168,71 +1085,19 @@ export function WikiPage() {
     setIsEditingPage(true);
   }
 
-  function triggerContinuityRailPulse() {
-    if (pulseContinuityTimerRef.current) {
-      clearTimeout(pulseContinuityTimerRef.current);
-    }
-    setPulseContinuitySection(true);
-    pulseContinuityTimerRef.current = setTimeout(() => {
-      setPulseContinuitySection(false);
-      pulseContinuityTimerRef.current = null;
-    }, 2000);
-  }
-
-  function scrollToContinuityRailSection() {
-    requestAnimationFrame(() => {
-      document
-        .getElementById(CODEX_RAIL_CONTINUITY_ANCHOR_ID)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
-  }
-
-  function openCodexRailWithContinuityPulse() {
-    setIsCodexRailOpen(true);
-    triggerContinuityRailPulse();
-    scrollToContinuityRailSection();
-  }
-
-  function handleCodexDiagnosticsChipClick() {
-    if (isCodexRailOpen) {
-      setPageSubview('continuity');
-      setIsCodexRailOpen(false);
-      setInspectorFocusField(null);
-      return;
-    }
-    openCodexRailWithContinuityPulse();
-  }
-
   function handleJumpToContinuity(blockId: string) {
+    if (pageCodexDiagnostics.summary.hasAny) {
+      setPageSubview('continuity');
+    }
     requestAnimationFrame(() => {
       document
         .querySelector(`[data-codex-block-id="${blockId}"]`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
-    if (pageCodexDiagnostics.summary.hasAny) {
-      if (!isCodexRailOpen) {
-        openCodexRailWithContinuityPulse();
-      } else {
-        triggerContinuityRailPulse();
-        scrollToContinuityRailSection();
-      }
-    }
-  }
-
-  function handleToggleCodexRail() {
-    setIsCodexRailOpen((prev) => !prev);
-    if (isCodexRailOpen) {
-      setInspectorFocusField(null);
-    }
   }
 
   function applyWorkspaceOrchestration(mode: WorkspaceMode) {
     const profile = getWorkspaceOrchestration(mode);
-    if (profile.codexRailDefaultOpen) {
-      setIsCodexRailOpen(true);
-    } else if (mode === 'focused') {
-      setIsCodexRailOpen(false);
-    }
     const proseId = findPrimaryProseBlockId(blocks);
     if (profile.autoExpandProseBlock && proseId) {
       setBlockDisplayState({
@@ -1259,6 +1124,349 @@ export function WikiPage() {
 
   function handleToggleSearch() {
     setIsSearchOpen((prev) => !prev);
+  }
+
+  function openEditFromStrip(fieldKey: string) {
+    setInspectorFocusField(fieldKey);
+    if (fieldKey.startsWith('appearance.')) {
+      setFocusBlockType('entity-appearance');
+      setPageSubview('appearance');
+    } else {
+      setFocusBlockType('entity-hero');
+      setPageSubview('overview');
+    }
+    setIsEditingPage(true);
+  }
+
+  const continuityPanel = useMemo(() => {
+    if (pageSubview !== 'continuity' || !isDMUser || !pageData) return null;
+    return (
+      <div className="mb-4">
+        <h2 className="mb-2 text-base font-semibold text-foreground">
+          World consistency
+        </h2>
+        <WikiContinuityPanel
+          campaignHandle={campaignHandle}
+          currentPageId={pageId}
+          pageTitle={resolvedTitle}
+          compact={isEditingPage}
+          sharedIssues={pageCodexDiagnostics.issues}
+          sharedUnresolved={pageCodexDiagnostics.unresolved}
+          sharedLoading={pageCodexDiagnostics.loading}
+          onSharedReload={pageCodexDiagnostics.reload}
+        />
+      </div>
+    );
+  }, [
+    pageSubview,
+    isDMUser,
+    pageData,
+    campaignHandle,
+    pageId,
+    resolvedTitle,
+    isEditingPage,
+    pageCodexDiagnostics.issues,
+    pageCodexDiagnostics.unresolved,
+    pageCodexDiagnostics.loading,
+    pageCodexDiagnostics.reload,
+  ]);
+
+  const wikiPageRendererSlot = useMemo(() => {
+    if (!pageData) return null;
+    return (
+      <WikiPageRendererSlot
+        blocks={displayBlocks}
+        templateType={templateType}
+        isEditingPage={isEditingPage}
+        showGridLines={showGridLines}
+        onShowGridLinesChange={setShowGridLines}
+        onTemplateTypeChange={setTemplateType}
+        onBlocksChange={applyBlocksUpdate}
+        blockDisplayState={blockDisplayState}
+        onBlockDisplayChange={setBlockDisplayState}
+        memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
+        allowPlayerChronologyManagement={
+          wikiCampaign?.allowPlayerChronologyManagement ??
+          campaign?.allowPlayerChronologyManagement ??
+          false
+        }
+        isDirty={isDirty}
+        isSaving={isSaving}
+        isEventLorePage={isEventLorePageId(pageId)}
+        readerFirstLayout={
+          readerFirstLayout &&
+          entityDetailTab === 'lore' &&
+          isEntityWorkspacePage(entitySurfaceProfile.key)
+        }
+        pageMetadata={pageData.metadata}
+        surfaceProfileKey={entitySurfaceProfile.key}
+        appearanceCapabilities={entitySurfaceProfile.appearanceCapabilities}
+        workspaceMode={workspaceMode}
+        campaignHandle={campaignHandle}
+        pageId={pageId}
+        flatPages={flatPages}
+        onMetadataSaved={(next) =>
+          setPageData((prev) =>
+            prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
+          )
+        }
+        inspectorFocusField={inspectorFocusField}
+        characterIdentityProjection={characterIdentityProjection}
+        organizationIdentityProjection={organizationIdentityProjection}
+        familyIdentityProjection={familyIdentityProjection}
+        bestiaryIdentityProjection={bestiaryIdentityProjection}
+        ancestryIdentityProjection={ancestryIdentityProjection}
+        headquartersId={parseOrganizationMetadata(pageData.metadata).headquartersId}
+        seatLocationId={parseFamilyMetadata(pageData.metadata).seatLocationId}
+        pageVisibility={pageVisibility}
+        pageTags={pageTags}
+        allCampaignTags={allCampaignTags}
+        parentId={pageData.parentId}
+        parentChain={pageData.parent}
+        onVisibilityChange={handleVisibilityChange}
+        onParentChange={(next) => {
+          setPageData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  parentId: next.parentId,
+                  parent: next.parent ?? null,
+                }
+              : prev,
+          );
+        }}
+        onTreeRefresh={refresh}
+        onPageTagsChange={setPageTags}
+        onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
+        entityPageShell={entityPageShell}
+      />
+    );
+  }, [
+    pageData,
+    displayBlocks,
+    templateType,
+    isEditingPage,
+    showGridLines,
+    blockDisplayState,
+    isDirty,
+    isSaving,
+    pageId,
+    readerFirstLayout,
+    entityDetailTab,
+    entitySurfaceProfile,
+    workspaceMode,
+    campaignHandle,
+    flatPages,
+    inspectorFocusField,
+    characterIdentityProjection,
+    organizationIdentityProjection,
+    familyIdentityProjection,
+    bestiaryIdentityProjection,
+    ancestryIdentityProjection,
+    pageVisibility,
+    pageTags,
+    allCampaignTags,
+    isDMUser,
+    entityPageShell,
+    wikiCampaign?.role,
+    wikiCampaign?.allowPlayerChronologyManagement,
+    campaign?.role,
+    campaign?.allowPlayerChronologyManagement,
+    refresh,
+  ]);
+
+  const shellViewCommonProps = useMemo(
+    () => ({
+      campaignHandle,
+      pageId,
+      displayTitle,
+      templateType,
+      pageData: pageData!,
+      blocks,
+      displayBlocks,
+      pageSubview,
+      onSubviewChange: setPageSubview,
+      isDMUser,
+      isEditingPage,
+      showGridLines,
+      pageVisibility,
+      onVisibilityChange: handleVisibilityChange,
+      characterIdentityProjection,
+      discovery: pageCodexDiagnostics.discovery,
+      flatPages,
+      onEditFromStrip: openEditFromStrip,
+      onJumpToTab: handleJumpToTab,
+      onBlocksChange: applyBlocksUpdate,
+      continuityPanel,
+      wikiPageRenderer: wikiPageRendererSlot,
+      loreSemanticPanel,
+    }),
+    [
+      campaignHandle,
+      pageId,
+      displayTitle,
+      templateType,
+      pageData,
+      blocks,
+      displayBlocks,
+      pageSubview,
+      isDMUser,
+      isEditingPage,
+      showGridLines,
+      pageVisibility,
+      characterIdentityProjection,
+      pageCodexDiagnostics.discovery,
+      flatPages,
+      continuityPanel,
+      wikiPageRendererSlot,
+      loreSemanticPanel,
+    ],
+  );
+
+  function renderWikiPageBody() {
+    if (!pageData || !wikiPageRendererSlot) {
+      return <LoadingSpinner label="Loading page…" />;
+    }
+
+    const metadataSaved = (next: Record<string, unknown>) =>
+      setPageData((prev) =>
+        prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
+      );
+
+    const shellBase = {
+      ...shellViewCommonProps,
+      pageData,
+      inspectorFocusField,
+      onMetadataSaved: metadataSaved,
+    };
+
+    if (
+      entitySurfaceProfile.key === 'bestiary' &&
+      bestiaryIntelProjection
+    ) {
+      return (
+        <BestiaryPageShellView
+          {...shellBase}
+          characterIdentityProjection={null}
+          bestiaryIdentityProjection={bestiaryIdentityProjection}
+          bestiaryIntelProjection={bestiaryIntelProjection}
+          onMetadataSaved={metadataSaved}
+          inspectorFocusField={inspectorFocusField}
+        />
+      );
+    }
+
+    if (entitySurfaceProfile.key === 'character') {
+      return (
+        <CharacterPageShellView
+          {...shellBase}
+          onMetadataSaved={metadataSaved}
+        />
+      );
+    }
+
+    if (entitySurfaceProfile.key === 'ancestry') {
+      return (
+        <AncestryPageShellView
+          {...shellBase}
+          characterIdentityProjection={null}
+          ancestryIdentityProjection={ancestryIdentityProjection}
+          onMetadataSaved={metadataSaved}
+        />
+      );
+    }
+
+    if (entitySurfaceProfile.key === 'organization') {
+      return (
+        <OrganizationPageShellView
+          {...shellBase}
+          characterIdentityProjection={null}
+          organizationIdentityProjection={organizationIdentityProjection}
+          onMetadataSaved={metadataSaved}
+        />
+      );
+    }
+
+    if (isEntityWorkspacePage(entitySurfaceProfile.key)) {
+      return (
+        <EntityWorkspaceSurface
+          campaignHandle={campaignHandle}
+          pageId={pageId}
+          displayTitle={displayTitle}
+          templateType={templateType}
+          entitySurfaceProfile={entitySurfaceProfile}
+          entityDetailTab={entityDetailTab}
+          onEntityDetailTabChange={setEntityDetailTab}
+          codexCognitiveMode="reading"
+          hasHeroBlock={hasHeroBlock}
+          characterIdentityProjection={characterIdentityProjection}
+          organizationIdentityProjection={organizationIdentityProjection}
+          familyIdentityProjection={familyIdentityProjection}
+          bestiaryIdentityProjection={bestiaryIdentityProjection}
+          pass2IdentityProjection={pass2IdentityProjection}
+          interpretiveSummary={interpretiveSummary}
+          professionSubtitle={professionSubtitle}
+          knownForSubtitle={knownForSubtitle}
+          players={players}
+          flatPages={flatPages}
+          onEditFromStrip={openEditFromStrip}
+          headquartersId={parseOrganizationMetadata(pageData.metadata).headquartersId}
+          seatLocationId={parseFamilyMetadata(pageData.metadata).seatLocationId}
+          canTrackNarrativeThread={canTrackNarrativeThread}
+          onTrackNarrativeThread={() => setIsThreadCreateOpen(true)}
+          embeddedMap={embeddedMap}
+          embeddedCampaignMaps={embeddedCampaignMaps}
+          pageData={pageData}
+          readerFirstLayout={readerFirstLayout}
+          memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
+          allowPlayerChronologyManagement={
+            wikiCampaign?.allowPlayerChronologyManagement ??
+            campaign?.allowPlayerChronologyManagement ??
+            false
+          }
+          hasEditorSlot={hasEditorSlot && Boolean(wikiCampaign)}
+          editorSlot={
+            wikiCampaign ? (
+              <PluginSlotHost
+                slot={PluginUiSlots.EDITOR}
+                context={{
+                  campaignId: wikiCampaign.id,
+                  campaignHandle: wikiCampaign.handle,
+                  config: {},
+                }}
+                className="mb-4"
+              />
+            ) : null
+          }
+          continuityPanel={continuityPanel}
+          loreSemanticPanel={loreSemanticPanel}
+          wikiPageRenderer={wikiPageRendererSlot}
+          loadingFallback={<LoadingSpinner label="Loading page…" />}
+        />
+      );
+    }
+
+    return (
+      <GenericWikiPageShellView
+        {...shellBase}
+        profileKey={entitySurfaceProfile.key}
+        narrativeStatus={pageData.narrativeStatus}
+        interpretiveSummary={interpretiveSummary}
+        professionSubtitle={professionSubtitle}
+        knownForSubtitle={knownForSubtitle}
+        players={players}
+        eventConsequencesPanel={
+          isEventLorePageId(pageId) && canInitializeEventLore ? (
+            <EventConsequencesEditor
+              campaignHandle={campaignHandle}
+              calendarEventId={pageId.slice('event-'.length)}
+              flatPages={flatPages}
+              loreBlocks={displayBlocks}
+            />
+          ) : null
+        }
+      />
+    );
   }
 
   const isHavenOverviewView =
@@ -1362,54 +1570,6 @@ export function WikiPage() {
     );
   }
 
-  function renderCodexRail(layout: CodexRailLayout) {
-    if (!pageData) return null;
-    return (
-      <CodexRailSidebar
-        open={isCodexRailOpen}
-        onClose={() => setIsCodexRailOpen(false)}
-        campaignHandle={campaignHandle}
-        pageId={pageId}
-        pageTitle={displayTitle}
-        templateType={templateType}
-        pageMetadata={pageData.metadata}
-        pageVisibility={pageVisibility}
-        isEditingPage={isEditingPage}
-        onVisibilityChange={isDMUser ? handleVisibilityChange : undefined}
-        parentChain={pageData.parent}
-        onFocusBlock={handleFocusBlock}
-        workspaceMode={workspaceMode}
-        onIdentityChanged={
-          isDMUser
-            ? async () => {
-                await refresh();
-              }
-            : undefined
-        }
-        flatPages={flatPages}
-        memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-        allowPlayerChronologyManagement={
-          wikiCampaign?.allowPlayerChronologyManagement ??
-          campaign?.allowPlayerChronologyManagement ??
-          false
-        }
-        layout={layout}
-        surfaceMode="reading"
-        railVariant={pageCodexDiagnostics.railVariant}
-        railSectionOrder={entityPageShell?.railSectionOrder}
-        railSectionsHidden={entityPageShell?.railSectionsHidden}
-        continuitySummary={pageCodexDiagnostics.summary}
-        sharedIssues={pageCodexDiagnostics.issues}
-        sharedUnresolved={pageCodexDiagnostics.unresolved}
-        sharedDiagnosticsLoading={pageCodexDiagnostics.loading}
-        onDiagnosticsReload={pageCodexDiagnostics.reload}
-        discovery={pageCodexDiagnostics.discovery}
-        partyKnowledge={pageCodexDiagnostics.partyKnowledge}
-        pulseContinuitySection={pulseContinuitySection}
-      />
-    );
-  }
-
   if (isTagsHub) {
     const tagId = searchParams.get('tagId');
     return (
@@ -1467,820 +1627,58 @@ export function WikiPage() {
             resolvePageMeasureTier(entitySurfaceProfile.key, templateType),
           ),
         )}
-        inlineContextual={isCodexRailOpen && Boolean(pageData)}
         header={
-          <div className={`mb-1 ${surfaceHeaderChromeClass(true)}`}>
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <WikiPageBreadcrumbs
-                crumbs={wikiBreadcrumbs}
-                campaignHandle={campaignHandle}
-              />
-
-              <WikiPageRuntimeToolbar
-                isTagsHub={isTagsHub}
-                isLayoutDirty={isDirty}
-                onSavePage={handleSavePage}
-                isSaving={isSaving}
-                isPinned={isPinned}
-                isSearchOpen={isSearchOpen}
-                isCodexRailOpen={isCodexRailOpen}
-                isEditingPage={isEditingPage}
-                showGridLines={showGridLines}
-                workspaceMode={workspaceMode}
-                canDeleteWikiPage={canDeleteWikiPage}
-                blockDisplayState={blockDisplayState}
-                widgetOptions={widgetOptions}
-                onTogglePin={handleTogglePin}
-                onToggleSearch={handleToggleSearch}
-                onToggleCodexRail={handleToggleCodexRail}
-                onCodexDiagnosticsClick={
-                  isDMUser && codexDiagnosticsEnabled
-                    ? handleCodexDiagnosticsChipClick
-                    : undefined
-                }
-                codexDiagnosticsSummary={pageCodexDiagnostics.summary}
-                codexDiagnosticsLoading={pageCodexDiagnostics.loading}
-                codexDiagnosticsError={pageCodexDiagnostics.error}
-                showPlayerCodexRail={showPlayerCodexRail}
-                onToggleEditPage={handleToggleEditPage}
-                onToggleGridLines={() => setShowGridLines((prev) => !prev)}
-                onOpenPageSettings={() => setPageSettingsOpen(true)}
-                onAddWidget={handleAddWidget}
-                onDeletePage={() => setIsDeleteDialogOpen(true)}
-              />
-            </div>
-
-            {templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
-            searchParams.get('view') === 'lore' ? (
-              <Link
-                to={resolveCanonicalPagePath(
-                  campaignHandle,
-                  flatPages.find((entry) => entry.id === pageId) ?? {
-                    id: pageId,
-                    title: displayTitle,
-                    parentId: pageData?.parentId ?? null,
-                    templateType,
-                    metadata: pageData?.metadata,
-                  },
-                  flatPages,
-                )}
-                className="mt-1 inline-block text-sm text-primary hover:underline"
-              >
-                ← Back to haven overview
-              </Link>
-            ) : null}
-
-            {isSearchOpen ? (
-              <div className="mt-1 flex justify-end">
-                <input
-                  type="search"
-                  placeholder="Search this page…"
-                  className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60"
-                  aria-label="Search this page"
-                />
-              </div>
-            ) : null}
-
-            {showSectionSubviews && entityPageShell ? (
-              <EntitySubviewNav
-                subviews={entityPageShell.subviews}
-                activeSubview={pageSubview}
-                onSubviewChange={setPageSubview}
-              />
-            ) : null}
-            {showSectionSubviews && !entityPageShell ? (
-              <div
-                className="mt-1 flex flex-wrap gap-0.5 border-t border-border/40 pt-1"
-                role="tablist"
-                aria-label="Page sections"
-              >
-                {WIKI_PAGE_SUBVIEWS.filter((tab) =>
-                  visibleSubviews.includes(tab.id),
-                ).map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={pageSubview === tab.id}
-                    onClick={() => setPageSubview(tab.id)}
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                      pageSubview === tab.id
-                        ? 'bg-primary/15 text-primary'
-                        : 'text-muted hover:text-foreground'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        }
-        contextual={
-          isCodexRailOpen ? (
-            <div className="hidden lg:block">{renderCodexRail('inline')}</div>
-          ) : undefined
+          <WikiPageEditorHeader
+            campaignHandle={campaignHandle}
+            crumbs={wikiBreadcrumbs}
+            displayTitle={displayTitle}
+            profileKey={entitySurfaceProfile.key}
+            templateType={templateType}
+            showSectionSubviews={showSectionSubviews}
+            subviews={entityPageShell.subviews}
+            activeSubview={pageSubview}
+            onSubviewChange={setPageSubview}
+            isDMUser={isDMUser}
+            isTagsHub={isTagsHub}
+            isLayoutDirty={isDirty}
+            isSaving={isSaving}
+            onSavePage={handleSavePage}
+            isPinned={isPinned}
+            isSearchOpen={isSearchOpen}
+            isEditingPage={isEditingPage}
+            showGridLines={showGridLines}
+            canDeleteWikiPage={canDeleteWikiPage}
+            widgetOptions={widgetOptions}
+            onTogglePin={handleTogglePin}
+            onToggleSearch={handleToggleSearch}
+            onToggleEditPage={handleToggleEditPage}
+            onToggleGridLines={() => setShowGridLines((prev) => !prev)}
+            onOpenPageSettings={() => setPageSettingsOpen(true)}
+            onAddWidget={handleAddWidget}
+            onDeletePage={() => setIsDeleteDialogOpen(true)}
+            havenBackLink={
+              templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
+              searchParams.get('view') === 'lore'
+                ? {
+                    to: resolveCanonicalPagePath(
+                      campaignHandle,
+                      flatPages.find((entry) => entry.id === pageId) ?? {
+                        id: pageId,
+                        title: displayTitle,
+                        parentId: pageData?.parentId ?? null,
+                        templateType,
+                        metadata: pageData?.metadata,
+                      },
+                      flatPages,
+                    ),
+                    label: '← Back to haven overview',
+                  }
+                : null
+            }
+          />
         }
       >
-        {isEntityWorkspacePage(entitySurfaceProfile.key) &&
-        entityPageShell?.key === 'bestiary' &&
-        bestiaryIntelProjection ? (
-          <BestiaryPageShellView
-            campaignHandle={campaignHandle}
-            pageId={pageId}
-            displayTitle={displayTitle}
-            templateType={templateType}
-            pageData={pageData}
-            blocks={blocks}
-            displayBlocks={displayBlocks}
-            pageSubview={pageSubview}
-            isEditingPage={isEditingPage}
-            showGridLines={showGridLines}
-            pageVisibility={pageVisibility}
-            onVisibilityChange={handleVisibilityChange}
-            characterIdentityProjection={null}
-            bestiaryIdentityProjection={bestiaryIdentityProjection}
-            bestiaryIntelProjection={bestiaryIntelProjection}
-            discovery={pageCodexDiagnostics.discovery}
-            flatPages={flatPages}
-            onEditFromStrip={openEditFromStrip}
-            onJumpToTab={handleJumpToTab}
-            onSubviewChange={setPageSubview}
-            onBlocksChange={applyBlocksUpdate}
-            inspectorFocusField={inspectorFocusField}
-            onMetadataSaved={(next) =>
-              setPageData((prev) =>
-                prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-              )
-            }
-            continuityPanel={
-              pageSubview === 'continuity' && isDMUser ? (
-                <div className="mb-4">
-                  <h2 className="mb-2 text-base font-semibold text-foreground">
-                    World consistency
-                  </h2>
-                  <WikiContinuityPanel
-                    campaignHandle={campaignHandle}
-                    currentPageId={pageId}
-                    pageTitle={resolvedTitle}
-                    compact={isEditingPage}
-                    sharedIssues={pageCodexDiagnostics.issues}
-                    sharedUnresolved={pageCodexDiagnostics.unresolved}
-                    sharedLoading={pageCodexDiagnostics.loading}
-                    onSharedReload={pageCodexDiagnostics.reload}
-                  />
-                </div>
-              ) : null
-            }
-            wikiPageRenderer={
-              <WikiPageRenderer
-                blocks={displayBlocks}
-                templateType={templateType}
-                isEditingPage={isEditingPage}
-                showGridLines={showGridLines}
-                onShowGridLinesChange={setShowGridLines}
-                onTemplateTypeChange={setTemplateType}
-                onBlocksChange={applyBlocksUpdate}
-                blockDisplayState={blockDisplayState}
-                onBlockDisplayChange={setBlockDisplayState}
-                memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-                allowPlayerChronologyManagement={
-                  wikiCampaign?.allowPlayerChronologyManagement ??
-                  campaign?.allowPlayerChronologyManagement ??
-                  false
-                }
-                isDirty={isDirty}
-                isSaving={isSaving}
-                isEventLorePage={isEventLorePageId(pageId)}
-                readerFirstLayout={false}
-                pageMetadata={pageData.metadata}
-                surfaceProfileKey={entitySurfaceProfile.key}
-                appearanceCapabilities={entitySurfaceProfile.appearanceCapabilities}
-                workspaceMode={workspaceMode}
-                campaignHandle={campaignHandle}
-                pageId={pageId}
-                flatPages={flatPages}
-                onMetadataSaved={(next) =>
-                  setPageData((prev) =>
-                    prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-                  )
-                }
-                inspectorFocusField={inspectorFocusField}
-                characterIdentityProjection={characterIdentityProjection}
-                organizationIdentityProjection={organizationIdentityProjection}
-                familyIdentityProjection={familyIdentityProjection}
-                bestiaryIdentityProjection={bestiaryIdentityProjection}
-                headquartersId={parseOrganizationMetadata(pageData.metadata).headquartersId}
-                seatLocationId={parseFamilyMetadata(pageData.metadata).seatLocationId}
-                pageVisibility={pageVisibility}
-                pageTags={pageTags}
-                allCampaignTags={allCampaignTags}
-                parentId={pageData.parentId}
-                parentChain={pageData.parent}
-                onVisibilityChange={handleVisibilityChange}
-                onParentChange={(next) => {
-                  setPageData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          parentId: next.parentId,
-                          parent: next.parent ?? null,
-                        }
-                      : prev,
-                  );
-                }}
-                onTreeRefresh={refresh}
-                onPageTagsChange={setPageTags}
-                onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
-                canDeleteBlock={(block) => canDeleteBlock(entityPageShell, block)}
-              />
-            }
-          />
-        ) : isEntityWorkspacePage(entitySurfaceProfile.key) &&
-          entityPageShell?.key === 'character' ? (
-          <CharacterPageShellView
-            campaignHandle={campaignHandle}
-            pageId={pageId}
-            displayTitle={displayTitle}
-            templateType={templateType}
-            pageData={pageData}
-            blocks={blocks}
-            displayBlocks={displayBlocks}
-            pageSubview={pageSubview}
-            isEditingPage={isEditingPage}
-            showGridLines={showGridLines}
-            pageVisibility={pageVisibility}
-            onVisibilityChange={handleVisibilityChange}
-            characterIdentityProjection={characterIdentityProjection}
-            discovery={pageCodexDiagnostics.discovery}
-            flatPages={flatPages}
-            onEditFromStrip={openEditFromStrip}
-            onJumpToTab={handleJumpToTab}
-            onSubviewChange={setPageSubview}
-            onBlocksChange={applyBlocksUpdate}
-            inspectorFocusField={inspectorFocusField}
-            onMetadataSaved={(next) =>
-              setPageData((prev) =>
-                prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-              )
-            }
-            continuityPanel={
-              pageSubview === 'continuity' && isDMUser ? (
-                <div className="mb-4">
-                  <h2 className="mb-2 text-base font-semibold text-foreground">
-                    World consistency
-                  </h2>
-                  <WikiContinuityPanel
-                    campaignHandle={campaignHandle}
-                    currentPageId={pageId}
-                    pageTitle={resolvedTitle}
-                    compact={isEditingPage}
-                    sharedIssues={pageCodexDiagnostics.issues}
-                    sharedUnresolved={pageCodexDiagnostics.unresolved}
-                    sharedLoading={pageCodexDiagnostics.loading}
-                    onSharedReload={pageCodexDiagnostics.reload}
-                  />
-                </div>
-              ) : null
-            }
-            wikiPageRenderer={
-              <WikiPageRenderer
-                blocks={displayBlocks}
-                templateType={templateType}
-                isEditingPage={isEditingPage}
-                showGridLines={showGridLines}
-                onShowGridLinesChange={setShowGridLines}
-                onTemplateTypeChange={setTemplateType}
-                onBlocksChange={applyBlocksUpdate}
-                blockDisplayState={blockDisplayState}
-                onBlockDisplayChange={setBlockDisplayState}
-                memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-                allowPlayerChronologyManagement={
-                  wikiCampaign?.allowPlayerChronologyManagement ??
-                  campaign?.allowPlayerChronologyManagement ??
-                  false
-                }
-                isDirty={isDirty}
-                isSaving={isSaving}
-                isEventLorePage={isEventLorePageId(pageId)}
-                readerFirstLayout={false}
-                pageMetadata={pageData.metadata}
-                surfaceProfileKey={entitySurfaceProfile.key}
-                appearanceCapabilities={entitySurfaceProfile.appearanceCapabilities}
-                workspaceMode={workspaceMode}
-                campaignHandle={campaignHandle}
-                pageId={pageId}
-                flatPages={flatPages}
-                onMetadataSaved={(next) =>
-                  setPageData((prev) =>
-                    prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-                  )
-                }
-                inspectorFocusField={inspectorFocusField}
-                characterIdentityProjection={characterIdentityProjection}
-                organizationIdentityProjection={organizationIdentityProjection}
-                familyIdentityProjection={familyIdentityProjection}
-                bestiaryIdentityProjection={bestiaryIdentityProjection}
-                headquartersId={parseOrganizationMetadata(pageData.metadata).headquartersId}
-                seatLocationId={parseFamilyMetadata(pageData.metadata).seatLocationId}
-                pageVisibility={pageVisibility}
-                pageTags={pageTags}
-                allCampaignTags={allCampaignTags}
-                parentId={pageData.parentId}
-                parentChain={pageData.parent}
-                onVisibilityChange={handleVisibilityChange}
-                onParentChange={(next) => {
-                  setPageData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          parentId: next.parentId,
-                          parent: next.parent ?? null,
-                        }
-                      : prev,
-                  );
-                }}
-                onTreeRefresh={refresh}
-                onPageTagsChange={setPageTags}
-                onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
-                canDeleteBlock={(block) => canDeleteBlock(entityPageShell, block)}
-              />
-            }
-          />
-        ) : isEntityWorkspacePage(entitySurfaceProfile.key) &&
-          entityPageShell?.key === 'ancestry' ? (
-          <AncestryPageShellView
-            campaignHandle={campaignHandle}
-            pageId={pageId}
-            displayTitle={displayTitle}
-            templateType={templateType}
-            pageData={pageData}
-            blocks={blocks}
-            displayBlocks={displayBlocks}
-            pageSubview={pageSubview}
-            isEditingPage={isEditingPage}
-            showGridLines={showGridLines}
-            pageVisibility={pageVisibility}
-            onVisibilityChange={handleVisibilityChange}
-            characterIdentityProjection={null}
-            ancestryIdentityProjection={ancestryIdentityProjection}
-            discovery={pageCodexDiagnostics.discovery}
-            flatPages={flatPages}
-            onEditFromStrip={openEditFromStrip}
-            onJumpToTab={handleJumpToTab}
-            onSubviewChange={setPageSubview}
-            onBlocksChange={applyBlocksUpdate}
-            inspectorFocusField={inspectorFocusField}
-            onMetadataSaved={(next) =>
-              setPageData((prev) =>
-                prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-              )
-            }
-            wikiPageRenderer={
-              <WikiPageRenderer
-                blocks={displayBlocks}
-                templateType={templateType}
-                isEditingPage={isEditingPage}
-                showGridLines={showGridLines}
-                onShowGridLinesChange={setShowGridLines}
-                onTemplateTypeChange={setTemplateType}
-                onBlocksChange={applyBlocksUpdate}
-                blockDisplayState={blockDisplayState}
-                onBlockDisplayChange={setBlockDisplayState}
-                memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-                allowPlayerChronologyManagement={
-                  wikiCampaign?.allowPlayerChronologyManagement ??
-                  campaign?.allowPlayerChronologyManagement ??
-                  false
-                }
-                isDirty={isDirty}
-                isSaving={isSaving}
-                isEventLorePage={isEventLorePageId(pageId)}
-                readerFirstLayout={false}
-                pageMetadata={pageData.metadata}
-                surfaceProfileKey={entitySurfaceProfile.key}
-                appearanceCapabilities={entitySurfaceProfile.appearanceCapabilities}
-                workspaceMode={workspaceMode}
-                campaignHandle={campaignHandle}
-                pageId={pageId}
-                flatPages={flatPages}
-                onMetadataSaved={(next) =>
-                  setPageData((prev) =>
-                    prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-                  )
-                }
-                inspectorFocusField={inspectorFocusField}
-                characterIdentityProjection={characterIdentityProjection}
-                organizationIdentityProjection={organizationIdentityProjection}
-                familyIdentityProjection={familyIdentityProjection}
-                bestiaryIdentityProjection={bestiaryIdentityProjection}
-                ancestryIdentityProjection={ancestryIdentityProjection}
-                headquartersId={parseOrganizationMetadata(pageData.metadata).headquartersId}
-                seatLocationId={parseFamilyMetadata(pageData.metadata).seatLocationId}
-                pageVisibility={pageVisibility}
-                pageTags={pageTags}
-                allCampaignTags={allCampaignTags}
-                parentId={pageData.parentId}
-                parentChain={pageData.parent}
-                onVisibilityChange={handleVisibilityChange}
-                onParentChange={(next) => {
-                  setPageData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          parentId: next.parentId,
-                          parent: next.parent ?? null,
-                        }
-                      : prev,
-                  );
-                }}
-                onTreeRefresh={refresh}
-                onPageTagsChange={setPageTags}
-                onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
-                canDeleteBlock={(block) => canDeleteBlock(entityPageShell, block)}
-              />
-            }
-          />
-        ) : isEntityWorkspacePage(entitySurfaceProfile.key) &&
-          entityPageShell?.key === 'organization' ? (
-          <OrganizationPageShellView
-            campaignHandle={campaignHandle}
-            pageId={pageId}
-            displayTitle={displayTitle}
-            templateType={templateType}
-            pageData={pageData}
-            blocks={blocks}
-            displayBlocks={displayBlocks}
-            pageSubview={pageSubview}
-            isEditingPage={isEditingPage}
-            showGridLines={showGridLines}
-            pageVisibility={pageVisibility}
-            onVisibilityChange={handleVisibilityChange}
-            characterIdentityProjection={null}
-            organizationIdentityProjection={organizationIdentityProjection}
-            discovery={pageCodexDiagnostics.discovery}
-            flatPages={flatPages}
-            onEditFromStrip={openEditFromStrip}
-            onJumpToTab={handleJumpToTab}
-            onSubviewChange={setPageSubview}
-            onBlocksChange={applyBlocksUpdate}
-            inspectorFocusField={inspectorFocusField}
-            onMetadataSaved={(next) =>
-              setPageData((prev) =>
-                prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-              )
-            }
-            continuityPanel={
-              pageSubview === 'continuity' && isDMUser ? (
-                <div className="mb-4">
-                  <h2 className="mb-2 text-base font-semibold text-foreground">
-                    Narrative debt
-                  </h2>
-                  <p className="mb-3 text-sm text-muted">
-                    Unresolved plots, dormant branches, missing successors, and contradictory
-                    claims.
-                  </p>
-                  <WikiContinuityPanel
-                    campaignHandle={campaignHandle}
-                    currentPageId={pageId}
-                    pageTitle={resolvedTitle}
-                    compact={isEditingPage}
-                    sharedIssues={pageCodexDiagnostics.issues}
-                    sharedUnresolved={pageCodexDiagnostics.unresolved}
-                    sharedLoading={pageCodexDiagnostics.loading}
-                    onSharedReload={pageCodexDiagnostics.reload}
-                  />
-                </div>
-              ) : null
-            }
-            wikiPageRenderer={
-              <WikiPageRenderer
-                blocks={displayBlocks}
-                templateType={templateType}
-                isEditingPage={isEditingPage}
-                showGridLines={showGridLines}
-                onShowGridLinesChange={setShowGridLines}
-                onTemplateTypeChange={setTemplateType}
-                onBlocksChange={applyBlocksUpdate}
-                blockDisplayState={blockDisplayState}
-                onBlockDisplayChange={setBlockDisplayState}
-                memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-                allowPlayerChronologyManagement={
-                  wikiCampaign?.allowPlayerChronologyManagement ??
-                  campaign?.allowPlayerChronologyManagement ??
-                  false
-                }
-                isDirty={isDirty}
-                isSaving={isSaving}
-                isEventLorePage={isEventLorePageId(pageId)}
-                readerFirstLayout={false}
-                pageMetadata={pageData.metadata}
-                surfaceProfileKey={entitySurfaceProfile.key}
-                appearanceCapabilities={entitySurfaceProfile.appearanceCapabilities}
-                workspaceMode={workspaceMode}
-                campaignHandle={campaignHandle}
-                pageId={pageId}
-                flatPages={flatPages}
-                onMetadataSaved={(next) =>
-                  setPageData((prev) =>
-                    prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-                  )
-                }
-                inspectorFocusField={inspectorFocusField}
-                characterIdentityProjection={characterIdentityProjection}
-                organizationIdentityProjection={organizationIdentityProjection}
-                familyIdentityProjection={familyIdentityProjection}
-                bestiaryIdentityProjection={bestiaryIdentityProjection}
-                ancestryIdentityProjection={ancestryIdentityProjection}
-                headquartersId={parseOrganizationMetadata(pageData.metadata).headquartersId}
-                seatLocationId={parseFamilyMetadata(pageData.metadata).seatLocationId}
-                pageVisibility={pageVisibility}
-                pageTags={pageTags}
-                allCampaignTags={allCampaignTags}
-                parentId={pageData.parentId}
-                parentChain={pageData.parent}
-                onVisibilityChange={handleVisibilityChange}
-                onParentChange={(next) => {
-                  setPageData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          parentId: next.parentId,
-                          parent: next.parent ?? null,
-                        }
-                      : prev,
-                  );
-                }}
-                onTreeRefresh={refresh}
-                onPageTagsChange={setPageTags}
-                onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
-                canDeleteBlock={(block) => canDeleteBlock(entityPageShell, block)}
-              />
-            }
-          />
-        ) : isEntityWorkspacePage(entitySurfaceProfile.key) ? (
-          <EntityWorkspaceSurface
-            campaignHandle={campaignHandle}
-            pageId={pageId}
-            displayTitle={displayTitle}
-            templateType={templateType}
-            entitySurfaceProfile={entitySurfaceProfile}
-            entityDetailTab={entityDetailTab}
-            onEntityDetailTabChange={setEntityDetailTab}
-            codexCognitiveMode="reading"
-            hasHeroBlock={hasHeroBlock}
-            characterIdentityProjection={characterIdentityProjection}
-            organizationIdentityProjection={organizationIdentityProjection}
-            familyIdentityProjection={familyIdentityProjection}
-            bestiaryIdentityProjection={bestiaryIdentityProjection}
-            pass2IdentityProjection={pass2IdentityProjection}
-            interpretiveSummary={interpretiveSummary}
-            professionSubtitle={professionSubtitle}
-            knownForSubtitle={knownForSubtitle}
-            players={players}
-            flatPages={flatPages}
-            onEditFromStrip={openEditFromStrip}
-            headquartersId={parseOrganizationMetadata(pageData?.metadata).headquartersId}
-            seatLocationId={parseFamilyMetadata(pageData?.metadata).seatLocationId}
-            canTrackNarrativeThread={canTrackNarrativeThread}
-            onTrackNarrativeThread={() => setIsThreadCreateOpen(true)}
-            embeddedMap={embeddedMap}
-            embeddedCampaignMaps={embeddedCampaignMaps}
-            pageData={pageData}
-            readerFirstLayout={readerFirstLayout}
-            memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-            allowPlayerChronologyManagement={
-              wikiCampaign?.allowPlayerChronologyManagement ??
-              campaign?.allowPlayerChronologyManagement ??
-              false
-            }
-            hasEditorSlot={hasEditorSlot && Boolean(wikiCampaign)}
-            editorSlot={
-              wikiCampaign ? (
-                <PluginSlotHost
-                  slot={PluginUiSlots.EDITOR}
-                  context={{
-                    campaignId: wikiCampaign.id,
-                    campaignHandle: wikiCampaign.handle,
-                    config: {},
-                  }}
-                  className="mb-4"
-                />
-              ) : null
-            }
-            continuityPanel={
-              pageSubview === 'continuity' && isDMUser ? (
-                <div className="mb-4">
-                  <h2 className="mb-2 text-base font-semibold text-foreground">
-                    World consistency
-                  </h2>
-                  <WikiContinuityPanel
-                    campaignHandle={campaignHandle}
-                    currentPageId={pageId}
-                    pageTitle={resolvedTitle}
-                    compact={isEditingPage}
-                    sharedIssues={pageCodexDiagnostics.issues}
-                    sharedUnresolved={pageCodexDiagnostics.unresolved}
-                    sharedLoading={pageCodexDiagnostics.loading}
-                    onSharedReload={pageCodexDiagnostics.reload}
-                  />
-                </div>
-              ) : null
-            }
-            loreSemanticPanel={loreSemanticPanel}
-            wikiPageRenderer={
-              <WikiPageRenderer
-                blocks={displayBlocks}
-                templateType={templateType}
-                isEditingPage={isEditingPage}
-                isEditingLayout={isEditingPage}
-                showGridLines={showGridLines}
-                onShowGridLinesChange={setShowGridLines}
-                onTemplateTypeChange={setTemplateType}
-                onBlocksChange={applyBlocksUpdate}
-                blockDisplayState={blockDisplayState}
-                onBlockDisplayChange={setBlockDisplayState}
-                memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-                allowPlayerChronologyManagement={
-                  wikiCampaign?.allowPlayerChronologyManagement ??
-                  campaign?.allowPlayerChronologyManagement ??
-                  false
-                }
-                isDirty={isDirty}
-                isSaving={isSaving}
-                isEventLorePage={isEventLorePageId(pageId)}
-                readerFirstLayout={readerFirstLayout && entityDetailTab === 'lore'}
-                pageMetadata={pageData!.metadata}
-                surfaceProfileKey={entitySurfaceProfile.key}
-                appearanceCapabilities={entitySurfaceProfile.appearanceCapabilities}
-                workspaceMode={workspaceMode}
-                campaignHandle={campaignHandle}
-                pageId={pageId}
-                flatPages={flatPages}
-                onMetadataSaved={(next) =>
-                  setPageData((prev) =>
-                    prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-                  )
-                }
-                inspectorFocusField={inspectorFocusField}
-                characterIdentityProjection={characterIdentityProjection}
-                organizationIdentityProjection={organizationIdentityProjection}
-                familyIdentityProjection={familyIdentityProjection}
-                headquartersId={parseOrganizationMetadata(pageData!.metadata).headquartersId}
-                seatLocationId={parseFamilyMetadata(pageData!.metadata).seatLocationId}
-                pageVisibility={pageVisibility}
-                pageTags={pageTags}
-                allCampaignTags={allCampaignTags}
-                parentId={pageData!.parentId}
-                parentChain={pageData!.parent}
-                onVisibilityChange={handleVisibilityChange}
-                onParentChange={(next) => {
-                  setPageData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          parentId: next.parentId,
-                          parent: next.parent ?? null,
-                        }
-                      : prev,
-                  );
-                }}
-                onTreeRefresh={refresh}
-                onPageTagsChange={setPageTags}
-                onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
-              />
-            }
-            loadingFallback={<LoadingSpinner label="Loading page…" />}
-          />
-        ) : (
-          <>
-            <div className="min-w-0 space-y-2 border-b border-focal-muted/15 pb-4">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <h1
-                  className={`${TYPE_DISPLAY_CLASS} text-2xl text-focal-foreground sm:text-3xl`}
-                >
-                  {displayTitle}
-                </h1>
-                {pageData.narrativeStatus ? (
-                  isDMUser ? (
-                    <NarrativeStatusGmBadge
-                      narrativeStatus={pageData.narrativeStatus}
-                    />
-                  ) : (
-                    <NarrativeStatusBadge narrativeStatus={pageData.narrativeStatus} />
-                  )
-                ) : null}
-              </div>
-              <InterpretiveLoreHeader
-                summary={interpretiveSummary}
-                nameProjection={interpretiveSummary?.nameProjection ?? null}
-              />
-              <WikiPageIdentitySubtitle
-                pageId={pageId}
-                profileKey={entitySurfaceProfile.key}
-                templateType={templateType}
-                profession={professionSubtitle}
-                knownFor={knownForSubtitle}
-                players={players}
-                flatPages={flatPages}
-              />
-            </div>
-            <div className={`min-w-0 w-full ${SURFACE_SILENT_CLASS}`}>
-              {pageData ? (
-                <>
-                  {loreSemanticPanel}
-                  {pageSubview === 'continuity' && isDMUser ? (
-                    <div className="mb-4">
-                      <h2 className="mb-2 text-base font-semibold text-foreground">
-                        World consistency
-                      </h2>
-                      <WikiContinuityPanel
-                        campaignHandle={campaignHandle}
-                        currentPageId={pageId}
-                        pageTitle={resolvedTitle}
-                        compact={isEditingPage}
-                        sharedIssues={pageCodexDiagnostics.issues}
-                        sharedUnresolved={pageCodexDiagnostics.unresolved}
-                        sharedLoading={pageCodexDiagnostics.loading}
-                        onSharedReload={pageCodexDiagnostics.reload}
-                      />
-                    </div>
-                  ) : null}
-                  {isEventLorePageId(pageId) && canInitializeEventLore ? (
-                    <EventConsequencesEditor
-                      campaignHandle={campaignHandle}
-                      calendarEventId={pageId.slice('event-'.length)}
-                      flatPages={flatPages}
-                      loreBlocks={displayBlocks}
-                    />
-                  ) : null}
-                  <WikiPageRenderer
-                    blocks={displayBlocks}
-                    templateType={templateType}
-                    isEditingPage={isEditingPage}
-                    isEditingLayout={isEditingPage}
-                    showGridLines={showGridLines}
-                    onShowGridLinesChange={setShowGridLines}
-                    onTemplateTypeChange={setTemplateType}
-                    onBlocksChange={applyBlocksUpdate}
-                    blockDisplayState={blockDisplayState}
-                    onBlockDisplayChange={setBlockDisplayState}
-                    memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
-                    allowPlayerChronologyManagement={
-                      wikiCampaign?.allowPlayerChronologyManagement ??
-                      campaign?.allowPlayerChronologyManagement ??
-                      false
-                    }
-                    isDirty={isDirty}
-                    isSaving={isSaving}
-                    isEventLorePage={isEventLorePageId(pageId)}
-                    readerFirstLayout={false}
-                    pageMetadata={pageData.metadata}
-                    surfaceProfileKey={entitySurfaceProfile.key}
-                    appearanceCapabilities={entitySurfaceProfile.appearanceCapabilities}
-                    workspaceMode={workspaceMode}
-                    campaignHandle={campaignHandle}
-                    pageId={pageId}
-                    flatPages={flatPages}
-                    onMetadataSaved={(next) =>
-                      setPageData((prev) =>
-                        prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
-                      )
-                    }
-                    inspectorFocusField={inspectorFocusField}
-                    characterIdentityProjection={characterIdentityProjection}
-                    organizationIdentityProjection={organizationIdentityProjection}
-                    familyIdentityProjection={familyIdentityProjection}
-                    headquartersId={parseOrganizationMetadata(pageData.metadata).headquartersId}
-                    seatLocationId={parseFamilyMetadata(pageData.metadata).seatLocationId}
-                    pageVisibility={pageVisibility}
-                    pageTags={pageTags}
-                    allCampaignTags={allCampaignTags}
-                    parentId={pageData.parentId}
-                    parentChain={pageData.parent}
-                    onVisibilityChange={handleVisibilityChange}
-                    onParentChange={(next) => {
-                      setPageData((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              parentId: next.parentId,
-                              parent: next.parent ?? null,
-                            }
-                          : prev,
-                      );
-                    }}
-                    onTreeRefresh={refresh}
-                    onPageTagsChange={setPageTags}
-                    onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
-                  />
-                </>
-              ) : (
-                <LoadingSpinner label="Loading page…" />
-              )}
-            </div>
-          </>
-        )}
+        {renderWikiPageBody()}
         {isThreadDetailPage && pageId ? (
           <ThreadHistoryPanel
             campaignHandle={campaignHandle}
@@ -2313,20 +1711,16 @@ export function WikiPage() {
         />
       )}
 
-      {isCodexRailOpen ? (
-        <div className="lg:hidden">{renderCodexRail('stacked')}</div>
-      ) : null}
-
       <PageSettingsDrawer
         open={pageSettingsOpen}
         onClose={() => setPageSettingsOpen(false)}
         campaignHandle={campaignHandle}
         pageId={pageId}
+        pageTitle={displayTitle}
         parentId={pageData.parentId}
         parentChain={pageData.parent}
         flatPages={flatPages}
-        templateType={templateType}
-        onTemplateTypeChange={setTemplateType}
+        pageMetadata={pageData.metadata}
         pageVisibility={pageVisibility}
         onVisibilityChange={handleVisibilityChange}
         onParentChange={(next) => {
@@ -2344,6 +1738,27 @@ export function WikiPage() {
         pageTags={pageTags}
         allCampaignTags={allCampaignTags}
         onPageTagsChange={setPageTags}
+        onPageTransformed={async (result) => {
+          await refresh();
+          setPageSettingsOpen(false);
+          if (result.workspace && result.pathKey) {
+            const segment = workspaceToSegment(
+              result.workspace as import('@shared/campaignWorkspace').CampaignWorkspace,
+            );
+            if (segment) {
+              navigate(
+                campaignWorkspaceEntityPath(
+                  campaignHandle,
+                  segment,
+                  result.pathKey,
+                ),
+              );
+              return;
+            }
+          }
+          const targetPageId = result.promotedQuestPageId ?? result.pageId;
+          navigate(campaignWikiPath(campaignHandle, targetPageId));
+        }}
       />
 
       {canTrackNarrativeThread ? (
@@ -2367,3 +1782,4 @@ export function WikiPage() {
     </PageBlockDraftRegistryProvider>
   );
 }
+

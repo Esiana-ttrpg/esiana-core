@@ -1,10 +1,15 @@
+import type { ReactNode } from 'react';
 import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
+  filterPagesInModuleScope,
+  moduleKeyToDisplayLabel,
+  resolvePageModuleScope,
+} from '@shared/pageModuleScope';
+import {
   buildWikiBreadcrumbs,
   formatParentOptionLabel,
-  isExcludedParentCandidate,
   updateWikiPage,
 } from '@/lib/wiki';
 import { WikiPageTagsInput } from '@/components/wiki/WikiPageTagsInput';
@@ -21,8 +26,6 @@ interface DocumentSectionEditorProps {
   parentId: string | null;
   parentChain?: WikiPageParentRef | null;
   flatPages: WikiTreeNode[];
-  templateType: string;
-  onTemplateTypeChange: (templateType: string) => void;
   pageVisibility: string;
   onVisibilityChange: (visibility: 'Public' | 'Party' | 'DM_Only') => void | Promise<void>;
   onParentChange: (next: {
@@ -34,8 +37,10 @@ interface DocumentSectionEditorProps {
   allCampaignTags: WikiTag[];
   onPageTagsChange: (tags: WikiTagInput[]) => void;
   showTags?: boolean;
-  showTemplate?: boolean;
   tagsSaveHint?: string;
+  pageMetadata?: unknown;
+  pageTitle?: string;
+  transformSection?: ReactNode;
 }
 
 export function DocumentSectionEditor({
@@ -44,8 +49,6 @@ export function DocumentSectionEditor({
   parentId,
   parentChain,
   flatPages,
-  templateType,
-  onTemplateTypeChange,
   pageVisibility,
   onVisibilityChange,
   onParentChange,
@@ -54,8 +57,10 @@ export function DocumentSectionEditor({
   allCampaignTags,
   onPageTagsChange,
   showTags = true,
-  showTemplate = true,
   tagsSaveHint = 'Changes save when you close the inspector.',
+  pageMetadata,
+  pageTitle,
+  transformSection,
 }: DocumentSectionEditorProps) {
   const { canManageWiki } = useWiki();
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,18 +70,36 @@ export function DocumentSectionEditor({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  const currentPage = useMemo(
+    () =>
+      flatPages.find((page) => page.id === pageId) ?? {
+        id: pageId,
+        title: pageTitle ?? 'Page',
+        parentId,
+        templateType: 'DEFAULT',
+        metadata: pageMetadata,
+      },
+    [flatPages, pageId, pageMetadata, pageTitle, parentId],
+  );
+
+  const moduleScope = useMemo(
+    () => resolvePageModuleScope(currentPage, flatPages),
+    [currentPage, flatPages],
+  );
+
+  const allowTopLevelParent =
+    moduleScope.moduleKey === 'pages' || moduleScope.moduleKey === 'event-lore';
+
   const eligiblePages = useMemo(
     () =>
-      flatPages
-        .filter((page) => !isExcludedParentCandidate(page, pageId, flatPages))
-        .sort((a, b) =>
-          formatParentOptionLabel(a, flatPages).localeCompare(
-            formatParentOptionLabel(b, flatPages),
-            undefined,
-            { sensitivity: 'base' },
-          ),
+      filterPagesInModuleScope(flatPages, moduleScope, pageId).sort((a, b) =>
+        formatParentOptionLabel(a, flatPages).localeCompare(
+          formatParentOptionLabel(b, flatPages),
+          undefined,
+          { sensitivity: 'base' },
         ),
-    [flatPages, pageId],
+      ),
+    [flatPages, moduleScope, pageId],
   );
 
   const filteredOptions = useMemo(() => {
@@ -95,7 +118,7 @@ export function DocumentSectionEditor({
   );
 
   const selectedLabel = useMemo(() => {
-    if (!parentId) return 'None (top level)';
+    if (!parentId) return allowTopLevelParent ? 'None (top level)' : 'Module root';
     if (selectedPage) {
       return formatParentOptionLabel(selectedPage, flatPages).trim();
     }
@@ -105,7 +128,7 @@ export function DocumentSectionEditor({
       return crumbs.map((crumb) => crumb.title).join(' › ');
     }
     return 'Unknown parent';
-  }, [flatPages, parentChain, parentId, selectedPage]);
+  }, [allowTopLevelParent, flatPages, parentChain, parentId, selectedPage]);
 
   const inputValue = isOpen ? searchQuery : selectedLabel;
 
@@ -167,96 +190,84 @@ export function DocumentSectionEditor({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5">
-        <label
-          htmlFor="wiki-parent-picker"
-          className={META_FIELD_LABEL_CLASS}
-        >
-          Belongs within
-        </label>
-        <div ref={containerRef} className="relative">
-          <div className="relative">
-            <input
-              ref={inputRef}
-              id="wiki-parent-picker"
-              type="search"
-              value={inputValue}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              onFocus={() => {
-                setIsOpen(true);
-                setSearchQuery('');
-              }}
-              disabled={savingParent}
-              placeholder="Search pages…"
-              autoComplete="off"
-              role="combobox"
-              aria-expanded={isOpen}
-              className={`${fieldSelectClass} pr-8 text-xs`}
-            />
-            {savingParent && (
-              <Loader2
-                className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted"
-                aria-hidden
+      {moduleScope.moduleKey !== 'event-lore' ? (
+        <div className="space-y-1.5">
+          <label
+            htmlFor="wiki-parent-picker"
+            className={META_FIELD_LABEL_CLASS}
+          >
+            Belongs with
+          </label>
+          <p className="text-[10px] text-muted">
+            Reorganize within {moduleKeyToDisplayLabel(moduleScope.moduleKey)} only.
+            Use Transform to move between modules.
+          </p>
+          <div ref={containerRef} className="relative">
+            <div className="relative">
+              <input
+                ref={inputRef}
+                id="wiki-parent-picker"
+                type="search"
+                value={inputValue}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onFocus={() => {
+                  setIsOpen(true);
+                  setSearchQuery('');
+                }}
+                disabled={savingParent}
+                placeholder="Search pages…"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={isOpen}
+                className={`${fieldSelectClass} pr-8 text-xs`}
               />
+              {savingParent && (
+                <Loader2
+                  className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted"
+                  aria-hidden
+                />
+              )}
+            </div>
+            {isOpen && (
+              <ul
+                className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-border bg-background p-1 shadow-xl"
+                role="listbox"
+              >
+                {allowTopLevelParent ? (
+                  <li>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => void handleSelect(null)}
+                      className={`block w-full rounded px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-surface ${
+                        parentId === null ? 'bg-primary/10 text-primary' : 'text-foreground'
+                      }`}
+                    >
+                      None (top level)
+                    </button>
+                  </li>
+                ) : null}
+                {filteredOptions.map((page) => (
+                  <li key={page.id}>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => void handleSelect(page.id)}
+                      className={`block w-full rounded px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-surface ${
+                        parentId === page.id ? 'bg-primary/10 text-primary' : 'text-foreground'
+                      }`}
+                    >
+                      {formatParentOptionLabel(page, flatPages).trim()}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
-          {isOpen && (
-            <ul
-              className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-border bg-background p-1 shadow-xl"
-              role="listbox"
-            >
-              <li>
-                <button
-                  type="button"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => void handleSelect(null)}
-                  className={`block w-full rounded px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-surface ${
-                    parentId === null ? 'bg-primary/10 text-primary' : 'text-foreground'
-                  }`}
-                >
-                  None (top level)
-                </button>
-              </li>
-              {filteredOptions.map((page) => (
-                <li key={page.id}>
-                  <button
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => void handleSelect(page.id)}
-                    className={`block w-full rounded px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-surface ${
-                      parentId === page.id ? 'bg-primary/10 text-primary' : 'text-foreground'
-                    }`}
-                  >
-                    {formatParentOptionLabel(page, flatPages).trim()}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
-      </div>
+      ) : null}
 
       <div className="grid gap-3">
-        {showTemplate ? (
-          <label className="space-y-1">
-            <span className={META_FIELD_LABEL_CLASS}>
-              Entity type
-            </span>
-            <select
-              id="wiki-template-type"
-              value={templateType}
-              onChange={(event) => onTemplateTypeChange(event.target.value)}
-              className={`${fieldSelectClass} text-xs`}
-            >
-              <option value="DEFAULT">Default</option>
-              <option value="CHARACTER">Character</option>
-              <option value="LOCATION">Location</option>
-              <option value="ORGANIZATION">Organization</option>
-              <option value="FAMILY">Family</option>
-            </select>
-          </label>
-        ) : null}
-
         <label className="space-y-1">
           <span className={META_FIELD_LABEL_CLASS}>
             Visibility
@@ -285,7 +296,7 @@ export function DocumentSectionEditor({
           <WikiPageAliasesEditor
             campaignHandle={campaignHandle}
             pageId={pageId}
-            pageTitle={flatPages.find((p) => p.id === pageId)?.title ?? 'Page'}
+            pageTitle={flatPages.find((p) => p.id === pageId)?.title ?? pageTitle ?? 'Page'}
           />
         </div>
       ) : null}
@@ -304,6 +315,8 @@ export function DocumentSectionEditor({
           <p className="text-[10px] text-muted">{tagsSaveHint}</p>
         </div>
       ) : null}
+
+      {canManageWiki ? transformSection : null}
 
       {error ? (
         <p className="text-xs text-red-400" role="alert">

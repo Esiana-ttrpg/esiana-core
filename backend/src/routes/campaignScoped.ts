@@ -99,6 +99,7 @@ import {
   updateWikiPageLayout,
   updateWikiPageVisibility,
   updateWikiPageMetadata,
+  transformWikiPage,
 } from '../controllers/wikiController.js';
 import {
   getAdventureHubBySystemKey,
@@ -1122,6 +1123,12 @@ campaignScopedRouter.patch(
   '/wiki/:pageId',
   requireNonObserverMember,
   updateWikiPage,
+);
+
+campaignScopedRouter.post(
+  '/wiki/:pageId/transform',
+  requirePageEditAny,
+  transformWikiPage,
 );
 
 campaignScopedRouter.patch(

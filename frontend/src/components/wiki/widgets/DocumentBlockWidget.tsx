@@ -7,11 +7,11 @@ interface DocumentBlockWidgetProps {
   parentId: string | null;
   parentChain?: WikiPageParentRef | null;
   flatPages: WikiTreeNode[];
-  templateType: string;
   pageVisibility: string;
   pageTags: WikiTagInput[];
   allCampaignTags: WikiTag[];
-  onTemplateTypeChange: (templateType: string) => void;
+  pageMetadata?: unknown;
+  pageTitle?: string;
   onVisibilityChange: (visibility: 'Public' | 'Party' | 'DM_Only') => void | Promise<void>;
   onParentChange: (next: {
     parentId: string | null;
@@ -20,13 +20,14 @@ interface DocumentBlockWidgetProps {
   onTreeRefresh: () => Promise<void>;
   onPageTagsChange: (tags: WikiTagInput[]) => void;
   isEditingPage: boolean;
+  hideTags?: boolean;
 }
 
 export function DocumentBlockWidget(props: DocumentBlockWidgetProps) {
   if (!props.isEditingPage) {
     return (
       <p className="text-sm text-muted">
-        Document settings (parent, tags, template) are available in edit mode.
+        Document settings (parent, visibility, tags) are available in edit mode.
       </p>
     );
   }
@@ -35,11 +36,11 @@ export function DocumentBlockWidget(props: DocumentBlockWidgetProps) {
     <DocumentSectionEditor
       campaignHandle={props.campaignHandle}
       pageId={props.pageId}
+      pageTitle={props.pageTitle}
       parentId={props.parentId}
       parentChain={props.parentChain}
       flatPages={props.flatPages}
-      templateType={props.templateType}
-      onTemplateTypeChange={props.onTemplateTypeChange}
+      pageMetadata={props.pageMetadata}
       pageVisibility={props.pageVisibility}
       onVisibilityChange={props.onVisibilityChange}
       onParentChange={props.onParentChange}
@@ -47,7 +48,7 @@ export function DocumentBlockWidget(props: DocumentBlockWidgetProps) {
       pageTags={props.pageTags}
       allCampaignTags={props.allCampaignTags}
       onPageTagsChange={props.onPageTagsChange}
-      showTags={props.templateType !== 'QUEST'}
+      showTags={!props.hideTags}
       tagsSaveHint="Save the page to persist tag changes."
     />
   );

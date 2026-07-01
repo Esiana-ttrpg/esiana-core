@@ -886,6 +886,27 @@ export async function updateWikiPage(
   });
 }
 
+export interface WikiTransformResult {
+  pageId: string;
+  promotedQuestPageId?: string;
+  workspace: string | null;
+  pathKey: string | null;
+}
+
+export async function transformWikiPage(
+  campaignHandle: string,
+  pageId: string,
+  targetModule: string,
+): Promise<WikiTransformResult> {
+  return apiFetch<WikiTransformResult>(
+    `/campaigns/${campaignHandle}/wiki/${pageId}/transform`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ targetModule }),
+    },
+  );
+}
+
 export async function fetchCampaignTags(
   campaignHandle: string,
 ): Promise<WikiTag[]> {

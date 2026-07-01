@@ -53,9 +53,6 @@ export const organizationPageShell: EntityPageShell = {
       ghostLabel: 'Historical notes',
     },
   ],
-  railSectionOrder: ['callout', 'relations'],
-  railSectionsHidden: ['provenance', 'threads', 'timeline', 'discovery', 'continuity'],
-  defaultRailOpen: false,
   getVisibleSubviews: visibleSubviews,
   isValidSubview(subview, isDMUser) {
     return visibleSubviews(isDMUser).some((t) => t.id === subview);

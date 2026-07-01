@@ -8,7 +8,6 @@ import {
   CODEX_READABLE_CH_TIGHT,
 } from '@/lib/densityConstants';
 
-export type CodexRailDensity = 'hidden' | 'compact' | 'full';
 export type HeaderChromeDensity = 'minimal' | 'standard' | 'operational';
 /** How a single-block expand reflows siblings in editorial flow. */
 export type ExpandedLayoutBehavior = 'prose-stack' | 'editorial-reflow' | 'dense-grid';
@@ -27,10 +26,6 @@ export interface WorkspaceOrchestrationProfile {
   defaultProseDisplayScale: BlockDisplayScale;
   /** Deep-edit opens focus overlay instead of expanded tile. */
   preferFocusOverlay: boolean;
-  /** Open Codex rail when switching to this mode. */
-  codexRailDefaultOpen: boolean;
-  /** Rail presentation when open. */
-  codexRailDensity: CodexRailDensity;
   /** Dim sibling blocks when one block is expanded. */
   dimInactiveBlocksOnExpand: boolean;
   /** Prefer layout grid (drag mode) when entering edit. */
@@ -56,6 +51,11 @@ const FOCUSED_PRIORITY: Partial<Record<WikiPageBlockType, number>> = {
   'entity-location-hero': 0,
   'entity-bestiary-hero': 0,
   'entity-ancestry-hero': 0,
+  'entity-quest-properties': 0,
+  'entity-thread-properties': 0,
+  'entity-scene-properties': 0,
+  'entity-arc-properties': 0,
+  'entity-objective-properties': 0,
   'text-biography': 1,
   'text-tiptap': 2,
   'entity-appearance': 3,
@@ -76,6 +76,11 @@ const EXPANDED_PRIORITY: Partial<Record<WikiPageBlockType, number>> = {
   'entity-location-hero': 0,
   'entity-bestiary-hero': 0,
   'entity-ancestry-hero': 0,
+  'entity-quest-properties': 0,
+  'entity-thread-properties': 0,
+  'entity-scene-properties': 0,
+  'entity-arc-properties': 0,
+  'entity-objective-properties': 0,
   'entity-relationships': 2,
   'entity-timeline': 3,
   'entity-discovery': 4,
@@ -96,8 +101,6 @@ const PROFILES: Record<WorkspaceMode, WorkspaceOrchestrationProfile> = {
     autoExpandProseBlock: true,
     defaultProseDisplayScale: 'expanded',
     preferFocusOverlay: false,
-    codexRailDefaultOpen: false,
-    codexRailDensity: 'compact',
     dimInactiveBlocksOnExpand: true,
     layoutGridDefaultOnEdit: false,
     headerChrome: 'minimal',
@@ -115,8 +118,6 @@ const PROFILES: Record<WorkspaceMode, WorkspaceOrchestrationProfile> = {
     autoExpandProseBlock: false,
     defaultProseDisplayScale: 'compact',
     preferFocusOverlay: false,
-    codexRailDefaultOpen: false,
-    codexRailDensity: 'full',
     dimInactiveBlocksOnExpand: true,
     layoutGridDefaultOnEdit: false,
     headerChrome: 'standard',
@@ -134,8 +135,6 @@ const PROFILES: Record<WorkspaceMode, WorkspaceOrchestrationProfile> = {
     autoExpandProseBlock: false,
     defaultProseDisplayScale: 'compact',
     preferFocusOverlay: false,
-    codexRailDefaultOpen: false,
-    codexRailDensity: 'full',
     dimInactiveBlocksOnExpand: false,
     layoutGridDefaultOnEdit: true,
     headerChrome: 'operational',
@@ -147,14 +146,12 @@ const PROFILES: Record<WorkspaceMode, WorkspaceOrchestrationProfile> = {
   immersive: {
     id: 'immersive',
     label: 'Immersive',
-    tagline: 'Worldbuilding immersion — open Codex when you need context',
+    tagline: 'Worldbuilding immersion',
     readableMeasureCh: 76,
     forceEditorialStack: false,
     autoExpandProseBlock: false,
     defaultProseDisplayScale: 'compact',
     preferFocusOverlay: true,
-    codexRailDefaultOpen: false,
-    codexRailDensity: 'full',
     dimInactiveBlocksOnExpand: false,
     layoutGridDefaultOnEdit: false,
     headerChrome: 'minimal',
