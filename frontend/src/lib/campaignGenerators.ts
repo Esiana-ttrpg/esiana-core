@@ -1,5 +1,3 @@
-import { apiFetch } from '@/lib/api';
-
 export interface GeneratorPresetCard {
   id: string;
   label: string;
@@ -12,15 +10,6 @@ export interface CampaignGeneratorCard {
   pluginId: string;
   pluginName: string;
   preset: GeneratorPresetCard;
-}
-
-export interface CampaignGeneratorsResponse {
-  generators: CampaignGeneratorCard[];
-}
-
-export async function fetchCampaignGenerators(): Promise<CampaignGeneratorCard[]> {
-  const data = await apiFetch<CampaignGeneratorsResponse>('/plugins/campaign-generators');
-  return data.generators ?? [];
 }
 
 export type CampaignSourceKind =

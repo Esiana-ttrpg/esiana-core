@@ -106,11 +106,9 @@ export interface DashboardConfig {
 export const DASHBOARD_WIDGET_IDS: DashboardWidgetId[] = [
   'sessionSchedule',
   'worldChronometer',
-  'campaignBulletin',
   'recentLore',
   'questLedger',
   'livingThreads',
-  'party',
   'campaignPulse',
   'lastSessionNotes',
   'quickUtilityNav',
@@ -132,7 +130,8 @@ export const DASHBOARD_WIDGET_IDS: DashboardWidgetId[] = [
 const LEGACY_WIDGET_ID_MAP: Record<string, DashboardWidgetId> = {
   sessionClock: 'sessionSchedule',
   worldClock: 'worldChronometer',
-  announcements: 'campaignBulletin',
+  announcements: 'recentLore',
+  campaignBulletin: 'recentLore',
   activityLoop: 'recentLore',
   party: 'partyRoster',
 };
@@ -169,27 +168,23 @@ const LEGACY_OPERATIONAL_DEFAULT_IDS: DashboardWidgetId[] = [
 function applyRetiredWidgetPolicy(
   widgets: DashboardWidgetPlacement[],
 ): DashboardWidgetPlacement[] {
-  return widgets.map((widget) => {
-    if (widget.id === 'campaignBulletin') {
-      return { ...widget, enabled: false };
-    }
-    if (widget.id === 'party') {
-      return { ...widget, enabled: false };
-    }
-    if (widget.id === 'quickUtilityNav') {
-      return { ...widget, config: sanitizeQuickUtilityNavConfig(widget.config) };
-    }
-    if (widget.id === 'recentEntities') {
-      return { ...widget, config: sanitizeRecentEntitiesConfig(widget.config) };
-    }
-    if (widget.id === 'worldEvents') {
-      return { ...widget, config: sanitizeWorldEventsConfig(widget.config) };
-    }
-    if (widget.id === 'factionsAtWar') {
-      return { ...widget, config: sanitizeFactionConflictConfig(widget.config) };
-    }
-    return widget;
-  });
+  return widgets
+    .filter((widget) => !RETIRED_DASHBOARD_WIDGET_BANK_IDS.has(widget.id))
+    .map((widget) => {
+      if (widget.id === 'quickUtilityNav') {
+        return { ...widget, config: sanitizeQuickUtilityNavConfig(widget.config) };
+      }
+      if (widget.id === 'recentEntities') {
+        return { ...widget, config: sanitizeRecentEntitiesConfig(widget.config) };
+      }
+      if (widget.id === 'worldEvents') {
+        return { ...widget, config: sanitizeWorldEventsConfig(widget.config) };
+      }
+      if (widget.id === 'factionsAtWar') {
+        return { ...widget, config: sanitizeFactionConflictConfig(widget.config) };
+      }
+      return widget;
+    });
 }
 
 function needsNarrativeBriefingActivation(
@@ -268,16 +263,6 @@ function defaultPlacement(
     ...(options?.scope ? { scope: options.scope } : {}),
     ...(options?.config ? { config: options.config } : {}),
   };
-}
-
-function retiredWidgetFallback(id: DashboardWidgetId): DashboardWidgetPlacement | undefined {
-  if (id === 'campaignBulletin') {
-    return defaultPlacement('campaignBulletin', 0, 0, 4, 4, { enabled: false });
-  }
-  if (id === 'party') {
-    return defaultPlacement('party', 0, 0, 3, 4, { enabled: false });
-  }
-  return undefined;
 }
 
 export function getDefaultDashboardConfig(): DashboardConfig {
@@ -399,9 +384,7 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
   const widgets: DashboardWidgetPlacement[] = Array.from(byCanonicalId.values());
   for (const id of DASHBOARD_WIDGET_IDS) {
     if (!byCanonicalId.has(id)) {
-      const fallback =
-        getDefaultDashboardConfig().widgets.find((w) => w.id === id) ??
-        retiredWidgetFallback(id);
+      const fallback = getDefaultDashboardConfig().widgets.find((w) => w.id === id);
       if (fallback) {
         widgets.push({
           ...fallback,
