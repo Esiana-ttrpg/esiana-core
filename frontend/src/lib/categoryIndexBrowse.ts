@@ -495,16 +495,6 @@ export function formatCategoryIndexResultCount(
   return `Showing ${matching} of ${total}`;
 }
 
-/** @deprecated Use formatWorkspaceHubCountHint — subtitle reserved for rich meta only */
-export function formatWorkspaceHubSubtitle(
-  count: number,
-  categoryTitle: string,
-): string | undefined {
-  if (count <= 0) return undefined;
-  const { singular, plural } = resolveCategoryCountNouns(categoryTitle);
-  return formatWorkspaceCountLabel(count, singular, plural);
-}
-
 export function isBrowseActive(
   searchQuery: string,
   hasActiveRefine: boolean,

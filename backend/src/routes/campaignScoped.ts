@@ -29,8 +29,6 @@ import {
   ensureSessionAuthorNote,
   getSessionTimelinePoint,
   getPersonalPins,
-  getPinnedPageShortcuts,
-  getCampaignQuickAccessShortcuts,
   getCategoryIndex,
   getQuestHubBySystemKey,
   getQuestHubIndex,
@@ -330,7 +328,6 @@ import { campaignInviteEmailLimiter, campaignUrlImportLimiter } from '../middlew
 import {
   campaignScopeMiddleware,
   requireCampaignMember,
-  requireCampaignDm,
   requireCampaignMembership,
   requireCampaignOwner,
   requireChronologyManager,
@@ -429,10 +426,10 @@ campaignScopedRouter.delete(
 );
 campaignScopedRouter.delete('/members/me', leaveCampaign);
 campaignScopedRouter.get('/invite', requireGamemasterSettings, getCampaignInvite);
-campaignScopedRouter.post('/invite/rotate', requireCampaignDm, rotateCampaignInvite);
+campaignScopedRouter.post('/invite/rotate', requireGamemasterSettings, rotateCampaignInvite);
 campaignScopedRouter.post(
   '/invite/send',
-  requireCampaignDm,
+  requireGamemasterSettings,
   campaignInviteEmailLimiter,
   sendCampaignInviteEmail,
 );
@@ -480,7 +477,7 @@ campaignScopedRouter.get(
 );
 campaignScopedRouter.get(
   '/locations/:pageId/visit-suggestions',
-  requireCampaignDm,
+  requireGamemasterSettings,
   getLocationVisitSuggestions,
 );
 campaignScopedRouter.post(
@@ -490,12 +487,12 @@ campaignScopedRouter.post(
 );
 campaignScopedRouter.post(
   '/locations/:pageId/visit-suggestions/:suggestionId/dismiss',
-  requireCampaignDm,
+  requireGamemasterSettings,
   postDismissVisitSuggestion,
 );
 campaignScopedRouter.post(
   '/narrative-snapshots',
-  requireCampaignDm,
+  requireGamemasterSettings,
   postMilestoneSnapshot,
 );
 campaignScopedRouter.get('/narrative-snapshots', listMilestoneSnapshots);
@@ -592,8 +589,6 @@ campaignScopedRouter.post(
 campaignScopedRouter.get('/wiki/tree', getWikiTree);
 
 campaignScopedRouter.get('/wiki/pins', getPersonalPins);
-campaignScopedRouter.get('/wiki/bookmarks', getPinnedPageShortcuts);
-campaignScopedRouter.get('/wiki/quick-access', getCampaignQuickAccessShortcuts);
 
 campaignScopedRouter.get('/wiki/index/:pageId', getCategoryIndex);
 campaignScopedRouter.get('/wiki/character-hub/:pageId', getCharacterHubIndex);

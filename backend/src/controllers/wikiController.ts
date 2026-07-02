@@ -5644,22 +5644,6 @@ export async function getPersonalPins(
   });
 }
 
-/** @deprecated Use getPersonalPins */
-export const getPinnedPageShortcuts = getPersonalPins;
-
-export async function getCampaignQuickAccessShortcuts(
-  req: CampaignScopedRequest,
-  res: Response,
-): Promise<void> {
-  if (!req.campaign!.isMember) {
-    res.json({ shortcuts: [] });
-    return;
-  }
-
-  // CampaignQuickAccess model — see todo.md
-  res.json({ shortcuts: [] });
-}
-
 export async function togglePinnedPageShortcut(
   req: CampaignScopedRequest & AuthenticatedRequest,
   res: Response,

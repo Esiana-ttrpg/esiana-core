@@ -62,11 +62,6 @@ export const GLOBAL_PALETTE_IDS = [
   ...HOLIDAY_PALETTE_IDS,
 ] as const;
 
-/** @deprecated Use {@link DARK_FOUNDATION_PALETTE_IDS} */
-export const DARK_PALETTE_IDS = DARK_FOUNDATION_PALETTE_IDS;
-/** @deprecated Use {@link LIGHT_FOUNDATION_PALETTE_IDS} */
-export const LIGHT_PALETTE_IDS = LIGHT_FOUNDATION_PALETTE_IDS;
-
 export type PaletteColorMode = 'light' | 'dark';
 
 export const DEFAULT_DARK_PALETTE: DarkFoundationPaletteId = 'ocean';
@@ -274,8 +269,6 @@ export const GLOBAL_PALETTES: Record<GlobalPaletteId, Palette> = {
   ...HOLIDAY_PALETTES,
 };
 
-/** @deprecated Use {@link GLOBAL_PALETTES} */
-export const MODERN_PALETTES = GLOBAL_PALETTES;
 export const DarkPalettes = Object.fromEntries(
   DARK_FOUNDATION_PALETTE_IDS.map((id) => [id, GLOBAL_PALETTES[id]]),
 ) as Record<DarkFoundationPaletteId, Palette>;

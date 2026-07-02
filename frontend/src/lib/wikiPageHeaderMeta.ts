@@ -197,12 +197,3 @@ export function resolvePageIdentitySubtitle(input: {
   if (parts.length === 0) return null;
   return parts.join(' · ');
 }
-
-/** @deprecated Use resolvePageIdentitySubtitle */
-export function getNarrativePageKindLabel(
-  profileKey: SurfaceProfileKey,
-  templateType: string,
-): string | null {
-  if (templateType === 'SESSION_NOTE') return 'Session note';
-  return NARRATIVE_KIND_BY_PROFILE[profileKey] ?? null;
-}

@@ -133,14 +133,6 @@ export const SIDEBAR_TOOLS_FIXED_IDS: SidebarSectionId[] = [
   'settings',
 ];
 
-/** @deprecated Use SIDEBAR_UTILITY_STUB_IDS */
-export const SIDEBAR_UTILITY_FIXED_IDS: SidebarSectionId[] = [
-  ...SIDEBAR_UTILITY_STUB_IDS,
-];
-
-/** @deprecated Merged into SIDEBAR_TOOLS_FIXED_IDS */
-export const SIDEBAR_TERMINAL_FIXED_IDS: SidebarSectionId[] = [];
-
 /** Fixed utility sections that support a visibility toggle in campaign settings */
 export const SIDEBAR_UTILITY_VISIBILITY_IDS: SidebarSectionId[] = [
   'quickAccess',
@@ -208,9 +200,9 @@ export const SIDEBAR_SECTION_META: Record<
   progression: {
     label: 'Progression',
     route: 'progression',
-    statusLabel: 'DM',
+    statusLabel: 'Game Master',
     settingsDescription:
-      'GM narrative forecasting — write scenes, prep sessions, and read campaign insights.',
+      'Narrative forecasting for Game Masters and Writers — write scenes, prep sessions, and read campaign insights.',
   },
   narrativeThreads: {
     label: 'Threads',
@@ -301,12 +293,6 @@ export function getDefaultSidebarConfig(): SidebarConfig {
       createDefaultSidebarOrderItem(id),
     ),
   };
-}
-
-/** @deprecated Use getDefaultSidebarConfig */
-export function getBlankInitializerSidebarOrder(): SidebarOrderItem[] {
-  const config = getDefaultSidebarConfig();
-  return [...config.worldLoreOrder, ...config.playOrder, ...config.toolsOrder];
 }
 
 function isSidebarOrderItem(value: unknown): value is SidebarOrderItem {
@@ -700,11 +686,6 @@ export function isPlaySection(id: string): boolean {
 
 export function isToolsBucketSection(id: string): boolean {
   return SIDEBAR_TOOLS_BUCKET_IDS.includes(id as SidebarSectionId);
-}
-
-/** @deprecated Use isPlaySection / isToolsBucketSection */
-export function isGameManagementSection(id: string): boolean {
-  return isPlaySection(id) || isToolsBucketSection(id);
 }
 
 export function moveSidebarItem(

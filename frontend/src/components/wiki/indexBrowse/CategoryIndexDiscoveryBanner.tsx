@@ -48,32 +48,6 @@ export function DiscoveryStateBadge({
   );
 }
 
-/** @deprecated Use DiscoveryStateBadge for party browse; GM margin notes may still use presence labels. */
-export function PresenceStateBadge({
-  presenceState,
-}: {
-  presenceState?: string | null;
-}) {
-  if (!presenceState || presenceState === 'REVEALED') return null;
-  const label =
-    presenceState === 'HIDDEN'
-      ? 'Hidden'
-      : presenceState === 'DRAFT'
-        ? 'Draft'
-        : presenceState;
-  const tone =
-    presenceState === 'HIDDEN'
-      ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200'
-      : 'border-border bg-muted/30 text-muted';
-  return (
-    <span
-      className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${tone}`}
-    >
-      {label}
-    </span>
-  );
-}
-
 interface CategoryIndexDiscoveryBannerProps {
   undiscoveredCount: number;
   discoveredCount: number;

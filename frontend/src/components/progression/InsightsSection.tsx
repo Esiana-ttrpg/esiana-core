@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { fetchAdventureHub } from '@/lib/adventure';
 import { fetchCreativeDrift } from '@/lib/creativeDrift';
 import { campaignAdventureHubPath } from '@/lib/campaignPaths';
-import { storyViewHref } from '@/lib/adventureLayout';
+import { adventureViewHref } from '@/lib/adventureLayout';
 import { CampaignPulse, type CampaignPulseData } from '@/components/adventure/CampaignPulse';
 import { ContinuitySection } from '@/components/adventure/ContinuitySection';
 import { ProgressionTrajectoriesSection } from '@/components/progression/ProgressionTrajectoriesSection';
@@ -62,7 +62,7 @@ export function InsightsSection({ campaignHandle, questsCategoryId }: InsightsSe
   }, [campaignHandle, questsCategoryId]);
 
   const unresolvedHref = useMemo(
-    () => storyViewHref(campaignAdventureHubPath(campaignHandle), 'unresolved'),
+    () => adventureViewHref(campaignAdventureHubPath(campaignHandle), 'unresolved'),
     [campaignHandle],
   );
 

@@ -483,9 +483,6 @@ export function EntityBrowserView({
   );
 }
 
-/** @deprecated use EntityBrowserView */
-export const WikiIndexView = EntityBrowserView;
-
 interface CardViewProps {
   child: CategoryIndexChild;
   categoryPageId: string;
