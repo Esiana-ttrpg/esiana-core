@@ -2,15 +2,6 @@ export {
   StoryNarrativeFilterPanel,
 } from '@/components/adventure/StoryNarrativeFilterPanel';
 
-export function matchesStoryVisibilityFilter(
-  chipKind: string | null,
-  filter: import('@/lib/workspacePersistence').StoryVisibilityFilter,
-): boolean {
-  if (filter === 'all') return true;
-  if (!chipKind) return true;
-  return chipKind === filter;
-}
-
 export function matchesStoryRecentFilter(
   updatedAt: string | undefined,
   recent: boolean | undefined,
@@ -28,9 +19,4 @@ export function matchesStorySearchQuery(
   const q = (query ?? '').trim().toLowerCase();
   if (!q) return true;
   return fields.some((field) => (field ?? '').toLowerCase().includes(q));
-}
-
-/** @deprecated Use WorkspaceHeader + Refine popover in StorySection */
-export function StoryNarrativeToolbar() {
-  return null;
 }

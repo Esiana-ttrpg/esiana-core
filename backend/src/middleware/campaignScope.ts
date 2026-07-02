@@ -259,9 +259,6 @@ export function requireGamemasterSettings(
   next();
 }
 
-/** @deprecated Use requireGamemasterSettings */
-export const requireCampaignDm = requireGamemasterSettings;
-
 export function requireCampaignOwner(
   req: CampaignScopedRequest,
   res: Response,

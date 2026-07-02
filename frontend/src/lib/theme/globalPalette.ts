@@ -88,6 +88,3 @@ export function resolvePaletteForPreset(
   if (isPaletteCompatibleWithMode(paletteId, mode)) return paletteId;
   return getDefaultPaletteForMode(mode);
 }
-
-/** @deprecated Use {@link Palette} from appearancePresets */
-export type PaletteOverrides = import('./appearancePresets').Palette;

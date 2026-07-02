@@ -202,15 +202,6 @@ export function adventureViewHref(
   return `${basePath}?${params.toString()}`;
 }
 
-/** @deprecated Use adventureViewHref */
-export function storyViewHref(
-  basePath: string,
-  view: StoryViewId,
-  threadsLens?: ThreadsLensId,
-): string {
-  return adventureViewHref(basePath, view, threadsLens);
-}
-
 export function needsLegacyAdventureRedirect(search: string): AdventureLegacyRedirect | null {
   const params = new URLSearchParams(search);
   const section = params.get('section');

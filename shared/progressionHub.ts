@@ -74,11 +74,3 @@ export function resolveLegacyProgressionRedirect(
   }
   return null;
 }
-
-/** @deprecated Use resolveLegacyProgressionRedirect */
-export function resolveLegacyProgressionSection(
-  section: string | null,
-): ProgressionSectionId | null {
-  const redirect = resolveLegacyProgressionRedirect(section);
-  return redirect?.section ?? null;
-}

@@ -52,7 +52,7 @@
 
   "profile.notifications.tplJoinRequestAcceptedTitle": "Welcome!",
   "profile.notifications.tplJoinRequestAcceptedTitleNamed": "Welcome to {{campaignName}}!",
-  "profile.notifications.tplJoinRequestAcceptedBody": "Your join request was accepted. Jump into the campaign dashboard.",
+  "profile.notifications.tplJoinRequestAcceptedBody": "Your join request was accepted. Jump into Campaign Home.",
 
   "profile.notifications.tplJoinRequestDeniedTitle": "Application declined",
   "profile.notifications.tplJoinRequestDeniedTitleNamed": "Application declined: {{campaignName}}",

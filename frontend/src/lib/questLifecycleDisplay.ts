@@ -21,6 +21,3 @@ export function shouldShowQuestHiddenLifecycleChip(opts: {
   if (!opts.isDMUser || opts.playerPreview) return false;
   return isQuestLockedForParty(opts.lifecycleState);
 }
-
-/** @deprecated Use shouldShowQuestHiddenLifecycleChip */
-export const shouldShowQuestDmPrivateChip = shouldShowQuestHiddenLifecycleChip;

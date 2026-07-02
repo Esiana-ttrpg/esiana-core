@@ -31,8 +31,3 @@ export function registerEntityPageShell(
 ): void {
   DEDICATED_SHELLS[key] = shell;
 }
-
-/** @deprecated Use hasDedicatedPageShell */
-export function hasEntityPageShell(surfaceKey: SurfaceProfileKey): boolean {
-  return hasDedicatedPageShell(surfaceKey);
-}

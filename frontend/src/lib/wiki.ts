@@ -1142,22 +1142,6 @@ export async function fetchPersonalPins(
   }
 }
 
-/** @deprecated Use fetchPersonalPins */
-export const fetchPinnedShortcuts = fetchPersonalPins;
-
-export async function fetchQuickAccessShortcuts(
-  campaignHandle: string,
-): Promise<PageShortcut[]> {
-  try {
-    const data = await apiFetch<{ shortcuts: PageShortcut[] }>(
-      `/campaigns/${campaignHandle}/wiki/quick-access`,
-    );
-    return data.shortcuts ?? [];
-  } catch {
-    return [];
-  }
-}
-
 export async function togglePinnedShortcut(
   campaignHandle: string,
   pageId: string,

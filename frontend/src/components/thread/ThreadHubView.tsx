@@ -35,7 +35,7 @@ import {
   THREAD_KIND_GROUP_LABELS,
 } from '@/lib/threadMetadata';
 import { THREAD_HUB_ZONE_CLASS } from '@/lib/threadVisualTokens';
-import { storyViewHref, type ThreadsLensId } from '@/lib/adventureLayout';
+import { adventureViewHref, type ThreadsLensId } from '@/lib/adventureLayout';
 import type { StoryFilterState } from '@/lib/workspacePersistence';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { ThreadsLensViewToggle } from '@/components/thread/ThreadsLensViewToggle';
@@ -214,7 +214,7 @@ export function ThreadHubView({
             <div className="flex items-center gap-2">
               {resolvedAdventureBase ? (
                 <Link
-                  to={storyViewHref(resolvedAdventureBase, 'threads')}
+                  to={adventureViewHref(resolvedAdventureBase, 'threads')}
                   className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
                 >
                   View in Story
@@ -222,7 +222,7 @@ export function ThreadHubView({
               ) : null}
               {resolvedAdventureBase ? (
                 <Link
-                  to={storyViewHref(resolvedAdventureBase, 'investigation')}
+                  to={adventureViewHref(resolvedAdventureBase, 'investigation')}
                   className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
                 >
                   <Network className="size-3.5" />

@@ -178,9 +178,6 @@ export function getWikiWidgetOptions(
   });
 }
 
-/** @deprecated Use getWikiWidgetOptions */
-export const WIKI_WIDGET_OPTIONS = GENERIC_WIDGET_OPTIONS;
-
 export function createBlockContentForType(
   type: WikiPageBlockType,
 ): Record<string, unknown> {
