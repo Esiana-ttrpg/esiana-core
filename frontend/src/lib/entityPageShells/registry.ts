@@ -4,6 +4,7 @@ import { ancestryPageShell } from './ancestryShell';
 import { bestiaryPageShell } from './bestiaryShell';
 import { characterPageShell } from './characterShell';
 import { createGenericWikiPageShell } from './genericWikiShell';
+import { familyPageShell } from './familyShell';
 import { organizationPageShell } from './organizationShell';
 import type { EntityPageShell } from './types';
 
@@ -12,6 +13,7 @@ const DEDICATED_SHELLS: Partial<Record<SurfaceProfileKey, EntityPageShell>> = {
   bestiary: bestiaryPageShell,
   ancestry: ancestryPageShell,
   organization: organizationPageShell,
+  family: familyPageShell,
 };
 
 export function resolveEntityPageShell(

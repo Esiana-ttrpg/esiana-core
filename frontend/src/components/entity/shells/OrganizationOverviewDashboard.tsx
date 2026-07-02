@@ -13,8 +13,10 @@ import { useOrganizationReputationStanding } from '@/hooks/useOrganizationReputa
 import { useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
 import { updateOrganizationMetadata } from '@/lib/wiki';
 import { campaignRelationsPath } from '@/lib/campaignPaths';
+import { buildInfoboxProjection } from '@/lib/buildInfoboxProjection';
+import { ProfileDetailsCard } from './ProfileDetailsCard';
 import type { EntitySubviewId } from '@/lib/entityPageShells/types';
-import type { WikiTreeNode } from '@/types/wiki';
+import type { WikiPageBlock, WikiTreeNode } from '@/types/wiki';
 import { useState } from 'react';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 
@@ -72,23 +74,29 @@ function toneClass(tone: string | undefined): string {
 interface OrganizationOverviewDashboardProps {
   campaignHandle: string;
   pageId: string;
+  templateType: string;
+  blocks: WikiPageBlock[];
   flatPages: WikiTreeNode[];
   pageMetadata: unknown;
   isDMUser?: boolean;
   isEditingPage: boolean;
   onJumpToTab: (subviewId: EntitySubviewId, focus?: string) => void;
   onMetadataSaved: (metadata: Record<string, unknown>) => void;
+  onBlocksChange: (updater: (blocks: WikiPageBlock[]) => WikiPageBlock[]) => void;
 }
 
 export function OrganizationOverviewDashboard({
   campaignHandle,
   pageId,
+  templateType,
+  blocks,
   flatPages,
   pageMetadata,
   isDMUser: isDMUserProp,
   isEditingPage,
   onJumpToTab,
   onMetadataSaved,
+  onBlocksChange,
 }: OrganizationOverviewDashboardProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const campaignNow = useCampaignChronologyNow(campaignHandle);
@@ -111,6 +119,21 @@ export function OrganizationOverviewDashboard({
     ? orgDiplomaticTensions(pageSnapshot, snapshots, campaignNow, isDMUser)
     : [];
 
+  const infoboxBlock = blocks.find((b) => b.type === 'wiki-infobox');
+  const infoboxFields =
+    (infoboxBlock?.content as { fields?: { key: string; value: string }[] })?.fields ??
+    buildInfoboxProjection(templateType, pageMetadata, flatPages, 'organization');
+
+  function updateInfoboxFields(fields: { key: string; value: string }[]) {
+    onBlocksChange((prev) =>
+      prev.map((b) =>
+        b.type === 'wiki-infobox'
+          ? { ...b, content: { ...(b.content as object), fields } }
+          : b,
+      ),
+    );
+  }
+
   async function persistPressures(next: string[]) {
     setSaving(true);
     try {
@@ -125,6 +148,13 @@ export function OrganizationOverviewDashboard({
 
   return (
     <div className="space-y-4">
+      <ProfileDetailsCard
+        fields={infoboxFields}
+        isEditingPage={isEditingPage}
+        isDMUser={isDMUser}
+        onFieldsChange={updateInfoboxFields}
+      />
+
       <DashboardCard
         title="Current pressures"
         editMode={isEditingPage && isDMUser ? 'inline' : 'jump-to-tab'}

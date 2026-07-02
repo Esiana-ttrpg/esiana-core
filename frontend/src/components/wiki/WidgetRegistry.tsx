@@ -72,6 +72,7 @@ export interface WidgetRegistryContext {
   onHeightChange?: (blockId: string, heightPx: number) => void;
   blockDisplayState?: BlockDisplayState;
   blockActionHandlers?: BlockActionHandlers;
+  prosePrimarySubview?: boolean;
 }
 
 interface WidgetRegistryProps extends WidgetRegistryContext {
@@ -90,7 +91,10 @@ function WidgetRegistryInner({
 }: WidgetRegistryProps) {
   const interaction = { onInteractionStart, onInteractionEnd };
   const title = getBlockDisplayTitle(block);
-  const useChrome = isSemanticBlockType(block.type);
+  const isProseBlock = block.type === 'text-tiptap' || block.type === 'text-biography';
+  const useChrome =
+    isSemanticBlockType(block.type) &&
+    !(ctx.prosePrimarySubview && isProseBlock);
 
   const wrap = (body: React.ReactNode) => {
     if (!useChrome) return body;
@@ -122,6 +126,7 @@ function WidgetRegistryInner({
           content={block.content}
           onChange={onChange}
           isEditingLayout={ctx.isEditingPage}
+          prosePrimary={ctx.prosePrimarySubview}
           {...interaction}
         />,
       );
@@ -131,6 +136,7 @@ function WidgetRegistryInner({
           content={block.content}
           onChange={onChange}
           isEditingPage={ctx.isEditingPage}
+          prosePrimary={ctx.prosePrimarySubview}
           {...interaction}
         />,
       );

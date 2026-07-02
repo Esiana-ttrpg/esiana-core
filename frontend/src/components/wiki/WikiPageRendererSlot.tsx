@@ -58,6 +58,7 @@ export interface WikiPageRendererSlotProps {
   onPageTagsChange: (tags: WikiTagInput[]) => void;
   onJumpToContinuity?: (blockId: string) => void;
   entityPageShell: EntityPageShell;
+  prosePrimarySubview?: boolean;
 }
 
 export function WikiPageRendererSlot({
@@ -109,6 +110,7 @@ export function WikiPageRendererSlot({
       onPageTagsChange={props.onPageTagsChange}
       onJumpToContinuity={onJumpToContinuity}
       canDeleteBlock={(block) => canDeleteBlock(entityPageShell, block)}
+      prosePrimarySubview={props.prosePrimarySubview}
     />
   );
 }

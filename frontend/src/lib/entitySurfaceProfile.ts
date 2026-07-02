@@ -581,7 +581,6 @@ const SURFACE_PROFILES: Record<SurfaceProfileKey, EntitySurfaceProfile> = {
     inspectorProfile: 'FAMILY',
     typedInfobox: true,
     identityStrip: 'family',
-    structureTab: 'family',
     appearanceMode: 'section',
     appearanceCapabilities: APPEARANCE_CAPABILITIES_FAMILY,
   },
@@ -823,7 +822,6 @@ export function resolveEntitySurfaceProfile(input: {
 export const ENTITY_WORKSPACE_SURFACE_KEYS = new Set<SurfaceProfileKey>([
   'character',
   'organization',
-  'family',
   'bestiary',
   'ancestry',
   'object',

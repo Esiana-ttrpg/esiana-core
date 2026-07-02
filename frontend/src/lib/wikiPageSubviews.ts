@@ -50,7 +50,6 @@ const SUBVIEW_BLOCK_TYPES: Record<WikiPageSubview, WikiPageBlockType[] | 'all'> 
     'text-biography',
     'text-tiptap',
     'image-display',
-    'wiki-infobox',
     'stat-block',
     'entity-document',
   ],
@@ -58,7 +57,6 @@ const SUBVIEW_BLOCK_TYPES: Record<WikiPageSubview, WikiPageBlockType[] | 'all'> 
     'text-tiptap',
     'text-biography',
     'image-display',
-    'wiki-infobox',
   ],
   appearance: ['entity-appearance', 'image-display'],
   relationships: [
