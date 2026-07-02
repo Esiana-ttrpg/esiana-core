@@ -60,8 +60,3 @@ export function resolveDriverForPointer(pointer: string): {
 
   return { driver, key: parsed.key };
 }
-
-/** @deprecated Use parseStoragePointer — temporary basename compatibility wrapper. */
-export function storageKeyFromPointer(pointer: string): string | null {
-  return parseStoragePointer(pointer)?.key ?? null;
-}

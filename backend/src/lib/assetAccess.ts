@@ -108,21 +108,6 @@ export function resolveAssetVariantPointer(
   return chosenUrl;
 }
 
-/** @deprecated Use resolveAssetVariantPointer + parseStoragePointer for pointer-owned routing. */
-export function resolveAssetFilename(
-  asset: Pick<AssetStreamRecord, 'url' | 'displayUrl' | 'thumbnailUrl' | 'type'>,
-  variant: 'full' | 'display' | 'thumb',
-): string | null {
-  const pointer = resolveAssetVariantPointer(asset, variant);
-  if (!pointer) return null;
-  const filename = pointer.split('/').pop() ?? '';
-  if (pointer.startsWith('s3://')) {
-    return pointer.slice('s3://'.length) || null;
-  }
-  if (!filename || filename === '.' || filename === '/') return null;
-  return filename;
-}
-
 const assetSelect = {
   id: true,
   url: true,

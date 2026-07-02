@@ -66,22 +66,6 @@ export async function quarantinePluginHooks(
   }
 }
 
-/** @deprecated Use handlePluginHookFailure / quarantinePluginHooks */
-export async function disablePluginForViolation(
-  pluginId: string,
-  reason: string,
-): Promise<void> {
-  await quarantinePluginHooks(pluginId, reason);
-  await prisma.installedPlugin.updateMany({
-    where: { name: pluginId },
-    data: { isEnabled: false },
-  });
-  await prisma.systemPlugin.updateMany({
-    where: { id: pluginId },
-    data: { isEnabled: false },
-  });
-}
-
 export async function clearPluginRuntimeStatus(pluginId: string): Promise<void> {
   await prisma.installedPlugin.updateMany({
     where: { name: pluginId },
