@@ -309,11 +309,6 @@ export async function installBundledPlugin(pluginId: string): Promise<PluginInst
   };
 }
 
-/** @deprecated Use installBundledPlugin */
-export async function installBundledGlobalPlugin(pluginId: string): Promise<PluginInstallResult> {
-  return installBundledPlugin(pluginId);
-}
-
 export async function installPluginFromRegistryEntry(
   entry: PluginRegistryEntry,
 ): Promise<PluginInstallResult> {

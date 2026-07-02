@@ -120,13 +120,6 @@ export async function registerGlobalPluginFromManifest(
   });
 }
 
-/** @deprecated Use registerGlobalPluginFromManifest */
-export async function registerPluginFromManifest(
-  manifest: PluginManifest,
-): Promise<SystemPlugin> {
-  return registerGlobalPluginFromManifest(manifest);
-}
-
 export async function updateSystemPluginConfig(
   pluginId: string,
   config: Record<string, unknown>,
@@ -160,12 +153,4 @@ export async function updateSystemPluginConfig(
 
 export function getCoreVersion(): string {
   return env.coreVersion;
-}
-
-/** @deprecated Global plugins sync from disk via pluginManager.syncGlobalSystemPluginsFromDisk */
-export async function bootstrapSystemPlugins(): Promise<void> {}
-
-/** @deprecated Use pluginManager.syncGlobalSystemPluginsFromDisk */
-export async function syncGlobalPluginsFromDisk(): Promise<number> {
-  return 0;
 }

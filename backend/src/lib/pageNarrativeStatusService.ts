@@ -203,9 +203,6 @@ export function assertPageNarrativeStatusCatalog(): void {
   }
 }
 
-/** @deprecated Use assertPageNarrativeStatusCatalog */
-export const assertSharedMatchesPrismaEnum = assertPageNarrativeStatusCatalog;
-
 export function parsePageNarrativeStatusBody(
   body: Record<string, unknown>,
 ): { status: PageNarrativeStatusValue; reason: string | null } | null {

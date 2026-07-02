@@ -110,30 +110,6 @@ export async function buildMapVariantBuffers(
   };
 }
 
-/** @deprecated Use buildMapVariantBuffers + assetIngest.ingestMapImage */
-export async function processMapUpload(
-  sourcePath: string,
-  baseFilename: string,
-): Promise<ProcessedMapImage> {
-  const fs = await import('node:fs');
-  const inputBuffer = await fs.promises.readFile(sourcePath);
-  const variants = await buildMapVariantBuffers(inputBuffer, baseFilename);
-
-  return {
-    url: variants.preserveFullRes
-      ? `/uploads/${variants.originalKey}`
-      : `/uploads/${variants.displayKey}`,
-    displayUrl: variants.preserveFullRes
-      ? `/uploads/${variants.displayKey}`
-      : null,
-    thumbnailUrl: `/uploads/${variants.thumbKey}`,
-    width: variants.width,
-    height: variants.height,
-    originalWidth: variants.originalWidth,
-    originalHeight: variants.originalHeight,
-  };
-}
-
 export function resolveAssetVariantUrl(
   asset: {
     url: string;

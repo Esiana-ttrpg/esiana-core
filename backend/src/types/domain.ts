@@ -23,15 +23,6 @@ export const CampaignMemberRoles = {
 export type CampaignMemberRole =
   (typeof CampaignMemberRoles)[keyof typeof CampaignMemberRoles];
 
-/** @deprecated Use CampaignMemberRoles — legacy literals for backups/migration only. */
-export const LegacyCampaignMemberRoles = {
-  DM: 'DM',
-  CO_DM: 'Co-DM',
-  MEMBER: 'Member',
-  PLAYER: 'Player',
-  VIEWER: 'Viewer',
-} as const;
-
 export const JoinRequestStatus = {
   PENDING: 'PENDING',
   ACCEPTED: 'ACCEPTED',

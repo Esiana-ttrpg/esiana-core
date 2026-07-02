@@ -67,18 +67,3 @@ export async function buildFullCampaignBundle(campaignId: string) {
     mapPins,
   });
 }
-
-/** @deprecated Legacy gzip bundle — kept for reference during v2 migration. */
-export async function buildCampaignBackupBundle(campaignId: string) {
-  const bundle = await buildFullCampaignBundle(campaignId);
-  if (!bundle) return null;
-
-  return {
-    exportedAt: bundle.exportedAt,
-    format: 'esiana-campaign-backup-v1',
-    campaign: bundle.campaign,
-    wikiLinks: bundle.wikiLinks,
-    mapPins: bundle.mapPins,
-    mediaFiles: {},
-  };
-}

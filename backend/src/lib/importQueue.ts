@@ -89,13 +89,3 @@ export function enqueueCampaignBootstrap(
     },
   );
 }
-
-/** @deprecated Use enqueueCampaignBootstrap */
-export function enqueueCampaignGeneratorSeed(
-  campaignId: string,
-  userId: string,
-  taskId: string,
-  generatorSpec: WizardGeneratorSpec,
-): void {
-  enqueueCampaignBootstrap(campaignId, userId, taskId, generatorSpec);
-}

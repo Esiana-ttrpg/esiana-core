@@ -13,8 +13,6 @@ import { isElevatedWikiRole } from '../lib/wikiLinkService.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { prisma } from '../lib/prisma.js';
 import { paramString } from '../lib/paramString.js';
-import { parseCharacterMetadata, resolveCharacterStatus } from '../lib/characterMetadata.js';
-import { parseCharacterLineageMetadata } from '../lib/characterLineageMetadata.js';
 
 function canManageWiki(role: CampaignMemberRole | null): boolean {
   return isElevatedWikiRole(role);
@@ -152,12 +150,4 @@ export async function batchWikiPageNarrativeStatus(
   }
 
   res.json({ items });
-}
-
-export function resolveCharacterLifeStatusFromMetadata(
-  metadata: unknown,
-): ReturnType<typeof resolveCharacterStatus> {
-  const identity = parseCharacterMetadata(metadata);
-  const lineage = parseCharacterLineageMetadata(metadata);
-  return resolveCharacterStatus(identity, lineage);
 }
