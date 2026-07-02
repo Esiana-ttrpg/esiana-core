@@ -1,5 +1,4 @@
 import type { CampaignSummary } from './campaign';
-import type { NotificationType } from './notifications';
 
 export interface HubContinueCandidate {
   campaign: CampaignSummary;
@@ -32,14 +31,6 @@ export interface HubLastSessionSignal {
   playedAt: string | null;
   snippet: string | null;
   timelinePointId: string;
-}
-
-export interface HubRecentActivityItem {
-  id: string;
-  title: string;
-  createdAt: string;
-  linkUrl: string | null;
-  type: NotificationType;
 }
 
 export type HubTableFilter = 'all' | 'managing' | 'joined' | 'public';
@@ -157,8 +148,6 @@ export interface UserHubResponse {
   upcomingChips: HubUpcomingChip[];
   recentEdits: HubRecentEditItem[];
   stats: HubStats;
-  /** @deprecated No longer rendered on home */
-  recentActivity?: never;
 }
 
 export type HubLibraryFilter = 'all' | 'active' | 'managing' | 'playing' | 'favorites';

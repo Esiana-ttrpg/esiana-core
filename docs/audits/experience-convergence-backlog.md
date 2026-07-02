@@ -58,7 +58,7 @@ Related: [experience-doctrine.md](../experience-doctrine.md), [deprecated-ui-pat
 
 1. Briefing: Demote `CampaignDashboardHero` to environmental frame; elevate `CampaignContinuityStream` to focal column top (or merge pulse into state card as single anchor).
 2. Customize: Visual distinction as operational mode; never land new users in grid. `DashboardGrid` widgets at `region-depth-1` only.
-3. Default entry remains briefing stack (`CampaignHomeBriefing`).
+3. Default entry: `CampaignDashboardPage` composes `CampaignDashboardHero` + `CampaignContinuityStream` directly (briefing stack removed).
 
 
 ### P0.2 — Entity header convergence (Track A)
@@ -76,7 +76,7 @@ Related: [experience-doctrine.md](../experience-doctrine.md), [deprecated-ui-pat
 **Migration:** Extract from `*HeroSurface` read modes; wire continuity on Overview; document in `entityPageShells/types.ts` and `future-shells.md`.
 
 
-**Components:** `HubAttentionQueue.tsx` ("Needs Attention"), `HubRecentActivity.tsx`, `HubResumeHero.tsx`.
+**Components:** `HubAttentionQueue.tsx` ("Needs Attention"), `HubResumeHero.tsx`.
 **Keep separate:** `WikiPageRuntimeToolbar` = global page ops; `EntityHeader.actions` = entity-scoped ops.
 **Direction:** Single "Continue" or campaign resume line at display weight; demote attention queue to meta tier or remove. Activity belongs on Campaign Home continuity stream only (doctrine IA #17).
 
@@ -166,15 +166,15 @@ Plan: [header-account-nav.md](../plans/header-account-nav.md).
 
 
 
-1. Briefing: Demote `CampaignDashboardHero` to environmental frame; elevate `CampaignHomeBriefing` / `CampaignContinuityStream` above widget grid.
+1. Briefing: Demote `CampaignDashboardHero` to environmental frame; elevate `CampaignContinuityStream` above widget grid.
 
 2. Customize: `DashboardGrid` at `region-depth-1` operational styling; never default entry.
 
-3. Default entry remains briefing stack.
+3. Default entry: `CampaignDashboardPage` composes hero + continuity stream directly.
 
 
 
-**Files:** `CampaignDashboardPage.tsx`, `CampaignHomeBriefing.tsx`, `CampaignDashboardHero.tsx`, `CampaignContinuityStream.tsx`, `DashboardGrid.tsx`.
+**Files:** `CampaignDashboardPage.tsx`, `CampaignDashboardHero.tsx`, `CampaignContinuityStream.tsx`, `DashboardGrid.tsx`.
 
 
 
@@ -206,7 +206,7 @@ Plan: [header-account-nav.md](../plans/header-account-nav.md).
 
 
 
-**Components:** `HubAttentionQueue.tsx`, `HubRecentActivity.tsx`, `HubResumeHero.tsx`.
+**Components:** `HubAttentionQueue.tsx`, `HubResumeHero.tsx`.
 
 
 
