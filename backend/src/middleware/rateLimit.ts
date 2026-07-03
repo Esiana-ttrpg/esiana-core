@@ -126,6 +126,17 @@ export const apiTokenMintLimiter = createLimiter({
   },
 });
 
+/** Workshop draft API: per-user per-campaign (autosave-friendly). */
+export const workshopDraftLimiter = createLimiter({
+  windowMs: 60_000,
+  max: 180,
+  keyGenerator: (req) => {
+    const user = (req as AuthenticatedRequest).user;
+    const campaignHandle = String(req.params.campaignHandle ?? '').trim();
+    return `workshop-draft:${user?.id ?? clientIpKey(req)}:${campaignHandle}`;
+  },
+});
+
 /** Campaign URL image import: per authenticated user. */
 export const campaignUrlImportLimiter = createLimiter({
   windowMs: 60_000,

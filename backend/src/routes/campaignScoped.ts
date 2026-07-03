@@ -327,7 +327,7 @@ import {
 } from '../controllers/narrativePublishController.js';
 import { documentUpload, imageUpload, sidebarIconUpload, tagIconUpload, campaignWizardUpload } from '../lib/multer.js';
 import { enforceSystemUploadLimit, enforceWizardUploadLimits } from '../middleware/uploadLimit.js';
-import { campaignInviteEmailLimiter, campaignUrlImportLimiter } from '../middleware/rateLimit.js';
+import { campaignInviteEmailLimiter, campaignUrlImportLimiter, workshopDraftLimiter } from '../middleware/rateLimit.js';
 import {
   campaignScopeMiddleware,
   requireCampaignMember,
@@ -347,7 +347,6 @@ import {
   requireDowntimeManage,
   requirePageVisibilityEdit,
   requirePageEditAny,
-  requireNonObserverMember,
   requireAdventureStoryboardEdit,
 } from '../middleware/campaignScope.js';
 import {
@@ -736,41 +735,49 @@ campaignScopedRouter.post(
 campaignScopedRouter.get(
   '/workshop/drafts',
   requireNonObserverMember,
+  workshopDraftLimiter,
   listWorkshopDraftsHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts',
   requireNonObserverMember,
+  workshopDraftLimiter,
   createWorkshopDraftHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts/bootstrap',
   requireNonObserverMember,
+  workshopDraftLimiter,
   bootstrapAnchoredDraftHandler,
 );
 campaignScopedRouter.get(
   '/workshop/drafts/:draftId',
   requireNonObserverMember,
+  workshopDraftLimiter,
   getWorkshopDraftHandler,
 );
 campaignScopedRouter.patch(
   '/workshop/drafts/:draftId',
   requireNonObserverMember,
+  workshopDraftLimiter,
   patchWorkshopDraftHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts/:draftId/apply',
   requireNonObserverMember,
+  workshopDraftLimiter,
   applyWorkshopDraftHandler,
 );
 campaignScopedRouter.get(
   '/workshop/drafts/:draftId/writing-context',
   requireNonObserverMember,
+  workshopDraftLimiter,
   getWorkshopWritingContextHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts/:draftId/formalize',
   requirePageEditAny,
+  workshopDraftLimiter,
   formalizeWorkshopDraftHandler,
 );
 campaignScopedRouter.get('/world-pressure/preview', getWorldPressurePreviewHandler);

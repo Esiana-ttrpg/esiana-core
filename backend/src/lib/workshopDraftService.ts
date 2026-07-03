@@ -230,15 +230,16 @@ export async function patchWorkshopDraft(input: {
     },
   });
   if (!page || !isWorkshopDraftMetadata(page.metadata)) return null;
-  if (page.metadata.authorUserId !== input.authorUserId) return null;
-  if (page.metadata.draftStatus !== 'active') return null;
+  const draftMeta = page.metadata as WorkshopDraftMetadata;
+  if (draftMeta.authorUserId !== input.authorUserId) return null;
+  if (draftMeta.draftStatus !== 'active') return null;
 
   const nextBlocks =
     input.bodyMarkdown !== undefined
       ? setWorkshopDraftMarkdown(page.blocks, input.bodyMarkdown)
       : (page.blocks as Array<Record<string, unknown>>);
 
-  const nextMetadata: WorkshopDraftMetadata = { ...page.metadata };
+  const nextMetadata: WorkshopDraftMetadata = { ...draftMeta };
   if (input.fieldShadow !== undefined) {
     nextMetadata.fieldShadow = input.fieldShadow;
     if (input.fieldShadow.intendedTarget) {
@@ -323,10 +324,11 @@ export async function applyWorkshopDraftToPage(input: {
     },
   });
   if (!page || !isWorkshopDraftMetadata(page.metadata)) return null;
-  if (page.metadata.authorUserId !== input.authorUserId) return null;
-  if (page.metadata.draftStatus !== 'active') return null;
+  const draftMeta = page.metadata as WorkshopDraftMetadata;
+  if (draftMeta.authorUserId !== input.authorUserId) return null;
+  if (draftMeta.draftStatus !== 'active') return null;
 
-  const anchorId = page.metadata.anchorEntityIds?.[0];
+  const anchorId = draftMeta.anchorEntityIds?.[0];
   if (!anchorId) return null;
 
   const bodyMarkdown = extractWorkshopDraftMarkdown(page.blocks);
@@ -353,7 +355,7 @@ export async function applyWorkshopDraftToPage(input: {
   });
 
   const nextMeta: WorkshopDraftMetadata = {
-    ...page.metadata,
+    ...draftMeta,
     lastAppliedAt: new Date().toISOString(),
   };
   const updatedDraft = await prisma.wikiPage.update({
