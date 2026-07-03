@@ -1,0 +1,21 @@
+{
+  "journal.library.tab": "Bibliothèque",
+  "journal.library.title": "Bibliothèque",
+  "journal.library.subtitle": "Publications parues — les archives canoniques de la campagne.",
+  "journal.library.empty": "Rien n’a encore été publié.",
+  "journal.library.emptyHint": "Les publications parues apparaissent ici. Rédigez et planifiez dans le Planificateur.",
+  "journal.library.newPublication": "Nouvelle publication",
+  "journal.library.refine": "Affiner",
+  "journal.library.filterType": "Type",
+  "journal.library.filterSeries": "Série",
+  "journal.library.filterOrigin": "Origine",
+  "journal.library.filterAll": "Tous",
+  "journal.library.sortLabel": "Trier",
+  "journal.library.sortNewest": "Plus récentes",
+  "journal.library.sortOldest": "Plus anciennes",
+  "journal.library.sortType": "Par type",
+  "journal.library.issueLabel": "Numéro {{n}}",
+  "journal.library.loadMore": "Charger plus",
+  "journal.library.openSourceDraft": "Ouvrir le brouillon source",
+  "journal.library.releasedOn": "Publié le {{when}}"
+}

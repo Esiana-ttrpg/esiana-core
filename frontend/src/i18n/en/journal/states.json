@@ -1,0 +1,9 @@
+{
+  "journal.states.needsPlan": "Needs plan",
+  "journal.states.pending": "Pending",
+  "journal.states.blocked": "Blocked",
+  "journal.states.ready": "Ready to release",
+  "journal.states.empty": "No content yet",
+  "journal.states.partial": "In progress",
+  "journal.states.contentReady": "Content ready"
+}

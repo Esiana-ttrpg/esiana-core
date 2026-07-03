@@ -1,0 +1,10 @@
+{
+  "journal.diag.groupAll": "All of",
+  "journal.diag.groupAny": "Any of",
+  "journal.diag.missingDeleted": "“{{label}}” was removed",
+  "journal.diag.missingRestricted": "A referenced entry isn’t visible here",
+  "journal.diag.missingUnresolved": "A referenced entry couldn’t be resolved",
+  "journal.diag.defaultLabel": "This reference",
+  "journal.diag.met": "Met",
+  "journal.diag.unmet": "Not yet"
+}
