@@ -2015,6 +2015,141 @@ body {
   color: var(--color-focal-muted);
 }
 
+/* Wiki admonitions — semantic callout blocks (neutral containers; warning interrupt only) */
+.tiptap .wiki-admonition {
+  /* Theme accent as border, but generally neutral */
+  --wiki-admonition-accent: color-mix(
+    in srgb,
+    var(--color-primary) 22%,
+    var(--color-border)
+  );
+  --wiki-admonition-border: rgb(var(--color-border-rgb) / 0.45);
+  --wiki-admonition-bg: rgb(var(--color-surface-rgb) / 0.22);
+  margin: 0.75em 0;
+  border-radius: 0.5rem;
+}
+
+.tiptap .wiki-admonition__header {
+  margin-bottom: 0.35rem;
+}
+
+.tiptap .wiki-admonition__variant-select {
+  max-width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid var(--wiki-admonition-border);
+  background: rgb(var(--color-surface-rgb) / 0.6);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  color: var(--color-foreground);
+}
+
+.tiptap .wiki-admonition__content > :first-child {
+  margin-top: 0;
+}
+
+.tiptap .wiki-admonition__content > :last-child {
+  margin-bottom: 0;
+}
+
+/* context — lore, world rule */
+.tiptap .wiki-admonition--profile-context {
+  border: 1px solid var(--wiki-admonition-border);
+  background: var(--wiki-admonition-bg);
+  padding: 0.75rem 0.875rem;
+  border-left: 3px solid var(--wiki-admonition-accent);
+}
+
+/* embedded — insight (prose-adjacent gloss) */
+.tiptap .wiki-admonition--profile-embedded {
+  border: none;
+  border-left: 1px solid var(--wiki-admonition-accent);
+  background: var(--wiki-admonition-bg);
+  padding: 0.5rem 0.75rem;
+}
+
+.tiptap .wiki-admonition--profile-embedded .wiki-admonition__header {
+  margin-bottom: 0.2rem;
+  opacity: 0.85;
+}
+
+/* marker — thread seed (flow pin) */
+.tiptap .wiki-admonition--profile-marker {
+  border: 1px solid var(--wiki-admonition-border);
+  border-left: 2px solid var(--wiki-admonition-accent);
+  background: var(--wiki-admonition-bg);
+  padding: 0.5rem 0.75rem 0.5rem 0.65rem;
+  position: relative;
+}
+
+.tiptap .wiki-admonition--profile-marker::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0.65rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 9999px;
+  border: 1px solid var(--wiki-admonition-accent);
+  background: var(--wiki-admonition-bg);
+  transform: translateX(-50%);
+}
+
+/* artifact — record (stored document) */
+.tiptap .wiki-admonition--profile-artifact {
+  border: 1px solid var(--wiki-admonition-border);
+  background: var(--wiki-admonition-bg);
+  padding: 0.875rem 1rem;
+  box-shadow: inset 0 0 0 1px rgb(var(--color-border-rgb) / 0.15);
+}
+
+.tiptap .wiki-admonition--profile-artifact .wiki-admonition__content {
+  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  font-size: 0.95em;
+  padding-left: 0.35rem;
+}
+
+/* utterance — voice (living speech) */
+.tiptap .wiki-admonition--profile-utterance {
+  border: none;
+  border-left: 1px solid var(--wiki-admonition-accent);
+  background: transparent;
+  padding: 0.35rem 0 0.35rem 0.85rem;
+}
+
+.tiptap .wiki-admonition--profile-utterance .wiki-admonition__content {
+  font-style: italic;
+  color: var(--color-focal-muted);
+}
+
+.tiptap .wiki-admonition--profile-utterance .wiki-admonition__content > p:first-child::before {
+  content: '\201C';
+  margin-right: 0.15em;
+  color: var(--color-focal-muted);
+}
+
+/* interrupt — warning (only high-chroma signal) */
+.tiptap .wiki-admonition--profile-interrupt {
+  --wiki-admonition-accent: color-mix(
+    in srgb,
+    var(--editor-text-amber) 70%,
+    var(--color-border)
+  );
+  --wiki-admonition-border: color-mix(
+    in srgb,
+    var(--editor-text-amber) 35%,
+    var(--color-border)
+  );
+  --wiki-admonition-bg: color-mix(
+    in srgb,
+    var(--editor-text-amber) 8%,
+    var(--color-surface)
+  );
+  border: 1px solid var(--wiki-admonition-border);
+  background: var(--wiki-admonition-bg);
+  padding: 0.875rem 1rem;
+  border-left: 4px solid var(--wiki-admonition-accent);
+}
+
 .tiptap mark {
   border-radius: 2px;
 }

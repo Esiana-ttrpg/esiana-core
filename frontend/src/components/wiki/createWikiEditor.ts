@@ -9,6 +9,7 @@ import type { Extensions } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { EditorHighlightExtension } from './extensions/EditorHighlightExtension';
 import { EditorTextColorExtension } from './extensions/EditorTextColorExtension';
+import { AdmonitionExtension } from './extensions/AdmonitionExtension';
 import { TableOfContentsExtension } from './extensions/TableOfContentsExtension';
 import { WikiLinkExtension } from './extensions/WikiLinkExtension';
 import { SocialMentionExtension } from './extensions/SocialMentionExtension';
@@ -47,6 +48,7 @@ export function buildWikiEditorExtensions(loreExtensions: Extensions = []): Exte
     TableCell,
     EditorTextColorExtension,
     EditorHighlightExtension,
+    AdmonitionExtension,
     TableOfContentsExtension,
   ];
 }
