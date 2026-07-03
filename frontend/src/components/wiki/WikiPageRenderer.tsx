@@ -99,6 +99,8 @@ interface WikiPageRendererProps {
   onJumpToContinuity?: (blockId: string) => void;
   canDeleteBlock?: (block: WikiPageBlock) => boolean;
   prosePrimarySubview?: boolean;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
 }
 
 export function WikiPageRenderer({
@@ -144,6 +146,8 @@ export function WikiPageRenderer({
   onJumpToContinuity,
   canDeleteBlock,
   prosePrimarySubview = false,
+  pageCanEdit = true,
+  confirmWorkshopLeave = false,
 }: WikiPageRendererProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const isEditingPage = isEditingPageProp ?? isEditingLayout ?? false;
@@ -660,6 +664,8 @@ export function WikiPageRenderer({
         blockDisplayState={blockDisplayState}
         blockActionHandlers={blockActionHandlersForWidgets}
         prosePrimarySubview={prosePrimarySubview}
+        pageCanEdit={pageCanEdit}
+        confirmWorkshopLeave={confirmWorkshopLeave}
       />
     );
   }

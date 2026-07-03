@@ -73,6 +73,8 @@ export interface WidgetRegistryContext {
   blockDisplayState?: BlockDisplayState;
   blockActionHandlers?: BlockActionHandlers;
   prosePrimarySubview?: boolean;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
 }
 
 interface WidgetRegistryProps extends WidgetRegistryContext {
@@ -127,6 +129,10 @@ function WidgetRegistryInner({
           onChange={onChange}
           isEditingLayout={ctx.isEditingPage}
           prosePrimary={ctx.prosePrimarySubview}
+          workshopFromPageId={ctx.pageId}
+          templateType={ctx.templateType}
+          pageCanEdit={ctx.pageCanEdit}
+          confirmWorkshopLeave={ctx.confirmWorkshopLeave}
           {...interaction}
         />,
       );
@@ -137,6 +143,10 @@ function WidgetRegistryInner({
           onChange={onChange}
           isEditingPage={ctx.isEditingPage}
           prosePrimary={ctx.prosePrimarySubview}
+          workshopFromPageId={ctx.pageId}
+          templateType={ctx.templateType}
+          pageCanEdit={ctx.pageCanEdit}
+          confirmWorkshopLeave={ctx.confirmWorkshopLeave}
           {...interaction}
         />,
       );

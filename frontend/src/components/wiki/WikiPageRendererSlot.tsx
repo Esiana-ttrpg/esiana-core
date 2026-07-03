@@ -59,6 +59,8 @@ export interface WikiPageRendererSlotProps {
   onJumpToContinuity?: (blockId: string) => void;
   entityPageShell: EntityPageShell;
   prosePrimarySubview?: boolean;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
 }
 
 export function WikiPageRendererSlot({
@@ -111,6 +113,8 @@ export function WikiPageRendererSlot({
       onJumpToContinuity={onJumpToContinuity}
       canDeleteBlock={(block) => canDeleteBlock(entityPageShell, block)}
       prosePrimarySubview={props.prosePrimarySubview}
+      pageCanEdit={props.pageCanEdit}
+      confirmWorkshopLeave={props.confirmWorkshopLeave}
     />
   );
 }

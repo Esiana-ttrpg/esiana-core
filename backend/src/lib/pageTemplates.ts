@@ -58,6 +58,33 @@ const ENTITY_CATEGORY_LAYOUT: Record<string, WikiBlockSeed[]> = {
     createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
     createBlock('entity-relationships', 0, 3, 3, 1),
   ],
+  bestiary: [
+    createBlock('entity-bestiary-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 3, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 0, 3, 3, 1, { fields: [] }),
+  ],
+  ancestries: [
+    createBlock('entity-ancestry-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+  ],
+  objects: [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+    createBlock('entity-relationships', 0, 2, 3, 1),
+  ],
+  journals: [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+  ],
+  events: [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+  ],
+  'rules-resources': [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+  ],
 };
 
 /**

@@ -185,6 +185,8 @@ export interface WikiPageLayoutPayload {
   createdAt?: string;
   updatedAt?: string;
   narrativeStatus?: PageNarrativeStatusProjection;
+  canEdit?: boolean;
+  editBlock?: { kind: string; ownership?: string };
 }
 
 export interface WikiTagWithCount extends WikiTag {

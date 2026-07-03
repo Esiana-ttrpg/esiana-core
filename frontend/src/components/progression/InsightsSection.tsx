@@ -101,7 +101,7 @@ export function InsightsSection({ campaignHandle, questsCategoryId }: InsightsSe
         <header className="space-y-1">
           <h2 className="text-sm font-semibold text-foreground">Authoring analytics</h2>
           <p className="text-sm text-muted-foreground">
-            Growth metrics and narrative scaffolds — diagnostics. Draft in Progression › Workshop.
+            Growth metrics and narrative scaffolds — diagnostics. Draft in Workshop from any editable page.
           </p>
         </header>
         <CampaignGrowthMetricsPanel campaignHandle={campaignHandle} />

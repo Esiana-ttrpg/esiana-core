@@ -47,7 +47,7 @@ Never default on wiki pages.
 
 | Capability | Primary surface |
 |------------|-----------------|
-| Draft writing | **Progression › Workshop** |
+| Draft writing | **Workshop** (`/campaigns/:handle/workshop`) |
 | Campaign growth metrics | Progression › Insights |
 | Narrative scaffolds | Progression › Insights (creates Workshop drafts) |
 | Scene inline authoring | Progression › Scenes › Outline |
@@ -68,20 +68,18 @@ UI/API contract (`shared/workshopDocument.ts`). Phase 1 backs drafts with hidden
 Workshop draft (loose prose) → minimal canonical shell → living entity enriched in Codex later
 ```
 
-**Targets:** Character, Quest, Thread, Scene, Lore note.
+**Targets:** World lore (Character, Organization, Location, Family, Creature, Ancestry, Object), narrative (Quest, Thread, Scene, Journal, Event), and reference (Rules/Resource). Legacy `lore_note` remains in the API for old drafts only.
 
-**Required at formalize:** name/title, optional summary. Placement is auto-resolved (World › Characters for characters, quest/thread/scene roots) except lore notes (pick a World lore folder only).
+**Required at formalize:** name/title. Placement is auto-resolved from target type (World or Game category folders, or quest/thread/scene system roots).
 
 **Explicitly not at formalize:** appearance matrices, relationship graphs, stat blocks, inventories, thread/quest wizards, multi-step flows.
-
-**Never:** formalize into Journals (diegetic documents are a separate deliberate act).
 
 ## Authoring context
 
 UI/session concept (`shared/authoringContext.ts`), not a canonical content type.
 
 - **Default wiki edit:** `{ kind: 'freeform' }` — Tier 1 only.
-- **Workshop:** `section=workshop` with optional `draft`, `anchors`, `authoringKind`.
+- **Workshop:** `/campaigns/:handle/workshop` with optional `draft`, `from` (anchor page id).
 - Contextual links create or resume **linked drafts** — never open canonical pages for editing in Workshop.
 
 ## Naming
@@ -89,7 +87,7 @@ UI/session concept (`shared/authoringContext.ts`), not a canonical content type.
 | UI label | Meaning | Route |
 |----------|---------|-------|
 | Narrative scaffolds | Genre starters → Workshop drafts | Progression › Insights |
-| Workshop | Private draft writing | Progression › Workshop |
+| Workshop | Private draft writing | `/campaigns/:handle/workshop` |
 | Formalize | Draft → canon promotion | Workshop overflow |
 
 ## Anti-patterns
@@ -114,7 +112,7 @@ UI/session concept (`shared/authoringContext.ts`), not a canonical content type.
 | Context types | `shared/authoringContext.ts` |
 | Draft API | `backend/src/controllers/workshopDraftController.ts` |
 | Draft service | `backend/src/lib/workshopDraftService.ts` |
-| Workshop UI | `frontend/src/components/workshop/` |
+| Workshop UI | `frontend/src/pages/WorkshopPage.tsx`, `frontend/src/components/workshop/` |
 | Editor factory | `frontend/src/components/wiki/createWikiEditor.ts` |
 | Instrumentation | `frontend/src/hooks/useEditorInstrumentation.ts` |
 | Growth metrics API | `backend/src/controllers/authoringController.ts` |

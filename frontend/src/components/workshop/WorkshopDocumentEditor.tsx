@@ -28,6 +28,8 @@ interface WorkshopDocumentEditorProps {
   draft: WorkshopDocument;
   onDraftUpdated: (draft: WorkshopDocument) => void;
   onInstrumentationChange?: (state: EditorInstrumentationState) => void;
+  onProseSaveState?: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
+  onEditorReady?: (editor: import('@tiptap/react').Editor | null) => void;
 }
 
 export function WorkshopDocumentEditor({
@@ -35,6 +37,8 @@ export function WorkshopDocumentEditor({
   draft,
   onDraftUpdated,
   onInstrumentationChange,
+  onProseSaveState,
+  onEditorReady,
 }: WorkshopDocumentEditorProps) {
   const lastEmitted = useRef(draft.bodyMarkdown);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,16 +70,21 @@ export function WorkshopDocumentEditor({
     (markdown: string) => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       setSaveState('saving');
+      onProseSaveState?.('saving');
       saveTimer.current = setTimeout(() => {
         void patchWorkshopDraft(campaignHandle, draft.id, { bodyMarkdown: markdown })
           .then((updated) => {
             onDraftUpdated(updated);
             setSaveState('saved');
+            onProseSaveState?.('saved');
           })
-          .catch(() => setSaveState('idle'));
+          .catch(() => {
+            setSaveState('idle');
+            onProseSaveState?.('error');
+          });
       }, 800);
     },
-    [campaignHandle, draft.id, onDraftUpdated],
+    [campaignHandle, draft.id, onDraftUpdated, onProseSaveState],
   );
 
   useEffect(() => {
@@ -106,6 +115,10 @@ export function WorkshopDocumentEditor({
     onInstrumentationChange?.(instrumentation);
   }, [instrumentation, onInstrumentationChange]);
 
+  useEffect(() => {
+    onEditorReady?.(editor ?? null);
+  }, [editor, onEditorReady]);
+
   const bridgeLabels = useCodexLinkBridge(editor, bodyMarkdown, resolveEntryByLabel);
 
   return (
@@ -129,7 +142,8 @@ export function WorkshopDocumentEditor({
         <LorePopovers editor={editor} />
       </div>
       <p className="text-[11px] text-muted-foreground">
-        {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : ''}
+        Draft — not published
+        {saveState === 'saving' ? ' · Saving…' : saveState === 'saved' ? ' · Saved' : ''}
       </p>
       </div>
     </EditorColorPickerProvider>

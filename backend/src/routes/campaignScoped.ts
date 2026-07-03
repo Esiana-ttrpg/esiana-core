@@ -295,12 +295,15 @@ import {
 } from '../controllers/authoringController.js';
 import { getCampaignWorldStats } from '../controllers/statsController.js';
 import {
+  applyWorkshopDraftHandler,
+  bootstrapAnchoredDraftHandler,
   createWorkshopDraftHandler,
   formalizeWorkshopDraftHandler,
   getWorkshopDraftHandler,
   listWorkshopDraftsHandler,
   patchWorkshopDraftHandler,
 } from '../controllers/workshopDraftController.js';
+import { getWorkshopWritingContextHandler } from '../controllers/workshopWritingContextController.js';
 import {
   listNarrativeLifecycleStates,
   patchNarrativeLifecycleState,
@@ -324,7 +327,7 @@ import {
 } from '../controllers/narrativePublishController.js';
 import { documentUpload, imageUpload, sidebarIconUpload, tagIconUpload, campaignWizardUpload } from '../lib/multer.js';
 import { enforceSystemUploadLimit, enforceWizardUploadLimits } from '../middleware/uploadLimit.js';
-import { campaignInviteEmailLimiter, campaignUrlImportLimiter } from '../middleware/rateLimit.js';
+import { campaignInviteEmailLimiter, campaignUrlImportLimiter, workshopDraftLimiter } from '../middleware/rateLimit.js';
 import {
   campaignScopeMiddleware,
   requireCampaignMember,
@@ -731,27 +734,50 @@ campaignScopedRouter.post(
 );
 campaignScopedRouter.get(
   '/workshop/drafts',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   listWorkshopDraftsHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   createWorkshopDraftHandler,
+);
+campaignScopedRouter.post(
+  '/workshop/drafts/bootstrap',
+  requireNonObserverMember,
+  workshopDraftLimiter,
+  bootstrapAnchoredDraftHandler,
 );
 campaignScopedRouter.get(
   '/workshop/drafts/:draftId',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   getWorkshopDraftHandler,
 );
 campaignScopedRouter.patch(
   '/workshop/drafts/:draftId',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   patchWorkshopDraftHandler,
+);
+campaignScopedRouter.post(
+  '/workshop/drafts/:draftId/apply',
+  requireNonObserverMember,
+  workshopDraftLimiter,
+  applyWorkshopDraftHandler,
+);
+campaignScopedRouter.get(
+  '/workshop/drafts/:draftId/writing-context',
+  requireNonObserverMember,
+  workshopDraftLimiter,
+  getWorkshopWritingContextHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts/:draftId/formalize',
   requirePageEditAny,
+  workshopDraftLimiter,
   formalizeWorkshopDraftHandler,
 );
 campaignScopedRouter.get('/world-pressure/preview', getWorldPressurePreviewHandler);
