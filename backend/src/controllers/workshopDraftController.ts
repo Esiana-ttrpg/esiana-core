@@ -3,12 +3,16 @@ import type { AuthoringContextKind } from '../../../shared/authoringContext.js';
 import { AUTHORING_CONTEXT_KINDS } from '../../../shared/authoringContext.js';
 import {
   WORKSHOP_FORMALIZE_TARGETS,
+  type WorkshopFieldShadow,
   type WorkshopFormalizeTarget,
 } from '../../../shared/workshopDocument.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
+import { assertAnchorEditAccess } from '../lib/workshopDraftAccess.js';
 import {
+  applyWorkshopDraftToPage,
   createWorkshopDraft,
+  findOrCreateAnchoredDraft,
   formalizeWorkshopDraft,
   getWorkshopDraft,
   listWorkshopDrafts,
@@ -20,6 +24,29 @@ function parseAuthoringKind(value: unknown): AuthoringContextKind | undefined {
   return (AUTHORING_CONTEXT_KINDS as readonly string[]).includes(value)
     ? (value as AuthoringContextKind)
     : undefined;
+}
+
+function parseIntendedTarget(value: unknown): WorkshopFormalizeTarget | undefined {
+  if (typeof value !== 'string') return undefined;
+  return (WORKSHOP_FORMALIZE_TARGETS as readonly string[]).includes(value)
+    ? (value as WorkshopFormalizeTarget)
+    : undefined;
+}
+
+function parseFieldShadow(value: unknown): WorkshopFieldShadow | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const intendedTarget = parseIntendedTarget(raw.intendedTarget);
+  if (!intendedTarget || typeof raw.templateType !== 'string') return undefined;
+  return {
+    intendedTarget,
+    templateType: raw.templateType,
+    blocks: Array.isArray(raw.blocks) ? (raw.blocks as Array<Record<string, unknown>>) : [],
+    metadata:
+      raw.metadata && typeof raw.metadata === 'object'
+        ? (raw.metadata as Record<string, unknown>)
+        : {},
+  };
 }
 
 export async function listWorkshopDraftsHandler(
@@ -94,6 +121,12 @@ export async function createWorkshopDraftHandler(
           .filter(Boolean)
       : undefined;
 
+  const access = await assertAnchorEditAccess(req, userId, anchorEntityIds);
+  if (!access.ok) {
+    res.status(access.status).json({ error: access.error });
+    return;
+  }
+
   try {
     const draft = await createWorkshopDraft({
       campaignId: req.campaign!.campaignId,
@@ -102,6 +135,7 @@ export async function createWorkshopDraftHandler(
       bodyMarkdown: typeof body.bodyMarkdown === 'string' ? body.bodyMarkdown : undefined,
       anchorEntityIds,
       sourceKind: parseAuthoringKind(body.sourceKind),
+      intendedTarget: parseIntendedTarget(body.intendedTarget),
     });
     res.status(201).json({ draft });
   } catch (err) {
@@ -128,6 +162,7 @@ export async function patchWorkshopDraftHandler(
     authorUserId: userId,
     title: typeof body.title === 'string' ? body.title : undefined,
     bodyMarkdown: typeof body.bodyMarkdown === 'string' ? body.bodyMarkdown : undefined,
+    fieldShadow: parseFieldShadow(body.fieldShadow),
   });
 
   if (!draft) {
@@ -136,6 +171,84 @@ export async function patchWorkshopDraftHandler(
   }
 
   res.json({ draft });
+}
+
+export async function applyWorkshopDraftHandler(
+  req: CampaignScopedRequest & AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const draft = await getWorkshopDraft({
+    campaignId: req.campaign!.campaignId,
+    draftId: String(req.params.draftId),
+    authorUserId: userId,
+  });
+  if (!draft) {
+    res.status(404).json({ error: 'Draft not found' });
+    return;
+  }
+
+  const access = await assertAnchorEditAccess(req, userId, draft.anchorEntityIds);
+  if (!access.ok) {
+    res.status(access.status).json({ error: access.error });
+    return;
+  }
+
+  const applied = await applyWorkshopDraftToPage({
+    campaignId: req.campaign!.campaignId,
+    draftId: String(req.params.draftId),
+    authorUserId: userId,
+  });
+
+  if (!applied) {
+    res.status(400).json({ error: 'Could not apply draft to page' });
+    return;
+  }
+
+  res.json({ draft: applied });
+}
+
+export async function bootstrapAnchoredDraftHandler(
+  req: CampaignScopedRequest & AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const body = req.body as Record<string, unknown>;
+  const anchorPageId = typeof body.anchorPageId === 'string' ? body.anchorPageId.trim() : '';
+  if (!anchorPageId) {
+    res.status(400).json({ error: 'anchorPageId is required' });
+    return;
+  }
+
+  const access = await assertAnchorEditAccess(req, userId, [anchorPageId]);
+  if (!access.ok) {
+    res.status(access.status).json({ error: access.error });
+    return;
+  }
+
+  try {
+    const draft = await findOrCreateAnchoredDraft({
+      campaignId: req.campaign!.campaignId,
+      authorUserId: userId,
+      anchorPageId,
+      sourceKind: parseAuthoringKind(body.sourceKind),
+    });
+    res.json({ draft });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Failed to bootstrap draft',
+    });
+  }
 }
 
 export async function formalizeWorkshopDraftHandler(

@@ -1,8 +1,10 @@
-import { LayoutGrid, Pencil, Plus, Save, Search } from 'lucide-react';
+import { LayoutGrid, PenLine, Pencil, Plus, Save, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { usePageBlockDraftRegistry } from '@/contexts/PageBlockDraftRegistry';
 import type { WikiPageBlock } from '@/types/wiki';
 import { WikiPageMoreMenu } from '@/components/wiki/WikiPageMoreMenu';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
+import { campaignWorkshopPath } from '@/lib/campaignPaths';
 
 function toolbarButtonClass(active: boolean): string {
   return `inline-flex h-8 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-all ${
@@ -13,6 +15,10 @@ function toolbarButtonClass(active: boolean): string {
 }
 
 interface WikiPageRuntimeToolbarProps {
+  campaignHandle: string;
+  pageId?: string;
+  canOpenWorkshop?: boolean;
+  confirmWorkshopLeave?: boolean;
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;
@@ -34,6 +40,10 @@ interface WikiPageRuntimeToolbarProps {
 }
 
 export function WikiPageRuntimeToolbar({
+  campaignHandle,
+  pageId,
+  canOpenWorkshop = false,
+  confirmWorkshopLeave = false,
   isDMUser: isDMUserProp,
   isTagsHub,
   isLayoutDirty = false,
@@ -53,10 +63,22 @@ export function WikiPageRuntimeToolbar({
   onAddWidget,
   onDeletePage,
 }: WikiPageRuntimeToolbarProps) {
+  const navigate = useNavigate();
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const draftRegistry = usePageBlockDraftRegistry();
   const hasUnsavedWork =
     isLayoutDirty || (draftRegistry?.hasSemanticDirty ?? false);
+
+  const handleOpenWorkshop = () => {
+    if (!pageId) return;
+    if (confirmWorkshopLeave) {
+      const proceed = window.confirm(
+        'You have unsaved page changes. Open Workshop anyway?',
+      );
+      if (!proceed) return;
+    }
+    navigate(campaignWorkshopPath(campaignHandle, { fromPageId: pageId }));
+  };
 
   const showReadBar = isDMUser || !isTagsHub;
 
@@ -168,6 +190,19 @@ export function WikiPageRuntimeToolbar({
             >
               <Save className="size-3.5 shrink-0" aria-hidden />
               Save
+            </button>
+          ) : null}
+
+          {canOpenWorkshop && pageId ? (
+            <button
+              type="button"
+              onClick={handleOpenWorkshop}
+              disabled={isSaving}
+              title="Open in Workshop"
+              className={toolbarButtonClass(false)}
+            >
+              <PenLine className="size-3.5 shrink-0" aria-hidden />
+              <span>Workshop</span>
             </button>
           ) : null}
         </div>

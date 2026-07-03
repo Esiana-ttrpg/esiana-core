@@ -29,6 +29,10 @@ interface TiptapWidgetProps {
   onChange: (newContent: Record<string, unknown>) => void;
   isEditingLayout: boolean;
   prosePrimary?: boolean;
+  workshopFromPageId?: string;
+  templateType?: string;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
 }
@@ -68,6 +72,10 @@ export function TiptapWidget({
   onChange,
   isEditingLayout,
   prosePrimary = false,
+  workshopFromPageId,
+  templateType = '',
+  pageCanEdit = true,
+  confirmWorkshopLeave = false,
   onInteractionStart,
   onInteractionEnd,
 }: TiptapWidgetProps) {
@@ -175,7 +183,13 @@ export function TiptapWidget({
     <EditorColorPickerProvider editor={editor}>
       <div className="flex w-full min-w-0 flex-col rounded-lg border border-border bg-background/60">
         <div className="shrink-0">
-          <WikiEditorToolbar editor={editor} />
+          <WikiEditorToolbar
+            editor={editor}
+            workshopFromPageId={workshopFromPageId ?? pageId}
+            templateType={templateType}
+            pageCanEdit={pageCanEdit}
+            confirmWorkshopLeave={confirmWorkshopLeave}
+          />
           <EditorColorPickerPanel />
           <WikiSyntaxHint
           ambientEnabled={ambientEnabled}

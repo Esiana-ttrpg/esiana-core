@@ -26,6 +26,7 @@ import { SessionCombinedNotesPage } from '@/pages/SessionCombinedNotesPage';
 import { TimeTrackingManagement } from '@/pages/TimeTrackingManagement';
 import { WorldAdvancePage } from '@/pages/WorldAdvancePage';
 import { ProgressionPage } from '@/pages/ProgressionPage';
+import { WorkshopPage } from '@/pages/WorkshopPage';
 import { WorldAdvanceBatchPage } from '@/pages/WorldAdvanceBatchPage';
 import { ChronologyPage } from '@/pages/ChronologyPage';
 import { UserSettings } from '@/pages/UserSettings';
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="time-tracking" element={<TimeTrackingManagement />} />
             <Route path="world-advance" element={<WorldAdvancePage />} />
             <Route path="progression" element={<ProgressionPage />} />
+            <Route path="workshop" element={<WorkshopPage />} />
             <Route path="world-advance/batches/:eventId" element={<WorldAdvanceBatchPage />} />
             <Route path="recent-changes" element={<RecentChangesPage />} />
             <Route path="pages" element={<FreeformPagesIndex />} />

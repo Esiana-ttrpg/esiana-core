@@ -71,31 +71,27 @@ export function parseAuthoringContextFromSearch(search: string): AuthoringContex
 }
 
 export function buildAuthoringWorkshopHref(
-  basePath: string,
-  context: Omit<AuthoringContext, 'kind'> & { kind?: AuthoringContextKind },
+  workshopBasePath: string,
+  context: Omit<AuthoringContext, 'kind'> & {
+    kind?: AuthoringContextKind;
+    draftId?: string;
+  },
 ): string {
   const kind = context.kind ?? 'narrative_workspace';
   const params = new URLSearchParams();
 
-  if (kind === 'scene') {
-    params.set('section', 'scenes');
-    if (context.anchorEntityIds?.length) {
-      params.set('anchors', context.anchorEntityIds.join(','));
-    }
-  } else {
-    params.set('section', 'workshop');
-    if (kind !== 'freeform') {
-      params.set('authoringKind', kind);
-    }
-    if (context.anchorEntityIds?.length) {
-      params.set('anchors', context.anchorEntityIds.join(','));
-    }
-    if (context.overlayIds?.length) {
-      params.set('overlays', context.overlayIds.join(','));
-    }
+  if (context.draftId) {
+    params.set('draft', context.draftId);
+  }
+  if (context.anchorEntityIds?.length) {
+    params.set('from', context.anchorEntityIds[0]!);
+  }
+  if (kind !== 'freeform' && kind !== 'narrative_workspace' && kind !== 'scene') {
+    params.set('authoringKind', kind);
   }
 
-  return `${basePath}?${params.toString()}`;
+  const query = params.toString();
+  return query ? `${workshopBasePath}?${query}` : workshopBasePath;
 }
 
 export function readWorkshopDraftIdFromSearch(search: string): string | null {

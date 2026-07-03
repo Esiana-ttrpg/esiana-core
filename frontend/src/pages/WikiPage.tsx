@@ -62,6 +62,8 @@ import {
   SYSTEM_CATEGORY_QUESTS,
   isDowntimeHubCategoryPage,
 } from '@/lib/wikiSystemCategory';
+import { isWorkshopEligiblePage } from '@/lib/authoringEligibility';
+import { shouldConfirmLeaveWikiForWorkshop } from '@/lib/workshopLaunchGuard';
 import { WikiPageEditorHeader } from '@/components/wiki/WikiPageEditorHeader';
 import { WikiPageRendererSlot } from '@/components/wiki/WikiPageRendererSlot';
 import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageShellView';
@@ -278,6 +280,8 @@ export function WikiPage() {
     'loading' | 'ready' | 'error' | 'creating'
   >('loading');
   const [blocks, setBlocks] = useState<WikiPageBlock[]>([]);
+  const savedBlocksRef = useRef<WikiPageBlock[]>([]);
+  const [semanticDirty, setSemanticDirty] = useState(false);
   const [templateType, setTemplateType] = useState('DEFAULT');
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -389,6 +393,14 @@ export function WikiPage() {
 
   const { viewerContext, isElevated } = useCampaignActor();
   const isDMUser = isElevated();
+  const pageCanEdit = pageData?.canEdit ?? isDMUser;
+  const canOpenWorkshop = isWorkshopEligiblePage(pageCanEdit, templateType);
+  const confirmWorkshopLeave = shouldConfirmLeaveWikiForWorkshop({
+    isLayoutDirty: isDirty,
+    hasSemanticDirty: semanticDirty,
+    blocks,
+    savedBlocks: savedBlocksRef.current,
+  });
 
   const codexDiagnosticsEnabled = Boolean(pageId && pageData && !isTagsHub);
   const pageCodexDiagnostics = usePageCodexDiagnostics(
@@ -863,6 +875,7 @@ export function WikiPage() {
           nextBlocks = ensureSystemBlocks(shell, nextBlocks);
         }
         setBlocks(nextBlocks);
+        savedBlocksRef.current = nextBlocks;
         setTemplateType(result.templateType ?? 'DEFAULT');
         const loadedTags = tagsFromPayload(result.tags);
         setPageTags(loadedTags);
@@ -903,6 +916,7 @@ export function WikiPage() {
             nextBlocks = resolveSemanticPageBlocks(profile.key, nextBlocks);
             nextBlocks = ensureAppearanceBlock(nextBlocks, profile.appearanceMode);
             setBlocks(nextBlocks);
+            savedBlocksRef.current = nextBlocks;
             setTemplateType(created.templateType ?? 'DEFAULT');
             const loadedTags = tagsFromPayload(created.tags);
             setPageTags(loadedTags);
@@ -979,6 +993,7 @@ export function WikiPage() {
         templateType,
       );
       setBlocks(saved.blocks);
+      savedBlocksRef.current = saved.blocks;
       setTemplateType(saved.templateType);
       setIsDirty(false);
     } catch (err) {
@@ -992,6 +1007,7 @@ export function WikiPage() {
   const draftRegistryRef = useRef<PageBlockDraftRegistryValue | null>(null);
   const bindDraftRegistry = useCallback((registry: PageBlockDraftRegistryValue | null) => {
     draftRegistryRef.current = registry;
+    setSemanticDirty(registry?.hasSemanticDirty ?? false);
   }, []);
 
   async function flushSemanticDrafts() {
@@ -1246,6 +1262,8 @@ export function WikiPage() {
         onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
         entityPageShell={entityPageShell}
         prosePrimarySubview={prosePrimarySubview}
+        pageCanEdit={pageCanEdit}
+        confirmWorkshopLeave={confirmWorkshopLeave}
       />
     );
   }, [
@@ -1256,7 +1274,9 @@ export function WikiPage() {
     prosePrimarySubview,
     showGridLines,
     blockDisplayState,
-    isDirty,
+    pageCanEdit,
+    confirmWorkshopLeave,
+    semanticDirty,
     isSaving,
     pageId,
     readerFirstLayout,
@@ -1655,6 +1675,9 @@ export function WikiPage() {
         header={
           <WikiPageEditorHeader
             campaignHandle={campaignHandle}
+            pageId={pageId}
+            canOpenWorkshop={canOpenWorkshop}
+            confirmWorkshopLeave={confirmWorkshopLeave}
             crumbs={wikiBreadcrumbs}
             displayTitle={displayTitle}
             profileKey={entitySurfaceProfile.key}

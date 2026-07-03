@@ -4,7 +4,6 @@
 
 export const PROGRESSION_SECTIONS = [
   { id: 'scenes', label: 'Scenes' },
-  { id: 'workshop', label: 'Workshop' },
   { id: 'sessionPrep', label: 'Session Prep' },
   { id: 'insights', label: 'Insights' },
   { id: 'advance', label: 'Advance Time' },
@@ -64,8 +63,9 @@ export function resolveLegacyProgressionRedirect(
       return { section: 'scenes', view: 'sequence' };
     case 'trajectories':
       return { section: 'insights' };
+    case 'workshop':
     case 'authoringWorkshop':
-      return { section: 'workshop', preserveSearchParams: true };
+      return null;
     default:
       break;
   }

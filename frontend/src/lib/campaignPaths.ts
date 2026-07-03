@@ -127,6 +127,18 @@ export function campaignProgressionPath(
   return `${base}?${params.toString()}`;
 }
 
+export function campaignWorkshopPath(
+  handle: string,
+  options?: { draftId?: string; fromPageId?: string },
+): string {
+  const base = campaignPath(handle, 'workshop');
+  const params = new URLSearchParams();
+  if (options?.draftId) params.set('draft', options.draftId);
+  if (options?.fromPageId) params.set('from', options.fromPageId);
+  const query = params.toString();
+  return query ? `${base}?${query}` : base;
+}
+
 export function campaignWikiTagsPath(
   handle: string,
   _tagsPageId?: string,

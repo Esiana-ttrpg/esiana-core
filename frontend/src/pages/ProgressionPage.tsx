@@ -28,7 +28,7 @@ import { DevelopmentsSection } from '@/components/progression/DevelopmentsSectio
 import { ScheduledEffectsProgressionSection } from '@/components/progression/ScheduledEffectsProgressionSection';
 import { ConsequencesSection } from '@/components/progression/ConsequencesSection';
 import { DevelopmentHistorySection } from '@/components/progression/DevelopmentHistorySection';
-import { WorkshopSection } from '@/components/workshop/WorkshopSection';
+import { resolveLegacyWorkshopRedirect } from '@/lib/workshopNavigation';
 import { SessionsSection } from '@/components/adventure/SessionsSection';
 import { CreateSceneModal } from '@/components/adventure/CreateSceneModal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -102,6 +102,11 @@ export function ProgressionPage() {
     return <Navigate to={`/campaigns/${campaignHandle}/dashboard`} replace />;
   }
 
+  const workshopRedirect = resolveLegacyWorkshopRedirect(campaignHandle, location.search);
+  if (workshopRedirect) {
+    return <Navigate to={workshopRedirect} replace />;
+  }
+
   if (legacyTarget) {
     return <Navigate to={legacyTarget} replace />;
   }
@@ -119,20 +124,14 @@ export function ProgressionPage() {
 
   const canManage = true;
 
-  const isWorkshop = activeSection === 'workshop';
-
   return (
-    <div
-      className={`wiki-focal-region wiki-focal-region--canvas py-4 ${isWorkshop ? '' : 'space-y-6'}`}
-    >
-      {!isWorkshop ? (
-        <header className="space-y-1">
-          <h1 className={TYPE_DISPLAY_CLASS}>Progression</h1>
-          <p className="text-sm text-muted-foreground">
-            Shape the story — write scenes, prep sessions, read campaign momentum.
-          </p>
-        </header>
-      ) : null}
+    <div className="wiki-focal-region wiki-focal-region--canvas space-y-6 py-4">
+      <header className="space-y-1">
+        <h1 className={TYPE_DISPLAY_CLASS}>Progression</h1>
+        <p className="text-sm text-muted-foreground">
+          Shape the story — write scenes, prep sessions, read campaign momentum.
+        </p>
+      </header>
 
       {activeSection === 'scenes' && questsCategoryId ? (
         <ScenesSection
@@ -158,10 +157,6 @@ export function ProgressionPage() {
             onPresetApplied={() => void loadAdventureSection()}
           />
         )
-      ) : null}
-
-      {activeSection === 'workshop' ? (
-        <WorkshopSection campaignHandle={campaignHandle} />
       ) : null}
 
       {activeSection === 'insights' && questsCategoryId ? (

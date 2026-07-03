@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import {
   AlignCenter,
@@ -16,14 +16,15 @@ import {
   List,
   ListOrdered,
   Minus,
+  PenLine,
   Quote,
-  Sparkles,
   Strikethrough,
   Underline,
   Eraser,
 } from 'lucide-react';
 import { useOptionalWiki } from '@/contexts/WikiContext';
-import { campaignWikiPath, readCampaignHandle } from '@/lib/campaignPaths';
+import { campaignWikiPath, campaignWorkshopPath, readCampaignHandle } from '@/lib/campaignPaths';
+import { isWorkshopEligiblePage } from '@/lib/authoringEligibility';
 import { flattenWikiTree } from '@/lib/wiki';
 import {
   documentScanMessage,
@@ -38,6 +39,10 @@ interface WikiEditorToolbarProps {
   editor: Editor | null;
   /** Fallback wiki index when WikiProvider is unavailable. */
   wikiTree?: WikiTreeNode[];
+  workshopFromPageId?: string;
+  pageCanEdit?: boolean;
+  templateType?: string;
+  confirmWorkshopLeave?: boolean;
 }
 
 function ToolbarButton({
@@ -165,8 +170,13 @@ function MarkerDropdownTableMatrix({
 export function WikiEditorToolbar({
   editor,
   wikiTree = [],
+  workshopFromPageId,
+  pageCanEdit = true,
+  templateType = '',
+  confirmWorkshopLeave = false,
 }: WikiEditorToolbarProps) {
   const params = useParams<{ campaignHandle?: string; campaignId?: string }>();
+  const navigate = useNavigate();
   const wiki = useOptionalWiki();
   const campaignHandle = readCampaignHandle(params) || wiki?.campaignHandle || '';
   const resolvePageId = wiki?.resolvePageId;
@@ -214,6 +224,23 @@ export function WikiEditorToolbar({
 
   const handleInsertToc = () => {
     editor.chain().focus().insertContent({ type: 'toc' }).run();
+  };
+
+  const canOpenWorkshop =
+    Boolean(workshopFromPageId) &&
+    isWorkshopEligiblePage(pageCanEdit, templateType);
+
+  const handleOpenWorkshop = () => {
+    if (!campaignHandle || !workshopFromPageId) return;
+    if (confirmWorkshopLeave) {
+      const proceed = window.confirm(
+        'You have unsaved page changes. Open Workshop anyway?',
+      );
+      if (!proceed) return;
+    }
+    navigate(
+      campaignWorkshopPath(campaignHandle, { fromPageId: workshopFromPageId }),
+    );
   };
 
   return (
@@ -382,10 +409,20 @@ export function WikiEditorToolbar({
       <EditorColorPickerToolbarButton kind="text" />
       <EditorColorPickerToolbarButton kind="highlight" />
 
-      <span className="ml-auto hidden text-xs text-muted sm:inline-flex items-center gap-1">
-        <Sparkles className="size-3" />
-        Markdown supported
-      </span>
+      {canOpenWorkshop ? (
+        <>
+          <span className="mx-1 h-5 w-px bg-elevated" />
+          <button
+            type="button"
+            onClick={handleOpenWorkshop}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/60 px-2 py-1.5 text-xs font-medium text-muted hover:bg-surface/60 hover:text-foreground"
+            title="Open in Workshop"
+          >
+            <PenLine className="size-3.5" />
+            <span className="hidden sm:inline">Workshop</span>
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }

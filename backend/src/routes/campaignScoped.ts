@@ -295,12 +295,15 @@ import {
 } from '../controllers/authoringController.js';
 import { getCampaignWorldStats } from '../controllers/statsController.js';
 import {
+  applyWorkshopDraftHandler,
+  bootstrapAnchoredDraftHandler,
   createWorkshopDraftHandler,
   formalizeWorkshopDraftHandler,
   getWorkshopDraftHandler,
   listWorkshopDraftsHandler,
   patchWorkshopDraftHandler,
 } from '../controllers/workshopDraftController.js';
+import { getWorkshopWritingContextHandler } from '../controllers/workshopWritingContextController.js';
 import {
   listNarrativeLifecycleStates,
   patchNarrativeLifecycleState,
@@ -344,6 +347,7 @@ import {
   requireDowntimeManage,
   requirePageVisibilityEdit,
   requirePageEditAny,
+  requireNonObserverMember,
   requireAdventureStoryboardEdit,
 } from '../middleware/campaignScope.js';
 import {
@@ -731,23 +735,38 @@ campaignScopedRouter.post(
 );
 campaignScopedRouter.get(
   '/workshop/drafts',
-  requirePageEditAny,
+  requireNonObserverMember,
   listWorkshopDraftsHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts',
-  requirePageEditAny,
+  requireNonObserverMember,
   createWorkshopDraftHandler,
+);
+campaignScopedRouter.post(
+  '/workshop/drafts/bootstrap',
+  requireNonObserverMember,
+  bootstrapAnchoredDraftHandler,
 );
 campaignScopedRouter.get(
   '/workshop/drafts/:draftId',
-  requirePageEditAny,
+  requireNonObserverMember,
   getWorkshopDraftHandler,
 );
 campaignScopedRouter.patch(
   '/workshop/drafts/:draftId',
-  requirePageEditAny,
+  requireNonObserverMember,
   patchWorkshopDraftHandler,
+);
+campaignScopedRouter.post(
+  '/workshop/drafts/:draftId/apply',
+  requireNonObserverMember,
+  applyWorkshopDraftHandler,
+);
+campaignScopedRouter.get(
+  '/workshop/drafts/:draftId/writing-context',
+  requireNonObserverMember,
+  getWorkshopWritingContextHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts/:draftId/formalize',

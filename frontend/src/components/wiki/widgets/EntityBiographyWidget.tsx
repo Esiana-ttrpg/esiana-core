@@ -7,6 +7,10 @@ interface EntityBiographyWidgetProps extends WidgetInteractionHandlers {
   onChange: (newContent: Record<string, unknown>) => void;
   isEditingPage: boolean;
   prosePrimary?: boolean;
+  workshopFromPageId?: string;
+  templateType?: string;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
 }
 
 export function EntityBiographyWidget({
@@ -14,6 +18,10 @@ export function EntityBiographyWidget({
   onChange,
   isEditingPage,
   prosePrimary = false,
+  workshopFromPageId,
+  templateType,
+  pageCanEdit,
+  confirmWorkshopLeave,
   onInteractionStart,
   onInteractionEnd,
 }: EntityBiographyWidgetProps) {
@@ -39,6 +47,10 @@ export function EntityBiographyWidget({
       onChange={onChange}
       isEditingLayout={isEditingPage}
       prosePrimary={prosePrimary}
+      workshopFromPageId={workshopFromPageId}
+      templateType={templateType}
+      pageCanEdit={pageCanEdit}
+      confirmWorkshopLeave={confirmWorkshopLeave}
       onInteractionStart={onInteractionStart}
       onInteractionEnd={onInteractionEnd}
     />

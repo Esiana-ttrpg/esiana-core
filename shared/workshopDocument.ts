@@ -10,11 +10,23 @@ export const WORKSHOP_DRAFTS_ROOT_TITLE = '_Workshop Drafts';
 export const WORKSHOP_DRAFT_STATUSES = ['active', 'formalized', 'discarded'] as const;
 export type WorkshopDraftStatus = (typeof WORKSHOP_DRAFT_STATUSES)[number];
 
+export const WORKSHOP_DRAFT_BINDINGS = ['anchored', 'shadow'] as const;
+export type WorkshopDraftBinding = (typeof WORKSHOP_DRAFT_BINDINGS)[number];
+
 export const WORKSHOP_FORMALIZE_TARGETS = [
   'character',
+  'organization',
+  'location',
+  'family',
+  'bestiary',
+  'ancestry',
+  'object',
   'quest',
   'thread',
   'scene',
+  'journal',
+  'event',
+  'rules_resource',
   'lore_note',
 ] as const;
 export type WorkshopFormalizeTarget = (typeof WORKSHOP_FORMALIZE_TARGETS)[number];
@@ -29,16 +41,26 @@ export interface FormalizeWorkshopDraftInput {
   linkedQuestPageId?: string | null;
 }
 
+export interface WorkshopFieldShadow {
+  intendedTarget: WorkshopFormalizeTarget;
+  templateType: string;
+  blocks: Array<Record<string, unknown>>;
+  metadata: Record<string, unknown>;
+}
+
 export interface WorkshopDraftMetadata {
   isDraft: true;
   draftOrigin: 'workshop';
   draftStatus: WorkshopDraftStatus;
-  draftOriginSurface: 'progression';
+  draftOriginSurface: 'progression' | 'workshop';
   authorUserId: string;
   anchorEntityIds?: string[];
   sourceKind?: AuthoringContextKind;
+  intendedTarget?: WorkshopFormalizeTarget;
+  fieldShadow?: WorkshopFieldShadow;
   formalizedAt?: string | null;
   formalizedPageId?: string | null;
+  lastAppliedAt?: string | null;
   hidden: true;
 }
 
@@ -48,14 +70,26 @@ export interface WorkshopDocument {
   authorUserId: string;
   title: string;
   bodyMarkdown: string;
+  binding: WorkshopDraftBinding;
   anchorEntityIds?: string[];
   sourceKind?: AuthoringContextKind;
+  intendedTarget?: WorkshopFormalizeTarget;
+  fieldShadow?: WorkshopFieldShadow | null;
   createdAt: string;
   updatedAt: string;
   lastTouchedAt: string;
   formalizedPageId?: string | null;
   formalizedAt?: string | null;
   draftStatus: WorkshopDraftStatus;
+}
+
+export function resolveWorkshopDraftBinding(metadata: {
+  anchorEntityIds?: string[];
+  intendedTarget?: WorkshopFormalizeTarget;
+}): WorkshopDraftBinding {
+  if (metadata.anchorEntityIds?.length) return 'anchored';
+  if (metadata.intendedTarget) return 'shadow';
+  return 'shadow';
 }
 
 export function isWorkshopDraftMetadata(metadata: unknown): metadata is WorkshopDraftMetadata {
@@ -74,15 +108,20 @@ export function buildWorkshopDraftMetadata(input: {
   authorUserId: string;
   anchorEntityIds?: string[];
   sourceKind?: AuthoringContextKind;
+  intendedTarget?: WorkshopFormalizeTarget;
+  fieldShadow?: WorkshopFieldShadow;
+  draftOriginSurface?: 'progression' | 'workshop';
 }): WorkshopDraftMetadata {
   return {
     isDraft: true,
     draftOrigin: 'workshop',
     draftStatus: 'active',
-    draftOriginSurface: 'progression',
+    draftOriginSurface: input.draftOriginSurface ?? 'workshop',
     authorUserId: input.authorUserId,
     anchorEntityIds: input.anchorEntityIds?.length ? input.anchorEntityIds : undefined,
     sourceKind: input.sourceKind,
+    intendedTarget: input.intendedTarget,
+    fieldShadow: input.fieldShadow,
     formalizedAt: null,
     formalizedPageId: null,
     hidden: true,

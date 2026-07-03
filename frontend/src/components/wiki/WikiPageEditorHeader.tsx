@@ -19,6 +19,9 @@ interface WikiBreadcrumb {
 
 interface WikiPageEditorHeaderProps {
   campaignHandle: string;
+  pageId?: string;
+  canOpenWorkshop?: boolean;
+  confirmWorkshopLeave?: boolean;
   crumbs: WikiBreadcrumb[];
   displayTitle: string;
   profileKey: SurfaceProfileKey;
@@ -50,6 +53,9 @@ interface WikiPageEditorHeaderProps {
 
 export function WikiPageEditorHeader({
   campaignHandle,
+  pageId,
+  canOpenWorkshop,
+  confirmWorkshopLeave,
   crumbs,
   displayTitle,
   profileKey,
@@ -82,6 +88,10 @@ export function WikiPageEditorHeader({
         </div>
 
         <WikiPageRuntimeToolbar
+          campaignHandle={campaignHandle}
+          pageId={pageId}
+          canOpenWorkshop={canOpenWorkshop}
+          confirmWorkshopLeave={confirmWorkshopLeave}
           isDMUser={isDMUser}
           isTagsHub={isTagsHub}
           {...toolbarProps}

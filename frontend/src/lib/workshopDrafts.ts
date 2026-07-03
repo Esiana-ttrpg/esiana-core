@@ -2,11 +2,14 @@ import type { AuthoringContextKind } from '@shared/authoringContext';
 import type {
   FormalizeWorkshopDraftInput,
   WorkshopDocument,
+  WorkshopFieldShadow,
   WorkshopFormalizeTarget,
 } from '@shared/workshopDocument';
 import { apiFetch } from './api';
 
-export type { WorkshopDocument, FormalizeWorkshopDraftInput };
+export type { WorkshopDocument, FormalizeWorkshopDraftInput, WorkshopFieldShadow };
+
+export type WorkshopSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
 export async function fetchWorkshopDrafts(
   campaignHandle: string,
@@ -37,6 +40,20 @@ export async function fetchWorkshopDraft(
   return data.draft;
 }
 
+export async function bootstrapAnchoredWorkshopDraft(
+  campaignHandle: string,
+  input: { anchorPageId: string; sourceKind?: AuthoringContextKind },
+): Promise<WorkshopDocument> {
+  const data = await apiFetch<{ draft: WorkshopDocument }>(
+    `/campaigns/${campaignHandle}/workshop/drafts/bootstrap`,
+    {
+      method: 'POST',
+      body: JSON.stringify(input),
+    },
+  );
+  return data.draft;
+}
+
 export async function createWorkshopDraft(
   campaignHandle: string,
   input?: {
@@ -44,6 +61,7 @@ export async function createWorkshopDraft(
     bodyMarkdown?: string;
     anchorEntityIds?: string[];
     sourceKind?: AuthoringContextKind;
+    intendedTarget?: WorkshopFormalizeTarget;
   },
 ): Promise<WorkshopDocument> {
   const data = await apiFetch<{ draft: WorkshopDocument }>(
@@ -59,7 +77,7 @@ export async function createWorkshopDraft(
 export async function patchWorkshopDraft(
   campaignHandle: string,
   draftId: string,
-  input: { title?: string; bodyMarkdown?: string },
+  input: { title?: string; bodyMarkdown?: string; fieldShadow?: WorkshopFieldShadow },
 ): Promise<WorkshopDocument> {
   const data = await apiFetch<{ draft: WorkshopDocument }>(
     `/campaigns/${campaignHandle}/workshop/drafts/${draftId}`,
@@ -69,6 +87,24 @@ export async function patchWorkshopDraft(
     },
   );
   return data.draft;
+}
+
+export async function applyWorkshopDraft(
+  campaignHandle: string,
+  draftId: string,
+): Promise<WorkshopDocument> {
+  const data = await apiFetch<{ draft: WorkshopDocument }>(
+    `/campaigns/${campaignHandle}/workshop/drafts/${draftId}/apply`,
+    { method: 'POST', body: '{}' },
+  );
+  return data.draft;
+}
+
+export async function fetchWorkshopWritingContext(
+  campaignHandle: string,
+  draftId: string,
+): Promise<{ hints: string[]; linkCount: number; anchorPageId: string | null }> {
+  return apiFetch(`/campaigns/${campaignHandle}/workshop/drafts/${draftId}/writing-context`);
 }
 
 export async function formalizeWorkshopDraft(
@@ -82,7 +118,6 @@ export async function formalizeWorkshopDraft(
   });
 }
 
-/** Count [[wikilink]] mentions in draft markdown for ambient hints. */
 export function countWikilinksInMarkdown(markdown: string): number {
   const matches = markdown.match(/\[\[[^\]]+\]\]/g);
   return matches?.length ?? 0;
