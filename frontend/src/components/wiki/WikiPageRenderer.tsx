@@ -98,6 +98,7 @@ interface WikiPageRendererProps {
   onBlockDisplayChange?: (next: BlockDisplayState) => void;
   onJumpToContinuity?: (blockId: string) => void;
   canDeleteBlock?: (block: WikiPageBlock) => boolean;
+  prosePrimarySubview?: boolean;
 }
 
 export function WikiPageRenderer({
@@ -142,6 +143,7 @@ export function WikiPageRenderer({
   onBlockDisplayChange,
   onJumpToContinuity,
   canDeleteBlock,
+  prosePrimarySubview = false,
 }: WikiPageRendererProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const isEditingPage = isEditingPageProp ?? isEditingLayout ?? false;
@@ -575,7 +577,12 @@ export function WikiPageRenderer({
       blockDisplayState.activeBlockId === block.id &&
       blockDisplayState.scale !== 'compact' &&
       (block.type === 'text-biography' || block.type === 'text-tiptap');
-    const showReadTitle = orchestration.showBlockTitlesRead && !isActiveProse;
+    const isProseBlock =
+      block.type === 'text-biography' || block.type === 'text-tiptap';
+    const showReadTitle =
+      orchestration.showBlockTitlesRead &&
+      !isActiveProse &&
+      !(prosePrimarySubview && isEditingPage && isProseBlock);
 
     return (
       <WikiPageBlockShell
@@ -652,6 +659,7 @@ export function WikiPageRenderer({
         }
         blockDisplayState={blockDisplayState}
         blockActionHandlers={blockActionHandlersForWidgets}
+        prosePrimarySubview={prosePrimarySubview}
       />
     );
   }

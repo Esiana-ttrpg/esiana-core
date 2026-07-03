@@ -11,6 +11,8 @@ import {
 import {
   buildWikiEditorUseEditorConfig,
   getWikiEditorMarkdown,
+  WIKI_EDITOR_SIZE_CLASS_DEFAULT,
+  WIKI_EDITOR_SIZE_CLASS_PROSE_PRIMARY,
   WIKI_EDITOR_PROSE_CLASS,
 } from '../createWikiEditor';
 import {
@@ -26,6 +28,7 @@ interface TiptapWidgetProps {
   content: Record<string, unknown>;
   onChange: (newContent: Record<string, unknown>) => void;
   isEditingLayout: boolean;
+  prosePrimary?: boolean;
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
 }
@@ -64,6 +67,7 @@ export function TiptapWidget({
   content,
   onChange,
   isEditingLayout,
+  prosePrimary = false,
   onInteractionStart,
   onInteractionEnd,
 }: TiptapWidgetProps) {
@@ -184,7 +188,13 @@ export function TiptapWidget({
         />
       </div>
 
-      <div className="wiki-widget-editor w-full min-w-0">
+      <div
+        className={`wiki-widget-editor w-full min-w-0 ${
+          prosePrimary
+            ? WIKI_EDITOR_SIZE_CLASS_PROSE_PRIMARY
+            : WIKI_EDITOR_SIZE_CLASS_DEFAULT
+        }`}
+      >
         <EditorContent editor={editor} />
         <LorePopovers editor={editor} />
       </div>

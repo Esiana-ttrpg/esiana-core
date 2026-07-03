@@ -27,13 +27,12 @@ const OVERVIEW_BLOCKS: WikiPageBlockType[] = [
   'text-biography',
   'text-tiptap',
   'image-display',
-  'wiki-infobox',
   'stat-block',
   'entity-document',
 ];
 
 const CONTENT_TAB_BLOCKS: Record<string, WikiPageBlockType[]> = {
-  lore: ['text-tiptap', 'text-biography', 'image-display', 'wiki-infobox'],
+  lore: ['text-tiptap', 'text-biography', 'image-display'],
   appearance: ['entity-appearance', 'image-display'],
   relationships: [
     'entity-relationships',

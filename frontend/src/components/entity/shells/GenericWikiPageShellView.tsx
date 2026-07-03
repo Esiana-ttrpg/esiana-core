@@ -3,6 +3,8 @@ import { InterpretiveLoreHeader } from '@/components/entity/lore/InterpretiveLor
 import { WikiPageIdentitySubtitle } from '@/components/wiki/WikiPageIdentitySubtitle';
 import { NarrativeStatusBadge, NarrativeStatusGmBadge } from '@/components/wiki/NarrativeStatusBadge';
 import type { PageNarrativeStatusProjection } from '@shared/pageNarrativeStatus';
+import { buildInfoboxProjection } from '@/lib/buildInfoboxProjection';
+import { ProfileDetailsCard } from './ProfileDetailsCard';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
 import type { InterpretiveSummaryResponse } from '@/lib/loreKnowledgeApi';
 import type { WikiPlayerEntry, WikiTreeNode } from '@/types/wiki';
@@ -24,20 +26,38 @@ export function GenericWikiPageShellView({
   templateType,
   displayTitle,
   pageData,
+  blocks,
   pageSubview,
   isDMUser,
+  isEditingPage,
   narrativeStatus,
   interpretiveSummary,
   professionSubtitle,
   knownForSubtitle,
   players,
   flatPages,
+  onBlocksChange,
   wikiPageRenderer,
   loreSemanticPanel,
   continuityPanel,
   eventConsequencesPanel,
 }: GenericWikiPageShellViewProps) {
   const showOverviewChrome = pageSubview === 'overview';
+
+  const infoboxBlock = blocks.find((b) => b.type === 'wiki-infobox');
+  const infoboxFields =
+    (infoboxBlock?.content as { fields?: { key: string; value: string }[] })?.fields ??
+    buildInfoboxProjection(templateType, pageData.metadata, flatPages, profileKey);
+
+  function updateInfoboxFields(fields: { key: string; value: string }[]) {
+    onBlocksChange((prev) =>
+      prev.map((b) =>
+        b.type === 'wiki-infobox'
+          ? { ...b, content: { ...(b.content as object), fields } }
+          : b,
+      ),
+    );
+  }
 
   return (
     <div className={`min-w-0 w-full ${SURFACE_SILENT_CLASS}`}>
@@ -64,6 +84,17 @@ export function GenericWikiPageShellView({
             knownFor={knownForSubtitle}
             players={players}
             flatPages={flatPages}
+          />
+        </div>
+      ) : null}
+
+      {showOverviewChrome ? (
+        <div className="mb-4">
+          <ProfileDetailsCard
+            fields={infoboxFields}
+            isEditingPage={isEditingPage}
+            isDMUser={isDMUser}
+            onFieldsChange={updateInfoboxFields}
           />
         </div>
       ) : null}

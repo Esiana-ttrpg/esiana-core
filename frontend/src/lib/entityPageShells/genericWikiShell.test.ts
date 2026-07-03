@@ -32,7 +32,36 @@ describe('genericWikiPageShell', () => {
 
     const overview = shell.filterBlocksForSubview(blocks, 'overview', true);
     assert.ok(overview.some((b) => b.type === 'entity-thread-properties'));
-    assert.ok(overview.some((b) => b.type === 'wiki-infobox'));
+    assert.ok(!overview.some((b) => b.type === 'wiki-infobox'));
+  });
+
+  it('keeps wiki-infobox off lore subview', () => {
+    const blocks: WikiPageBlock[] = [
+      {
+        id: 'prose',
+        type: 'text-tiptap',
+        x: 0,
+        y: 0,
+        w: 2,
+        h: 1,
+        content: { markdown: '' },
+        isPrivate: false,
+      },
+      {
+        id: 'infobox',
+        type: 'wiki-infobox',
+        x: 0,
+        y: 1,
+        w: 2,
+        h: 1,
+        content: { fields: [] },
+        isPrivate: false,
+      },
+    ];
+
+    const lore = shell.filterBlocksForSubview(blocks, 'lore', true);
+    assert.ok(lore.some((b) => b.type === 'text-tiptap'));
+    assert.ok(!lore.some((b) => b.type === 'wiki-infobox'));
   });
 
   it('maps quest properties block type to overview subview', () => {

@@ -1,18 +1,19 @@
 import { TiptapWidget } from './TiptapWidget';
 import { BlockEmptyState } from '@/components/wiki/BlockEmptyState';
-import { BookOpen } from 'lucide-react';
 import type { WidgetInteractionHandlers } from './widgetInteraction';
 
 interface EntityBiographyWidgetProps extends WidgetInteractionHandlers {
   content: Record<string, unknown>;
   onChange: (newContent: Record<string, unknown>) => void;
   isEditingPage: boolean;
+  prosePrimary?: boolean;
 }
 
 export function EntityBiographyWidget({
   content,
   onChange,
   isEditingPage,
+  prosePrimary = false,
   onInteractionStart,
   onInteractionEnd,
 }: EntityBiographyWidgetProps) {
@@ -32,31 +33,12 @@ export function EntityBiographyWidget({
     );
   }
 
-  if (isEditingPage && isEmpty) {
-    return (
-      <div className="space-y-3">
-        <BlockEmptyState
-          icon={BookOpen}
-          compact
-          title="Biography"
-          description="Write the character's story, background, and arc."
-        />
-        <TiptapWidget
-          content={content}
-          onChange={onChange}
-          isEditingLayout={isEditingPage}
-          onInteractionStart={onInteractionStart}
-          onInteractionEnd={onInteractionEnd}
-        />
-      </div>
-    );
-  }
-
   return (
     <TiptapWidget
       content={content}
       onChange={onChange}
       isEditingLayout={isEditingPage}
+      prosePrimary={prosePrimary}
       onInteractionStart={onInteractionStart}
       onInteractionEnd={onInteractionEnd}
     />

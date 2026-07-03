@@ -92,6 +92,7 @@ describe('filterBlocksForSubview', () => {
 
     const lore = filterBlocksForSubview(questBlocks, 'lore', true);
     assert.ok(!lore.some((b) => b.type === 'entity-quest-properties'));
+    assert.ok(!lore.some((b) => b.type === 'wiki-infobox'));
   });
 });
 

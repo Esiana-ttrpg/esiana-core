@@ -8,6 +8,7 @@ import {
 import {
   buildWikiEditorUseEditorConfig,
   getWikiEditorMarkdown,
+  WIKI_EDITOR_SIZE_CLASS_DEFAULT,
 } from './createWikiEditor';
 import {
   CodexLinkBridgeChips,
@@ -26,7 +27,6 @@ interface WikiTipTapEditorProps {
   placeholder?: string;
   wikiTree: WikiTreeNode[];
   minHeight?: string;
-  /** When set, enables lightweight session instrumentation. */
   instrumentationPageId?: string;
   instrumentationPageTitle?: string;
   enableInstrumentation?: boolean;
@@ -37,7 +37,7 @@ export function WikiTipTapEditor({
   onChange,
   placeholder: _placeholder = 'Write in Markdown…',
   wikiTree,
-  minHeight = 'min-h-[200px]',
+  minHeight: _minHeight,
   instrumentationPageId,
   instrumentationPageTitle,
   enableInstrumentation = true,
@@ -57,7 +57,6 @@ export function WikiTipTapEditor({
     ...buildWikiEditorUseEditorConfig({
       loreExtensions,
       content: content || '',
-      minHeight,
       onUpdate: (markdown) => {
         lastEmittedMarkdown.current = markdown;
         onChange(markdown);
@@ -98,7 +97,9 @@ export function WikiTipTapEditor({
           labels={bridgeLabels}
           resolveEntryByLabel={resolveEntryByLabel}
         />
-        <div className="relative min-w-0 overflow-x-auto">
+        <div
+          className={`wiki-widget-editor ${WIKI_EDITOR_SIZE_CLASS_DEFAULT} relative min-w-0 overflow-x-auto`}
+        >
           <EditorContent editor={editor} />
           <LorePopovers editor={editor} />
         </div>

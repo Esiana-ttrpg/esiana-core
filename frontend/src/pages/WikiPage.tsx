@@ -69,6 +69,7 @@ import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageSh
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { OrganizationPageShellView } from '@/components/entity/shells/OrganizationPageShellView';
 import { GenericWikiPageShellView } from '@/components/entity/shells/GenericWikiPageShellView';
+import { FamilyPageShellView } from '@/components/entity/shells/FamilyPageShellView';
 import { PageSettingsDrawer } from '@/components/entity/shells/PageSettingsDrawer';
 import { resolveEntityPageShell } from '@/lib/entityPageShells/registry';
 import { ensureSystemBlocks } from '@/lib/entityPageShells/systemBlocks';
@@ -131,6 +132,7 @@ import {
   resolveSemanticPageBlocks,
 } from '@/utils/pageTemplates';
 import { stripHeightsForPersist } from '@/utils/wikiLayoutRuntime';
+import { isProsePrimarySubview } from '@/lib/prosePrimarySubview';
 import {
   DEFAULT_BLOCK_DISPLAY_STATE,
   type BlockDisplayState,
@@ -677,6 +679,9 @@ export function WikiPage() {
     if (entityPageShell.key === 'character') {
       return pageSubview === 'biography' && showSectionSubviews;
     }
+    if (entityPageShell.key === 'family') {
+      return pageSubview === 'lore' && showSectionSubviews;
+    }
     return shouldShowLoreSemanticSections(
       pageSubview as WikiPageSubview,
       showSectionSubviews,
@@ -1167,6 +1172,12 @@ export function WikiPage() {
     pageCodexDiagnostics.reload,
   ]);
 
+  const prosePrimarySubview = isProsePrimarySubview(
+    pageSubview,
+    isEventLorePageId(pageId),
+    isEditingPage,
+  );
+
   const wikiPageRendererSlot = useMemo(() => {
     if (!pageData) return null;
     return (
@@ -1234,6 +1245,7 @@ export function WikiPage() {
         onPageTagsChange={setPageTags}
         onJumpToContinuity={isDMUser ? handleJumpToContinuity : undefined}
         entityPageShell={entityPageShell}
+        prosePrimarySubview={prosePrimarySubview}
       />
     );
   }, [
@@ -1241,6 +1253,7 @@ export function WikiPage() {
     displayBlocks,
     templateType,
     isEditingPage,
+    prosePrimarySubview,
     showGridLines,
     blockDisplayState,
     isDirty,
@@ -1378,6 +1391,23 @@ export function WikiPage() {
           characterIdentityProjection={null}
           organizationIdentityProjection={organizationIdentityProjection}
           onMetadataSaved={metadataSaved}
+        />
+      );
+    }
+
+    if (entitySurfaceProfile.key === 'family') {
+      return (
+        <FamilyPageShellView
+          {...shellBase}
+          characterIdentityProjection={null}
+          familyIdentityProjection={familyIdentityProjection}
+          onMetadataSaved={metadataSaved}
+          memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
+          allowPlayerChronologyManagement={
+            wikiCampaign?.allowPlayerChronologyManagement ??
+            campaign?.allowPlayerChronologyManagement ??
+            false
+          }
         />
       );
     }
