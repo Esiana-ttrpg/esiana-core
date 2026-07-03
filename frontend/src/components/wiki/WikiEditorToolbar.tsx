@@ -34,6 +34,7 @@ import type { WikiTreeNode } from '@/types/wiki';
 import {
   EditorColorPickerToolbarButton,
 } from './EditorColorPickerContext';
+import { AdmonitionToolbarDropdown } from './AdmonitionToolbarDropdown';
 
 interface WikiEditorToolbarProps {
   editor: Editor | null;
@@ -274,6 +275,7 @@ export function WikiEditorToolbar({
       >
         <Quote className="size-4" />
       </ToolbarButton>
+      <AdmonitionToolbarDropdown editor={editor} />
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         active={editor.isActive('codeBlock')}
