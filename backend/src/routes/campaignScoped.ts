@@ -348,7 +348,27 @@ import {
   requirePageVisibilityEdit,
   requirePageEditAny,
   requireAdventureStoryboardEdit,
+  requirePageCreate,
+  requireJournalPlannerAccess,
 } from '../middleware/campaignScope.js';
+import {
+  createJournalPublication,
+  deleteJournalPublication,
+  evaluateJournalPublication,
+  getJournalPublication,
+  getJournalPlanner,
+  listJournalLibrary,
+  releaseJournalPublication,
+  updateJournalPublication,
+  updateJournalPublicationRule,
+} from '../controllers/journalController.js';
+import {
+  createJournalSeries,
+  deleteJournalSeries,
+  generateNextSeriesIssue,
+  listJournalSeries,
+  updateJournalSeries,
+} from '../controllers/journalSeriesController.js';
 import {
   getCampaignInvite,
   listCampaignMembers,
@@ -1346,4 +1366,42 @@ campaignScopedRouter.patch(
   '/wiki/:pageId/map-asset',
   requireMapsEdit,
   bindWikiPageMapAsset,
+);
+
+// Journal — Library (released archive) is member-readable; authorship uses
+// PAGE_CREATE; the Planner and all release orchestration require the optional
+// JOURNAL_PLANNER_ACCESS capability.
+campaignScopedRouter.get('/journal/library', listJournalLibrary);
+campaignScopedRouter.get('/journal/planner', requireJournalPlannerAccess, getJournalPlanner);
+campaignScopedRouter.get('/journal/series', requireJournalPlannerAccess, listJournalSeries);
+campaignScopedRouter.post('/journal/series', requireJournalPlannerAccess, createJournalSeries);
+campaignScopedRouter.patch('/journal/series/:id', requireJournalPlannerAccess, updateJournalSeries);
+campaignScopedRouter.delete('/journal/series/:id', requireJournalPlannerAccess, deleteJournalSeries);
+campaignScopedRouter.post(
+  '/journal/series/:id/generate-next',
+  requireJournalPlannerAccess,
+  generateNextSeriesIssue,
+);
+campaignScopedRouter.post('/journal/publications', requirePageCreate, createJournalPublication);
+campaignScopedRouter.get('/journal/publications/:id', getJournalPublication);
+campaignScopedRouter.patch('/journal/publications/:id', requirePageCreate, updateJournalPublication);
+campaignScopedRouter.delete(
+  '/journal/publications/:id',
+  requirePageCreate,
+  deleteJournalPublication,
+);
+campaignScopedRouter.put(
+  '/journal/publications/:id/rule',
+  requireJournalPlannerAccess,
+  updateJournalPublicationRule,
+);
+campaignScopedRouter.post(
+  '/journal/publications/:id/evaluate',
+  requireJournalPlannerAccess,
+  evaluateJournalPublication,
+);
+campaignScopedRouter.post(
+  '/journal/publications/:id/release',
+  requireJournalPlannerAccess,
+  releaseJournalPublication,
 );
