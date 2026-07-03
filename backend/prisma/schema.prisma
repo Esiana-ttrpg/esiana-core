@@ -86,6 +86,8 @@ model User {
   wikiPagesOwned            WikiPage[] @relation("WikiPageOwnerUser")
   wikiPagesCreated          WikiPage[] @relation("WikiPageCreatedBy")
   assetsUploaded            Asset[]    @relation("AssetUploadedBy")
+  journalPublicationsCreated  JournalPublication[] @relation("JournalPublicationCreatedBy")
+  journalPublicationsReleased JournalPublication[] @relation("JournalPublicationReleasedBy")
 
   lastLogin DateTime?
   createdAt DateTime @default(now())
@@ -524,6 +526,9 @@ model Campaign {
   userPins                   UserCampaignPin[]
   parties                    Party[]
   roleCapabilityOverrides    CampaignRoleCapabilityOverride[]
+  journalSeries              JournalSeries[]
+  journalPublications        JournalPublication[]
+  journalReleaseReceipts     JournalReleaseReceipt[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -778,6 +783,102 @@ model CampaignScheduledEffectOccurrence {
 
   @@unique([campaignId, scheduledEffectId, fireAtEpochMinute])
   @@index([campaignId, scheduledEffectId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Journal — narrative publication + release orchestration
+// ---------------------------------------------------------------------------
+
+/// Recurring publication blueprint (cadence + template + naming). Materializes
+/// issues lazily (buffer-of-1); never batch-generates ahead.
+model JournalSeries {
+  id                      String  @id @default(cuid())
+  campaignId              String
+  name                    String
+  description             String?
+  /// JournalPublicationType literal (shared/journalPublication.ts)
+  defaultType             String  @default("notice")
+  /// Narrative anchor wiki page (loose id; resolved at read, may dangle after deletion)
+  linkedPageId            String?
+  /// Source association only (Workshop template draft)
+  templateWorkshopDraftId String?
+  /// ReleaseNode tree — when to materialize the next issue draft
+  nextIssueRule           Json?
+  namingScheme            String?
+  nextIssueNumber         Int     @default(1)
+  /// live | buffered | planned (MVP implements live buffer-of-1)
+  seriesMode              String  @default("live")
+
+  campaign     Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  publications JournalPublication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId])
+}
+
+/// A single publication/issue. Two orthogonal axes: release lifecycle (status)
+/// and computed content readiness (derived at read time, never stored).
+model JournalPublication {
+  id               String    @id @default(cuid())
+  campaignId       String
+  title            String    @default("")
+  /// JournalPublicationType literal
+  type             String    @default("notice")
+  /// draft | scheduled | released | archived
+  status           String    @default("draft")
+  seriesId         String?
+  issueNumber      Int?
+  /// quick_draft | workshop (provenance only, drives "Open source draft")
+  sourceKind       String    @default("quick_draft")
+  /// Source association only (not a formalize target)
+  workshopDraftId  String?
+  contentMarkdown  String?
+  contentBlocks    Json?
+  /// ReleaseNode tree — when this publication goes live
+  releaseRule      Json?
+  /// Narrative anchor wiki page (loose id)
+  linkedPageId     String?
+  createdByUserId  String?
+  releasedByUserId String?
+  releasedAt       DateTime?
+  /// Stamped on every rule evaluation ("Last checked …")
+  lastEvaluatedAt  DateTime?
+
+  campaign   Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  series     JournalSeries?          @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  createdBy  User?                   @relation("JournalPublicationCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  releasedBy User?                   @relation("JournalPublicationReleasedBy", fields: [releasedByUserId], references: [id], onDelete: SetNull)
+  receipts   JournalReleaseReceipt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status])
+  @@index([campaignId, seriesId])
+  @@index([campaignId, status, releasedAt])
+  @@index([campaignId, linkedPageId])
+}
+
+/// Append-only release audit (one per released publication).
+model JournalReleaseReceipt {
+  id                    String @id @default(cuid())
+  campaignId            String
+  publicationId         String
+  releasedAtEpochMinute BigInt
+  /// auto | manual | override
+  triggerKind           String
+  /// Snapshot of the satisfied diagnostics at release time
+  diagnosticsSnapshot   Json?
+
+  campaign    Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  publication JournalPublication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([campaignId, publicationId])
+  @@index([campaignId, createdAt])
 }
 
 /// Layer 1 — party-to-faction reputation simulation state (one row per campaign).
