@@ -10,12 +10,14 @@ import {
 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ReleaseRuleEditor } from '@/components/journal/ReleaseRuleEditor';
 import {
   JOURNAL_PUBLICATION_TYPES,
   type JournalPlannerItemDTO,
   type JournalPublicationType,
   type PerceivedPlannerState,
 } from '@shared/journalPublication';
+import type { ReleaseNode } from '@shared/journalReleaseRule';
 import {
   renderReleaseDiagnostic,
   translateContentReadiness,
@@ -28,6 +30,7 @@ import {
   fetchJournalPublication,
   generateNextSeriesIssue,
   releaseJournalPublication,
+  saveJournalPublicationRule,
   updateJournalPublication,
   type ConditionDiagnostic,
   type JournalPublicationDTO,
@@ -89,6 +92,7 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
   const [draftTitle, setDraftTitle] = useState('');
   const [draftType, setDraftType] = useState<JournalPublicationType>('notice');
   const [draftBody, setDraftBody] = useState('');
+  const [draftRule, setDraftRule] = useState<ReleaseNode | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadPlanner = useCallback(async () => {
@@ -118,6 +122,7 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
         setDraftTitle(dto.title);
         setDraftType(dto.type);
         setDraftBody(dto.contentMarkdown ?? '');
+        setDraftRule(dto.releaseRule);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load publication');
         setDetail(null);
@@ -172,6 +177,22 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
       setBusy(false);
     }
   }, [campaignHandle, detail, draftTitle, draftType, draftBody, loadPlanner]);
+
+  const handleSaveRule = useCallback(async () => {
+    if (!detail) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await saveJournalPublicationRule(campaignHandle, detail.id, draftRule);
+      setDetail(updated);
+      setDraftRule(updated.releaseRule);
+      await loadPlanner();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save plan');
+    } finally {
+      setBusy(false);
+    }
+  }, [campaignHandle, detail, draftRule, loadPlanner]);
 
   const handleEvaluate = useCallback(async () => {
     if (!detail) return;
@@ -398,9 +419,36 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
                     disabled={busy}
                     className="self-start rounded-lg bg-primary px-3 py-2 text-sm font-medium text-background hover:bg-primary/90 disabled:opacity-50"
                   >
-                    {t('journal.planner.saveRule')}
+                    {t('journal.planner.saveContent')}
                   </button>
                 </div>
+
+                <section className="flex flex-col gap-2 border-t border-border pt-4">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {t('journal.planner.conditionsHeading')}
+                  </h3>
+                  <ReleaseRuleEditor rule={draftRule} onChange={setDraftRule} />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveRule()}
+                      disabled={busy}
+                      className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-background hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {t('journal.planner.saveRule')}
+                    </button>
+                    {draftRule && (
+                      <button
+                        type="button"
+                        onClick={() => setDraftRule(null)}
+                        disabled={busy}
+                        className="rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:border-primary/40 disabled:opacity-50"
+                      >
+                        {t('journal.planner.clearPlan')}
+                      </button>
+                    )}
+                  </div>
+                </section>
 
                 <section className="flex flex-col gap-2 border-t border-border pt-4">
                   <h3 className="text-sm font-semibold text-foreground">
