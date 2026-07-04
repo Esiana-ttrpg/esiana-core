@@ -4,9 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { BookOpen, Link2, Newspaper } from 'lucide-react';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { CategoryIndexViewToggle } from '@/components/wiki/indexBrowse/CategoryIndexViewToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { CreatePublicationModal } from '@/components/journal/CreatePublicationModal';
 import { useWiki } from '@/contexts/WikiContext';
+import type { CategoryIndexViewMode } from '@/lib/categoryIndexBrowseStorage';
+import { META_TABLE_HEAD_CLASS } from '@/lib/surfaceLayout';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import {
   JOURNAL_PUBLICATION_TYPES,
@@ -15,7 +19,6 @@ import {
 } from '@shared/journalPublication';
 import { translatePublicationType } from '@/i18n/journalRelease';
 import {
-  createJournalPublication,
   fetchJournalLibrary,
   fetchJournalPublication,
   type JournalLibraryItemDTO,
@@ -46,6 +49,8 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<CategoryIndexViewMode>('table');
 
   const [typeFilter, setTypeFilter] = useState<JournalPublicationType | ''>('');
   const [seriesFilter, setSeriesFilter] = useState('');
@@ -142,20 +147,16 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     return [...map.entries()];
   }, [items]);
 
-  const handleCreate = useCallback(async () => {
-    const title = window.prompt(t('journal.library.newPublication')) ?? '';
-    if (!title.trim()) return;
-    try {
-      const created = await createJournalPublication(campaignHandle, { title: title.trim() });
+  const handleCreated = useCallback(
+    (created: JournalPublicationDTO) => {
       if (canPlan) {
         setSearchParams({ tab: 'planner', pub: created.id }, { replace: false });
       } else {
-        setNotice(t('journal.planner.contentGate'));
+        setNotice(t('journal.library.createdNotice'));
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create publication');
-    }
-  }, [campaignHandle, canPlan, setSearchParams, t]);
+    },
+    [canPlan, setSearchParams, t],
+  );
 
   const selectClass =
     'rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground';
@@ -267,7 +268,8 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
   ) : undefined;
 
   return (
-    <CategoryHubShell
+    <>
+      <CategoryHubShell
       composition="hub"
       title={
         <span className="inline-flex items-center gap-2">
@@ -279,11 +281,18 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
       actions={
         <CategoryIndexToolbar
           createLabel={t('journal.library.newPublication')}
-          onCreate={handleCreate}
+          onCreate={() => setIsCreateOpen(true)}
           createAction={canCreate ? undefined : null}
           resultCountLabel={loading ? null : String(items.length)}
           refineControl={refineControl}
           sortControl={sortControl}
+          viewControl={
+            <CategoryIndexViewToggle
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              showHierarchy={false}
+            />
+          }
         />
       }
       contextual={contextual}
@@ -308,41 +317,126 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSelectedId(item.id)}
-                className={[
-                  'flex flex-col gap-2 rounded-xl border bg-surface p-4 text-left transition-colors',
-                  item.id === selectedId
-                    ? 'border-primary'
-                    : 'border-border hover:border-primary/40',
-                ].join(' ')}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-elevated px-2 py-0.5 text-[11px] uppercase tracking-wide text-muted">
-                    {translatePublicationType(item.type, t)}
-                  </span>
-                  {item.seriesName && (
-                    <span className="truncate text-xs text-muted">{item.seriesName}</span>
-                  )}
-                </div>
-                <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
-                  {item.title || t('journal.states.empty')}
-                </h3>
-                <div className="mt-auto flex items-center justify-between text-xs text-muted">
-                  {item.issueNumber != null ? (
-                    <span>{t('journal.library.issueLabel', { n: item.issueNumber })}</span>
-                  ) : (
-                    <span />
-                  )}
-                  <span>{formatDate(item.releasedAt)}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+          {viewMode === 'table' ? (
+            <div className="rounded-xl border border-border/60">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={`border-b border-border/60 text-left ${META_TABLE_HEAD_CLASS}`}>
+                    <th className="px-3 py-2.5">{t('journal.library.colTitle')}</th>
+                    <th className="hidden px-3 py-2.5 md:table-cell">
+                      {t('journal.library.colType')}
+                    </th>
+                    <th className="hidden px-3 py-2.5 lg:table-cell">
+                      {t('journal.library.colSeries')}
+                    </th>
+                    <th className="hidden px-3 py-2.5 lg:table-cell">
+                      {t('journal.library.colOrigin')}
+                    </th>
+                    <th className="hidden px-3 py-2.5 xl:table-cell">
+                      {t('journal.library.colIssue')}
+                    </th>
+                    <th className="hidden px-3 py-2.5 text-right md:table-cell">
+                      {t('journal.library.colReleased')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr
+                      key={item.id}
+                      onClick={() => setSelectedId(item.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setSelectedId(item.id);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={item.title || t('journal.states.empty')}
+                      className={[
+                        'cursor-pointer border-b border-border/60 outline-none transition-colors last:border-b-0',
+                        'focus-visible:bg-elevated/50',
+                        item.id === selectedId ? 'bg-elevated/60' : 'hover:bg-elevated/40',
+                      ].join(' ')}
+                    >
+                      <td className="px-3 py-2.5">
+                        <div className="min-w-0">
+                          <span className="block truncate font-medium text-foreground">
+                            {item.title || t('journal.states.empty')}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-muted md:hidden">
+                            {translatePublicationType(item.type, t)}
+                            {item.releasedAt ? ` · ${formatDate(item.releasedAt)}` : ''}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="hidden px-3 py-2.5 text-muted md:table-cell">
+                        {translatePublicationType(item.type, t)}
+                      </td>
+                      <td className="hidden max-w-[12rem] px-3 py-2.5 lg:table-cell">
+                        <span className="block truncate text-muted">{item.seriesName ?? '—'}</span>
+                      </td>
+                      <td className="hidden max-w-[12rem] px-3 py-2.5 lg:table-cell">
+                        {item.linkedPage ? (
+                          <span className="flex min-w-0 items-center gap-1 text-muted">
+                            <Link2 className="size-3.5 shrink-0" aria-hidden />
+                            <span className="truncate">{item.linkedPage.title}</span>
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-muted xl:table-cell">
+                        {item.issueNumber != null
+                          ? t('journal.library.issueLabel', { n: item.issueNumber })
+                          : '—'}
+                      </td>
+                      <td className="hidden whitespace-nowrap px-3 py-2.5 text-right text-muted md:table-cell">
+                        {formatDate(item.releasedAt) || '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedId(item.id)}
+                  className={[
+                    'flex flex-col gap-2 rounded-xl border bg-surface p-4 text-left transition-colors',
+                    item.id === selectedId
+                      ? 'border-primary'
+                      : 'border-border/60 hover:border-primary/40',
+                  ].join(' ')}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-elevated px-2 py-0.5 text-xs text-muted">
+                      {translatePublicationType(item.type, t)}
+                    </span>
+                    {item.seriesName && (
+                      <span className="truncate text-xs text-muted">{item.seriesName}</span>
+                    )}
+                  </div>
+                  <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
+                    {item.title || t('journal.states.empty')}
+                  </h3>
+                  <div className="mt-auto flex items-center justify-between text-xs text-muted">
+                    {item.issueNumber != null ? (
+                      <span>{t('journal.library.issueLabel', { n: item.issueNumber })}</span>
+                    ) : (
+                      <span />
+                    )}
+                    <span>{formatDate(item.releasedAt)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
           {nextCursor && (
             <div className="flex justify-center">
               <button
@@ -357,7 +451,14 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
           )}
         </div>
       )}
-    </CategoryHubShell>
+      </CategoryHubShell>
+      <CreatePublicationModal
+        open={isCreateOpen}
+        campaignHandle={campaignHandle}
+        onClose={() => setIsCreateOpen(false)}
+        onCreated={handleCreated}
+      />
+    </>
   );
 }
 

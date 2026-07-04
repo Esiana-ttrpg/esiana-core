@@ -1,5 +1,6 @@
 import type {
   ConditionDiagnostic,
+  PlanState,
   ReleaseCriteriaKind,
   ReleaseGroupOperator,
   ReleaseMissingReason,
@@ -100,4 +101,32 @@ export function translateContentReadiness(readiness: ContentReadiness, t: Transl
 
 export function translateGroupOperator(operator: ReleaseGroupOperator, t: TranslateFn): string {
   return t(operator === 'ANY' ? 'journal.diag.groupAny' : 'journal.diag.groupAll');
+}
+
+/**
+ * State-derived Planner summary — a single interpretive sentence built purely
+ * from the already-computed plan state, unmet count, and content readiness.
+ * Deliberately NOT a rule-to-English engine: no rule-tree traversal, no
+ * synthetic connectors. Both the Status and Summary rail cards read from here so
+ * their voice matches.
+ */
+export function journalStateSummary(
+  planState: PlanState,
+  unmetCount: number,
+  contentReady: boolean,
+  t: TranslateFn,
+): string {
+  switch (planState) {
+    case 'ready':
+      return contentReady
+        ? t('journal.planner.summaryReady')
+        : t('journal.planner.summaryReadyNoContent');
+    case 'needs_plan':
+      return t('journal.planner.summaryNeedsPlan');
+    case 'blocked':
+      return t('journal.planner.summaryBlocked');
+    case 'pending':
+    default:
+      return t('journal.planner.summaryPending', { count: unmetCount });
+  }
 }
