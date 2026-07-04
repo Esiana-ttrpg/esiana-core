@@ -25,4 +25,11 @@
   "journal.library.loadMore": "Charger plus",
   "journal.library.openSourceDraft": "Ouvrir le brouillon source",
   "journal.library.releasedOn": "Publié le {{when}}"
+  ,"journal.library.confirmDelete": "Supprimer cette publication ? Cette action est irréversible.",
+  "journal.library.confirmForceDelete": "Forcer la suppression de cette publication ? Cette action est irréversible.",
+  "journal.library.deleted": "Publication supprimée.",
+  "journal.library.deleteFailed": "La suppression a échoué.",
+  "journal.library.delete": "Supprimer",
+  "journal.library.forceDelete": "Suppression forcée",
+  "journal.library.openInWorkshop": "Ouvrir dans l’Atelier"
 }

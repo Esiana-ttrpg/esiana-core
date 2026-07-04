@@ -30,7 +30,7 @@ type WithLabel = { label?: string };
 
 export type ReleaseCriteria =
   // chronology (temporal)
-  | ({ kind: 'session_number_at_least'; value: number } & WithLabel)
+  | ({ kind: 'session_number_at_least'; value: number; operator?: ComparisonOperator } & WithLabel)
   | ({ kind: 'session_completed'; sessionPageId: string } & WithLabel)
   | ({ kind: 'inworld_date_after'; epochMinute: string } & WithLabel)
   | ({ kind: 'inworld_date_before'; epochMinute: string } & WithLabel)
@@ -56,9 +56,10 @@ export type ReleaseCriteria =
   | ({ kind: 'faction_reputation_at_least'; factionPageId: string; axis: ReputationCriteriaAxis; value: number } & WithLabel)
   | ({ kind: 'party_visited_region'; locationPageId: string } & WithLabel)
   // publishing (external schedule — wall clock; poll/evaluate path only)
-  | ({ kind: 'real_world_date_after'; isoDate: string } & WithLabel)
+  | ({ kind: 'real_world_date_after'; isoDate: string; operator?: ComparisonOperator } & WithLabel)
   // manual
   | ({ kind: 'manual_release' } & WithLabel);
+  
 
 export type ReleaseCriteriaKind = ReleaseCriteria['kind'];
 
@@ -222,9 +223,35 @@ function evaluateLeaf(
 ): ConditionDiagnostic {
   switch (criteria.kind) {
     case 'session_number_at_least':
-      return conditionDiagnostic(path, criteria, snapshot.currentSession >= criteria.value, {
-        n: criteria.value,
-      });
+      {
+        const op = (criteria as any).operator ?? '>=';
+        const left = snapshot.currentSession;
+        const right = criteria.value;
+        let met = false;
+        switch (op) {
+          case '=':
+            met = left === right;
+            break;
+          case '!=':
+            met = left !== right;
+            break;
+          case '>':
+            met = left > right;
+            break;
+          case '<':
+            met = left < right;
+            break;
+          case '>=':
+            met = left >= right;
+            break;
+          case '<=':
+            met = left <= right;
+            break;
+          default:
+            met = left >= right;
+        }
+        return conditionDiagnostic(path, criteria, met, { n: criteria.value });
+      }
 
     case 'session_completed': {
       const fact = snapshot.sessions[criteria.sessionPageId];
@@ -395,7 +422,32 @@ function evaluateLeaf(
     case 'real_world_date_after': {
       const now = Date.parse(snapshot.nowIso);
       const target = Date.parse(criteria.isoDate);
-      const met = !Number.isNaN(now) && !Number.isNaN(target) && now >= target;
+      const op = (criteria as any).operator ?? '>=';
+      let met = false;
+      if (!Number.isNaN(now) && !Number.isNaN(target)) {
+        switch (op) {
+          case '=':
+            met = now === target;
+            break;
+          case '!=':
+            met = now !== target;
+            break;
+          case '>':
+            met = now > target;
+            break;
+          case '<':
+            met = now < target;
+            break;
+          case '>=':
+            met = now >= target;
+            break;
+          case '<=':
+            met = now <= target;
+            break;
+          default:
+            met = now >= target;
+        }
+      }
       return conditionDiagnostic(path, criteria, met, { date: criteria.label ?? criteria.isoDate });
     }
 
@@ -452,14 +504,15 @@ function evaluateNode(
  * function is only about rule conditions.
  */
 export function evaluateReleaseRule(
-  rule: ReleaseNode | null | undefined,
+  rule: ReleaseNode | ReleaseRuleEnvelope | null | undefined,
   snapshot: JournalReleaseSnapshot,
 ): { planState: PlanState; diagnostics: ConditionDiagnostic[] } {
-  if (isEmptyRule(rule)) {
+  const node: ReleaseNode | null | undefined = rule && (rule as any).node ? (rule as any).node : (rule as ReleaseNode | null | undefined);
+  if (isEmptyRule(node)) {
     return { planState: 'needs_plan', diagnostics: [] };
   }
   const diagnostics: ConditionDiagnostic[] = [];
-  const satisfied = evaluateNode(rule as ReleaseNode, snapshot, [], diagnostics);
+  const satisfied = evaluateNode(node as ReleaseNode, snapshot, [], diagnostics);
   if (diagnostics.some((diagnostic) => diagnostic.outcome === 'missing')) {
     return { planState: 'blocked', diagnostics };
   }
@@ -504,6 +557,9 @@ export function collectRuleReferences(
   if (rule.type === 'criteria' && rule.criteria) {
     const c = rule.criteria;
     switch (c.kind) {
+      case 'session_number_at_least':
+        // session number criteria do not reference external entities; nothing to collect
+        break;
       case 'session_completed':
         refs.sessionPageIds.push(c.sessionPageId);
         break;
@@ -555,3 +611,47 @@ export function collectRuleReferences(
   for (const child of rule.children ?? []) collectRuleReferences(child, refs);
   return refs;
 }
+
+// ---------------------------------------------------------------------------
+// Backward-compatible trigger/operator extension
+// ---------------------------------------------------------------------------
+/** Minimal trigger kinds for the rule envelope. Triggers are the event
+ * sources that cause evaluation to be scheduled; conditions remain the
+ * filters evaluated against the snapshot. This enum is intentionally
+ * additive and optional so existing persisted `ReleaseNode` JSON remains
+ * compatible.
+ */
+export type TriggerKind =
+  | 'ManualInvoke'
+  | 'SessionStarted'
+  | 'SessionEnded'
+  | 'SessionNumberChanged'
+  | 'DateReached'
+  | 'PublicationCreated'
+  | 'SeriesUpdated'
+  | 'WorkshopPublished';
+
+/** Comparison operators for future condition expansion (kept as a shared
+ * canonical set). Individual criteria may continue to carry value semantics
+ * (e.g. `session_number_at_least`) — this type centralizes operator names
+ * for UI and rule-builder plumbing.
+ */
+export type ComparisonOperator = '=' | '!=' | '>' | '<' | '>=' | '<=';
+
+/** A small trigger descriptor used by the evaluation scheduler. Params are
+ * optional and interpreted by the caller (e.g. DateReached -> isoDate).
+ */
+export interface ReleaseTrigger {
+  kind: TriggerKind;
+  params?: Record<string, string | number | boolean> | null;
+}
+
+/** Backing envelope type that pairs an optional trigger with the existing
+ * ReleaseNode. Kept optional so writing/reading older persisted rules works
+ * without migration; code can incrementally adopt the envelope shape.
+ */
+export interface ReleaseRuleEnvelope {
+  trigger?: ReleaseTrigger | null;
+  node?: ReleaseNode | null;
+}
+

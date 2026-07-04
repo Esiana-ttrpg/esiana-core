@@ -327,6 +327,8 @@ export async function createJournalPublication(
     }
   }
 
+  const releaseNow = !!body.releaseNow;
+
   const created = await prisma.journalPublication.create({
     data: {
       campaignId,
@@ -343,6 +345,31 @@ export async function createJournalPublication(
     },
     select: { id: true },
   });
+
+  if (releaseNow) {
+    try {
+      if (!req.user?.id) {
+        res.status(401).json({ error: 'Authentication required.' });
+        return;
+      }
+      await releasePublicationManually({
+        campaignId,
+        publicationId: created.id,
+        userId: req.user.id,
+        triggerKind: 'manual',
+      });
+      const dto = await loadPublicationDTO(campaignId, created.id);
+      res.status(201).json({ publication: dto });
+      return;
+    } catch (error) {
+      if (error instanceof JournalReleaseError) {
+        const status = error.code === 'NOT_FOUND' ? 404 : error.code === 'CONTENT_NOT_READY' ? 422 : 409;
+        res.status(status).json({ error: error.message, code: error.code });
+        return;
+      }
+      throw error;
+    }
+  }
 
   const dto = await loadPublicationDTO(campaignId, created.id);
   res.status(201).json({ publication: dto });
@@ -411,7 +438,14 @@ export async function deleteJournalPublication(
     res.status(404).json({ error: 'Publication not found.' });
     return;
   }
+  const force = !!((req.body ?? {}) as Record<string, unknown>).force;
   if (existing.status === 'released' || existing.status === 'archived') {
+    if (force && req.campaign?.isCampaignOwner) {
+      // Campaign owners may force-delete released/archived publications.
+      await prisma.journalPublication.deleteMany({ where: { id, campaignId } });
+      res.status(204).end();
+      return;
+    }
     res.status(409).json({
       error: 'Released publications are canon and cannot be deleted; archive instead.',
     });

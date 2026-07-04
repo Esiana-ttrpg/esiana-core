@@ -25,4 +25,11 @@
   "journal.library.loadMore": "Load more",
   "journal.library.openSourceDraft": "Open source draft",
   "journal.library.releasedOn": "Released {{when}}"
+  ,"journal.library.confirmDelete": "Delete this publication? This can't be undone.",
+  "journal.library.confirmForceDelete": "Force delete this publication? This cannot be undone.",
+  "journal.library.deleted": "Publication deleted.",
+  "journal.library.deleteFailed": "Failed to delete publication.",
+  "journal.library.delete": "Delete",
+  "journal.library.forceDelete": "Force delete",
+  "journal.library.openInWorkshop": "Open in Workshop"
 }

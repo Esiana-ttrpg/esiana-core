@@ -125,6 +125,42 @@ test('manual_release never auto-satisfies (stays pending)', () => {
   assert.equal(evaluateReleaseRule(rule, baseSnapshot()).planState, 'pending');
 });
 
+test('session_number_at_least supports comparison operators', () => {
+  const equal = criterion({ kind: 'session_number_at_least', value: 3, operator: '=' });
+  assert.equal(evaluateReleaseRule(equal, baseSnapshot()).planState, 'ready');
+
+  const notEqual = criterion({ kind: 'session_number_at_least', value: 2, operator: '!=' });
+  assert.equal(evaluateReleaseRule(notEqual, baseSnapshot()).planState, 'ready');
+
+  const lessThan = criterion({ kind: 'session_number_at_least', value: 4, operator: '<' });
+  assert.equal(evaluateReleaseRule(lessThan, baseSnapshot()).planState, 'ready');
+});
+
+test('real_world_date_after supports comparison operators', () => {
+  const snapshot = baseSnapshot({ nowIso: '2026-07-03T00:00:00.000Z' });
+  const target = '2026-07-03T00:00:00.000Z';
+
+  const greaterOrEqual = criterion({ kind: 'real_world_date_after', isoDate: target, operator: '>=' });
+  assert.equal(evaluateReleaseRule(greaterOrEqual, snapshot).planState, 'ready');
+
+  const greater = criterion({ kind: 'real_world_date_after', isoDate: target, operator: '>' });
+  assert.equal(evaluateReleaseRule(greater, snapshot).planState, 'pending');
+
+  const less = criterion({ kind: 'real_world_date_after', isoDate: '2026-07-02T23:59:59.000Z', operator: '<' });
+  assert.equal(evaluateReleaseRule(less, snapshot).planState, 'pending');
+});
+
+test('evaluateReleaseRule accepts ReleaseRuleEnvelope and node-null envelopes', () => {
+  const envelope = {
+    trigger: { kind: 'SessionStarted' },
+    node: criterion({ kind: 'session_number_at_least', value: 3 }),
+  };
+  assert.equal(evaluateReleaseRule(envelope, baseSnapshot()).planState, 'ready');
+
+  const emptyEnvelope = { trigger: null, node: null };
+  assert.equal(evaluateReleaseRule(emptyEnvelope, baseSnapshot()).planState, 'needs_plan');
+});
+
 test('page_visibility_at_least respects the ladder', () => {
   const rule = criterion({ kind: 'page_visibility_at_least', pageId: 'p1', level: 'party' });
   const partySnap = baseSnapshot({

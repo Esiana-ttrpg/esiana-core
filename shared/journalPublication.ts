@@ -9,6 +9,7 @@ import type {
   ConditionDiagnostic,
   PlanState,
   ReleaseNode,
+  ReleaseRuleEnvelope,
 } from './journalReleaseRule.js';
 
 export const JOURNAL_PUBLICATION_TYPES = [
@@ -122,7 +123,9 @@ export interface JournalPublicationDTO {
   linkedPage: JournalLinkedPageRef | null;
   contentMarkdown: string | null;
   contentBlocks: unknown | null;
-  releaseRule: ReleaseNode | null;
+  releaseRule: ReleaseNode | ReleaseRuleEnvelope | null;
+  /** Backward-compatible: may be a ReleaseRuleEnvelope or raw ReleaseNode */
+  // releaseRule: ReleaseNode | ReleaseRuleEnvelope | null; // replaced above
   contentReadiness: ContentReadiness;
   planState: PlanState;
   perceivedState: PerceivedPlannerState;

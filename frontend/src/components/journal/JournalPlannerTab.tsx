@@ -29,7 +29,7 @@ import {
   type JournalSourceKind,
   type PerceivedPlannerState,
 } from '@shared/journalPublication';
-import type { ReleaseNode } from '@shared/journalReleaseRule';
+import type { ReleaseNode, ReleaseRuleEnvelope } from '@shared/journalReleaseRule';
 import {
   journalStateSummary,
   renderReleaseDiagnostic,
@@ -217,7 +217,7 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
   const [draftTitle, setDraftTitle] = useState('');
   const [draftType, setDraftType] = useState<JournalPublicationType>('notice');
   const [draftBody, setDraftBody] = useState('');
-  const [draftRule, setDraftRule] = useState<ReleaseNode | null>(null);
+  const [draftRule, setDraftRule] = useState<ReleaseNode | ReleaseRuleEnvelope | null>(null);
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);

@@ -16,6 +16,7 @@ import type {
   ConditionDiagnostic,
   PlanState,
   ReleaseNode,
+  ReleaseRuleEnvelope,
 } from '@shared/journalReleaseRule';
 
 export type {
@@ -91,6 +92,7 @@ export interface CreateJournalPublicationInput {
   workshopDraftId?: string | null;
   contentMarkdown?: string | null;
   contentBlocks?: unknown[] | null;
+  releaseNow?: boolean;
 }
 
 export async function createJournalPublication(
@@ -131,16 +133,18 @@ export async function updateJournalPublication(
 export async function deleteJournalPublication(
   campaignHandle: string,
   id: string,
+  options: { force?: boolean } = {},
 ): Promise<void> {
   await apiFetch<Record<string, never>>(`${scope(campaignHandle)}/publications/${id}`, {
     method: 'DELETE',
+    body: JSON.stringify({ force: options.force ?? false }),
   });
 }
 
 export async function saveJournalPublicationRule(
   campaignHandle: string,
   id: string,
-  releaseRule: ReleaseNode | null,
+  releaseRule: ReleaseNode | ReleaseRuleEnvelope | null,
 ): Promise<JournalPublicationDTO> {
   const response = await apiFetch<{ publication: JournalPublicationDTO }>(
     `${scope(campaignHandle)}/publications/${id}/rule`,

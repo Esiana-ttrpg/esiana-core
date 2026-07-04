@@ -5,6 +5,9 @@ import type {
   ReleaseCriteriaKind,
   ReleaseGroupOperator,
   ReleaseNode,
+  TriggerKind,
+  ComparisonOperator,
+  ReleaseRuleEnvelope,
 } from '@shared/journalReleaseRule';
 import { translateGroupOperator } from '@/i18n/journalRelease';
 
@@ -54,6 +57,19 @@ function CriteriaNode({
   if (criteria.kind === 'session_number_at_least') {
     body = (
       <label className="flex items-center gap-2">
+        <select
+          value={(criteria as any).operator ?? '>='}
+          onChange={(e) =>
+            onChange({ ...(criteria as any), operator: e.target.value as ComparisonOperator })
+          }
+          className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+        >
+          {(['=', '!=', '>', '<', '>=', '<='] as ComparisonOperator[]).map((op) => (
+            <option key={op} value={op}>
+              {op}
+            </option>
+          ))}
+        </select>
         <span className="text-sm text-muted">{t('journal.planner.condSessionNumber')}</span>
         <input
           type="number"
@@ -69,6 +85,19 @@ function CriteriaNode({
   } else if (criteria.kind === 'real_world_date_after') {
     body = (
       <label className="flex items-center gap-2">
+        <select
+          value={(criteria as any).operator ?? '>='}
+          onChange={(e) =>
+            onChange({ ...(criteria as any), operator: e.target.value as ComparisonOperator })
+          }
+          className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+        >
+          {(['=', '!=', '>', '<', '>=', '<='] as ComparisonOperator[]).map((op) => (
+            <option key={op} value={op}>
+              {op}
+            </option>
+          ))}
+        </select>
         <span className="text-sm text-muted">{t('journal.planner.condRealWorldDate')}</span>
         <input
           type="date"
@@ -227,18 +256,35 @@ export function ReleaseRuleEditor({
   rule,
   onChange,
 }: {
-  rule: ReleaseNode | null;
-  onChange: (next: ReleaseNode | null) => void;
+  rule: ReleaseNode | ReleaseRuleEnvelope | null;
+  onChange: (next: ReleaseNode | ReleaseRuleEnvelope | null) => void;
 }) {
   const { t } = useTranslation();
 
-  if (!rule || rule.type !== 'group') {
+  // Extract envelope / node for editing
+  const currentTrigger = rule && (rule as any).trigger ? (rule as any).trigger : null;
+  const currentNode = rule && (rule as any).node ? (rule as any).node : (rule as ReleaseNode | null);
+
+  function updateTrigger(next: TriggerKind | null) {
+    if (!next && !currentNode) {
+      onChange(null);
+      return;
+    }
+    const envelope: ReleaseRuleEnvelope = { trigger: next ? { kind: next } : null, node: currentNode ?? null };
+    onChange(envelope);
+  }
+
+  if (!currentNode || currentNode.type !== 'group') {
     return (
       <div className="flex flex-col items-start gap-2">
         <p className="text-sm text-muted">{t('journal.planner.noPlanYet')}</p>
         <button
           type="button"
-          onClick={() => onChange({ type: 'group', operator: 'ALL', children: [] })}
+          onClick={() => {
+            const newNode: ReleaseNode = { type: 'group', operator: 'ALL', children: [] };
+            if (currentTrigger) onChange({ trigger: currentTrigger, node: newNode });
+            else onChange(newNode);
+          }}
           className="text-sm text-primary hover:underline"
         >
           {t('journal.planner.addCondition')}
@@ -247,7 +293,47 @@ export function ReleaseRuleEditor({
     );
   }
 
-  return <GroupNode node={rule} depth={0} onChange={onChange} onRemove={() => onChange(null)} />;
+  const handleNodeChange = (nextNode: ReleaseNode) => {
+    if (currentTrigger) onChange({ trigger: currentTrigger, node: nextNode });
+    else onChange(nextNode);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <select
+          value={currentTrigger ? currentTrigger.kind : ''}
+          onChange={(e) => updateTrigger(e.target.value ? (e.target.value as TriggerKind) : null)}
+          className={`${inputClass} text-sm`}
+        >
+          <option value="">{t('journal.planner.triggerNone')}</option>
+          {([
+            'ManualInvoke',
+            'SessionStarted',
+            'SessionEnded',
+            'SessionNumberChanged',
+            'DateReached',
+            'PublicationCreated',
+            'SeriesUpdated',
+            'WorkshopPublished',
+          ] as TriggerKind[]).map((k) => {
+            const tk = `${k[0].toLowerCase()}${k.slice(1)}`;
+            return (
+              <option key={k} value={k}>
+                {t(`journal.planner.trigger.${tk}`)}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+      <GroupNode
+        node={currentNode as ReleaseNode}
+        depth={0}
+        onChange={handleNodeChange}
+        onRemove={() => onChange(null)}
+      />
+    </div>
+  );
 }
 
 export default ReleaseRuleEditor;

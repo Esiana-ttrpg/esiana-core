@@ -65,4 +65,13 @@
   "journal.planner.seriesDraftReady": "Next issue drafted",
   "journal.planner.seriesNotCreated": "Next issue not created yet",
   "journal.planner.unmetCount": "{{count}} condition(s) remaining"
+  ,"journal.planner.triggerNone": "No trigger (manual only)",
+  "journal.planner.trigger.manualInvoke": "Manual invoke",
+  "journal.planner.trigger.sessionStarted": "Session started",
+  "journal.planner.trigger.sessionEnded": "Session ended",
+  "journal.planner.trigger.sessionNumberChanged": "Session number changed",
+  "journal.planner.trigger.dateReached": "Date reached",
+  "journal.planner.trigger.publicationCreated": "Publication created",
+  "journal.planner.trigger.seriesUpdated": "Series updated",
+  "journal.planner.trigger.workshopPublished": "Workshop published"
 }

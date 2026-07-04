@@ -65,4 +65,13 @@
   "journal.planner.seriesDraftReady": "Prochain numéro rédigé",
   "journal.planner.seriesNotCreated": "Prochain numéro pas encore créé",
   "journal.planner.unmetCount": "{{count}} condition(s) restante(s)"
+  ,"journal.planner.triggerNone": "Aucun déclencheur (manuel uniquement)",
+  "journal.planner.trigger.manualInvoke": "Invocation manuelle",
+  "journal.planner.trigger.sessionStarted": "Début de séance",
+  "journal.planner.trigger.sessionEnded": "Fin de séance",
+  "journal.planner.trigger.sessionNumberChanged": "Numéro de séance modifié",
+  "journal.planner.trigger.dateReached": "Date atteinte",
+  "journal.planner.trigger.publicationCreated": "Publication créée",
+  "journal.planner.trigger.seriesUpdated": "Série mise à jour",
+  "journal.planner.trigger.workshopPublished": "Publié depuis l’Atelier"
 }

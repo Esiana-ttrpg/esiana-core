@@ -12,4 +12,5 @@
   "journal.create.seriesNamePlaceholder": "e.g. The Weekly Herald",
   "journal.create.seriesRequired": "A series name is required.",
   "journal.create.seriesSubmit": "Create series"
+  ,"journal.create.releaseNow": "Release now"
 }

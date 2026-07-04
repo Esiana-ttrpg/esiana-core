@@ -7,13 +7,18 @@ import {
   type JournalPublicationType,
 } from '@shared/journalPublication';
 import { translatePublicationType } from '@/i18n/journalRelease';
-import { createJournalPublication, type JournalPublicationDTO } from '@/lib/journals';
+import {
+  createJournalPublication,
+  releaseJournalPublication,
+  type JournalPublicationDTO,
+} from '@/lib/journals';
 
 interface CreatePublicationModalProps {
   open: boolean;
   campaignHandle: string;
   onClose: () => void;
   onCreated: (publication: JournalPublicationDTO) => void;
+  defaultReleaseNow?: boolean;
 }
 
 const inputClass =
@@ -29,10 +34,12 @@ export function CreatePublicationModal({
   campaignHandle,
   onClose,
   onCreated,
+  defaultReleaseNow,
 }: CreatePublicationModalProps) {
   const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [type, setType] = useState<JournalPublicationType>(DEFAULT_JOURNAL_PUBLICATION_TYPE);
+  const [releaseNow, setReleaseNow] = useState<boolean>(Boolean(defaultReleaseNow));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,6 +47,7 @@ export function CreatePublicationModal({
     if (!open) return;
     setTitle('');
     setType(DEFAULT_JOURNAL_PUBLICATION_TYPE);
+    setReleaseNow(Boolean(defaultReleaseNow));
     setError(null);
     setSubmitting(false);
   }, [open]);
@@ -58,6 +66,7 @@ export function CreatePublicationModal({
       const publication = await createJournalPublication(campaignHandle, {
         title: title.trim(),
         type,
+        releaseNow,
       });
       onCreated(publication);
       onClose();
@@ -123,6 +132,16 @@ export function CreatePublicationModal({
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={releaseNow}
+              onChange={(e) => setReleaseNow(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="text-sm text-muted">{t('journal.create.releaseNow')}</span>
           </label>
 
           <div className="flex justify-end gap-2 border-t border-border pt-4">

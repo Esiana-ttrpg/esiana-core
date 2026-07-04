@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { BookOpen, Link2, Newspaper } from 'lucide-react';
+import { BookOpen, Link2, Newspaper, PenLine } from 'lucide-react';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
 import { CategoryIndexViewToggle } from '@/components/wiki/indexBrowse/CategoryIndexViewToggle';
@@ -9,6 +9,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CreatePublicationModal } from '@/components/journal/CreatePublicationModal';
 import { useWiki } from '@/contexts/WikiContext';
+import { buildAuthoringWorkshopHref } from '@shared/authoringContext';
+import { campaignWorkshopPath } from '@/lib/campaignPaths';
 import type { CategoryIndexViewMode } from '@/lib/categoryIndexBrowseStorage';
 import { META_TABLE_HEAD_CLASS } from '@/lib/surfaceLayout';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
@@ -21,6 +23,7 @@ import { translatePublicationType } from '@/i18n/journalRelease';
 import {
   fetchJournalLibrary,
   fetchJournalPublication,
+  deleteJournalPublication,
   type JournalLibraryItemDTO,
   type JournalPublicationDTO,
 } from '@/lib/journals';
@@ -38,7 +41,7 @@ function formatDate(iso: string | null): string {
 
 export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
   const { t } = useTranslation();
-  const { can } = useWiki();
+  const { can, campaign } = useWiki();
   const [, setSearchParams] = useSearchParams();
   const canCreate = can(CampaignCapabilities.PAGE_CREATE);
   const canPlan = can(CampaignCapabilities.JOURNAL_PLANNER_ACCESS);
@@ -158,6 +161,21 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     [canPlan, setSearchParams, t],
   );
 
+  async function handleDelete(publication: JournalPublicationDTO, force = false) {
+    const confirmMessage = force
+      ? t('journal.library.confirmForceDelete')
+      : t('journal.library.confirmDelete');
+    if (!window.confirm(confirmMessage)) return;
+    try {
+      await deleteJournalPublication(campaignHandle, publication.id, { force });
+      setNotice(t('journal.library.deleted'));
+      void load();
+      setSelectedId(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('journal.library.deleteFailed'));
+    }
+  }
+
   const selectClass =
     'rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground';
 
@@ -255,6 +273,35 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
               {selected.linkedPage.title}
             </div>
           )}
+          <div className="flex items-center gap-3">
+            {selected.workshopDraftId ? (
+              <a
+                href={buildAuthoringWorkshopHref(campaignWorkshopPath(campaignHandle), {
+                  draftId: selected.workshopDraftId,
+                })}
+                className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <PenLine className="h-3.5 w-3.5" aria-hidden />
+                {t('journal.library.openInWorkshop')}
+              </a>
+            ) : null}
+            <button
+              type="button"
+              className="text-xs text-red-500 hover:underline"
+              onClick={() => void handleDelete(selected, false)}
+            >
+              {t('journal.library.delete')}
+            </button>
+            {campaign?.isCampaignOwner && (
+              <button
+                type="button"
+                className="text-xs text-red-600 hover:underline"
+                onClick={() => void handleDelete(selected, true)}
+              >
+                {t('journal.library.forceDelete')}
+              </button>
+            )}
+          </div>
           {selected.contentMarkdown ? (
             <div className="whitespace-pre-wrap text-sm text-foreground/90">
               {selected.contentMarkdown}
@@ -457,6 +504,7 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
         campaignHandle={campaignHandle}
         onClose={() => setIsCreateOpen(false)}
         onCreated={handleCreated}
+        defaultReleaseNow={true}
       />
     </>
   );

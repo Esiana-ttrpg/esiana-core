@@ -106,9 +106,10 @@ export async function generateNextIssueNow(params: {
   })) as SeriesRow | null;
   if (!series) throw new JournalSeriesError('NOT_FOUND', 'Series not found');
 
-  const openId = await findOpenIssueId(params.campaignId, params.seriesId);
-  if (openId) return { created: false, publicationId: openId };
-
+  // Manual override: always create the next issue now. This explicitly
+  // bypasses the auto-materialization buffer-of-1 guard so GMs can create
+  // multiple ahead if desired via manual action. Auto-materialization still
+  // respects buffer-of-1 when running in background hooks.
   const publicationId = await createIssueDraft(params.campaignId, series, params.userId);
   return { created: true, publicationId };
 }
