@@ -1,0 +1,21 @@
+{
+  "journal.library.tab": "Library",
+  "journal.library.title": "Library",
+  "journal.library.subtitle": "Released publications — the campaign’s canonical archive.",
+  "journal.library.empty": "Nothing has been published yet.",
+  "journal.library.emptyHint": "Released publications appear here. Draft and schedule new work in the Planner.",
+  "journal.library.newPublication": "New publication",
+  "journal.library.refine": "Refine",
+  "journal.library.filterType": "Type",
+  "journal.library.filterSeries": "Series",
+  "journal.library.filterOrigin": "Origin",
+  "journal.library.filterAll": "All",
+  "journal.library.sortLabel": "Sort",
+  "journal.library.sortNewest": "Newest first",
+  "journal.library.sortOldest": "Oldest first",
+  "journal.library.sortType": "By type",
+  "journal.library.issueLabel": "Issue {{n}}",
+  "journal.library.loadMore": "Load more",
+  "journal.library.openSourceDraft": "Open source draft",
+  "journal.library.releasedOn": "Released {{when}}"
+}

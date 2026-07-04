@@ -15,6 +15,7 @@ import { AncestryHubView } from '@/components/ancestry/AncestryHubView';
 import { OrganizationHubView } from '@/components/organization/OrganizationHubView';
 import { TagsHubView } from '@/components/wiki/TagsHubView';
 import { EntityBrowserView } from '@/components/wiki/WikiIndexView';
+import { JournalPage } from '@/pages/JournalPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 function resolveCategoryPageId(
@@ -51,6 +52,12 @@ export function WorkspaceIndexPage() {
 
   if (loading) {
     return <LoadingSpinner label={t('campaign.core.workspaceLoading')} />;
+  }
+
+  // The Journal is a first-class publication + release surface, not a wiki
+  // category browser, so it intercepts its segment before category resolution.
+  if (segment === 'journals') {
+    return <JournalPage campaignHandle={campaignHandle} />;
   }
 
   const categoryPageId = resolveCategoryPageId(

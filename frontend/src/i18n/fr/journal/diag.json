@@ -1,0 +1,10 @@
+{
+  "journal.diag.groupAll": "Toutes les conditions",
+  "journal.diag.groupAny": "Au moins une condition",
+  "journal.diag.missingDeleted": "« {{label}} » a été supprimé",
+  "journal.diag.missingRestricted": "Une entrée référencée n’est pas visible ici",
+  "journal.diag.missingUnresolved": "Une entrée référencée est introuvable",
+  "journal.diag.defaultLabel": "Cette référence",
+  "journal.diag.met": "Rempli",
+  "journal.diag.unmet": "Pas encore"
+}

@@ -1,0 +1,10 @@
+{
+  "journal.types.newsletter": "Newsletter",
+  "journal.types.letter": "Letter",
+  "journal.types.notice": "Notice",
+  "journal.types.dispatch": "Dispatch",
+  "journal.types.obituary": "Obituary",
+  "journal.types.rumorSheet": "Rumor sheet",
+  "journal.types.journalEntry": "Journal entry",
+  "journal.types.proclamation": "Proclamation"
+}
