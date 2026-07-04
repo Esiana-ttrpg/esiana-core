@@ -15,6 +15,7 @@ const GM_WRITER_DOMAIN: readonly CampaignCapability[] = [
   CampaignCapabilities.MAPS_EDIT,
   CampaignCapabilities.DOWNTIME_MANAGE,
   CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
+  CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
   CampaignCapabilities.ASSETS_UPLOAD,
   CampaignCapabilities.ASSETS_DELETE_ANY,
   CampaignCapabilities.ASSETS_DELETE_OWNED,

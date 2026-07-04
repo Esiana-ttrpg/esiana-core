@@ -77,6 +77,7 @@ import {
 } from '../lib/timeTracking.js';
 import { resolveUserDisplayName } from '../lib/userDisplay.js';
 import { logCampaignActivity } from '../lib/campaignActivity.js';
+import { safeResolveJournalCampaign } from '../lib/journalResolution.js';
 import {
   CoreDomainEvents,
   dispatchDomainEvent,
@@ -1715,6 +1716,13 @@ export async function advanceCampaignTime(
       unit: parsed.unit,
     }) as unknown as Record<string, unknown>,
   });
+
+  // Lazy journal resolution: a time jump can satisfy chronology-based release
+  // rules or series cadence. Best-effort and detached from the locked hook
+  // spine — the next Journal load reconciles anything missed here.
+  if (nextEpochMinute !== previousEpochMinute) {
+    void safeResolveJournalCampaign(campaignId);
+  }
 
   res.json({
     currentEpochMinute: serializeEpochMinute(nextEpochMinute),

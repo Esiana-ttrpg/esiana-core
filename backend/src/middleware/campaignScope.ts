@@ -203,6 +203,15 @@ export const requirePageEditAny = requireCapability(
 export const requireAdventureStoryboardEdit = requireCapability(
   CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
 );
+export const requirePageCreate = requireCapability(
+  CampaignCapabilities.PAGE_CREATE,
+);
+// Planner / release-rule orchestration is an optional automation surface,
+// separate from basic journal authorship (PAGE_CREATE). Default ON for
+// GM/Writer, overridable OFF/ON per role in Player permissions.
+export const requireJournalPlannerAccess = requireCapability(
+  CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
+);
 export const requireQuestEdit = requireCapability(CampaignCapabilities.QUEST_EDIT);
 export const requireThreadEdit = requireCapability(CampaignCapabilities.THREAD_EDIT);
 export const requireNotesModerate = requireCapability(
