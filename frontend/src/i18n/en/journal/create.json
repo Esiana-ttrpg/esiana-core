@@ -1,0 +1,15 @@
+{
+  "journal.create.publicationHeading": "New publication",
+  "journal.create.titleLabel": "Title",
+  "journal.create.titlePlaceholder": "A short, evocative name",
+  "journal.create.typeLabel": "Type",
+  "journal.create.titleRequired": "A title is required.",
+  "journal.create.cancel": "Cancel",
+  "journal.create.submit": "Create",
+  "journal.create.submitting": "Creating…",
+  "journal.create.seriesHeading": "New series",
+  "journal.create.seriesNameLabel": "Series name",
+  "journal.create.seriesNamePlaceholder": "e.g. The Weekly Herald",
+  "journal.create.seriesRequired": "A series name is required.",
+  "journal.create.seriesSubmit": "Create series"
+}

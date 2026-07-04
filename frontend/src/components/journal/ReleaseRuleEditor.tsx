@@ -9,20 +9,20 @@ import type {
 import { translateGroupOperator } from '@/i18n/journalRelease';
 
 /**
- * Builder-editable criteria. Entity-anchored criteria (characters, events,
- * projects…) need per-subsystem pickers and are shown read-only here; they can
- * still be removed. Value-only criteria are fully editable.
+ * Builder-editable criteria (a flat predicate registry). Manual release is an
+ * override *action* — surfaced in the workbench footer, never as an addable
+ * condition — so it is intentionally absent here. Entity-anchored criteria
+ * (characters, events, projects…) need per-subsystem pickers and are shown
+ * read-only; they can still be removed. Value-only criteria are fully editable.
  */
 const BUILDER_KINDS: ReleaseCriteriaKind[] = [
   'session_number_at_least',
   'real_world_date_after',
-  'manual_release',
 ];
 
 const BUILDER_KIND_LABEL: Partial<Record<ReleaseCriteriaKind, string>> = {
   session_number_at_least: 'journal.planner.condSessionNumber',
   real_world_date_after: 'journal.planner.condRealWorldDate',
-  manual_release: 'journal.planner.condManual',
 };
 
 function makeCriteria(kind: ReleaseCriteriaKind): ReleaseCriteria {

@@ -78,11 +78,6 @@ export function JournalPage({ campaignHandle }: JournalPageProps) {
             >
               <Icon className="size-4" aria-hidden />
               {tab.label}
-              {tab.id === 'planner' && (
-                <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-                  {t('journal.planner.automationOptional')}
-                </span>
-              )}
             </button>
           );
         })}
