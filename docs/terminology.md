@@ -15,6 +15,12 @@ Related: [design-philosophy.md](../design-philosophy.md), [docs/architecture-int
 | `balanced` / wide measure | **Layout: Wide** | Codex layout picker |
 | `immersive` workspace mode | Focus overlay toggle | Not top-level picker |
 | `narrativeThreads` / wiki title | **Threads** | Sidebar nav label |
+| `journals` route / section | **Journal** | Sidebar, page title, breadcrumbs |
+| `JournalPublication` model | **Publication** | Library/Planner cards, headings |
+| Released-publications view | **Library** | Journal tab label |
+| Pre-release workspace | **Planner** | Journal tab label (framed *Automation, optional*) |
+| `releaseRule` field | **Release conditions** | Planner workbench heading |
+| `JournalSeries` model | **Series** | Planner series strip |
 | `GAMEMASTER` role | **Game Master** | Settings, roster (GM/DM OK in context) |
 | `WRITER` role | **Writer** | Settings, roster (not Co-DM in UI) |
 | `PARTICIPANT` role | **Player** | Settings, roster |
@@ -30,8 +36,9 @@ Related: [design-philosophy.md](../design-philosophy.md), [docs/architecture-int
 | Canonical evolving history | **Chronicle** | Future product layer — not session recaps |
 | Temporal continuity | **Chronology** | In-world time, timelines, calendars |
 | Unresolved arcs | **Threads** | Ongoing narrative, connective continuity |
+| In-world publications | **Journal** | Authored + released newsletters, letters, notices; not session recaps |
 
-Do not use Chronicle for session note surfaces.
+Do not use Chronicle for session note surfaces. The **Journal** is in-world *publishing* (Library archive + Planner release), distinct from **Session Notes** (out-of-world recaps) and the future **Chronicle** layer.
 
 ## Do not overreach
 
