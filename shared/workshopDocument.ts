@@ -1,6 +1,5 @@
 /**
  * Workshop draft documents — draft state, not draft category.
- * @see docs/plans/authoring-workflow.md
  */
 
 import type { AuthoringContextKind } from './authoringContext.js';

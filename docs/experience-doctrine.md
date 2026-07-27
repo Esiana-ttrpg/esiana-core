@@ -1,10 +1,8 @@
 # Experience doctrine
 
-Compact decision rules for Esiana UI — the layer above [design-philosophy.md](../design-philosophy.md) (identity essay), [density-doctrine.md](./density-doctrine.md) (limits), and [design-tokens.md](./design-tokens.md) (implementation).
+Current UX decision rules for Esiana UI. Numeric limits live in [density-doctrine.md](./density-doctrine.md). Theme/surface implementation: [design-tokens.md](./design-tokens.md), [surface-hierarchy.md](./surface-hierarchy.md).
 
 **Use this doc when:** proposing a new route, reviewing a UI PR, or answering *"what should my eye land on first?"*
-
-Related: [experience-doctrine-gap-map.md](./experience-doctrine-gap-map.md), [audits/experience-scorecard.md](./audits/experience-scorecard.md), [audits/experience-convergence-backlog.md](./audits/experience-convergence-backlog.md), [design-philosophy-checklist.md](./design-philosophy-checklist.md).
 
 ---
 
@@ -171,9 +169,7 @@ Typography is the **primary mechanism for information gravity**. Role separation
 3. **Measure:** Prose at editorial measure (`--text-measure-ch`, Standard 68ch / Wide 80ch per [density-doctrine.md](./density-doctrine.md))?
 4. **Squint:** One large type mass vs smaller supporting type — without reading words?
 
-**Converged examples:** `CampaignDashboardHero`, `CampaignContinuityStream`, `CategoryHubShell`, `InterpretiveLoreHeader`.
-
-**Adoption gap (post-cleanup 2026-06):** P0 routes and metadata editors use `TYPE_*` / `META_*` helpers. Remaining `uppercase` usage is intentional — compact **categorical identification tokens** (see below). Do not add parallel display dialects (`text-4xl font-bold` bypassing `TYPE_DISPLAY`).
+Use `TYPE_*` / `META_*` helpers for display and meta. Do not add parallel display dialects (`text-4xl font-bold` bypassing `TYPE_DISPLAY`).
 
 **Categorical identification tokens (exempt from uppercase ban):**
 
@@ -252,7 +248,7 @@ Match layout to campaign state — not a ban on cards.
 
 **Rule:** Reading mode — zero persistent operational chrome except navigation.
 
-**Deferred:** Command palette / slash commands — not in core doctrine; plugins may extend.
+Command palette / slash commands are not in core doctrine; plugins may extend.
 
 ---
 
@@ -270,44 +266,153 @@ Every major route should answer: **what changed, what matters now, what connects
 
 Continuity should sit **at or near the gravitational center**, not in a recessed widget row competing with overview cards.
 
-**Converged:** `CampaignContinuityStream`, `CampaignStateCard`, `CampaignRecentActivity` (when subordinate to pulse).
+---
 
-**Weak:** Entity overview dashboards with no since-last-visit or change signal at focal weight.
+## User-facing copy
+
+Engineering IDs stay stable; user-facing copy uses these terms.
+
+| Engineering | User-facing |
+|-------------|-------------|
+| `dashboard` route / section | **Campaign Home** |
+| `focused` workspace mode | **Reading** |
+| `expanded` workspace mode | **Writing** |
+| `balanced` / wide measure | **Layout: Wide** |
+| `immersive` workspace mode | Focus overlay (not a top-level picker mode) |
+| `narrativeThreads` / wiki title | **Threads** |
+| `journals` route | **Journal** |
+| `JournalPublication` | **Publication** |
+| Released-publications view | **Library** |
+| Pre-release workspace | **Planner** |
+| `releaseRule` | **Release conditions** |
+| `JournalSeries` | **Series** |
+| `GAMEMASTER` | **Game Master** (GM/DM OK in context) |
+| `WRITER` | **Writer** (not Co-DM in UI) |
+| `PARTICIPANT` | **Player** |
+| `OBSERVER` | **Observer** |
+| Session notes routes | **Session Notes** |
+
+| Concept | Term | Meaning |
+|---------|------|---------|
+| Raw session recap | **Session Notes** | Per-session authoring; table utility |
+| Temporal continuity | **Chronology** | In-world time, timelines, calendars |
+| Unresolved arcs | **Threads** | Ongoing narrative continuity |
+| In-world publications | **Journal** | Authored + released publications — not session recaps |
+
+Do not use literary euphemisms on operational surfaces (settings, roster, session lists). Prefer TTRPG-clear terms.
+
+**Navigation:** Default campaign entry = codex/wiki root. Secondary overview = Campaign Home (`/dashboard` internally).
 
 ---
 
-## How to use this doc
+## Representational defaults
 
-### UI PR gate
+Example content, placeholders, and demos:
 
-1. **Gravity test:** Where does attention settle?
-2. **State object:** What campaign state does this page show?
-3. **Principles:** List any of the 15 touched; justify violations.
-4. **Deprecated + IA patterns:** Check [deprecated-ui-patterns.md](./deprecated-ui-patterns.md) (#1–#20).
+| Area | Bias | Avoid |
+|------|------|-------|
+| Seed/example characters | Feminine and enby names ≥50%; mixed casts | All-male parties |
+| Placeholder copy | Mixed/feminine-leaning (`Mira`, `Sable`, `Juniper`) | `Sir Aldric`, grimdark-only defaults |
+| Onboarding / empty states | Relational narratives, discovery | Combat optimization framing |
+| Campaign seeder / templates | Varied leadership gender | Patriarchal feudalism as only template |
+| LFG / recruitment examples | Inclusive table tags | Lone-wolf combat as hero example |
+
+Default feminine/enby-forward unless context-specific.
+
+---
+
+## Mode mapping (codex)
+
+| User-facing | Engineering |
+|-------------|-------------|
+| Reading + Standard | `focused` workspace profile |
+| Reading + Wide | `focused` / `balanced` with wider measure |
+| Writing + Standard/Wide | `expanded` workspace profile |
+| Focus / immersive | `BlockFocusOverlay` toggle — not top-level picker mode |
+
+Codex uses **Reading/Writing** + **Standard/Wide** — not four semantic workspace modes.
+
+---
+
+## Blocklist
+
+**Stop introducing these patterns.** Existing instances may remain until a surface pass; no new instances in UI PRs.
+
+| # | Stop introducing | Use instead |
+|---|------------------|-------------|
+| 1 | Uppercase micro-label headers (`text-[10px] uppercase tracking-wider` zone headings) | Sentence-case; `META_*` helpers |
+| 2 | Bordered card nesting >2 levels | `--space-section` gaps; max 1 subtle border per region |
+| 3 | Dashboard-grid-first on narrative surfaces | Editorial flow; grid only in Writing / Campaign Home widgets |
+| 4 | Persistent metrics / KPI strips above content | Contextual chips; collapsed in Reading |
+| 5 | High-contrast dark panel stacks / hard HUD borders | Soft layering, `border-border/40` |
+| 6 | Icon-only primary actions | Icon + label, or text-primary |
+| 7 | Dense settings-table layouts on codex read views | Progressive disclosure (OK in admin/settings) |
+| 8 | "Dashboard" user-facing copy | **Campaign Home** |
+| 9 | Aggressive status colors for non-destructive states | Muted metadata, prose |
+| 10 | Competing simultaneous panels at full density | One focal region; mode-aware chrome |
+| 11 | Self-consciously literary labels on operational surfaces | TTRPG-clear terms |
+| 12 | Ultrawide column proliferation | Margins, capped measure, one receded rail |
+| 13 | Nested scroll on primary reading surfaces | Single vertical scroll on workspace column |
+| 14 | `overflow-x-auto` on narrative/catalog primary surfaces | Priority collapse + reflow (`contentPriorityCollapse.ts`) |
+| 15 | "Needs Attention" / attention queue sections | Continuity pulse at focal weight |
+| 16 | Insights / Recommendations blocks on narrative routes | Fold into continuity or recess |
+| 17 | Duplicate activity feeds when Campaign Home owns continuity | One continuity stream |
+| 18 | Summary explosion (Overview + Highlights + Activity + Insights) | One summary region; rest progressive |
+| 19 | Equal overview dashboard card grids on entity Overview | Hero anchor + prose lede + recessed links |
+| 20 | Persistent rail as co-primary in Reading mode | Rail inspect-only; focal owns center |
+
+Patterns #15–#20 are symptoms of gravity failure.
+
+---
+
+## PR gate
+
+Mandatory for frontend UI PRs:
+
+- [ ] **Gravity test** — Where does attention settle? Name the center in 2 seconds.
+- [ ] **Campaign-state object** — What state? Correct representation type?
+- [ ] **Principles** — Which of the 15 does this PR touch? Justify violations.
+- [ ] **Typographic roles** — One `TYPE_DISPLAY` anchor? Prose for state? Meta recessed?
+- [ ] **Blocklist** — No new patterns from [Blocklist](#blocklist)?
+- [ ] **Density** — Panel count, nesting, widget cap, ultrawide per [density-doctrine.md](./density-doctrine.md)?
+- [ ] **Ultrawide (≥1920px)** — Extra width = breathing room only?
+- [ ] **Copy** — User-facing terms per [User-facing copy](#user-facing-copy)?
+- [ ] **Play-first** — Usable mid-session?
+- [ ] **Mode + layout** — Reading/Writing + Standard/Wide only?
+- [ ] **Representational defaults** — Examples/placeholders per [Representational defaults](#representational-defaults)?
+- [ ] **Surface hierarchy** — One primary focal region per [surface-hierarchy.md](./surface-hierarchy.md)?
+- [ ] **Shell focal guard** — Layout shells stay canvas-only (no `surface-primary` / focal on shell)?
+- [ ] **Atmospheric palette** — Warm charcoal atmospheric ramp (not raw slate `#020617` / `#0f172a`)?
+- [ ] **Theme path** — New theme code via `atmosphericDerivation.ts`?
+- [ ] **Surface role tokens** — `bg-focal` / `SURFACE_*_CLASS` (not raw boxing)?
+- [ ] **Depth axis** — In-stream depth lifting over nested bordered cards?
+- [ ] **Accent discipline** — At most one dominant illuminated element per region?
+- [ ] **Region composition** — Atmosphere fields, not rounded cards on a slab?
+- [ ] **Workspace composition** — `workspace-field` vs `workspace-document`; no `mx-auto` / `max-w-5xl` on workspace routes?
+- [ ] **Layout containment** — No `overflow-x-auto` on primary narrative/catalog surfaces?
+- [ ] **Scene composition** — New campaign workspace routes declare a scene profile in `sceneComposition.ts` (or defer with a comment)?
 
 ### New route design review (before implementation)
 
 Declare in PR or issue:
 
 - Primary **campaign-state object**
-- **Representation type** (editorial, canvas, timeline, stream, …)
-- **Gravitational center** (component or region name)
-- **Continuity hook** (how route answers what changed)
+- **Representation type**
+- **Gravitational center**
+- **Continuity hook**
 
-### Quarterly review
+### Quick references
 
-Re-run [experience-scorecard.md](./audits/experience-scorecard.md) on the seven canonical routes. Target: **≥4** on gravity test average.
+- Campaign Home = `/dashboard` internally
+- Default campaign entry = codex/wiki root
+- Campaign Home widgets: default ≤6 enabled; hard cap 10
 
 ---
 
-## Appendix — mechanics docs
+## Related implementation docs
 
 | Doc | Role |
 |-----|------|
-| [design-philosophy.md](../design-philosophy.md) | Identity, tone, anti-goals (essay) |
 | [density-doctrine.md](./density-doctrine.md) | Panel limits, measure, widget caps |
-| [surface-hierarchy.md](./surface-hierarchy.md) | Surface role tokens (implements gravity) |
+| [surface-hierarchy.md](./surface-hierarchy.md) | Surface role tokens |
 | [design-tokens.md](./design-tokens.md) | CSS variables, ThemeStack |
-| [deprecated-ui-patterns.md](./deprecated-ui-patterns.md) | Pattern blocklist #1–#20 |
-| [terminology.md](./terminology.md) | User-facing copy |
-| [experience-doctrine-gap-map.md](./experience-doctrine-gap-map.md) | Doc redundancy map |

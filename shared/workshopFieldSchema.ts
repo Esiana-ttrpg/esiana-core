@@ -1,6 +1,5 @@
 /**
  * Workshop Fields panel — schema resolution contracts.
- * @see docs/plans/authoring-workflow.md
  */
 
 import type { WorkshopFormalizeTarget } from './workshopDocument.js';

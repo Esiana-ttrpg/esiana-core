@@ -1,7 +1,7 @@
 # Database portability audit
 
 **Status:** Audited 2026-06-13  
-**Related:** [migration-audit.md](./migration-audit.md), [pre-1.0-export-audit.md](./pre-1.0-export-audit.md)
+**Related:** [migration-audit.md](./migration-audit.md)
 
 Dual-engine confidence gate before Postgres default deployment and final schema freeze.
 
@@ -84,7 +84,7 @@ Workflow: [`.github/workflows/build.yml`](../../.github/workflows/build.yml)
 
 ## Export/import matrix
 
-A-tier rows from [pre-1.0-export-audit.md](./pre-1.0-export-audit.md) falsified via:
+A-tier export/import rows falsified via:
 
 ```bash
 cd backend

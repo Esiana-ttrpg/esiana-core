@@ -8,8 +8,6 @@ Fresh installs apply only:
 
 - [`backend/prisma/migrations/20260613190000_v1_baseline/`](../../../backend/prisma/migrations/20260613190000_v1_baseline/)
 
-See [migration-squash-verification-20260613.md](../../audits/migration-squash-verification-20260613.md).
-
 ## Archived pre-squash chain
 
 **Read-only reference — do not apply on fresh installs.**

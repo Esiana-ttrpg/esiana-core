@@ -1,6 +1,5 @@
 /**
  * Wiki TipTap admonition variants — semantic callout blocks for lore, narrative, and GM notes.
- * @see docs/plans/tiptap-admonitions (authoring plan)
  */
 
 export const WIKI_ADMONITION_VISUAL_PROFILES = [
