@@ -2,8 +2,6 @@
 
 Hard UI density constraints — enforceable via cursor rules, PR checklist, and code defaults. Without these, legacy dashboard patterns regrow.
 
-Related: [design-philosophy.md](../design-philosophy.md), [surface-hierarchy.md](./surface-hierarchy.md), [deprecated-ui-patterns.md](./deprecated-ui-patterns.md), [design-tokens.md](./design-tokens.md).
-
 ## Hard constraints
 
 | Rule | Reading | Writing | Campaign Home | Admin/settings |
@@ -52,7 +50,7 @@ Additional width increases breathing room, readability, contextual layering, con
 - Writing: max 2 primary regions; third = overlay/drawer only
 - **Reading/index surfaces:** no `max-h-[calc(100vh-*)]` + `overflow-y-auto` on focal content, contextual rails, or read-mode widget lists — use document flow (`readingSurfaceLayout.ts`)
 
-See [deprecated-ui-patterns.md](./deprecated-ui-patterns.md) #12–#14.
+See [experience-doctrine.md](./experience-doctrine.md) blocklist #12–#14.
 
 ## Content priority collapse
 

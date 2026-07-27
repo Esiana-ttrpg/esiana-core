@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Journal — Library + Planner** — Narrative publishing surface: a **Library** archive of released publications and a capability-gated (`JOURNAL_PLANNER_ACCESS`) **Planner** for drafts, release conditions, and recurring series. Release rules are a pure, nestable `ALL`/`ANY` DSL over existing chronology, narrative, discovery, downtime, and reputation systems; resolution is lazy (on Journal load and time-advance, no scheduler). Plan: [docs/plans/journal-system.md](./docs/plans/journal-system.md).
+- **Journal — Library + Planner** — Narrative publishing surface: a **Library** archive of released publications and a capability-gated (`JOURNAL_PLANNER_ACCESS`) **Planner** for drafts, release conditions, and recurring series. Release rules are a pure, nestable `ALL`/`ANY` DSL over existing chronology, narrative, discovery, downtime, and reputation systems; resolution is lazy (on Journal load and time-advance, no scheduler).
 
 ### Database
 

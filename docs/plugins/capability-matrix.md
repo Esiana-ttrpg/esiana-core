@@ -7,7 +7,7 @@
 
 This document is the plugin half of the pre-1.0 extension-points gate. Lore/knowledge extension points live in [lore-knowledge-extension-points.md](../architecture-internal/lore-knowledge-extension-points.md).
 
-Related docs: [phase-10-ecosystem.md](./phase-10-ecosystem.md), [security-model.md](./security-model.md), [plugin-tiers.md](../architecture-internal/plugin-tiers.md), [deferred-backlog.md](../deferred-backlog.md).
+Related docs: [phase-10-ecosystem.md](./phase-10-ecosystem.md), [security-model.md](./security-model.md), [plugin-tiers.md](../architecture-internal/plugin-tiers.md).
 
 ---
 
@@ -28,7 +28,7 @@ There is no global `pluginApi`, raw `pluginContext.db`, `registerRoute` on core 
 
 **Can plugins extend Esiana?** Yes.
 
-**Can plugins create first-class campaign subsystems at 1.0?** Yes for read/react/mutate/configure/deep-link flows. Entity overflow actions and plugin-to-plugin service registries remain post-1.0 — see [deferred-backlog.md](../deferred-backlog.md).
+**Can plugins create first-class campaign subsystems at 1.0?** Yes for read/react/mutate/configure/deep-link flows. Entity overflow actions and plugin-to-plugin service registries remain post-1.0.
 
 **Three storage concepts (never conflate):**
 
@@ -321,7 +321,7 @@ aurora-theme, initiative-widget, discord-lfg-bridge, roll20-sync
 
 ### Future-VTT stress test
 
-Combat tracker / initiative / character sheet as plugin is **philosophically allowed** (plugin-only in [deferred-backlog.md](../deferred-backlog.md)) but **technically blocked** by missing full-page routes, entity registration, and grid widget integration — not by an explicit API ban.
+Combat tracker / initiative / character sheet as plugin is **philosophically allowed** (plugin-only per AGENTS.md) but **technically blocked** by missing full-page routes, entity registration, and grid widget integration — not by an explicit API ban.
 
 Esiana core stays narrative infrastructure; plugins may go wild within slot and route constraints.
 
@@ -389,7 +389,6 @@ Recommended before or immediately after schema freeze. Raises the "first-class s
 3. **Frontend slot hosts** — grep `PluginSlotHost` in `frontend/src/`
 4. **Stub detection** — registry functions with zero consumers (`listPluginThemes`, `listLayoutWidgets`, `IMPORT_PROVIDER`)
 5. **Community proof** — `community-plugins/` manifests + runtime usage
-6. **Deferred ledger cross-check** — `docs/deferred-backlog.md` plugin-only / open items
 
 ---
 
@@ -409,4 +408,4 @@ Recommended before or immediately after schema freeze. Raises the "first-class s
 | Ecosystem docs | `docs/plugins/phase-10-ecosystem.md` |
 | Security model | `docs/plugins/security-model.md` |
 | Reference plugin | `community-plugins/examples/example-plugin/` |
-| Deferred work | `docs/deferred-backlog.md`, `todo.md` |
+| Open work | `todo.md`, GitHub Issues |

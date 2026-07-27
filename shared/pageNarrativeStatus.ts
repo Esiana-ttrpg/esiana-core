@@ -1,7 +1,6 @@
 /**
  * Layer 1 — page narrative status (GM canon editorial state).
  * Stored as String in Prisma; these literals are the canonical values.
- * @see docs/plans/canonical-page-editor.md
  */
 import type { NarrativeViewerContext } from './narrativeProjection.js';
 

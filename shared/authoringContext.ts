@@ -1,6 +1,5 @@
 /**
  * Layer 5 — authoring context (UI/session, not canonical content).
- * @see docs/plans/authoring-workflow.md
  */
 
 export const AUTHORING_CONTEXT_KINDS = [

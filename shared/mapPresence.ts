@@ -3,7 +3,7 @@
  * Single pipeline for layers, revelation, temporal windows, and wiki inheritance.
  *
  * PRESENCE INPUTS: layerId, visibility, revelation, temporal bounds, wiki inheritance only.
- * groupId and UI filters must NEVER be read here — see docs/plans/map-presence-visibility.md.
+ * groupId and UI filters must NEVER be read here.
  */
 
 export const MapRevelationStates = {

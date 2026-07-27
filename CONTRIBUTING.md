@@ -26,7 +26,7 @@ Please:
 
 1. Check existing issues and discussions.
 2. Keep changes focused on a single concern when possible.
-3. Read philosophy.md to understand project goals.
+3. Read [AGENTS.md](./AGENTS.md) to understand project goals.
 4. Follow existing code style and patterns.
 
 ## Pull requests

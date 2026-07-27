@@ -1,6 +1,6 @@
 # Content Pack Audits (Phase 2B)
 
-Pre-1.0 validation audits for import/export fidelity and showcase pack authoring. Complements [sample-data-generator.md](./sample-data-generator.md) (Format v1) and [gbm-ui-walkthrough.md](./gbm-ui-walkthrough.md) (manual verification). Pre-1.0 entity matrix: [pre-1.0-export-audit.md](./pre-1.0-export-audit.md).
+Pre-1.0 validation audits for import/export fidelity and showcase pack authoring. Complements [sample-data-generator.md](../architecture-internal/sample-data-generator.md) (Format v1) and [gbm-ui-walkthrough.md](../architecture-internal/gbm-ui-walkthrough.md) (manual verification).
 
 ## Template definition source-of-truth
 
