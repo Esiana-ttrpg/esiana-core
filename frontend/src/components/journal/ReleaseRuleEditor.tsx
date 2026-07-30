@@ -33,6 +33,14 @@ const OP_I18N: Record<ComparisonOperator, string> = {
   '<=': 'journal.planner.opAtMost',
 };
 
+const STARTER_I18N: Record<(typeof BUILDER_KINDS)[number], string> = {
+  session_number_at_least: 'journal.planner.condSessionNumberSubject',
+  real_world_date_after: 'journal.planner.condRealWorldDateSubject',
+  character_status_is: 'journal.planner.condCharacterStatusSubject',
+  quest_lifecycle_is: 'journal.planner.condQuestStatusSubject',
+  faction_reputation_at_least: 'journal.planner.condFactionRepSubject',
+};
+
 function flattenWikiTree(nodes: WikiTreeNode[]): WikiTreeNode[] {
   const out: WikiTreeNode[] = [];
   const walk = (list: WikiTreeNode[]) => {
@@ -397,7 +405,7 @@ function GroupNode({
         <option value="">{t('journal.planner.addCondition')}</option>
         {BUILDER_KINDS.map((kind) => (
           <option key={kind} value={kind}>
-            {t(`journal.planner.starter.${kind}`)}
+            {t(STARTER_I18N[kind])}
           </option>
         ))}
       </select>

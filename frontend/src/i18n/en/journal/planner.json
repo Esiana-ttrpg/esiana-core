@@ -102,10 +102,5 @@
   "journal.planner.pickFaction": "Faction",
   "journal.planner.axisTrust": "Trust",
   "journal.planner.axisNotoriety": "Notoriety",
-  "journal.planner.tagsPlaceholder": "Comma-separated tags",
-  "journal.planner.starter.session_number_at_least": "Session number",
-  "journal.planner.starter.real_world_date_after": "Real world date",
-  "journal.planner.starter.character_status_is": "Character status",
-  "journal.planner.starter.quest_lifecycle_is": "Quest status",
-  "journal.planner.starter.faction_reputation_at_least": "Faction reputation"
+  "journal.planner.tagsPlaceholder": "Comma-separated tags"
 }
