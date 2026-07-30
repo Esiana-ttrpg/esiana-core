@@ -26,6 +26,16 @@ import {
   type ThemeProfile,
 } from '@/lib/theme';
 import { controlClasses } from '@/components/ui/formStyles';
+import { ApiError } from '@/lib/api';
+import {
+  fetchCampaign,
+  fetchCampaignMembers,
+  removeCampaignMember,
+  rotateCampaignInvite,
+  updateCampaignMemberRole,
+  updateCampaignSettings,
+} from '@/lib/campaigns';
+import { updateMemberIdentityPage } from '@/lib/campaignMemberIdentity';
 import { initiateOwnershipTransfer } from '@/lib/notifications';
 import { GameSystemSelect } from '@/components/campaign/GameSystemSelect';
 import { DEFAULT_GAME_SYSTEM_SLUG } from '@shared/gameSystems';
@@ -85,7 +95,7 @@ export function CampaignSettingsPage() {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const { campaign: wikiCampaign, flatPages, refresh: refreshWiki } = useWiki();
   const canManageSidebar =
     wikiCampaign?.role === 'GAMEMASTER' || wikiCampaign?.role === 'WRITER';
@@ -146,30 +156,24 @@ export function CampaignSettingsPage() {
   const [updatingIdentityUserId, setUpdatingIdentityUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCampaign = async () => {
+    const loadCampaign = async () => {
       if (!campaignHandle) return;
 
       try {
-        const response = await fetch(`/api/campaigns/${campaignHandle}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch campaign');
-
-        const data = await response.json();
-        setName(data.campaign.name || '');
-        setDescription(data.campaign.description ?? '');
-        setDiscoverability(normalizeDiscoverability(data.campaign.discoverability));
-        setLanguage(data.campaign.language ?? 'English');
-        setGameSystem(data.campaign.gameSystem ?? DEFAULT_GAME_SYSTEM_SLUG);
-        setCustomGameSystemName(data.campaign.customGameSystemName ?? null);
-        const loadedPreset = data.campaign.themePreset ?? 'dark';
+        const campaign = await fetchCampaign(campaignHandle);
+        setName(campaign.name || '');
+        setDescription(campaign.description ?? '');
+        setDiscoverability(normalizeDiscoverability(campaign.discoverability));
+        setLanguage(campaign.language ?? 'English');
+        setGameSystem(campaign.gameSystem ?? DEFAULT_GAME_SYSTEM_SLUG);
+        setCustomGameSystemName(campaign.customGameSystemName ?? null);
+        const loadedPreset = campaign.themePreset ?? 'dark';
         setThemePreset(
           isThemePresetId(loadedPreset) ? loadedPreset : 'dark',
         );
-        if (isAppearanceProfileDefined(data.campaign.appearanceProfile)) {
+        if (isAppearanceProfileDefined(campaign.appearanceProfile)) {
           setCampaignAppearance(
-            normalizeThemeProfile(data.campaign.appearanceProfile),
+            normalizeThemeProfile(campaign.appearanceProfile),
           );
         } else if (loadedPreset) {
           setCampaignAppearance(
@@ -184,33 +188,18 @@ export function CampaignSettingsPage() {
       }
     };
 
-    fetchCampaign();
-  }, [campaignHandle, token]);
+    void loadCampaign();
+  }, [campaignHandle, t]);
 
   useEffect(() => {
     if (activeTab !== 'access' || !campaignHandle) return;
 
-    const fetchMembers = async () => {
+    const loadMembers = async () => {
       setAccessLoading(true);
       setAccessError('');
       try {
-        const membersResponse = await fetch(`/api/campaigns/${campaignHandle}/members`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-
-        if (!membersResponse.ok) {
-          const data = (await membersResponse.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(
-            data.error || `Failed to load campaign members (HTTP ${membersResponse.status})`,
-          );
-        }
-
-        const membersData = (await membersResponse.json()) as {
-          members: CampaignAccessMember[];
-        };
-        setMembers(membersData.members ?? []);
+        const loaded = await fetchCampaignMembers(campaignHandle);
+        setMembers(loaded as CampaignAccessMember[]);
       } catch (error) {
         console.error('Error loading campaign access data:', error);
         const message = error instanceof Error ? error.message : '';
@@ -222,15 +211,17 @@ export function CampaignSettingsPage() {
         setAccessError(
           isNetworkFailure
             ? 'Could not reach the backend API. If you are running locally, start it with "npm run dev:backend" and refresh.'
-            : 'Failed to load access control data.',
+            : error instanceof ApiError
+              ? error.message
+              : 'Failed to load access control data.',
         );
       } finally {
         setAccessLoading(false);
       }
     };
 
-    void fetchMembers();
-  }, [activeTab, campaignHandle, token]);
+    void loadMembers();
+  }, [activeTab, campaignHandle]);
 
   const handleCopyInviteUrl = async () => {
     const ok = await inviteLink.copyInviteUrl();
@@ -244,15 +235,7 @@ export function CampaignSettingsPage() {
     setRotatingInvite(true);
     setAccessError('');
     try {
-      const response = await fetch(`/api/campaigns/${campaignHandle}/invite/rotate`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to rotate invite');
-      }
-      await response.json();
+      await rotateCampaignInvite(campaignHandle);
       inviteLink.reload();
     } catch (error) {
       console.error('Error rotating invite URL:', error);
@@ -267,18 +250,7 @@ export function CampaignSettingsPage() {
     setUpdatingMemberId(userId);
     setAccessError('');
     try {
-      const response = await fetch(`/api/campaigns/${campaignHandle}/members/${userId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ role }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update member role');
-      }
+      await updateCampaignMemberRole(campaignHandle, userId, role);
       setMembers((prev) =>
         prev.map((member) => (member.userId === userId ? { ...member, role } : member)),
       );
@@ -303,25 +275,16 @@ export function CampaignSettingsPage() {
     setUpdatingIdentityUserId(userId);
     setAccessError('');
     try {
-      const response = await fetch(
-        `/api/campaigns/${campaignHandle}/members/${userId}/identity`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ identityPageId }),
-        },
+      const updated = await updateMemberIdentityPage(
+        campaignHandle,
+        userId,
+        identityPageId,
       );
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error || 'Failed to update identity mapping');
-      }
-      const data = (await response.json()) as { member: CampaignAccessMember };
       setMembers((prev) =>
         prev.map((member) =>
-          member.userId === userId ? { ...member, ...data.member } : member,
+          member.userId === userId
+            ? { ...member, ...updated, role: member.role }
+            : member,
         ),
       );
     } catch (error) {
@@ -342,14 +305,7 @@ export function CampaignSettingsPage() {
     setUpdatingMemberId(member.userId);
     setAccessError('');
     try {
-      const response = await fetch(`/api/campaigns/${campaignHandle}/members/${member.userId}`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to remove member');
-      }
+      await removeCampaignMember(campaignHandle, member.userId);
       setMembers((prev) => prev.filter((entry) => entry.userId !== member.userId));
     } catch (error) {
       console.error('Error removing member:', error);
@@ -399,38 +355,24 @@ export function CampaignSettingsPage() {
     }
 
     try {
-      const response = await fetch(`/api/campaigns/${campaignHandle}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          discoverability,
-          language: language?.trim() || null,
-          gameSystem: gameSystem?.trim() || null,
-          customGameSystemName:
-            gameSystem === 'other' ? customGameSystemName?.trim() || null : null,
-        }),
+      const campaign = await updateCampaignSettings(campaignHandle, {
+        name: name.trim(),
+        description: description.trim() || null,
+        discoverability,
+        language: language?.trim() || null,
+        gameSystem: gameSystem?.trim() || null,
+        customGameSystemName:
+          gameSystem === 'other' ? customGameSystemName?.trim() || null : null,
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        setSettingsError(data.error || t('campaign.settings.saveFailed'));
-        return;
-      }
-
-      const data = await response.json();
-      setName(data.campaign.name);
-      setDescription(data.campaign.description ?? '');
-      setDiscoverability(normalizeDiscoverability(data.campaign.discoverability));
-      setLanguage(data.campaign.language ?? 'English');
-      setGameSystem(data.campaign.gameSystem ?? DEFAULT_GAME_SYSTEM_SLUG);
-      setCustomGameSystemName(data.campaign.customGameSystemName ?? null);
+      setName(campaign.name);
+      setDescription(campaign.description ?? '');
+      setDiscoverability(normalizeDiscoverability(campaign.discoverability));
+      setLanguage(campaign.language ?? 'English');
+      setGameSystem(campaign.gameSystem ?? DEFAULT_GAME_SYSTEM_SLUG);
+      setCustomGameSystemName(campaign.customGameSystemName ?? null);
       void refreshWiki();
-      const nextHandle = data.campaign.handle as string | undefined;
+      const nextHandle = campaign.handle as string | undefined;
       if (nextHandle && nextHandle !== campaignHandle) {
         navigate(campaignSettingsPath(nextHandle, activeTab), { replace: true });
       }
@@ -438,7 +380,9 @@ export function CampaignSettingsPage() {
       setTimeout(() => setSettingsSuccess(false), 3000);
     } catch (err) {
       console.error('Error saving campaign settings:', err);
-      setSettingsError(t('campaign.settings.saveFailed'));
+      setSettingsError(
+        err instanceof ApiError ? err.message : t('campaign.settings.saveFailed'),
+      );
     } finally {
       setSettingsLoading(false);
     }
@@ -894,7 +838,6 @@ export function CampaignSettingsPage() {
         <div className="space-y-6">
           <CampaignAppearanceSettingsTab
             campaignHandle={campaignHandle ?? ''}
-            token={token}
             initialAppearanceProfile={campaignAppearance}
             initialThemePreset={themePreset}
             onSaved={refreshWiki}
