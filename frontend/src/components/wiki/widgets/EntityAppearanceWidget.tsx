@@ -61,7 +61,7 @@ export function EntityAppearanceWidget({
         <BlockEmptyState
           compact
           title="No appearance yet"
-          description="Summary, tags, and an optional portrait can describe how this entity presents in the world."
+          description="Portrait, physical details, and a written description help others picture how this character presents."
         />
       );
     }

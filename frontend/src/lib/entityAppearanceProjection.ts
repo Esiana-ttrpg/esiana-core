@@ -3,6 +3,7 @@ import type {
   AppearanceDetailsFields,
   AppearanceGalleryEntry,
   AppearanceGalleryState,
+  AppearancePresentationType,
   PrimaryGalleryEntryContext,
 } from '@shared/appearanceMetadata';
 import {
@@ -45,6 +46,26 @@ export interface AppearanceFormsViewModel {
 export interface AppearanceDetailsViewModel extends AppearanceDetailsFields {
   hasContent: boolean;
   formattedSummary: string;
+}
+
+export interface AppearancePresentationOption {
+  id: string;
+  label: string;
+  presentationType?: AppearancePresentationType;
+}
+
+export interface AppearancePresentationViewModel {
+  selectedEntryId: string | null;
+  label: string | null;
+  presentationType?: AppearancePresentationType;
+  isBaseline: boolean;
+  portraitUrl: string | null;
+  portraitCredit: ImageCredit | null;
+  details: AppearanceDetailsViewModel | null;
+  description: string | null;
+  tags: string[];
+  gender: string | null;
+  presentation: string | null;
 }
 
 const EMPTY: EntityAppearanceViewModel = {
@@ -223,6 +244,168 @@ export function formsCapabilityEnabled(capabilities: AppearanceCapabilities): bo
   return capabilities.forms;
 }
 
+/** Gallery entries other than the default (primary) wiki presentation. */
+export function resolveAlternateGalleryEntries(
+  entries: AppearanceGalleryEntry[],
+  primaryEntry: AppearanceGalleryEntry | null,
+  filterEntries?: (entry: AppearanceGalleryEntry) => boolean,
+): AppearanceGalleryEntry[] {
+  let list = filterEntries ? entries.filter(filterEntries) : entries;
+  const primaryId = primaryEntry?.id;
+  if (!primaryId) {
+    return list.length > 1 ? list.slice(1) : [];
+  }
+  return list.filter((entry) => entry.id !== primaryId);
+}
+
 export function detailsCapabilityEnabled(capabilities: AppearanceCapabilities): boolean {
   return capabilities.details;
+}
+
+function mergeUniqueTags(base: string[], extra: string[]): string[] {
+  const seen = new Set(base);
+  const merged = [...base];
+  for (const tag of extra) {
+    if (!seen.has(tag)) {
+      seen.add(tag);
+      merged.push(tag);
+    }
+  }
+  return merged;
+}
+
+function combineDescription(summary: string | null, notes: string | null): string | null {
+  const summaryText = summary?.trim() ?? '';
+  const notesText = notes?.trim() ?? '';
+  if (summaryText && notesText) {
+    return `${summaryText}\n\n${notesText}`;
+  }
+  if (summaryText) return summaryText;
+  if (notesText) return notesText;
+  return null;
+}
+
+export function resolveSelectedGalleryEntry(
+  forms: AppearanceFormsViewModel,
+  selectedEntryId: string | null | undefined,
+): AppearanceGalleryEntry | null {
+  if (selectedEntryId) {
+    const match = forms.entries.find((entry) => entry.id === selectedEntryId);
+    if (match) return match;
+  }
+  return forms.primaryEntry ?? forms.entries[0] ?? null;
+}
+
+export function isBaselinePresentationSelection(
+  selectedEntry: AppearanceGalleryEntry | null,
+  primaryEntry: AppearanceGalleryEntry | null,
+  presentationCount: number,
+): boolean {
+  if (presentationCount <= 1) return true;
+  if (!selectedEntry || !primaryEntry) return true;
+  return selectedEntry.id === primaryEntry.id;
+}
+
+export function listAppearancePresentations(
+  forms: AppearanceFormsViewModel,
+  filterEntries?: (entry: AppearanceGalleryEntry) => boolean,
+): AppearancePresentationOption[] {
+  const entries = filterEntries ? forms.entries.filter(filterEntries) : forms.entries;
+  return entries.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    presentationType: entry.presentationType,
+  }));
+}
+
+export function shouldShowPresentationSelector(
+  forms: AppearanceFormsViewModel,
+  formsCapability: boolean,
+  filterEntries?: (entry: AppearanceGalleryEntry) => boolean,
+): boolean {
+  if (!formsCapability) return false;
+  return listAppearancePresentations(forms, filterEntries).length > 1;
+}
+
+export function projectAppearancePresentation(input: {
+  appearance: EntityAppearanceViewModel;
+  forms: AppearanceFormsViewModel;
+  details?: AppearanceDetailsViewModel;
+  selectedEntryId?: string | null;
+  detailsCapability?: boolean;
+  filterEntries?: (entry: AppearanceGalleryEntry) => boolean;
+}): AppearancePresentationViewModel {
+  const {
+    appearance,
+    forms,
+    details,
+    selectedEntryId,
+    detailsCapability = true,
+    filterEntries,
+  } = input;
+
+  const presentations = listAppearancePresentations(forms, filterEntries);
+  const selectedEntry = resolveSelectedGalleryEntry(forms, selectedEntryId);
+  const isBaseline = isBaselinePresentationSelection(
+    selectedEntry,
+    forms.primaryEntry,
+    presentations.length,
+  );
+
+  const emptyPresentation: AppearancePresentationViewModel = {
+    selectedEntryId: selectedEntry?.id ?? null,
+    label: selectedEntry?.label ?? null,
+    presentationType: selectedEntry?.presentationType,
+    isBaseline,
+    portraitUrl: appearance.portraitUrl?.trim() || null,
+    portraitCredit: appearance.portraitCredit,
+    details:
+      detailsCapability && details?.hasContent ? details : null,
+    description: appearance.summary?.trim() || null,
+    tags: appearance.tags,
+    gender: appearance.gender,
+    presentation: appearance.presentation,
+  };
+
+  if (!selectedEntry) {
+    return emptyPresentation;
+  }
+
+  if (isBaseline) {
+    const entryPortrait = selectedEntry.imageUrl.trim();
+    const portraitUrl = entryPortrait || appearance.portraitUrl?.trim() || null;
+    const portraitCredit = entryPortrait
+      ? selectedEntry.imageCredit
+      : appearance.portraitCredit;
+
+    return {
+      selectedEntryId: selectedEntry.id,
+      label: selectedEntry.label,
+      presentationType: selectedEntry.presentationType,
+      isBaseline: true,
+      portraitUrl,
+      portraitCredit,
+      details: detailsCapability && details?.hasContent ? details : null,
+      description: combineDescription(appearance.summary, selectedEntry.presentationNotes),
+      tags: mergeUniqueTags(appearance.tags, selectedEntry.tags),
+      gender: appearance.gender,
+      presentation: appearance.presentation,
+    };
+  }
+
+  const portraitUrl = selectedEntry.imageUrl.trim() || null;
+
+  return {
+    selectedEntryId: selectedEntry.id,
+    label: selectedEntry.label,
+    presentationType: selectedEntry.presentationType,
+    isBaseline: false,
+    portraitUrl,
+    portraitCredit: portraitUrl ? selectedEntry.imageCredit : null,
+    details: null,
+    description: selectedEntry.presentationNotes?.trim() || null,
+    tags: [...selectedEntry.tags],
+    gender: null,
+    presentation: null,
+  };
 }

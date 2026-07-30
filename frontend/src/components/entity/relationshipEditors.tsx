@@ -96,13 +96,27 @@ interface FamilyPickerEditorProps {
   familyPages: WikiTreeNode[];
   value: string | null;
   onChange: (nextId: string | null) => void;
+  /** Value column only — no card or field label (parent row owns label) */
+  inline?: boolean;
 }
 
 export function FamilyPickerEditor({
   familyPages,
   value,
   onChange,
+  inline = false,
 }: FamilyPickerEditorProps) {
+  if (inline) {
+    return (
+      <IdentityPagePicker
+        flatPages={familyPages}
+        value={value}
+        placeholder="Search families…"
+        onChange={onChange}
+      />
+    );
+  }
+
   return (
     <div className="rounded-md border border-border/50 bg-surface/30 p-2">
       <label id="character-field-familyId" className="block space-y-1">

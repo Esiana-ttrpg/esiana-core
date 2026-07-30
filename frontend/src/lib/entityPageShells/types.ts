@@ -49,6 +49,7 @@ export interface EntityHeroProps {
 export interface EntityOverviewProps {
   campaignHandle: string;
   pageId: string;
+  displayTitle: string;
   templateType: string;
   blocks: WikiPageBlock[];
   flatPages: WikiTreeNode[];
@@ -57,8 +58,14 @@ export interface EntityOverviewProps {
   pageMetadata?: unknown;
   characterProjection?: CharacterIdentityProjection | null;
   discovery?: DiscoveryStateProjection | null;
+  pageTags: WikiTagInput[];
+  allCampaignTags: WikiTag[];
+  onPageTagsChange: (tags: WikiTagInput[]) => void;
+  onMetadataSaved: (metadata: Record<string, unknown>) => void;
   onJumpToTab: (subviewId: EntitySubviewId, focus?: string) => void;
   onBlocksChange: (updater: (blocks: WikiPageBlock[]) => WikiPageBlock[]) => void;
+  prosePrimary?: boolean;
+  inspectorFocusField?: string | null;
 }
 
 export interface EntitySubviewNavProps {

@@ -32,26 +32,36 @@ function findHeroBlock(blocks: WikiPageBlock[]): WikiPageBlock | undefined {
 export function CharacterPageShellView({
   campaignHandle,
   pageId,
+  displayTitle,
+  templateType,
   pageData,
   blocks,
   displayBlocks,
   pageSubview,
   isEditingPage,
+  isDMUser,
   pageVisibility,
   onVisibilityChange,
   characterIdentityProjection,
   discovery,
   flatPages,
-  onEditFromStrip,
   onJumpToTab,
   onBlocksChange,
   wikiPageRenderer,
   continuityPanel,
   onMetadataSaved,
   inspectorFocusField,
+  pageTags,
+  allCampaignTags,
+  onPageTagsChange,
+  prosePrimaryOverview,
 }: EntityPageShellViewProps & {
   onMetadataSaved: (metadata: Record<string, unknown>) => void;
   inspectorFocusField?: string | null;
+  pageTags: import('@/types/wiki').WikiTagInput[];
+  allCampaignTags: import('@/types/wiki').WikiTag[];
+  onPageTagsChange: (tags: import('@/types/wiki').WikiTagInput[]) => void;
+  prosePrimaryOverview?: boolean;
 }) {
   const heroBlock = findHeroBlock(blocks);
   const immature = IMMATURE_PLACEHOLDERS[pageSubview];
@@ -77,38 +87,54 @@ export function CharacterPageShellView({
     return wikiPageRenderer;
   }
 
+  const metadataSaved = (next: Record<string, unknown>) => {
+    onMetadataSaved(next);
+  };
+
   return (
     <div className="min-w-0">
       <CharacterHeroSurface
         campaignHandle={campaignHandle}
         pageId={pageId}
+        templateType={templateType}
+        isDMUser={isDMUser}
         isEditingPage={isEditingPage}
-        showIdentityEditor={pageSubview === 'overview'}
         pageVisibility={pageVisibility}
         discovery={discovery}
         onVisibilityChange={onVisibilityChange}
-        onEditField={onEditFromStrip}
         characterProjection={characterIdentityProjection}
         metadata={pageData.metadata}
         flatPages={flatPages}
         blockId={heroBlock?.id ?? 'entity-hero'}
-        onMetadataSaved={onMetadataSaved}
-        focusField={pageSubview === 'overview' ? inspectorFocusField : null}
+        onMetadataSaved={metadataSaved}
+        focusField={
+          pageSubview === 'overview' && inspectorFocusField !== 'character-field-name'
+            ? inspectorFocusField
+            : null
+        }
       />
 
       {pageSubview === 'overview' ? (
         <CharacterOverviewDashboard
           campaignHandle={campaignHandle}
           pageId={pageId}
+          displayTitle={displayTitle}
           templateType={pageData.templateType ?? 'DEFAULT'}
           blocks={blocks}
           flatPages={flatPages}
+          isDMUser={isDMUser}
           isEditingPage={isEditingPage}
           pageMetadata={pageData.metadata}
           characterProjection={characterIdentityProjection}
           discovery={discovery}
+          pageTags={pageTags}
+          allCampaignTags={allCampaignTags}
+          onPageTagsChange={onPageTagsChange}
+          onMetadataSaved={metadataSaved}
           onJumpToTab={onJumpToTab}
           onBlocksChange={onBlocksChange}
+          prosePrimary={prosePrimaryOverview}
+          inspectorFocusField={inspectorFocusField}
         />
       ) : (
         renderContentTab()

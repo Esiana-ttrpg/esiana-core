@@ -1,41 +1,33 @@
-import { useState } from 'react';
-import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
+import { AppearancePresentationSelector } from '@/components/entity/appearance/AppearancePresentationSelector';
+import { AppearanceDetailsFactRows } from '@/components/entity/appearance/AppearanceDetailsWidget';
+import { EntityPageSection } from '@/components/entity/shells/EntityPageSection';
 import {
-  AppearanceFormsWidget,
-  AppearanceDetailsWidget,
-} from '@/components/entity/appearance';
+  EntityFactReadValue,
+  EntityFactRow,
+  EntityFactRowList,
+  EntityWikiInfobox,
+} from '@/components/entity/shells/EntityFactRow';
 import type { AppearanceCapabilities } from '@/lib/entitySurfaceProfile';
-import type {
-  AppearanceDetailsViewModel,
-  AppearanceFormsViewModel,
-  EntityAppearanceViewModel,
+import {
+  listAppearancePresentations,
+  projectAppearancePresentation,
+  resolveSelectedGalleryEntry,
+  shouldShowPresentationSelector,
+  type AppearanceDetailsViewModel,
+  type AppearanceFormsViewModel,
+  type EntityAppearanceViewModel,
 } from '@/lib/entityAppearanceProjection';
+import type { AppearanceGalleryEntry } from '@shared/appearanceMetadata';
+import { useMemo, useState } from 'react';
 
 interface EntityAppearanceReadViewProps {
   appearance: EntityAppearanceViewModel;
   forms?: AppearanceFormsViewModel;
   details?: AppearanceDetailsViewModel;
   appearanceCapabilities?: AppearanceCapabilities;
-  /** Larger portrait presentation when forms capability is disabled. */
+  /** @deprecated Portrait size is unified in the primary appearance section. */
   prominentPortrait?: boolean;
-  filterFormEntries?: (entry: import('@shared/appearanceMetadata').AppearanceGalleryEntry) => boolean;
-}
-
-type AppearanceReadTab = 'identity' | 'physical' | 'summary';
-
-function SectionHeading({ children }: { children: string }) {
-  return (
-    <h3 className="text-sm font-medium text-muted">{children}</h3>
-  );
-}
-
-function IdentityDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-0.5">
-      <span className="text-xs text-muted">{label}</span>
-      <p className="text-sm text-foreground">{value}</p>
-    </div>
-  );
+  filterFormEntries?: (entry: AppearanceGalleryEntry) => boolean;
 }
 
 export function EntityAppearanceReadView({
@@ -43,141 +35,134 @@ export function EntityAppearanceReadView({
   forms,
   details,
   appearanceCapabilities = { forms: true, details: true, discoveryVariants: false },
-  prominentPortrait = true,
   filterFormEntries,
 }: EntityAppearanceReadViewProps) {
-  const { portraitUrl, portraitCredit, summary, tags, pronouns, gender, presentation } =
-    appearance;
+  const initialEntryId =
+    resolveSelectedGalleryEntry(forms ?? { entries: [], primaryEntry: null, hasContent: false }, null)
+      ?.id ?? null;
 
-  const showForms = appearanceCapabilities.forms && forms?.hasContent;
-  const showDetails = appearanceCapabilities.details && details?.hasContent;
-  const showLegacyPortrait = !showForms && Boolean(portraitUrl);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(initialEntryId);
 
-  const hasIdentityPresence = Boolean(gender || presentation || pronouns);
-  const hasPhysical = Boolean(showLegacyPortrait || tags.length > 0);
-  const hasSummary = Boolean(summary?.trim());
+  const presentation = useMemo(
+    () =>
+      projectAppearancePresentation({
+        appearance,
+        forms: forms ?? { entries: [], primaryEntry: null, hasContent: false },
+        details,
+        selectedEntryId,
+        detailsCapability: appearanceCapabilities.details,
+        filterEntries: filterFormEntries,
+      }),
+    [
+      appearance,
+      forms,
+      details,
+      selectedEntryId,
+      appearanceCapabilities.details,
+      filterFormEntries,
+    ],
+  );
 
-  const tabs: { id: AppearanceReadTab; label: string; visible: boolean }[] = [
-    { id: 'identity', label: 'Identity', visible: hasIdentityPresence },
-    { id: 'physical', label: 'Physical', visible: hasPhysical },
-    { id: 'summary', label: 'Summary', visible: hasSummary },
-  ];
-  const visibleTabs = tabs.filter((tab) => tab.visible);
-  const defaultTab = visibleTabs[0]?.id ?? 'summary';
-  const [activeTab, setActiveTab] = useState<AppearanceReadTab>(defaultTab);
+  const presentationOptions = useMemo(
+    () =>
+      forms
+        ? listAppearancePresentations(forms, filterFormEntries)
+        : [],
+    [forms, filterFormEntries],
+  );
 
-  const identitySection = hasIdentityPresence ? (
-    <section className="space-y-3">
-      <SectionHeading>Identity and presence</SectionHeading>
-      <div className="grid gap-3 sm:grid-cols-3">
-        {gender ? <IdentityDetail label="Gender" value={gender} /> : null}
-        {presentation ? <IdentityDetail label="Presentation" value={presentation} /> : null}
-        {pronouns ? <IdentityDetail label="Pronouns" value={pronouns} /> : null}
-      </div>
-    </section>
-  ) : null;
+  const showSelector = forms
+    ? shouldShowPresentationSelector(forms, appearanceCapabilities.forms, filterFormEntries)
+    : false;
 
-  const physicalSection = hasPhysical ? (
-    <section className="space-y-3">
-      <SectionHeading>Physical</SectionHeading>
-      {showLegacyPortrait && portraitUrl ? (
-        <div className="space-y-2">
-          <img
-            src={portraitUrl}
-            alt=""
-            className={
-              prominentPortrait
-                ? 'max-h-80 w-auto rounded-lg border border-border/40 object-cover shadow-sm'
-                : 'max-h-48 w-auto rounded-lg border border-border/40 object-cover'
-            }
-          />
-          <ImageCreditDisplay credit={portraitCredit} />
-        </div>
-      ) : null}
+  const effectiveSelectedId =
+    presentation.selectedEntryId ?? presentationOptions[0]?.id ?? '';
 
-      {tags.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
-          {tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-border/40 bg-elevated/60 px-2.5 py-0.5 text-xs text-foreground"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </section>
-  ) : null;
+  const showDetails = Boolean(presentation.details?.hasContent);
+  const portraitSrc = presentation.portraitUrl?.trim() || null;
+  const hasAppearanceHero = Boolean(portraitSrc || showDetails || showSelector);
 
-  const summarySection = hasSummary ? (
-    <section className="space-y-2">
-      <SectionHeading>Summary</SectionHeading>
-      <p className="wiki-reader-prose text-sm leading-relaxed text-foreground">{summary}</p>
-    </section>
-  ) : null;
+  const descriptionText = presentation.description?.trim() ?? '';
+  const hasDescription = Boolean(descriptionText);
 
-  const shellContent =
-    visibleTabs.length <= 1 ? (
-      <div className="wiki-reader-prose space-y-6">
-        {identitySection}
-        {physicalSection}
-        {summarySection}
-      </div>
-    ) : (
-      <div className="wiki-reader-prose space-y-4">
-        <div
-          className="flex min-w-0 flex-wrap gap-1 border-b border-border/40 pb-2 sm:hidden"
-          role="tablist"
-          aria-label="Appearance sections"
-        >
-          {visibleTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-primary/15 text-primary'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="sm:hidden">
-          {activeTab === 'identity'
-            ? identitySection
-            : activeTab === 'physical'
-              ? physicalSection
-              : summarySection}
-        </div>
-        <div className="hidden space-y-6 sm:block">
-          {identitySection}
-          {physicalSection}
-          {summarySection}
-        </div>
-      </div>
-    );
+  const hasPresentation = Boolean(presentation.presentation?.trim());
+  const hasGender = Boolean(presentation.gender?.trim());
+  const hasTags = presentation.tags.length > 0;
+  const hasSupporting = hasPresentation || hasGender || hasTags;
 
   return (
-    <div className="wiki-reader-prose space-y-6">
-      {showForms && forms ? (
-        <AppearanceFormsWidget
-          mode="read"
-          forms={forms}
-          filterEntries={filterFormEntries}
-        />
+    <div className="space-y-6">
+      {hasAppearanceHero ? (
+        <EntityPageSection id="appearance-primary" title="Appearance" wikiFacts>
+          <div className="space-y-4">
+            {showSelector ? (
+              <AppearancePresentationSelector
+                presentations={presentationOptions}
+                selectedId={effectiveSelectedId}
+                onSelect={setSelectedEntryId}
+              />
+            ) : null}
+
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+              {portraitSrc ? (
+                <img
+                  key={presentation.selectedEntryId ?? 'default'}
+                  src={portraitSrc}
+                  alt=""
+                  className="max-h-80 w-auto shrink-0 rounded-lg border border-border/40 object-cover shadow-sm transition-opacity duration-200"
+                />
+              ) : null}
+
+              <div className="min-w-0 flex-1 sm:max-w-md">
+                {showDetails && presentation.details ? (
+                  <EntityWikiInfobox>
+                    <AppearanceDetailsFactRows details={presentation.details} />
+                  </EntityWikiInfobox>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </EntityPageSection>
       ) : null}
 
-      {showDetails && details ? (
-        <AppearanceDetailsWidget mode="read" details={details} />
+      {hasDescription ? (
+        <EntityPageSection id="appearance-description" title="Description" dominant>
+          <p className="wiki-reader-prose whitespace-pre-line text-sm leading-relaxed text-foreground">
+            {descriptionText}
+          </p>
+        </EntityPageSection>
       ) : null}
 
-      {shellContent}
+      {hasSupporting ? (
+        <EntityPageSection id="appearance-supporting" title="Notes" wikiFacts>
+          <EntityWikiInfobox className="max-w-md">
+            <EntityFactRowList>
+              {hasPresentation ? (
+                <EntityFactRow label="Presentation">
+                  <EntityFactReadValue value={presentation.presentation} />
+                </EntityFactRow>
+              ) : null}
+              {hasGender ? (
+                <EntityFactRow label="Gender">
+                  <EntityFactReadValue value={presentation.gender} />
+                </EntityFactRow>
+              ) : null}
+            </EntityFactRowList>
+          </EntityWikiInfobox>
+          {hasTags ? (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {presentation.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-border/40 bg-elevated/60 px-2.5 py-0.5 text-xs text-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </EntityPageSection>
+      ) : null}
     </div>
   );
 }

@@ -1,19 +1,20 @@
 export const APPEARANCE_SUMMARY_PLACEHOLDER =
-  'Describe how they appear, move, and are perceived by others…';
+  'Describe how they appear, move, and are perceived…';
 
-export const APPEARANCE_WRITING_PROMPT_LEAD = 'How do they move through the world?';
+export const APPEARANCE_WRITING_PROMPT_LEAD =
+  'You might explore how they move through the world—only what matters for this character.';
 
 export const APPEARANCE_WRITING_PROMPTS = [
-  'body language and posture',
+  'how history shows in their body or style',
+  'movement and body language',
   'gender presentation or expression',
   'clothing and aesthetic style',
   'voice, tone, or mannerisms',
   'emotional or social presence',
   'scars, markings, or distinctive traits',
-  'fantasy or nonhuman qualities',
+  'nonhuman or uncanny qualities',
   'the impression they leave on others',
 ] as const;
-
 export const APPEARANCE_MICRO_PROMPTS = [
   'What do people notice first?',
   'What makes them memorable in a crowd?',

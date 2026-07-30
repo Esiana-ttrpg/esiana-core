@@ -9,7 +9,8 @@ import {
 describe('appearanceSummaryPrompts', () => {
   it('includes perception-oriented writing dimensions', () => {
     assert.ok(APPEARANCE_WRITING_PROMPTS.includes('gender presentation or expression'));
-    assert.ok(APPEARANCE_WRITING_PROMPTS.includes('fantasy or nonhuman qualities'));
+    assert.ok(APPEARANCE_WRITING_PROMPTS.includes('movement and body language'));
+    assert.ok(APPEARANCE_WRITING_PROMPTS.includes('nonhuman or uncanny qualities'));
   });
 
   it('returns a micro-prompt from the curated list', () => {

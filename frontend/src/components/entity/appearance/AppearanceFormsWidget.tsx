@@ -1,6 +1,5 @@
 import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useRef, useState } from 'react';
-import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
 import { ImageCreditEditor } from '@/components/media/ImageCreditEditor';
 import type {
   AppearanceGalleryEntry,
@@ -10,9 +9,13 @@ import type {
 import {
   APPEARANCE_PRESENTATION_TYPE_LABELS,
   APPEARANCE_PRESENTATION_TYPES,
+  emptyGalleryEntryOverlays,
   enforceSinglePrimaryInEditor,
 } from '@shared/appearanceMetadata';
 import type { AppearanceFormsViewModel } from '@/lib/entityAppearanceProjection';
+import { resolveAlternateGalleryEntries } from '@/lib/entityAppearanceProjection';
+import { getAppearanceFieldGuidance } from '@/lib/appearanceFieldGuidance';
+import { AppearanceFieldLabel } from './AppearanceFieldLabel';
 import {
   appearanceFieldClass,
   formatCommaList,
@@ -21,7 +24,7 @@ import {
   SectionLabel,
 } from './appearanceShared';
 import { ImportImageUrlField } from '@/components/media/ImportImageUrlField';
-import { Plus, Star, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
 
 function PresentationTypeBadge({ type }: { type?: AppearancePresentationType }) {
   if (!type || type === 'default') return null;
@@ -35,98 +38,74 @@ function PresentationTypeBadge({ type }: { type?: AppearancePresentationType }) 
 interface AppearanceFormsReadProps {
   forms: AppearanceFormsViewModel;
   filterEntries?: (entry: AppearanceGalleryEntry) => boolean;
+  /** When true, only non-primary entries — used under the Appearances section. */
+  alternatesOnly?: boolean;
+}
+
+function AlternateAppearanceCard({ entry }: { entry: AppearanceGalleryEntry }) {
+  return (
+    <article className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="text-sm font-medium text-foreground">{entry.label}</h3>
+        <PresentationTypeBadge type={entry.presentationType} />
+      </div>
+      {entry.imageUrl.trim() ? (
+        <img
+          src={entry.imageUrl}
+          alt=""
+          className="max-h-48 w-auto rounded-lg border border-border/40 object-cover shadow-sm"
+        />
+      ) : null}
+      {entry.presentationNotes?.trim() ? (
+        <p className="wiki-reader-prose text-sm leading-relaxed text-foreground">
+          {entry.presentationNotes}
+        </p>
+      ) : null}
+      {entry.tags.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {entry.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-border/40 bg-elevated/60 px-2 py-0.5 text-xs text-foreground"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
 }
 
 export function AppearanceFormsReadView({
   forms,
   filterEntries,
+  alternatesOnly = false,
 }: AppearanceFormsReadProps) {
-  const entries = filterEntries ? forms.entries.filter(filterEntries) : forms.entries;
-  const [previewId, setPreviewId] = useState<string | null>(
-    forms.primaryEntry?.id ?? entries[0]?.id ?? null,
-  );
+  const entries = alternatesOnly
+    ? resolveAlternateGalleryEntries(forms.entries, forms.primaryEntry, filterEntries)
+    : filterEntries
+      ? forms.entries.filter(filterEntries)
+      : forms.entries;
 
   if (entries.length === 0) return null;
 
-  const preview =
-    entries.find((e) => e.id === previewId) ?? forms.primaryEntry ?? entries[0];
-
-  if (!preview) return null;
+  if (alternatesOnly) {
+    return (
+      <div className="grid gap-5 sm:grid-cols-2">
+        {entries.map((entry) => (
+          <AlternateAppearanceCard key={entry.id} entry={entry} />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <section className="space-y-3">
-      <SectionLabel>Forms</SectionLabel>
-
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h5 className="text-sm font-medium text-foreground">{preview.label}</h5>
-          <PresentationTypeBadge type={preview.presentationType} />
-          {preview.isPrimary ? (
-            <span className="rounded-full border border-border/40 bg-elevated/60 px-2 py-0.5 text-[10px] text-muted">
-              Primary
-            </span>
-          ) : null}
-        </div>
-        {preview.imageUrl.trim() ? (
-          <img
-            src={preview.imageUrl}
-            alt=""
-            className="max-h-80 w-auto rounded-lg border border-border/40 object-cover shadow-sm"
-          />
-        ) : (
-          <p className="rounded-lg border border-dashed border-border/40 px-3 py-6 text-center text-xs text-muted">
-            No portrait yet for this form.
-          </p>
-        )}
-        <ImageCreditDisplay credit={preview.imageCredit} />
-        {preview.presentationNotes ? (
-          <p className="wiki-reader-prose text-sm leading-relaxed text-foreground">
-            {preview.presentationNotes}
-          </p>
-        ) : null}
-        {preview.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {preview.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-border/40 bg-elevated/60 px-2 py-0.5 text-xs text-foreground"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      {entries.length > 1 ? (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {entries.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => setPreviewId(entry.id)}
-              className={`relative shrink-0 rounded-lg border p-0.5 transition-colors ${
-                preview.id === entry.id
-                  ? 'border-primary/60 ring-1 ring-primary/30'
-                  : 'border-border/40 hover:border-border'
-              }`}
-            >
-              <img
-                src={entry.imageUrl}
-                alt=""
-                className="size-16 rounded-md object-cover"
-              />
-              {entry.isPrimary ? (
-                <Star
-                  className="absolute right-1 top-1 size-3 fill-primary text-primary"
-                  aria-label="Primary"
-                />
-              ) : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </section>
+    <div className="grid gap-5 sm:grid-cols-2">
+      {entries.map((entry) => (
+        <AlternateAppearanceCard key={entry.id} entry={entry} />
+      ))}
+    </div>
   );
 }
 
@@ -139,6 +118,341 @@ interface AppearanceFormsEditorProps {
 
 function newGalleryEntryId(): string {
   return crypto.randomUUID();
+}
+
+function EntryPortraitEditor({
+  campaignHandle,
+  imageUrl,
+  imageCredit,
+  onImageUrlChange,
+  onImageCreditChange,
+  onPersist,
+}: {
+  campaignHandle?: string;
+  imageUrl: string;
+  imageCredit: AppearanceGalleryEntry['imageCredit'];
+  onImageUrlChange: (url: string) => void;
+  onImageCreditChange: (credit: AppearanceGalleryEntry['imageCredit']) => void;
+  onPersist: () => void;
+}) {
+  const [toolsOpen, setToolsOpen] = useState(false);
+
+  return (
+    <div className="grid gap-2">
+      {imageUrl.trim() ? (
+        <img
+          src={imageUrl}
+          alt=""
+          className="max-h-24 w-auto rounded-lg border border-border/40 object-cover shadow-sm"
+        />
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setToolsOpen((open) => !open)}
+        className="flex w-fit items-center gap-1 text-[11px] font-medium text-muted hover:text-foreground"
+        aria-expanded={toolsOpen}
+      >
+        {toolsOpen ? (
+          <ChevronDown className="size-3.5 shrink-0" aria-hidden />
+        ) : (
+          <ChevronRight className="size-3.5 shrink-0" aria-hidden />
+        )}
+        {toolsOpen ? 'Hide portrait tools' : 'Edit portrait or attribution'}
+      </button>
+      {toolsOpen ? (
+        campaignHandle ? (
+          <>
+            <ImportImageUrlField
+              campaignHandle={campaignHandle}
+              value={imageUrl}
+              inputClassName={appearanceFieldClass}
+              suppressPreview
+              onChange={onImageUrlChange}
+              onImported={async () => {
+                onPersist();
+              }}
+            />
+            <ImageCreditEditor
+              value={imageCredit}
+              onChange={onImageCreditChange}
+              onPersist={onPersist}
+              inputClassName={appearanceFieldClass}
+            />
+          </>
+        ) : (
+          <p className="text-[10px] text-muted">
+            Gallery portraits require campaign context to import.
+          </p>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+interface AppearanceEntryEditorCardProps {
+  entry: AppearanceGalleryEntry;
+  campaignHandle?: string;
+  highlighted: boolean;
+  onPatch: (patch: Partial<AppearanceGalleryEntry>, persist?: boolean) => void;
+  onRemove: () => void;
+  onSetPrimary: () => void;
+  onPersist: () => void;
+}
+
+function AppearanceEntryEditorCard({
+  entry,
+  campaignHandle,
+  highlighted,
+  onPatch,
+  onRemove,
+  onSetPrimary,
+  onPersist,
+}: AppearanceEntryEditorCardProps) {
+  return (
+    <div
+      id={`form-entry-${entry.id}`}
+      className={`space-y-4 rounded-lg border bg-surface/20 p-3 transition-shadow ${
+        highlighted ? 'border-primary/50 ring-2 ring-primary/25' : 'border-border/40'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <label className="flex flex-1 items-center gap-2">
+          <input
+            type="radio"
+            name="appearances-default"
+            checked={entry.isPrimary === true}
+            onChange={onSetPrimary}
+            className="size-3.5"
+            aria-label={`Set ${entry.label} as default wiki view`}
+          />
+          <span className={META_FIELD_LABEL_CLASS}>Default view</span>
+        </label>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="rounded p-1 text-muted hover:bg-destructive/10 hover:text-destructive"
+          aria-label={`Remove ${entry.label}`}
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
+
+      <section className="grid gap-2">
+        <SectionLabel>Identity</SectionLabel>
+        <label className="space-y-1">
+          <span className={META_FIELD_LABEL_CLASS}>Appearance name</span>
+          <input
+            className={appearanceFieldClass}
+            placeholder="Moon Prism Form, The Red Saint…"
+            value={entry.label}
+            onChange={(e) => onPatch({ label: e.target.value })}
+            onBlur={onPersist}
+          />
+        </label>
+        <div className="space-y-1">
+          <span className={META_FIELD_LABEL_CLASS}>Portrait</span>
+          <EntryPortraitEditor
+            campaignHandle={campaignHandle}
+            imageUrl={entry.imageUrl}
+            imageCredit={entry.imageCredit}
+            onImageUrlChange={(referenceUrl) => onPatch({ imageUrl: referenceUrl })}
+            onImageCreditChange={(imageCredit) => onPatch({ imageCredit })}
+            onPersist={onPersist}
+          />
+        </div>
+        <label className="space-y-1">
+          <span className={META_FIELD_LABEL_CLASS}>Presentation type</span>
+          <select
+            className={appearanceFieldClass}
+            value={entry.presentationType ?? 'default'}
+            onChange={(e) => {
+              onPatch({ presentationType: e.target.value as AppearancePresentationType }, true);
+            }}
+          >
+            {APPEARANCE_PRESENTATION_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {APPEARANCE_PRESENTATION_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className={META_FIELD_LABEL_CLASS}>Tags (mood/aesthetic)</span>
+          <input
+            className={appearanceFieldClass}
+            placeholder="formal, battle-worn, winter — comma-separated"
+            value={entry.tags.join(', ')}
+            onChange={(e) => {
+              onPatch({ tags: parseCommaListDraft(e.target.value) });
+            }}
+            onBlur={(e) => {
+              onPatch({ tags: parseCommaList(e.target.value) }, true);
+            }}
+          />
+        </label>
+      </section>
+
+      <section className="grid gap-2">
+        <SectionLabel>Description</SectionLabel>
+        <div className="space-y-1">
+          <AppearanceFieldLabel
+            label="Description"
+            htmlFor={`appearance-presentation-description-${entry.id}`}
+            guidance={getAppearanceFieldGuidance('presentationDescription')}
+          />
+          <textarea
+            id={`appearance-presentation-description-${entry.id}`}
+            className={`${appearanceFieldClass} min-h-[4rem] resize-y`}
+            placeholder="How this presentation looks and feels…"
+            value={entry.presentationNotes ?? ''}
+            onChange={(e) => {
+              onPatch({ presentationNotes: e.target.value || null });
+            }}
+            onBlur={onPersist}
+            rows={3}
+          />
+        </div>
+      </section>
+
+      <details className="group rounded-md border border-border/30 bg-surface/10 px-2 py-1">
+        <summary className="cursor-pointer list-none text-[11px] font-medium text-muted marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-1 group-open:hidden">
+            <ChevronRight className="size-3.5" aria-hidden />
+            How this presentation differs
+          </span>
+          <span className="hidden items-center gap-1 group-open:inline-flex">
+            <ChevronDown className="size-3.5" aria-hidden />
+            How this presentation differs
+          </span>
+        </summary>
+        <div className="mt-3 grid gap-3 pb-2">
+          <SectionLabel>Details</SectionLabel>
+          <div className="space-y-1">
+            <AppearanceFieldLabel
+              label="Distinguishing features"
+              htmlFor={`appearance-entry-features-${entry.id}`}
+              guidance={getAppearanceFieldGuidance('presentationDistinguishingFeatures')}
+            />
+            <input
+              id={`appearance-entry-features-${entry.id}`}
+              className={appearanceFieldClass}
+              placeholder="Comma-separated — optional for this state"
+              value={formatCommaList(entry.distinguishingFeatures)}
+              onChange={(e) => {
+                onPatch({
+                  distinguishingFeatures: parseCommaListDraft(e.target.value),
+                });
+              }}
+              onBlur={(e) => {
+                onPatch({ distinguishingFeatures: parseCommaList(e.target.value) }, true);
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <AppearanceFieldLabel
+              label="Voice"
+              htmlFor={`appearance-entry-voice-${entry.id}`}
+              guidance={getAppearanceFieldGuidance('presentationVoice')}
+            />
+            <input
+              id={`appearance-entry-voice-${entry.id}`}
+              className={appearanceFieldClass}
+              placeholder="Optional"
+              value={entry.voice ?? ''}
+              onChange={(e) => onPatch({ voice: e.target.value || null })}
+              onBlur={onPersist}
+            />
+          </div>
+          <div className="space-y-1">
+            <AppearanceFieldLabel
+              label="Presence"
+              htmlFor={`appearance-entry-presence-${entry.id}`}
+              guidance={getAppearanceFieldGuidance('presentationPresence')}
+            />
+            <textarea
+              id={`appearance-entry-presence-${entry.id}`}
+              className={`${appearanceFieldClass} min-h-[2.5rem] resize-y`}
+              placeholder="Optional"
+              value={entry.presence ?? ''}
+              onChange={(e) => onPatch({ presence: e.target.value || null })}
+              onBlur={onPersist}
+              rows={2}
+            />
+          </div>
+          <div className="space-y-1">
+            <AppearanceFieldLabel
+              label="Clothing motifs"
+              htmlFor={`appearance-entry-clothing-${entry.id}`}
+              guidance={getAppearanceFieldGuidance('presentationClothingMotifs')}
+            />
+            <textarea
+              id={`appearance-entry-clothing-${entry.id}`}
+              className={`${appearanceFieldClass} min-h-[2.5rem] resize-y`}
+              placeholder="Optional"
+              value={entry.clothingMotifs ?? ''}
+              onChange={(e) => onPatch({ clothingMotifs: e.target.value || null })}
+              onBlur={onPersist}
+              rows={2}
+            />
+          </div>
+
+          <SectionLabel>Supporting</SectionLabel>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <AppearanceFieldLabel
+                label="Gender"
+                htmlFor={`appearance-entry-gender-${entry.id}`}
+                guidance={getAppearanceFieldGuidance('presentationEntryGender')}
+              />
+              <input
+                id={`appearance-entry-gender-${entry.id}`}
+                className={appearanceFieldClass}
+                placeholder="This state only"
+                value={entry.gender ?? ''}
+                onChange={(e) => onPatch({ gender: e.target.value || null })}
+                onBlur={onPersist}
+              />
+            </div>
+            <div className="space-y-1">
+              <AppearanceFieldLabel
+                label="Presentation"
+                htmlFor={`appearance-entry-presentation-${entry.id}`}
+                guidance={getAppearanceFieldGuidance('presentationEntryPresentation')}
+              />
+              <input
+                id={`appearance-entry-presentation-${entry.id}`}
+                className={appearanceFieldClass}
+                placeholder="This state only"
+                value={entry.presentation ?? ''}
+                onChange={(e) => onPatch({ presentation: e.target.value || null })}
+                onBlur={onPersist}
+              />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <section className="grid gap-2">
+        <SectionLabel>Notes</SectionLabel>
+        <div className="space-y-1">
+          <AppearanceFieldLabel
+            label="Author notes"
+            htmlFor={`appearance-entry-author-notes-${entry.id}`}
+            guidance={getAppearanceFieldGuidance('presentationAuthorNotes')}
+          />
+          <textarea
+            id={`appearance-entry-author-notes-${entry.id}`}
+            className={`${appearanceFieldClass} min-h-[2.5rem] resize-y`}
+            placeholder="Optional"
+            value={entry.authorNotes ?? ''}
+            onChange={(e) => onPatch({ authorNotes: e.target.value || null })}
+            onBlur={onPersist}
+            rows={2}
+          />
+        </div>
+      </section>
+    </div>
+  );
 }
 
 export function AppearanceFormsEditor({
@@ -166,7 +480,7 @@ export function AppearanceFormsEditor({
   const addEntry = () => {
     const entry: AppearanceGalleryEntry = {
       id: newGalleryEntryId(),
-      label: 'New form',
+      label: 'New appearance',
       imageUrl: '',
       imageCredit: null,
       tags: [],
@@ -174,6 +488,7 @@ export function AppearanceFormsEditor({
       isPrimary: entries.length === 0 ? true : undefined,
       timelinePin: null,
       presentationNotes: null,
+      ...emptyGalleryEntryOverlays(),
     };
     setHighlightEntryId(entry.id);
     updateEntries([...entries, entry]);
@@ -207,16 +522,11 @@ export function AppearanceFormsEditor({
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="space-y-0.5">
-          <SectionLabel>Forms</SectionLabel>
-          <p className="text-[10px] text-muted">
-            Variants, transformations, and presentation states — name each form freely.
-          </p>
-        </div>
+        <SectionLabel>Appearances</SectionLabel>
         <div className="flex items-center gap-2">
           {entries.length > 0 ? (
             <span className="text-[10px] text-muted">
-              {entries.length} form{entries.length === 1 ? '' : 's'}
+              {entries.length} appearance{entries.length === 1 ? '' : 's'}
             </span>
           ) : null}
           <button
@@ -225,198 +535,32 @@ export function AppearanceFormsEditor({
             className="inline-flex items-center gap-1 rounded-md border border-border/40 px-2 py-1 text-[10px] font-medium text-muted hover:text-foreground"
           >
             <Plus className="size-3" />
-            Add form
+            Add appearance
           </button>
         </div>
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-xs text-muted">
-          Moon Prism Form, Winter court attire, Masked vigilante — add labeled portrait forms.
-        </p>
+        <p className="text-xs text-muted">Add an appearance to capture another presentation state.</p>
       ) : null}
 
       <div className="grid gap-4">
         {entries.map((entry) => (
-          <div
+          <AppearanceEntryEditorCard
             key={entry.id}
-            id={`form-entry-${entry.id}`}
-            className={`space-y-2 rounded-lg border bg-surface/20 p-3 transition-shadow ${
-              highlightEntryId === entry.id
-                ? 'border-primary/50 ring-2 ring-primary/25'
-                : 'border-border/40'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <label className="flex flex-1 items-center gap-2">
-                <input
-                  type="radio"
-                  name="forms-primary"
-                  checked={entry.isPrimary === true}
-                  onChange={() => setPrimary(entry.id)}
-                  className="size-3.5"
-                  aria-label={`Set ${entry.label} as primary`}
-                />
-                <span className={META_FIELD_LABEL_CLASS}>
-                  Primary
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={() => removeEntry(entry.id)}
-                className="rounded p-1 text-muted hover:bg-destructive/10 hover:text-destructive"
-                aria-label={`Remove ${entry.label}`}
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </div>
-
-            <label className="space-y-1">
-              <span className={META_FIELD_LABEL_CLASS}>
-                Form name
-              </span>
-              <input
-                className={appearanceFieldClass}
-                placeholder="Moon Prism Form, The Red Saint…"
-                value={entry.label}
-                onChange={(e) => {
-                  const next = entries.map((item) =>
-                    item.id === entry.id ? { ...item, label: e.target.value } : item,
-                  );
-                  updateEntries(next);
-                }}
-                onBlur={persistCurrent}
-              />
-            </label>
-
-            <div className="space-y-1">
-              <span className={META_FIELD_LABEL_CLASS}>
-                Portrait
-              </span>
-            {campaignHandle ? (
-              <ImportImageUrlField
-                campaignHandle={campaignHandle}
-                value={entry.imageUrl}
-                inputClassName={appearanceFieldClass}
-                onChange={(referenceUrl) => {
-                  const next = entries.map((item) =>
-                    item.id === entry.id ? { ...item, imageUrl: referenceUrl } : item,
-                  );
-                  updateEntries(next);
-                }}
-                onImported={async () => {
-                  persistCurrent();
-                }}
-              />
-            ) : (
-              <p className="text-[10px] text-muted">
-                Gallery portraits require campaign context to import.
-              </p>
-            )}
-            </div>
-
-            <ImageCreditEditor
-              value={entry.imageCredit}
-              onChange={(imageCredit) => {
-                const next = entries.map((item) =>
-                  item.id === entry.id ? { ...item, imageCredit } : item,
-                );
-                updateEntries(next);
-              }}
-              onPersist={persistCurrent}
-              inputClassName={appearanceFieldClass}
-            />
-
-            <label className="space-y-1">
-              <span className={META_FIELD_LABEL_CLASS}>
-                Presentation type
-              </span>
-              <select
-                className={appearanceFieldClass}
-                value={entry.presentationType ?? 'default'}
-                onChange={(e) => {
-                  const presentationType = e.target.value as AppearancePresentationType;
-                  const next = entries.map((item) =>
-                    item.id === entry.id ? { ...item, presentationType } : item,
-                  );
-                  updateEntries(next, true);
-                }}
-              >
-                {APPEARANCE_PRESENTATION_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {APPEARANCE_PRESENTATION_TYPE_LABELS[type]}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-1">
-              <span className={META_FIELD_LABEL_CLASS}>
-                Tags (mood/aesthetic)
-              </span>
-              <input
-                className={appearanceFieldClass}
-                placeholder="formal, battle-worn, winter — comma-separated"
-                value={entry.tags.join(', ')}
-                onChange={(e) => {
-                  const next = entries.map((item) =>
-                    item.id === entry.id
-                      ? { ...item, tags: parseCommaListDraft(e.target.value) }
-                      : item,
-                  );
-                  updateEntries(next);
-                }}
-                onBlur={(e) => {
-                  const normalized = parseCommaList(e.target.value);
-                  const next = entriesRef.current.map((item) =>
-                    item.id === entry.id ? { ...item, tags: normalized } : item,
-                  );
-                  updateEntries(next, true);
-                }}
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className={META_FIELD_LABEL_CLASS}>
-                While in this form…
-              </span>
-              <textarea
-                className={`${appearanceFieldClass} min-h-[3rem] resize-y`}
-                placeholder="Her voice becomes resonant and impossibly calm."
-                value={entry.presentationNotes ?? ''}
-                onChange={(e) => {
-                  const next = entries.map((item) =>
-                    item.id === entry.id
-                      ? { ...item, presentationNotes: e.target.value || null }
-                      : item,
-                  );
-                  updateEntries(next);
-                }}
-                onBlur={persistCurrent}
-                rows={2}
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className={META_FIELD_LABEL_CLASS}>
-                Timeline pin (optional)
-              </span>
-              <input
-                className={appearanceFieldClass}
-                placeholder="Epoch or event reference"
-                value={entry.timelinePin ?? ''}
-                onChange={(e) => {
-                  const next = entries.map((item) =>
-                    item.id === entry.id
-                      ? { ...item, timelinePin: e.target.value || null }
-                      : item,
-                  );
-                  updateEntries(next);
-                }}
-                onBlur={persistCurrent}
-              />
-            </label>
-          </div>
+            entry={entry}
+            campaignHandle={campaignHandle}
+            highlighted={highlightEntryId === entry.id}
+            onPatch={(patch, persist) => {
+              const next = entriesRef.current.map((item) =>
+                item.id === entry.id ? { ...item, ...patch } : item,
+              );
+              updateEntries(next, persist ?? false);
+            }}
+            onRemove={() => removeEntry(entry.id)}
+            onSetPrimary={() => setPrimary(entry.id)}
+            onPersist={persistCurrent}
+          />
         ))}
       </div>
     </div>
@@ -430,6 +574,7 @@ interface AppearanceFormsWidgetProps {
   onChange?: (gallery: AppearanceGalleryState) => void;
   onPersist?: (gallery: AppearanceGalleryState) => void;
   filterEntries?: (entry: AppearanceGalleryEntry) => boolean;
+  alternatesOnly?: boolean;
 }
 
 export function AppearanceFormsWidget({
@@ -439,6 +584,7 @@ export function AppearanceFormsWidget({
   onChange,
   onPersist,
   filterEntries,
+  alternatesOnly,
 }: AppearanceFormsWidgetProps) {
   const viewModel: AppearanceFormsViewModel =
     'primaryEntry' in forms
@@ -450,7 +596,13 @@ export function AppearanceFormsWidget({
         };
 
   if (mode === 'read') {
-    return <AppearanceFormsReadView forms={viewModel} filterEntries={filterEntries} />;
+    return (
+      <AppearanceFormsReadView
+        forms={viewModel}
+        filterEntries={filterEntries}
+        alternatesOnly={alternatesOnly}
+      />
+    );
   }
 
   if (!onChange || !onPersist) return null;

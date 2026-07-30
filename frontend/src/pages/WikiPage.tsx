@@ -444,6 +444,13 @@ export function WikiPage() {
   );
 
   useEffect(() => {
+    if (
+      entityPageShell.key === 'character' &&
+      pageSubview === 'biography'
+    ) {
+      setPageSubview('overview');
+      return;
+    }
     if (!entityPageShell.isValidSubview(pageSubview, isDMUser)) {
       setPageSubview('overview');
     }
@@ -477,10 +484,35 @@ export function WikiPage() {
   });
 
   const [pageVisibility, setPageVisibility] = useState(resolvedVisibility);
+  const [characterPageTitleDraft, setCharacterPageTitleDraft] = useState(resolvedTitle);
 
   useEffect(() => {
     setPageVisibility(resolvedVisibility);
   }, [resolvedVisibility]);
+
+  useEffect(() => {
+    setCharacterPageTitleDraft(resolvedTitle);
+  }, [resolvedTitle]);
+
+  const handleCharacterPageTitleBlur = useCallback(async () => {
+    if (!campaignHandle || !pageId) return;
+    const trimmed = characterPageTitleDraft.trim();
+    if (!trimmed || trimmed === resolvedTitle.trim()) return;
+    try {
+      await updateWikiPage(campaignHandle, pageId, { title: trimmed });
+      setPageData((prev) => (prev ? { ...prev, title: trimmed } : prev));
+      await refresh();
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Unable to save page title');
+      setCharacterPageTitleDraft(resolvedTitle);
+    }
+  }, [
+    campaignHandle,
+    pageId,
+    characterPageTitleDraft,
+    resolvedTitle,
+    refresh,
+  ]);
 
   useEffect(() => {
     const mapAssetId = pageData?.mapAssetId;
@@ -689,7 +721,7 @@ export function WikiPage() {
       return pageSubview === 'lore' && showSectionSubviews;
     }
     if (entityPageShell.key === 'character') {
-      return pageSubview === 'biography' && showSectionSubviews;
+      return pageSubview === 'overview' && showSectionSubviews;
     }
     if (entityPageShell.key === 'family') {
       return pageSubview === 'lore' && showSectionSubviews;
@@ -1188,11 +1220,20 @@ export function WikiPage() {
     pageCodexDiagnostics.reload,
   ]);
 
-  const prosePrimarySubview = isProsePrimarySubview(
-    pageSubview,
-    isEventLorePageId(pageId),
-    isEditingPage,
-  );
+  const prosePrimarySubview = useMemo(() => {
+    if (
+      entityPageShell.key === 'character' &&
+      pageSubview === 'overview' &&
+      isEditingPage
+    ) {
+      return true;
+    }
+    return isProsePrimarySubview(
+      pageSubview,
+      isEventLorePageId(pageId),
+      isEditingPage,
+    );
+  }, [entityPageShell.key, pageSubview, isEditingPage, pageId]);
 
   const wikiPageRendererSlot = useMemo(() => {
     if (!pageData) return null;
@@ -1389,6 +1430,12 @@ export function WikiPage() {
         <CharacterPageShellView
           {...shellBase}
           onMetadataSaved={metadataSaved}
+          pageTags={pageTags}
+          allCampaignTags={allCampaignTags}
+          onPageTagsChange={setPageTags}
+          prosePrimaryOverview={
+            prosePrimarySubview && pageSubview === 'overview'
+          }
         />
       );
     }
@@ -1682,6 +1729,13 @@ export function WikiPage() {
             displayTitle={displayTitle}
             profileKey={entitySurfaceProfile.key}
             templateType={templateType}
+            editablePageTitle={entitySurfaceProfile.key === 'character'}
+            pageTitleForEdit={characterPageTitleDraft}
+            onPageTitleForEditChange={setCharacterPageTitleDraft}
+            onPageTitleForEditBlur={handleCharacterPageTitleBlur}
+            titleFocusField={
+              entitySurfaceProfile.key === 'character' ? inspectorFocusField : null
+            }
             showSectionSubviews={showSectionSubviews}
             subviews={entityPageShell.subviews}
             activeSubview={pageSubview}

@@ -1,32 +1,29 @@
-import { META_SECTION_LABEL_CLASS, REGION_DEPTH_3_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
-import { ArrowRight } from 'lucide-react';
-import {
-  buildEntityRelationshipProjection,
-  type WikiPageLineageSnapshot,
-} from '@/lib/entityProjectionQueries';
-import { buildInfoboxProjection } from '@/lib/buildInfoboxProjection';
-import { formatCharacterStatusLabel, resolveCharacterStatus } from '@/lib/characterMetadata';
-import { parseCharacterLineageMetadata } from '@/lib/characterLineageMetadata';
-import { parseCharacterMetadata } from '@/lib/characterMetadata';
-import { formatRichDiscoveryStateLabel } from '@/lib/wikiPageHeaderMeta';
+import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
+import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
+import { EntityBiographyWidget } from '@/components/wiki/widgets/EntityBiographyWidget';
+import { WikiPageTagsInput } from '@/components/wiki/WikiPageTagsInput';
+import { buildCharacterOverviewDisplayValues } from '@/lib/characterOverviewDisplay';
 import type { EntityOverviewProps } from '@/lib/entityPageShells/types';
-import type { InfoboxField, WikiPageBlock } from '@/types/wiki';
-import { EntityRelationChip } from '@/components/entity/EntityRelationChip';
+import type { WikiPageBlock } from '@/types/wiki';
 import { useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
-import { ProfileDetailsCard } from './ProfileDetailsCard';
+import { EntityPageSection } from './EntityPageSection';
+import {
+  EntityFactReadValue,
+  EntityFactRow,
+  EntityFactRowList,
+  EntityWikiInfobox,
+} from './EntityFactRow';
+import { useMemo } from 'react';
 
-function getBiographyExcerpt(blocks: WikiPageBlock[]): string {
-  const bio = blocks.find((b) => b.type === 'text-biography');
-  const md = (bio?.content as { markdown?: string })?.markdown ?? '';
-  const plain = md.replace(/[#*_`>\[\]()]/g, '').trim();
-  if (!plain) return '';
-  return plain.length > 200 ? `${plain.slice(0, 200).trim()}…` : plain;
+function findBiographyBlock(blocks: WikiPageBlock[]): WikiPageBlock | undefined {
+  return blocks.find((b) => b.type === 'text-biography');
 }
 
 export function CharacterOverviewDashboard({
   campaignHandle,
   pageId,
+  displayTitle,
   templateType,
   blocks,
   flatPages,
@@ -34,133 +31,133 @@ export function CharacterOverviewDashboard({
   isEditingPage,
   pageMetadata,
   characterProjection,
-  discovery,
-  onJumpToTab,
+  pageTags,
+  allCampaignTags,
+  onPageTagsChange,
+  onMetadataSaved,
   onBlocksChange,
+  prosePrimary = false,
+  inspectorFocusField,
 }: EntityOverviewProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
+  const canEdit = isEditingPage && isDMUser;
   const campaignNow = useCampaignChronologyNow(campaignHandle);
-  const snapshots: WikiPageLineageSnapshot[] = flatPages.map((p) => ({
-    id: p.id,
-    title: p.title,
-    templateType: p.templateType,
-    metadata: p.metadata ?? null,
-  }));
+  const biographyBlock = findBiographyBlock(blocks);
+  const bioContent = (biographyBlock?.content as Record<string, unknown>) ?? { markdown: '' };
 
-  const projection = buildEntityRelationshipProjection(
-    pageId,
-    templateType,
-    snapshots,
-    campaignNow,
-    isDMUser,
+  const displayValues = useMemo(
+    () =>
+      buildCharacterOverviewDisplayValues({
+        displayTitle,
+        pageMetadata,
+        characterProjection,
+        flatPages,
+        pageTags,
+        campaignNow,
+        isDMUser,
+        pageId,
+        templateType,
+      }),
+    [
+      displayTitle,
+      pageMetadata,
+      characterProjection,
+      flatPages,
+      pageTags,
+      campaignNow,
+      isDMUser,
+      pageId,
+      templateType,
+    ],
   );
 
-  const infoboxBlock = blocks.find((b) => b.type === 'wiki-infobox');
-  const infoboxFields =
-    (infoboxBlock?.content as { fields?: InfoboxField[] })?.fields ??
-    buildInfoboxProjection(templateType, pageMetadata, flatPages, 'character');
+  const familiesReadControl = <EntityFactReadValue value={displayValues.families} />;
+  const familiesEditControl = (
+    <CharacterLineageEditor
+      campaignHandle={campaignHandle}
+      pageId={pageId}
+      blockId={`entity-lineage-overview:${pageId}`}
+      metadata={pageMetadata}
+      flatPages={flatPages}
+      onSaved={onMetadataSaved}
+      section="identityOverview"
+      bare
+    />
+  );
 
-  const identity = parseCharacterMetadata(pageMetadata);
-  const lineage = parseCharacterLineageMetadata(pageMetadata);
-  const status = resolveCharacterStatus(identity, lineage);
-  const biographyExcerpt = getBiographyExcerpt(blocks);
+  const tagsReadControl = <EntityFactReadValue value={displayValues.tags} />;
+  const tagsEditControl = (
+    <WikiPageTagsInput
+      assignedTags={pageTags ?? []}
+      allCampaignTags={allCampaignTags ?? []}
+      onChange={onPageTagsChange}
+      compact
+    />
+  );
 
-  const previewContext = {
-    campaignNow,
-    isDMUser,
-    viewerPageId: pageId,
-  };
-
-  function updateInfoboxFields(fields: InfoboxField[]) {
-    onBlocksChange((prev) =>
-      prev.map((b) =>
-        b.type === 'wiki-infobox'
-          ? { ...b, content: { ...(b.content as object), fields } }
-          : b,
-      ),
-    );
-  }
+  const identityFacts = canEdit ? (
+    <CharacterIdentityEditor
+      blockId={`entity-identity-overview:${pageId}`}
+      campaignHandle={campaignHandle}
+      pageId={pageId}
+      metadata={pageMetadata}
+      flatPages={flatPages}
+      onSaved={onMetadataSaved}
+      focusField={inspectorFocusField}
+      section="identityOverview"
+      bare
+      identitySheetLayout
+      familiesControl={familiesEditControl}
+      tagsControl={tagsEditControl}
+    />
+  ) : (
+    <EntityFactRowList>
+      <EntityFactRow label="Ancestry" fieldId="character-field-ancestryId">
+        <EntityFactReadValue value={displayValues.ancestryOrigin} />
+      </EntityFactRow>
+      <EntityFactRow label="Home" fieldId="character-field-currentLocationId">
+        <EntityFactReadValue value={displayValues.homeLocation} />
+      </EntityFactRow>
+      <EntityFactRow label="Families" fieldId="character-field-familyId">
+        {familiesReadControl}
+      </EntityFactRow>
+      <EntityFactRow label="Affiliations" fieldId="character-field-primaryAffiliationId">
+        <EntityFactReadValue value={displayValues.affiliations} />
+      </EntityFactRow>
+      <EntityFactRow label="Gender" fieldId="character-field-appearance.gender">
+        <EntityFactReadValue value={displayValues.gender} />
+      </EntityFactRow>
+      <EntityFactRow label="Tags" fieldId="character-field-tags">
+        {tagsReadControl}
+      </EntityFactRow>
+    </EntityFactRowList>
+  );
 
   return (
     <div className="space-y-6">
-      {biographyExcerpt || characterProjection?.identityLine ? (
-        <p className={`${TYPE_PROSE_CLASS} max-w-3xl text-prose-muted`}>
-          {biographyExcerpt || characterProjection?.identityLine}
-        </p>
-      ) : (
-        <p className="text-sm text-muted">No story summary yet.</p>
-      )}
+      <EntityPageSection id="character-identity" title="Identity" wikiFacts>
+        <EntityWikiInfobox className="max-w-md">{identityFacts}</EntityWikiInfobox>
+      </EntityPageSection>
 
-      <div className={`${REGION_DEPTH_3_CLASS} space-y-4 px-1 py-1`}>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className={META_SECTION_LABEL_CLASS}>Current status</span>
-          <span className="text-sm text-foreground">
-            {status ? formatCharacterStatusLabel(status) : '—'}
-            {discovery ? ` · ${formatRichDiscoveryStateLabel(discovery.state)}` : ''}
-          </span>
-        </div>
-
-        {projection.affiliations.length > 0 ? (
-          <div>
-            <span className={`${META_SECTION_LABEL_CLASS} mb-2 block`}>Key relationships</span>
-            <ul className="flex flex-wrap gap-2">
-              {projection.affiliations.slice(0, 4).map((row) => (
-                <li key={row.org.id}>
-                  <EntityRelationChip
-                    campaignHandle={campaignHandle}
-                    pageId={row.org.id}
-                    title={row.role ? `${row.org.title} (${row.role})` : row.org.title}
-                    templateType={row.org.templateType}
-                    flatPages={snapshots}
-                    previewContext={previewContext}
-                    compact
-                  />
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => onJumpToTab('relationships')}
-              className="mt-2 inline-flex items-center gap-0.5 text-xs text-muted hover:text-primary"
-            >
-              All relationships
-              <ArrowRight className="size-3" aria-hidden />
-            </button>
-          </div>
-        ) : null}
-
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
-          <button
-            type="button"
-            onClick={() => onJumpToTab('biography')}
-            className="text-muted hover:text-primary"
-          >
-            Biography
-          </button>
-          <button
-            type="button"
-            onClick={() => onJumpToTab('appearance')}
-            className="text-muted hover:text-primary"
-          >
-            Appearance
-          </button>
-          <button
-            type="button"
-            onClick={() => onJumpToTab('timeline')}
-            className="text-muted hover:text-primary"
-          >
-            Timeline
-          </button>
-        </div>
-      </div>
-
-      <ProfileDetailsCard
-        title="Profile"
-        fields={infoboxFields}
-        isEditingPage={isEditingPage}
-        isDMUser={isDMUser}
-        onFieldsChange={updateInfoboxFields}
-      />
+      <EntityPageSection id="character-description" title="Description" dominant>
+        <EntityBiographyWidget
+          content={bioContent}
+          isEditingPage={canEdit}
+          prosePrimary={prosePrimary}
+          templateType={templateType}
+          pageCanEdit={canEdit}
+          onChange={(newContent) => {
+            if (!biographyBlock) return;
+            onBlocksChange((prev) =>
+              prev.map((b) =>
+                b.id === biographyBlock.id
+                  ? { ...b, content: { ...b.content, ...newContent } }
+                  : b,
+              ),
+            );
+          }}
+        />
+      </EntityPageSection>
     </div>
   );
 }
