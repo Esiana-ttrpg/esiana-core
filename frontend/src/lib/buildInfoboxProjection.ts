@@ -9,7 +9,7 @@ import { parseObjectMetadata } from '@/lib/objectMetadata';
 import { parseLocationMetadata } from '@/lib/locationMetadata';
 import { parseRuleResourceMetadata } from '@/lib/ruleResourceMetadata';
 import { formatCharacterStatusLabel, resolveCharacterStatus } from '@/lib/characterMetadata';
-import { readEntityCategoryFromMetadata } from '@shared/wikiTemplateType';
+import { readEntityCategoryFromMetadata, legacyTemplateTypeToEntityCategory } from '@shared/wikiTemplateType';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
 import type { WikiTreeNode } from '@/types/wiki';
 
@@ -44,7 +44,39 @@ export function buildInfoboxProjection(
   flatPages: WikiTreeNode[],
   surfaceProfileKey?: SurfaceProfileKey | null,
 ): InfoboxField[] {
-  const profileKey = surfaceProfileKey ?? profileKeyFromMetadata(metadata);
+  let profileKey = surfaceProfileKey ?? profileKeyFromMetadata(metadata);
+  // Fallback: if metadata lacks entityCategory, derive from legacy templateType
+  if (!profileKey && _templateType) {
+    const legacyCategory = legacyTemplateTypeToEntityCategory(_templateType);
+    if (legacyCategory) {
+      // map legacy category string to SurfaceProfileKey
+      if (legacyCategory === 'characters') profileKey = 'character';
+      else if (legacyCategory === 'organizations') profileKey = 'organization';
+      else if (legacyCategory === 'families') profileKey = 'family';
+      else if (legacyCategory === 'bestiary') profileKey = 'bestiary';
+      else if (legacyCategory === 'ancestries') profileKey = 'ancestry';
+      else if (legacyCategory === 'objects') profileKey = 'object';
+      else if (legacyCategory === 'locations') profileKey = 'location';
+      else if (legacyCategory === 'rules-resources') profileKey = 'rule-resource';
+    }
+  }
+
+  // Lightweight heuristic: infer profile from common metadata fields when
+  // entityCategory is not present (tests and legacy payloads rely on this).
+  if (!profileKey && metadata && typeof metadata === 'object') {
+    const m = metadata as Record<string, unknown>;
+    if (
+      'orgType' in m ||
+      'motto' in m ||
+      'leaderId' in m ||
+      'headquartersId' in m ||
+      'parentOrgId' in m
+    ) {
+      profileKey = 'organization';
+    } else if ('appearance' in m || 'profession' in m || 'primaryAffiliationId' in m) {
+      profileKey = 'character';
+    }
+  }
 
   if (profileKey === 'character') {
     const identity = parseCharacterMetadata(metadata);

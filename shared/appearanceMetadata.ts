@@ -108,7 +108,11 @@ export function normalizePresentationType(raw: unknown): AppearancePresentationT
 }
 
 function normalizeImageUrl(raw: unknown): string {
-  return coerceAssetReferenceUrl(raw) ?? '';
+  if (typeof raw === 'string' && raw.trim()) {
+    const coerced = coerceAssetReferenceUrl(raw);
+    return coerced ?? raw.trim();
+  }
+  return '';
 }
 
 function normalizeGalleryEntry(raw: unknown): AppearanceGalleryEntry | null {

@@ -63,9 +63,16 @@ const OPEN_STATUSES = ['draft', 'scheduled'] as const;
  * Build series DTOs for the Planner series strip. `nextIssueState` reflects the
  * buffer-of-1 invariant: at most one open (unreleased) issue exists at a time.
  */
-export async function buildSeriesDTOs(campaignId: string): Promise<JournalSeriesDTO[]> {
+export async function buildSeriesDTOs(
+  campaignId: string,
+  options: { createdByUserId?: string } = {},
+): Promise<JournalSeriesDTO[]> {
+  const where: { campaignId: string; createdByUserId?: string } = { campaignId };
+  if (options.createdByUserId) {
+    where.createdByUserId = options.createdByUserId;
+  }
   const rows = await prisma.journalSeries.findMany({
-    where: { campaignId },
+    where,
     orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
     select: {
       id: true,

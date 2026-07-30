@@ -16,6 +16,7 @@ import type {
   ConditionDiagnostic,
   PlanState,
   ReleaseNode,
+  ReleaseRuleEnvelope,
 } from '@shared/journalReleaseRule';
 
 export type {
@@ -37,6 +38,8 @@ export interface JournalLibraryQuery {
   linkedPageId?: string;
   q?: string;
   sort?: JournalLibrarySort;
+  section?: 'released' | 'upcoming' | 'all';
+  tag?: string;
   cursor?: string | null;
   limit?: number;
 }
@@ -51,6 +54,8 @@ export async function fetchJournalLibrary(
   if (query.linkedPageId) params.set('linkedPageId', query.linkedPageId);
   if (query.q?.trim()) params.set('q', query.q.trim());
   if (query.sort) params.set('sort', query.sort);
+  if (query.section) params.set('section', query.section);
+  if (query.tag?.trim()) params.set('tag', query.tag.trim());
   if (query.cursor) params.set('cursor', query.cursor);
   if (query.limit) params.set('limit', String(query.limit));
   const qs = params.toString();
@@ -85,12 +90,15 @@ export async function fetchJournalPublication(
 export interface CreateJournalPublicationInput {
   title?: string;
   type?: JournalPublicationType;
+  summary?: string | null;
   seriesId?: string | null;
   linkedPageId?: string | null;
   sourceKind?: JournalSourceKind;
   workshopDraftId?: string | null;
   contentMarkdown?: string | null;
   contentBlocks?: unknown[] | null;
+  releaseNow?: boolean;
+  tags?: string[];
 }
 
 export async function createJournalPublication(
@@ -107,11 +115,15 @@ export async function createJournalPublication(
 export interface UpdateJournalPublicationInput {
   title?: string;
   type?: JournalPublicationType;
+  summary?: string | null;
   linkedPageId?: string | null;
   contentMarkdown?: string | null;
   contentBlocks?: unknown[] | null;
   sourceKind?: JournalSourceKind;
   workshopDraftId?: string | null;
+  seriesId?: string | null;
+  issueNumber?: number | null;
+  tags?: string[];
   /** Archive/unarchive only; scheduling flows through the rule endpoint. */
   status?: 'draft' | 'archived';
 }
@@ -131,16 +143,18 @@ export async function updateJournalPublication(
 export async function deleteJournalPublication(
   campaignHandle: string,
   id: string,
+  options: { force?: boolean } = {},
 ): Promise<void> {
   await apiFetch<Record<string, never>>(`${scope(campaignHandle)}/publications/${id}`, {
     method: 'DELETE',
+    body: JSON.stringify({ force: options.force ?? false }),
   });
 }
 
 export async function saveJournalPublicationRule(
   campaignHandle: string,
   id: string,
-  releaseRule: ReleaseNode | null,
+  releaseRule: ReleaseNode | ReleaseRuleEnvelope | null,
 ): Promise<JournalPublicationDTO> {
   const response = await apiFetch<{ publication: JournalPublicationDTO }>(
     `${scope(campaignHandle)}/publications/${id}/rule`,

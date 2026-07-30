@@ -5,7 +5,6 @@
   "journal.library.empty": "Rien n’a encore été publié.",
   "journal.library.emptyHint": "Les publications parues apparaissent ici. Rédigez et planifiez dans le Planificateur.",
   "journal.library.newPublication": "Nouvelle publication",
-  "journal.library.createdNotice": "Brouillon créé. Un Maître de jeu ou un Rédacteur peut planifier sa parution dans le Planificateur.",
   "journal.library.colTitle": "Titre",
   "journal.library.colType": "Type",
   "journal.library.colSeries": "Série",

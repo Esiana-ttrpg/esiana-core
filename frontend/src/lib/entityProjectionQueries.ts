@@ -1,4 +1,5 @@
 import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
+import { legacyTemplateTypeToEntityCategory } from '@shared/wikiTemplateType';
 import {
   type ChronologyDateParts,
   type OrgRelationCategory,
@@ -31,7 +32,7 @@ function snapshotEntityCategory(
   page: WikiPageLineageSnapshot,
   flatPages: readonly WikiPageLineageSnapshot[],
 ): string | null {
-  return resolveCanonicalEntityCategory(
+  const resolved = resolveCanonicalEntityCategory(
     {
       id: page.id,
       title: page.title,
@@ -41,6 +42,9 @@ function snapshotEntityCategory(
     },
     flatPages,
   );
+  if (resolved) return resolved;
+  // Fallback: legacy templateType mapping (tests use legacy templateType values)
+  return legacyTemplateTypeToEntityCategory(page.templateType);
 }
 
 const TENSION_STANCES: OrgRelationStance[] = ['HOSTILE', 'SECRET_HOSTILE', 'VASSAL'];

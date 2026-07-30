@@ -8,6 +8,7 @@ import { isPageUnderNarrativeThreadsCategory } from '@/lib/threadHubLayout';
 import { isPageUnderNarrativeScenesCategory } from '@/lib/adventureLayout';
 import { isSceneMetadataPresent } from '@shared/sceneMetadata';
 import { normalizeEntityCategoryKey } from '@/lib/entityCategoryKeys';
+import { legacyTemplateTypeToEntityCategory } from '@shared/wikiTemplateType';
 
 export type InspectorProfile =
   | 'CHARACTER'
@@ -770,17 +771,21 @@ export function resolveSurfaceProfileKey(input: {
   if (isPageUnderOrganizationsCategory(pageId, flatPages)) return 'organization';
   if (isPageUnderFamiliesCategory(pageId, flatPages)) return 'family';
 
-  const entityCategory = normalizeEntityCategoryKey(
+  let entityCategory = normalizeEntityCategoryKey(
     metadata && typeof metadata === 'object'
       ? (metadata as Record<string, unknown>).entityCategory as string | undefined
       : null,
   );
+  if (!entityCategory && templateType) {
+    entityCategory = legacyTemplateTypeToEntityCategory(templateType) ?? entityCategory;
+  }
   if (
     entityCategory === 'characters' ||
     isPageUnderCategoryTitle(pageId, flatPages, 'Characters')
   ) {
     return 'character';
   }
+  if (entityCategory === 'organizations') return 'organization';
   if (entityCategory === 'bestiary' || isPageUnderCategoryTitle(pageId, flatPages, 'Bestiary')) {
     return 'bestiary';
   }

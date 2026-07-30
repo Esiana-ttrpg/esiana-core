@@ -24,8 +24,19 @@ import { buildJournalReleaseSnapshot } from './journalReleaseSnapshotService.js'
 /** Best-effort cast of a stored Json rule into a ReleaseNode (or null). */
 export function asReleaseNode(raw: unknown): ReleaseNode | null {
   if (!raw || typeof raw !== 'object') return null;
-  const node = raw as { type?: unknown };
-  if (node.type === 'group' || node.type === 'criteria') return raw as ReleaseNode;
+  // Backward-compatible: accept either a raw ReleaseNode or an envelope
+  // { trigger?: ..., node?: ReleaseNode } so older persisted payloads
+  // that only contain a ReleaseNode remain valid.
+  const candidate = raw as Record<string, unknown>;
+  // If it's already a ReleaseNode
+  if (typeof candidate.type === 'string' && (candidate.type === 'group' || candidate.type === 'criteria')) {
+    return raw as ReleaseNode;
+  }
+  // If it's an envelope with a `node` property
+  if (candidate.node && typeof candidate.node === 'object') {
+    const node = candidate.node as { type?: unknown };
+    if (node.type === 'group' || node.type === 'criteria') return candidate.node as ReleaseNode;
+  }
   return null;
 }
 

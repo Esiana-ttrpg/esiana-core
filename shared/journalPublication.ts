@@ -9,6 +9,7 @@ import type {
   ConditionDiagnostic,
   PlanState,
   ReleaseNode,
+  ReleaseRuleEnvelope,
 } from './journalReleaseRule.js';
 
 export const JOURNAL_PUBLICATION_TYPES = [
@@ -113,6 +114,7 @@ export interface JournalPublicationDTO {
   id: string;
   campaignId: string;
   title: string;
+  summary: string | null;
   type: JournalPublicationType;
   status: JournalPublicationStatus;
   seriesId: string | null;
@@ -122,7 +124,9 @@ export interface JournalPublicationDTO {
   linkedPage: JournalLinkedPageRef | null;
   contentMarkdown: string | null;
   contentBlocks: unknown | null;
-  releaseRule: ReleaseNode | null;
+  releaseRule: ReleaseNode | ReleaseRuleEnvelope | null;
+  /** Backward-compatible: may be a ReleaseRuleEnvelope or raw ReleaseNode */
+  // releaseRule: ReleaseNode | ReleaseRuleEnvelope | null; // replaced above
   contentReadiness: ContentReadiness;
   planState: PlanState;
   perceivedState: PerceivedPlannerState;
@@ -130,6 +134,7 @@ export interface JournalPublicationDTO {
   createdByUserId: string | null;
   releasedAt: string | null;
   lastEvaluatedAt: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -147,7 +152,10 @@ export interface JournalLibraryItemDTO {
   linkedPage: JournalLinkedPageRef | null;
   releaseSummary: string | null;
   releasedAt: string | null;
+  tags: string[];
   updatedAt: string;
+  /** Present for upcoming section rows; omitted or null when released. */
+  status?: JournalPublicationStatus;
 }
 
 /** Lightweight Planner queue row (no full diagnostics tree). */
@@ -165,6 +173,9 @@ export interface JournalPlannerItemDTO {
   unmetCount: number;
   lastEvaluatedAt: string | null;
   updatedAt: string;
+  seriesName: string | null;
+  tags: string[];
+  status: JournalPublicationStatus;
 }
 
 export interface JournalSeriesNextIssueState {
@@ -198,8 +209,17 @@ export interface CursorPage<T> {
 
 export type JournalLibrarySort = 'newest' | 'oldest' | 'type';
 
+export type JournalLibrarySection = 'released' | 'upcoming' | 'all';
+
+/** Normalize stored tags JSON to a string array. */
+export function normalizeJournalTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+}
+
 export interface JournalPlannerResponse {
   items: JournalPlannerItemDTO[];
   nextCursor: string | null;
   series: JournalSeriesDTO[];
+  recentReleases: JournalLibraryItemDTO[];
 }
