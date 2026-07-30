@@ -15,6 +15,7 @@ import type { LucideIcon } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { WikiTipTapEditor } from '@/components/wiki/WikiTipTapEditor';
+import { InspectorCollapsibleSection } from '@/components/entity/InspectorCollapsibleSection';
 import { ReleaseRuleEditor } from '@/components/journal/ReleaseRuleEditor';
 import { CreatePublicationModal } from '@/components/journal/CreatePublicationModal';
 import { CreateSeriesModal } from '@/components/journal/CreateSeriesModal';
@@ -32,6 +33,7 @@ import {
   translatePublicationType,
 } from '@/i18n/journalRelease';
 import { campaignWorkshopPath } from '@/lib/campaignPaths';
+import { SURFACE_CONTEXTUAL_CLASS } from '@/lib/surfaceLayout';
 import { formatRelativeUpdated } from '@/utils/formatDate';
 import {
   deleteJournalPublication,
@@ -385,10 +387,37 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
     [detail],
   );
 
+  const metadataSummary = useMemo(() => {
+    const typeLabel = translatePublicationType(draftType, t);
+    const seriesName = series.find((entry) => entry.id === draftSeriesId)?.name;
+    const parts: string[] = [typeLabel];
+    if (seriesName) parts.push(seriesName);
+    const issue = draftIssueNumber.trim();
+    if (issue) parts.push(`#${issue}`);
+    return parts.join(' · ');
+  }, [draftType, draftSeriesId, draftIssueNumber, series, t]);
+
+  const secondarySummary = useMemo(() => {
+    if (!detail) return null;
+    const source =
+      detail.sourceKind === 'workshop'
+        ? t('journal.planner.sourceWorkshop')
+        : t('journal.planner.sourceQuickDraft');
+    const checked = detail.lastEvaluatedAt
+      ? formatRelativeUpdated(detail.lastEvaluatedAt)
+      : t('journal.planner.neverChecked');
+    return `${source} · ${checked}`;
+  }, [detail, t]);
+
+  const railInputClass =
+    'rounded-md border border-border bg-background px-2.5 py-1.5 text-sm';
+
   const primaryButton =
     'rounded-lg bg-primary px-3 py-2 text-sm font-medium text-background hover:bg-primary/90 disabled:opacity-50';
   const ghostButton =
     'rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:border-primary/40 disabled:opacity-50';
+  const tertiaryButton =
+    'rounded-lg px-3 py-1.5 text-sm text-muted hover:text-foreground disabled:opacity-50';
 
   return (
     <div className="flex flex-col gap-4 px-4 py-4 sm:px-6">
@@ -422,7 +451,7 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
       {loading ? (
         <LoadingSpinner label={t('journal.planner.title')} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)_minmax(16rem,20rem)]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)_minmax(18rem,22rem)]">
           {/* Left — lifecycle nav */}
           <div className="flex flex-col gap-4">
             {items.length === 0 ? (
@@ -531,19 +560,100 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
                 </div>
               </div>
 
-              {/* Right — metadata + release plan */}
-              <aside className="flex flex-col gap-4">
-                <section className="rounded-xl border border-border/60 p-4">
-                  <h3 className="mb-3 text-sm font-medium text-foreground">
-                    {t('journal.planner.metadataHeading')}
-                  </h3>
-                  <div className="flex flex-col gap-3 text-sm">
-                    <label className="flex flex-col gap-1">
+              {/* Right — release plan, metadata, context */}
+              <aside
+                className={`min-w-0 rounded-xl border border-border/60 px-4 py-3 ${SURFACE_CONTEXTUAL_CLASS}`}
+              >
+                <InspectorCollapsibleSection
+                  id="planner-release"
+                  label={t('journal.planner.releasePlanHeading')}
+                  defaultExpanded
+                >
+                  <div className="space-y-4">
+                    <p className="text-sm leading-relaxed text-muted">
+                      {journalStateSummary(
+                        detail.planState,
+                        outstanding.length,
+                        contentReady,
+                        t,
+                      )}
+                    </p>
+                    <div>
+                      <p className="mb-2 text-sm font-medium text-muted">
+                        {t('journal.planner.waitingOnHeading')}
+                      </p>
+                      {outstanding.length > 0 ? (
+                        <ul className="flex flex-col gap-2">
+                          {outstanding.map((diagnostic: ConditionDiagnostic, index) => (
+                            <li key={index} className="text-sm text-muted">
+                              {renderReleaseDiagnostic(diagnostic, t)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted">
+                          {t('journal.planner.nothingOutstanding')}
+                        </p>
+                      )}
+                    </div>
+                    <ReleaseRuleEditor
+                      rule={draftRule}
+                      onChange={setDraftRule}
+                      wikiTree={tree}
+                      diagnostics={detail.diagnostics}
+                    />
+                    <div className="space-y-3 border-t border-border/40 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => void handleRelease(false)}
+                        disabled={busy || !contentReady}
+                        className={`w-full ${primaryButton}`}
+                      >
+                        {t('journal.planner.release')}
+                      </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleSaveRule()}
+                          disabled={busy}
+                          className={ghostButton}
+                        >
+                          {t('journal.planner.saveRule')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleEvaluate()}
+                          disabled={busy}
+                          className={ghostButton}
+                        >
+                          {t('journal.planner.evaluate')}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleRelease(true)}
+                        disabled={busy || !contentReady}
+                        className={`w-full ${tertiaryButton}`}
+                      >
+                        {t('journal.planner.releaseOverride')}
+                      </button>
+                    </div>
+                  </div>
+                </InspectorCollapsibleSection>
+
+                <InspectorCollapsibleSection
+                  id="planner-metadata"
+                  label={t('journal.planner.metadataHeading')}
+                  defaultExpanded={false}
+                  summary={metadataSummary}
+                >
+                  <div className="flex flex-col gap-4 text-sm">
+                    <label className="flex flex-col gap-1.5">
                       <span className="text-muted">{t('journal.create.typeLabel')}</span>
                       <select
                         value={draftType}
                         onChange={(e) => setDraftType(e.target.value as JournalPublicationType)}
-                        className="rounded-md border border-border bg-background px-2 py-1"
+                        className={railInputClass}
                       >
                         {JOURNAL_PUBLICATION_TYPES.map((type) => (
                           <option key={type} value={type}>
@@ -552,12 +662,12 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
                         ))}
                       </select>
                     </label>
-                    <label className="flex flex-col gap-1">
+                    <label className="flex flex-col gap-1.5">
                       <span className="text-muted">{t('journal.planner.seriesLabel')}</span>
                       <select
                         value={draftSeriesId}
                         onChange={(e) => setDraftSeriesId(e.target.value)}
-                        className="rounded-md border border-border bg-background px-2 py-1"
+                        className={railInputClass}
                       >
                         <option value="">—</option>
                         {series.map((entry) => (
@@ -567,90 +677,63 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
                         ))}
                       </select>
                     </label>
-                    <label className="flex flex-col gap-1">
+                    <label className="flex flex-col gap-1.5">
                       <span className="text-muted">{t('journal.library.colIssue')}</span>
                       <input
                         type="number"
                         min={1}
                         value={draftIssueNumber}
                         onChange={(e) => setDraftIssueNumber(e.target.value)}
-                        className="rounded-md border border-border bg-background px-2 py-1"
+                        className={railInputClass}
                       />
                     </label>
-                    <label className="flex flex-col gap-1">
+                    <label className="flex flex-col gap-1.5">
                       <span className="text-muted">{t('journal.library.tagsLabel')}</span>
                       <input
                         value={draftTags}
                         onChange={(e) => setDraftTags(e.target.value)}
                         placeholder={t('journal.planner.tagsPlaceholder')}
-                        className="rounded-md border border-border bg-background px-2 py-1"
+                        className={railInputClass}
                       />
                     </label>
                   </div>
-                </section>
+                </InspectorCollapsibleSection>
 
-                <section className="rounded-xl border border-border/60 p-4">
-                  <h3 className="mb-2 text-sm font-medium text-foreground">
-                    {t('journal.planner.releasePlanHeading')}
-                  </h3>
-                  <ReleaseRuleEditor
-                    rule={draftRule}
-                    onChange={setDraftRule}
-                    wikiTree={tree}
-                    diagnostics={detail.diagnostics}
-                  />
-                  {outstanding.length > 0 && (
-                    <ul className="mt-3 flex flex-col gap-1 border-t border-border/40 pt-3">
-                      {outstanding.slice(0, 5).map((diagnostic: ConditionDiagnostic, index) => (
-                        <li key={index} className="text-xs text-muted">
-                          {renderReleaseDiagnostic(diagnostic, t)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <p className="mt-2 text-xs text-muted">
-                    {journalStateSummary(
-                      detail.planState,
-                      outstanding.length,
-                      contentReady,
-                      t,
-                    )}
-                  </p>
-                  <div className="mt-4 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleSaveRule()}
-                      disabled={busy}
-                      className={ghostButton}
-                    >
-                      {t('journal.planner.saveRule')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleEvaluate()}
-                      disabled={busy}
-                      className={ghostButton}
-                    >
-                      {t('journal.planner.evaluate')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleRelease(false)}
-                      disabled={busy || !contentReady}
-                      className={primaryButton}
-                    >
-                      {t('journal.planner.release')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleRelease(true)}
-                      disabled={busy || !contentReady}
-                      className="rounded-lg border border-primary/40 px-3 py-2 text-sm text-primary hover:bg-primary/10 disabled:opacity-50"
-                    >
-                      {t('journal.planner.releaseOverride')}
-                    </button>
-                  </div>
-                </section>
+                <InspectorCollapsibleSection
+                  id="planner-more"
+                  label={t('journal.planner.moreHeading')}
+                  defaultExpanded={false}
+                  summary={secondarySummary}
+                >
+                  <dl className="flex flex-col gap-4 text-sm">
+                    <div className="flex flex-col gap-1">
+                      <dt className="text-muted">{t('journal.planner.sourceLabel')}</dt>
+                      <dd className="text-foreground">
+                        {detail.sourceKind === 'workshop'
+                          ? t('journal.planner.sourceWorkshop')
+                          : t('journal.planner.sourceQuickDraft')}
+                      </dd>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <dt className="text-muted">{t('journal.planner.lastCheckedLabel')}</dt>
+                      <dd className="text-foreground">
+                        {detail.lastEvaluatedAt
+                          ? t('journal.planner.lastChecked', {
+                              when: formatRelativeUpdated(detail.lastEvaluatedAt),
+                            })
+                          : t('journal.planner.neverChecked')}
+                      </dd>
+                    </div>
+                    <div className="flex flex-col gap-1 border-t border-border/40 pt-4">
+                      <dt className="text-sm font-medium text-foreground">
+                        {t('journal.planner.sectionWhenReleased')}
+                      </dt>
+                      <dd className="text-sm leading-relaxed text-muted">
+                        {t('journal.planner.whenReleasedHelp')}
+                      </dd>
+                    </div>
+                  </dl>
+                </InspectorCollapsibleSection>
               </aside>
             </>
           )}
