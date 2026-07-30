@@ -14,13 +14,13 @@ import type {
 } from '@shared/journalReleaseRule';
 import { translateGroupOperator } from '@/i18n/journalRelease';
 
-const BUILDER_KINDS: ReleaseCriteriaKind[] = [
+const BUILDER_KINDS = [
   'session_number_at_least',
   'real_world_date_after',
   'character_status_is',
   'quest_lifecycle_is',
   'faction_reputation_at_least',
-];
+] as const satisfies readonly ReleaseCriteriaKind[];
 
 const COMPARISON_OPS: ComparisonOperator[] = ['=', '!=', '>', '<', '>=', '<='];
 
