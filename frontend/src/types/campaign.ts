@@ -35,6 +35,8 @@ export interface CampaignSummary {
     label: string;
     avatarUrl: string | null;
   } | null;
+  gameSystem?: string | null;
+  customGameSystemName?: string | null;
   gameSystemLabel?: string | null;
   scheduleFrequency?: string | null;
   scheduleDay?: string | null;
