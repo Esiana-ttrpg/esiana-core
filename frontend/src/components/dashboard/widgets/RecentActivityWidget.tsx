@@ -20,7 +20,7 @@ export function RecentActivityWidget({
   return (
     <DashboardWidgetShell
       title={t('campaign.dashboard.widgetRecentActivity')}
-      icon={<Activity className="size-4 text-violet-400" />}
+      icon={<Activity className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

@@ -84,10 +84,12 @@ export function milestoneNodeClasses(
   if (milestone.kind === 'payoff') {
     return {
       node: rich
-        ? 'border-violet-400/60 bg-violet-500/20 ring-1 ring-violet-400/30'
-        : 'border-violet-500/50 bg-violet-500/15',
-      label: 'font-medium text-violet-100',
-      connector: rich ? 'bg-violet-400/40' : 'bg-violet-500/30',
+        ? 'border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] ring-1 ring-[color:var(--color-status-legend-border)]'
+        : 'border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)]',
+      label: 'font-medium text-[color:var(--color-status-legend-fg)]',
+      connector: rich
+        ? 'bg-[color:var(--color-status-legend-border)]'
+        : 'bg-[color:var(--color-status-legend-bg)]',
     };
   }
 

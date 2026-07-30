@@ -133,7 +133,6 @@ function CampaignDashboardContent({
   const canManageCampaign = canManageTime;
 
   const dashboardConfig = normalizeDashboardConfig(bundle.dashboardConfig);
-  const hasEnabledWidgets = dashboardConfig.widgets.some((widget) => widget.enabled);
 
   const persistConfig = useCallback(
     async (nextConfig: DashboardConfig) => {
@@ -235,6 +234,14 @@ function CampaignDashboardContent({
         onCustomizeModeChange={setCustomizeMode}
         onHeroChange={handleHeroChange}
       />
+      {!customizeMode ? (
+        <CampaignContinuityStream
+          embedded
+          campaignHandle={campaignHandle}
+          summary={bundle.summary}
+          questPages={bundle.questPages}
+        />
+      ) : null}
       {hasDashboardSlot && campaign ? (
         <PluginSlotHost
           slot={PluginUiSlots.DASHBOARD}
@@ -264,14 +271,6 @@ function CampaignDashboardContent({
         onConfigChange={handleConfigChange}
         onLayoutSavingChange={setLayoutSaving}
       />
-      {!hasEnabledWidgets && !bundle.narrativeSnapshot ? (
-        <CampaignContinuityStream
-          embedded
-          campaignHandle={campaignHandle}
-          summary={bundle.summary}
-          questPages={bundle.questPages}
-        />
-      ) : null}
     </div>
   );
 }

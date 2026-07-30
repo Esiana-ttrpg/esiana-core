@@ -1,11 +1,10 @@
-import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { ArrowRight, Pencil } from 'lucide-react';
+import { META_SECTION_LABEL_CLASS, REGION_DEPTH_3_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
+import { ArrowRight } from 'lucide-react';
 import {
   buildEntityRelationshipProjection,
   type WikiPageLineageSnapshot,
 } from '@/lib/entityProjectionQueries';
 import { buildInfoboxProjection } from '@/lib/buildInfoboxProjection';
-import { projectEntityAppearance } from '@/lib/entityAppearanceProjection';
 import { formatCharacterStatusLabel, resolveCharacterStatus } from '@/lib/characterMetadata';
 import { parseCharacterLineageMetadata } from '@/lib/characterLineageMetadata';
 import { parseCharacterMetadata } from '@/lib/characterMetadata';
@@ -16,57 +15,6 @@ import { EntityRelationChip } from '@/components/entity/EntityRelationChip';
 import { useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { ProfileDetailsCard } from './ProfileDetailsCard';
-
-function DashboardCard({
-  title,
-  children,
-  editMode,
-  isEditingPage,
-  jumpLabel,
-  onJump,
-  className = '',
-}: {
-  title: string;
-  children: React.ReactNode;
-  editMode: 'inline' | 'jump-to-tab' | 'read-only';
-  isEditingPage: boolean;
-  jumpLabel?: string;
-  onJump?: () => void;
-  className?: string;
-}) {
-  return (
-    <article
-      className={`rounded-lg border border-border/60 bg-surface/40 p-4 ${className}`}
-    >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className={META_SECTION_LABEL_CLASS}>
-          {title}
-        </h3>
-        {isEditingPage && editMode === 'jump-to-tab' && onJump ? (
-          <button
-            type="button"
-            onClick={onJump}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            <Pencil className="size-3" aria-hidden />
-            {jumpLabel ?? 'Edit'}
-          </button>
-        ) : null}
-        {!isEditingPage && onJump ? (
-          <button
-            type="button"
-            onClick={onJump}
-            className="inline-flex items-center gap-0.5 text-xs text-muted hover:text-primary"
-          >
-            View
-            <ArrowRight className="size-3" aria-hidden />
-          </button>
-        ) : null}
-      </div>
-      {children}
-    </article>
-  );
-}
 
 function getBiographyExcerpt(blocks: WikiPageBlock[]): string {
   const bio = blocks.find((b) => b.type === 'text-biography');
@@ -107,8 +55,6 @@ export function CharacterOverviewDashboard({
     isDMUser,
   );
 
-  const appearance = projectEntityAppearance(pageMetadata, 'character');
-
   const infoboxBlock = blocks.find((b) => b.type === 'wiki-infobox');
   const infoboxFields =
     (infoboxBlock?.content as { fields?: InfoboxField[] })?.fields ??
@@ -136,90 +82,77 @@ export function CharacterOverviewDashboard({
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <DashboardCard
-        title="Summary"
-        editMode="jump-to-tab"
-        isEditingPage={isEditingPage}
-        jumpLabel="Edit biography"
-        onJump={() => onJumpToTab('biography')}
-        className="sm:col-span-1"
-      >
-        {biographyExcerpt || characterProjection?.identityLine ? (
-          <p className="text-sm leading-relaxed text-foreground/90">
-            {biographyExcerpt || characterProjection?.identityLine}
-          </p>
-        ) : (
-          <p className="text-sm text-muted">No story summary yet.</p>
-        )}
-      </DashboardCard>
+    <div className="space-y-6">
+      {biographyExcerpt || characterProjection?.identityLine ? (
+        <p className={`${TYPE_PROSE_CLASS} max-w-3xl text-prose-muted`}>
+          {biographyExcerpt || characterProjection?.identityLine}
+        </p>
+      ) : (
+        <p className="text-sm text-muted">No story summary yet.</p>
+      )}
 
-      <DashboardCard
-        title="Current Status"
-        editMode="inline"
-        isEditingPage={isEditingPage}
-      >
-        <dl className="space-y-1.5 text-sm">
-          <div>
-            <dt className="text-xs font-medium text-muted">Life status</dt>
-            <dd>{status ? formatCharacterStatusLabel(status) : '—'}</dd>
-          </div>
-          {discovery ? (
-            <div>
-              <dt className="text-xs font-medium text-muted">Party knowledge</dt>
-              <dd>{formatRichDiscoveryStateLabel(discovery.state)}</dd>
-            </div>
-          ) : null}
-        </dl>
-      </DashboardCard>
+      <div className={`${REGION_DEPTH_3_CLASS} space-y-4 px-1 py-1`}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className={META_SECTION_LABEL_CLASS}>Current status</span>
+          <span className="text-sm text-foreground">
+            {status ? formatCharacterStatusLabel(status) : '—'}
+            {discovery ? ` · ${formatRichDiscoveryStateLabel(discovery.state)}` : ''}
+          </span>
+        </div>
 
-      <DashboardCard
-        title="Active Form"
-        editMode="jump-to-tab"
-        isEditingPage={isEditingPage}
-        jumpLabel="Edit appearance"
-        onJump={() => onJumpToTab('appearance')}
-      >
-        {appearance.portraitUrl ? (
-          <img
-            src={appearance.portraitUrl}
-            alt=""
-            className="mb-2 size-16 rounded-lg border border-border object-cover"
-          />
-        ) : null}
-        {appearance.summary ? (
-          <p className="text-sm text-foreground/90">{appearance.summary}</p>
-        ) : (
-          <p className="text-sm text-muted">No active form described yet.</p>
-        )}
-      </DashboardCard>
-
-      <DashboardCard
-        title="Relationships"
-        editMode="read-only"
-        isEditingPage={isEditingPage}
-        onJump={() => onJumpToTab('relationships')}
-      >
         {projection.affiliations.length > 0 ? (
-          <ul className="flex flex-wrap gap-2">
-            {projection.affiliations.slice(0, 3).map((row) => (
-              <li key={row.org.id}>
-                <EntityRelationChip
-                  campaignHandle={campaignHandle}
-                  pageId={row.org.id}
-                  title={row.role ? `${row.org.title} (${row.role})` : row.org.title}
-                  templateType={row.org.templateType}
-                  flatPages={snapshots}
-                  previewContext={previewContext}
-                  compact
-                />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted">No key relationships yet.</p>
-        )}
-      </DashboardCard>
+          <div>
+            <span className={`${META_SECTION_LABEL_CLASS} mb-2 block`}>Key relationships</span>
+            <ul className="flex flex-wrap gap-2">
+              {projection.affiliations.slice(0, 4).map((row) => (
+                <li key={row.org.id}>
+                  <EntityRelationChip
+                    campaignHandle={campaignHandle}
+                    pageId={row.org.id}
+                    title={row.role ? `${row.org.title} (${row.role})` : row.org.title}
+                    templateType={row.org.templateType}
+                    flatPages={snapshots}
+                    previewContext={previewContext}
+                    compact
+                  />
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => onJumpToTab('relationships')}
+              className="mt-2 inline-flex items-center gap-0.5 text-xs text-muted hover:text-primary"
+            >
+              All relationships
+              <ArrowRight className="size-3" aria-hidden />
+            </button>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+          <button
+            type="button"
+            onClick={() => onJumpToTab('biography')}
+            className="text-muted hover:text-primary"
+          >
+            Biography
+          </button>
+          <button
+            type="button"
+            onClick={() => onJumpToTab('appearance')}
+            className="text-muted hover:text-primary"
+          >
+            Appearance
+          </button>
+          <button
+            type="button"
+            onClick={() => onJumpToTab('timeline')}
+            className="text-muted hover:text-primary"
+          >
+            Timeline
+          </button>
+        </div>
+      </div>
 
       <ProfileDetailsCard
         title="Profile"
@@ -228,17 +161,6 @@ export function CharacterOverviewDashboard({
         isDMUser={isDMUser}
         onFieldsChange={updateInfoboxFields}
       />
-
-      <DashboardCard
-        title="Recent Events"
-        editMode="read-only"
-        isEditingPage={isEditingPage}
-        onJump={() => onJumpToTab('timeline')}
-      >
-        <p className="text-sm text-muted">
-          Timeline milestones will appear here as chronology hooks mature.
-        </p>
-      </DashboardCard>
     </div>
   );
 }

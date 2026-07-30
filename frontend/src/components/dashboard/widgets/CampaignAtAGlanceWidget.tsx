@@ -20,7 +20,7 @@ export function CampaignAtAGlanceWidget({
   return (
     <DashboardWidgetShell
       title={t('campaign.dashboard.widgetCampaignAtAGlance')}
-      icon={<LayoutGrid className="size-4 text-sky-400" />}
+      icon={<LayoutGrid className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

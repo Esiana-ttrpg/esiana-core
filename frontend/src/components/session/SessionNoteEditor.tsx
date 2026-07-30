@@ -308,7 +308,7 @@ export function SessionNoteEditor({
               <button
                 type="button"
                 onClick={() => setIsEditing(true)}
-                className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+                className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover"
               >
                 <Edit3 className="size-4" />
                 Edit Note
@@ -341,7 +341,7 @@ export function SessionNoteEditor({
               {locationPage ? (
                 <Link
                   to={campaignWikiPath(campaignHandle, locationPage.id, flatPages)}
-                  className="font-medium text-indigo-300 hover:text-indigo-200 hover:underline"
+                  className="font-medium text-primary hover:text-primary hover:underline"
                 >
                   {locationPage.title}
                 </Link>
@@ -350,7 +350,7 @@ export function SessionNoteEditor({
                   <button
                     type="button"
                     onClick={() => setLocationMenuOpen((open) => !open)}
-                    className="text-muted hover:text-indigo-300"
+                    className="text-muted hover:text-primary"
                   >
                     + Add Location
                   </button>

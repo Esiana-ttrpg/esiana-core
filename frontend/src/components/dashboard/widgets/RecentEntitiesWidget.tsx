@@ -86,7 +86,7 @@ export function RecentEntitiesWidget({
   return (
     <DashboardWidgetShell
       title={translateDashboardWidgetLabel('recentEntities', 'Recent Entities')}
-      icon={<BookOpen className="size-4 text-violet-400" />}
+      icon={<BookOpen className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

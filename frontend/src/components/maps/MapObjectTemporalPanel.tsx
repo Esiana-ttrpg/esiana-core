@@ -221,7 +221,7 @@ export function MapObjectTemporalPanel({
       ) : null}
 
       {isDerivedFlow ? (
-        <div className="space-y-2 rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-2 text-xs">
+        <div className="space-y-2 rounded-md border border-border/40 bg-depth-2/30 px-2 py-2 text-xs region-depth-2">
           <p>
             <strong>Derivation:</strong>{' '}
             {flowOverlay.derivedFrom?.type ?? 'unknown'}

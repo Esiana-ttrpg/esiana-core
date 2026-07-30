@@ -49,20 +49,20 @@ export function UserQuotaCard({
     [data],
   );
 
-  const barClass = usagePct >= 0.85 ? 'bg-primary' : 'bg-indigo-500';
+  const barClass = usagePct >= 0.85 ? 'bg-primary' : 'bg-primary';
 
   return (
     <section className="rounded-xl border border-border bg-surface/80 p-6">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Zap className="size-5 text-indigo-300" />
+          <Zap className="size-5 text-primary" />
           <h3 className={META_SECTION_LABEL_CLASS}>
             API quota (account)
           </h3>
         </div>
         <a
           href={docsHref}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted hover:border-indigo-500/40 hover:text-indigo-200"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-muted hover:border-primary/40 hover:text-primary"
           title="View Rate Limit Specs"
         >
           <Info className="size-3.5" />

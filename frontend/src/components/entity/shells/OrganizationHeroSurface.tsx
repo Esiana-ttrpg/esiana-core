@@ -170,7 +170,7 @@ export function OrganizationHeroSurface({
           ) : null}
 
           {isDMUser && org.privateAgenda ? (
-            <p className="rounded border border-violet-500/30 bg-violet-500/5 px-2 py-1 text-xs text-violet-200">
+            <p className="rounded border border-[color:var(--color-status-secret-border)] bg-[color:var(--color-status-secret-bg)] px-2 py-1 text-xs text-[color:var(--color-status-secret-fg)]">
               Private agenda: {org.privateAgenda}
             </p>
           ) : null}

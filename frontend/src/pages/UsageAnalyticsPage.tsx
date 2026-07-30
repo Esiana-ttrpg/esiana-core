@@ -109,12 +109,12 @@ export function UsageAnalyticsPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-5">
+          <div className="rounded-xl border border-primary/20 bg-primary/10 p-5">
             <div className="flex items-center justify-between gap-2">
-              <p className={`${META_SECTION_LABEL_CLASS} text-indigo-200/80`}>
+              <p className={`${META_SECTION_LABEL_CLASS} text-primary/80`}>
                 Health signal
               </p>
-              <TrendingUp className="size-4 text-indigo-300/80" />
+              <TrendingUp className="size-4 text-primary/80" />
             </div>
             <p className="mt-2 text-sm font-semibold text-foreground">
               {analytics.totals.tooManyRequests > 0
@@ -142,7 +142,7 @@ export function UsageAnalyticsPage() {
               return (
                 <div key={row.ts} className="group h-28 rounded bg-background/70">
                   <div
-                    className="h-full w-full rounded bg-indigo-500/60"
+                    className="h-full w-full rounded bg-primary/60"
                     style={{ height: `${pct}%` }}
                     title={`${new Date(row.ts).toLocaleString()} UTC: ${row.count.toLocaleString()} requests`}
                   />

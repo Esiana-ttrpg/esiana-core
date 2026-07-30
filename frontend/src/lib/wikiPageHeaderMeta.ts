@@ -53,7 +53,7 @@ export function discoveryBadgeTone(
 ): string {
   if (!discovery.available) {
     return discovery.gatedUntil
-      ? 'border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-200'
+      ? 'border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] text-[color:var(--color-status-legend-fg)]'
       : 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200';
   }
   switch (discovery.state) {

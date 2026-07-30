@@ -66,6 +66,21 @@ Valid stacks: `midnight + fantasy`, `ocean + cyberpunk + halloween`, `arctic + p
 
 Precedence for glow/amplitude: `scene > genre > event > foundation`. Foundation always wins on canvas and silence (`proseMax = 0`).
 
+## Theme leakage boundary
+
+ThemeStack layers express **identity and atmosphere** — not structural UI roles. Keep this channel split when implementing or reviewing UI:
+
+| Channel | Owns | Must not own |
+|---------|------|----------------|
+| **Structural** | `--color-canvas`, depth ladder, `--color-focal*`, borders on slabs, `--color-operational-foreground`, semantic status hues | Palette accent as default surface fill |
+| **Identity / atmosphere** | `--color-atmosphere-*-rgb`, glow alphas, vignette, genre bloom recipes, hero environmental framing | Default button chrome, card borders, shadows, or badge colors |
+
+Rules:
+
+- Accents and atmosphere **≠** surfaces, borders, shadows, or status colors.
+- Components consume **semantic** tokens (`primary`, `focal`, `status-*`, `SURFACE_*`) — not raw palette accent for chrome.
+- Hover/focus may hint identity only within budgeted glow tiers; never replace depth hierarchy with colored halos on every float surface.
+
 ## Theme harmonization
 
 Campaign themes supply **identity** (hue family, accent, mood, perceptual density). The UI system derives **surface roles** — never the reverse.

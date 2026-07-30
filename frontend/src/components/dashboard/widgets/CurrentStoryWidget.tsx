@@ -20,7 +20,7 @@ export function CurrentStoryWidget({
   return (
     <DashboardWidgetShell
       title={t('campaign.dashboard.widgetCurrentStory')}
-      icon={<BookOpen className="size-4 text-amber-400" />}
+      icon={<BookOpen className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

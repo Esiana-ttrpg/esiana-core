@@ -11,10 +11,10 @@ export function dashboardQuestStatusBadgeClass(
     case 'ACTIVE':
       return 'bg-primary/15 text-primary border-primary/40';
     case 'COMPLETED':
-      return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40';
+      return 'border-[color:var(--color-status-warning-border)] bg-[color:var(--color-status-warning-bg)] text-[color:var(--color-status-warning-fg)]';
     case 'FAILED':
     case 'ABANDONED':
-      return 'bg-red-500/15 text-red-400 border-red-500/40';
+      return 'border-[color:var(--color-status-secret-border)] bg-[color:var(--color-status-secret-bg)] text-[color:var(--color-status-secret-fg)]';
     case 'AVAILABLE':
     default:
       return 'bg-muted/30 text-muted border-border';

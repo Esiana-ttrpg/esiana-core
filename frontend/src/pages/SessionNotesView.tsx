@@ -498,7 +498,7 @@ export function SessionNotesView() {
                       }}
                       className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm transition-colors ${
                         isOrganizing
-                          ? 'border-indigo-500/70 bg-indigo-600/15 text-indigo-200'
+                          ? 'border-primary/50 bg-primary/15 text-primary'
                           : 'border-border bg-surface/40 text-foreground hover:bg-surface'
                       }`}
                     >
@@ -587,7 +587,7 @@ export function SessionNotesView() {
               type="checkbox"
               checked={allVisibleSelected}
               onChange={toggleSelectAllVisible}
-              className="size-4 rounded border-border bg-surface text-indigo-600 focus:ring-primary"
+              className="size-4 rounded border-border bg-surface text-primary focus:ring-primary"
               aria-label={
                 allVisibleSelected
                   ? 'Deselect all visible session notes'
@@ -682,7 +682,7 @@ export function SessionNotesView() {
                 <button
                   type="button"
                   onClick={() => void handleSaveTitle(notebook.id)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-indigo-500/40 px-2.5 py-2 text-xs text-indigo-300"
+                  className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-2.5 py-2 text-xs text-primary"
                 >
                   <Save className="size-3.5" />
                   Save
@@ -701,7 +701,7 @@ export function SessionNotesView() {
                     setEditingId(notebook.id);
                     setTitleInput(notebook.title);
                   }}
-                  className="rounded p-1 text-muted transition-colors hover:text-indigo-400"
+                  className="rounded p-1 text-muted transition-colors hover:text-primary"
                 >
                   <Settings className="size-[15px]" />
                 </button>
@@ -745,7 +745,7 @@ export function SessionNotesView() {
                           type="checkbox"
                           checked={selectedNoteIds.includes(page.id)}
                           onChange={() => toggleSelectedNote(page.id)}
-                          className="mr-2 rounded border-border bg-surface text-indigo-600 focus:ring-primary"
+                          className="mr-2 rounded border-border bg-surface text-primary focus:ring-primary"
                         />
                       )}
                       <Link
@@ -766,7 +766,7 @@ export function SessionNotesView() {
                             setEditingPageId(page.id);
                             setPageTitleInput(page.title);
                           }}
-                          className="rounded p-1 text-muted hover:bg-elevated hover:text-indigo-300"
+                          className="rounded p-1 text-muted hover:bg-elevated hover:text-primary"
                         >
                           <Settings className="size-3.5" />
                         </button>
@@ -820,7 +820,7 @@ export function SessionNotesView() {
                         type="checkbox"
                         checked={selectedNoteIds.includes(page.id)}
                         onChange={() => toggleSelectedNote(page.id)}
-                        className="mr-2 rounded border-border bg-surface text-indigo-600 focus:ring-primary"
+                        className="mr-2 rounded border-border bg-surface text-primary focus:ring-primary"
                       />
                     )}
                     <Link
@@ -841,7 +841,7 @@ export function SessionNotesView() {
                           setEditingPageId(page.id);
                           setPageTitleInput(page.title);
                         }}
-                        className="rounded p-1 text-muted hover:bg-elevated hover:text-indigo-300"
+                        className="rounded p-1 text-muted hover:bg-elevated hover:text-primary"
                       >
                         <Settings className="size-3.5" />
                       </button>
@@ -916,7 +916,7 @@ export function SessionNotesView() {
                 type="button"
                 disabled={saving}
                 onClick={() => void handleCreateArc()}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
               >
                 <Plus className="size-4" />
                 {saving ? 'Creating…' : 'Create Group'}
@@ -941,7 +941,7 @@ export function SessionNotesView() {
                 <X className="size-4" />
               </button>
             </div>
-            <div className="mb-3 rounded border border-indigo-900/50 bg-indigo-950/30 p-3 text-xs text-indigo-300">
+            <div className="mb-3 rounded border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
               Note: The campaign journal runs on Markdown text format by default.
               Imported document paragraphs will adapt cleanly to markdown prose
               presentation structures.
@@ -975,7 +975,7 @@ export function SessionNotesView() {
                 type="button"
                 disabled={!uploadFile || uploading || Boolean(uploadFileError)}
                 onClick={() => void handleUploadPage()}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
               >
                 <FileUp className="size-4" />
                 {uploading ? 'Uploading…' : 'Upload Page'}
@@ -1012,7 +1012,7 @@ export function SessionNotesView() {
                 type="button"
                 onClick={() => void handleBulkMoveSelection()}
                 disabled={saving || selectedNoteIds.length === 0}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50"
               >
                 Move Selection
               </button>

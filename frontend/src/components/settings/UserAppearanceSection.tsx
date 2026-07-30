@@ -11,6 +11,11 @@ import {
   type MasterPageWidth,
 } from '@/lib/pageWidthPreference';
 import {
+  getUiFontPreference,
+  setUiFontPreference,
+  type UiFontPreference,
+} from '@/lib/uiFontPreference';
+import {
   DEFAULT_THEME_PROFILE,
   isAppearanceProfileDefined,
   normalizeThemeProfile,
@@ -41,6 +46,7 @@ export function UserAppearanceSection() {
   const [pageWidth, setPageWidth] = useState<MasterPageWidth>(() =>
     getMasterPageWidthPreference(),
   );
+  const [uiFont, setUiFont] = useState<UiFontPreference>(() => getUiFontPreference());
 
   const campaignPrefRef = useRef(campaignPref);
   const systemDefaultRef = useRef(systemDefaultProfile);
@@ -219,6 +225,52 @@ export function UserAppearanceSection() {
         <p className="text-xs text-muted">
           Standard uses a bounded document layout. Wide relaxes the cap on document-mode
           pages only.
+        </p>
+      </div>
+
+      <div className="space-y-3 rounded-lg border border-border bg-elevated/40 p-4">
+        <div>
+          <span className="block text-sm font-medium text-foreground">Interface font</span>
+          <span className="mt-0.5 block text-xs text-muted">
+            Applies to controls, navigation, and metadata. Display and prose titles stay on
+            editorial serif.
+          </span>
+        </div>
+        <div className="rounded-lg border border-border bg-background p-1">
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setUiFont('default');
+                setUiFontPreference('default');
+              }}
+              className={`rounded-md px-2 py-2 text-xs font-medium transition-colors ${
+                uiFont === 'default'
+                  ? 'bg-primary text-background'
+                  : 'text-foreground hover:bg-elevated'
+              }`}
+            >
+              Inter (default)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUiFont('atkinson');
+                setUiFontPreference('atkinson');
+              }}
+              className={`rounded-md px-2 py-2 text-xs font-medium transition-colors ${
+                uiFont === 'atkinson'
+                  ? 'bg-primary text-background'
+                  : 'text-foreground hover:bg-elevated'
+              }`}
+            >
+              Atkinson Hyperlegible
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-muted">
+          Atkinson improves legibility for UI chrome; it does not change theme colors or
+          editorial type.
         </p>
       </div>
 

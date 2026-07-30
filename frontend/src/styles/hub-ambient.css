@@ -3,7 +3,7 @@
 .hub-ambient {
   --hub-accent: var(--color-primary);
   --hub-accent-muted: color-mix(in srgb, var(--color-primary) 35%, transparent);
-  --hub-accent-glow: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  --hub-accent-glow: color-mix(in srgb, var(--color-primary) 10%, transparent);
   --hub-section-resume: var(--hub-accent);
   --hub-section-library: var(--color-primary);
   --hub-section-attention: var(--color-accent);
@@ -42,7 +42,7 @@
 }
 
 .hub-ambient .hub-page-title {
-  text-shadow: 0 0 32px var(--hub-accent-glow);
+  text-shadow: none;
 }
 
 /* Section headers */
@@ -60,7 +60,7 @@
   width: 3px;
   border-radius: 2px;
   background: var(--hub-section-accent, var(--hub-accent));
-  box-shadow: 0 0 12px var(--hub-accent-glow);
+  box-shadow: 0 0 6px var(--hub-accent-glow);
 }
 
 .hub-ambient .hub-section-header--resume {
@@ -85,7 +85,7 @@
 
 .hub-ambient .hub-section-header__icon {
   color: var(--hub-section-accent, var(--hub-accent));
-  filter: drop-shadow(0 0 8px var(--hub-accent-glow));
+  filter: none;
 }
 
 .hub-ambient .hub-section-header__title {
@@ -125,14 +125,14 @@
 }
 
 .hub-ambient .hub-search__input::placeholder {
-  color: var(--color-muted, #888);
+  color: var(--color-text-muted, var(--color-muted));
 }
 
 .hub-ambient .hub-search__input:focus {
   outline: none;
-  border-color: rgba(var(--hub-accent-rgb), 0.45);
+  border-color: rgba(var(--hub-accent-rgb), 0.35);
   background: rgba(var(--hub-accent-rgb), 0.07);
-  box-shadow: 0 0 0 3px var(--hub-accent-glow), 0 0 20px rgba(var(--hub-accent-rgb), 0.08);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 
 .hub-ambient .hub-search:focus-within .hub-search__icon {
@@ -158,7 +158,7 @@
 
 .hub-ambient .hub-btn--narrative {
   padding: 0.5rem 1rem;
-  color: #0f0f12;
+  color: var(--color-primary-foreground);
   background: linear-gradient(
     135deg,
     var(--hub-accent) 0%,
@@ -251,7 +251,7 @@
 .hub-ambient .hub-chip--attention-whisper {
   border-color: rgba(var(--hub-section-recent-rgb, var(--hub-accent-rgb)), 0.25);
   background: rgba(var(--hub-section-recent-rgb, var(--hub-accent-rgb)), 0.06);
-  color: var(--color-muted, #888);
+  color: var(--color-text-muted, var(--color-muted));
 }
 
 /* On the Hearth shelf marker */

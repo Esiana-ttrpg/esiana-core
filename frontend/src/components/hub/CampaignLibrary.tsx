@@ -114,8 +114,7 @@ export function CampaignLibrary({
           variant="library"
         />
         <div
-          className="flex items-center gap-1 rounded-lg border p-0.5"
-          style={{ borderColor: 'rgba(201, 169, 98, 0.2)' }}
+          className="flex items-center gap-1 rounded-lg border border-border/40 p-0.5"
           title="Shelf density"
         >
           {(

@@ -49,7 +49,7 @@ export function QuickUtilityNav({
   return (
     <DashboardWidgetShell
       title={translateDashboardWidgetLabel('quickUtilityNav', 'Quick Links')}
-      icon={<Compass className="size-4 text-cyan-400" />}
+      icon={<Compass className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

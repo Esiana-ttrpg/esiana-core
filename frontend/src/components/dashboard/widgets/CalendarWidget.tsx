@@ -316,7 +316,7 @@ export function CalendarWidget({
         )}
 
         {!loading && error && (
-          <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}
@@ -542,7 +542,7 @@ export function CalendarWidget({
                                   <button
                                     type="button"
                                     onClick={() => void handleDeleteEvent(event.id)}
-                                    className="rounded p-1 text-muted hover:bg-elevated hover:text-red-300"
+                                    className="rounded p-1 text-muted hover:bg-elevated hover:text-destructive"
                                     title="Delete event"
                                   >
                                     <Trash2 className="size-3.5" />

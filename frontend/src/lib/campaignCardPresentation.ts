@@ -2,13 +2,14 @@ import type { CSSProperties } from 'react';
 import type { CampaignSummary } from '@/types/campaign';
 import { normalizeHeroFields } from '@/lib/dashboardHeroPresentation';
 
-const GRADIENT_PAIRS = [
-  ['#1e1b4b', '#4c1d95'],
-  ['#134e4a', '#312e81'],
-  ['#1e293b', '#581c87'],
-  ['#172554', '#4a044e'],
-  ['#0f172a', '#5b21b6'],
-  ['#164e63', '#3730a3'],
+/** Theme-variable gradient recipes (seed picks variant; no fixed palette hex). */
+const GRADIENT_RECIPES = [
+  'linear-gradient(135deg, var(--color-depth-3) 0%, color-mix(in srgb, var(--color-primary) 65%, var(--color-canvas)) 100%)',
+  'linear-gradient(135deg, color-mix(in srgb, var(--color-canvas) 75%, var(--color-primary)) 0%, color-mix(in srgb, var(--color-accent) 50%, var(--color-depth-3)) 100%)',
+  'linear-gradient(135deg, var(--color-depth-2) 0%, color-mix(in srgb, var(--color-primary-hover) 60%, var(--color-depth-3)) 100%)',
+  'linear-gradient(160deg, color-mix(in srgb, var(--color-primary) 35%, var(--color-canvas)) 0%, color-mix(in srgb, var(--color-accent) 45%, var(--color-depth-3)) 100%)',
+  'linear-gradient(125deg, var(--color-canvas) 0%, color-mix(in srgb, var(--color-primary) 55%, var(--color-accent)) 100%)',
+  'linear-gradient(135deg, color-mix(in srgb, var(--color-depth-3) 85%, var(--color-accent)) 0%, color-mix(in srgb, var(--color-primary) 70%, var(--color-canvas)) 100%)',
 ] as const;
 
 function hashString(seed: string): number {
@@ -21,10 +22,9 @@ function hashString(seed: string): number {
 }
 
 export function buildCampaignGradientStyle(seed: string): CSSProperties {
-  const index = hashString(seed) % GRADIENT_PAIRS.length;
-  const [from, to] = GRADIENT_PAIRS[index]!;
+  const index = hashString(seed) % GRADIENT_RECIPES.length;
   return {
-    backgroundImage: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
+    backgroundImage: GRADIENT_RECIPES[index]!,
   };
 }
 

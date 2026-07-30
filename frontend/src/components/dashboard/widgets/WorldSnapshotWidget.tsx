@@ -119,7 +119,7 @@ export function WorldSnapshotWidget({
   return (
     <DashboardWidgetShell
       title={t('campaign.worldstats.widgetTitle')}
-      icon={<Globe2 className="size-4 text-emerald-300/90" />}
+      icon={<Globe2 className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
       loading={loading}
