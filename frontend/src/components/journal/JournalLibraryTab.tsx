@@ -202,13 +202,16 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
 
   const handleCreated = useCallback(
     (created: JournalPublicationDTO) => {
-      if (canPlan) {
-        setSearchParams({ tab: 'planner', pub: created.id }, { replace: false });
-      } else {
-        setNotice(t('journal.library.createdNotice'));
+      if (created.status === 'released') {
+        setNotice(t('journal.library.publishedNotice'));
+        setSection('released');
+        void load();
+        selectItem(created.id);
+        return;
       }
+      setNotice(t('journal.library.unfinishedNotice'));
     },
-    [canPlan, setSearchParams, t],
+    [load, selectItem, t],
   );
 
   async function handleDelete(publication: JournalPublicationDTO, force = false) {
@@ -321,6 +324,9 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
               ✕
             </button>
           </div>
+          {selected.summary ? (
+            <p className="text-sm text-muted">{selected.summary}</p>
+          ) : null}
           <div className="flex flex-wrap gap-2 text-xs text-muted">
             <span className="rounded-full bg-elevated px-2 py-0.5">
               {translatePublicationType(selected.type, t)}
@@ -623,9 +629,9 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
       <CreatePublicationModal
         open={isCreateOpen}
         campaignHandle={campaignHandle}
+        variant="library"
         onClose={() => setIsCreateOpen(false)}
         onCreated={handleCreated}
-        defaultReleaseNow={true}
       />
     </>
   );

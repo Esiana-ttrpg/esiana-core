@@ -1,10 +1,23 @@
 {
   "journal.create.publicationHeading": "Nouvelle publication",
+  "journal.create.stepDetails": "Étape 1 — Détails",
+  "journal.create.stepContent": "Étape 2 — Contenu",
   "journal.create.titleLabel": "Titre",
   "journal.create.titlePlaceholder": "Un nom court et évocateur",
   "journal.create.typeLabel": "Type",
+  "journal.create.summaryLabel": "Résumé (facultatif)",
+  "journal.create.summaryPlaceholder": "Une phrase pour les listes et aperçus…",
+  "journal.create.seriesAssignLabel": "Série (facultatif)",
+  "journal.create.seriesNone": "Aucune",
+  "journal.create.createNewSeries": "Créer une série…",
+  "journal.create.tagsLabel": "Étiquettes (facultatif)",
+  "journal.create.tagsPlaceholder": "Étiquettes séparées par des virgules",
   "journal.create.titleRequired": "Un titre est requis.",
+  "journal.create.contentRequired": "Rédigez le corps de la publication avant de terminer.",
   "journal.create.cancel": "Annuler",
+  "journal.create.continue": "Continuer",
+  "journal.create.back": "Retour",
+  "journal.create.finish": "Terminer",
   "journal.create.submit": "Créer",
   "journal.create.submitting": "Création…",
   "journal.create.seriesHeading": "Nouvelle série",
@@ -13,6 +26,5 @@
   "journal.create.seriesRequired": "Un nom de série est requis.",
   "journal.create.seriesSubmit": "Créer la série",
   "journal.create.seriesDescriptionLabel": "Description (facultatif)",
-  "journal.create.seriesDescriptionPlaceholder": "De quoi parle cette série…",
-  "journal.create.releaseNow": "Publier maintenant"
+  "journal.create.seriesDescriptionPlaceholder": "De quoi parle cette série…"
 }

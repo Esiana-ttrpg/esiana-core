@@ -1,10 +1,23 @@
 {
   "journal.create.publicationHeading": "New publication",
+  "journal.create.stepDetails": "Step 1 — Details",
+  "journal.create.stepContent": "Step 2 — Content",
   "journal.create.titleLabel": "Title",
   "journal.create.titlePlaceholder": "A short, evocative name",
   "journal.create.typeLabel": "Type",
+  "journal.create.summaryLabel": "Summary (optional)",
+  "journal.create.summaryPlaceholder": "A sentence for lists and previews…",
+  "journal.create.seriesAssignLabel": "Series (optional)",
+  "journal.create.seriesNone": "None",
+  "journal.create.createNewSeries": "Create new series…",
+  "journal.create.tagsLabel": "Tags (optional)",
+  "journal.create.tagsPlaceholder": "Comma-separated tags",
   "journal.create.titleRequired": "A title is required.",
+  "journal.create.contentRequired": "Write the publication body before finishing.",
   "journal.create.cancel": "Cancel",
+  "journal.create.continue": "Continue",
+  "journal.create.back": "Back",
+  "journal.create.finish": "Finish",
   "journal.create.submit": "Create",
   "journal.create.submitting": "Creating…",
   "journal.create.seriesHeading": "New series",
@@ -13,6 +26,5 @@
   "journal.create.seriesRequired": "A series name is required.",
   "journal.create.seriesSubmit": "Create series",
   "journal.create.seriesDescriptionLabel": "Description (optional)",
-  "journal.create.seriesDescriptionPlaceholder": "What this series is about…",
-  "journal.create.releaseNow": "Release now"
+  "journal.create.seriesDescriptionPlaceholder": "What this series is about…"
 }

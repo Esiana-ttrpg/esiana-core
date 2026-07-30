@@ -1373,8 +1373,8 @@ campaignScopedRouter.patch(
 // JOURNAL_PLANNER_ACCESS capability.
 campaignScopedRouter.get('/journal/library', listJournalLibrary);
 campaignScopedRouter.get('/journal/planner', requireJournalPlannerAccess, getJournalPlanner);
-campaignScopedRouter.get('/journal/series', requireJournalPlannerAccess, listJournalSeries);
-campaignScopedRouter.post('/journal/series', requireJournalPlannerAccess, createJournalSeries);
+campaignScopedRouter.get('/journal/series', requirePageCreate, listJournalSeries);
+campaignScopedRouter.post('/journal/series', requirePageCreate, createJournalSeries);
 campaignScopedRouter.patch('/journal/series/:id', requireJournalPlannerAccess, updateJournalSeries);
 campaignScopedRouter.delete('/journal/series/:id', requireJournalPlannerAccess, deleteJournalSeries);
 campaignScopedRouter.post(

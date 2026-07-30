@@ -18,6 +18,7 @@ import {
   DEFAULT_JOURNAL_PUBLICATION_TYPE,
   JOURNAL_PUBLICATION_TYPES,
   JOURNAL_SOURCE_KINDS,
+  computeContentReadiness,
   normalizeJournalTags,
   toPerceivedState,
   type JournalLibraryItemDTO,
@@ -56,6 +57,7 @@ const DETAIL_SELECT = {
   id: true,
   campaignId: true,
   title: true,
+  summary: true,
   type: true,
   status: true,
   seriesId: true,
@@ -85,6 +87,33 @@ function parseTagsInput(raw: unknown): string[] | undefined {
   return tags;
 }
 
+function parseSummaryInput(raw: unknown): string | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return null;
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+async function assertSeriesAssignable(
+  req: CampaignScopedRequest,
+  campaignId: string,
+  seriesId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const canPlan = policyCan(req.campaign!.actor, CampaignCapabilities.JOURNAL_PLANNER_ACCESS);
+  const series = await prisma.journalSeries.findFirst({
+    where: { id: seriesId, campaignId },
+    select: { id: true, createdByUserId: true },
+  });
+  if (!series) {
+    return { ok: false, message: 'Series not found in this campaign.' };
+  }
+  if (canPlan) return { ok: true };
+  const userId = req.user?.id;
+  if (userId && series.createdByUserId === userId) return { ok: true };
+  return { ok: false, message: 'You cannot assign this series.' };
+}
+
 function isLibrarySection(value: string | undefined): value is JournalLibrarySection {
   return value === 'released' || value === 'upcoming' || value === 'all';
 }
@@ -100,6 +129,7 @@ function toPublicationDTO(
     id: row.id,
     campaignId: row.campaignId,
     title: row.title,
+    summary: row.summary,
     type: row.type as JournalPublicationType,
     status: row.status as JournalPublicationDTO['status'],
     seriesId: row.seriesId,
@@ -414,14 +444,12 @@ export async function createJournalPublication(
   const contentMarkdown = typeof body.contentMarkdown === 'string' ? body.contentMarkdown : null;
   const contentBlocks = Array.isArray(body.contentBlocks) ? body.contentBlocks : null;
   const tags = parseTagsInput(body.tags);
+  const summary = parseSummaryInput(body.summary);
 
   if (seriesId) {
-    const series = await prisma.journalSeries.findFirst({
-      where: { id: seriesId, campaignId },
-      select: { id: true },
-    });
-    if (!series) {
-      res.status(400).json({ error: 'Series not found in this campaign.' });
+    const seriesCheck = await assertSeriesAssignable(req, campaignId, seriesId);
+    if (!seriesCheck.ok) {
+      res.status(400).json({ error: seriesCheck.message });
       return;
     }
   }
@@ -438,6 +466,7 @@ export async function createJournalPublication(
       sourceKind,
       workshopDraftId,
       contentMarkdown,
+      ...(summary !== undefined ? { summary } : {}),
       ...(contentBlocks ? { contentBlocks } : {}),
       linkedPageId,
       ...(tags !== undefined ? { tags: tags as unknown as Prisma.InputJsonValue } : {}),
@@ -447,28 +476,33 @@ export async function createJournalPublication(
   });
 
   if (releaseNow) {
-    try {
-      if (!req.user?.id) {
-        res.status(401).json({ error: 'Authentication required.' });
-        return;
-      }
-      await releasePublicationManually({
-        campaignId,
-        publicationId: created.id,
-        userId: req.user.id,
-        triggerKind: 'manual',
-      });
-      const dto = await loadPublicationDTO(campaignId, created.id);
-      res.status(201).json({ publication: dto });
+    if (!req.user?.id) {
+      res.status(401).json({ error: 'Authentication required.' });
       return;
-    } catch (error) {
-      if (error instanceof JournalReleaseError) {
-        const status = error.code === 'NOT_FOUND' ? 404 : error.code === 'CONTENT_NOT_READY' ? 422 : 409;
-        res.status(status).json({ error: error.message, code: error.code });
-        return;
-      }
-      throw error;
     }
+    const contentReady =
+      computeContentReadiness({ title, contentMarkdown, contentBlocks }) === 'ready';
+    if (contentReady) {
+      try {
+        await releasePublicationManually({
+          campaignId,
+          publicationId: created.id,
+          userId: req.user.id,
+          triggerKind: 'manual',
+        });
+      } catch (error) {
+        if (error instanceof JournalReleaseError) {
+          const status =
+            error.code === 'NOT_FOUND' ? 404 : error.code === 'CONTENT_NOT_READY' ? 422 : 409;
+          res.status(status).json({ error: error.message, code: error.code });
+          return;
+        }
+        throw error;
+      }
+    }
+    const dto = await loadPublicationDTO(campaignId, created.id);
+    res.status(201).json({ publication: dto });
+    return;
   }
 
   const dto = await loadPublicationDTO(campaignId, created.id);
@@ -494,6 +528,10 @@ export async function updateJournalPublication(
   const data: Prisma.JournalPublicationUpdateInput = {};
 
   if (typeof body.title === 'string') data.title = body.title;
+  if ('summary' in body) {
+    const nextSummary = parseSummaryInput(body.summary);
+    if (nextSummary !== undefined) data.summary = nextSummary;
+  }
   const typeCandidate = strParam(body.type);
   if (isPublicationType(typeCandidate)) data.type = typeCandidate;
   if ('linkedPageId' in body) data.linkedPageId = strParam(body.linkedPageId) ?? null;
@@ -509,12 +547,9 @@ export async function updateJournalPublication(
   if ('seriesId' in body) {
     const nextSeriesId = strParam(body.seriesId) ?? null;
     if (nextSeriesId) {
-      const series = await prisma.journalSeries.findFirst({
-        where: { id: nextSeriesId, campaignId },
-        select: { id: true },
-      });
-      if (!series) {
-        res.status(400).json({ error: 'Series not found in this campaign.' });
+      const seriesCheck = await assertSeriesAssignable(req, campaignId, nextSeriesId);
+      if (!seriesCheck.ok) {
+        res.status(400).json({ error: seriesCheck.message });
         return;
       }
     }

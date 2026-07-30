@@ -88,6 +88,7 @@ model User {
   assetsUploaded            Asset[]    @relation("AssetUploadedBy")
   journalPublicationsCreated  JournalPublication[] @relation("JournalPublicationCreatedBy")
   journalPublicationsReleased JournalPublication[] @relation("JournalPublicationReleasedBy")
+  journalSeriesCreated        JournalSeries[]      @relation("JournalSeriesCreatedBy")
 
   lastLogin DateTime?
   createdAt DateTime @default(now())
@@ -808,8 +809,10 @@ model JournalSeries {
   nextIssueNumber         Int     @default(1)
   /// live | buffered | planned (MVP implements live buffer-of-1)
   seriesMode              String  @default("live")
+  createdByUserId         String?
 
   campaign     Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdBy    User?                @relation("JournalSeriesCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   publications JournalPublication[]
 
   createdAt DateTime @default(now())
@@ -824,6 +827,8 @@ model JournalPublication {
   id               String    @id @default(cuid())
   campaignId       String
   title            String    @default("")
+  /// Optional short description for lists and detail (not release-rule copy).
+  summary          String?
   /// JournalPublicationType literal
   type             String    @default("notice")
   /// draft | scheduled | released | archived

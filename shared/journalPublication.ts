@@ -114,6 +114,7 @@ export interface JournalPublicationDTO {
   id: string;
   campaignId: string;
   title: string;
+  summary: string | null;
   type: JournalPublicationType;
   status: JournalPublicationStatus;
   seriesId: string | null;

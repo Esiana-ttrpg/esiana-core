@@ -90,6 +90,7 @@ export async function fetchJournalPublication(
 export interface CreateJournalPublicationInput {
   title?: string;
   type?: JournalPublicationType;
+  summary?: string | null;
   seriesId?: string | null;
   linkedPageId?: string | null;
   sourceKind?: JournalSourceKind;
@@ -114,6 +115,7 @@ export async function createJournalPublication(
 export interface UpdateJournalPublicationInput {
   title?: string;
   type?: JournalPublicationType;
+  summary?: string | null;
   linkedPageId?: string | null;
   contentMarkdown?: string | null;
   contentBlocks?: unknown[] | null;

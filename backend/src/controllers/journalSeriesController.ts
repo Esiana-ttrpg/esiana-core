@@ -8,6 +8,8 @@ import {
   JournalSeriesError,
 } from '../lib/journalSeriesService.js';
 import { buildSeriesDTOs } from '../lib/journalPresentation.js';
+import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
+import { can as policyCan } from '../../../shared/campaignPolicy/policy.js';
 import {
   DEFAULT_JOURNAL_PUBLICATION_TYPE,
   JOURNAL_PUBLICATION_TYPES,
@@ -40,7 +42,13 @@ export async function listJournalSeries(
   res: Response,
 ): Promise<void> {
   const campaignId = req.campaign!.campaignId;
-  const series = await buildSeriesDTOs(campaignId);
+  const canPlan = policyCan(req.campaign!.actor, CampaignCapabilities.JOURNAL_PLANNER_ACCESS);
+  const userId = req.user?.id;
+  const series = canPlan
+    ? await buildSeriesDTOs(campaignId)
+    : userId
+      ? await buildSeriesDTOs(campaignId, { createdByUserId: userId })
+      : [];
   res.json({ series });
 }
 
@@ -50,6 +58,7 @@ export async function createJournalSeries(
 ): Promise<void> {
   const campaignId = req.campaign!.campaignId;
   const body = (req.body ?? {}) as Record<string, unknown>;
+  const canPlan = policyCan(req.campaign!.actor, CampaignCapabilities.JOURNAL_PLANNER_ACCESS);
 
   const name = strParam(body.name);
   if (!name) {
@@ -62,7 +71,7 @@ export async function createJournalSeries(
     : DEFAULT_JOURNAL_PUBLICATION_TYPE;
   const modeCandidate = strParam(body.seriesMode);
   const seriesMode = isSeriesMode(modeCandidate) ? modeCandidate : 'live';
-  const rule = asReleaseNode(body.nextIssueRule);
+  const rule = canPlan ? asReleaseNode(body.nextIssueRule) : null;
 
   const created = await prisma.journalSeries.create({
     data: {
@@ -70,10 +79,11 @@ export async function createJournalSeries(
       name,
       description: strParam(body.description) ?? null,
       defaultType,
-      linkedPageId: strParam(body.linkedPageId) ?? null,
-      templateWorkshopDraftId: strParam(body.templateWorkshopDraftId) ?? null,
-      namingScheme: strParam(body.namingScheme) ?? null,
-      seriesMode,
+      linkedPageId: canPlan ? strParam(body.linkedPageId) ?? null : null,
+      templateWorkshopDraftId: canPlan ? strParam(body.templateWorkshopDraftId) ?? null : null,
+      namingScheme: canPlan ? strParam(body.namingScheme) ?? null : null,
+      seriesMode: canPlan ? seriesMode : 'live',
+      createdByUserId: req.user?.id ?? null,
       ...(rule ? { nextIssueRule: rule as unknown as Prisma.InputJsonValue } : {}),
     },
     select: { id: true },

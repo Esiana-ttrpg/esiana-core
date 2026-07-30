@@ -660,6 +660,7 @@ export function JournalPlannerTab({ campaignHandle }: JournalPlannerTabProps) {
       <CreatePublicationModal
         open={isCreateOpen}
         campaignHandle={campaignHandle}
+        variant="planner"
         onClose={() => setIsCreateOpen(false)}
         onCreated={(pub) => {
           void loadPlanner();
