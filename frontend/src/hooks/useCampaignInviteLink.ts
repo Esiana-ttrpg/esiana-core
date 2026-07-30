@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { sendCampaignInviteEmail as sendCampaignInviteEmailApi } from '@/lib/authEmail';
+import { fetchCampaignInviteInfo } from '@/lib/campaigns';
 
 function appBaseUrl(): string {
   return import.meta.env.VITE_APP_BASE_URL?.trim() || window.location.origin;
@@ -14,7 +14,6 @@ export function useCampaignInviteLink(
   campaignHandle: string,
   options: UseCampaignInviteLinkOptions = {},
 ) {
-  const { token } = useAuth();
   const enabled = options.enabled !== false && Boolean(campaignHandle);
   const [inviteUrl, setInviteUrl] = useState('');
   const [inviteToken, setInviteToken] = useState('');
@@ -40,19 +39,7 @@ export function useCampaignInviteLink(
 
     void (async () => {
       try {
-        const response = await fetch(`/api/campaigns/${campaignHandle}/invite`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-        if (!response.ok) {
-          const data = (await response.json().catch(() => ({}))) as { error?: string };
-          throw new Error(data.error || `Failed to load invite (HTTP ${response.status})`);
-        }
-        const data = (await response.json()) as {
-          handle?: string;
-          slug?: string;
-          inviteToken: string;
-          emailAvailable?: boolean;
-        };
+        const data = await fetchCampaignInviteInfo(campaignHandle);
         if (cancelled) return;
         const resolvedSlug = data.handle || data.slug || campaignHandle;
         const nextInviteUrl = `${appBaseUrl().replace(/\/+$/, '')}/campaigns/${resolvedSlug}?invite=${data.inviteToken}`;
@@ -74,7 +61,7 @@ export function useCampaignInviteLink(
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle, enabled, reloadKey, token]);
+  }, [campaignHandle, enabled, reloadKey]);
 
   const copyInviteUrl = useCallback(async () => {
     if (!inviteUrl) return false;

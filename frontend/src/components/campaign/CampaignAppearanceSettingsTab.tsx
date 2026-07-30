@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppearanceBuilder } from '@/components/appearance/AppearanceBuilder';
 import { useBranding } from '@/contexts/BrandingContext';
+import { ApiError } from '@/lib/api';
+import { updateCampaignSettings } from '@/lib/campaigns';
 import {
   DEFAULT_THEME_PROFILE,
   isAppearanceProfileDefined,
@@ -13,7 +15,6 @@ import {
 
 interface CampaignAppearanceSettingsTabProps {
   campaignHandle: string;
-  token: string | null;
   initialAppearanceProfile: ThemeProfile | null | undefined;
   initialThemePreset: string | undefined;
   onSaved?: () => void | Promise<void>;
@@ -21,7 +22,6 @@ interface CampaignAppearanceSettingsTabProps {
 
 export function CampaignAppearanceSettingsTab({
   campaignHandle,
-  token,
   initialAppearanceProfile,
   initialThemePreset,
   onSaved,
@@ -62,31 +62,20 @@ export function CampaignAppearanceSettingsTab({
     try {
       const normalized = normalizeThemeProfile(themeProfile);
       const legacy = themeProfileToLegacyBranding(normalized);
-      const response = await fetch(`/api/campaigns/${campaignHandle}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          appearanceProfile: serializeAppearanceProfile(normalized),
-          themePreset: legacy.globalThemePreset,
-        }),
+      await updateCampaignSettings(campaignHandle, {
+        appearanceProfile: serializeAppearanceProfile(normalized),
+        themePreset: legacy.globalThemePreset,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || 'Failed to save campaign appearance');
-        return;
-      }
 
       clearPreviewOverlay();
       setCampaignAppearance(normalized);
       await onSaved?.();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch {
-      setError('Failed to save campaign appearance');
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : 'Failed to save campaign appearance',
+      );
     } finally {
       setSaving(false);
     }

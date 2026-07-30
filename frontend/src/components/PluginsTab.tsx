@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { useWiki } from '@/contexts/WikiContext';
+import { apiFetch } from '@/lib/api';
 import { X } from 'lucide-react';
 
 interface Plugin {
@@ -16,7 +16,6 @@ export function PluginsTab() {
   const { campaignHandle } = useParams<{ campaignHandle: string }>();
   const { campaign } = useWiki();
   const campaignKey = campaign?.id ?? campaignHandle;
-  const { token } = useAuth();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [newPluginUrl, setNewPluginUrl] = useState('');
   const [error, setError] = useState('');
@@ -24,21 +23,17 @@ export function PluginsTab() {
 
   useEffect(() => {
     const fetchPlugins = async () => {
-      if (!campaignKey || !token) return;
+      if (!campaignKey) return;
       try {
-        const response = await fetch(`/api/campaigns/${campaignKey}/plugins`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!response.ok) throw new Error('Failed to fetch plugins');
-        const data = await response.json();
+        const data = await apiFetch<Plugin[]>(`/campaigns/${campaignKey}/plugins`);
         setPlugins(data);
       } catch (err) {
         console.error('Error fetching plugins:', err);
         setError('Failed to load plugins');
       }
     };
-    fetchPlugins();
-  }, [campaignKey, token]);
+    void fetchPlugins();
+  }, [campaignKey]);
 
   const handleAddPlugin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,21 +44,21 @@ export function PluginsTab() {
     }
     setLoading(true);
     try {
-      const response = await fetch(`/api/campaigns/${campaignKey}/plugins`, {
+      await apiFetch(`/campaigns/${campaignKey}/plugins`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ githubUrl: newPluginUrl.trim() })
+        body: JSON.stringify({ githubUrl: newPluginUrl.trim() }),
       });
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || 'Failed to install plugin');
-      } else {
-        setPlugins([...plugins, { id: Date.now().toString(), name: 'New Plugin', version: '1.0.0', githubUrl: newPluginUrl, isEnabled: true }]);
-        setNewPluginUrl('');
-      }
+      setPlugins([
+        ...plugins,
+        {
+          id: Date.now().toString(),
+          name: 'New Plugin',
+          version: '1.0.0',
+          githubUrl: newPluginUrl,
+          isEnabled: true,
+        },
+      ]);
+      setNewPluginUrl('');
     } catch (err) {
       console.error('Error adding plugin:', err);
       setError('Failed to install plugin');
