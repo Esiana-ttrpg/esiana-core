@@ -33,7 +33,7 @@ interface AncestryHeroSurfaceProps {
 
 function KindChip({ kind }: { kind: string }) {
   return (
-    <span className="rounded-full border border-violet-500/40 bg-violet-500/10 px-2.5 py-0.5 text-xs font-semibold text-violet-700 dark:text-violet-300">
+    <span className="rounded-full border border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] px-2.5 py-0.5 text-xs font-semibold text-[color:var(--color-status-legend-fg)]">
       {kind}
     </span>
   );
@@ -93,7 +93,7 @@ export function AncestryHeroSurface({
   const showPortrait = Boolean(identityProjection?.portraitUrl);
 
   return (
-    <section className="relative mb-4 overflow-hidden rounded-xl border border-border/50 bg-gradient-to-br from-violet-500/5 via-surface/40 to-surface/20">
+    <section className="relative mb-4 overflow-hidden rounded-md border border-border/50 bg-depth-2/40 region-depth-2">
       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-end sm:p-6">
         <div className="shrink-0">
           {showPortrait ? (

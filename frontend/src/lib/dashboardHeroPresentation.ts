@@ -141,7 +141,7 @@ export function buildHeroArtOverlayStyle(hero: DashboardHeroConfig): CSSProperti
   const mid = Math.round(strength * 0.75 * 100) / 100;
   const bottom = Math.min(0.98, strength + 0.2);
   return {
-    background: `linear-gradient(to bottom, rgba(2,6,23,${top}), rgba(2,6,23,${mid}), rgba(2,6,23,${bottom}))`,
+    background: `linear-gradient(to bottom, rgb(var(--color-depth-3-rgb) / ${top}), rgb(var(--color-depth-3-rgb) / ${mid}), rgb(var(--color-depth-3-rgb) / ${bottom}))`,
   };
 }
 
@@ -157,6 +157,6 @@ export function buildHeroPreviewFrameStyle(hero: DashboardHeroConfig): CSSProper
     minHeight: minHeights[mode],
     borderRadius: '0.75rem',
     overflow: 'hidden',
-    ...(buildHeroCoverStyle(hero) ?? { backgroundColor: 'var(--elevated, #1e293b)' }),
+    ...(buildHeroCoverStyle(hero) ?? { backgroundColor: 'var(--elevated)' }),
   };
 }

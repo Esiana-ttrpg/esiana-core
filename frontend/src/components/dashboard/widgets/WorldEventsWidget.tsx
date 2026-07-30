@@ -65,7 +65,7 @@ export function WorldEventsWidget({
   return (
     <DashboardWidgetShell
       title={translateDashboardWidgetLabel('worldEvents', 'World Events')}
-      icon={<Globe2 className="size-4 text-amber-400" />}
+      icon={<Globe2 className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

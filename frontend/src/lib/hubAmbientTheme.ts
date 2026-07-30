@@ -11,36 +11,16 @@ import {
 
 export type HubMomentumLabel = HubMomentum['label'];
 
-export interface HubMomentumTone {
-  color: string;
-  bg: string;
-  border: string;
-}
-
-/** Neutral muted tone aligned with default dark `--color-text-muted`. */
-const HUB_MOMENTUM_FADING_COLOR = '#8a8278';
-
-export const HUB_MOMENTUM_TONES: Record<HubMomentumLabel, HubMomentumTone> = {
-  strong: {
-    color: '#d4a853',
-    bg: 'rgba(212, 168, 83, 0.12)',
-    border: 'rgba(212, 168, 83, 0.35)',
-  },
-  steady: {
-    color: '#c9926a',
-    bg: 'rgba(201, 146, 106, 0.12)',
-    border: 'rgba(201, 146, 106, 0.3)',
-  },
-  fading: {
-    color: HUB_MOMENTUM_FADING_COLOR,
-    bg: 'rgba(138, 130, 120, 0.12)',
-    border: 'rgba(138, 130, 120, 0.3)',
-  },
-  stalled: {
-    color: '#8a9299',
-    bg: 'rgba(138, 146, 153, 0.1)',
-    border: 'rgba(138, 146, 153, 0.25)',
-  },
+/** Semantic status tokens for hub momentum chips (see hub-ambient.css). */
+export const HUB_MOMENTUM_TONE_CLASS: Record<HubMomentumLabel, string> = {
+  strong:
+    'hub-momentum--strong border-[color:var(--color-status-warning-border)] bg-[color:var(--color-status-warning-bg)] text-[color:var(--color-status-warning-fg)]',
+  steady:
+    'hub-momentum--steady border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] text-[color:var(--color-status-legend-fg)]',
+  fading:
+    'hub-momentum--fading border-[color:var(--color-status-muted-border)] bg-[color:var(--color-status-muted-bg)] text-[color:var(--color-status-muted-fg)]',
+  stalled:
+    'hub-momentum--stalled border-[color:var(--color-status-neutral-border)] bg-[color:var(--color-status-neutral-bg)] text-[color:var(--color-status-neutral-fg)]',
 };
 
 export type HubSectionVariant = 'resume' | 'library' | 'attention' | 'recent' | 'page';

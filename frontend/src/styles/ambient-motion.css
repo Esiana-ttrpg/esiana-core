@@ -59,7 +59,7 @@
   box-shadow:
     inset 0 0 calc(48px * var(--atmosphere-focal-glow-scale, 1))
       rgb(var(--color-atmosphere-glow-rgb, 100 90 80) / var(--atmosphere-glow-alpha-focal, 0.12)),
-    0 0 calc(32px * var(--atmosphere-focal-glow-scale, 1))
+    0 0 calc(24px * var(--atmosphere-focal-glow-scale, 1))
       rgb(var(--color-atmosphere-glow-rgb, 100 90 80) / var(--atmosphere-glow-alpha-dramatic, 0.19));
 }
 
@@ -80,8 +80,7 @@
 .surface-float:hover {
   border-color: rgb(var(--color-edge-light-rgb, 214 197 168) / calc(var(--atmosphere-edge-light-alpha, 0.06) * var(--material-edge-sharpness-card, 0.09)));
   box-shadow:
-    0 8px 28px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / 0.38),
-    0 0 20px rgb(var(--color-atmosphere-glow-rgb, 100 90 80) / var(--atmosphere-glow-alpha-operational, 0.07)),
+    0 6px 20px rgb(var(--color-atmosphere-material-shadow-rgb, 9 11 17) / 0.32),
     inset 0 1px 0 rgb(255 255 255 / calc(var(--material-specular-float, 0.03) * 1.5));
 }
 

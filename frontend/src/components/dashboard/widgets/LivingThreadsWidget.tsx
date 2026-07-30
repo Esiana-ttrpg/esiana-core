@@ -39,10 +39,7 @@ function ThreadRow({
     variant === 'theory'
       ? THREAD_KIND_TONE_CLASS.theory
       : THREAD_KIND_TONE_CLASS[thread.threadKind];
-  const linkClass =
-    variant === 'theory'
-      ? 'hover:border-cyan-500/40 hover:text-cyan-100'
-      : 'hover:border-amber-500/40 hover:text-amber-100';
+  const linkClass = 'hover:border-primary/40 hover:text-primary';
 
   return (
     <li>
@@ -97,7 +94,7 @@ export function LivingThreadsWidget({
   return (
     <DashboardWidgetShell
       title="Living Threads"
-      icon={<GitBranch className="size-4 text-amber-400" />}
+      icon={<GitBranch className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >
@@ -128,7 +125,7 @@ export function LivingThreadsWidget({
 
           {hasTheories ? (
             <section className={THREAD_HUB_ZONE_CLASS.theories}>
-              <h4 className={`mb-2 flex items-center gap-1.5 ${META_SECTION_LABEL_CLASS} text-cyan-200/80`}>
+              <h4 className={`mb-2 flex items-center gap-1.5 ${META_SECTION_LABEL_CLASS} text-primary`}>
                 <Lightbulb className="size-3" aria-hidden />
                 Player theories
               </h4>

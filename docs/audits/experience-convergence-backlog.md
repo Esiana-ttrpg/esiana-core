@@ -12,7 +12,7 @@ Priority: **P0** = shell contract + gravitational center on core routes; **P1** 
 
 Related: [experience-doctrine.md](../experience-doctrine.md), [deprecated-ui-patterns.md](../deprecated-ui-patterns.md).
 
-
+**Visual refinement pass (2026-07-30):** Shipped — Inter/Atkinson UI typography, theme leakage docs + FOUC sync, semantic status tokens, atmosphere/interaction CSS, indigo/violet → semantic colors, operational admin/settings polish, Campaign Home continuity always focal, Character/Org overview stream layouts, Chronology header tempo. Remaining: Location shell, since-last-visit lines on entity overview, Creature/Ancestry overview grids, full customize-mode gravity.
 
 ---
 
@@ -284,7 +284,7 @@ Plan: [header-account-nav.md](../plans/header-account-nav.md).
 
 | Hub ambient gradient intensity | Global hub language |
 
-| Violet hardcoding in badges | Palette propagation |
+| Violet hardcoding in badges | Addressed 2026-07-30 — hub momentum + campaign coverless gradients use theme/status tokens |
 
 
 

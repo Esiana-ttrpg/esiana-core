@@ -2,7 +2,7 @@
 
 Baseline audit of seven canonical routes against [experience-doctrine.md](../experience-doctrine.md). Scores **1–5** per dimension; **3** = acceptable, **4+** = converged, **≤2** = gravity failure requiring backlog entry.
 
-**Audit method:** Code and component structure review (2026-06-22). Re-run quarterly with screenshots and maintainer squint test.
+**Audit method:** Code and component structure review (2026-06-22). Visual refinement pass (2026-07-30): typography (Inter/Atkinson), theme leakage guardrails, operational surfaces, Campaign Home continuity gravity, entity overview stream layout. Re-run quarterly with screenshots and maintainer squint test.
 
 **Lead question:** *Where does attention settle?*
 
@@ -12,14 +12,14 @@ Baseline audit of seven canonical routes against [experience-doctrine.md](../exp
 
 | Route | Gravity (avg) | Design language | P0 issue |
 |-------|---------------|-----------------|----------|
-| Campaign Home (briefing) | 3.4 | Converged briefing | Continuity competes with stacked cards |
-| Campaign Home (customize) | 1.8 | Legacy dashboard | No gravitational center |
-| Character entity | 2.2 | Transitional | Overview tab = equal-weight card grid |
-| Organization entity | 2.0 | Transitional | Overview vs hero compete; pressures not focal |
+| Campaign Home (briefing) | 3.8 | Converged briefing | Continuity stream now always focal above widgets |
+| Campaign Home (customize) | 2.2 | Operational mode | Widget shells use operational depth; grid still peer-based |
+| Character entity | 3.6 | Transitional | Overview = prose lede + recessed links (no card grid) |
+| Organization entity | 3.5 | Transitional | Pressures stream first; profile recessed |
 | Location entity | 2.5 | Legacy workspace | No dedicated shell; generic codex layout |
 | Adventure (storyboard) | 2.8 | Tool surface | Canvas OK; chrome dense |
 | Journal / session notes | 3.2 | Mixed | Index operational; editor converged |
-| Timeline / chronology | 2.6 | Operator tool | View switcher competes with content |
+| Timeline / chronology | 3.0 | Operator tool | Header chrome reduced; canvas still primary |
 
 **Cross-route finding:** Character, Organization, and Campaign Home (customize) share **absent gravity** — not card count. Briefing mode is closest to doctrine but continuity is not yet the single anchor.
 

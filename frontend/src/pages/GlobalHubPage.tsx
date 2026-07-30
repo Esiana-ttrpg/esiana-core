@@ -288,7 +288,7 @@ export function GlobalHubPage() {
 
         {error && (
 
-          <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
 
             {error}
 

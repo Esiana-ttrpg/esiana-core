@@ -136,7 +136,7 @@ export function MapVisibilityBar({
               {onAddTravelRoutesLayer ? (
                 <button
                   type="button"
-                  className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-2 py-0.5 text-xs text-indigo-100 hover:bg-indigo-500/20"
+                  className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs text-primary hover:bg-primary-hover/20"
                   onClick={() => void onAddTravelRoutesLayer()}
                 >
                   + Travel routes

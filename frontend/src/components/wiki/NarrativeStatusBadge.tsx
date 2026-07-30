@@ -9,11 +9,16 @@ interface NarrativeStatusBadgeProps {
 }
 
 const TONE_CLASS: Record<PageNarrativeStatusProjection['tone'], string> = {
-  neutral: 'border-border bg-muted/30 text-muted',
-  muted: 'border-zinc-500/40 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300',
-  warning: 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200',
-  legend: 'border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-200',
-  secret: 'border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-200',
+  neutral:
+    'border-[color:var(--color-status-neutral-border)] bg-[color:var(--color-status-neutral-bg)] text-[color:var(--color-status-neutral-fg)]',
+  muted:
+    'border-[color:var(--color-status-muted-border)] bg-[color:var(--color-status-muted-bg)] text-[color:var(--color-status-muted-fg)]',
+  warning:
+    'border-[color:var(--color-status-warning-border)] bg-[color:var(--color-status-warning-bg)] text-[color:var(--color-status-warning-fg)]',
+  legend:
+    'border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] text-[color:var(--color-status-legend-fg)]',
+  secret:
+    'border-[color:var(--color-status-secret-border)] bg-[color:var(--color-status-secret-bg)] text-[color:var(--color-status-secret-fg)]',
 };
 
 export function narrativeStatusLinkClassName(

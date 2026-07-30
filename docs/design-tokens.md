@@ -8,9 +8,24 @@ Related: [density-doctrine.md](./density-doctrine.md), [surface-hierarchy.md](./
 
 | Token | Default | Purpose |
 |-------|---------|---------|
-| `--font-ui` | system UI stack | Chrome, controls |
-| `--font-display` | Source Serif 4 | Page titles, hero greetings |
-| `--font-editorial` | Source Serif 4 | Prose surfaces |
+| `--font-ui` | Inter + system UI stack | Chrome, controls, `.type-meta` |
+| `--font-ui-atkinson` | Atkinson Hyperlegible + fallbacks | When `html[data-ui-font="atkinson"]` |
+| `--font-display` | Source Serif 4 | Page titles, hero greetings (`.type-display`) |
+| `--font-editorial` | Source Serif 4 | Prose surfaces (`.type-prose`) |
+
+### Typographic tiers
+
+| Tier | Class / token | Font | Use |
+|------|---------------|------|-----|
+| Display | `.type-display` | `--font-display` | One display anchor per route |
+| Prose | `.type-prose` | `--font-editorial` | Narrative body, lede excerpts |
+| UI | `--font-ui` on chrome | Inter (or Atkinson preference) | Controls, nav, tables |
+| Meta | `.type-meta` | `--font-ui` | Timestamps, field labels, recessed facts |
+
+User preference `esiana-ui-font` in localStorage toggles Atkinson for UI/meta only — not a theme layer.
+
+| Token | Default | Purpose |
+|-------|---------|---------|
 | `--text-measure-ch` | `68` | Reading Standard measure |
 | `--text-measure-wide-ch` | `80` | Reading Wide measure |
 | `--text-measure-max-ch` | `90` | Hard cap on ultrawide |
@@ -20,6 +35,18 @@ Related: [density-doctrine.md](./density-doctrine.md), [surface-hierarchy.md](./
 | `--motion-ease` | `ease-out` | Calm easing |
 | `--breakpoint-ultrawide` | `1920px` | Ultrawide rules apply |
 | `--focal-luminance-mode` | `narrative-dark` | Future immersive reading toggle hook |
+
+## Interaction language
+
+Shared behavior for touched surfaces (see `ambient-motion.css`, `:focus-visible` in `index.css`):
+
+| State | Intent |
+|-------|--------|
+| Focus | High-contrast outline via `--focus-ring-*` — not atmosphere glow |
+| Hover | Border/opacity/depth lift — no accent halos on float surfaces |
+| Active | Same family as hover; no bounce/scale decoration |
+| Loading | Calm pulse on skeleton rows only |
+| Motion | `--motion-duration` / `--motion-ease`; respect `prefers-reduced-motion` |
 
 ## Surface role tokens
 

@@ -18,7 +18,7 @@ export function CampaignPulseWidget({
   return (
     <DashboardWidgetShell
       title="Campaign Pulse"
-      icon={<Sparkles className="size-4 text-amber-300" />}
+      icon={<Sparkles className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >
