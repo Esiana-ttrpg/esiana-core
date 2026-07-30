@@ -37,17 +37,11 @@ See [translating.md](./translating.md) for contributor workflow and file layout.
 
 ## Terminology
 
-Product terms (**Campaign Home**, **Game Master**, **Writer**, **Player**) are defined in [terminology.md](./terminology.md). Translators must preserve these distinctions—never substitute “Dashboard” for Campaign Home in UI copy.
+Product terms (**Campaign Home**, **Game Master**, **Writer**, **Player**) are defined in [experience-doctrine.md](./experience-doctrine.md#user-facing-copy). Translators must preserve these distinctions—never substitute “Dashboard” for Campaign Home in UI copy.
 
-## Phased rollout
+## Coverage
 
-1. **Foundation (Phase 0):** i18n tree, `uiLocale` preference, Account Settings + header slice
-2. **Shell (Phase 1):** sidebar, campaign settings chrome, notifications labels, global hub
-3. **Workspaces (Phase 2):** incremental domain folders under `campaign/`
-4. **Notifications (Phase 3 — shipped):** structured `metadata.renderVersion` + template vars; localized render at read time in inbox/bell; email uses recipient `uiLocale`
-5. **Community locales (Phase 4 — shipped):** in-repo `fr/` starter slice, `SHIPPED_UI_LOCALES`, instance default via `ESIANA_DEFAULT_LOCALE`, locale completion report script
-
-Full UI coverage is incremental; English remains complete throughout.
+English is complete. Additional shipped locales and resolution order are in [`shared/uiLocale.ts`](../shared/uiLocale.ts). Domain folders under `frontend/src/i18n/` expand incrementally; prefer translating shell and high-traffic campaign surfaces first.
 
 ## Instance default locale
 
@@ -62,4 +56,4 @@ Shipped locales are listed in [`shared/uiLocale.ts`](../shared/uiLocale.ts). The
 
 ## Deferred translation infrastructure
 
-Hosted translation platforms (Weblate, Crowdin), automated sync workflows, and maintainer completion dashboards are **intentionally deferred** until there are active non-English contributors. The in-repo JSON tree and `pnpm --filter frontend report:i18n` completion summary are sufficient for early community PRs. See [deferred-backlog.md](./deferred-backlog.md).
+Hosted translation platforms (Weblate, Crowdin), automated sync workflows, and maintainer completion dashboards are **intentionally deferred** until there are active non-English contributors. The in-repo JSON tree and `pnpm --filter frontend report:i18n` completion summary are sufficient for early community PRs.

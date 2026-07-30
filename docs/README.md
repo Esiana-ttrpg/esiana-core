@@ -2,6 +2,8 @@
 
 Engineering records and internal platform specs for **maintainers**. User-facing, API, plugin author, and architecture explainers live in the [**docs wiki**](../../docs/README.md).
 
+Agent doctrine (current decisions only): [AGENTS.md](../AGENTS.md), [engineeringprinciples.md](../engineeringprinciples.md), [experience-doctrine.md](./experience-doctrine.md), [density-doctrine.md](./density-doctrine.md).
+
 ---
 
 ## Split
@@ -14,22 +16,22 @@ Engineering records and internal platform specs for **maintainers**. User-facing
 | Platform learners | [`docs/architecture/`](../../docs/architecture/) |
 | Core maintainers | **This tree** |
 
+Historical Cursor plans live in the docs wiki [`plans/`](../../docs/plans/) folder — not an agent load path for normal coding.
+
 ---
 
 ## This repo
 
 | Directory | Contents |
 |-----------|----------|
-| [`audits/`](./audits/) | Export, migration, sign-off audits |
+| [`audits/`](./audits/) | Current operational audits (portability, migration, content packs) |
 | [`security/`](./security/) | Threat models, tenant isolation reviews |
 | [`migrations/`](./migrations/) | Migration history |
-| [`architecture-internal/`](./architecture-internal/) | Deep platform specs (entity graph, projection semantics, etc.) |
+| [`architecture-internal/`](./architecture-internal/) | Deep platform specs (load only for the named subsystem) |
 | [`plugins/`](./plugins/) | Capability matrix appendix, interceptors, ecosystem engineering doc |
 | [`deployment/`](./deployment/) | Object storage, operator internals |
-| [`release/`](./release/) | RC checklists |
-| [`plans/`](./plans/) | Internal design evolution |
-| [`deferred-backlog.md`](./deferred-backlog.md) | Deferred scope ledger |
-| [`known-gaps-1.0.md`](./known-gaps-1.0.md) | Pre-1.0 documentation gap ledger |
+| [`release/`](./release/) | Release checklists |
+| [`archive/`](./archive/) | Explicit historical material — not default reading |
 
 ---
 

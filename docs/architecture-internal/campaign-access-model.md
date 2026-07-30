@@ -258,20 +258,15 @@ Four separated concerns: campaign administration, authority (hidden capabilities
 
 Prerequisite: **Campaign access — Phase 3** (discoverability enum, read/write separation) — shipped.
 
-**Shipped (2026-06):** [`shared/visibilityTier.ts`](../../shared/visibilityTier.ts) + `VisibilityTierChip`; maps hub (card/table/hierarchy), chronology feed + tech-tree timeline; convergence feed badges unified; legacy `VisibilityChip` removed.
+## Campaign access follow-ons
 
-**Remainder** in [todo.md](../../todo.md):
-
-- Public campaign presentation controls (future) — per-campaign `publicCapabilities` beyond three-tier discoverability
-
-## Campaign access follow-ons (deferred)
-
-Billing, per-resource ACL, and custom roles are **not** part of the visibility presentation track — see [deferred-backlog.md](../deferred-backlog.md) (Campaign access).
+Billing, per-resource ACL, and custom roles are **not** part of the visibility presentation track.
 
 Still open elsewhere in [todo.md](../../todo.md):
 
 - **Campaign access — UI polish** — “Campaign owner” vs “Gamemaster” settings surfaces; optional `campaignAdminUserId` rename
 - Gamemaster `campaign.visibility.edit` for collaborative publication (if needed)
+- Public campaign presentation controls (future) — per-campaign `publicCapabilities` beyond three-tier discoverability
 
 ---
 

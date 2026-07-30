@@ -185,7 +185,7 @@ All checks must pass before merge.
 
 Campaign-scoped routes must include tenant isolation (`campaignId` in reads/writes). See [docs/security/tenant-isolation-audit.md](./docs/security/tenant-isolation-audit.md).
 
-User-facing release notes belong on [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases). Deferred scope: [docs/deferred-backlog.md](./docs/deferred-backlog.md).
+User-facing release notes belong on [GitHub Releases](https://github.com/Esiana-ttrpg/esiana-core/releases). Deferred and open work: [GitHub Issues](https://github.com/Esiana-ttrpg/esiana-core/issues).
 
 Do not commit secrets (`.env`, credentials, local databases).
 

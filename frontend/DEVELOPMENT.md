@@ -15,9 +15,9 @@ Area-specific guidance for `/frontend`. General setup, CI, and branch workflow: 
 
 References:
 
-- [AGENTS.md](../AGENTS.md) — §4 Domain behavior guidance (Frontend)
-- [docs/experience-doctrine.md](../docs/experience-doctrine.md) — gravity test, 15 principles, typographic roles
-- [docs/deprecated-ui-patterns.md](../docs/deprecated-ui-patterns.md)
+- [AGENTS.md](../AGENTS.md) — product identity and engineering invariants
+- [docs/experience-doctrine.md](../docs/experience-doctrine.md) — gravity test, principles, blocklist, PR gate
+- [docs/density-doctrine.md](../docs/density-doctrine.md) — density limits
 
 ---
 
@@ -25,8 +25,10 @@ References:
 
 CSS primitives for layout, density, and editorial rhythm live in `frontend/src/index.css`, `frontend/src/lib/densityConstants.ts`, and `frontend/src/lib/surfaceLayout.ts`.
 
+Theme / surface work only:
+
 - [docs/design-tokens.md](../docs/design-tokens.md) — token catalog
-- [docs/density-doctrine.md](../docs/density-doctrine.md) — density limits
+- [docs/surface-hierarchy.md](../docs/surface-hierarchy.md) — surface role tokens
 
 ---
 
@@ -34,7 +36,6 @@ CSS primitives for layout, density, and editorial rhythm live in `frontend/src/i
 
 Visual roles (canvas, focal, contextual, operational, overlay) define where UI chrome belongs.
 
-- [docs/surface-hierarchy.md](../docs/surface-hierarchy.md)
 - **Codex mode:** Reading (consume, lower chrome) | Writing (edit, orchestration)
 - **Layout:** Standard | Wide (measure + margins only)
 
@@ -49,8 +50,3 @@ Default campaign entry is **codex/wiki**; Campaign Home is the secondary overvie
 - No horizontal scroll traps in wiki editor or session forms
 - Collapsible campaign chrome below `lg`; admin nav drawer below `md`
 - Tables may use `overflow-x-auto` wrappers; body must not scroll horizontally
-
-References:
-
-- [docs/viewport-audit.md](../docs/viewport-audit.md)
-- [docs/design-philosophy-checklist.md](../docs/design-philosophy-checklist.md)

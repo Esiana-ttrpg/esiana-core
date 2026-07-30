@@ -345,4 +345,4 @@ Runtime theme presets derive role tokens via `deriveSurfaceRoleTokens()` in `fro
 
 ## PR check
 
-See [design-philosophy-checklist.md](./design-philosophy-checklist.md) — focal surface, depth usage, accent restraint, and role token questions.
+See [experience-doctrine.md](./experience-doctrine.md#pr-gate) — focal surface, depth usage, accent restraint, and role token questions.

@@ -39,7 +39,6 @@ Use before tagging **`vX.Y.Z`** on `main`. Adapt sections to the release scope (
 ### Data sovereignty (when export/import or schema touched)
 
 - [ ] Export → restore smoke on at least one campaign
-- [ ] Relevant rows in [pre-1.0-export-audit.md](../audits/pre-1.0-export-audit.md) matrix considered
 
 ### Integrator (when plugin platform or OpenAPI touched)
 

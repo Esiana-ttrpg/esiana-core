@@ -682,7 +682,7 @@ Future visibility tiers should have at-a-glance chips in lists/headers because t
 | Draft | Draft / pencil |
 | Future | Temporal / clock icon |
 
-Calm, lore-forward tone — not security-dashboard styling ([design-philosophy.md](design-philosophy.md)).
+Calm, lore-forward tone — not security-dashboard styling ([experience-doctrine.md](../experience-doctrine.md)).
 
 **Visibility is the larger post-ACL UX program.** Ownership mostly affects editors; visibility affects everyone. Visibility appears across Adventure Board, threads, quests, future content, reveals, discovery, and codex — a **universal language** (Party / Staff / Draft / Future / Public chips) is a bigger user-facing change than ownership. Track as Phase C+ or parallel workstream after ACL enforcement ships.
 

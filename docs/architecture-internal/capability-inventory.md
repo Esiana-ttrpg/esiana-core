@@ -13,10 +13,10 @@ Captures **policy** ([`roleGrants.ts`](../../shared/campaignPolicy/roleGrants.ts
 
 | Symbol | Meaning |
 |--------|---------|
-| ✓ | Allowed |
-| ✗ | Denied |
+| âœ“ | Allowed |
+| âœ— | Denied |
 | ? | Conditional (flags, ownership, or campaign override) |
-| ⚠ | Policy and enforcement disagree |
+| âš  | Policy and enforcement disagree |
 
 ---
 
@@ -29,7 +29,7 @@ Captures **policy** ([`roleGrants.ts`](../../shared/campaignPolicy/roleGrants.ts
 | Ownership | Who maintains this page? | Page settings; contextual when edit blocked |
 | Visibility | Who can see this? | **Prominent** (indexes, headers, discovery) |
 
-**Design principle:** Visibility is prominent, ownership is contextual. See [capability-migration-audit.md §3.6](./capability-migration-audit.md).
+**Design principle:** Visibility is prominent, ownership is contextual. See [capability-migration-audit.md Â§3.6](./capability-migration-audit.md).
 
 ---
 
@@ -40,16 +40,16 @@ Captures **policy** ([`roleGrants.ts`](../../shared/campaignPolicy/roleGrants.ts
 | `page.create` | Create wiki pages |
 | `page.edit_owned` | Edit `USER`-owned pages where `ownerUserId === actor` |
 | `page.edit_party` | Edit `PARTY`-owned pages where `actor.partyId === ownerPartyId` |
-| `page.edit_any` | Staff bypass — any page regardless of ownership |
+| `page.edit_any` | Staff bypass â€” any page regardless of ownership |
 
-**Ownership targets:** `STAFF` | `USER` | `PARTY` — chosen at create, not category-driven. `Party` entity (one default per campaign in B0).
+**Ownership targets:** `STAFF` | `USER` | `PARTY` â€” chosen at create, not category-driven. `Party` entity (one default per campaign in B0).
 
 | Role | `page.create` | `page.edit_owned` | `page.edit_party` | `page.edit_any` |
 |------|:-------------:|:-----------------:|:-----------------:|:---------------:|
-| GM | ✓ | ✓ | ✓ | ✓ |
-| Writer | ✓ | ✓ | ✓ | ✓ |
-| Participant | ✓ | ✓ | ✓ | ✗ |
-| Observer | ✗ | ✗ | ✗ | ✗ |
+| GM | âœ“ | âœ“ | âœ“ | âœ“ |
+| Writer | âœ“ | âœ“ | âœ“ | âœ“ |
+| Participant | âœ“ | âœ“ | âœ“ | âœ— |
+| Observer | âœ— | âœ— | âœ— | âœ— |
 
 ---
 
@@ -57,18 +57,18 @@ Captures **policy** ([`roleGrants.ts`](../../shared/campaignPolicy/roleGrants.ts
 
 | Capability | GM | Writer | Participant | Observer | Notes |
 |------------|:--:|:------:|:-----------:|:--------:|-------|
-| `page.create` | ✓ | ✓ | ✓ | ✗ | Replaces open `POST /wiki` membership gate |
-| `page.edit_any` | ✓ | ✓ | ✗ | ✗ | Replaces `canManageNotebooks` for staff paths |
-| `page.edit_owned` | ✓ | ✓ | ✓ | ✗ | USER-owned pages |
-| `page.edit_party` | ✓ | ✓ | ✓ | ✗ | PARTY-owned pages (quest logs, session recaps) |
-| `quest.edit` | ✓ | ✓ | ? | ✗ | Quest metadata; overrideable for party |
-| `thread.edit` | ✓ | ✓ | ? | ✗ | Thread metadata |
-| `chronology.edit` | ✓ | ✓ | ? | ✗ | Contributor flag + `allowPlayerChronologyManagement` |
-| `rumor.moderate` | ✓ | ✓ | ✗ | ✗ | Spread/retract |
-| `rumor.create` | — | — | — | ✗ | **Deferred** — keep GM-authored; no dedicated cap yet |
-| `assets.upload` | ✓ | ✓ | ? | ✗ | Split from `assets.manage`; party via override |
-| `assets.delete_owned` | ✓ | ✓ | ? | ✗ | Requires `Asset.uploadedByUserId` |
-| `maps.edit` | ✓ | ✓ | ✗ | ✗ | Cartography — separate from generic upload |
+| `page.create` | âœ“ | âœ“ | âœ“ | âœ— | Replaces open `POST /wiki` membership gate |
+| `page.edit_any` | âœ“ | âœ“ | âœ— | âœ— | Replaces `canManageNotebooks` for staff paths |
+| `page.edit_owned` | âœ“ | âœ“ | âœ“ | âœ— | USER-owned pages |
+| `page.edit_party` | âœ“ | âœ“ | âœ“ | âœ— | PARTY-owned pages (quest logs, session recaps) |
+| `quest.edit` | âœ“ | âœ“ | ? | âœ— | Quest metadata; overrideable for party |
+| `thread.edit` | âœ“ | âœ“ | ? | âœ— | Thread metadata |
+| `chronology.edit` | âœ“ | âœ“ | ? | âœ— | Contributor flag + `allowPlayerChronologyManagement` |
+| `rumor.moderate` | âœ“ | âœ“ | âœ— | âœ— | Spread/retract |
+| `rumor.create` | â€” | â€” | â€” | âœ— | **Deferred** â€” keep GM-authored; no dedicated cap yet |
+| `assets.upload` | âœ“ | âœ“ | ? | âœ— | Split from `assets.manage`; party via override |
+| `assets.delete_owned` | âœ“ | âœ“ | ? | âœ— | Requires `Asset.uploadedByUserId` |
+| `maps.edit` | âœ“ | âœ“ | âœ— | âœ— | Cartography â€” separate from generic upload |
 
 Participant `?` rows: configurable via `CampaignRoleCapabilityOverride` (Phase D).
 
@@ -80,7 +80,7 @@ Participant `?` rows: configurable via `CampaignRoleCapabilityOverride` (Phase D
 |-------|----------|
 | Party wiki write | **Ownership-based:** `page.create` + `page.edit_owned` / `page.edit_party`; not blanket `wiki.edit` |
 | `chronology.edit` | Expose `chronologyContributor` in membership API; wire frontend `useCampaignPolicy` (Phase C) |
-| `rumor.create` | **No cap** — rumors remain staff-moderated; players use wiki create with PARTY ownership if needed |
+| `rumor.create` | **No cap** â€” rumors remain staff-moderated; players use wiki create with PARTY ownership if needed |
 | `journal.create` | **Absorbed** into `page.create` + default `USER` ownership; layout still staff or owned-page edit |
 
 ---
@@ -107,13 +107,13 @@ flowchart TB
 
 ### Drift hotspots (migration status)
 
-**Phases A–E + Phase 3 closed** (see [todo.md](../../todo.md)).
+**Phases Aâ€“E + Phase 3 closed** (see [todo.md](../../todo.md)).
 
-1. **Observer write leak** — **Resolved** (Phase A)
-2. **`world.edit` shim** — **Removed** (Phase 3 route split)
-3. **Read/write conflation on wiki lists** — **Resolved** (Phase 3: `hasElevatedView` for `wikiPageVisibilityFilter`)
-4. **Frontend `isDMUser`** — **Bridged** (prop rename → UI polish / Campaign access UI polish)
-5. **Visibility chips on all browse surfaces** — **Resolved** (Visibility System Phase 3 — maps hub, chronology feed/timeline; quest/threads/codex shipped in Phase C+)
+1. **Observer write leak** â€” **Resolved** (Phase A)
+2. **`world.edit` shim** â€” **Removed** (Phase 3 route split)
+3. **Read/write conflation on wiki lists** â€” **Resolved** (Phase 3: `hasElevatedView` for `wikiPageVisibilityFilter`)
+4. **Frontend `isDMUser`** â€” **Bridged** (prop rename â†’ UI polish / Campaign access UI polish)
+5. **Visibility chips on all browse surfaces** â€” **Resolved** (Visibility System Phase 3 â€” maps hub, chronology feed/timeline; quest/threads/codex shipped in Phase C+)
 
 ---
 
@@ -123,4 +123,4 @@ flowchart TB
 node --import tsx --test shared/campaignPolicy/policy.test.ts
 ```
 
-Phase 2 (A–E) and Phase 3 are closed in [todo.md](../../todo.md). Follow-on: **Visibility System — Phase 3** (presentation); billing/ACL deferred in [deferred-backlog.md](../deferred-backlog.md).
+Follow-on: visibility presentation; billing/ACL out of this track.
