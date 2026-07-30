@@ -12,12 +12,16 @@ import {
 } from '../lib/journalReleaseService.js';
 import { safeResolveJournalCampaign } from '../lib/journalResolution.js';
 import { resolveLinkedPageRefs, resolveSeriesNames, buildSeriesDTOs } from '../lib/journalPresentation.js';
+import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
+import { can as policyCan } from '../../../shared/campaignPolicy/policy.js';
 import {
   DEFAULT_JOURNAL_PUBLICATION_TYPE,
   JOURNAL_PUBLICATION_TYPES,
   JOURNAL_SOURCE_KINDS,
+  normalizeJournalTags,
   toPerceivedState,
   type JournalLibraryItemDTO,
+  type JournalLibrarySection,
   type JournalLibrarySort,
   type JournalPlannerItemDTO,
   type JournalPublicationDTO,
@@ -67,15 +71,31 @@ const DETAIL_SELECT = {
   lastEvaluatedAt: true,
   createdAt: true,
   updatedAt: true,
+  tags: true,
 } as const;
 
 type DetailRow = Prisma.JournalPublicationGetPayload<{ select: typeof DETAIL_SELECT }>;
+
+function parseTagsInput(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const tags = raw
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+  return tags;
+}
+
+function isLibrarySection(value: string | undefined): value is JournalLibrarySection {
+  return value === 'released' || value === 'upcoming' || value === 'all';
+}
 
 function toPublicationDTO(
   row: DetailRow,
   evaluation: PublicationEvaluation,
   linkedPage: JournalPublicationDTO['linkedPage'],
+  options: { stripBody?: boolean } = {},
 ): JournalPublicationDTO {
+  const stripBody = options.stripBody ?? false;
   return {
     id: row.id,
     campaignId: row.campaignId,
@@ -87,8 +107,8 @@ function toPublicationDTO(
     sourceKind: row.sourceKind as JournalSourceKind,
     workshopDraftId: row.workshopDraftId,
     linkedPage,
-    contentMarkdown: row.contentMarkdown,
-    contentBlocks: row.contentBlocks ?? null,
+    contentMarkdown: stripBody ? null : row.contentMarkdown,
+    contentBlocks: stripBody ? null : row.contentBlocks ?? null,
     releaseRule: evaluation.rule,
     contentReadiness: evaluation.contentReadiness,
     planState: evaluation.planState,
@@ -97,6 +117,7 @@ function toPublicationDTO(
     createdByUserId: row.createdByUserId,
     releasedAt: row.releasedAt ? row.releasedAt.toISOString() : null,
     lastEvaluatedAt: row.lastEvaluatedAt ? row.lastEvaluatedAt.toISOString() : null,
+    tags: normalizeJournalTags(row.tags),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -106,6 +127,7 @@ function toPublicationDTO(
 async function loadPublicationDTO(
   campaignId: string,
   id: string,
+  options: { stripBodyForScheduled?: boolean } = {},
 ): Promise<JournalPublicationDTO | null> {
   const row = (await prisma.journalPublication.findFirst({
     where: { id, campaignId },
@@ -120,7 +142,9 @@ async function loadPublicationDTO(
   const evaluation = evaluatePublication(row, snapshot);
   const linkedPages = await resolveLinkedPageRefs(campaignId, [row.linkedPageId]);
   const linkedPage = row.linkedPageId ? linkedPages.get(row.linkedPageId) ?? null : null;
-  return toPublicationDTO(row, evaluation, linkedPage);
+  const stripBody =
+    options.stripBodyForScheduled === true && row.status === 'scheduled';
+  return toPublicationDTO(row, evaluation, linkedPage, { stripBody });
 }
 
 // ---------------------------------------------------------------------------
@@ -139,21 +163,33 @@ export async function listJournalLibrary(
   const linkedPageId = strParam(req.query.linkedPageId);
   const q = strParam(req.query.q);
   const cursor = strParam(req.query.cursor);
+  const sectionRaw = strParam(req.query.section);
+  const section: JournalLibrarySection = isLibrarySection(sectionRaw) ? sectionRaw : 'released';
+  const tagFilter = strParam(req.query.tag);
   const sort = (strParam(req.query.sort) ?? 'newest') as JournalLibrarySort;
   const take = clampLimit(req.query.limit);
 
-  const where: Prisma.JournalPublicationWhereInput = { campaignId, status: 'released' };
+  const where: Prisma.JournalPublicationWhereInput = { campaignId };
+  if (section === 'released') {
+    where.status = 'released';
+  } else if (section === 'upcoming') {
+    where.status = 'scheduled';
+  } else {
+    where.status = { in: ['released', 'scheduled'] };
+  }
   if (isPublicationType(typeFilter)) where.type = typeFilter;
   if (seriesId) where.seriesId = seriesId;
   if (linkedPageId) where.linkedPageId = linkedPageId;
   if (q) where.title = { contains: q };
 
   const orderBy: Prisma.JournalPublicationOrderByWithRelationInput[] =
-    sort === 'oldest'
-      ? [{ releasedAt: 'asc' }, { id: 'asc' }]
-      : sort === 'type'
-        ? [{ type: 'asc' }, { releasedAt: 'desc' }, { id: 'desc' }]
-        : [{ releasedAt: 'desc' }, { id: 'desc' }];
+    section === 'upcoming'
+      ? [{ updatedAt: 'desc' }, { id: 'desc' }]
+      : sort === 'oldest'
+        ? [{ releasedAt: 'asc' }, { id: 'asc' }]
+        : sort === 'type'
+          ? [{ type: 'asc' }, { releasedAt: 'desc' }, { id: 'desc' }]
+          : [{ releasedAt: 'desc' }, { id: 'desc' }];
 
   const rows = await prisma.journalPublication.findMany({
     where,
@@ -171,12 +207,17 @@ export async function listJournalLibrary(
       linkedPageId: true,
       releasedAt: true,
       updatedAt: true,
+      tags: true,
+      status: true,
     },
   });
 
   const hasMore = rows.length > take;
-  const page = hasMore ? rows.slice(0, take) : rows;
-  const nextCursor = hasMore ? page[page.length - 1]!.id : null;
+  let page = hasMore ? rows.slice(0, take) : rows;
+  if (tagFilter) {
+    page = page.filter((row) => normalizeJournalTags(row.tags).includes(tagFilter));
+  }
+  const nextCursor = hasMore && !tagFilter ? page[page.length - 1]!.id : null;
 
   const [linkedPages, seriesNames] = await Promise.all([
     resolveLinkedPageRefs(campaignId, page.map((row) => row.linkedPageId)),
@@ -195,7 +236,9 @@ export async function listJournalLibrary(
     linkedPage: row.linkedPageId ? linkedPages.get(row.linkedPageId) ?? null : null,
     releaseSummary: null,
     releasedAt: row.releasedAt ? row.releasedAt.toISOString() : null,
+    tags: normalizeJournalTags(row.tags),
     updatedAt: row.updatedAt.toISOString(),
+    status: row.status as JournalLibraryItemDTO['status'],
   }));
 
   res.json({ items, nextCursor });
@@ -233,6 +276,8 @@ export async function getJournalPlanner(
       releaseRule: true,
       lastEvaluatedAt: true,
       updatedAt: true,
+      status: true,
+      tags: true,
     },
   });
 
@@ -245,9 +290,29 @@ export async function getJournalPlanner(
     campaignId,
     rules: page.map((row) => asReleaseNode(row.releaseRule)),
   });
-  const [linkedPages, series] = await Promise.all([
+  const [linkedPages, series, seriesNames, recentReleaseRows] = await Promise.all([
     resolveLinkedPageRefs(campaignId, page.map((row) => row.linkedPageId)),
     buildSeriesDTOs(campaignId),
+    resolveSeriesNames(campaignId, page.map((row) => row.seriesId)),
+    prisma.journalPublication.findMany({
+      where: { campaignId, status: 'released' },
+      orderBy: [{ releasedAt: 'desc' }, { id: 'desc' }],
+      take: 3,
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        seriesId: true,
+        issueNumber: true,
+        sourceKind: true,
+        workshopDraftId: true,
+        linkedPageId: true,
+        releasedAt: true,
+        updatedAt: true,
+        tags: true,
+        status: true,
+      },
+    }),
   ]);
 
   const items: JournalPlannerItemDTO[] = page.map((row) => {
@@ -275,10 +340,38 @@ export async function getJournalPlanner(
       unmetCount,
       lastEvaluatedAt: row.lastEvaluatedAt ? row.lastEvaluatedAt.toISOString() : null,
       updatedAt: row.updatedAt.toISOString(),
+      seriesName: row.seriesId ? seriesNames.get(row.seriesId) ?? null : null,
+      tags: normalizeJournalTags(row.tags),
+      status: row.status as JournalPlannerItemDTO['status'],
     };
   });
 
-  res.json({ items, nextCursor, series });
+  const recentSeriesNames = await resolveSeriesNames(
+    campaignId,
+    recentReleaseRows.map((row) => row.seriesId),
+  );
+  const recentLinkedPages = await resolveLinkedPageRefs(
+    campaignId,
+    recentReleaseRows.map((row) => row.linkedPageId),
+  );
+  const recentReleases: JournalLibraryItemDTO[] = recentReleaseRows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    type: row.type as JournalPublicationType,
+    seriesId: row.seriesId,
+    seriesName: row.seriesId ? recentSeriesNames.get(row.seriesId) ?? null : null,
+    issueNumber: row.issueNumber,
+    sourceKind: row.sourceKind as JournalSourceKind,
+    workshopDraftId: row.workshopDraftId,
+    linkedPage: row.linkedPageId ? recentLinkedPages.get(row.linkedPageId) ?? null : null,
+    releaseSummary: null,
+    releasedAt: row.releasedAt ? row.releasedAt.toISOString() : null,
+    tags: normalizeJournalTags(row.tags),
+    updatedAt: row.updatedAt.toISOString(),
+    status: 'released',
+  }));
+
+  res.json({ items, nextCursor, series, recentReleases });
 }
 
 // ---------------------------------------------------------------------------
@@ -290,7 +383,12 @@ export async function getJournalPublication(
   res: Response,
 ): Promise<void> {
   const campaignId = req.campaign!.campaignId;
-  const dto = await loadPublicationDTO(campaignId, String(req.params.id));
+  const canPlan =
+    req.campaign?.actor != null &&
+    policyCan(req.campaign.actor, CampaignCapabilities.JOURNAL_PLANNER_ACCESS);
+  const dto = await loadPublicationDTO(campaignId, String(req.params.id), {
+    stripBodyForScheduled: !canPlan,
+  });
   if (!dto) {
     res.status(404).json({ error: 'Publication not found.' });
     return;
@@ -315,6 +413,7 @@ export async function createJournalPublication(
   const workshopDraftId = strParam(body.workshopDraftId) ?? null;
   const contentMarkdown = typeof body.contentMarkdown === 'string' ? body.contentMarkdown : null;
   const contentBlocks = Array.isArray(body.contentBlocks) ? body.contentBlocks : null;
+  const tags = parseTagsInput(body.tags);
 
   if (seriesId) {
     const series = await prisma.journalSeries.findFirst({
@@ -341,6 +440,7 @@ export async function createJournalPublication(
       contentMarkdown,
       ...(contentBlocks ? { contentBlocks } : {}),
       linkedPageId,
+      ...(tags !== undefined ? { tags: tags as unknown as Prisma.InputJsonValue } : {}),
       createdByUserId: req.user?.id ?? null,
     },
     select: { id: true },
@@ -406,6 +506,34 @@ export async function updateJournalPublication(
   const sourceCandidate = strParam(body.sourceKind);
   if (isSourceKind(sourceCandidate)) data.sourceKind = sourceCandidate;
   if ('workshopDraftId' in body) data.workshopDraftId = strParam(body.workshopDraftId) ?? null;
+  if ('seriesId' in body) {
+    const nextSeriesId = strParam(body.seriesId) ?? null;
+    if (nextSeriesId) {
+      const series = await prisma.journalSeries.findFirst({
+        where: { id: nextSeriesId, campaignId },
+        select: { id: true },
+      });
+      if (!series) {
+        res.status(400).json({ error: 'Series not found in this campaign.' });
+        return;
+      }
+    }
+    data.series = nextSeriesId
+      ? { connect: { id: nextSeriesId } }
+      : { disconnect: true };
+  }
+  if ('issueNumber' in body) {
+    const rawIssue = body.issueNumber;
+    if (rawIssue === null) {
+      data.issueNumber = null;
+    } else if (typeof rawIssue === 'number' && Number.isFinite(rawIssue)) {
+      data.issueNumber = Math.max(1, Math.floor(rawIssue));
+    }
+  }
+  if ('tags' in body) {
+    const tags = parseTagsInput(body.tags);
+    data.tags = (tags ?? []) as unknown as Prisma.InputJsonValue;
+  }
 
   // Status here is limited to archive/unarchive; scheduling flows through /rule
   // and release flows through /release. `released` is never set from here.
@@ -418,7 +546,7 @@ export async function updateJournalPublication(
     data.status = statusCandidate;
   }
 
-  await prisma.journalPublication.updateMany({ where: { id, campaignId }, data });
+  await prisma.journalPublication.update({ where: { id }, data });
 
   const dto = await loadPublicationDTO(campaignId, id);
   res.json({ publication: dto });

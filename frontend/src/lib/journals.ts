@@ -38,6 +38,8 @@ export interface JournalLibraryQuery {
   linkedPageId?: string;
   q?: string;
   sort?: JournalLibrarySort;
+  section?: 'released' | 'upcoming' | 'all';
+  tag?: string;
   cursor?: string | null;
   limit?: number;
 }
@@ -52,6 +54,8 @@ export async function fetchJournalLibrary(
   if (query.linkedPageId) params.set('linkedPageId', query.linkedPageId);
   if (query.q?.trim()) params.set('q', query.q.trim());
   if (query.sort) params.set('sort', query.sort);
+  if (query.section) params.set('section', query.section);
+  if (query.tag?.trim()) params.set('tag', query.tag.trim());
   if (query.cursor) params.set('cursor', query.cursor);
   if (query.limit) params.set('limit', String(query.limit));
   const qs = params.toString();
@@ -93,6 +97,7 @@ export interface CreateJournalPublicationInput {
   contentMarkdown?: string | null;
   contentBlocks?: unknown[] | null;
   releaseNow?: boolean;
+  tags?: string[];
 }
 
 export async function createJournalPublication(
@@ -114,6 +119,9 @@ export interface UpdateJournalPublicationInput {
   contentBlocks?: unknown[] | null;
   sourceKind?: JournalSourceKind;
   workshopDraftId?: string | null;
+  seriesId?: string | null;
+  issueNumber?: number | null;
+  tags?: string[];
   /** Archive/unarchive only; scheduling flows through the rule endpoint. */
   status?: 'draft' | 'archived';
 }

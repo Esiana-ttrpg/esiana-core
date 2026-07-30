@@ -133,6 +133,7 @@ export interface JournalPublicationDTO {
   createdByUserId: string | null;
   releasedAt: string | null;
   lastEvaluatedAt: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -150,7 +151,10 @@ export interface JournalLibraryItemDTO {
   linkedPage: JournalLinkedPageRef | null;
   releaseSummary: string | null;
   releasedAt: string | null;
+  tags: string[];
   updatedAt: string;
+  /** Present for upcoming section rows; omitted or null when released. */
+  status?: JournalPublicationStatus;
 }
 
 /** Lightweight Planner queue row (no full diagnostics tree). */
@@ -168,6 +172,9 @@ export interface JournalPlannerItemDTO {
   unmetCount: number;
   lastEvaluatedAt: string | null;
   updatedAt: string;
+  seriesName: string | null;
+  tags: string[];
+  status: JournalPublicationStatus;
 }
 
 export interface JournalSeriesNextIssueState {
@@ -201,8 +208,17 @@ export interface CursorPage<T> {
 
 export type JournalLibrarySort = 'newest' | 'oldest' | 'type';
 
+export type JournalLibrarySection = 'released' | 'upcoming' | 'all';
+
+/** Normalize stored tags JSON to a string array. */
+export function normalizeJournalTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+}
+
 export interface JournalPlannerResponse {
   items: JournalPlannerItemDTO[];
   nextCursor: string | null;
   series: JournalSeriesDTO[];
+  recentReleases: JournalLibraryItemDTO[];
 }

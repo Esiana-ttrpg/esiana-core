@@ -1,7 +1,7 @@
 {
   "journal.library.tab": "Library",
   "journal.library.title": "Library",
-  "journal.library.subtitle": "Released publications — the shelf of published journals, newsletters, and notices.",
+  "journal.library.subtitle": "Published and upcoming publications for the campaign.",
   "journal.library.empty": "Nothing has been published yet.",
   "journal.library.emptyHint": "Released publications appear here. Draft and schedule new work in the Planner.",
   "journal.library.newPublication": "New publication",
@@ -31,5 +31,14 @@
   "journal.library.deleteFailed": "Failed to delete publication.",
   "journal.library.delete": "Delete",
   "journal.library.forceDelete": "Force delete",
-  "journal.library.openInWorkshop": "Open in Workshop"
+  "journal.library.openInWorkshop": "Open in Workshop",
+  "journal.library.sectionReleased": "Released",
+  "journal.library.sectionUpcoming": "Upcoming",
+  "journal.library.upcomingHint": "Scheduled publications appear here before release. Body text stays hidden until published.",
+  "journal.library.upcomingNoBody": "This publication is scheduled. Full text will appear after release.",
+  "journal.library.filterTag": "Tag",
+  "journal.library.releaseNow": "Release now",
+  "journal.library.releaseNowConfirm": "Release this publication now? Scheduled conditions will be skipped.",
+  "journal.library.releasedNotice": "Publication released.",
+  "journal.library.tagsLabel": "Tags"
 }

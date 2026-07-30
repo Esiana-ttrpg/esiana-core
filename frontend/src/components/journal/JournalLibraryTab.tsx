@@ -24,9 +24,12 @@ import {
   fetchJournalLibrary,
   fetchJournalPublication,
   deleteJournalPublication,
+  releaseJournalPublication,
   type JournalLibraryItemDTO,
   type JournalPublicationDTO,
 } from '@/lib/journals';
+
+type LibrarySection = 'released' | 'upcoming';
 
 interface JournalLibraryTabProps {
   campaignHandle: string;
@@ -42,9 +45,13 @@ function formatDate(iso: string | null): string {
 export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
   const { t } = useTranslation();
   const { can, campaign } = useWiki();
-  const [, setSearchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canCreate = can(CampaignCapabilities.PAGE_CREATE);
   const canPlan = can(CampaignCapabilities.JOURNAL_PLANNER_ACCESS);
+
+  const [section, setSection] = useState<LibrarySection>(() =>
+    searchParams.get('section') === 'upcoming' ? 'upcoming' : 'released',
+  );
 
   const [items, setItems] = useState<JournalLibraryItemDTO[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -60,7 +67,9 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
   const [originFilter, setOriginFilter] = useState('');
   const [sort, setSort] = useState<JournalLibrarySort>('newest');
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [tagFilter, setTagFilter] = useState('');
+
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('pub'));
   const [selected, setSelected] = useState<JournalPublicationDTO | null>(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
 
@@ -76,6 +85,8 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
         seriesId: seriesFilter || undefined,
         linkedPageId: originFilter || undefined,
         sort,
+        section,
+        tag: tagFilter || undefined,
       });
       if (requestRef.current !== requestId) return;
       setItems(page.items);
@@ -86,7 +97,7 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     } finally {
       if (requestRef.current === requestId) setLoading(false);
     }
-  }, [campaignHandle, typeFilter, seriesFilter, originFilter, sort]);
+  }, [campaignHandle, typeFilter, seriesFilter, originFilter, sort, section, tagFilter]);
 
   useEffect(() => {
     void load();
@@ -101,6 +112,8 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
         seriesId: seriesFilter || undefined,
         linkedPageId: originFilter || undefined,
         sort,
+        section,
+        tag: tagFilter || undefined,
         cursor: nextCursor,
       });
       setItems((prev) => [...prev, ...page.items]);
@@ -110,7 +123,23 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     } finally {
       setLoadingMore(false);
     }
-  }, [campaignHandle, nextCursor, typeFilter, seriesFilter, originFilter, sort]);
+  }, [campaignHandle, nextCursor, typeFilter, seriesFilter, originFilter, sort, section, tagFilter]);
+
+  const selectItem = useCallback(
+    (id: string | null) => {
+      setSelectedId(id);
+      const next = new URLSearchParams(searchParams);
+      if (id) next.set('pub', id);
+      else next.delete('pub');
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  useEffect(() => {
+    const pub = searchParams.get('pub');
+    if (pub && pub !== selectedId) setSelectedId(pub);
+  }, [searchParams, selectedId]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -134,6 +163,14 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     };
   }, [campaignHandle, selectedId]);
 
+  const tagOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) {
+      for (const tag of item.tags ?? []) set.add(tag);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [items]);
+
   const seriesOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const item of items) {
@@ -141,6 +178,19 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     }
     return [...map.entries()];
   }, [items]);
+
+  async function handleReleaseNow(publication: JournalPublicationDTO) {
+    if (!window.confirm(t('journal.library.releaseNowConfirm'))) return;
+    try {
+      await releaseJournalPublication(campaignHandle, publication.id, { override: true });
+      setNotice(t('journal.library.releasedNotice'));
+      setSection('released');
+      void load();
+      selectItem(publication.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('journal.library.deleteFailed'));
+    }
+  }
 
   const originOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -170,7 +220,7 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
       await deleteJournalPublication(campaignHandle, publication.id, { force });
       setNotice(t('journal.library.deleted'));
       void load();
-      setSelectedId(null);
+      selectItem(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('journal.library.deleteFailed'));
     }
@@ -205,6 +255,21 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
           {seriesOptions.map(([id, name]) => (
             <option key={id} value={id}>
               {name}
+            </option>
+          ))}
+        </select>
+      )}
+      {tagOptions.length > 0 && (
+        <select
+          aria-label={t('journal.library.filterTag')}
+          className={selectClass}
+          value={tagFilter}
+          onChange={(event) => setTagFilter(event.target.value)}
+        >
+          <option value="">{`${t('journal.library.filterTag')}: ${t('journal.library.filterAll')}`}</option>
+          {tagOptions.map((tag) => (
+            <option key={tag} value={tag}>
+              {tag}
             </option>
           ))}
         </select>
@@ -251,7 +316,7 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
             <button
               type="button"
               className="text-xs text-muted hover:text-foreground"
-              onClick={() => setSelectedId(null)}
+              onClick={() => selectItem(null)}
             >
               ✕
             </button>
@@ -273,7 +338,16 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
               {selected.linkedPage.title}
             </div>
           )}
-          <div className="flex items-center gap-3">
+          {(selected.tags?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {selected.tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-elevated px-2 py-0.5 text-xs text-muted">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
             {selected.workshopDraftId ? (
               <a
                 href={buildAuthoringWorkshopHref(campaignWorkshopPath(campaignHandle), {
@@ -285,14 +359,25 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
                 {t('journal.library.openInWorkshop')}
               </a>
             ) : null}
-            <button
-              type="button"
-              className="text-xs text-red-500 hover:underline"
-              onClick={() => void handleDelete(selected, false)}
-            >
-              {t('journal.library.delete')}
-            </button>
-            {campaign?.isCampaignOwner && (
+            {canPlan && selected.status === 'scheduled' && (
+              <button
+                type="button"
+                className="text-xs text-primary hover:underline"
+                onClick={() => void handleReleaseNow(selected)}
+              >
+                {t('journal.library.releaseNow')}
+              </button>
+            )}
+            {canPlan && (
+              <button
+                type="button"
+                className="text-xs text-red-500 hover:underline"
+                onClick={() => void handleDelete(selected, false)}
+              >
+                {t('journal.library.delete')}
+              </button>
+            )}
+            {campaign?.isCampaignOwner && canPlan && (
               <button
                 type="button"
                 className="text-xs text-red-600 hover:underline"
@@ -302,7 +387,9 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
               </button>
             )}
           </div>
-          {selected.contentMarkdown ? (
+          {selected.status === 'scheduled' ? (
+            <p className="text-sm text-muted">{t('journal.library.upcomingNoBody')}</p>
+          ) : selected.contentMarkdown ? (
             <div className="whitespace-pre-wrap text-sm text-foreground/90">
               {selected.contentMarkdown}
             </div>
@@ -324,14 +411,46 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
           {t('journal.library.title')}
         </span>
       }
-      subtitle={t('journal.library.subtitle')}
+      subtitle={
+        section === 'upcoming' ? t('journal.library.upcomingHint') : t('journal.library.subtitle')
+      }
       actions={
         <CategoryIndexToolbar
           createLabel={t('journal.library.newPublication')}
           onCreate={() => setIsCreateOpen(true)}
           createAction={canCreate ? undefined : null}
           resultCountLabel={loading ? null : String(items.length)}
-          refineControl={refineControl}
+          refineControl={
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex overflow-hidden rounded-md border border-border text-sm">
+                {(['released', 'upcoming'] as LibrarySection[]).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => {
+                      setSection(value);
+                      selectItem(null);
+                      const next = new URLSearchParams(searchParams);
+                      if (value === 'released') next.delete('section');
+                      else next.set('section', value);
+                      setSearchParams(next, { replace: true });
+                    }}
+                    className={[
+                      'px-3 py-1.5',
+                      section === value
+                        ? 'bg-primary/10 text-foreground'
+                        : 'text-muted hover:text-foreground',
+                    ].join(' ')}
+                  >
+                    {value === 'released'
+                      ? t('journal.library.sectionReleased')
+                      : t('journal.library.sectionUpcoming')}
+                  </button>
+                ))}
+              </div>
+              {refineControl}
+            </div>
+          }
           sortControl={sortControl}
           viewControl={
             <CategoryIndexViewToggle
@@ -391,11 +510,11 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
                   {items.map((item) => (
                     <tr
                       key={item.id}
-                      onClick={() => setSelectedId(item.id)}
+                      onClick={() => selectItem(item.id)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          setSelectedId(item.id);
+                          selectItem(item.id);
                         }
                       }}
                       tabIndex={0}
@@ -440,7 +559,9 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
                           : '—'}
                       </td>
                       <td className="hidden whitespace-nowrap px-3 py-2.5 text-right text-muted md:table-cell">
-                        {formatDate(item.releasedAt) || '—'}
+                        {section === 'upcoming'
+                          ? t('journal.library.sectionUpcoming')
+                          : formatDate(item.releasedAt) || '—'}
                       </td>
                     </tr>
                   ))}
@@ -453,7 +574,7 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={() => selectItem(item.id)}
                   className={[
                     'flex flex-col gap-2 rounded-xl border bg-surface p-4 text-left transition-colors',
                     item.id === selectedId

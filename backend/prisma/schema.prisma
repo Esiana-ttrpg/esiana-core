@@ -840,6 +840,8 @@ model JournalPublication {
   releaseRule      Json?
   /// Narrative anchor wiki page (loose id)
   linkedPageId     String?
+  /// Organizational labels (JSON string array). Not used by release evaluation.
+  tags             Json?
   createdByUserId  String?
   releasedByUserId String?
   releasedAt       DateTime?

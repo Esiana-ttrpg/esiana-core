@@ -11,6 +11,8 @@
   "journal.create.seriesNameLabel": "Nom de la série",
   "journal.create.seriesNamePlaceholder": "ex. Le Héraut hebdomadaire",
   "journal.create.seriesRequired": "Un nom de série est requis.",
-  "journal.create.seriesSubmit": "Créer la série"
-  ,"journal.create.releaseNow": "Publier maintenant"
+  "journal.create.seriesSubmit": "Créer la série",
+  "journal.create.seriesDescriptionLabel": "Description (facultatif)",
+  "journal.create.seriesDescriptionPlaceholder": "De quoi parle cette série…",
+  "journal.create.releaseNow": "Publier maintenant"
 }

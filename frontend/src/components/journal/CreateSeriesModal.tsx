@@ -25,12 +25,14 @@ export function CreateSeriesModal({
 }: CreateSeriesModalProps) {
   const { t } = useTranslation();
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setName('');
+    setDescription('');
     setError(null);
     setSubmitting(false);
   }, [open]);
@@ -46,7 +48,10 @@ export function CreateSeriesModal({
     setSubmitting(true);
     setError(null);
     try {
-      const series = await createJournalSeries(campaignHandle, { name: name.trim() });
+      const series = await createJournalSeries(campaignHandle, {
+        name: name.trim(),
+        description: description.trim() || null,
+      });
       onCreated(series);
       onClose();
     } catch (err) {
@@ -95,6 +100,17 @@ export function CreateSeriesModal({
               className={inputClass}
               placeholder={t('journal.create.seriesNamePlaceholder')}
               autoFocus
+            />
+          </label>
+
+          <label className="block space-y-1">
+            <span className="text-sm text-muted">{t('journal.create.seriesDescriptionLabel')}</span>
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={3}
+              className={inputClass}
+              placeholder={t('journal.create.seriesDescriptionPlaceholder')}
             />
           </label>
 

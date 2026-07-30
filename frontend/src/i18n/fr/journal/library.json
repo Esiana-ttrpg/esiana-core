@@ -31,5 +31,14 @@
   "journal.library.deleteFailed": "La suppression a échoué.",
   "journal.library.delete": "Supprimer",
   "journal.library.forceDelete": "Suppression forcée",
-  "journal.library.openInWorkshop": "Ouvrir dans l’Atelier"
+  "journal.library.openInWorkshop": "Ouvrir dans l’Atelier",
+  "journal.library.sectionReleased": "Parues",
+  "journal.library.sectionUpcoming": "À venir",
+  "journal.library.upcomingHint": "Les publications planifiées apparaissent ici avant parution. Le texte reste masqué jusqu’à la publication.",
+  "journal.library.upcomingNoBody": "Cette publication est planifiée. Le texte complet apparaîtra après parution.",
+  "journal.library.filterTag": "Étiquette",
+  "journal.library.releaseNow": "Publier maintenant",
+  "journal.library.releaseNowConfirm": "Publier maintenant ? Les conditions planifiées seront ignorées.",
+  "journal.library.releasedNotice": "Publication parue.",
+  "journal.library.tagsLabel": "Étiquettes"
 }
