@@ -71,11 +71,6 @@ export function CampaignCard({
               <Globe className="size-3" />
               Public
             </span>
-          ) : normalizeDiscoverability(campaign.discoverability) ===
-            CampaignDiscoverability.UNLISTED ? (
-            <span className="rounded-full bg-background/70 px-2 py-0.5 text-[10px] text-muted backdrop-blur-sm">
-              Unlisted
-            </span>
           ) : null}
         </div>
       </div>

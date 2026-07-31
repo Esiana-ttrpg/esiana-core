@@ -57,8 +57,6 @@ export function CampaignPresentationSheet({
     switch (normalizeDiscoverability(campaign.discoverability)) {
       case CampaignDiscoverability.PUBLIC:
         return 'Public';
-      case CampaignDiscoverability.UNLISTED:
-        return 'Unlisted';
       default:
         return 'Private';
     }

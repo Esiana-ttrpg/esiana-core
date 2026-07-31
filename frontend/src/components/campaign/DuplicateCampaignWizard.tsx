@@ -325,10 +325,6 @@ export function DuplicateCampaignWizard({
                         label: 'Private',
                       },
                       {
-                        value: CampaignDiscoverability.UNLISTED,
-                        label: 'Unlisted (anonymous codex via link)',
-                      },
-                      {
                         value: CampaignDiscoverability.PUBLIC,
                         label: 'Public (Global Hub)',
                       },
