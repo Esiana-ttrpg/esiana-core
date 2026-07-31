@@ -77,7 +77,7 @@ export function buildCharacterOverviewDisplayValues(options: {
   characterProjection?: CharacterIdentityProjection | null;
   flatPages: WikiTreeNode[];
   pageTags: WikiTagInput[];
-  campaignNow: ChronologyDateParts | null;
+  campaignNow: ChronologyDateParts;
   isDMUser: boolean;
   pageId: string;
   templateType: string;
