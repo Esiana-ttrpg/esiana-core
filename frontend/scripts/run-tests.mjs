@@ -89,6 +89,10 @@ const result = spawnSync(
     'src/lib/workshopFieldSchema.test.ts',
     'src/hooks/useProgressionRoute.test.ts',
     'src/lib/adminVersionUi.test.ts',
+    'src/lib/pageExport/buildPageMarkdown.test.ts',
+    'src/lib/pageExport/buildPageAsciiGuide.test.ts',
+    'src/lib/pageExport/pageExportRegistry.test.ts',
+    'src/lib/pageExport/downloadTextFile.test.ts',
   ],
   { cwd: frontendRoot, stdio: 'inherit', env: process.env },
 );

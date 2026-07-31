@@ -49,6 +49,7 @@ interface WikiPageEditorHeaderProps {
   onOpenPageSettings?: () => void;
   onAddWidget: (type: WikiPageBlock['type']) => void;
   onDeletePage: () => void;
+  getExportContext?: () => import('@/lib/pageExport').PageExportContext;
   havenBackLink?: { to: string; label: string } | null;
   /** Character page: edit wiki page title in the h1 slot */
   editablePageTitle?: boolean;
@@ -103,7 +104,9 @@ export function WikiPageEditorHeader({
 
   return (
     <div className={`mb-1 ${surfaceHeaderChromeClass(true)}`}>
-      <WikiPageBreadcrumbs crumbs={crumbs} campaignHandle={campaignHandle} />
+      <div data-print-hide>
+        <WikiPageBreadcrumbs crumbs={crumbs} campaignHandle={campaignHandle} />
+      </div>
 
       <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1">
@@ -144,13 +147,14 @@ export function WikiPageEditorHeader({
         <Link
           to={havenBackLink.to}
           className="mt-1 inline-block text-sm text-primary hover:underline"
+          data-print-hide
         >
           {havenBackLink.label}
         </Link>
       ) : null}
 
       {toolbarProps.isSearchOpen && !isTagsHub ? (
-        <div className="mt-2">
+        <div className="mt-2" data-print-hide>
           <input
             type="search"
             placeholder="Search this page…"
@@ -161,12 +165,14 @@ export function WikiPageEditorHeader({
       ) : null}
 
       {showSectionSubviews ? (
-        <EntitySubviewNav
-          subviews={subviews}
-          activeSubview={activeSubview}
-          onSubviewChange={onSubviewChange}
-          isDMUser={isDMUser}
-        />
+        <div data-print-hide>
+          <EntitySubviewNav
+            subviews={subviews}
+            activeSubview={activeSubview}
+            onSubviewChange={onSubviewChange}
+            isDMUser={isDMUser}
+          />
+        </div>
       ) : null}
     </div>
   );

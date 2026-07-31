@@ -36,6 +36,7 @@ import {
   workspaceToSegment,
 } from '@/lib/campaignPaths';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
+import { pathKeyFromTitle } from '@shared/pathKeyUtils';
 import { isWikiVisibilityVisibleToViewer } from '@shared/narrativeProjection';
 import { useCampaignActor } from '@/hooks/useCampaignActor';
 import { EventConsequencesEditor } from '@/components/chronology/EventConsequencesEditor';
@@ -149,6 +150,9 @@ import {
   type CodexLayoutVariant,
 } from '@/lib/codexWorkspaceUx';
 import { WikiWorkspaceShell } from '@/components/layout/WikiWorkspaceShell';
+import type { PageExportContext } from '@/lib/pageExport';
+import { buildCampaignShareUrl } from '@/lib/appBaseUrl';
+import { allowsAnonymousCampaignView } from '@shared/campaignPolicy/discoverability';
 import {
   findPrimaryProseBlockId,
   getWorkspaceOrchestration,
@@ -557,6 +561,8 @@ export function WikiPage() {
     [resolvedTitle, pageData?.metadata],
   );
 
+  const printableArticleRef = useRef<HTMLElement | null>(null);
+
   const pageById = useMemo(
     () => buildWikiPageLookup(flatPages),
     [flatPages],
@@ -576,6 +582,70 @@ export function WikiPage() {
     });
     return trail;
   }, [pageData, pageId, displayTitle, pageById]);
+
+  const getPageExportContext = useCallback((): PageExportContext => {
+    const routePathKey = params.pathKey?.trim() ?? '';
+    const pagePathKey =
+      treePage?.pathKey?.trim() ||
+      routePathKey ||
+      pathKeyFromTitle(displayTitle) ||
+      'untitled';
+    const tagNames = pageTags
+      .map((tag) => tag.label?.trim() || tag.name?.trim() || '')
+      .filter(Boolean);
+    const discoverability = wikiCampaign?.discoverability;
+    const breadcrumbTitles = wikiBreadcrumbs
+      .map((crumb) => crumb.title?.trim() ?? '')
+      .filter(Boolean);
+    const shareUrl =
+      discoverability &&
+      allowsAnonymousCampaignView(discoverability) &&
+      campaignHandle.trim()
+        ? buildCampaignShareUrl(campaignHandle)
+        : undefined;
+
+    return {
+      page: {
+        id: pageId,
+        title: displayTitle,
+        pathKey: pagePathKey,
+        templateType,
+        visibility: pageVisibility,
+        tagNames,
+        metadata: pageData?.metadata,
+        parentId: pageData?.parentId ?? treePage?.parentId ?? null,
+      },
+      campaign: {
+        handle: campaignHandle,
+        id: wikiCampaign?.id,
+        name: wikiCampaign?.name ?? campaign?.name,
+        discoverability,
+        shareUrl,
+      },
+      blocks,
+      printableElement: printableArticleRef.current,
+      extras:
+        breadcrumbTitles.length > 0 ? { breadcrumbTitles } : undefined,
+    };
+  }, [
+    params.pathKey,
+    treePage?.pathKey,
+    treePage?.parentId,
+    displayTitle,
+    pageTags,
+    pageId,
+    templateType,
+    pageVisibility,
+    pageData?.metadata,
+    pageData?.parentId,
+    campaignHandle,
+    wikiCampaign?.id,
+    wikiCampaign?.name,
+    wikiCampaign?.discoverability,
+    campaign?.name,
+    blocks,
+    wikiBreadcrumbs,
+  ]);
 
   const professionSubtitle = useMemo(() => {
     if (entitySurfaceProfile.key === 'character') {
@@ -1736,7 +1806,11 @@ export function WikiPage() {
       <WikiWorkspaceShell
         composition={wikiComposition}
         articleClassName="wiki-page-article"
-        articleProps={{ 'data-workspace-mode': workspaceMode }}
+        articleProps={{
+          'data-workspace-mode': workspaceMode,
+          'data-print-root': 'page',
+        }}
+        articleRef={printableArticleRef}
         style={workspaceModeCssVars(
           workspaceMode,
           resolveReadableMeasureCh(
@@ -1784,6 +1858,7 @@ export function WikiPage() {
             onOpenPageSettings={() => setPageSettingsOpen(true)}
             onAddWidget={handleAddWidget}
             onDeletePage={() => setIsDeleteDialogOpen(true)}
+            getExportContext={getPageExportContext}
             havenBackLink={
               templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
               searchParams.get('view') === 'lore'

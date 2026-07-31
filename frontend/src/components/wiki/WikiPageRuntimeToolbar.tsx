@@ -2,7 +2,9 @@ import { LayoutGrid, PenLine, Pencil, Plus, Save, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePageBlockDraftRegistry } from '@/contexts/PageBlockDraftRegistry';
 import type { WikiPageBlock } from '@/types/wiki';
+import { WikiPageExportMenu } from '@/components/wiki/WikiPageExportMenu';
 import { WikiPageMoreMenu } from '@/components/wiki/WikiPageMoreMenu';
+import type { PageExportContext } from '@/lib/pageExport';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { campaignWorkshopPath } from '@/lib/campaignPaths';
 
@@ -37,6 +39,7 @@ interface WikiPageRuntimeToolbarProps {
   onOpenPageSettings?: () => void;
   onAddWidget: (type: WikiPageBlock['type']) => void;
   onDeletePage: () => void;
+  getExportContext?: () => PageExportContext;
 }
 
 export function WikiPageRuntimeToolbar({
@@ -62,6 +65,7 @@ export function WikiPageRuntimeToolbar({
   onOpenPageSettings,
   onAddWidget,
   onDeletePage,
+  getExportContext,
 }: WikiPageRuntimeToolbarProps) {
   const navigate = useNavigate();
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
@@ -90,7 +94,12 @@ export function WikiPageRuntimeToolbar({
         className="flex max-w-full flex-wrap items-center justify-end gap-0.5"
         role="toolbar"
         aria-label="Page tools"
+        data-print-hide
       >
+        {!isTagsHub && getExportContext ? (
+          <WikiPageExportMenu isTagsHub={isTagsHub} getExportContext={getExportContext} />
+        ) : null}
+
         {!isTagsHub ? (
           <button
             type="button"
@@ -135,6 +144,7 @@ export function WikiPageRuntimeToolbar({
           className="flex flex-wrap items-center justify-end gap-0.5"
           role="toolbar"
           aria-label="Editing tools"
+          data-print-hide
         >
           <div className="relative">
             <button

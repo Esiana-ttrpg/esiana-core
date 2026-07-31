@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { sendCampaignInviteEmail as sendCampaignInviteEmailApi } from '@/lib/authEmail';
 import { fetchCampaignInviteInfo } from '@/lib/campaigns';
-
-function appBaseUrl(): string {
-  return import.meta.env.VITE_APP_BASE_URL?.trim() || window.location.origin;
-}
+import { appBaseUrl, buildCampaignShareUrl } from '@/lib/appBaseUrl';
 
 export interface UseCampaignInviteLinkOptions {
   enabled?: boolean;
@@ -24,7 +21,7 @@ export function useCampaignInviteLink(
   const [emailAvailable, setEmailAvailable] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const campaignShareUrl = `${appBaseUrl().replace(/\/+$/, '')}/campaigns/${campaignHandle}`;
+  const campaignShareUrl = buildCampaignShareUrl(campaignHandle);
 
   const reload = useCallback(() => {
     setReloadKey((current) => current + 1);
