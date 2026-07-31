@@ -87,14 +87,23 @@ describe('campaign policy', () => {
     assert.equal(canAccessCampaignContainer(actor), false);
   });
 
-  it('anonymous unlisted campaign can view', () => {
+  it('anonymous public campaign can view container', () => {
     const actor = buildCampaignActor({
       kind: 'anonymous',
       ...campaignBase,
-      discoverability: CampaignDiscoverability.UNLISTED,
+      discoverability: CampaignDiscoverability.PUBLIC,
     });
     assert.equal(canAccessCampaignContainer(actor), true);
     assert.equal(can(actor, CampaignCapabilities.PAGE_EDIT_ANY), false);
+  });
+
+  it('legacy unlisted discoverability normalizes to private for anonymous', () => {
+    const actor = buildCampaignActor({
+      kind: 'anonymous',
+      ...campaignBase,
+      discoverability: 'unlisted',
+    });
+    assert.equal(canAccessCampaignContainer(actor), false);
   });
 
   it('elevated narrative view for gamemaster', () => {

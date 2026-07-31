@@ -472,16 +472,10 @@ export function CampaignSettingsPage() {
                           'Only invited members can access this campaign.',
                       },
                       {
-                        value: CampaignDiscoverability.UNLISTED,
-                        label: 'Unlisted',
-                        description:
-                          'Anyone with the campaign link can browse the anonymous codex (read-only guest view). Not listed on the Global Hub.',
-                      },
-                      {
                         value: CampaignDiscoverability.PUBLIC,
                         label: 'Public',
                         description:
-                          'Listed on the Global Hub and recruitment marketplace. Guests can browse the anonymous codex.',
+                          'Listed on the Global Hub and recruitment marketplace. Public discovery applies to campaign visibility, not party membership.',
                       },
                     ] as const
                   ).map((option) => (
