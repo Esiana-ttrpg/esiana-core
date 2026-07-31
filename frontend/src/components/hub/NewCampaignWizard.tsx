@@ -27,6 +27,7 @@ import {
   getCampaignThemeLabel,
 } from '@/components/campaign/CampaignThemeMultiSelect';
 import type { CampaignSummary } from '@/types/campaign';
+import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
 import { discoverImportFolders, discoverKankaJsonFolders, detectZipImportFormat } from '@shared/importZipStructure';
 import { fuzzyMatchImportModule } from '@shared/importModuleSynonyms';
 import type { ImportModuleTarget } from '@shared/importSkeletonKeys';
