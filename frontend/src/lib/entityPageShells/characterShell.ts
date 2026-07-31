@@ -107,7 +107,7 @@ export const characterPageShell: EntityPageShell = {
     };
     const msg = messages[subview];
     if (!msg) return null;
-    return null; // rendered by CharacterPageShellView with dedicated component
+    return null; // rendered via EntityPageShellView immature tab placeholders
   },
 };
 

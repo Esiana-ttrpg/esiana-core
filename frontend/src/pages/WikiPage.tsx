@@ -69,6 +69,7 @@ import { WikiPageRendererSlot } from '@/components/wiki/WikiPageRendererSlot';
 import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageShellView';
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
+import { QuestPageShellView } from '@/components/entity/shells/QuestPageShellView';
 import { OrganizationPageShellView } from '@/components/entity/shells/OrganizationPageShellView';
 import { GenericWikiPageShellView } from '@/components/entity/shells/GenericWikiPageShellView';
 import { FamilyPageShellView } from '@/components/entity/shells/FamilyPageShellView';
@@ -1222,7 +1223,7 @@ export function WikiPage() {
 
   const prosePrimarySubview = useMemo(() => {
     if (
-      entityPageShell.key === 'character' &&
+      (entityPageShell.key === 'character' || entityPageShell.key === 'quest') &&
       pageSubview === 'overview' &&
       isEditingPage
     ) {
@@ -1428,6 +1429,21 @@ export function WikiPage() {
     if (entitySurfaceProfile.key === 'character') {
       return (
         <CharacterPageShellView
+          {...shellBase}
+          onMetadataSaved={metadataSaved}
+          pageTags={pageTags}
+          allCampaignTags={allCampaignTags}
+          onPageTagsChange={setPageTags}
+          prosePrimaryOverview={
+            prosePrimarySubview && pageSubview === 'overview'
+          }
+        />
+      );
+    }
+
+    if (entitySurfaceProfile.key === 'quest') {
+      return (
+        <QuestPageShellView
           {...shellBase}
           onMetadataSaved={metadataSaved}
           pageTags={pageTags}

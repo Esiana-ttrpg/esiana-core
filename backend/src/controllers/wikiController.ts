@@ -2359,6 +2359,10 @@ export async function updateWikiPageMetadata(
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
+    if ('gmNotes' in questPatchInput && !canManage) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
     const patch: Partial<QuestMetadataFields> = {};
     if ('questStatus' in questPatchInput) {
       const targetStatus = parseQuestMetadata({
@@ -2444,6 +2448,12 @@ export async function updateWikiPageMetadata(
         questPatchInput.questDate === null
           ? null
           : parseQuestMetadata({ questDate: questPatchInput.questDate }).questDate;
+    }
+    if ('summary' in questPatchInput) {
+      patch.summary = parseQuestMetadata({ summary: questPatchInput.summary }).summary;
+    }
+    if ('gmNotes' in questPatchInput) {
+      patch.gmNotes = parseQuestMetadata({ gmNotes: questPatchInput.gmNotes }).gmNotes;
     }
     if (Object.keys(patch).length > 0) {
       updatedMetadata = mergeQuestMetadata(updatedMetadata, patch);
@@ -3478,11 +3488,13 @@ async function buildQuestHubResponse(
         visibility: row.visibility,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
-        snippet: buildContentSnippet(
-          (visibleBlocksByPage.get(row.id) ?? []) as unknown as Parameters<
-            typeof buildContentSnippet
-          >[0],
-        ),
+        snippet:
+          parseQuestMetadata(row.metadata).summary?.trim() ||
+          buildContentSnippet(
+            (visibleBlocksByPage.get(row.id) ?? []) as unknown as Parameters<
+              typeof buildContentSnippet
+            >[0],
+          ),
         quest,
         ...(effectiveCanManage && lifecycleState
           ? { lifecycleState }
