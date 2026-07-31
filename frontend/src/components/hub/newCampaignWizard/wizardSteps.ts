@@ -9,9 +9,11 @@ export function buildWizardSteps(campaignSource: CampaignSource): WizardStepDef[
   if (isBlankCampaignSource(campaignSource)) {
     steps.push(
       { id: 'party', label: 'Party', optional: true },
+      { id: 'location', label: 'Location', optional: true },
       { id: 'tension', label: 'Tension', optional: true },
     );
   }
+  steps.push({ id: 'scheduling', label: 'Scheduling', optional: true });
   steps.push({ id: 'review', label: 'Review' });
   return steps;
 }

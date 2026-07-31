@@ -76,6 +76,39 @@ function tensionSummary(payload: NewCampaignWizardPayload): string {
   return payload.foundation.tension.title.trim();
 }
 
+function locationSummary(payload: NewCampaignWizardPayload): string {
+  const loc = payload.foundation.startingLocation;
+  if (payload.foundation.locationSkipped || !loc) {
+    return 'Not created';
+  }
+  if (loc.mode === 'later') {
+    return 'Decide later';
+  }
+  const title = loc.title?.trim();
+  return title || 'Not created';
+}
+
+function schedulingSummary(payload: NewCampaignWizardPayload): string {
+  if (payload.schedulingSkipped || !payload.schedule) {
+    return 'Not set';
+  }
+  if (!payload.schedule.enabled) {
+    return 'Not scheduled';
+  }
+  switch (payload.schedule.cadence) {
+    case 'weekly':
+      return 'Weekly';
+    case 'biweekly':
+      return 'Biweekly';
+    case 'monthly':
+      return 'Monthly';
+    case 'custom':
+      return 'Custom (details in settings)';
+    default:
+      return 'Not set';
+  }
+}
+
 export function ReviewStep({
   payload,
   setPayload,
@@ -128,6 +161,9 @@ export function ReviewStep({
           {payload.imports.markdownZipFile || payload.imports.backupZipFile ? (
             <p>Import file attached</p>
           ) : null}
+          {payload.imports.calendarConfigFile ? (
+            <p>Calendar configuration attached</p>
+          ) : null}
         </SummarySection>
 
         {isBlank ? (
@@ -136,23 +172,19 @@ export function ReviewStep({
               <span className="text-foreground">Party:</span> {partySummary(payload)}
             </p>
             <p>
+              <span className="text-foreground">Starting location:</span>{' '}
+              {locationSummary(payload)}
+            </p>
+            <p>
               <span className="text-foreground">First source of tension:</span>{' '}
               {tensionSummary(payload)}
             </p>
-            {payload.foundation.tension?.kind === 'location' &&
-            payload.foundation.tension.title.trim() ? (
-              <p>
-                <span className="text-foreground">Starting location:</span>{' '}
-                {payload.foundation.tension.title.trim()}
-              </p>
-            ) : null}
           </SummarySection>
         ) : null}
 
-        <SummarySection title="Settings" onClick={() => onNavigate('source')}>
+        <SummarySection title="Campaign operations" onClick={() => onNavigate('scheduling')}>
           <p>
-            Calendar:{' '}
-            {payload.imports.calendarConfigFile ? 'Configuration attached' : 'Not attached'}
+            <span className="text-foreground">Scheduling:</span> {schedulingSummary(payload)}
           </p>
         </SummarySection>
 

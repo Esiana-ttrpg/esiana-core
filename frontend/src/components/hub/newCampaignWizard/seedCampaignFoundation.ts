@@ -1,3 +1,4 @@
+import { updateCampaignSettings } from '@/lib/campaigns';
 import {
   buildCreateBlocks,
   buildCreateMetadata,
@@ -10,7 +11,7 @@ import {
   flattenWikiTree,
 } from '@/lib/wiki';
 import { resolveNarrativeThreadsRootId } from '@/lib/threadHubLayout';
-import type { NewCampaignWizardPayload } from './types';
+import type { NewCampaignWizardPayload, ScheduleCadence } from './types';
 
 function resolveFolderId(
   flatPages: ReturnType<typeof flattenWikiTree>,
@@ -21,11 +22,46 @@ function resolveFolderId(
 
 function hasFoundationWork(foundation: NewCampaignWizardPayload['foundation']): boolean {
   const partyRows = foundation.party.filter((row) => row.name.trim());
+  const hasLocation =
+    !foundation.locationSkipped &&
+    foundation.startingLocation?.mode === 'new' &&
+    Boolean(foundation.startingLocation.title?.trim());
   const hasTension =
     !foundation.tensionSkipped &&
     foundation.tension != null &&
     foundation.tension.title.trim().length > 0;
-  return partyRows.length > 0 || hasTension;
+  return partyRows.length > 0 || hasLocation || hasTension;
+}
+
+function scheduleFrequencyLabel(cadence: ScheduleCadence): string {
+  switch (cadence) {
+    case 'weekly':
+      return 'Weekly';
+    case 'biweekly':
+      return 'Biweekly';
+    case 'monthly':
+      return 'Monthly';
+    case 'custom':
+      return 'Custom';
+    default:
+      return cadence;
+  }
+}
+
+export async function applyWizardScheduleBestEffort(
+  campaignId: string,
+  schedule: NewCampaignWizardPayload['schedule'],
+  schedulingSkipped: boolean,
+): Promise<void> {
+  if (schedulingSkipped || !schedule?.enabled || !schedule.cadence) return;
+
+  try {
+    await updateCampaignSettings(campaignId, {
+      scheduleFrequency: scheduleFrequencyLabel(schedule.cadence),
+    });
+  } catch (error) {
+    console.error('[new-campaign-wizard] schedule update failed (campaign still created)', error);
+  }
 }
 
 export async function seedCampaignFoundationBestEffort(
@@ -41,6 +77,24 @@ export async function seedCampaignFoundationBestEffort(
     const organizationsFolderId = resolveFolderId(flatPages, 'Organizations');
     const locationsFolderId = resolveFolderId(flatPages, 'Locations');
     const threadsRootId = resolveNarrativeThreadsRootId(flatPages);
+
+    if (
+      !foundation.locationSkipped &&
+      foundation.startingLocation?.mode === 'new' &&
+      locationsFolderId
+    ) {
+      const locationTitle = foundation.startingLocation.title?.trim() ?? '';
+      if (locationTitle) {
+        const description = foundation.startingLocation.description?.trim() ?? '';
+        const form = createEmptyFormState('Locations', locationTitle);
+        await createWikiPage(campaignHandle, {
+          title: locationTitle,
+          parentId: locationsFolderId,
+          metadata: buildCreateMetadata('Locations', form),
+          blocks: buildCreateBlocks('Locations', description),
+        });
+      }
+    }
 
     for (const row of foundation.party) {
       const name = row.name.trim();
@@ -102,6 +156,12 @@ export async function seedCampaignFoundationBestEffort(
         blocks: buildCreateBlocks('Locations', description),
       });
       relatedPageId = page.id;
+    } else if (tension.kind !== 'unknown') {
+      console.error(
+        '[new-campaign-wizard] tension entity create skipped (missing folder or kind)',
+        tension.kind,
+      );
+      return;
     }
 
     await createThreadPage(campaignHandle, threadsRootId, {

@@ -36,12 +36,17 @@ import JSZip from 'jszip';
 import { getCampaignNameHandleError } from '@shared/campaignHandle';
 import { fetchUserCampaignDefaults } from '@/lib/userCampaignDefaults';
 import { PartyStep } from '@/components/hub/newCampaignWizard/PartyStep';
+import { LocationStep } from '@/components/hub/newCampaignWizard/LocationStep';
+import { SchedulingStep } from '@/components/hub/newCampaignWizard/SchedulingStep';
 import { ReviewStep } from '@/components/hub/newCampaignWizard/ReviewStep';
-import { seedCampaignFoundationBestEffort } from '@/components/hub/newCampaignWizard/seedCampaignFoundation';
+import {
+  applyWizardScheduleBestEffort,
+  seedCampaignFoundationBestEffort,
+} from '@/components/hub/newCampaignWizard/seedCampaignFoundation';
 import { TensionStep } from '@/components/hub/newCampaignWizard/TensionStep';
 import {
+  createInitialPayload,
   INITIAL_FOUNDATION,
-  INITIAL_PAYLOAD,
   type FolderMapping,
   type NewCampaignWizardPayload,
   type WizardStepId,
@@ -143,7 +148,7 @@ export function NewCampaignWizard({
   const [step, setStep] = useState(0);
   const [maxReachedIndex, setMaxReachedIndex] = useState(0);
   const [createdCampaign, setCreatedCampaign] = useState<CampaignSummary | null>(null);
-  const [payload, setPayload] = useState<NewCampaignWizardPayload>(INITIAL_PAYLOAD);
+  const [payload, setPayload] = useState<NewCampaignWizardPayload>(() => createInitialPayload());
   const [coverDragOver, setCoverDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -286,11 +291,20 @@ export function NewCampaignWizard({
           payload.foundation.partySkipped ||
           payload.foundation.party.some((row) => row.name.trim().length > 0)
         );
+      case 'location': {
+        if (payload.foundation.locationSkipped) return true;
+        const loc = payload.foundation.startingLocation;
+        if (loc?.mode === 'later') return true;
+        if (loc?.mode === 'new') return Boolean(loc.title?.trim());
+        return false;
+      }
       case 'tension':
         return (
           payload.foundation.tensionSkipped ||
           Boolean(payload.foundation.tension?.title.trim())
         );
+      case 'scheduling':
+        return payload.schedulingSkipped || payload.schedule !== null;
       case 'review':
         return true;
       default:
@@ -313,7 +327,7 @@ export function NewCampaignWizard({
   if (!open) return null;
 
   function handleResetAndClose() {
-    setPayload(INITIAL_PAYLOAD);
+    setPayload(createInitialPayload());
     setStep(0);
     setMaxReachedIndex(0);
     setCreatedCampaign(null);
@@ -503,10 +517,20 @@ export function NewCampaignWizard({
         ...current,
         foundation: { ...current.foundation, partySkipped: true },
       }));
+    } else if (currentStepId === 'location') {
+      setPayload((current) => ({
+        ...current,
+        foundation: { ...current.foundation, locationSkipped: true },
+      }));
     } else if (currentStepId === 'tension') {
       setPayload((current) => ({
         ...current,
         foundation: { ...current.foundation, tensionSkipped: true },
+      }));
+    } else if (currentStepId === 'scheduling') {
+      setPayload((current) => ({
+        ...current,
+        schedulingSkipped: true,
       }));
     }
     handleNext();
@@ -605,6 +629,11 @@ export function NewCampaignWizard({
       if (payload.imports.campaignSource === 'blank') {
         await seedCampaignFoundationBestEffort(campaign.handle, payload.foundation);
       }
+      await applyWizardScheduleBestEffort(
+        campaign.id,
+        payload.schedule,
+        payload.schedulingSkipped,
+      );
 
       setCreatedCampaign(campaign);
       setMaxReachedIndex(steps.length - 1);
@@ -747,7 +776,7 @@ export function NewCampaignWizard({
                           ...current,
                           identity: {
                             ...current.identity,
-                            gameSystem: slug ?? 'dnd-5e',
+                            gameSystem: slug ?? current.identity.gameSystem,
                             customGameSystemName:
                               slug === 'other' ? current.identity.customGameSystemName : null,
                           },
@@ -1388,6 +1417,22 @@ export function NewCampaignWizard({
             />
           )}
 
+          {currentStepId === 'location' && (
+            <LocationStep
+              startingLocation={payload.foundation.startingLocation}
+              onChange={(startingLocation) =>
+                setPayload((current) => ({
+                  ...current,
+                  foundation: {
+                    ...current.foundation,
+                    startingLocation,
+                    locationSkipped: false,
+                  },
+                }))
+              }
+            />
+          )}
+
           {currentStepId === 'tension' && (
             <TensionStep
               tension={payload.foundation.tension}
@@ -1399,6 +1444,19 @@ export function NewCampaignWizard({
                     tension,
                     tensionSkipped: false,
                   },
+                }))
+              }
+            />
+          )}
+
+          {currentStepId === 'scheduling' && (
+            <SchedulingStep
+              schedule={payload.schedule}
+              onChange={(schedule) =>
+                setPayload((current) => ({
+                  ...current,
+                  schedule,
+                  schedulingSkipped: false,
                 }))
               }
             />
@@ -1428,7 +1486,7 @@ export function NewCampaignWizard({
           </button>
 
           <div className="flex items-center gap-2">
-            {(currentStepId === 'party' || currentStepId === 'tension') && (
+            {steps[step]?.optional ? (
               <button
                 type="button"
                 onClick={handleSkipOptionalStep}
@@ -1436,7 +1494,7 @@ export function NewCampaignWizard({
               >
                 Skip
               </button>
-            )}
+            ) : null}
           <button
             type="button"
             onClick={
