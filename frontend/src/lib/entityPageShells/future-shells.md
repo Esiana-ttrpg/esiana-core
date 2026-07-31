@@ -96,7 +96,28 @@ Each shell owns: hero surface, tab architecture (no parity required), overview d
 
 ## GenericWikiPageShell — fallback
 
-Wraps current `EntityWorkspaceSurface` behavior for quests, threads, scenes, and unmigrated entity types. Uses shared `wikiPageSubviews.ts` with block-filtered Overview until migrated.
+Wraps current `EntityWorkspaceSurface` behavior for threads, scenes, and unmigrated entity types. Uses shared `wikiPageSubviews.ts` with block-filtered Overview until migrated.
+
+## Shared entity page shell (`EntityPageShellView`)
+
+**Narrative frame:** One compositor owns hero + Overview dashboard + content tabs. Entities plug in hero and overview components; shell owns layout only.
+
+**Shipped on compositor:** Character (Identity + Description), Quest (narrative-first section Overview).
+
+**Shared IA spine (extensible per entity):**
+
+```text
+Identity
+Overview
+Description
+Entity Sections
+Notes
+Advanced
+```
+
+**Quest Overview (reference multi-section narrative editing):** Identity (type, narrative status, visibility) → Overview (`summary`) → Description (TipTap) → People & Places → Time & Consequences → Rewards → GM Notes → Advanced (board status, diagnostics, engine fields).
+
+**Future adopters:** Locations, Organizations, Families, Bestiary, Ancestries, Events, Rules — register shell config + overview dashboard; migrate off generic wiki shell incrementally.
 
 ## Registration
 

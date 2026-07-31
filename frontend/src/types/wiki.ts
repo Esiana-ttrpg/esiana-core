@@ -391,6 +391,8 @@ export interface QuestMetadataFields {
   rewardsText: string | null;
   dmRewardsText: string | null;
   ledgerReward: import('@shared/ledgerMetadata').QuestLedgerReward | null;
+  summary: string | null;
+  gmNotes: string | null;
 }
 
 export interface QuestHubTagSummary {

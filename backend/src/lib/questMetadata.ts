@@ -30,6 +30,8 @@ const QUEST_METADATA_KEYS = [
   'rewardsText',
   'dmRewardsText',
   'ledgerReward',
+  'summary',
+  'gmNotes',
 ] as const;
 
 export interface QuestMetadataFields {
@@ -42,6 +44,8 @@ export interface QuestMetadataFields {
   rewardsText: string | null;
   dmRewardsText: string | null;
   ledgerReward: QuestLedgerReward | null;
+  summary: string | null;
+  gmNotes: string | null;
 }
 
 const EMPTY_QUEST: QuestMetadataFields = {
@@ -54,6 +58,8 @@ const EMPTY_QUEST: QuestMetadataFields = {
   rewardsText: null,
   dmRewardsText: null,
   ledgerReward: null,
+  summary: null,
+  gmNotes: null,
 };
 
 export function normalizeBoardOrder(raw: unknown): number | null {
@@ -163,6 +169,8 @@ export function parseQuestMetadata(metadata: unknown): QuestMetadataFields {
     rewardsText: normalizeNullableText(raw.rewardsText),
     dmRewardsText: normalizeNullableText(raw.dmRewardsText),
     ledgerReward: parseQuestLedgerReward(raw.ledgerReward),
+    summary: normalizeNullableText(raw.summary),
+    gmNotes: normalizeNullableText(raw.gmNotes),
   };
 }
 
@@ -190,6 +198,8 @@ export function mergeQuestMetadata(
     factionId: merged.factionId,
     rewardsText: merged.rewardsText,
     dmRewardsText: merged.dmRewardsText,
+    summary: merged.summary,
+    gmNotes: merged.gmNotes,
   };
 
   if ('ledgerReward' in patch) {
@@ -230,7 +240,7 @@ export function sanitizeQuestMetadataForRole(
   hasElevatedView: boolean,
 ): QuestMetadataFields {
   if (hasElevatedView) return parsed;
-  return { ...parsed, dmRewardsText: null };
+  return { ...parsed, dmRewardsText: null, gmNotes: null };
 }
 
 export function clearQuestMetadata(existing: unknown): Record<string, unknown> {

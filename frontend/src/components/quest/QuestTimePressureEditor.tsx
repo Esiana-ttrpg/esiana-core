@@ -23,6 +23,7 @@ interface QuestTimePressureEditorProps {
   pageId: string;
   metadata: unknown;
   onSaved: (metadata: Record<string, unknown>) => void;
+  narrativeLabels?: boolean;
 }
 
 function emptyTier(): QuestTimeEscalationTier {
@@ -39,6 +40,7 @@ export function QuestTimePressureEditor({
   pageId,
   metadata,
   onSaved,
+  narrativeLabels = false,
 }: QuestTimePressureEditorProps) {
   const parsed = parseQuestTimePayload(metadata);
   const [rules, setRules] = useState<QuestTimeRules>(parsed?.rules ?? {});
@@ -104,15 +106,32 @@ export function QuestTimePressureEditor({
   }
 
   const tiers = rules.ignoredEscalation?.tiers ?? [];
+  const sectionTitle = narrativeLabels ? null : 'Time & pressure';
+  const deadlinePlaceholder = narrativeLabels
+    ? 'Days until deadline'
+    : 'Deadline in days from now';
+  const autoFailLabel = narrativeLabels
+    ? 'Automatic failure when deadline passes'
+    : 'Auto-fail when deadline passes';
+  const escalationLabel = narrativeLabels
+    ? 'What happens if ignored?'
+    : 'Ignored escalation tiers';
+  const tierAutoFailLabel = narrativeLabels
+    ? 'Automatic failure at this step'
+    : 'Auto-fail at tier';
 
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="META_SECTION_LABEL_CLASS-foreground">
-          Time & pressure
-        </p>
-        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" /> : null}
-      </div>
+    <div
+      className={`flex flex-col gap-3 ${narrativeLabels ? '' : 'border-t border-border pt-3'}`}
+    >
+      {sectionTitle ? (
+        <div className="flex items-center justify-between gap-2">
+          <p className={META_SECTION_LABEL_CLASS}>{sectionTitle}</p>
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted" /> : null}
+        </div>
+      ) : saving ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted self-end" />
+      ) : null}
 
       {error ? (
         <p className="rounded-md bg-red-950/40 px-2 py-0.5 text-[11px] text-red-300">{error}</p>
@@ -149,7 +168,7 @@ export function QuestTimePressureEditor({
           className={fieldClass}
           type="number"
           min={1}
-          placeholder="Deadline in days from now"
+          placeholder={deadlinePlaceholder}
           value={deadlineDays}
           onChange={(e) => setDeadlineDays(e.target.value)}
         />
@@ -161,7 +180,7 @@ export function QuestTimePressureEditor({
           Set deadline
         </button>
       </div>
-      {rules.expiresAtEpochMinute ? (
+      {rules.expiresAtEpochMinute && !narrativeLabels ? (
         <p className="text-[11px] text-muted-foreground">
           Deadline epoch: {rules.expiresAtEpochMinute}
           {' · '}
@@ -169,6 +188,14 @@ export function QuestTimePressureEditor({
             Clear
           </button>
         </p>
+      ) : rules.expiresAtEpochMinute && narrativeLabels ? (
+        <button
+          type="button"
+          className="self-start text-xs text-primary hover:underline"
+          onClick={() => void clearDeadline()}
+        >
+          Clear deadline
+        </button>
       ) : null}
 
       <label className="flex items-center gap-2 text-xs">
@@ -181,7 +208,7 @@ export function QuestTimePressureEditor({
             void persist(next);
           }}
         />
-        Auto-fail when deadline passes
+        {autoFailLabel}
       </label>
 
       <div className="grid gap-2 sm:grid-cols-2">
@@ -239,7 +266,7 @@ export function QuestTimePressureEditor({
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Ignored escalation tiers</span>
+          <span className="text-xs text-muted-foreground">{escalationLabel}</span>
           <button
             type="button"
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
@@ -325,7 +352,7 @@ export function QuestTimePressureEditor({
                     void persist(next);
                   }}
                 />
-                Auto-fail at tier
+                {tierAutoFailLabel}
               </label>
             </div>
           </div>
@@ -343,9 +370,18 @@ export function QuestTimePressureEditor({
   );
 }
 
-export function QuestTimePressureSummary({ metadata }: { metadata: unknown }) {
+export function QuestTimePressureSummary({
+  metadata,
+  showDiagnostics = false,
+}: {
+  metadata: unknown;
+  showDiagnostics?: boolean;
+}) {
   const payload: QuestTimePayload | null = parseQuestTimePayload(metadata);
   if (!payload || (!payload.rules.expiresAtEpochMinute && !payload.rules.offscreenProgress)) {
+    return null;
+  }
+  if (!showDiagnostics) {
     return null;
   }
   const parts: string[] = [];

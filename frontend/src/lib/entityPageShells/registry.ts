@@ -4,8 +4,9 @@ import { ancestryPageShell } from './ancestryShell';
 import { bestiaryPageShell } from './bestiaryShell';
 import { characterPageShell } from './characterShell';
 import { createGenericWikiPageShell } from './genericWikiShell';
-import { familyPageShell } from './familyShell';
 import { organizationPageShell } from './organizationShell';
+import { familyPageShell } from './familyShell';
+import { questPageShell } from './questShell';
 import type { EntityPageShell } from './types';
 
 const DEDICATED_SHELLS: Partial<Record<SurfaceProfileKey, EntityPageShell>> = {
@@ -14,6 +15,7 @@ const DEDICATED_SHELLS: Partial<Record<SurfaceProfileKey, EntityPageShell>> = {
   ancestry: ancestryPageShell,
   organization: organizationPageShell,
   family: familyPageShell,
+  quest: questPageShell,
 };
 
 export function resolveEntityPageShell(
