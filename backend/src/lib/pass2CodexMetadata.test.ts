@@ -131,6 +131,41 @@ describe('pass2 codex metadata', () => {
     assert.equal(parsed.rulerOrAuthority, 'Council');
   });
 
+  it('normalizes legacy location danger and knownFor without surfacing dangerLevel', () => {
+    const parsed = parseLocationMetadata({
+      dangerLevel: 4,
+      knownFor: 'Ancient ruins',
+    });
+    assert.deepEqual(parsed.threats, []);
+    assert.deepEqual(parsed.knownFor, ['Ancient ruins']);
+    assert.equal('dangerLevel' in parsed, false);
+  });
+
+  it('parses location threats and knownFor arrays', () => {
+    const parsed = parseLocationMetadata({
+      threats: ['Bandit activity', 'Pirate raids', 'Weird magic storm'],
+      knownFor: ['Floating market', 'Ancient ruins beneath the city'],
+    });
+    assert.deepEqual(parsed.threats, [
+      'Bandit activity',
+      'Pirate raids',
+      'Weird magic storm',
+    ]);
+    assert.deepEqual(parsed.knownFor, [
+      'Floating market',
+      'Ancient ruins beneath the city',
+    ]);
+  });
+
+  it('mergeLocationMetadata drops legacy dangerLevel from stored metadata', () => {
+    const merged = mergeLocationMetadata(
+      { dangerLevel: 3, locationType: 'Inn' },
+      { threats: ['Political unrest'] },
+    );
+    assert.equal(merged.dangerLevel, undefined);
+    assert.deepEqual(merged.threats, ['Political unrest']);
+  });
+
   it('detects region location pages by locationType', () => {
     assert.equal(
       isRegionLocationPage({ metadata: { locationType: 'Region' } }),

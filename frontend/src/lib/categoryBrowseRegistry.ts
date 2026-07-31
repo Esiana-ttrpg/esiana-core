@@ -50,8 +50,8 @@ const PROFILES: Record<string, CategoryBrowseProfile> = {
     refineFacetOrder: ['Type', 'Region', 'Parent', 'Status'],
   },
   Locations: {
-    defaultView: 'hierarchy',
-    refineFacetOrder: ['Region', 'Type', 'Ruler', 'Population'],
+    defaultView: 'table',
+    refineFacetOrder: ['Type', 'Status', 'Region'],
   },
   Bestiary: {
     defaultView: 'card',

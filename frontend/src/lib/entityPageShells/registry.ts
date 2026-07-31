@@ -7,6 +7,7 @@ import { createGenericWikiPageShell } from './genericWikiShell';
 import { organizationPageShell } from './organizationShell';
 import { familyPageShell } from './familyShell';
 import { questPageShell } from './questShell';
+import { locationPageShell } from './locationShell';
 import type { EntityPageShell } from './types';
 
 const DEDICATED_SHELLS: Partial<Record<SurfaceProfileKey, EntityPageShell>> = {
@@ -16,6 +17,7 @@ const DEDICATED_SHELLS: Partial<Record<SurfaceProfileKey, EntityPageShell>> = {
   organization: organizationPageShell,
   family: familyPageShell,
   quest: questPageShell,
+  location: locationPageShell,
 };
 
 export function resolveEntityPageShell(

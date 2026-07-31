@@ -7,6 +7,8 @@ interface CategoryIndexViewToggleProps {
   /** Hide hierarchy for surfaces that don't support it (e.g. quest hub). */
   showHierarchy?: boolean;
   tableViewTitle?: string;
+  /** Label for hierarchy mode (default "Nested"). */
+  hierarchyLabel?: string;
 }
 
 export function CategoryIndexViewToggle({
@@ -14,6 +16,7 @@ export function CategoryIndexViewToggle({
   onViewModeChange,
   showHierarchy = true,
   tableViewTitle,
+  hierarchyLabel = 'Nested',
 }: CategoryIndexViewToggleProps) {
   return (
     <div className="flex items-center gap-1 rounded-lg border border-border bg-elevated/50 p-1">
@@ -56,10 +59,10 @@ export function CategoryIndexViewToggle({
               : 'text-muted hover:text-foreground'
           }`}
           aria-pressed={viewMode === 'hierarchy'}
-          aria-label="Nested view"
+          aria-label={`${hierarchyLabel} view`}
         >
           <ListTree className="size-4" />
-          <span className="hidden sm:inline">Nested</span>
+          <span className="hidden sm:inline">{hierarchyLabel}</span>
         </button>
       )}
     </div>

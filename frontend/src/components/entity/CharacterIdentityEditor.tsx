@@ -6,7 +6,11 @@ import { useRegisterBlockDraft } from '@/contexts/PageBlockDraftRegistry';
 import { diffRecordPatch } from '@/lib/blockDraftFlush';
 import { CHARACTER_IDENTITY_KEYS } from '@/lib/characterMetadata';
 import { Loader2 } from 'lucide-react';
+import { CharacterLocationRelationsEditor } from '@/components/entity/CharacterLocationRelationsEditor';
 import { IdentityPagePicker } from '@/components/campaign/IdentityPagePicker';
+import {
+  normalizeCharacterLocationRelations,
+} from '@shared/characterLocationRelations';
 import {
   parseCharacterMetadata,
   type CharacterIdentityFields,
@@ -811,6 +815,20 @@ export function CharacterIdentityEditor({
               onChange={(nextId) => void persist({ currentLocationId: nextId })}
             />
           </label>
+          <div id="character-field-locationRelations" className="sm:col-span-2">
+            <CharacterLocationRelationsEditor
+              flatPages={flatPages}
+              relations={draft.locationRelations}
+              disabled={saving}
+              onChange={(next) => {
+                const filtered = normalizeCharacterLocationRelations(
+                  next.filter((r) => r.locationPageId.trim()),
+                );
+                setDraft((p) => ({ ...p, locationRelations: filtered }));
+                void persist({ locationRelations: filtered });
+              }}
+            />
+          </div>
         </div>
       ) : null}
 

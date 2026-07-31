@@ -74,12 +74,17 @@ export function IdentityPagePicker({
   const showCreateRow = useMemo(() => {
     if (!onCreatePage) return false;
     const needle = searchQuery.trim();
-    if (!needle) return false;
+    if (!needle) return true;
     const lower = needle.toLowerCase();
     return !resolvedSearchOptions.some(
       (page) => page.title.toLowerCase() === lower,
     );
   }, [onCreatePage, searchQuery, resolvedSearchOptions]);
+
+  const createRowLabel = useMemo(() => {
+    const needle = searchQuery.trim();
+    return needle ? `${createLabel}: ${needle}` : createLabel;
+  }, [createLabel, searchQuery]);
 
   const selectedPage = useMemo(() => {
     if (!value) return null;
@@ -138,9 +143,8 @@ export function IdentityPagePicker({
   }
 
   function handleCreateClick() {
-    const title = searchQuery.trim();
-    if (!title || !onCreatePage) return;
-    onCreatePage(title);
+    if (!onCreatePage) return;
+    onCreatePage(searchQuery.trim());
     setIsOpen(false);
     setSearchQuery('');
     inputRef.current?.blur();
@@ -224,7 +228,7 @@ export function IdentityPagePicker({
                 onClick={handleCreateClick}
               >
                 <Plus className="size-3.5 shrink-0" aria-hidden />
-                {createLabel}
+                {createRowLabel}
               </button>
             </li>
           ) : null}

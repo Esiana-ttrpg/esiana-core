@@ -55,6 +55,30 @@ describe('pass2 identity projections', () => {
     assert.equal(projection?.identityLine, 'City • Coast');
   });
 
+  it('prefers region page title over region text in identity line', () => {
+    const projection = buildLocationIdentityProjection('l1', [
+      {
+        id: 'r1',
+        title: 'Northern Reach',
+        templateType: 'DEFAULT',
+        metadata: { locationType: 'Region' },
+      },
+      {
+        id: 'l1',
+        title: 'Port Azure',
+        templateType: 'DEFAULT',
+        metadata: {
+          locationType: 'City',
+          region: 'Legacy coast label',
+          regionPageId: 'r1',
+          knownFor: ['Famous harbor', 'Ancient lighthouse'],
+        },
+      },
+    ]);
+    assert.equal(projection?.identityLine, 'City • Northern Reach');
+    assert.equal(projection?.knownFor, 'Famous harbor • Ancient lighthouse');
+  });
+
   it('builds rules/resources identity from type and scope', () => {
     const projection = buildRuleResourceIdentityProjection('r1', [
       {

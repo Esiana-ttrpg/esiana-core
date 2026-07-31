@@ -70,6 +70,7 @@ import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageSh
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { QuestPageShellView } from '@/components/entity/shells/QuestPageShellView';
+import { LocationPageShellView } from '@/components/entity/shells/LocationPageShellView';
 import { OrganizationPageShellView } from '@/components/entity/shells/OrganizationPageShellView';
 import { GenericWikiPageShellView } from '@/components/entity/shells/GenericWikiPageShellView';
 import { FamilyPageShellView } from '@/components/entity/shells/FamilyPageShellView';
@@ -1452,6 +1453,15 @@ export function WikiPage() {
           prosePrimaryOverview={
             prosePrimarySubview && pageSubview === 'overview'
           }
+        />
+      );
+    }
+
+    if (entitySurfaceProfile.key === 'location') {
+      return (
+        <LocationPageShellView
+          {...shellBase}
+          onMetadataSaved={metadataSaved}
         />
       );
     }

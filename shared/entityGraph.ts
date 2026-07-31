@@ -30,6 +30,7 @@ export const EntityRelationKinds = {
   CHARACTER_AFFILIATION: 'CHARACTER_AFFILIATION',
   CHARACTER_LINEAGE: 'CHARACTER_LINEAGE',
   CHARACTER_SOCIAL: 'CHARACTER_SOCIAL',
+  CHARACTER_LOCATION: 'CHARACTER_LOCATION',
   QUEST_GIVER: 'QUEST_GIVER',
   QUEST_FACTION: 'QUEST_FACTION',
   THREAD_RELATED: 'THREAD_RELATED',
@@ -109,6 +110,12 @@ export type EntityRelationPayload =
       kind: typeof EntityRelationKinds.CHARACTER_SOCIAL;
       narrativeType: string;
       semantics?: NarrativeRelationSemantics;
+      preview?: LabelPreview;
+    }
+  | {
+      kind: typeof EntityRelationKinds.CHARACTER_LOCATION;
+      role: 'resident' | 'visitor' | 'former';
+      featured?: boolean;
       preview?: LabelPreview;
     }
   | { kind: typeof EntityRelationKinds.QUEST_GIVER; preview?: LabelPreview }

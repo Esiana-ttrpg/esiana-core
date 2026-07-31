@@ -3,7 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Check, Edit, FileText, Pencil, X } from 'lucide-react';
 import { campaignCategoryChildPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
-import { getCategoryColumnDefs } from '@/lib/metadataConfig';
+import { getCategoryColumnDefs, getCategoryColumnHeaderLabel, LOCATION_DERIVED_READONLY_COLUMNS } from '@/lib/metadataConfig';
+import {
+  buildLocationBrowseRowMap,
+  readLocationBrowseCell,
+} from '@/lib/locationBrowseProjection';
 import {
   countHiddenColumnsForViewport,
   formatIndexCellDisplay,
@@ -36,6 +40,9 @@ interface IndexGridViewProps {
   categoryTitle: string;
   campaignHandle: string;
   pageById: Map<string, WikiTreeNode>;
+  /** Full category index (for location child counts). */
+  allIndexChildren?: CategoryIndexChild[];
+  selectedOptionalColumnKeys?: string[];
   onOpenCharacterSettings?: (pageId: string, focusField?: string) => void;
   /** Cast / bestiary hub — single-click row selects for preview rail, double-click opens page */
   selectedCharacterId?: string | null;
@@ -79,6 +86,8 @@ export function IndexGridView({
   categoryTitle,
   campaignHandle,
   pageById,
+  allIndexChildren,
+  selectedOptionalColumnKeys = [],
   onOpenCharacterSettings,
   selectedCharacterId = null,
   onSelectCharacter,
@@ -97,13 +106,31 @@ export function IndexGridView({
 
   const isCharactersCategory = categoryTitle === 'Characters';
   const isBestiaryCategory = categoryTitle === 'Bestiary';
+  const isLocationsCategory = categoryTitle === 'Locations';
   const hubPreviewMode =
     Boolean(onSelectCharacter) &&
     (isCharactersCategory || isBestiaryCategory);
   const allColumnDefs = useMemo(
-    () => getCategoryColumnDefs(categoryTitle),
-    [categoryTitle],
+    () => getCategoryColumnDefs(categoryTitle, selectedOptionalColumnKeys),
+    [categoryTitle, selectedOptionalColumnKeys],
   );
+
+  const locationBrowseById = useMemo(() => {
+    if (!isLocationsCategory) return null;
+    return buildLocationBrowseRowMap(children, {
+      categoryPageId,
+      allIndexChildren: allIndexChildren ?? children,
+      flatPages,
+      pageById,
+    });
+  }, [
+    isLocationsCategory,
+    children,
+    categoryPageId,
+    allIndexChildren,
+    flatPages,
+    pageById,
+  ]);
 
   useEffect(() => {
     setRows(children);
@@ -205,7 +232,7 @@ export function IndexGridView({
                 key={column}
                 className="px-4 py-3 text-left text-sm font-semibold text-foreground"
               >
-                {column}
+                {getCategoryColumnHeaderLabel(column)}
               </th>
             ))}
             <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
@@ -316,8 +343,19 @@ export function IndexGridView({
                   </div>
                 </td>
                 {metadataColumns.map((column) => {
-                  const rawValue = metadataMap.get(column) ?? '';
+                  const locationRow = locationBrowseById?.get(child.id);
+                  const projectedValue =
+                    isLocationsCategory && locationRow
+                      ? readLocationBrowseCell(locationRow, column)
+                      : null;
+                  const rawValue =
+                    projectedValue ??
+                    metadataMap.get(column) ??
+                    '';
                   const displayValue = formatIndexCellDisplay(rawValue);
+                  const isReadOnlyLocationCell =
+                    isLocationsCategory &&
+                    LOCATION_DERIVED_READONLY_COLUMNS.has(column);
                   const isEditing =
                     editingCell?.pageId === child.id &&
                     editingCell.column === column;
@@ -376,6 +414,10 @@ export function IndexGridView({
                             <X className="size-4" />
                           </button>
                         </div>
+                      ) : isReadOnlyLocationCell ? (
+                        <span className={displayValue ? 'min-w-0 break-words' : 'text-muted'}>
+                          {displayValue ?? '—'}
+                        </span>
                       ) : (
                         <button
                           type="button"
@@ -393,7 +435,9 @@ export function IndexGridView({
                             >
                               {displayValue}
                             </Link>
-                          ) : column === 'Status' && child.narrativeStatus ? (
+                          ) : column === 'Status' &&
+                            !isLocationsCategory &&
+                            child.narrativeStatus ? (
                             <NarrativeStatusBadge
                               narrativeStatus={child.narrativeStatus}
                               compact

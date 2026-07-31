@@ -200,6 +200,10 @@ function WidgetRegistryInner({
           pageId={ctx.pageId}
           metadata={ctx.pageMetadata}
           flatPages={ctx.flatPages}
+          parentId={ctx.parentId ?? null}
+          onParentIdSaved={(nextParentId) =>
+            ctx.onParentChange?.({ parentId: nextParentId })
+          }
           isEditingPage={ctx.isEditingPage}
           onMetadataSaved={ctx.onMetadataSaved}
         />,

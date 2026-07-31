@@ -18,6 +18,9 @@ import {
 } from '@/lib/categoryIndexBrowseStorage';
 import { useHierarchyExpansionState } from '@/hooks/useHierarchyExpansionState';
 import type { CategoryIndexChild } from '@/lib/wiki';
+import type { WikiTreeNode } from '@/types/wiki';
+import { buildLocationBrowseRow } from '@/lib/locationBrowseProjection';
+import { buildWikiPageLookup } from '@/lib/wiki';
 import { getDisplayMetadata } from '@/lib/wikiMetadata';
 
 const codexExpansionStorage = {
@@ -33,6 +36,7 @@ interface CodexHierarchyViewProps {
   categoryPageId: string;
   categoryTitle: string;
   campaignHandle: string;
+  pageById?: Map<string, WikiTreeNode>;
 }
 
 export function CodexHierarchyView({
@@ -41,8 +45,13 @@ export function CodexHierarchyView({
   categoryPageId,
   categoryTitle,
   campaignHandle,
+  pageById: pageByIdProp,
 }: CodexHierarchyViewProps) {
   const { flatPages } = useWiki();
+  const pageById = useMemo(
+    () => pageByIdProp ?? buildWikiPageLookup(flatPages),
+    [pageByIdProp, flatPages],
+  );
   const allById = useMemo(
     () => new Map(allChildren.map((c) => [c.id, c])),
     [allChildren],
@@ -110,6 +119,9 @@ export function CodexHierarchyView({
             categoryTitle={categoryTitle}
             campaignHandle={campaignHandle}
             flatPages={flatPages}
+            pageById={pageById}
+            allChildren={allChildren}
+            categoryPageId={categoryPageId}
           />
         ))}
       </ul>
@@ -127,6 +139,9 @@ interface CodexHierarchyRowProps {
   categoryTitle: string;
   campaignHandle: string;
   flatPages: ReturnType<typeof useWiki>['flatPages'];
+  pageById: Map<string, WikiTreeNode>;
+  allChildren: CategoryIndexChild[];
+  categoryPageId: string;
 }
 
 function CodexHierarchyRow({
@@ -139,7 +154,30 @@ function CodexHierarchyRow({
   categoryTitle,
   campaignHandle,
   flatPages,
+  pageById,
+  allChildren,
+  categoryPageId,
 }: CodexHierarchyRowProps) {
+  const isLocationsCategory = categoryTitle === 'Locations';
+  const locationMetaLine = useMemo(() => {
+    if (!isLocationsCategory) return null;
+    const row = buildLocationBrowseRow(node.child, {
+      categoryPageId,
+      allIndexChildren: allChildren,
+      flatPages,
+      pageById,
+    });
+    const parts = [row.type, row.status, row.parentRegionLabel].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  }, [
+    isLocationsCategory,
+    node.child,
+    categoryPageId,
+    allChildren,
+    flatPages,
+    pageById,
+  ]);
+
   const displayMetadata = getDisplayMetadata(node.child.metadata, categoryTitle);
   const primaryMeta = displayMetadata[0];
 
@@ -179,11 +217,13 @@ function CodexHierarchyRow({
         {parentTrailLabel && (
           <p className="mt-0.5 pl-6 text-xs text-muted">{parentTrailLabel}</p>
         )}
-        {primaryMeta && (
+        {locationMetaLine ? (
+          <p className="mt-0.5 pl-6 text-xs text-muted">{locationMetaLine}</p>
+        ) : primaryMeta ? (
           <p className="mt-0.5 pl-6 text-xs text-muted">
             {primaryMeta.key}: {primaryMeta.value}
           </p>
-        )}
+        ) : null}
       </div>
     </li>
   );

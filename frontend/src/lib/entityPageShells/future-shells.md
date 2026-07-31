@@ -50,15 +50,28 @@ Each shell owns: hero surface, tab architecture (no parity required), overview d
 
 ---
 
-## LocationPageShell — setting atlas entry
+## LocationPageShell — relationship-first atlas hub (shipped)
 
-**Narrative frame:** spatial readability, travel context, environmental framing.
+**Narrative frame:** A place is the center of the world graph — who is here, what exists inside it, who shapes it, and how it connects elsewhere. Maps answer “where”; the shell answers “what is changing here.”
 
-**Overview dashboard:** map thumbnail, atmosphere summary, travel links, controlling factions.
+**Projection layers:**
 
-**Tabs (examples):** Geography, Atmosphere, Factions, Events — no Discovery or Continuity tabs; continuity warnings via rail only if needed.
+- `LocationHubProjection` — people, places, organizations, connections, map contexts (derived from wiki tree, character `locationRelations`, org presence metadata, pins).
+- `LocationStateProjection` — narrative pulse signals (stub in v1; future: world events, developments, reputation). GM overrides win over derived trends when wired.
 
-**System blocks:** location-hero metadata, atmosphere prose, map reference data.
+**Character ↔ location:** `locationRelations` on character identity (`resident` | `visitor` | `former`, optional `featured`). `currentLocationId` remains last-known / physical placement (powers **Last seen here** when life status is Missing). People sections list only explicit relations — not every NPC with a matching current location.
+
+**Location metadata:** `currentStatus` freeform narrative status on Overview (not pulse simulation stats).
+
+**Org ↔ location:** Projected from organization HQ/presence lists via shared `OrganizationLocationRelation` adapter (future first-class edge storage). No duplicate fields on location pages.
+
+**Tabs:** Overview, People, Places, Organizations, Events, Connections, Timeline, Lore.
+
+**Overview:** Description, at-a-glance facts, View Map / map contexts, Location Pulse placeholder, timeline summary teasers.
+
+**Maps:** Reuse `mapAssetId`, `mapPageId`, and pin targets — no parallel geography schema.
+
+**System blocks:** `entity-location-hero`, `wiki-infobox`, `text-tiptap` (layout-hidden).
 
 ---
 

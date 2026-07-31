@@ -1,4 +1,4 @@
-import { getCategoryColumns, hasCustomMetadata } from './metadataConfig';
+import { getCategoryMetadataFieldKeys, hasCustomMetadata } from './metadataConfig';
 import { normalizeEntityCategoryKey } from './entityCategoryKeys';
 import type { CategoryMetadata, CharacterMetadata, MetadataField } from '@/types/wiki';
 
@@ -7,7 +7,7 @@ import type { CategoryMetadata, CharacterMetadata, MetadataField } from '@/types
  */
 export function getCategoryMetadataConfig(parentTitle: string): string[] {
   if (!hasCustomMetadata(parentTitle)) return [];
-  return getCategoryColumns(parentTitle);
+  return getCategoryMetadataFieldKeys(parentTitle);
 }
 
 function isCharacterMetadata(

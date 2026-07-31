@@ -17,6 +17,7 @@ interface CategoryIndexToolbarProps {
   onViewModeChange?: (mode: CategoryIndexViewMode) => void;
   allowedViews?: CategoryIndexViewMode[];
   tableViewTitle?: string;
+  hierarchyLabel?: string;
   viewControl?: ReactNode;
   modeControl?: ReactNode;
   trailing?: ReactNode;
@@ -39,6 +40,7 @@ export function CategoryIndexToolbar({
   onViewModeChange,
   allowedViews,
   tableViewTitle,
+  hierarchyLabel,
   viewControl,
   modeControl,
   trailing,
@@ -51,6 +53,7 @@ export function CategoryIndexToolbar({
         onViewModeChange={onViewModeChange}
         showHierarchy={allowedViews?.includes('hierarchy') ?? true}
         tableViewTitle={tableViewTitle}
+        hierarchyLabel={hierarchyLabel}
       />
     ) : null);
 
