@@ -1,0 +1,35 @@
+@media print {
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  [data-print-only] {
+    display: block !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  [data-print-root='page'] {
+    box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    color: #111 !important;
+    background: #fff !important;
+  }
+
+  [data-print-root='page'] .text-focal-foreground,
+  [data-print-root='page'] .text-foreground,
+  [data-print-root='page'] .text-muted,
+  [data-print-root='page'] .prose {
+    color: #111 !important;
+  }
+
+  [data-print-root='page'] a {
+    color: #111 !important;
+    text-decoration: underline;
+  }
+}

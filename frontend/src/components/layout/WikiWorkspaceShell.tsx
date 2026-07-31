@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { NarrativeLayout } from '@/components/layout/NarrativeLayout';
 import type { WorkspaceCompositionId } from '@/lib/workspaceComposition';
 import { WORKSPACE_FOCAL_COMPACT_CLASS } from '@/lib/surfaceLayout';
@@ -34,6 +34,7 @@ interface WikiWorkspaceShellProps {
   narrativeLayoutStyle?: CSSProperties;
   /** Extra data attributes on the article root */
   articleProps?: Record<string, string | undefined>;
+  articleRef?: RefObject<HTMLElement | null>;
 }
 
 const FOCAL_ENVELOPE_BASE =
@@ -51,6 +52,7 @@ export function WikiWorkspaceShell({
   style,
   narrativeLayoutStyle,
   articleProps,
+  articleRef,
 }: WikiWorkspaceShellProps) {
   const density = focalDensity ?? defaultFocalDensityForComposition(composition);
   const isCompact = density === 'compact';
@@ -65,6 +67,7 @@ export function WikiWorkspaceShell({
 
   return (
     <article
+      ref={articleRef}
       className={[
         'relative flex w-full min-w-0 flex-col overflow-x-hidden',
         articleClassName,
