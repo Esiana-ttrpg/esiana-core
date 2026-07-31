@@ -1,7 +1,9 @@
 import type { IdentityProvider } from '@prisma/client';
 import { UserRoles, type UserRoleLiteral } from '../../types/domain.js';
+import { getOidcEnvConfig } from '../../config/oidcEnv.js';
 import { prisma } from '../prisma.js';
 import { getClaimByPath, normalizeGroupsClaimValue } from './oidcClaims.js';
+import { bumpUserSessionVersion } from './sessionVersion.js';
 
 const ALLOWED_MAPPED_ROLES = new Set<string>([
   UserRoles.SYSTEM_ADMIN,
@@ -33,18 +35,71 @@ export function extractGroupsFromClaims(
   return normalizeGroupsClaimValue(raw);
 }
 
+export function mergeEnvAdminGroupMappings(
+  mappings: Record<string, UserRoleLiteral>,
+): Record<string, UserRoleLiteral> {
+  const cfg = getOidcEnvConfig();
+  if (!cfg.adminGroup?.trim()) return mappings;
+  return {
+    ...mappings,
+    [cfg.adminGroup.trim()]: UserRoles.SYSTEM_ADMIN,
+  };
+}
+
+export function resolveGroupsClaimPath(
+  provider: IdentityProvider,
+): string | null {
+  const cfg = getOidcEnvConfig();
+  if (provider.groupsClaim?.trim()) return provider.groupsClaim.trim();
+  if (cfg.userGroup || cfg.adminGroup) return 'groups';
+  return null;
+}
+
+/** Authoritative SYSTEM_ADMIN when admin mappings exist; promote-only otherwise. */
+export function resolveRoleFromOidcGroupMappings(params: {
+  currentRole: string;
+  groups: string[];
+  mappings: Record<string, UserRoleLiteral>;
+}): UserRoleLiteral | null {
+  const merged = mergeEnvAdminGroupMappings(params.mappings);
+  const hasAdminMapping = Object.values(merged).includes(
+    UserRoles.SYSTEM_ADMIN,
+  );
+
+  if (hasAdminMapping) {
+    const inAdminGroup = params.groups.some(
+      (g) => merged[g] === UserRoles.SYSTEM_ADMIN,
+    );
+    return inAdminGroup ? UserRoles.SYSTEM_ADMIN : UserRoles.USER;
+  }
+
+  let targetRole: UserRoleLiteral | null = null;
+  for (const group of params.groups) {
+    const mapped = merged[group];
+    if (!mapped) continue;
+    if (mapped === UserRoles.SYSTEM_ADMIN) {
+      return UserRoles.SYSTEM_ADMIN;
+    }
+    if (!targetRole) targetRole = mapped;
+  }
+
+  if (targetRole && targetRole !== params.currentRole) {
+    return targetRole;
+  }
+
+  return null;
+}
+
 export async function syncGroupsOnLogin(params: {
   userId: string;
   accountId: string;
   provider: IdentityProvider;
   claims: Record<string, unknown>;
-}): Promise<string[]> {
-  const groups = extractGroupsFromClaims(
-    params.claims,
-    params.provider.groupsClaim,
-  );
+}): Promise<{ groups: string[]; roleChanged: boolean }> {
+  const groupsClaimPath = resolveGroupsClaimPath(params.provider);
+  const groups = extractGroupsFromClaims(params.claims, groupsClaimPath);
 
-  if (params.provider.groupsClaim?.trim()) {
+  if (groupsClaimPath) {
     await prisma.account.update({
       where: { id: params.accountId },
       data: {
@@ -55,37 +110,31 @@ export async function syncGroupsOnLogin(params: {
   }
 
   const mappings = parseGroupRoleMappings(params.provider.groupRoleMappings);
-  if (Object.keys(mappings).length === 0 || groups.length === 0) {
-    return groups;
+  const merged = mergeEnvAdminGroupMappings(mappings);
+  if (Object.keys(merged).length === 0) {
+    return { groups, roleChanged: false };
   }
 
   const user = await prisma.user.findUnique({
     where: { id: params.userId },
     select: { role: true },
   });
-  if (!user) return groups;
+  if (!user) return { groups, roleChanged: false };
 
-  let targetRole: UserRoleLiteral | null = null;
-  for (const group of groups) {
-    const mapped = mappings[group];
-    if (!mapped) continue;
-    if (mapped === UserRoles.SYSTEM_ADMIN) {
-      targetRole = UserRoles.SYSTEM_ADMIN;
-      break;
-    }
-    if (!targetRole) targetRole = mapped;
+  const targetRole = resolveRoleFromOidcGroupMappings({
+    currentRole: user.role,
+    groups,
+    mappings,
+  });
+
+  if (targetRole === null || targetRole === user.role) {
+    return { groups, roleChanged: false };
   }
 
-  // Promote-only: never demote on login.
-  if (
-    targetRole === UserRoles.SYSTEM_ADMIN &&
-    user.role !== UserRoles.SYSTEM_ADMIN
-  ) {
-    await prisma.user.update({
-      where: { id: params.userId },
-      data: { role: UserRoles.SYSTEM_ADMIN },
-    });
-  }
-
-  return groups;
+  await prisma.user.update({
+    where: { id: params.userId },
+    data: { role: targetRole },
+  });
+  await bumpUserSessionVersion(params.userId);
+  return { groups, roleChanged: true };
 }

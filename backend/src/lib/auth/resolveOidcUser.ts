@@ -6,6 +6,10 @@ import {
   isEmailAllowedForRegistration,
 } from '../systemSettings.js';
 import { normalizeEmail } from './oidcClaims.js';
+import {
+  getOidcEnvConfig,
+  resolveOidcAllowSignupForNewUser,
+} from '../../config/oidcEnv.js';
 
 export type OidcIdentity = {
   providerId: string;
@@ -15,7 +19,15 @@ export type OidcIdentity = {
 
 export type ResolveOidcLoginResult =
   | { ok: true; userId: string; accountId: string; created: boolean }
-  | { ok: false; code: 'email_collision' | 'registration_disabled' | 'domain_blocked'; message: string };
+  | {
+      ok: false;
+      code:
+        | 'signup_unavailable'
+        | 'registration_disabled'
+        | 'domain_blocked'
+        | 'group_not_allowed';
+      message: string;
+    };
 
 export type ResolveOidcLinkResult =
   | { ok: true; accountId: string }
@@ -27,6 +39,7 @@ export type ResolveOidcLinkResult =
 
 export async function resolveOidcLogin(
   identity: OidcIdentity,
+  options?: { skipRegistrationPolicy?: boolean },
 ): Promise<ResolveOidcLoginResult> {
   const existingAccount = await prisma.account.findUnique({
     where: {
@@ -56,9 +69,8 @@ export async function resolveOidcLogin(
     if (userByEmail) {
       return {
         ok: false,
-        code: 'email_collision',
-        message:
-          'An account with this email already exists. Sign in with your password, then link this identity provider in Settings.',
+        code: 'signup_unavailable',
+        message: 'Unable to create an account with this identity provider.',
       };
     }
   }
@@ -66,9 +78,13 @@ export async function resolveOidcLogin(
   const userCount = await prisma.user.count();
   const isBootstrap = userCount === 0;
 
-  if (!isBootstrap) {
+  if (!isBootstrap && !options?.skipRegistrationPolicy) {
     const settings = await getOrCreateSystemSettings();
-    if (!settings.allowRegistrations) {
+    const allowSignup = resolveOidcAllowSignupForNewUser(
+      getOidcEnvConfig(),
+      settings.allowRegistrations,
+    );
+    if (!allowSignup) {
       return {
         ok: false,
         code: 'registration_disabled',
@@ -89,12 +105,26 @@ export async function resolveOidcLogin(
     }
   }
 
+  if (!isBootstrap && options?.skipRegistrationPolicy) {
+    const settings = await getOrCreateSystemSettings();
+    if (
+      email &&
+      !isEmailAllowedForRegistration(email, settings.allowedDomains)
+    ) {
+      return {
+        ok: false,
+        code: 'domain_blocked',
+        message:
+          'Registration is limited to approved email domains for this instance.',
+      };
+    }
+  }
+
   if (!email) {
     return {
       ok: false,
-      code: 'email_collision',
-      message:
-        'This identity provider did not return an email address. Contact your administrator.',
+      code: 'signup_unavailable',
+      message: 'Unable to create an account with this identity provider.',
     };
   }
 

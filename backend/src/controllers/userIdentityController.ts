@@ -8,6 +8,7 @@ import {
 } from '../lib/auth/accountAuth.js';
 import { isPasswordAuthEnabled } from '../lib/auth/passwordAuth.js';
 import { listEnabledAuthProviders } from '../lib/auth/oidcFlow.js';
+import { bumpUserSessionVersion } from '../lib/auth/sessionVersion.js';
 import { paramString } from '../lib/paramString.js';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -89,6 +90,7 @@ export async function unlinkIdentityProvider(
   await prisma.account.deleteMany({
     where: { userId: req.user!.id, provider: providerId },
   });
+  await bumpUserSessionVersion(req.user!.id);
 
   res.json({ ok: true });
 }
@@ -131,6 +133,7 @@ export async function addPasswordAuth(
     where: { id: req.user!.id },
     data: { passwordHash },
   });
+  await bumpUserSessionVersion(req.user!.id);
 
   res.json({ ok: true });
 }
@@ -164,6 +167,7 @@ export async function removePasswordAuth(
     where: { id: req.user!.id },
     data: { passwordHash: null },
   });
+  await bumpUserSessionVersion(req.user!.id);
 
   res.json({ ok: true });
 }
