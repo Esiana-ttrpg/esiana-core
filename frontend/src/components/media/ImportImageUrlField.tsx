@@ -18,6 +18,8 @@ interface ImportImageUrlFieldProps {
   uploadType?: string;
   disabled?: boolean;
   inputClassName?: string;
+  /** When true, omit the inline preview (caller shows a compact preview). */
+  suppressPreview?: boolean;
 }
 
 export function ImportImageUrlField({
@@ -30,6 +32,7 @@ export function ImportImageUrlField({
   uploadType = 'generic',
   disabled = false,
   inputClassName = controlClasses,
+  suppressPreview = false,
 }: ImportImageUrlFieldProps) {
   const [importUrl, setImportUrl] = useState('');
   const [importing, setImporting] = useState(false);
@@ -77,7 +80,7 @@ export function ImportImageUrlField({
 
   return (
     <div className="space-y-2">
-      {value && isAssetReferenceUrl(value) ? (
+      {value && isAssetReferenceUrl(value) && !suppressPreview ? (
         <div className="overflow-hidden rounded-lg border border-border">
           <img src={value} alt="" className="max-h-32 w-full object-cover" />
         </div>

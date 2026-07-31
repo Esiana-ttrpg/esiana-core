@@ -37,8 +37,8 @@ export function wikiTagsInputsEqual(a: WikiTagInput[], b: WikiTagInput[]): boole
 }
 
 export function WikiPageTagsInput({
-  assignedTags,
-  allCampaignTags,
+  assignedTags = [],
+  allCampaignTags = [],
   onChange,
   disabled = false,
   compact = false,

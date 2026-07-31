@@ -2,6 +2,30 @@
 
 Each shell owns: hero surface, tab architecture (no parity required), overview dashboard, rail sections, system blocks, and default layouts.
 
+## CharacterPageShell — campaign wiki character sheet (shipped)
+
+**Narrative frame:** RPG campaign wiki / character sheet — identity first, facts second, background prose third. No database-oriented labels (“Properties”, “Metadata”, “Profile”) on the Overview fact section.
+
+**Character Core (Overview):**
+
+1. **Hero / identity anchor** — Name, Title, Role / type, Pronouns, Status (stable fact rows; empty placeholders when unset).
+2. **Identity** — Ancestry / origin, Home / location, Families, Affiliations, Gender, Tags (labeled fact rows).
+3. **Description** — Biography / character introduction (`text-biography` on Overview; former Biography tab absorbed).
+
+**Read/edit parity:** Same section order, names, and field ownership in read and edit; edit reveals controls in place only.
+
+**Tabs (narrative destinations):** Overview, Appearance, Relationships, Timeline, Discovery (DM), Continuity (DM).
+
+**Appearance tab:** Wiki-first hierarchy — primary portrait and compact physical facts, description prose, optional alternate **Appearances** (not “Forms”), supporting metadata; image import and credits are edit utilities only.
+
+**System blocks:** `entity-hero`, `wiki-infobox`, `text-biography` (layout-hidden; surfaced via hero + Overview).
+
+**Extensions (deferred):** Character Themes — campaign/game-specific facets; must not duplicate Hero / Identity fields.
+
+**Reuse:** `EntityPageSection`, `EntityFactRow` / `EntityFactRowList` for later entity rollouts.
+
+---
+
 ## BestiaryPageShell — field guide / creature codex (shipped)
 
 **Narrative frame:** discovery-first field guide maintained through encounters — threat-first, not statblock-first.

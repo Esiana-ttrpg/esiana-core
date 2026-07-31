@@ -1,5 +1,5 @@
 import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
 import { useBlockDraftFlush } from '@/hooks/useBlockDraftFlush';
 import { useRegisterBlockDraft } from '@/contexts/PageBlockDraftRegistry';
@@ -30,6 +30,11 @@ import {
 import { patchPageNarrativeStatus } from '@/lib/pageNarrativeStatusApi';
 import { updateCharacterMetadata } from '@/lib/wiki';
 import type { WikiTreeNode } from '@/types/wiki';
+import {
+  EntityFactRow,
+  EntityFactRowList,
+  ENTITY_FACT_EDIT_FIELD_CLASS,
+} from '@/components/entity/shells/EntityFactRow';
 
 const fieldClass =
   'w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-primary/60';
@@ -46,7 +51,9 @@ export type CharacterIdentitySection =
   | 'identity'
   | 'presence'
   | 'participation'
-  | 'appearance';
+  | 'appearance'
+  | 'hero'
+  | 'identityOverview';
 
 interface CharacterIdentityEditorProps {
   campaignHandle: string;
@@ -59,6 +66,12 @@ interface CharacterIdentityEditorProps {
   focusField?: string | null;
   section?: CharacterIdentitySection | 'all';
   bare?: boolean;
+  /** Renders hero fields as character-sheet fact rows (Overview hero). */
+  heroSheetLayout?: boolean;
+  /** Renders identity overview fields as fact rows (Overview Identity section). */
+  identitySheetLayout?: boolean;
+  familiesControl?: React.ReactNode;
+  tagsControl?: React.ReactNode;
 }
 
 export function CharacterIdentityEditor({
@@ -71,6 +84,10 @@ export function CharacterIdentityEditor({
   focusField,
   section = 'all',
   bare = false,
+  heroSheetLayout = false,
+  identitySheetLayout = false,
+  familiesControl,
+  tagsControl,
 }: CharacterIdentityEditorProps) {
   const source = useMemo(() => parseCharacterMetadata(metadata), [metadata]);
   const draftBlockId = blockId ?? `entity-hero:${pageId}`;
@@ -107,6 +124,8 @@ export function CharacterIdentityEditor({
   const showPresence = section === 'all' || section === 'presence';
   const showParticipation = section === 'all' || section === 'participation';
   const showAppearance = section === 'all' || section === 'appearance';
+  const showHero = section === 'hero';
+  const showIdentityOverview = section === 'identityOverview';
 
   useEffect(() => {
     if (!focusField) return;
@@ -166,8 +185,382 @@ export function CharacterIdentityEditor({
   );
   useRegisterBlockDraft(draftBlockId, dirty, flushDraft);
 
+  const titleInput = (
+    <input
+      className={ENTITY_FACT_EDIT_FIELD_CLASS}
+      placeholder="Captain, Heir Apparent…"
+      value={draft.title ?? ''}
+      onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+      onBlur={() => void persist({ title: draft.title?.trim() || null })}
+    />
+  );
+  const roleInput = (
+    <input
+      className={ENTITY_FACT_EDIT_FIELD_CLASS}
+      placeholder="Scout, merchant…"
+      value={draft.profession ?? ''}
+      onChange={(e) => setDraft((p) => ({ ...p, profession: e.target.value }))}
+      onBlur={() => void persist({ profession: draft.profession?.trim() || null })}
+    />
+  );
+  const pronounsInput = (
+    <input
+      className={ENTITY_FACT_EDIT_FIELD_CLASS}
+      placeholder="she/they, xe/xem…"
+      value={draft.appearance.pronouns ?? ''}
+      onChange={(e) =>
+        setDraft((p) => ({
+          ...p,
+          appearance: { ...p.appearance, pronouns: e.target.value },
+        }))
+      }
+      onBlur={() =>
+        void persist({
+          appearance: {
+            ...draft.appearance,
+            pronouns: draft.appearance.pronouns?.trim() || null,
+          },
+        })
+      }
+    />
+  );
+  const statusInput = (
+    <select
+      className={ENTITY_FACT_EDIT_FIELD_CLASS}
+      value={draft.status ?? ''}
+      onChange={(e) =>
+        void persist({
+          status: (e.target.value || null) as CharacterLifeStatus | null,
+        })
+      }
+    >
+      <option value="">Infer from dates</option>
+      {LIFE_STATUSES.map((lifeStatus) => (
+        <option key={lifeStatus} value={lifeStatus}>
+          {lifeStatus.charAt(0) + lifeStatus.slice(1).toLowerCase()}
+        </option>
+      ))}
+    </select>
+  );
+
+  if (heroSheetLayout && showHero) {
+    const rows: { label: string; id: string; control: ReactNode }[] = [
+      { label: 'Title', id: 'character-field-title', control: titleInput },
+      { label: 'Role / type', id: 'character-field-profession', control: roleInput },
+      { label: 'Pronouns', id: 'character-field-pronouns', control: pronounsInput },
+      { label: 'Status', id: 'character-field-status', control: statusInput },
+    ];
+    return (
+      <div className="relative space-y-0">
+        {saving ? (
+          <Loader2 className="absolute right-0 top-0 size-3.5 animate-spin text-muted" />
+        ) : null}
+        <EntityFactRowList>
+          {rows.map((row) => (
+            <EntityFactRow key={row.id} fieldId={row.id} label={row.label}>
+              {row.control}
+            </EntityFactRow>
+          ))}
+        </EntityFactRowList>
+        {error ? (
+          <p className="mt-2 text-xs text-red-400" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (identitySheetLayout && showIdentityOverview) {
+    const ancestryOriginControl = (
+      <div className="space-y-2">
+        <IdentityPagePicker
+          flatPages={rootAncestryPages}
+          value={draft.ancestryId}
+          placeholder="Search root ancestries…"
+          onChange={(nextId) => {
+            const patch: Partial<CharacterIdentityFields> = { ancestryId: nextId };
+            if (
+              nextId &&
+              draft.lineageId &&
+              parseAncestryMetadata(
+                flatPages.find((p) => p.id === draft.lineageId)?.metadata,
+              ).parentAncestryId !== nextId
+            ) {
+              patch.lineageId = null;
+            }
+            void persist(patch);
+          }}
+        />
+        <IdentityPagePicker
+          flatPages={lineageAncestryPages}
+          value={draft.lineageId}
+          placeholder="Search lineages…"
+          onChange={(nextId) => {
+            if (!nextId) {
+              void persist({ lineageId: null });
+              return;
+            }
+            const meta = parseAncestryMetadata(
+              flatPages.find((p) => p.id === nextId)?.metadata,
+            );
+            void persist({
+              lineageId: nextId,
+              ancestryId: meta.parentAncestryId ?? draft.ancestryId,
+            });
+          }}
+        />
+      </div>
+    );
+
+    const rows: { label: string; id: string; control: ReactNode }[] = [
+      {
+        label: 'Ancestry',
+        id: 'character-field-ancestryId',
+        control: ancestryOriginControl,
+      },
+      {
+        label: 'Home',
+        id: 'character-field-currentLocationId',
+        control: (
+          <IdentityPagePicker
+            flatPages={locationPages}
+            value={draft.currentLocationId}
+            placeholder="Search locations…"
+            onChange={(nextId) => void persist({ currentLocationId: nextId })}
+          />
+        ),
+      },
+      {
+        label: 'Families',
+        id: 'character-field-familyId',
+        control: familiesControl,
+      },
+      {
+        label: 'Affiliations',
+        id: 'character-field-primaryAffiliationId',
+        control: (
+          <IdentityPagePicker
+            flatPages={orgPages}
+            value={draft.primaryAffiliationId}
+            placeholder="Primary organization…"
+            onChange={(nextId) => void persist({ primaryAffiliationId: nextId })}
+          />
+        ),
+      },
+      {
+        label: 'Gender',
+        id: 'character-field-appearance.gender',
+        control: (
+          <input
+            className={ENTITY_FACT_EDIT_FIELD_CLASS}
+            placeholder="Woman, man, nonbinary…"
+            value={draft.appearance.gender ?? ''}
+            onChange={(e) =>
+              setDraft((p) => ({
+                ...p,
+                appearance: { ...p.appearance, gender: e.target.value },
+              }))
+            }
+            onBlur={() =>
+              void persist({
+                appearance: {
+                  ...draft.appearance,
+                  gender: draft.appearance.gender?.trim() || null,
+                },
+              })
+            }
+          />
+        ),
+      },
+      {
+        label: 'Tags',
+        id: 'character-field-tags',
+        control: tagsControl,
+      },
+    ];
+
+    return (
+      <div className="relative space-y-0">
+        {saving ? (
+          <Loader2 className="absolute right-0 top-0 size-3.5 animate-spin text-muted" />
+        ) : null}
+        <EntityFactRowList>
+          {rows.map((row) => (
+            <EntityFactRow key={row.id} fieldId={row.id} label={row.label}>
+              {row.control}
+            </EntityFactRow>
+          ))}
+        </EntityFactRowList>
+        {error ? (
+          <p className="mt-2 text-xs text-red-400" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   const body = (
     <>
+      {showHero ? (
+        <>
+          <label id="character-field-title" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Title</span>
+            <input
+              className={fieldClass}
+              placeholder="Captain, Heir Apparent…"
+              value={draft.title ?? ''}
+              onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+              onBlur={() => void persist({ title: draft.title?.trim() || null })}
+            />
+          </label>
+          <label id="character-field-profession" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Role / type</span>
+            <input
+              className={fieldClass}
+              placeholder="Scout, merchant…"
+              value={draft.profession ?? ''}
+              onChange={(e) => setDraft((p) => ({ ...p, profession: e.target.value }))}
+              onBlur={() => void persist({ profession: draft.profession?.trim() || null })}
+            />
+          </label>
+          <label id="character-field-pronouns" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Pronouns</span>
+            <input
+              className={fieldClass}
+              placeholder="she/they, xe/xem…"
+              value={draft.appearance.pronouns ?? ''}
+              onChange={(e) =>
+                setDraft((p) => ({
+                  ...p,
+                  appearance: { ...p.appearance, pronouns: e.target.value },
+                }))
+              }
+              onBlur={() =>
+                void persist({
+                  appearance: {
+                    ...draft.appearance,
+                    pronouns: draft.appearance.pronouns?.trim() || null,
+                  },
+                })
+              }
+            />
+          </label>
+          <label id="character-field-status" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Status</span>
+            <select
+              className={fieldClass}
+              value={draft.status ?? ''}
+              onChange={(e) =>
+                void persist({
+                  status: (e.target.value || null) as CharacterLifeStatus | null,
+                })
+              }
+            >
+              <option value="">Infer from dates</option>
+              {LIFE_STATUSES.map((lifeStatus) => (
+                <option key={lifeStatus} value={lifeStatus}>
+                  {lifeStatus.charAt(0) + lifeStatus.slice(1).toLowerCase()}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      ) : null}
+
+      {showIdentityOverview ? (
+        <>
+          <label id="character-field-ancestryId" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Ancestry / origin</span>
+            <IdentityPagePicker
+              flatPages={rootAncestryPages}
+              value={draft.ancestryId}
+              placeholder="Search root ancestries…"
+              onChange={(nextId) => {
+                const patch: Partial<CharacterIdentityFields> = { ancestryId: nextId };
+                if (
+                  nextId &&
+                  draft.lineageId &&
+                  parseAncestryMetadata(
+                    flatPages.find((p) => p.id === draft.lineageId)?.metadata,
+                  ).parentAncestryId !== nextId
+                ) {
+                  patch.lineageId = null;
+                }
+                void persist(patch);
+              }}
+            />
+          </label>
+          <label id="character-field-lineageId" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Lineage</span>
+            <IdentityPagePicker
+              flatPages={lineageAncestryPages}
+              value={draft.lineageId}
+              placeholder="Search lineages…"
+              onChange={(nextId) => {
+                if (!nextId) {
+                  void persist({ lineageId: null });
+                  return;
+                }
+                const meta = parseAncestryMetadata(
+                  flatPages.find((p) => p.id === nextId)?.metadata,
+                );
+                void persist({
+                  lineageId: nextId,
+                  ancestryId: meta.parentAncestryId ?? draft.ancestryId,
+                });
+              }}
+            />
+          </label>
+          {draft.ancestry?.trim() && !draft.ancestryId && !draft.lineageId ? (
+            <p className="text-[10px] text-muted">
+              Legacy note: {draft.ancestry} — pick ancestry pages above to link.
+            </p>
+          ) : null}
+          <label id="character-field-currentLocationId" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Home / location</span>
+            <IdentityPagePicker
+              flatPages={locationPages}
+              value={draft.currentLocationId}
+              placeholder="Search locations…"
+              onChange={(nextId) => void persist({ currentLocationId: nextId })}
+            />
+          </label>
+          <label id="character-field-primaryAffiliationId" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Affiliations</span>
+            <IdentityPagePicker
+              flatPages={orgPages}
+              value={draft.primaryAffiliationId}
+              placeholder="Primary organization…"
+              onChange={(nextId) => void persist({ primaryAffiliationId: nextId })}
+            />
+          </label>
+          <label id="character-field-appearance.gender" className="block space-y-1">
+            <span className={META_FIELD_LABEL_CLASS}>Gender</span>
+            <input
+              className={fieldClass}
+              placeholder="Woman, man, nonbinary…"
+              value={draft.appearance.gender ?? ''}
+              onChange={(e) =>
+                setDraft((p) => ({
+                  ...p,
+                  appearance: { ...p.appearance, gender: e.target.value },
+                }))
+              }
+              onBlur={() =>
+                void persist({
+                  appearance: {
+                    ...draft.appearance,
+                    gender: draft.appearance.gender?.trim() || null,
+                  },
+                })
+              }
+            />
+          </label>
+        </>
+      ) : null}
+
       {showIdentity ? (
         <>
           <div id="character-field-title" className="grid gap-2">

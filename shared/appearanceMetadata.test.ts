@@ -132,4 +132,63 @@ describe('appearanceMetadata', () => {
     });
     assert.equal(gallery.entries[0]?.presentationType, 'corrupted');
   });
+
+  it('normalizes presentation entry overlay fields', () => {
+    const gallery = normalizeAppearanceGallery({
+      entries: [
+        {
+          id: 'fox',
+          label: 'Fox form',
+          imageUrl: 'https://example.com/fox.jpg',
+          presentationNotes: 'Low and feral.',
+          distinguishingFeatures: ['nine tails', 'ember eyes'],
+          voice: 'Growling undertone',
+          presence: 'Predatory stillness',
+          clothingMotifs: 'None — natural fur',
+          authorNotes: 'Table note: only at full moon',
+          gender: 'they/them in this form',
+          presentation: 'feral kitsune',
+        },
+      ],
+    });
+    const entry = gallery.entries[0];
+    assert.equal(entry?.presentationNotes, 'Low and feral.');
+    assert.deepEqual(entry?.distinguishingFeatures, ['nine tails', 'ember eyes']);
+    assert.equal(entry?.voice, 'Growling undertone');
+    assert.equal(entry?.presence, 'Predatory stillness');
+    assert.equal(entry?.clothingMotifs, 'None — natural fur');
+    assert.equal(entry?.authorNotes, 'Table note: only at full moon');
+    assert.equal(entry?.gender, 'they/them in this form');
+    assert.equal(entry?.presentation, 'feral kitsune');
+  });
+
+  it('keeps authorNotes separate from legacy notes mapped to presentationNotes', () => {
+    const gallery = normalizeAppearanceGallery({
+      entries: [
+        {
+          id: 'd1',
+          label: 'Disguise',
+          imageUrl: 'https://example.com/d.jpg',
+          notes: 'Legacy description prose',
+          authorNotes: 'Author-only reminder',
+        },
+      ],
+    });
+    assert.equal(gallery.entries[0]?.presentationNotes, 'Legacy description prose');
+    assert.equal(gallery.entries[0]?.authorNotes, 'Author-only reminder');
+  });
+
+  it('preserves timelinePin on normalize', () => {
+    const gallery = normalizeAppearanceGallery({
+      entries: [
+        {
+          id: 't1',
+          label: 'Era look',
+          imageUrl: 'https://example.com/e.jpg',
+          timelinePin: 'epoch-3-session-12',
+        },
+      ],
+    });
+    assert.equal(gallery.entries[0]?.timelinePin, 'epoch-3-session-12');
+  });
 });
