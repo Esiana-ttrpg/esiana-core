@@ -6,7 +6,7 @@ import { parseFamilyMetadata } from '@/lib/familyMetadata';
 import { parseBestiaryMetadata } from '@/lib/bestiaryMetadata';
 import { parseAncestryMetadata } from '@/lib/ancestryMetadata';
 import { parseObjectMetadata } from '@/lib/objectMetadata';
-import { parseLocationMetadata } from '@/lib/locationMetadata';
+import { parseLocationMetadata, resolveLocationRegionLabel } from '@/lib/locationMetadata';
 import { parseRuleResourceMetadata } from '@/lib/ruleResourceMetadata';
 import { formatCharacterStatusLabel, resolveCharacterStatus } from '@/lib/characterMetadata';
 import { readEntityCategoryFromMetadata, legacyTemplateTypeToEntityCategory } from '@shared/wikiTemplateType';
@@ -239,11 +239,18 @@ export function buildInfoboxProjection(
     const location = parseLocationMetadata(metadata);
     const fields: InfoboxField[] = [];
     if (location.locationType) fields.push({ key: 'Type', value: location.locationType });
-    if (location.region) fields.push({ key: 'Region', value: location.region });
+    if (location.currentStatus) fields.push({ key: 'Status', value: location.currentStatus });
+    const regionLabel = resolveLocationRegionLabel(location, flatPages);
+    if (regionLabel) fields.push({ key: 'Region', value: regionLabel });
     if (location.rulerOrAuthority) fields.push({ key: 'Ruler', value: location.rulerOrAuthority });
     if (location.population) fields.push({ key: 'Population', value: location.population });
     if (location.climate) fields.push({ key: 'Climate', value: location.climate });
-    if (location.knownFor) fields.push({ key: 'Known for', value: location.knownFor });
+    if (location.threats.length > 0) {
+      fields.push({ key: 'Threats', value: location.threats.join(', ') });
+    }
+    if (location.knownFor.length > 0) {
+      fields.push({ key: 'Known for', value: location.knownFor.join(' • ') });
+    }
     const mapPage = pageTitle(flatPages, location.mapPageId);
     if (mapPage) fields.push({ key: 'Map', value: mapPage });
     const related = pageTitles(flatPages, location.relatedLocationIds);

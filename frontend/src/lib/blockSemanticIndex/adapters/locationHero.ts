@@ -4,6 +4,9 @@ import { joinIndexParts } from '../utils';
 
 export const locationHeroAdapter: BlockSemanticIndexAdapter = ({ pageMetadata }) => {
   const location = parseLocationMetadata(pageMetadata);
+  const knownForText =
+    location.knownFor.length > 0 ? location.knownFor.join(' ') : null;
+  const threatsText = location.threats.length > 0 ? location.threats.join(' ') : null;
 
   return {
     semanticIndexText: joinIndexParts([
@@ -12,13 +15,15 @@ export const locationHeroAdapter: BlockSemanticIndexAdapter = ({ pageMetadata })
       location.rulerOrAuthority,
       location.population,
       location.climate,
-      location.knownFor,
+      knownForText,
+      threatsText,
     ]),
     semanticKeywords: [
       location.locationType,
       location.region,
       location.climate,
-      location.knownFor,
+      knownForText,
+      threatsText,
     ].filter((k): k is string => Boolean(k?.trim())),
     semanticReferences: [
       location.regionPageId,

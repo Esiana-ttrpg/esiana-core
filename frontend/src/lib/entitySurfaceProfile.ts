@@ -450,14 +450,14 @@ const LOCATION_SECTIONS: InspectorSectionDef[] = [
     label: 'Identity',
     defaultExpanded: true,
     searchKeywords: ['type', 'region', 'known for', 'climate'],
-    fieldKeys: ['locationType', 'region', 'knownFor', 'climate'],
+    fieldKeys: ['locationType', 'region', 'knownFor', 'climate', 'threats', 'currentStatus'],
   },
   {
     id: 'atlas',
     label: 'Atlas',
     defaultExpanded: false,
     searchKeywords: ['ruler', 'population', 'map', 'authority'],
-    fieldKeys: ['rulerOrAuthority', 'population', 'mapPageId'],
+    fieldKeys: ['rulerOrAuthority', 'population', 'mapPageId', 'currentStatus'],
   },
   {
     id: 'relationships',

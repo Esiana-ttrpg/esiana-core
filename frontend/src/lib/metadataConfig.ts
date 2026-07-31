@@ -16,6 +16,7 @@ export interface MetadataRegistry {
 export interface CategoryColumnDef extends PriorityColumnDef {
   key: string;
   priority: ContentPriority;
+  optional?: boolean;
 }
 
 /** Explicit priority tiers for entity catalog surfaces (collapse before horizontal scroll). */
@@ -46,10 +47,17 @@ const COLUMN_PRIORITY_OVERRIDES: Partial<
     Motivation: 'tertiary',
   },
   Locations: {
-    Region: 'primary',
+    'Parent/Region': 'primary',
     Type: 'primary',
-    Ruler: 'secondary',
+    Status: 'secondary',
+    'Key Connections': 'secondary',
     Population: 'tertiary',
+    Ruler: 'tertiary',
+    Climate: 'tertiary',
+    Threats: 'tertiary',
+    Map: 'tertiary',
+    'Known for': 'tertiary',
+    'Related locations': 'tertiary',
   },
   Bestiary: {
     Type: 'primary',
@@ -92,10 +100,10 @@ export const METADATA_CONFIG: MetadataRegistry = {
     'Location',
   ],
   Locations: [
-    'Region',
+    'Parent/Region',
     'Type',
-    'Ruler',
-    'Population',
+    'Status',
+    'Key Connections',
   ],
   Quests: [
     'Type',
@@ -182,6 +190,42 @@ export const METADATA_CONFIG: MetadataRegistry = {
   ],
 };
 
+/** Optional atlas columns (Locations first consumer). */
+export const OPTIONAL_METADATA_CONFIG: MetadataRegistry = {
+  Locations: [
+    'Population',
+    'Ruler',
+    'Climate',
+    'Threats',
+    'Map',
+    'Known for',
+    'Related locations',
+  ],
+};
+
+const LOCATIONS_METADATA_FIELD_KEYS = [
+  'Type',
+  'Status',
+  'Region',
+  'Ruler',
+  'Population',
+];
+
+const COLUMN_HEADER_LABELS: Partial<Record<string, string>> = {
+  Ruler: 'Ruler / Government',
+};
+
+/** Table columns derived from browse projection — not inline-editable metadata fields. */
+export const LOCATION_DERIVED_READONLY_COLUMNS = new Set([
+  'Parent/Region',
+  'Key Connections',
+  'Map',
+  'Related locations',
+  'Climate',
+  'Threats',
+  'Known for',
+]);
+
 /**
  * Default metadata columns for any unknown category.
  * Used as fallback when a category is not explicitly defined.
@@ -196,16 +240,65 @@ export const DEFAULT_METADATA_COLUMNS = [
  * Get metadata columns for a specific category.
  * Returns the configured columns or the default fallback.
  */
-export function getCategoryColumns(categoryName: string): string[] {
+export function getCategoryDefaultColumns(categoryName: string): string[] {
   return METADATA_CONFIG[categoryName] ?? DEFAULT_METADATA_COLUMNS;
 }
 
-export function getCategoryColumnDefs(categoryName: string): CategoryColumnDef[] {
-  const columns = getCategoryColumns(categoryName);
+export function getCategoryOptionalColumns(categoryName: string): string[] {
+  return OPTIONAL_METADATA_CONFIG[categoryName] ?? [];
+}
+
+export function hasCategoryOptionalColumns(categoryName: string): boolean {
+  return getCategoryOptionalColumns(categoryName).length > 0;
+}
+
+/** Wiki metadata.fields keys shown in editors and display filters. */
+export function getCategoryMetadataFieldKeys(categoryName: string): string[] {
+  if (categoryName === 'Locations') {
+    return [...LOCATIONS_METADATA_FIELD_KEYS];
+  }
+  return getCategoryDefaultColumns(categoryName);
+}
+
+export function getCategoryColumnHeaderLabel(columnKey: string): string {
+  return COLUMN_HEADER_LABELS[columnKey] ?? columnKey;
+}
+
+export function normalizeSelectedOptionalColumnKeys(
+  categoryName: string,
+  raw: unknown,
+): string[] {
+  if (!Array.isArray(raw)) return [];
+  const allowed = new Set(getCategoryOptionalColumns(categoryName));
+  return raw.filter(
+    (key): key is string => typeof key === 'string' && allowed.has(key),
+  );
+}
+
+export function getCategoryColumns(categoryName: string): string[] {
+  return getCategoryDefaultColumns(categoryName);
+}
+
+export function getCategoryColumnDefs(
+  categoryName: string,
+  selectedOptionalKeys?: string[],
+): CategoryColumnDef[] {
+  const defaults = getCategoryDefaultColumns(categoryName);
+  const optionalAll = getCategoryOptionalColumns(categoryName);
+  const optionalSelected =
+    optionalAll.length > 0 && selectedOptionalKeys
+      ? optionalAll.filter((key) => selectedOptionalKeys.includes(key))
+      : [];
+  const columns =
+    optionalAll.length > 0
+      ? [...defaults, ...optionalSelected]
+      : defaults;
   const overrides = COLUMN_PRIORITY_OVERRIDES[categoryName];
+  const optionalSet = new Set(optionalAll);
   return columns.map((key, index) => ({
     key,
     priority: overrides?.[key] ?? defaultPriorityForColumnIndex(index),
+    optional: optionalSet.has(key),
   }));
 }
 

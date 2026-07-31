@@ -97,7 +97,8 @@ export function buildCategoryIndexSearchHaystack(
     }
   } else if (categoryTitle === 'Locations') {
     const location = parseLocationMetadata(child.metadata);
-    if (location.knownFor) parts.push(location.knownFor);
+    if (location.knownFor.length > 0) parts.push(location.knownFor.join(' '));
+    if (location.threats.length > 0) parts.push(location.threats.join(' '));
     if (location.climate) parts.push(location.climate);
     const display = getDisplayMetadata(child.metadata, categoryTitle);
     for (const field of display) {

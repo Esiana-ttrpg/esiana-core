@@ -399,28 +399,13 @@ export async function collectRegionFacets(input: {
     });
   }
 
-  const danger: RegionSnapshotFacets['danger'] = [];
-  for (const locId of scope.locationPageIds) {
-    const page =
-      locId === scope.anchorLocationPageId
-        ? anchorPage
-        : await prisma.wikiPage.findFirst({
-            where: { id: locId },
-            select: { metadata: true },
-          });
-    const meta = parseLocationMetadata(page?.metadata);
-    if (meta.dangerLevel != null) {
-      danger.push({ locationPageId: locId, level: meta.dangerLevel });
-    }
-  }
-
   return {
     facets: {
       npcPresence,
       orgStance,
       mapPresence,
       partyKnowledge,
-      danger,
+      danger: [],
     },
     truncation: Object.keys(truncation).length > 0 ? truncation : undefined,
   };

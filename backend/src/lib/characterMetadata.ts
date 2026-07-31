@@ -26,6 +26,10 @@ import {
   parseCharacterLineageMetadata,
   type CharacterLineageFields,
 } from './characterLineageMetadata.js';
+import {
+  normalizeCharacterLocationRelations,
+  type CharacterLocationRelation,
+} from '../../../shared/characterLocationRelations.js';
 
 export type CharacterLifeStatus =
   | 'ALIVE'
@@ -86,8 +90,11 @@ export interface CharacterIdentityFields {
   activeArc: string | null;
   motivation: string | null;
   partyParticipation: PartyParticipation;
+  locationRelations: CharacterLocationRelation[];
   appearance: CharacterAppearanceMetadata;
 }
+
+export type { CharacterLocationRelation, CharacterLocationRole } from '../../../shared/characterLocationRelations.js';
 
 const CHARACTER_IDENTITY_KEYS = [
   'profession',
@@ -102,6 +109,7 @@ const CHARACTER_IDENTITY_KEYS = [
   'activeArc',
   'motivation',
   'partyParticipation',
+  'locationRelations',
   'appearance',
 ] as const;
 
@@ -139,6 +147,7 @@ const EMPTY_IDENTITY: CharacterIdentityFields = {
   activeArc: null,
   motivation: null,
   partyParticipation: { ...DEFAULT_PARTY_PARTICIPATION },
+  locationRelations: [],
   appearance: { ...EMPTY_APPEARANCE },
 };
 
@@ -255,6 +264,7 @@ export function parseCharacterMetadata(metadata: unknown): CharacterIdentityFiel
     activeArc: normalizeNullableText(raw.activeArc),
     motivation: normalizeNullableText(raw.motivation),
     partyParticipation: parsePartyParticipation(raw),
+    locationRelations: normalizeCharacterLocationRelations(raw.locationRelations),
     appearance: resolveAppearanceWithLegacy(raw),
   };
 }
@@ -392,6 +402,7 @@ export function mergeCharacterMetadata(
     partyParticipation: normalizedPatch.partyParticipation
       ? { ...parsed.partyParticipation, ...normalizedPatch.partyParticipation }
       : parsed.partyParticipation,
+    locationRelations: normalizedPatch.locationRelations ?? parsed.locationRelations,
     appearance: normalizedPatch.appearance
       ? { ...parsed.appearance, ...normalizedPatch.appearance }
       : parsed.appearance,
@@ -409,6 +420,7 @@ export function mergeCharacterMetadata(
     activeArc: merged.activeArc,
     motivation: merged.motivation,
     partyParticipation: merged.partyParticipation,
+    locationRelations: merged.locationRelations,
     appearance: merged.appearance,
   };
 
@@ -464,6 +476,12 @@ export function normalizeCharacterMetadataPatch(
   if ('partyParticipation' in patch) {
     normalized.partyParticipation = normalizePartyParticipationPatch(
       partyParticipationPatch,
+    );
+  }
+
+  if ('locationRelations' in patch) {
+    normalized.locationRelations = normalizeCharacterLocationRelations(
+      patch.locationRelations,
     );
   }
 

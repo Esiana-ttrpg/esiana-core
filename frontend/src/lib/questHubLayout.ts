@@ -82,6 +82,26 @@ export function filterLocationPages(flatPages: WikiTreeNode[]): WikiTreeNode[] {
   );
 }
 
+export function isPageUnderMapsCategory(
+  pageId: string,
+  flatPages: WikiTreeNode[],
+): boolean {
+  const page = flatPages.find((p) => p.id === pageId);
+  if (!page) return false;
+  return isPageUnderCategoryTitle(page, flatPages, 'Maps');
+}
+
+export function filterMapPages(flatPages: WikiTreeNode[]): WikiTreeNode[] {
+  return flatPages.filter((page) => isPageUnderMapsCategory(page.id, flatPages));
+}
+
+/** Locations category folder (child of World in typical campaigns). */
+export function findLocationsCategoryPage(
+  flatPages: WikiTreeNode[],
+): WikiTreeNode | undefined {
+  return flatPages.find((page) => page.title === 'Locations');
+}
+
 export function isPageUnderBestiaryCategory(
   pageId: string,
   flatPages: WikiTreeNode[],
