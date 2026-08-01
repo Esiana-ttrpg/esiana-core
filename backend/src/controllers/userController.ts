@@ -7,8 +7,9 @@ import type { AuthenticatedRequest } from '../middleware/auth.js';
 import {
   clearAuthCookie,
   setAuthCookie,
-  signAuthToken,
+  signAuthTokenForUser,
 } from '../middleware/auth.js';
+import { bumpUserSessionVersion } from '../lib/auth/sessionVersion.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import {
   deriveUsername,
@@ -63,6 +64,7 @@ const PROFILE_UPDATE_KEYS = [
 
 const profileSelect = {
   ...userPublicFieldsSelect,
+  sessionVersion: true,
   defaultPitch: true,
   appearanceProfile: true,
   allowCampaignSystemOverride: true,
@@ -422,7 +424,12 @@ export async function updateUserProfile(
   ]);
 
   if (emailChanged) {
-    const token = signAuthToken({ userId: user.id, email: user.email });
+    const sessionVersion = await bumpUserSessionVersion(user.id);
+    const token = await signAuthTokenForUser({
+      id: user.id,
+      email: user.email,
+      sessionVersion,
+    });
     setAuthCookie(res, token);
   }
 
@@ -492,6 +499,7 @@ export async function changePassword(
     where: { id: user.id },
     data: { passwordHash },
   });
+  await bumpUserSessionVersion(user.id);
 
   res.json({ ok: true });
 }

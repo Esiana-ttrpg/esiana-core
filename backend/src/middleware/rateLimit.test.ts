@@ -3,6 +3,8 @@ import http from 'node:http';
 import test from 'node:test';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import { buildRateLimitEnv } from '../config/rateLimitEnv.js';
+import { oidcCallbackLimiter, oidcStartLimiter } from './rateLimit.js';
 
 function listenOnce(
   app: express.Express,
@@ -87,4 +89,45 @@ test('rate limiter returns 429 with retryAfterSeconds in JSON body', async () =>
 test('login email key normalizes case', () => {
   const normalize = (email: string) => email.trim().toLowerCase();
   assert.equal(normalize('  User@Example.COM '), 'user@example.com');
+});
+
+async function assertLimiter429AfterMax(
+  limiter: express.RequestHandler,
+  routePath: string,
+  maxRequests: number,
+): Promise<void> {
+  const app = express();
+  app.get(routePath, limiter, (_req, res) => {
+    res.json({ ok: true });
+  });
+  const requestPath = routePath.replace(':providerId', 'oidc');
+
+  for (let i = 0; i < maxRequests; i++) {
+    const ok = await listenOnce(app, 'GET', requestPath);
+    assert.equal(ok.status, 200, `request ${i + 1} should succeed`);
+  }
+
+  const blocked = await listenOnce(app, 'GET', requestPath);
+  assert.equal(blocked.status, 429);
+  assert.equal(typeof blocked.json.error, 'string');
+  assert.equal(typeof blocked.json.retryAfterSeconds, 'number');
+  assert.ok((blocked.json.retryAfterSeconds as number) >= 1);
+}
+
+test('oidcStartLimiter returns 429 after max per IP and provider', async () => {
+  const { oidcStartMax } = buildRateLimitEnv();
+  await assertLimiter429AfterMax(
+    oidcStartLimiter,
+    '/oidc/:providerId/start',
+    oidcStartMax,
+  );
+});
+
+test('oidcCallbackLimiter returns 429 after max per IP and provider', async () => {
+  const { oidcCallbackMax } = buildRateLimitEnv();
+  await assertLimiter429AfterMax(
+    oidcCallbackLimiter,
+    '/oidc/:providerId/callback',
+    oidcCallbackMax,
+  );
 });

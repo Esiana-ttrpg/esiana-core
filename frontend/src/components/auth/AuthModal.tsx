@@ -1,6 +1,7 @@
 import { META_SECTION_LABEL_CLASS, TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { requestPasswordReset } from '@/lib/authEmail';
@@ -26,13 +27,30 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [providers, setProviders] = useState<AuthProviderSummary[]>([]);
+  const [localLoginEnabled, setLocalLoginEnabled] = useState(true);
+  const [oidcAutoRedirect, setOidcAutoRedirect] = useState(false);
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     if (!open) return;
     fetchAuthProviders()
-      .then(setProviders)
-      .catch(() => setProviders([]));
+      .then((data) => {
+        setProviders(data.providers ?? []);
+        setLocalLoginEnabled(data.localLoginEnabled !== false);
+        setOidcAutoRedirect(data.oidcAutoRedirect === true);
+      })
+      .catch(() => {
+        setProviders([]);
+        setLocalLoginEnabled(true);
+        setOidcAutoRedirect(false);
+      });
   }, [open]);
+
+  useEffect(() => {
+    if (!open || searchParams.get('authError')) return;
+    if (!oidcAutoRedirect || providers.length === 0) return;
+    window.location.assign(federatedSignInUrl(providers[0].id, { mode: 'login' }));
+  }, [open, oidcAutoRedirect, providers, searchParams]);
 
   if (!open) return null;
 
@@ -81,6 +99,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
         : 'Reset password';
 
   const showFederated = mode === 'login' && providers.length > 0;
+  const showLocalFields = localLoginEnabled;
 
   return createPortal(
     <div
@@ -131,10 +150,14 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
                   Continue with {provider.displayName}
                 </button>
               ))}
-              <p className="text-center text-xs text-muted">or use email and password</p>
+              {showLocalFields && (
+                <p className="text-center text-xs text-muted">or use email and password</p>
+              )}
             </div>
           )}
 
+          {showLocalFields && (
+            <>
           <label className="block space-y-1">
             <span className="text-sm text-muted">Email</span>
             <input
@@ -185,6 +208,14 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
                   ? 'Register'
                   : 'Send reset link'}
           </button>
+            </>
+          )}
+          {!showLocalFields && showFederated && mode === 'login' && (
+            <p className="text-center text-sm text-muted">
+              Sign in with your organization identity provider above.
+            </p>
+          )}
+          {showLocalFields && (
           <p className="text-center text-sm text-muted">
             {mode === 'login' ? (
               <>
@@ -230,6 +261,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
               </>
             )}
           </p>
+          )}
         </form>
         </div>
       </div>

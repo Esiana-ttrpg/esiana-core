@@ -46,6 +46,8 @@ model User {
   timezone String?
   /// BCP 47 UI locale (e.g. en, fr). Null = auto-detect from browser.
   uiLocale String?
+  /// Incremented to invalidate outstanding session JWT cookies.
+  sessionVersion Int @default(0)
 
   campaignMembers    CampaignMember[]
   ownedCampaigns     Campaign[] @relation("CampaignOwner")
@@ -338,6 +340,7 @@ model OidcAuthState {
   mode         String
   userId       String?
   codeVerifier String
+  nonce        String?
   returnTo     String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())

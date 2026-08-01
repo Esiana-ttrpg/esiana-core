@@ -12,6 +12,23 @@ import {
 } from '../lib/crypto/secretBox.js';
 import { getOidcCallbackUrlTemplate } from './oidcAuthController.js';
 import { paramString } from '../lib/paramString.js';
+import {
+  getOidcEnvConfig,
+  isEnvManagedProviderId,
+} from '../config/oidcEnv.js';
+
+const ENV_MANAGED_PROVIDER_FIELDS = [
+  'template',
+  'enabled',
+  'displayName',
+  'issuerUrl',
+  'clientId',
+  'clientSecret',
+  'scopes',
+  'groupsClaim',
+  'groupRoleMappings',
+  'sortOrder',
+] as const;
 
 const ID_SLUG = /^[a-z][a-z0-9-]{0,62}$/;
 
@@ -31,6 +48,7 @@ function serializeProvider(row: {
   createdAt: Date;
   updatedAt: Date;
 }) {
+  const envManaged = isEnvManagedProviderId(row.id);
   return {
     id: row.id,
     template: row.template,
@@ -46,6 +64,8 @@ function serializeProvider(row: {
     groupRoleMappings: row.groupRoleMappings ?? {},
     sortOrder: row.sortOrder,
     redirectUri: getOidcCallbackUrlTemplate(row.id),
+    managedByEnvironment: envManaged,
+    envManagedFields: envManaged ? [...ENV_MANAGED_PROVIDER_FIELDS] : [],
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -61,6 +81,7 @@ export async function listAdminIdentityProviders(
   res.json({
     providers: rows.map(serializeProvider),
     secretEncryptionConfigured: isSecretBoxConfigured(),
+    oidcManagementMode: getOidcEnvConfig().managementMode,
   });
 }
 
@@ -73,6 +94,14 @@ export async function putAdminIdentityProvider(
     res.status(400).json({
       error:
         'Provider id must be lowercase alphanumeric with hyphens (e.g. authentik, corp-sso)',
+    });
+    return;
+  }
+
+  if (isEnvManagedProviderId(id)) {
+    res.status(403).json({
+      error:
+        'This identity provider is managed by environment variables. Update OIDC_* settings in your deployment configuration.',
     });
     return;
   }
@@ -172,6 +201,14 @@ export async function deleteAdminIdentityProvider(
   const id = paramString(req.params.providerId);
   if (!id) {
     res.status(400).json({ error: 'Provider id is required' });
+    return;
+  }
+
+  if (isEnvManagedProviderId(id)) {
+    res.status(403).json({
+      error:
+        'This identity provider is managed by environment variables and cannot be deleted.',
+    });
     return;
   }
 

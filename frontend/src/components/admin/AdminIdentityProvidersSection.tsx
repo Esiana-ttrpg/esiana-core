@@ -78,6 +78,8 @@ export function AdminIdentityProvidersSection() {
   const [form, setForm] = useState<ProviderFormState>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [oidcManagementMode, setOidcManagementMode] = useState('admin-managed');
+  const [formManagedByEnv, setFormManagedByEnv] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -86,6 +88,7 @@ export function AdminIdentityProvidersSection() {
       const data = await fetchAdminIdentityProviders();
       setProviders(data.providers);
       setSecretEncryptionConfigured(data.secretEncryptionConfigured);
+      setOidcManagementMode(data.oidcManagementMode ?? 'admin-managed');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load providers');
     } finally {
@@ -100,6 +103,7 @@ export function AdminIdentityProvidersSection() {
   function startCreate() {
     setEditingId(null);
     setForm(emptyForm());
+    setFormManagedByEnv(false);
     setMessage(null);
     setError(null);
   }
@@ -107,6 +111,7 @@ export function AdminIdentityProvidersSection() {
   function startEdit(row: AdminIdentityProvider) {
     setEditingId(row.id);
     setForm(formFromProvider(row));
+    setFormManagedByEnv(Boolean(row.managedByEnvironment));
     setMessage(null);
     setError(null);
   }
@@ -176,9 +181,15 @@ export function AdminIdentityProvidersSection() {
     }
   }
 
-  const redirectPreview = form.id
-    ? `${window.location.origin}/api/auth/oidc/${encodeURIComponent(form.id)}/callback`
-    : '';
+  const redirectPreview =
+    editingId && providers.find((p) => p.id === editingId)?.redirectUri
+      ? providers.find((p) => p.id === editingId)!.redirectUri
+      : form.id
+        ? `${window.location.origin}/api/auth/oidc/${encodeURIComponent(form.id)}/callback`
+        : '';
+
+  const envManagedForm = formManagedByEnv;
+  const fieldDisabled = envManagedForm;
 
   return (
     <AdminSectionCard
@@ -190,6 +201,13 @@ export function AdminIdentityProvidersSection() {
         <p className="mb-4 rounded-lg border border-amber-900/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
           Set AUTH_SECRETS_KEY (32-byte base64) in production to encrypt client secrets. Dev
           mode stores secrets with a dev prefix when unset.
+        </p>
+      )}
+
+      {oidcManagementMode === 'env-managed' && (
+        <p className="mb-4 rounded-lg border border-border bg-elevated/40 px-3 py-2 text-sm text-muted">
+          OpenID Connect is managed by environment variables (OIDC_*). Fields for the
+          environment provider are read-only here.
         </p>
       )}
 
@@ -222,13 +240,15 @@ export function AdminIdentityProvidersSection() {
                   >
                     Edit
                   </button>
-                  <button
-                    type="button"
-                    className="text-sm text-red-300 hover:underline"
-                    onClick={() => void handleDelete(row.id)}
-                  >
-                    Delete
-                  </button>
+                  {!row.managedByEnvironment && (
+                    <button
+                      type="button"
+                      className="text-sm text-red-300 hover:underline"
+                      onClick={() => void handleDelete(row.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))
@@ -236,6 +256,7 @@ export function AdminIdentityProvidersSection() {
         </div>
       )}
 
+      {oidcManagementMode !== 'env-managed' && (
       <div className="mb-4 flex gap-2">
         <button
           type="button"
@@ -246,12 +267,19 @@ export function AdminIdentityProvidersSection() {
           Add OIDC provider
         </button>
       </div>
+      )}
 
+      {(editingId || oidcManagementMode !== 'env-managed') && (
       <form onSubmit={handleSubmit} className="space-y-4 border-t border-border pt-4">
         <p className="text-sm font-medium text-foreground">
           {editingId ? `Editing ${editingId}` : 'New provider'}
         </p>
 
+        {envManagedForm && (
+          <p className="rounded-lg border border-border bg-background/50 px-3 py-2 text-sm text-muted">
+            Managed by environment variable
+          </p>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <FieldLabel>Provider id (slug)</FieldLabel>
@@ -270,6 +298,7 @@ export function AdminIdentityProvidersSection() {
             <FieldLabel>Quick setup template</FieldLabel>
             <select
               value={form.template}
+              disabled={fieldDisabled}
               onChange={(e) =>
                 setForm((f) => ({ ...f, template: e.target.value }))
               }
@@ -288,6 +317,7 @@ export function AdminIdentityProvidersSection() {
           <input
             type="checkbox"
             checked={form.enabled}
+            disabled={fieldDisabled}
             onChange={(e) =>
               setForm((f) => ({ ...f, enabled: e.target.checked }))
             }
@@ -299,6 +329,7 @@ export function AdminIdentityProvidersSection() {
           <FieldLabel>Display name</FieldLabel>
           <input
             value={form.displayName}
+            disabled={fieldDisabled}
             onChange={(e) =>
               setForm((f) => ({ ...f, displayName: e.target.value }))
             }
@@ -311,6 +342,7 @@ export function AdminIdentityProvidersSection() {
           <FieldLabel>Issuer URL (OIDC discovery)</FieldLabel>
           <input
             value={form.issuerUrl}
+            disabled={fieldDisabled}
             onChange={(e) => setForm((f) => ({ ...f, issuerUrl: e.target.value }))}
             placeholder="https://auth.example.com/application/o/esiana/"
             className={controlClasses}
@@ -334,6 +366,7 @@ export function AdminIdentityProvidersSection() {
             <FieldLabel>Client ID</FieldLabel>
             <input
               value={form.clientId}
+              disabled={fieldDisabled}
               onChange={(e) => setForm((f) => ({ ...f, clientId: e.target.value }))}
               className={controlClasses}
               required
@@ -344,6 +377,7 @@ export function AdminIdentityProvidersSection() {
             <input
               type="password"
               value={form.clientSecret}
+              disabled={fieldDisabled}
               onChange={(e) =>
                 setForm((f) => ({ ...f, clientSecret: e.target.value }))
               }
@@ -357,6 +391,7 @@ export function AdminIdentityProvidersSection() {
           <FieldLabel>Scopes</FieldLabel>
           <input
             value={form.scopes}
+            disabled={fieldDisabled}
             onChange={(e) => setForm((f) => ({ ...f, scopes: e.target.value }))}
             className={controlClasses}
           />
@@ -366,6 +401,7 @@ export function AdminIdentityProvidersSection() {
           <FieldLabel>Groups claim</FieldLabel>
           <input
             value={form.groupsClaim}
+            disabled={fieldDisabled}
             onChange={(e) => setForm((f) => ({ ...f, groupsClaim: e.target.value }))}
             placeholder="groups"
             className={controlClasses}
@@ -379,6 +415,7 @@ export function AdminIdentityProvidersSection() {
           <FieldLabel>Group → role mappings (JSON)</FieldLabel>
           <textarea
             value={form.groupRoleMappingsJson}
+            disabled={fieldDisabled}
             onChange={(e) =>
               setForm((f) => ({ ...f, groupRoleMappingsJson: e.target.value }))
             }
@@ -402,12 +439,13 @@ export function AdminIdentityProvidersSection() {
 
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || envManagedForm}
           className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-background hover:bg-primary-hover disabled:opacity-50"
         >
           {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create provider'}
         </button>
       </form>
+      )}
     </AdminSectionCard>
   );
 }

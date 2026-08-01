@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import {
   completeOidcCallback,
+  getAuthProvidersPublicMeta,
   listEnabledAuthProviders,
   startOidcFlow,
 } from '../lib/auth/oidcFlow.js';
@@ -13,7 +14,10 @@ export async function listAuthProviders(
   res: Response,
 ): Promise<void> {
   const providers = await listEnabledAuthProviders();
-  res.json({ providers });
+  res.json({
+    providers,
+    ...getAuthProvidersPublicMeta(),
+  });
 }
 
 export async function startOidcAuth(

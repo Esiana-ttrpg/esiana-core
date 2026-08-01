@@ -62,6 +62,16 @@ export function buildRateLimitEnv() {
       process.env.RATE_LIMIT_TOKEN_MINT_WINDOW_MS,
       24 * 60 * 60 * 1000,
     ),
+    oidcStartMax: parsePositiveInt(process.env.RATE_LIMIT_OIDC_START_MAX, 20),
+    oidcStartWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_OIDC_START_WINDOW_MS,
+      15 * 60 * 1000,
+    ),
+    oidcCallbackMax: parsePositiveInt(process.env.RATE_LIMIT_OIDC_CALLBACK_MAX, 40),
+    oidcCallbackWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_OIDC_CALLBACK_WINDOW_MS,
+      15 * 60 * 1000,
+    ),
   };
 }
 

@@ -20,6 +20,14 @@ export interface LinkedAccountsPayload {
   passwordAuthEnabled: boolean;
 }
 
+export interface AuthProvidersPayload {
+  providers: AuthProviderSummary[];
+  localLoginEnabled: boolean;
+  oidcAutoRedirect: boolean;
+  envManaged: boolean;
+  oidcManagementMode: string;
+}
+
 export interface AdminIdentityProvider {
   id: string;
   template: string;
@@ -35,15 +43,14 @@ export interface AdminIdentityProvider {
   groupRoleMappings: Record<string, string>;
   sortOrder: number;
   redirectUri: string;
+  managedByEnvironment?: boolean;
+  envManagedFields?: string[];
   createdAt: string;
   updatedAt: string;
 }
 
-export async function fetchAuthProviders(): Promise<AuthProviderSummary[]> {
-  const data = await apiFetch<{ providers: AuthProviderSummary[] }>(
-    '/auth/providers',
-  );
-  return data.providers ?? [];
+export async function fetchAuthProviders(): Promise<AuthProvidersPayload> {
+  return apiFetch<AuthProvidersPayload>('/auth/providers');
 }
 
 export function federatedSignInUrl(
@@ -85,6 +92,7 @@ export async function removePasswordSignIn(): Promise<void> {
 export async function fetchAdminIdentityProviders(): Promise<{
   providers: AdminIdentityProvider[];
   secretEncryptionConfigured: boolean;
+  oidcManagementMode: string;
 }> {
   return apiFetch('/admin/identity-providers');
 }
@@ -108,10 +116,14 @@ export async function deleteAdminIdentityProvider(id: string): Promise<void> {
 }
 
 export const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  signup_unavailable:
+    'Unable to create an account with this identity provider. If you already have an Esiana account, sign in and link your identity under Settings.',
   email_collision:
     'An account with this email already exists. Sign in with your password, then link your organization identity in Settings.',
   registration_disabled:
     'New account registration is disabled on this instance.',
+  group_not_allowed:
+    'Your account is not authorized to sign in to this instance.',
   domain_blocked:
     'Your email domain is not approved for registration on this instance.',
   email_mismatch:
