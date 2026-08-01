@@ -21,6 +21,8 @@ import {
   authRegisterLimiter,
   authPasswordResetLimiter,
   authPasswordResetConsumeLimiter,
+  oidcCallbackLimiter,
+  oidcStartLimiter,
 } from '../middleware/rateLimit.js';
 import { isPasswordAuthEnabled } from '../lib/auth/passwordAuth.js';
 import {
@@ -59,11 +61,12 @@ authRouter.get('/providers', listAuthProviders);
 
 authRouter.get(
   '/oidc/:providerId/start',
+  oidcStartLimiter,
   requireAuthForLinkMode,
   startOidcAuth,
 );
 
-authRouter.get('/oidc/:providerId/callback', oidcCallback);
+authRouter.get('/oidc/:providerId/callback', oidcCallbackLimiter, oidcCallback);
 
 authRouter.post('/register', authRegisterLimiter, async (req, res) => {
   if (!isLocalLoginEnabled()) {

@@ -158,6 +158,10 @@ Defined in [`backend/src/config/rateLimitEnv.ts`](../../backend/src/config/rateL
 | `RATE_LIMIT_APPLY_GLOBAL_WINDOW_MS` | `3600000` | Global apply window |
 | `RATE_LIMIT_TOKEN_MINT_MAX` | `10` | API token creations per day |
 | `RATE_LIMIT_TOKEN_MINT_WINDOW_MS` | `86400000` (24 h) | Token mint window |
+| `RATE_LIMIT_OIDC_START_MAX` | `20` | OIDC authorize starts per IP and provider |
+| `RATE_LIMIT_OIDC_START_WINDOW_MS` | `900000` (15 min) | OIDC start window |
+| `RATE_LIMIT_OIDC_CALLBACK_MAX` | `40` | OIDC callback hits per IP and provider |
+| `RATE_LIMIT_OIDC_CALLBACK_WINDOW_MS` | `900000` (15 min) | OIDC callback window |
 
 ---
 
