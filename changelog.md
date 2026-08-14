@@ -2,13 +2,42 @@
 
 ## Unreleased
 
+## [1.4.0] - 2026-08-14
+
 ### Added
 
-- **Journal — Library + Planner** — Narrative publishing surface: a **Library** archive of released publications and a capability-gated (`JOURNAL_PLANNER_ACCESS`) **Planner** for drafts, release conditions, and recurring series. Release rules are a pure, nestable `ALL`/`ANY` DSL over existing chronology, narrative, discovery, downtime, and reputation systems; resolution is lazy (on Journal load and time-advance, no scheduler).
+- **Journal — Library + Planner** — Narrative publishing surface: a **Library** archive of released publications and a capability-gated (`JOURNAL_PLANNER_ACCESS`) **Planner** for drafts, release conditions, and recurring series. Release rules are a nestable `ALL`/`ANY` DSL over chronology, narrative, discovery, downtime, and reputation; comparison operators and envelope support; lazy resolution on Journal load and time-advance (no scheduler).
+- **Workshop writing workspace** — Dedicated writing workspace, expanded formalize targets, and lore/biography tab architecture for entity writing.
+- **Wiki admonitions** — Semantic TipTap callouts with neutral styling.
+- **Markdown / print / ASCII export** — Campaign lore export to Markdown, print, and ASCII.
+- **Campaign wizard expansion** — Location and scheduling steps in New Campaign Wizard.
+- **Unified Adventure board** — Adventure hub on `CategoryHubShell` with typed create flows.
+- **Wiki editor shell** — Unified editor shell, page transform, and page settings (inspector removed).
+- **In-app docs links** — Contextual “learn more” links on GM surfaces (plugins, maps, discovery, world advance, campaign wizard, admin) pointing at the public docs wiki.
+
+### Changed
+
+- **Character, location, and quest shells** — Writing-first character editing; location and quest hub shells aligned with category hubs.
+- **Quest/arc visibility** — Lifecycle separated from wiki ACL.
+- **Legacy `templateType`** — Removed leftover entity template-type usage.
+- **Visual theme** — Theme and visual polish across campaign surfaces.
+- **Dead-code cleanup** — Removed orphaned hub/dashboard stubs, unused aliases, and retired generator surfaces.
+- **Agent context** — Reduced agent guidance to current-decision docs (`AGENTS.md` and companions).
+- **OIDC sessions** — Session version and nonce on OIDC auth state; related rate limits.
+
+### Fixed
+
+- Campaign settings auth typing for `gameSystem` fields.
+- Character overview requires non-null `campaignNow`.
+- Workshop draft API rate limit and CI build errors.
+- Wiki page transform `actorRole` typing.
 
 ### Database
 
 - Migration `20260703120000_journal_publications` — adds `JournalPublication`, `JournalSeries`, and `JournalReleaseReceipt` (Prisma-portable, inline FKs for dual-engine).
+- Migration `20260730120000_journal_publication_tags` — adds `JournalPublication.tags`.
+- Migration `20260730130000_journal_summary_series_owner` — adds `JournalPublication.summary` and `JournalSeries.createdByUserId`.
+- Migration `20260731180000_oidc_session_version_nonce` — adds `User.sessionVersion` and `OidcAuthState.nonce`.
 
 ## [1.3.0] - 2026-06-30
 
