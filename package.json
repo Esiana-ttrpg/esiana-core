@@ -20,6 +20,6 @@
     "profile-capacity": "pnpm --filter backend profile-capacity"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.10.0"
   }
 }
