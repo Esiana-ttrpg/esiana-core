@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [1.4.2] - 2026-08-14
+
 ### Fixed
 
 - Backend no longer loads jsdom/undici at startup; tag-icon SVG sanitization uses DOMPurify with Linkedom so Docker on Node 20 (v1.4.0) and Node 26 does not crash with `webidl.util.markAsUncloneable is not a function`.
