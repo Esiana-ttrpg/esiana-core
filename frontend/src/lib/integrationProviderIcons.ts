@@ -1,4 +1,5 @@
 import type { IconType } from 'react-icons';
+import { FaSlack } from 'react-icons/fa';
 import {
   SiDiscord,
   SiDiscourse,
@@ -6,7 +7,6 @@ import {
   SiGitter,
   SiMatrix,
   SiRoll20,
-  SiSlack,
   SiTelegram,
 } from 'react-icons/si';
 import { Map, MessagesSquare } from 'lucide-react';
@@ -17,7 +17,7 @@ export type IntegrationIconComponent = IconType | LucideIcon;
 
 const ICON_BY_PROVIDER: Record<IntegrationProviderId, IntegrationIconComponent> = {
   discord: SiDiscord,
-  slack: SiSlack,
+  slack: FaSlack,
   matrix: SiMatrix,
   telegram: SiTelegram,
   stoat: MessagesSquare,
