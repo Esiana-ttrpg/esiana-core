@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Docker build and runtime images use `node:26-alpine` (was `node:20-alpine`). Closes [#82](https://github.com/Esiana-ttrpg/esiana-core/issues/82).
+
 ## [1.4.0] - 2026-08-14
 
 ### Added
