@@ -1,5 +1,6 @@
-export const NARRATIVE_SNAPSHOTS_USER_GUIDE_URL =
-  'https://github.com/Esiana-ttrpg/esiana-core/blob/main/docs/architecture-internal/narrative-snapshots-user-guide.md';
+import { docsLinks } from '@/lib/docsLinks';
+
+export const NARRATIVE_SNAPSHOTS_USER_GUIDE_URL = docsLinks.campaignHistorySnapshots;
 
 export const campaignHistoryTitle = 'Campaign History';
 

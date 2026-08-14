@@ -27,6 +27,7 @@ import {
   getCampaignThemeLabel,
 } from '@/components/campaign/CampaignThemeMultiSelect';
 import type { CampaignSummary } from '@/types/campaign';
+import { docsLinks } from '@/lib/docsLinks';
 import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
 import { discoverImportFolders, discoverKankaJsonFolders, detectZipImportFormat } from '@shared/importZipStructure';
 import { fuzzyMatchImportModule } from '@shared/importModuleSynonyms';
@@ -1110,7 +1111,7 @@ export function NewCampaignWizard({
 
               <div className="rounded-xl border border-border bg-background/50 p-4">
                 <a
-                  href="https://github.com/Esiana-ttrpg/docs/wiki/Import-Formats"
+                  href={docsLinks.importFormats}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary"

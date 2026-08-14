@@ -427,6 +427,7 @@ export function EntityBrowserView({
             undiscoveredCount={discoverySummary.undiscoveredCount}
             discoveredCount={discoverySummary.discoveredCount}
             itemLabel={itemLabel.toLowerCase()}
+            showDocsLink
           />
         </div>
       ) : null}

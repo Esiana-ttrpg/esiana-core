@@ -2,6 +2,7 @@ import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { Shield, X } from 'lucide-react';
+import { docsLinks } from '@/lib/docsLinks';
 import { productVersion } from '@/lib/productVersion';
 import {
   adminVersionFooterClass,
@@ -133,7 +134,7 @@ export function AdminSidebarNav({
           </span>
         </a>
         <a
-          href="https://github.com/Esiana-ttrpg/docs/wiki"
+          href={docsLinks.home}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:border-border hover:bg-elevated/60 hover:text-primary"
