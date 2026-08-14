@@ -28,9 +28,9 @@ export interface MapVariantBuffers {
 }
 
 function resizeToMaxEdge(
-  pipeline: sharp.Sharp,
+  pipeline: ReturnType<typeof sharp>,
   maxEdge: number,
-): sharp.Sharp {
+): ReturnType<typeof sharp> {
   return pipeline.resize({
     width: maxEdge,
     height: maxEdge,
