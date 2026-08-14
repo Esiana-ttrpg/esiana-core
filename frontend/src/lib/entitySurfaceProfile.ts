@@ -8,6 +8,7 @@ import { isPageUnderNarrativeThreadsCategory } from '@/lib/threadHubLayout';
 import { isPageUnderNarrativeScenesCategory } from '@/lib/adventureLayout';
 import { isSceneMetadataPresent } from '@shared/sceneMetadata';
 import { normalizeEntityCategoryKey } from '@/lib/entityCategoryKeys';
+import { legacyTemplateTypeToEntityCategory } from '@shared/wikiTemplateType';
 
 export type InspectorProfile =
   | 'CHARACTER'
@@ -449,14 +450,14 @@ const LOCATION_SECTIONS: InspectorSectionDef[] = [
     label: 'Identity',
     defaultExpanded: true,
     searchKeywords: ['type', 'region', 'known for', 'climate'],
-    fieldKeys: ['locationType', 'region', 'knownFor', 'climate'],
+    fieldKeys: ['locationType', 'region', 'knownFor', 'climate', 'threats', 'currentStatus'],
   },
   {
     id: 'atlas',
     label: 'Atlas',
     defaultExpanded: false,
     searchKeywords: ['ruler', 'population', 'map', 'authority'],
-    fieldKeys: ['rulerOrAuthority', 'population', 'mapPageId'],
+    fieldKeys: ['rulerOrAuthority', 'population', 'mapPageId', 'currentStatus'],
   },
   {
     id: 'relationships',
@@ -581,7 +582,6 @@ const SURFACE_PROFILES: Record<SurfaceProfileKey, EntitySurfaceProfile> = {
     inspectorProfile: 'FAMILY',
     typedInfobox: true,
     identityStrip: 'family',
-    structureTab: 'family',
     appearanceMode: 'section',
     appearanceCapabilities: APPEARANCE_CAPABILITIES_FAMILY,
   },
@@ -770,15 +770,22 @@ export function resolveSurfaceProfileKey(input: {
   }
   if (isPageUnderOrganizationsCategory(pageId, flatPages)) return 'organization';
   if (isPageUnderFamiliesCategory(pageId, flatPages)) return 'family';
-  if (templateType === 'CHARACTER') return 'character';
-  if (templateType === 'ORGANIZATION') return 'organization';
-  if (templateType === 'FAMILY') return 'family';
 
-  const entityCategory = normalizeEntityCategoryKey(
+  let entityCategory = normalizeEntityCategoryKey(
     metadata && typeof metadata === 'object'
       ? (metadata as Record<string, unknown>).entityCategory as string | undefined
       : null,
   );
+  if (!entityCategory && templateType) {
+    entityCategory = legacyTemplateTypeToEntityCategory(templateType) ?? entityCategory;
+  }
+  if (
+    entityCategory === 'characters' ||
+    isPageUnderCategoryTitle(pageId, flatPages, 'Characters')
+  ) {
+    return 'character';
+  }
+  if (entityCategory === 'organizations') return 'organization';
   if (entityCategory === 'bestiary' || isPageUnderCategoryTitle(pageId, flatPages, 'Bestiary')) {
     return 'bestiary';
   }
@@ -792,7 +799,6 @@ export function resolveSurfaceProfileKey(input: {
     return 'object';
   }
   if (
-    templateType === 'LOCATION' ||
     entityCategory === 'locations' ||
     isPageUnderCategoryTitle(pageId, flatPages, 'Locations')
   ) {
@@ -821,7 +827,6 @@ export function resolveEntitySurfaceProfile(input: {
 export const ENTITY_WORKSPACE_SURFACE_KEYS = new Set<SurfaceProfileKey>([
   'character',
   'organization',
-  'family',
   'bestiary',
   'ancestry',
   'object',

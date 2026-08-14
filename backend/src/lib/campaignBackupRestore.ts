@@ -29,7 +29,6 @@ import {
 import { normalizeGameSystemSlug } from './gameSystems.js';
 import {
   CampaignDiscoverability,
-  isValidDiscoverability,
   normalizeDiscoverability,
 } from '../../../shared/campaignPolicy/discoverability.js';
 import { frontMatterFieldsToMetadata } from './pageMetadataRoundTrip.js';
@@ -239,11 +238,11 @@ function treeDepth(
 function resolveBackupDiscoverability(
   row: Record<string, unknown>,
 ): string | undefined {
-  if (isValidDiscoverability(row.discoverability as string)) {
-    return row.discoverability as string;
+  if (typeof row.discoverability === 'string') {
+    return normalizeDiscoverability(row.discoverability);
   }
   if (row.isPublic === true) return CampaignDiscoverability.PUBLIC;
-  if (row.isPublicViewable === true) return CampaignDiscoverability.UNLISTED;
+  if (row.isPublicViewable === true) return CampaignDiscoverability.PRIVATE;
   if (typeof row.isPublic === 'boolean' || typeof row.isPublicViewable === 'boolean') {
     return CampaignDiscoverability.PRIVATE;
   }

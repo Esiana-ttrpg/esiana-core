@@ -6,15 +6,25 @@ import { coerceAssetReferenceUrl } from './assetReferenceValidation.js';
  *
  * - **Entity-level** — persistent identity truths: summary, appearanceTags, gender,
  *   presentation, pronouns.
- * - **Forms-level** (stored in appearance.gallery) — contextual presentation overlays:
- *   variant label, portrait, presentationType, tags, presentationNotes, timelinePin.
- *   Localized voice/vibe/demeanor shifts belong in presentationNotes, not nested schemas.
+ * - **Forms-level** (stored in appearance.gallery) — contextual presentation overlays for a
+ *   specific state: label, portrait, presentationType, tags, presentationNotes, optional
+ *   descriptor overlays (voice, presence, clothingMotifs, distinguishingFeatures, gender,
+ *   presentation, authorNotes). Entry fields describe this state only; they do not write back
+ *   into entity-level Appearance fields.
  * - **Details-level** — baseline observable characterization (defaults, not absolutes):
  *   build, voice, distinguishingFeatures, visibleInjuries, clothingMotifs, vibeImpression,
  *   atAGlance.
  *
  * Disguise identity masking is a projection concern — not appearance metadata.
- * Non-goals: per-form descriptor overrides, mini-entity forms, paper dolls, outfit inventory.
+ *
+ * **Read-mode presentation projection** (see `projectAppearancePresentation` in frontend):
+ * - Baseline (featured/primary selection): entity Details + summary + identity tags; portrait from
+ *   selected entry or legacy; merge entry presentationNotes into description when present.
+ * - Non-baseline selection: entry portrait, presentationNotes, and tags only — no entity Details,
+ *   summary, gender, or presentation string fallthrough (sparse overlays stay sparse).
+ * Entry-level descriptor overlays are authored for future read/switch use; projection does not
+ * merge them into entity Details yet.
+ * Non-goals: mini-entity forms, paper dolls, outfit inventory.
  */
 
 export type AppearancePresentationType =
@@ -61,9 +71,21 @@ export interface AppearanceGalleryEntry {
   presentationType?: AppearancePresentationType;
   /** Optional; schema allows multiple primaries for future projection contexts. */
   isPrimary?: boolean;
+  /** @deprecated Editor removed; opaque chronology hook preserved for existing JSON only. */
   timelinePin: string | null;
-  /** Narrative overlay prose for this form — voice shifts, demeanor, localized traits. */
+  /** Presentation-specific description — how this state looks and feels (UI: Description). */
   presentationNotes: string | null;
+  /** Physical/body traits for this presentation state only. */
+  distinguishingFeatures: string[];
+  voice: string | null;
+  presence: string | null;
+  clothingMotifs: string | null;
+  /** Author context for this entry — not legacy `notes` (that maps to presentationNotes). */
+  authorNotes: string | null;
+  /** Presentation-state gender overlay — distinct from entity-level gender. */
+  gender: string | null;
+  /** Presentation-state presentation overlay — distinct from entity-level presentation. */
+  presentation: string | null;
 }
 
 export interface AppearanceGalleryState {
@@ -108,7 +130,32 @@ export function normalizePresentationType(raw: unknown): AppearancePresentationT
 }
 
 function normalizeImageUrl(raw: unknown): string {
-  return coerceAssetReferenceUrl(raw) ?? '';
+  if (typeof raw === 'string' && raw.trim()) {
+    const coerced = coerceAssetReferenceUrl(raw);
+    return coerced ?? raw.trim();
+  }
+  return '';
+}
+
+export function emptyGalleryEntryOverlays(): Pick<
+  AppearanceGalleryEntry,
+  | 'distinguishingFeatures'
+  | 'voice'
+  | 'presence'
+  | 'clothingMotifs'
+  | 'authorNotes'
+  | 'gender'
+  | 'presentation'
+> {
+  return {
+    distinguishingFeatures: [],
+    voice: null,
+    presence: null,
+    clothingMotifs: null,
+    authorNotes: null,
+    gender: null,
+    presentation: null,
+  };
 }
 
 function normalizeGalleryEntry(raw: unknown): AppearanceGalleryEntry | null {
@@ -128,6 +175,14 @@ function normalizeGalleryEntry(raw: unknown): AppearanceGalleryEntry | null {
     timelinePin: trimText(obj.timelinePin),
     presentationNotes:
       trimText(obj.presentationNotes) ?? trimText(obj.notes),
+    ...emptyGalleryEntryOverlays(),
+    distinguishingFeatures: normalizeStringArray(obj.distinguishingFeatures),
+    voice: trimText(obj.voice),
+    presence: trimText(obj.presence),
+    clothingMotifs: trimText(obj.clothingMotifs),
+    authorNotes: trimText(obj.authorNotes),
+    gender: trimText(obj.gender),
+    presentation: trimText(obj.presentation),
   };
 }
 
@@ -229,6 +284,7 @@ export function synthesizeLegacyGalleryEntry(
     isPrimary: true,
     timelinePin: null,
     presentationNotes: null,
+    ...emptyGalleryEntryOverlays(),
   };
 }
 

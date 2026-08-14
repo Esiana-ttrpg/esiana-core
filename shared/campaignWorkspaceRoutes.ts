@@ -68,6 +68,7 @@ export const RESERVED_PATH_KEY_SEGMENTS = new Set([
   'party',
   'chronology',
   'progression',
+  'workshop',
   'relations',
   'maps',
   'downtime',

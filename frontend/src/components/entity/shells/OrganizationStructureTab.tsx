@@ -65,7 +65,9 @@ export function OrganizationStructureTab({
             campaignHandle={campaignHandle}
             pageId={structure.parentOrgId}
             title={structure.parentTitle}
-            templateType="ORGANIZATION"
+            templateType={
+              snapshots.find((s) => s.id === structure.parentOrgId)?.templateType ?? 'DEFAULT'
+            }
             flatPages={snapshots}
             subtitle="Structural parent"
           />
@@ -112,7 +114,9 @@ export function OrganizationStructureTab({
                     campaignHandle={campaignHandle}
                     pageId={child.id}
                     title={child.title}
-                    templateType="ORGANIZATION"
+                    templateType={
+                      snapshots.find((s) => s.id === child.id)?.templateType ?? 'DEFAULT'
+                    }
                     flatPages={snapshots}
                     subtitle={child.structuralRoleLabel ?? undefined}
                     compact

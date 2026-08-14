@@ -13,7 +13,7 @@ Canonical reference for every supported Esiana environment variable.
 | Name | Default | Required | Description | Example |
 |------|---------|----------|-------------|---------|
 | `POSTGRES_PASSWORD` | — | **Yes** | PostgreSQL password. Used by the `postgres` service and embedded in the app `DATABASE_URL` compose generates. | `openssl rand -hex 32` |
-| `JWT_SECRET` | — | **Yes** | Secret for signing session tokens. Use a long random value in production. | `openssl rand -hex 32` |
+| `JWT_SECRET` | — | **Yes** | Signs session JWT cookies. **Not** the same as `AUTH_SECRETS_KEY`. | `openssl rand -hex 32` |
 
 ---
 
@@ -23,7 +23,7 @@ Canonical reference for every supported Esiana environment variable.
 |------|---------|----------|-------------|---------|
 | `PUBLIC_ORIGIN` | `http://localhost:8080` (matches `COMPOSE_HTTP_PORT`) | Optional | Public browser URL (no trailing slash). Sets `FRONTEND_ORIGIN`, `CORS_ORIGIN`, and `BACKEND_PUBLIC_ORIGIN`. Required when using a reverse proxy — see [Reverse Proxies.md](Reverse%20Proxies.md). | `https://esiana.example.com` |
 | `ESIANA_VERSION` | `latest` | Optional | GHCR image tag. Pin for pull-based upgrades. | `v1.0.1` |
-| `AUTH_SECRETS_KEY` | (empty) | Optional | 32-byte base64 AES key for encrypting OIDC client secrets in Admin. Required when using Identity Providers in production. | `openssl rand -base64 32` |
+| `AUTH_SECRETS_KEY` | (empty) | Optional | Encrypts **stored** IdP client secrets (AES). Separate from `JWT_SECRET`. Required with Identity Providers in production. | `openssl rand -base64 32` |
 | `OPENAPI_DOCS_ENABLED` | `true` | Optional | `true` exposes `/api/docs` in production; `false` hides Swagger on public hosts. | `false` |
 | `COMPOSE_HTTP_PORT` | `8080` | Optional | Host port mapped to the esiana container. | `8080` |
 | `TRUST_PROXY` | `false` | Optional | `true` when behind a reverse proxy that sets `X-Forwarded-*` headers. | `true` |
@@ -77,6 +77,8 @@ Product version (admin UI, update checks, plugin `engines.esiana-core` gate) com
 ---
 
 ## Backend — identity and OIDC
+
+Canonical `OIDC_*` and `LOCAL_LOGIN_ENABLED` contract: [docs wiki — Federated identity (OIDC)](../../../docs/options/federated-identity.md).
 
 | Name | Default | Required | Description | Example |
 |------|---------|----------|-------------|---------|
@@ -156,6 +158,10 @@ Defined in [`backend/src/config/rateLimitEnv.ts`](../../backend/src/config/rateL
 | `RATE_LIMIT_APPLY_GLOBAL_WINDOW_MS` | `3600000` | Global apply window |
 | `RATE_LIMIT_TOKEN_MINT_MAX` | `10` | API token creations per day |
 | `RATE_LIMIT_TOKEN_MINT_WINDOW_MS` | `86400000` (24 h) | Token mint window |
+| `RATE_LIMIT_OIDC_START_MAX` | `20` | OIDC authorize starts per IP and provider |
+| `RATE_LIMIT_OIDC_START_WINDOW_MS` | `900000` (15 min) | OIDC start window |
+| `RATE_LIMIT_OIDC_CALLBACK_MAX` | `40` | OIDC callback hits per IP and provider |
+| `RATE_LIMIT_OIDC_CALLBACK_WINDOW_MS` | `900000` (15 min) | OIDC callback window |
 
 ---
 

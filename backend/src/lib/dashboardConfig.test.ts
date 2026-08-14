@@ -9,7 +9,8 @@ import {
 test('migrateWidgetId remaps legacy ids', () => {
   assert.equal(migrateWidgetId('sessionClock'), 'sessionSchedule');
   assert.equal(migrateWidgetId('worldClock'), 'worldChronometer');
-  assert.equal(migrateWidgetId('announcements'), 'campaignBulletin');
+  assert.equal(migrateWidgetId('announcements'), 'recentLore');
+  assert.equal(migrateWidgetId('campaignBulletin'), 'recentLore');
   assert.equal(migrateWidgetId('activityLoop'), 'recentLore');
   assert.equal(migrateWidgetId('party'), 'partyRoster');
 });
@@ -33,11 +34,10 @@ test('normalizeDashboardConfig migrates party to partyRoster', () => {
   assert.ok(roster);
   assert.equal(roster.enabled, true);
   const legacyParty = normalized.widgets.find((w) => w.id === 'party');
-  assert.ok(legacyParty);
-  assert.equal(legacyParty.enabled, false);
+  assert.equal(legacyParty, undefined);
 });
 
-test('normalizeDashboardConfig disables campaignBulletin placements', () => {
+test('normalizeDashboardConfig migrates campaignBulletin to recentLore', () => {
   const normalized = normalizeDashboardConfig({
     hero: { coverImageUrl: null, summary: null },
     widgets: [
@@ -53,9 +53,11 @@ test('normalizeDashboardConfig disables campaignBulletin placements', () => {
     ],
   });
 
+  const recentLore = normalized.widgets.find((w) => w.id === 'recentLore');
+  assert.ok(recentLore);
+  assert.deepEqual(recentLore.config, { body: 'House rules here' });
   const bulletin = normalized.widgets.find((w) => w.id === 'campaignBulletin');
-  assert.ok(bulletin);
-  assert.equal(bulletin.enabled, false);
+  assert.equal(bulletin, undefined);
 });
 
 test('parseDashboardLayoutPayload rejects quickUtilityNav with more than 7 links', () => {

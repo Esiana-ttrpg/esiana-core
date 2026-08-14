@@ -8,7 +8,7 @@ import {
   type WikiPageLineageSnapshot,
 } from '@/lib/entityProjectionQueries';
 import { isProjectionDebugEnabled } from '@/lib/entityProjectionDebug';
-import { relationshipsEmptyCopy } from '@/lib/entityEmptyCopy';
+import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { chronologyDateKey, useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
 import { CampaignMemberRoles } from '@/types/domain';
 import { EntityRelationChip } from '@/components/entity/EntityRelationChip';
@@ -130,6 +130,7 @@ export function ReferencesWidget({
         title: page.title,
         templateType: page.templateType,
         metadata: page.metadata,
+        parentId: page.parentId,
       })),
     [wiki?.flatPages],
   );
@@ -158,17 +159,38 @@ export function ReferencesWidget({
     isDMUser,
   ]);
 
+  const pageEntityCategory = useMemo(
+    () =>
+      currentPage
+        ? resolveCanonicalEntityCategory(currentPage, wiki?.flatPages ?? [])
+        : null,
+    [currentPage, wiki?.flatPages],
+  );
+
+  const relationshipsEmptyDescription = useMemo(() => {
+    if (pageEntityCategory === 'characters') {
+      return 'No known allegiances at campaign time.';
+    }
+    if (pageEntityCategory === 'families') {
+      return 'No head of house or bloodline root linked yet.';
+    }
+    if (pageEntityCategory === 'organizations') {
+      return 'No active diplomatic tensions recorded at campaign time.';
+    }
+    return 'No relationships recorded for this page.';
+  }, [pageEntityCategory]);
+
   const previewContext = useMemo(
     () => ({
       campaignNow,
       isDMUser,
       viewerOrgId:
-        currentPage?.templateType === 'ORGANIZATION' ? pageId : undefined,
+        pageEntityCategory === 'organizations' ? pageId : undefined,
       viewerPageId: pageId,
       viewerCharacterId:
-        currentPage?.templateType === 'CHARACTER' ? pageId : undefined,
+        pageEntityCategory === 'characters' ? pageId : undefined,
     }),
-    [campaignNow, isDMUser, pageId, currentPage?.templateType],
+    [campaignNow, isDMUser, pageId, pageEntityCategory],
   );
 
   const relationshipRows = useMemo(() => {
@@ -347,7 +369,7 @@ export function ReferencesWidget({
             <EmptyState
               icon={Users}
               title="No relationships at campaign time"
-              description={relationshipsEmptyCopy(currentPage.templateType)}
+              description={relationshipsEmptyDescription}
             />
           ) : (
             <ul className="flex flex-wrap gap-2">

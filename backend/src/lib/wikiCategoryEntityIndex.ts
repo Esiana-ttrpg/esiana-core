@@ -1,34 +1,13 @@
 import type { Prisma } from '@prisma/client';
 import {
   entityCategoryIndexMatchValues,
-  normalizeEntityCategoryKey,
 } from './entityCategoryKeys.js';
 import { prismaJsonPath } from './prismaJsonPath.js';
 
 /** JSON metadata key stamped when creating pages from a category index. */
 export const WIKI_ENTITY_CATEGORY_METADATA_KEY = 'entityCategory';
 
-/**
- * Type-first index membership: Characters/Locations lists are campaign-wide by
- * entity type, not limited to direct children of the category folder.
- */
-const CATEGORY_TEMPLATE_TYPE_FALLBACK: Record<string, string> = {
-  Characters: 'CHARACTER',
-  Locations: 'LOCATION',
-  Organizations: 'ORGANIZATION',
-  Families: 'FAMILY',
-};
-
-export function readEntityCategoryFromMetadata(
-  metadata: unknown,
-): string | null {
-  if (!metadata || typeof metadata !== 'object') return null;
-  const value = (metadata as Record<string, unknown>)[
-    WIKI_ENTITY_CATEGORY_METADATA_KEY
-  ];
-  if (typeof value !== 'string' || !value.trim()) return null;
-  return normalizeEntityCategoryKey(value.trim());
-}
+export { readEntityCategoryFromMetadata } from '../../../shared/wikiTemplateType.js';
 
 /** Campaign-wide where clause for pages belonging to a category index. */
 export function buildCategoryIndexWhereClause(
@@ -49,10 +28,30 @@ export function buildCategoryIndexWhereClause(
     orConditions.push({ parentId: categoryPageId });
   }
 
-  const templateType = CATEGORY_TEMPLATE_TYPE_FALLBACK[categoryTitle];
-  if (templateType) {
-    orConditions.push({ templateType });
-  }
-
   return { OR: orConditions };
+}
+
+/** Prisma filter for pages with a canonical entity category in metadata. */
+export function buildEntityCategoryWhereClause(
+  entityCategoryKey: string,
+): Prisma.WikiPageWhereInput {
+  const values = entityCategoryIndexMatchValues(
+    entityCategoryKey === 'characters'
+      ? 'Characters'
+      : entityCategoryKey === 'locations'
+        ? 'Locations'
+        : entityCategoryKey === 'organizations'
+          ? 'Organizations'
+          : entityCategoryKey === 'families'
+            ? 'Families'
+            : entityCategoryKey,
+  );
+  return {
+    OR: values.map((value) => ({
+      metadata: {
+        path: prismaJsonPath(WIKI_ENTITY_CATEGORY_METADATA_KEY),
+        equals: value,
+      },
+    })),
+  };
 }

@@ -86,6 +86,24 @@ export const authPasswordResetConsumeLimiter = createLimiter({
   keyGenerator: clientIpKey,
 });
 
+function oidcProviderId(req: Request): string {
+  return String(req.params.providerId ?? '').trim() || 'unknown-provider';
+}
+
+/** OIDC authorize redirect initiation (per IP + provider). */
+export const oidcStartLimiter = createLimiter({
+  windowMs: env.rateLimit.oidcStartWindowMs,
+  max: env.rateLimit.oidcStartMax,
+  keyGenerator: (req) => `oidc-start:${clientIpKey(req)}:${oidcProviderId(req)}`,
+});
+
+/** OIDC callback (includes validation failures; per IP + provider). */
+export const oidcCallbackLimiter = createLimiter({
+  windowMs: env.rateLimit.oidcCallbackWindowMs,
+  max: env.rateLimit.oidcCallbackMax,
+  keyGenerator: (req) => `oidc-callback:${clientIpKey(req)}:${oidcProviderId(req)}`,
+});
+
 export const campaignInviteEmailLimiter = createLimiter({
   windowMs: env.rateLimit.inviteEmailPerCampaignWindowMs,
   max: env.rateLimit.inviteEmailPerCampaignMax,
@@ -123,6 +141,17 @@ export const apiTokenMintLimiter = createLimiter({
   keyGenerator: (req) => {
     const user = (req as AuthenticatedRequest).user;
     return `token-mint:${user?.id ?? clientIpKey(req)}`;
+  },
+});
+
+/** Workshop draft API: per-user per-campaign (autosave-friendly). */
+export const workshopDraftLimiter = createLimiter({
+  windowMs: 60_000,
+  max: 180,
+  keyGenerator: (req) => {
+    const user = (req as AuthenticatedRequest).user;
+    const campaignHandle = String(req.params.campaignHandle ?? '').trim();
+    return `workshop-draft:${user?.id ?? clientIpKey(req)}:${campaignHandle}`;
   },
 });
 

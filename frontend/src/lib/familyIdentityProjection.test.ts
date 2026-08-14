@@ -8,7 +8,7 @@ describe('buildFamilyIdentityProjection', () => {
       {
         id: 'f1',
         title: 'House Sterling',
-        templateType: 'FAMILY',
+        templateType: 'DEFAULT',
         metadata: {
           familyType: 'Noble house',
           region: 'Rivendale',

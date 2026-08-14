@@ -22,11 +22,12 @@ export function OrganizationHubCard({
 }: OrganizationHubCardProps) {
   const { flatPages } = useWiki();
   const org = parseOrganizationMetadata(child.metadata);
+  const wikiPage = flatPages.find((page) => page.id === child.id);
   const projection = buildOrganizationIdentityProjection(child.id, [
     {
       id: child.id,
       title: child.title,
-      templateType: 'ORGANIZATION',
+      templateType: wikiPage?.templateType ?? 'DEFAULT',
       metadata: child.metadata,
     },
   ]);

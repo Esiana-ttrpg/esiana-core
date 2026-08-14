@@ -8,14 +8,28 @@ import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEdit
 import { BlockEmptyState } from '@/components/wiki/BlockEmptyState';
 import { useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
 import { useEntityGraphRelationshipProjection } from '@/hooks/useEntityGraphRelationshipProjection';
+import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
 import type { WikiTreeNode } from '@/types/wiki';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
+
+function surfaceKeyToProjectionTemplate(surfaceKey: SurfaceProfileKey): string {
+  switch (surfaceKey) {
+    case 'character':
+      return 'CHARACTER';
+    case 'organization':
+      return 'ORGANIZATION';
+    case 'family':
+      return 'FAMILY';
+    default:
+      return 'DEFAULT';
+  }
+}
 
 interface EntityRelationshipsWidgetProps {
   blockId: string;
   campaignHandle: string;
   pageId: string;
-  templateType: string;
+  surfaceProfileKey: SurfaceProfileKey;
   metadata: unknown;
   flatPages: WikiTreeNode[];
   isEditingPage: boolean;
@@ -27,7 +41,7 @@ export function EntityRelationshipsWidget({
   blockId,
   campaignHandle,
   pageId,
-  templateType,
+  surfaceProfileKey,
   metadata,
   flatPages,
   isEditingPage,
@@ -36,6 +50,7 @@ export function EntityRelationshipsWidget({
 }: EntityRelationshipsWidgetProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const campaignNow = useCampaignChronologyNow(campaignHandle);
+  const projectionTemplateType = surfaceKeyToProjectionTemplate(surfaceProfileKey);
 
   const snapshots: WikiPageLineageSnapshot[] = useMemo(
     () =>
@@ -51,7 +66,7 @@ export function EntityRelationshipsWidget({
   const relationshipProjection = useEntityGraphRelationshipProjection({
     campaignHandle,
     pageId,
-    templateType,
+    templateType: projectionTemplateType,
     flatPages: snapshots,
     campaignNow,
     isDMUser,
@@ -62,11 +77,11 @@ export function EntityRelationshipsWidget({
     () => ({
       campaignNow,
       isDMUser,
-      viewerOrgId: templateType === 'ORGANIZATION' ? pageId : undefined,
+      viewerOrgId: surfaceProfileKey === 'organization' ? pageId : undefined,
       viewerPageId: pageId,
-      viewerCharacterId: templateType === 'CHARACTER' ? pageId : undefined,
+      viewerCharacterId: surfaceProfileKey === 'character' ? pageId : undefined,
     }),
-    [campaignNow, isDMUser, pageId, templateType],
+    [campaignNow, isDMUser, pageId, surfaceProfileKey],
   );
 
   const rows = useMemo(() => {
@@ -116,7 +131,7 @@ export function EntityRelationshipsWidget({
     return out;
   }, [relationshipProjection]);
 
-  if (isEditingPage && templateType === 'CHARACTER') {
+  if (isEditingPage && surfaceProfileKey === 'character') {
     return (
       <CharacterLineageEditor
         blockId={blockId}

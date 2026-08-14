@@ -37,6 +37,16 @@ export function getDefaultBlockTitle(type: WikiPageBlockType): string {
       return 'Ancestry profile';
     case 'entity-document':
       return 'Document settings';
+    case 'entity-quest-properties':
+      return 'Quest details';
+    case 'entity-thread-properties':
+      return 'Thread orchestration';
+    case 'entity-scene-properties':
+      return 'Scene orchestration';
+    case 'entity-arc-properties':
+      return 'Arc details';
+    case 'entity-objective-properties':
+      return 'Objective details';
     default:
       return 'Widget';
   }
@@ -93,32 +103,62 @@ export function getWikiWidgetOptions(
   options?: {
     includeGeneric?: boolean;
     appearanceMode?: AppearanceMode;
+    surfaceKey?: string;
   },
 ): Array<{ value: WikiPageBlockType; label: string; group?: string }> {
   const t = templateType?.trim().toUpperCase() ?? '';
   const appearanceMode = options?.appearanceMode ?? 'none';
   const includeGeneric = options?.includeGeneric !== false;
   const semantic: Array<{ value: WikiPageBlockType; label: string; group?: string }> = [];
+  const surfaceKey = options?.surfaceKey?.trim().toLowerCase();
 
-  if (t === 'CHARACTER') {
+  if (surfaceKey === 'character') {
     semantic.push(
       ...CHARACTER_SEMANTIC_OPTIONS.map((o) => ({ ...o, group: 'Character' })),
     );
-  } else if (t === 'ORGANIZATION') {
+  } else if (surfaceKey === 'organization') {
     semantic.push(
       ...ORGANIZATION_SEMANTIC_OPTIONS.map((o) => ({ ...o, group: 'Organization' })),
     );
-  } else if (t === 'FAMILY') {
+  } else if (surfaceKey === 'family') {
     semantic.push(
       ...FAMILY_SEMANTIC_OPTIONS.map((o) => ({ ...o, group: 'Family' })),
     );
-  } else if (t === 'LOCATION') {
+  } else if (surfaceKey === 'location') {
     semantic.push(
       ...LOCATION_SEMANTIC_OPTIONS.map((o) => ({ ...o, group: 'Location' })),
     );
+  } else if (t === 'QUEST') {
+    semantic.push(
+      { value: 'entity-quest-properties', label: 'Quest details', group: 'Quest' },
+    );
+  } else if (t === 'THREAD') {
+    semantic.push(
+      { value: 'entity-thread-properties', label: 'Thread orchestration', group: 'Thread' },
+    );
+  } else if (t === 'SCENE') {
+    semantic.push(
+      { value: 'entity-scene-properties', label: 'Scene orchestration', group: 'Scene' },
+    );
   }
 
-  if (appearanceMode === 'full' && t !== 'CHARACTER') {
+  if (!semantic.some((o) => o.value === 'entity-quest-properties') && surfaceKey === 'quest') {
+    semantic.push(
+      { value: 'entity-quest-properties', label: 'Quest details', group: 'Quest' },
+    );
+  }
+  if (!semantic.some((o) => o.value === 'entity-thread-properties') && surfaceKey === 'thread') {
+    semantic.push(
+      { value: 'entity-thread-properties', label: 'Thread orchestration', group: 'Thread' },
+    );
+  }
+  if (!semantic.some((o) => o.value === 'entity-scene-properties') && surfaceKey === 'scene') {
+    semantic.push(
+      { value: 'entity-scene-properties', label: 'Scene orchestration', group: 'Scene' },
+    );
+  }
+
+  if (appearanceMode === 'full' && surfaceKey !== 'character') {
     semantic.push(
       ...BESTIARY_SEMANTIC_OPTIONS.map((o) => ({ ...o, group: 'Appearance' })),
     );
@@ -137,9 +177,6 @@ export function getWikiWidgetOptions(
     return true;
   });
 }
-
-/** @deprecated Use getWikiWidgetOptions */
-export const WIKI_WIDGET_OPTIONS = GENERIC_WIDGET_OPTIONS;
 
 export function createBlockContentForType(
   type: WikiPageBlockType,

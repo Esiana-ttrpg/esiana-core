@@ -16,7 +16,6 @@ import {
 import {
   listGlobalFrontendRuntime,
 } from '../controllers/frontendPluginsController.js';
-import { listCampaignGenerators } from '../controllers/campaignGeneratorsController.js';
 import { uninstallPlugin } from '../lib/plugins/pluginUninstall.js';
 import { clearPluginQuarantineState } from '../lib/pluginRuntime/pluginDiagnostics.js';
 
@@ -31,8 +30,6 @@ export function createPluginsRouter(): Router {
     requireTokenScopes([API_TOKEN_SCOPES.PLUGINS_READ]),
     listGlobalFrontendRuntime,
   );
-
-  router.get('/campaign-generators', listCampaignGenerators);
 
   router.get(
     '/',

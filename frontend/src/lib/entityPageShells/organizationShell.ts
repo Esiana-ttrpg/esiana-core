@@ -3,17 +3,17 @@ import type { EntityPageShell, EntitySubviewDef, EntitySubviewId } from './types
 
 export const ORGANIZATION_SUBVIEWS: EntitySubviewDef[] = [
   { id: 'overview', label: 'Overview', navPriority: 0, collapseGroup: 'primary' },
-  { id: 'structure', label: 'Structure', navPriority: 1, collapseGroup: 'primary' },
-  { id: 'presence', label: 'Presence', navPriority: 2, collapseGroup: 'primary' },
-  { id: 'relations', label: 'Relations', navPriority: 3, collapseGroup: 'secondary' },
-  { id: 'people', label: 'People', navPriority: 4, collapseGroup: 'secondary' },
-  { id: 'lore', label: 'Lore', navPriority: 5, collapseGroup: 'secondary' },
+  { id: 'lore', label: 'Lore', navPriority: 1, collapseGroup: 'primary' },
+  { id: 'structure', label: 'Structure', navPriority: 2, collapseGroup: 'primary' },
+  { id: 'presence', label: 'Presence', navPriority: 3, collapseGroup: 'primary' },
+  { id: 'relations', label: 'Relations', navPriority: 4, collapseGroup: 'secondary' },
+  { id: 'people', label: 'People', navPriority: 5, collapseGroup: 'secondary' },
   { id: 'continuity', label: 'Continuity', navPriority: 6, collapseGroup: 'dm', dmOnly: true },
 ];
 
 const CONTENT_TAB_BLOCKS: Record<string, WikiPageBlockType[]> = {
   relations: ['entity-relationships', 'wiki-backlinks'],
-  lore: ['text-tiptap', 'text-biography', 'wiki-infobox'],
+  lore: ['text-tiptap', 'text-biography'],
   continuity: ['wiki-backlinks', 'text-tiptap', 'text-biography'],
 };
 
@@ -53,9 +53,6 @@ export const organizationPageShell: EntityPageShell = {
       ghostLabel: 'Historical notes',
     },
   ],
-  railSectionOrder: ['callout', 'relations'],
-  railSectionsHidden: ['provenance', 'threads', 'timeline', 'discovery', 'continuity'],
-  defaultRailOpen: false,
   getVisibleSubviews: visibleSubviews,
   isValidSubview(subview, isDMUser) {
     return visibleSubviews(isDMUser).some((t) => t.id === subview);
@@ -80,8 +77,11 @@ export const organizationPageShell: EntityPageShell = {
     if (type === 'entity-relationships' || type === 'wiki-backlinks') {
       return 'relations';
     }
-    if (type === 'text-tiptap' || type === 'text-biography' || type === 'wiki-infobox') {
+    if (type === 'text-tiptap' || type === 'text-biography') {
       return 'lore';
+    }
+    if (type === 'wiki-infobox') {
+      return 'overview';
     }
     return 'overview';
   },

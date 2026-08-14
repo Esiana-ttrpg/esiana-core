@@ -20,7 +20,7 @@ export function LastSessionNotesWidget({
   return (
     <DashboardWidgetShell
       title="Last Session"
-      icon={<ScrollText className="size-4 text-orange-300" />}
+      icon={<ScrollText className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

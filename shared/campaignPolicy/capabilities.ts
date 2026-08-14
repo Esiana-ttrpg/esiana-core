@@ -23,6 +23,7 @@ export const CampaignCapabilities = {
   MAPS_EDIT: 'maps.edit',
   DOWNTIME_MANAGE: 'downtime.manage',
   ADVENTURE_STORYBOARD_EDIT: 'adventure.storyboard.edit',
+  JOURNAL_PLANNER_ACCESS: 'journal_planner.access',
 
   ASSETS_UPLOAD: 'assets.upload',
   ASSETS_DELETE_ANY: 'assets.delete_any',

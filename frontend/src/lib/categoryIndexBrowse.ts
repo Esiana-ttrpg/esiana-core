@@ -97,7 +97,8 @@ export function buildCategoryIndexSearchHaystack(
     }
   } else if (categoryTitle === 'Locations') {
     const location = parseLocationMetadata(child.metadata);
-    if (location.knownFor) parts.push(location.knownFor);
+    if (location.knownFor.length > 0) parts.push(location.knownFor.join(' '));
+    if (location.threats.length > 0) parts.push(location.threats.join(' '));
     if (location.climate) parts.push(location.climate);
     const display = getDisplayMetadata(child.metadata, categoryTitle);
     for (const field of display) {
@@ -493,16 +494,6 @@ export function formatCategoryIndexResultCount(
   const { singular, plural } = resolveCategoryCountNouns(categoryTitle);
   if (matching === total) return formatWorkspaceCountLabel(total, singular, plural);
   return `Showing ${matching} of ${total}`;
-}
-
-/** @deprecated Use formatWorkspaceHubCountHint — subtitle reserved for rich meta only */
-export function formatWorkspaceHubSubtitle(
-  count: number,
-  categoryTitle: string,
-): string | undefined {
-  if (count <= 0) return undefined;
-  const { singular, plural } = resolveCategoryCountNouns(categoryTitle);
-  return formatWorkspaceCountLabel(count, singular, plural);
 }
 
 export function isBrowseActive(

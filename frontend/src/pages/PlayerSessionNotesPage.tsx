@@ -163,7 +163,7 @@ export function PlayerSessionNotesPage() {
                   }}
                   className={`flex items-center justify-between rounded-lg border p-3 transition-all ${
                     player.hasNotes
-                      ? 'cursor-pointer border-border bg-surface hover:border-indigo-500'
+                      ? 'cursor-pointer border-border bg-surface hover:border-primary/50'
                       : 'pointer-events-none cursor-not-allowed border-border bg-background/40 opacity-40'
                   }`}
                 >

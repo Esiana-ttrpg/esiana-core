@@ -57,9 +57,15 @@ import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 import {
   getCategoryDefaultView,
+  getCategoryAllowedViews,
   isEntityCatalogCategory,
 } from '@/lib/categoryBrowseRegistry';
 import { EntityCatalogTile } from '@/components/wiki/indexBrowse/EntityCatalogTile';
+import { CategoryIndexColumnPicker } from '@/components/wiki/indexBrowse/CategoryIndexColumnPicker';
+import {
+  hasCategoryOptionalColumns,
+  normalizeSelectedOptionalColumnKeys,
+} from '@/lib/metadataConfig';
 import { resolveCategoryIndexEmptyVariant } from '@/lib/categoryIndexEmptyState';
 import { CategoryIndexDiscoveryBanner, DiscoveryStateBadge } from '@/components/wiki/indexBrowse/CategoryIndexDiscoveryBanner';
 import type { CategoryDiscoverySummary } from '@/lib/wiki';
@@ -108,6 +114,14 @@ export function EntityBrowserView({
     getCategoryDefaultView(categoryTitle),
   );
   const [browseHydrated, setBrowseHydrated] = useState(false);
+  const [selectedOptionalColumnKeys, setSelectedOptionalColumnKeys] = useState<
+    string[]
+  >([]);
+
+  const allowedViews = useMemo(
+    () => getCategoryAllowedViews(categoryTitle),
+    [categoryTitle],
+  );
 
   const itemLabel = createItemLabel(categoryTitle);
 
@@ -173,8 +187,13 @@ export function EntityBrowserView({
     if (snapshot?.refineState) {
       setRefineState(snapshot.refineState);
     }
+    if (snapshot?.columnKeys) {
+      setSelectedOptionalColumnKeys(
+        normalizeSelectedOptionalColumnKeys(categoryTitle, snapshot.columnKeys),
+      );
+    }
     setBrowseHydrated(true);
-  }, [campaignHandle, categoryPageId, browseHydrated]);
+  }, [campaignHandle, categoryPageId, browseHydrated, categoryTitle]);
 
   useEffect(() => {
     if (children.length === 0 || facetDefs.length === 0) return;
@@ -198,6 +217,7 @@ export function EntityBrowserView({
       searchQuery,
       refineState,
       viewMode,
+      columnKeys: selectedOptionalColumnKeys,
     });
   }, [
     browseHydrated,
@@ -206,6 +226,7 @@ export function EntityBrowserView({
     searchQuery,
     refineState,
     viewMode,
+    selectedOptionalColumnKeys,
   ]);
 
   const hasActiveRefine = useMemo(
@@ -305,7 +326,6 @@ export function EntityBrowserView({
 
   function handleOpenCharacterSettings(pageId: string, focusField?: string) {
     const searchParams = new URLSearchParams();
-    searchParams.set('openInspector', '1');
     searchParams.set('openSettings', '1');
     if (focusField) searchParams.set('focusField', focusField);
     navigate(
@@ -369,6 +389,19 @@ export function EntityBrowserView({
             }
             viewMode={viewMode}
             onViewModeChange={setViewMode}
+            allowedViews={allowedViews}
+            hierarchyLabel={
+              categoryTitle === 'Locations' ? 'Explorer' : undefined
+            }
+            trailing={
+              viewMode === 'table' && hasCategoryOptionalColumns(categoryTitle) ? (
+                <CategoryIndexColumnPicker
+                  categoryTitle={categoryTitle}
+                  selectedOptionalKeys={selectedOptionalColumnKeys}
+                  onSelectedOptionalKeysChange={setSelectedOptionalColumnKeys}
+                />
+              ) : null
+            }
           />
         }
         activeFilters={
@@ -394,6 +427,7 @@ export function EntityBrowserView({
             undiscoveredCount={discoverySummary.undiscoveredCount}
             discoveredCount={discoverySummary.discoveredCount}
             itemLabel={itemLabel.toLowerCase()}
+            showDocsLink
           />
         </div>
       ) : null}
@@ -426,6 +460,8 @@ export function EntityBrowserView({
           categoryTitle={categoryTitle}
           campaignHandle={campaignHandle}
           pageById={pageById}
+          allIndexChildren={children}
+          selectedOptionalColumnKeys={selectedOptionalColumnKeys}
           onOpenCharacterSettings={
             categoryTitle === 'Characters' ? handleOpenCharacterSettings : undefined
           }
@@ -437,6 +473,7 @@ export function EntityBrowserView({
           categoryPageId={categoryPageId}
           categoryTitle={categoryTitle}
           campaignHandle={campaignHandle}
+          pageById={pageById}
         />
       ) : isEntityCatalogCategory(categoryTitle) ? (
         <>
@@ -448,6 +485,7 @@ export function EntityBrowserView({
               categoryTitle={categoryTitle}
               campaignHandle={campaignHandle}
               pageById={pageById}
+              allIndexChildren={children}
             />
           ))}
         </>
@@ -483,9 +521,6 @@ export function EntityBrowserView({
     </>
   );
 }
-
-/** @deprecated use EntityBrowserView */
-export const WikiIndexView = EntityBrowserView;
 
 interface CardViewProps {
   child: CategoryIndexChild;

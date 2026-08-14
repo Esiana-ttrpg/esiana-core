@@ -37,12 +37,13 @@ describe('buildContinuityIssues', () => {
     assert.equal(issues[0].fingerprint, 'unresolved_wikilink:src:sus apple');
   });
 
-  it('uses character-friendly copy for unlinked CHARACTER', () => {
+  it('uses character-friendly copy for unlinked character entity', () => {
     const issue = buildUnlinkedEntityIssue(
       {
         id: 'c1',
         title: 'Johnny Nior',
-        templateType: 'CHARACTER',
+        templateType: 'DEFAULT',
+        metadata: { entityCategory: 'characters' },
         inboundLinkCount: 0,
       },
       'local',

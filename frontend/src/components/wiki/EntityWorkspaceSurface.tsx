@@ -176,7 +176,7 @@ export function EntityWorkspaceSurface({
                 : 'text-muted hover:text-foreground'
             }`}
           >
-            {templateType === 'ORGANIZATION' ? 'Lore & Details' : 'Lore'}
+            {entitySurfaceProfile.key === 'organization' ? 'Lore & Details' : 'Lore'}
           </button>
           <button
             type="button"
@@ -187,7 +187,7 @@ export function EntityWorkspaceSurface({
                 : 'text-muted hover:text-foreground'
             }`}
           >
-            {templateType === 'ORGANIZATION' ||
+            {entitySurfaceProfile.key === 'organization' ||
             entitySurfaceProfile.structureTab === 'organization'
               ? 'Structure'
               : 'Lineage'}
@@ -202,14 +202,14 @@ export function EntityWorkspaceSurface({
             : ''
         }`}
       >
-        {pageData && entityDetailTab === 'structure' && templateType === 'ORGANIZATION' ? (
+        {pageData && entityDetailTab === 'structure' && entitySurfaceProfile.key === 'organization' ? (
           <OrganizationStructureTab
             campaignHandle={campaignHandle}
             orgPageId={pageId}
             orgMetadata={pageData.metadata}
             flatPages={flatPages}
           />
-        ) : pageData && entityDetailTab === 'structure' && templateType === 'FAMILY' ? (
+        ) : pageData && entityDetailTab === 'structure' && entitySurfaceProfile.key === 'family' ? (
           <FamilyLineageTab
             campaignHandle={campaignHandle}
             familyPageId={pageId}

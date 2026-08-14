@@ -1,7 +1,7 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { CategoryMetadata, CharacterMetadata, WikiEditorTab, WikiPageContent } from '@/types/wiki';
 import type { WikiTreeNode } from '@/types/wiki';
-import { getCategoryColumns, hasCustomMetadata } from '@/lib/metadataConfig';
+import { getCategoryMetadataFieldKeys, hasCustomMetadata } from '@/lib/metadataConfig';
 import { normalizeEntityCategoryKey } from '@/lib/entityCategoryKeys';
 import { WikiContentTabs } from './WikiContentTabs';
 import { WikiTipTapEditor } from './WikiTipTapEditor';
@@ -34,7 +34,7 @@ export function WikiEditPanel({
 }: WikiEditPanelProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const metadataKeys = categoryTitle
-    ? getCategoryColumns(categoryTitle)
+    ? getCategoryMetadataFieldKeys(categoryTitle)
     : [];
   
   // Determine if this is a Character page

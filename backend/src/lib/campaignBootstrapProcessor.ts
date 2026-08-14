@@ -212,13 +212,3 @@ export async function processCampaignBootstrap(
     throw error;
   }
 }
-
-/** @deprecated Use processCampaignBootstrap */
-export async function processCampaignGeneratorSeed(
-  campaignId: string,
-  userId: string,
-  generatorSpec: WizardGeneratorSpec,
-  options?: { taskId?: string },
-): Promise<void> {
-  return processCampaignBootstrap(campaignId, userId, generatorSpec, options);
-}

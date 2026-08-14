@@ -104,7 +104,7 @@ export function CampaignContinuityStream({
       {openQuests.length > 0 ? (
         <ContinuitySection
           title="Active tensions"
-          icon={<Flame className="size-3.5 text-amber-600" aria-hidden />}
+          icon={<Flame className="size-3.5 text-primary" aria-hidden />}
         >
           <ul className="space-y-2">
             {openQuests.map((quest) => (

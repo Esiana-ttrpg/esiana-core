@@ -142,8 +142,3 @@ export function CharacterHubRailContent({
     </div>
   );
 }
-
-/** @deprecated use CharacterHubContextRail */
-export function CharacterHubRail(props: CharacterHubRailContentProps) {
-  return <CharacterHubRailContent {...props} />;
-}

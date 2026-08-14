@@ -2,10 +2,7 @@ import { categoryTitleToEntityCategoryKey } from '@/lib/entityCategoryKeys';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
 import { PartyParticipationRoles } from '@shared/partyParticipation';
 import type { CategoryMetadata, CharacterMetadata, WikiPageBlock } from '@/types/wiki';
-import {
-  buildDefaultBlocks,
-  type WikiPageTemplateType,
-} from '@/utils/pageTemplates';
+import { buildDefaultBlocks } from '@/utils/pageTemplates';
 
 export type WikiPageVisibility = 'Public' | 'Party' | 'DM_Only';
 
@@ -38,8 +35,7 @@ export interface CreateFieldDef {
 }
 
 export interface CreateEntityCategoryConfig {
-  templateType: WikiPageTemplateType;
-  surfaceKey?: SurfaceProfileKey;
+  surfaceKey: SurfaceProfileKey;
   showCharacterRole?: boolean;
   fields: CreateFieldDef[];
 }
@@ -232,12 +228,12 @@ export const CREATURE_TYPE_PRESETS: CreateSelectOption[] = [
 
 const CREATE_ENTITY_CONFIG: Record<string, CreateEntityCategoryConfig> = {
   Characters: {
-    templateType: 'CHARACTER',
+    surfaceKey: 'character',
     showCharacterRole: true,
     fields: [],
   },
   Organizations: {
-    templateType: 'ORGANIZATION',
+    surfaceKey: 'organization',
     fields: [
       {
         key: 'orgType',
@@ -256,7 +252,6 @@ const CREATE_ENTITY_CONFIG: Record<string, CreateEntityCategoryConfig> = {
     ],
   },
   Bestiary: {
-    templateType: 'DEFAULT',
     surfaceKey: 'bestiary',
     fields: [
       {
@@ -269,7 +264,6 @@ const CREATE_ENTITY_CONFIG: Record<string, CreateEntityCategoryConfig> = {
     ],
   },
   Ancestries: {
-    templateType: 'DEFAULT',
     surfaceKey: 'ancestry',
     fields: [
       {
@@ -283,7 +277,7 @@ const CREATE_ENTITY_CONFIG: Record<string, CreateEntityCategoryConfig> = {
     ],
   },
   Locations: {
-    templateType: 'LOCATION',
+    surfaceKey: 'location',
     fields: [
       {
         key: 'Type',
@@ -302,13 +296,13 @@ const CREATE_ENTITY_CONFIG: Record<string, CreateEntityCategoryConfig> = {
     ],
   },
   Families: {
-    templateType: 'FAMILY',
+    surfaceKey: 'family',
     fields: [],
   },
 };
 
 const DEFAULT_CONFIG: CreateEntityCategoryConfig = {
-  templateType: 'DEFAULT',
+  surfaceKey: 'default',
   fields: [],
 };
 
@@ -502,12 +496,8 @@ export function buildCreateMetadata(
   return { entityCategory };
 }
 
-const DESCRIPTION_BLOCK_TYPES: Record<WikiPageTemplateType, string[]> = {
-  CHARACTER: ['text-biography'],
-  LOCATION: ['text-tiptap'],
-  ORGANIZATION: ['text-tiptap'],
-  FAMILY: ['text-tiptap'],
-  DEFAULT: ['text-tiptap'],
+const DESCRIPTION_BLOCK_TYPES: Partial<Record<SurfaceProfileKey, string[]>> = {
+  character: ['text-biography'],
 };
 
 export function buildCreateBlocks(
@@ -515,11 +505,11 @@ export function buildCreateBlocks(
   description: string,
 ): WikiPageBlock[] {
   const config = getCreateEntityConfig(categoryTitle);
-  const blocks = buildDefaultBlocks(config.templateType, config.surfaceKey);
+  const blocks = buildDefaultBlocks(config.surfaceKey);
   const markdown = description.trim();
   if (!markdown) return blocks;
 
-  const targetTypes = DESCRIPTION_BLOCK_TYPES[config.templateType];
+  const targetTypes = DESCRIPTION_BLOCK_TYPES[config.surfaceKey] ?? ['text-tiptap'];
   let seeded = false;
   return blocks.map((block) => {
     if (seeded || !targetTypes.includes(block.type)) return block;
@@ -532,10 +522,6 @@ export function buildCreateBlocks(
       },
     };
   });
-}
-
-export function resolveCreateTemplateType(categoryTitle: string): WikiPageTemplateType {
-  return getCreateEntityConfig(categoryTitle).templateType;
 }
 
 export function getCollapsibleFields(

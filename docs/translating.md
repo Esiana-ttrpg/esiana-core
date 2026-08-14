@@ -74,7 +74,7 @@ pnpm --filter frontend report:i18n
 1. Feature PRs add `en` keys in the matching domain file.
 2. Translation PRs mirror the `en/` folder structure under `fr/` (or other locale). **Partial coverage is welcome.**
 3. When adding a new shipped locale, update `SHIPPED_UI_LOCALES` in [`shared/uiLocale.ts`](../shared/uiLocale.ts).
-4. Link terminology-sensitive keys to [terminology.md](./terminology.md).
+4. Link terminology-sensitive keys to [experience-doctrine.md](./experience-doctrine.md#user-facing-copy).
 5. Do not translate user-authored campaign content in examples or screenshots.
 
 ## Adding a new domain file
@@ -103,4 +103,4 @@ Ready for maintainer review after CI passes.
 
 ## Hosted translation platforms (deferred)
 
-Weblate, Crowdin, automated sync, and maintainer dashboards are out of scope until active non-English contributors appear. Track in [deferred-backlog.md](./deferred-backlog.md).
+Weblate, Crowdin, automated sync, and maintainer dashboards are out of scope until active non-English contributors appear.

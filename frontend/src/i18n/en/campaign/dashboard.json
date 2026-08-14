@@ -5,7 +5,7 @@
   "campaign.dashboard.loadFailed": "Unable to load campaign",
   "campaign.dashboard.loadFailedDescription": "This campaign may be private or unavailable.",
   "campaign.dashboard.loadError": "Failed to load campaign",
-  "campaign.dashboard.layoutSaveFailed": "Failed to save dashboard layout.",
+  "campaign.dashboard.layoutSaveFailed": "Failed to save Campaign Home layout.",
   "campaign.dashboard.widgetBank": "Widget bank",
 
   "campaign.dashboard.widgetSessionSchedule": "Session Schedule",

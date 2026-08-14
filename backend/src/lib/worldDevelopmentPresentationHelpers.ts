@@ -14,6 +14,7 @@ import {
 } from '../../../shared/worldDevelopmentPresentation.js';
 import { resolveFactionTrajectoryForEra } from '../../../shared/factionMomentumMetadata.js';
 import { prisma } from './prisma.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import {
   ensureCampaignMomentum,
   getCurrentCampaignEra,
@@ -53,7 +54,7 @@ export async function buildWorldDevelopmentSourceSignals(
       select: { currentEpochMinute: true },
     }),
     prisma.wikiPage.findMany({
-      where: { campaignId, deletedAt: null, templateType: 'ORGANIZATION' },
+      where: { campaignId, deletedAt: null, ...buildEntityCategoryWhereClause('organizations') },
       select: { id: true, title: true, metadata: true },
     }),
     prisma.campaignScheduledEffect.count({
@@ -122,7 +123,7 @@ export async function buildWorldDevelopmentReadiness(input: {
     }),
     buildCampaignWorldPressureProjection(campaignId),
     prisma.wikiPage.findMany({
-      where: { campaignId, deletedAt: null, templateType: 'ORGANIZATION' },
+      where: { campaignId, deletedAt: null, ...buildEntityCategoryWhereClause('organizations') },
       select: { id: true, title: true, metadata: true },
       orderBy: { title: 'asc' },
     }),

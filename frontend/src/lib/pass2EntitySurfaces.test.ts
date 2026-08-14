@@ -48,11 +48,35 @@ describe('pass2 identity projections', () => {
       {
         id: 'l1',
         title: 'Port Azure',
-        templateType: 'LOCATION',
+        templateType: 'DEFAULT',
         metadata: { locationType: 'City', region: 'Coast' },
       },
     ]);
     assert.equal(projection?.identityLine, 'City • Coast');
+  });
+
+  it('prefers region page title over region text in identity line', () => {
+    const projection = buildLocationIdentityProjection('l1', [
+      {
+        id: 'r1',
+        title: 'Northern Reach',
+        templateType: 'DEFAULT',
+        metadata: { locationType: 'Region' },
+      },
+      {
+        id: 'l1',
+        title: 'Port Azure',
+        templateType: 'DEFAULT',
+        metadata: {
+          locationType: 'City',
+          region: 'Legacy coast label',
+          regionPageId: 'r1',
+          knownFor: ['Famous harbor', 'Ancient lighthouse'],
+        },
+      },
+    ]);
+    assert.equal(projection?.identityLine, 'City • Northern Reach');
+    assert.equal(projection?.knownFor, 'Famous harbor • Ancient lighthouse');
   });
 
   it('builds rules/resources identity from type and scope', () => {
@@ -92,7 +116,7 @@ describe('resolveSurfaceProfileKey pass2', () => {
       id: 'loc-1',
       title: 'Port Azure',
       parentId: 'loc-root',
-      templateType: 'LOCATION',
+      templateType: 'DEFAULT',
       metadata: { entityCategory: 'locations' },
       campaignId: 'c1',
       visibility: 'Party',
@@ -107,7 +131,7 @@ describe('resolveSurfaceProfileKey pass2', () => {
     assert.equal(
       resolveSurfaceProfileKey({
         pageId: 'loc-1',
-        templateType: 'LOCATION',
+        templateType: 'DEFAULT',
         metadata: { entityCategory: 'locations' },
         flatPages,
       }),

@@ -81,8 +81,6 @@ Campaign: `calendar-test` · mapping: [`scenarios/calendar-test-world-advance-pa
 | Baseline | 6 scenarios × 1 apply | — | — | — |
 | Stress | 6 scenarios × 15 applies | 256 | 256 | false |
 
-Reports: [`validation_density_baseline.md`](../../validation_density_baseline.md), [`validation_density_stress.md`](../../validation_density_stress.md)
-
 **Collector caveat:** `collectWorldAdvanceAnchors` reads only the **200 most recent** World advance calendar events. Stress stats reflect the latest 200 batches, not full campaign history.
 
 ### Feed readability rubric (pre-grouping UX)

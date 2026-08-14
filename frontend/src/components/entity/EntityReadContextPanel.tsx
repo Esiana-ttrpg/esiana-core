@@ -81,6 +81,7 @@ export function EntityReadContextPanel({
         title: page.title,
         templateType: page.templateType,
         metadata: page.metadata ?? null,
+        parentId: page.parentId ?? null,
       })),
     [flatPages],
   );
@@ -118,25 +119,25 @@ export function EntityReadContextPanel({
     () => ({
       campaignNow,
       isDMUser,
-      viewerOrgId: templateType === 'ORGANIZATION' ? pageId : undefined,
+      viewerOrgId: surfaceProfileKey === 'organization' ? pageId : undefined,
       viewerPageId: pageId,
     }),
-    [campaignNow, isDMUser, pageId, templateType],
+    [campaignNow, isDMUser, pageId, surfaceProfileKey],
   );
 
   const leaderOrHead = useMemo(() => {
-    if (templateType === 'ORGANIZATION') {
+    if (surfaceProfileKey === 'organization') {
       const org = parseOrganizationMetadata(pageMetadata);
       if (!org.leaderId) return null;
       return snapshots.find((p) => p.id === org.leaderId)?.title ?? null;
     }
-    if (templateType === 'FAMILY') {
+    if (surfaceProfileKey === 'family') {
       const family = parseFamilyMetadata(pageMetadata);
       if (!family.headCharacterId) return null;
       return snapshots.find((p) => p.id === family.headCharacterId)?.title ?? null;
     }
     return null;
-  }, [pageMetadata, snapshots, templateType]);
+  }, [pageMetadata, snapshots, surfaceProfileKey]);
 
   const affiliationChips = projection.affiliations.slice(0, previewLimit);
   const bloodlineChips = projection.bloodlineRoots.slice(0, previewLimit);
@@ -207,7 +208,7 @@ export function EntityReadContextPanel({
           {leaderOrHead ? (
             <p className="mt-2 text-muted">
               <span className="font-medium text-foreground">
-                {templateType === 'ORGANIZATION' ? 'Leader' : 'Head'}:
+                {surfaceProfileKey === 'organization' ? 'Leader' : 'Head'}:
               </span>{' '}
               {leaderOrHead}
             </p>

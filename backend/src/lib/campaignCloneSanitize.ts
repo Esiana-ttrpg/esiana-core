@@ -1,7 +1,7 @@
 import type { CampaignCloneOptions } from './campaignCloneOptions.js';
 import { resolvePresetToOptions, isClonePresetId } from './campaignClonePresets.js';
 import type { ClonePresetId, ClonePresetUsed } from './campaignClonePresets.js';
-import { isValidDiscoverability, normalizeDiscoverability } from '../../../shared/campaignPolicy/discoverability.js';
+import { CampaignDiscoverability, normalizeDiscoverability, parseDiscoverabilityInput } from '../../../shared/campaignPolicy/discoverability.js';
 
 function bool(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
@@ -80,11 +80,15 @@ export function parseDuplicateCampaignBody(body: unknown): {
   const name = typeof root.name === 'string' ? root.name.trim() : '';
   if (!name) return null;
 
-  const discoverability = isValidDiscoverability(root.discoverability as string | null | undefined)
-    ? (root.discoverability as string)
-    : root.isPublicViewable === true || root.isPublicViewable === 'true'
-      ? 'unlisted'
-      : normalizeDiscoverability('private');
+  const discoverability =
+    parseDiscoverabilityInput(
+      typeof root.discoverability === 'string' ? root.discoverability : undefined,
+    ) ??
+    (root.isPublic === true || root.isPublic === 'true'
+      ? CampaignDiscoverability.PUBLIC
+      : root.isPublicViewable === true || root.isPublicViewable === 'true'
+        ? CampaignDiscoverability.PRIVATE
+        : normalizeDiscoverability('private'));
 
   let copy: CampaignCloneOptions;
   if (root.copy !== undefined) {

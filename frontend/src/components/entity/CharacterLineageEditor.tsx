@@ -43,7 +43,11 @@ const LINEAGE_ROLES: Exclude<LineageRole, null>[] = [
   'BASTARD',
 ];
 
-export type CharacterLineageSection = 'relationships' | 'timeline' | 'dynastic';
+export type CharacterLineageSection =
+  | 'relationships'
+  | 'timeline'
+  | 'dynastic'
+  | 'identityOverview';
 
 interface CharacterLineageEditorProps {
   campaignHandle: string;
@@ -91,6 +95,7 @@ export function CharacterLineageEditor({
   const showRelationships = section === 'all' || section === 'relationships';
   const showTimeline = section === 'all' || section === 'timeline';
   const showDynastic = section === 'all' || section === 'dynastic';
+  const showIdentityOverview = section === 'identityOverview';
 
   useEffect(() => {
     if (!focusField || focusField !== 'familyId') return;
@@ -177,6 +182,15 @@ export function CharacterLineageEditor({
 
   const body = (
     <>
+      {showIdentityOverview ? (
+        <FamilyPickerEditor
+          familyPages={familyPages}
+          value={draft.familyId}
+          onChange={(nextId) => void persist({ familyId: nextId })}
+          inline
+        />
+      ) : null}
+
       {showRelationships ? (
         <div className="space-y-3">
           <InlineEntityLinkField

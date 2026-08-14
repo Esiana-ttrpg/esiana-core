@@ -2,9 +2,10 @@ import type {
   ContinuityIssue,
   ContinuityIssueCounts,
 } from '@shared/continuityIssue';
-import type { DiscoveryState, DiscoveryStateProjection } from '@shared/discoveryProjection';
+import type { DiscoveryStateProjection } from '@shared/discoveryProjection';
 import type { ContentRevelationState } from './contentPresence';
 import type { UnresolvedWikilinkRow } from './wikiLoreGraph';
+import type { WikiPageSubview } from './wikiPageSubviews';
 
 export type CodexRailVariant = 'balanced' | 'diagnostics' | 'discovery';
 
@@ -19,7 +20,6 @@ export interface PageContinuitySummary {
   hasWarnings: boolean;
   hasAny: boolean;
 }
-
 
 export function summarizePageContinuity(
   issues: ContinuityIssue[],
@@ -55,7 +55,7 @@ export function summarizePageContinuity(
   };
 }
 
-function discoveryNeedsRailAttention(
+function discoveryNeedsAttention(
   discovery: DiscoveryStateProjection | null | undefined,
 ): boolean {
   if (!discovery) return false;
@@ -63,16 +63,7 @@ function discoveryNeedsRailAttention(
   return discovery.state !== 'known';
 }
 
-function formatDiscoveryStateLabel(state: DiscoveryState): string {
-  if (state === 'hidden') return 'Hidden';
-  if (state === 'rumor') return 'Rumor';
-  if (state === 'partial') return 'Partial';
-  if (state === 'contested') return 'Contested';
-  if (state === 'known') return 'Known';
-  return state;
-}
-
-function hasDiscoveryRailSignal(input: {
+function hasDiscoverySignal(input: {
   isDMUser: boolean;
   discovery: DiscoveryStateProjection | null | undefined;
   presenceState?: ContentRevelationState | string | null;
@@ -81,7 +72,7 @@ function hasDiscoveryRailSignal(input: {
     const presence = input.presenceState ?? 'REVEALED';
     if (presence !== 'REVEALED') return true;
   }
-  return discoveryNeedsRailAttention(input.discovery);
+  return discoveryNeedsAttention(input.discovery);
 }
 
 export function resolveCodexRailVariant(input: {
@@ -92,7 +83,7 @@ export function resolveCodexRailVariant(input: {
 }): CodexRailVariant {
   if (input.summary.hasAny) return 'diagnostics';
   if (
-    hasDiscoveryRailSignal({
+    hasDiscoverySignal({
       isDMUser: input.isDMUser,
       discovery: input.discovery,
       presenceState: input.presenceState,
@@ -103,75 +94,13 @@ export function resolveCodexRailVariant(input: {
   return 'balanced';
 }
 
-export function resolveCodexRailHeaderSubtitle(input: {
-  railVariant: CodexRailVariant;
-  summary: PageContinuitySummary;
-  discovery: DiscoveryStateProjection | null | undefined;
-  presenceState?: ContentRevelationState | string | null;
-  isDMUser: boolean;
-}): string {
-  const parts: string[] = [];
-
-  if (input.railVariant === 'diagnostics' || input.summary.hasAny) {
-    const n = input.summary.totalIssueCount;
-    parts.push(`${n} continuity issue${n === 1 ? '' : 's'}`);
-  }
-
-  if (
-    hasDiscoveryRailSignal({
-      isDMUser: input.isDMUser,
-      discovery: input.discovery,
-      presenceState: input.presenceState,
-    })
-  ) {
-    const label = input.discovery
-      ? formatDiscoveryStateLabel(input.discovery.state)
-      : 'Discovery';
-    parts.push(`Party knowledge: ${label}`);
-  }
-
-  if (parts.length === 0) {
-    return 'Continuity & relational awareness';
-  }
-
-  return parts.join(' · ');
-}
-
-export type CodexDiagnosticsChipTone = 'ok' | 'info' | 'warning' | 'critical';
-
-export function resolveCodexDiagnosticsChipTone(
-  summary: PageContinuitySummary,
-): CodexDiagnosticsChipTone {
-  if (!summary.hasAny) return 'ok';
-  if (summary.hasCritical) return 'critical';
-  if (summary.hasWarnings) return 'warning';
-  return 'info';
-}
-
-/** Section keys for variant-based rail ordering. */
-export type CodexRailSectionKey =
-  | 'callout'
-  | 'relations'
-  | 'provenance'
-  | 'timeline'
-  | 'threads'
-  | 'discovery'
-  | 'continuity';
-
-export function resolveCodexRailSectionOrder(
+/** Map legacy ?openCodex / ?openInspector deep links to a subview tab. */
+export function resolveSubviewFromCodexDeepLink(
   railVariant: CodexRailVariant,
   isDMUser: boolean,
-): CodexRailSectionKey[] {
-  const threads: CodexRailSectionKey[] = isDMUser ? ['threads'] : [];
-
-  switch (railVariant) {
-    case 'diagnostics':
-      return ['callout', 'timeline', 'relations', 'provenance', ...threads];
-    case 'discovery':
-      return ['callout', 'provenance', 'relations', 'timeline', ...threads];
-    default:
-      return ['relations', 'provenance', 'timeline', ...threads];
-  }
+): WikiPageSubview {
+  if (!isDMUser) return 'relationships';
+  if (railVariant === 'diagnostics') return 'continuity';
+  if (railVariant === 'discovery') return 'discovery';
+  return 'relationships';
 }
-
-export const CODEX_RAIL_CONTINUITY_ANCHOR_ID = 'codex-rail-continuity';

@@ -219,9 +219,8 @@ Plugin implementation: [`community-plugins/wiki-opds-feed/`](../../../community-
 
 Plugin frontend slots must follow core design doctrine:
 
-- [deprecated-ui-patterns.md](../deprecated-ui-patterns.md) — do not introduce stop-list patterns
-- [density-doctrine.md](../density-doctrine.md) — respect panel caps and calm density
-- [representational-defaults.md](../representational-defaults.md) — inclusive example data in demos
+- [experience-doctrine.md](../experience-doctrine.md) — gravity, blocklist, representational defaults
+- [density-doctrine.md](../density-doctrine.md) — panel caps and density limits
 
 Slot-specific:
 

@@ -26,7 +26,7 @@ export function HubShelfHorizon({ variant = 'member' }: HubShelfHorizonProps) {
         <div className="flex items-start gap-3">
           <ScrollText className="mt-0.5 size-4 shrink-0 text-[var(--hub-section-library)] opacity-70" strokeWidth={1.5} />
           <div>
-            <p className="text-sm font-medium text-foreground/90">Stewardship</p>
+            <p className="text-sm font-medium text-foreground/90">Your campaigns</p>
             <p className="text-sm text-muted">
               Manage memberships on{' '}
               <Link to="/campaigns" className="hub-horizon__link font-medium">

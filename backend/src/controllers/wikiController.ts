@@ -30,6 +30,10 @@ import { ensureQuickAccessCategoryTitle } from '../lib/ensureQuickAccessCategory
 import { ensureRemoveLegacyDashboardWikiPage } from '../lib/ensureRemoveLegacyDashboardWikiPage.js';
 import { normalizeEntityCategoryKey } from '../lib/entityCategoryKeys.js';
 import {
+  normalizeWikiPageTemplateFields,
+  readEntityCategoryFromMetadata,
+} from '../../../shared/wikiTemplateType.js';
+import {
   buildContentSnippet,
   isCategoryIndexTitle,
 } from '../lib/wikiCategories.js';
@@ -52,6 +56,10 @@ import { parseCampaignIntegrations } from '../../../shared/campaignIntegrations.
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { canManageNotebooksFromActor, hasElevatedNarrativeView } from '../lib/acl.js';
 import { resolveDefaultPageOwnership } from '../lib/pageOwnershipDefaults.js';
+import {
+  transformWikiPageInCampaign,
+  validateWikiParentModuleScope,
+} from '../lib/wikiPageTransformService.js';
 import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
 import {
   can as policyCan,
@@ -183,7 +191,6 @@ import {
 } from '../lib/wikiLinkService.js';
 import {
   buildCategoryIndexWhereClause,
-  readEntityCategoryFromMetadata,
 } from '../lib/wikiCategoryEntityIndex.js';
 import { ensureNarrativeThreadsSystemCategoryKey } from '../lib/ensureNarrativeThreadsSystemCategoryKey.js';
 import { ensureNarrativeScenesSystemCategoryKey } from '../lib/ensureNarrativeScenesSystemCategoryKey.js';
@@ -308,7 +315,7 @@ import {
   parseArcMetadata,
   resolveArcMetadataPatchInput,
 } from '../lib/arcMetadata.js';
-import { buildSceneDefaultBlocks, buildObjectiveDefaultBlocks } from '../lib/pageTemplates.js';
+import { buildSceneDefaultBlocks, buildObjectiveDefaultBlocks, buildQuestDefaultBlocks } from '../lib/pageTemplates.js';
 import {
   createDefaultQuestLifecycle,
   createDefaultSceneLifecycle,
@@ -325,7 +332,7 @@ import {
 import {
   DEFAULT_QUEST_LIFECYCLE_STATE,
   NarrativeLifecycleSubjectKinds,
-  publishedQuestStatusToLifecycleHint,
+  initialQuestLifecycleFromWikiVisibility,
 } from '../../../shared/narrativeLifecycle.js';
 import { buildNarrativeViewerContextFromRequest } from '../lib/narrativeProjectionContext.js';
 import { projectHubPageBlocks } from '../lib/publishedNarrativeHub.js';
@@ -644,7 +651,6 @@ async function formatWikiPageDetailResponse(
     const stored = await getPageNarrativeStatus(options.campaignId, rest.id);
     const effective = resolveEffectivePageNarrativeStatus({
       stored,
-      templateType: rest.templateType,
       metadata,
     });
     const withNarrativeStatus = {
@@ -1011,7 +1017,11 @@ export async function createWikiPage(
     }
   }
 
-  const resolvedTemplate = templateType ?? 'DEFAULT';
+  const initialNormalized = normalizeWikiPageTemplateFields({
+    templateType: templateType ?? 'DEFAULT',
+    metadata: metadata ?? {},
+  });
+  const resolvedTemplate = initialNormalized.templateType;
   let resolvedBlocks: Array<Record<string, unknown>> | null =
     Array.isArray(blocks) && blocks.length > 0 ? blocks : null;
 
@@ -1023,7 +1033,10 @@ export async function createWikiPage(
       );
       resolvedBlocks = buildEventLoreBlocks(eventDescription) as any;
     } else {
-      resolvedBlocks = buildDefaultBlocks(resolvedTemplate) as any;
+      resolvedBlocks = buildDefaultBlocks(
+        resolvedTemplate,
+        readEntityCategoryFromMetadata(initialNormalized.metadata),
+      ) as any;
     }
   }
   const normalizedCreateBlocks = normalizeBlocksWithStableIds(resolvedBlocks);
@@ -1032,8 +1045,8 @@ export async function createWikiPage(
   const sessionNoteAuthorId = req.user?.id ? { sessionNoteAuthorId: req.user.id } : {};
   const baseMetadata =
     resolvedTemplate === 'SESSION_NOTE'
-      ? ({ ...(metadata ?? {}), ...sessionNoteAuthorId } as Record<string, unknown>)
-      : ((metadata ?? {}) as Record<string, unknown>);
+      ? ({ ...initialNormalized.metadata, ...sessionNoteAuthorId } as Record<string, unknown>)
+      : initialNormalized.metadata;
 
   const intercepted = await runWikiDataInterceptors(res, {
     entity: 'wikiPage',
@@ -1136,6 +1149,13 @@ export async function createWikiPage(
     rejectTemporalError(res, err);
     return;
   }
+
+  const persistedTemplate = normalizeWikiPageTemplateFields({
+    templateType: interceptedTemplateType,
+    metadata: interceptedMetadata,
+  });
+  interceptedTemplateType = persistedTemplate.templateType;
+  interceptedMetadata = persistedTemplate.metadata;
 
   const existingRows = await loadCampaignWikiPathKeyRows(ctx.campaignId);
   const pathRouting = lorePageId
@@ -1240,14 +1260,21 @@ export async function createWikiPage(
       isDescendantOfQuestsRoot(resolvedParentId, questsRootId, parentById))
   ) {
     const questMeta = parseQuestMetadata(interceptedMetadata);
-    const initialState =
-      questMeta.questStatus && questMeta.questStatus !== 'AVAILABLE'
-        ? publishedQuestStatusToLifecycleHint(questMeta.questStatus)
-        : DEFAULT_QUEST_LIFECYCLE_STATE;
+    const initialState = initialQuestLifecycleFromWikiVisibility({
+      visibility: interceptedVisibility,
+      questStatus: questMeta.questStatus,
+    });
     await createDefaultQuestLifecycle(ctx.campaignId, page.id, {
       initialState,
       actorUserId: req.user?.id,
     });
+    const existingBlocks = Array.isArray(page.blocks) ? (page.blocks as { type?: string }[]) : [];
+    if (!existingBlocks.some((block) => block.type === 'entity-quest-properties')) {
+      await prisma.wikiPage.update({
+        where: { id: page.id },
+        data: { blocks: buildQuestDefaultBlocks() as never },
+      });
+    }
   }
 
   const threadsRootId = await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
@@ -1526,6 +1553,22 @@ export async function updateWikiPage(
       });
       return;
     }
+
+    try {
+      await validateWikiParentModuleScope(
+        ctx.campaignId,
+        page.id,
+        resolvedParentId ?? null,
+      );
+    } catch (err) {
+      res.status(400).json({
+        error:
+          err instanceof Error
+            ? err.message
+            : 'Parent must stay within the same module',
+      });
+      return;
+    }
   }
 
   const nextTitle = title !== undefined ? title.trim() : undefined;
@@ -1604,6 +1647,73 @@ export async function updateWikiPage(
       role: ctx.role,
     }),
   );
+}
+
+export async function transformWikiPage(
+  req: CampaignScopedRequest & AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const ctx = req.campaign!;
+  const pageId = String(req.params.pageId);
+  const { targetModule } = req.body as { targetModule?: string };
+
+  if (typeof targetModule !== 'string' || !targetModule.trim()) {
+    res.status(400).json({ error: 'targetModule is required' });
+    return;
+  }
+
+  const page = await prisma.wikiPage.findFirst({
+    where: { id: pageId, campaignId: ctx.campaignId },
+    select: {
+      id: true,
+      ownerType: true,
+      ownerUserId: true,
+      ownerPartyId: true,
+    },
+  });
+
+  if (!page) {
+    res.status(404).json({ error: 'Page not found' });
+    return;
+  }
+
+  if (
+    !canEditPage(ctx.actor, {
+      ownerType: page.ownerType as import('../../../shared/campaignPolicy/pageOwnership.js').PageOwnerType,
+      ownerUserId: page.ownerUserId,
+      ownerPartyId: page.ownerPartyId,
+    })
+  ) {
+    res.status(403).json({ error: 'Forbidden: cannot edit this page' });
+    return;
+  }
+
+  try {
+    const result = await transformWikiPageInCampaign({
+      campaignId: ctx.campaignId,
+      pageId,
+      targetModuleKey: targetModule.trim(),
+      actorUserId: req.user?.id,
+      actorRole: ctx.role,
+      partyId: ctx.partyId,
+    });
+
+    if (req.user?.id) {
+      logWikiPageActivity({
+        campaignId: ctx.campaignId,
+        userId: req.user.id,
+        actionType: 'UPDATE',
+        entityId: pageId,
+        entityName: 'Transform page module',
+      });
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      error: err instanceof Error ? err.message : 'Unable to transform page',
+    });
+  }
 }
 
 export async function listCampaignWikiTags(
@@ -1951,10 +2061,13 @@ export async function updateWikiPageLayout(
   });
   if (!intercepted) return;
 
-  const nextTemplateType =
-    typeof intercepted.templateType === 'string' && intercepted.templateType.trim()
-      ? intercepted.templateType.trim()
-      : templateType ?? page.templateType;
+  const nextTemplateType = normalizeWikiPageTemplateFields({
+    templateType:
+      typeof intercepted.templateType === 'string' && intercepted.templateType.trim()
+        ? intercepted.templateType.trim()
+        : templateType ?? page.templateType,
+    metadata: page.metadata,
+  }).templateType;
 
   const campaignRow = await prisma.campaign.findUnique({
     where: { id: ctx.campaignId },
@@ -2246,6 +2359,10 @@ export async function updateWikiPageMetadata(
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
+    if ('gmNotes' in questPatchInput && !canManage) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
     const patch: Partial<QuestMetadataFields> = {};
     if ('questStatus' in questPatchInput) {
       const targetStatus = parseQuestMetadata({
@@ -2331,6 +2448,12 @@ export async function updateWikiPageMetadata(
         questPatchInput.questDate === null
           ? null
           : parseQuestMetadata({ questDate: questPatchInput.questDate }).questDate;
+    }
+    if ('summary' in questPatchInput) {
+      patch.summary = parseQuestMetadata({ summary: questPatchInput.summary }).summary;
+    }
+    if ('gmNotes' in questPatchInput) {
+      patch.gmNotes = parseQuestMetadata({ gmNotes: questPatchInput.gmNotes }).gmNotes;
     }
     if (Object.keys(patch).length > 0) {
       updatedMetadata = mergeQuestMetadata(updatedMetadata, patch);
@@ -3365,11 +3488,13 @@ async function buildQuestHubResponse(
         visibility: row.visibility,
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
-        snippet: buildContentSnippet(
-          (visibleBlocksByPage.get(row.id) ?? []) as unknown as Parameters<
-            typeof buildContentSnippet
-          >[0],
-        ),
+        snippet:
+          parseQuestMetadata(row.metadata).summary?.trim() ||
+          buildContentSnippet(
+            (visibleBlocksByPage.get(row.id) ?? []) as unknown as Parameters<
+              typeof buildContentSnippet
+            >[0],
+          ),
         quest,
         ...(effectiveCanManage && lifecycleState
           ? { lifecycleState }
@@ -5529,22 +5654,6 @@ export async function getPersonalPins(
       sortOrder: s.sortOrder,
     })),
   });
-}
-
-/** @deprecated Use getPersonalPins */
-export const getPinnedPageShortcuts = getPersonalPins;
-
-export async function getCampaignQuickAccessShortcuts(
-  req: CampaignScopedRequest,
-  res: Response,
-): Promise<void> {
-  if (!req.campaign!.isMember) {
-    res.json({ shortcuts: [] });
-    return;
-  }
-
-  // CampaignQuickAccess model — see todo.md
-  res.json({ shortcuts: [] });
 }
 
 export async function togglePinnedPageShortcut(

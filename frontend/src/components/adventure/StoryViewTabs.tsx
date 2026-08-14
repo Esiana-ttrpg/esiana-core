@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { useId, useRef, useState, useEffect } from 'react';
 import {
   STORY_VIEWS,
-  storyViewHref,
+  adventureViewHref,
   type StoryViewId,
 } from '@/lib/adventureLayout';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
@@ -57,7 +57,7 @@ export function StoryViewTabs({ basePath, activeView, isDMUser: isDMUserProp }: 
         {visibleViews.map((view) => (
           <NavLink
             key={view.id}
-            to={storyViewHref(basePath, view.id)}
+            to={adventureViewHref(basePath, view.id)}
             role="tab"
             aria-selected={activeView === view.id}
             className={({ isActive }) => tabClass(isActive)}
@@ -93,7 +93,7 @@ export function StoryViewTabs({ basePath, activeView, isDMUser: isDMUserProp }: 
             {visibleViews.map((view) => (
               <NavLink
                 key={view.id}
-                to={storyViewHref(basePath, view.id)}
+                to={adventureViewHref(basePath, view.id)}
                 role="option"
                 aria-selected={activeView === view.id}
                 onClick={() => setMenuOpen(false)}

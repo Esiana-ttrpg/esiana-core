@@ -2,7 +2,7 @@ import { parseAncestryMetadata } from '@/lib/ancestryMetadata';
 import { formatPresenceExcerpt, buildAncestryPresenceProjection } from '@/lib/ancestryPresenceProjection';
 import { parseBestiaryMetadata } from '@/lib/bestiaryMetadata';
 import { parseCharacterMetadata } from '@/lib/characterMetadata';
-import { parseLocationMetadata } from '@/lib/locationMetadata';
+import { parseLocationMetadata, resolveLocationRegionLabel } from '@/lib/locationMetadata';
 import { parseObjectMetadata } from '@/lib/objectMetadata';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
 import type { WikiPageLineageSnapshot } from '@/lib/entityProjectionQueries';
@@ -66,13 +66,17 @@ export function buildEntityWorkspaceEmphasis(
     const location = parseLocationMetadata(pageMetadata);
     const facts: EmphasisFactRow[] = [];
     if (location.locationType) facts.push({ label: 'Type', value: location.locationType });
-    if (location.region) facts.push({ label: 'Region', value: location.region });
+    const regionLabel = resolveLocationRegionLabel(location, flatPages);
+    if (regionLabel) facts.push({ label: 'Region', value: regionLabel });
     if (location.climate) facts.push({ label: 'Climate', value: location.climate });
     if (location.rulerOrAuthority) {
       facts.push({ label: 'Authority', value: location.rulerOrAuthority });
     }
-    if (location.dangerLevel !== null) {
-      facts.push({ label: 'Danger', value: `${location.dangerLevel}/5` });
+    if (location.threats.length > 0) {
+      facts.push({ label: 'Threats', value: location.threats.join(', ') });
+    }
+    if (location.knownFor.length > 0) {
+      facts.push({ label: 'Known for', value: location.knownFor.join(' • ') });
     }
     if (location.population) facts.push({ label: 'Population', value: location.population });
 

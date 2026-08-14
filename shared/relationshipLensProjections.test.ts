@@ -70,8 +70,8 @@ describe('projectSocialRelations', () => {
         ],
       ]),
       orgPages: [
-        { id: 'org-a', title: 'Iron Confederacy', templateType: 'ORGANIZATION', metadata: {} },
-        { id: 'org-b', title: 'Verdant Circle', templateType: 'ORGANIZATION', metadata: {} },
+        { id: 'org-a', title: 'Iron Confederacy', templateType: 'DEFAULT', metadata: {} },
+        { id: 'org-b', title: 'Verdant Circle', templateType: 'DEFAULT', metadata: {} },
       ],
       reputationByFaction: {
         'org-a': { trust: -42, notoriety: 10, lastSimulatedAtEpochMinute: null },

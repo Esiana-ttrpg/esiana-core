@@ -16,7 +16,6 @@ export {
 
 export { runDataInterceptors } from './runInterceptors.js';
 export {
-  disablePluginForViolation,
   handlePluginHookFailure,
   quarantinePluginHooks,
   setPluginHostReloader,

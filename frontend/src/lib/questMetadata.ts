@@ -38,6 +38,8 @@ export interface QuestMetadataFields {
   rewardsText: string | null;
   dmRewardsText: string | null;
   ledgerReward: QuestLedgerReward | null;
+  summary: string | null;
+  gmNotes: string | null;
 }
 
 export function normalizeBoardOrder(raw: unknown): number | null {
@@ -110,6 +112,8 @@ export function parseQuestMetadata(metadata: unknown): QuestMetadataFields {
       rewardsText: null,
       dmRewardsText: null,
       ledgerReward: null,
+      summary: null,
+      gmNotes: null,
     };
   }
   const raw = metadata as Record<string, unknown>;
@@ -135,6 +139,8 @@ export function parseQuestMetadata(metadata: unknown): QuestMetadataFields {
     rewardsText: text(raw.rewardsText),
     dmRewardsText: text(raw.dmRewardsText),
     ledgerReward: parseQuestLedgerReward(raw.ledgerReward),
+    summary: text(raw.summary),
+    gmNotes: text(raw.gmNotes),
   };
 }
 
@@ -143,5 +149,5 @@ export function sanitizeQuestMetadataForRole(
   canManage: boolean,
 ): QuestMetadataFields {
   if (canManage) return parsed;
-  return { ...parsed, dmRewardsText: null };
+  return { ...parsed, dmRewardsText: null, gmNotes: null };
 }

@@ -134,6 +134,8 @@ export function resolveWorkspaceComposition(pathname: string): WorkspaceComposit
 
   if (first === 'notes' || first === 'notes-index') return PRESETS.reference;
 
+  if (first === 'adventures' && !second) return PRESETS.hub;
+
   if (
     first === 'chronology' ||
     first === 'party' ||

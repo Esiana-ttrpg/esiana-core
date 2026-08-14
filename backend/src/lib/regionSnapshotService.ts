@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { projectMigrationFromNpcMoves } from './mapOverlayProjectionService.js';
 import { parseLocationMetadata } from './locationMetadata.js';
 import { parseCharacterMetadata } from './characterMetadata.js';
@@ -76,7 +77,7 @@ export async function resolveRegionScope(
       where: {
         campaignId,
         deletedAt: null,
-        templateType: 'LOCATION',
+        ...buildEntityCategoryWhereClause('locations'),
       },
       select: { id: true, metadata: true },
       take: 500,
@@ -92,7 +93,7 @@ export async function resolveRegionScope(
       where: {
         campaignId,
         deletedAt: null,
-        templateType: 'LOCATION',
+        ...buildEntityCategoryWhereClause('locations'),
       },
       select: { id: true, metadata: true },
       take: 500,
@@ -138,7 +139,7 @@ export async function collectRegionFacets(input: {
     where: {
       campaignId,
       deletedAt: null,
-      templateType: 'CHARACTER',
+      ...buildEntityCategoryWhereClause('characters'),
     },
     select: { id: true, title: true, metadata: true },
     take: 500,
@@ -164,7 +165,7 @@ export async function collectRegionFacets(input: {
     where: {
       campaignId,
       deletedAt: null,
-      templateType: 'ORGANIZATION',
+      ...buildEntityCategoryWhereClause('organizations'),
     },
     select: { id: true, title: true, metadata: true },
     take: 300,
@@ -398,28 +399,13 @@ export async function collectRegionFacets(input: {
     });
   }
 
-  const danger: RegionSnapshotFacets['danger'] = [];
-  for (const locId of scope.locationPageIds) {
-    const page =
-      locId === scope.anchorLocationPageId
-        ? anchorPage
-        : await prisma.wikiPage.findFirst({
-            where: { id: locId },
-            select: { metadata: true },
-          });
-    const meta = parseLocationMetadata(page?.metadata);
-    if (meta.dangerLevel != null) {
-      danger.push({ locationPageId: locId, level: meta.dangerLevel });
-    }
-  }
-
   return {
     facets: {
       npcPresence,
       orgStance,
       mapPresence,
       partyKnowledge,
-      danger,
+      danger: [],
     },
     truncation: Object.keys(truncation).length > 0 ? truncation : undefined,
   };

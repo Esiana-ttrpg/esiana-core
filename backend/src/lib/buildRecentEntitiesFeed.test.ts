@@ -22,7 +22,7 @@ test('recent entities category keys map to index where clauses', () => {
 
 test('recent entities feed excludes reserved system wiki pages', () => {
   const rows = [
-    { title: 'Blackwater Keep', templateType: 'LOCATION', visibility: 'PARTY' },
+    { title: 'Blackwater Keep', templateType: 'DEFAULT', visibility: 'PARTY' },
     { title: 'Settings', templateType: 'PAGE', visibility: 'PARTY' },
     { title: 'Session 3', templateType: 'SESSION_NOTE', visibility: 'PARTY' },
   ];

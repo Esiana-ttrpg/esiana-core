@@ -18,7 +18,7 @@ test('mapCampaignActivityToBulletinItem uses workspace-first wiki hrefs', () => 
       id: 'page-1',
       title: 'Blackwater Keep',
       parentId: 'loc-root',
-      templateType: 'LOCATION',
+      templateType: 'DEFAULT',
       workspace: 'LOCATIONS',
       pathKey: 'blackwater-keep',
     },

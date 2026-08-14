@@ -18,7 +18,7 @@ export function RecentLoreWidget({ items, customizeMode, onHide }: RecentLoreWid
   return (
     <DashboardWidgetShell
       title={translateDashboardWidgetLabel('recentLore', 'Recent Lore')}
-      icon={<BookOpen className="size-4 text-violet-400" />}
+      icon={<BookOpen className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

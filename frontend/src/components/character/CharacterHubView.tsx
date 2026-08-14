@@ -316,7 +316,6 @@ export function CharacterHubView({
 
   function handleOpenCharacterSettings(pageId: string, focusField?: string) {
     const searchParams = new URLSearchParams();
-    searchParams.set('openInspector', '1');
     searchParams.set('openSettings', '1');
     if (focusField) searchParams.set('focusField', focusField);
     navigate(

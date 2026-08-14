@@ -8,11 +8,13 @@ import {
 import { META_FIELD_LABEL_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { formatCommaList, parseCommaList, parseCommaListDraft } from '@/components/entity/appearance/appearanceShared';
 import { useBlockDraft } from '@/hooks/useBlockDraft';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { IdentityPagePicker } from '@/components/campaign/IdentityPagePicker';
 import { ImageCreditEditor } from '@/components/media/ImageCreditEditor';
 import { ImportImageUrlField } from '@/components/media/ImportImageUrlField';
 import { AppearanceSummaryField } from '@/components/entity/AppearanceSummaryField';
+import { AppearanceFieldLabel } from '@/components/entity/appearance/AppearanceFieldLabel';
+import { getAppearanceFieldGuidance } from '@/lib/appearanceFieldGuidance';
 import type { CodexAppearanceFields } from '@/lib/codexMetadataShared';
 import type { ImageCredit } from '@shared/imageCredit';
 import type { WikiTreeNode } from '@/types/wiki';
@@ -190,6 +192,8 @@ interface PortraitImageEditorProps {
   onPersist: (
     fields: Partial<{ portraitUrl: string | null; portraitCredit: ImageCredit | null }>,
   ) => void | Promise<void>;
+  /** Collapse import URL and credits until expanded — for appearance tab primary portrait. */
+  collapsedTools?: boolean;
 }
 
 export function PortraitImageEditor({
@@ -198,27 +202,60 @@ export function PortraitImageEditor({
   portraitCredit,
   onChange,
   onPersist,
+  collapsedTools = false,
 }: PortraitImageEditorProps) {
+  const [toolsOpen, setToolsOpen] = useState(!collapsedTools);
+  const showTools = !collapsedTools || toolsOpen;
+
   return (
     <div className="grid gap-2">
-      <h4 className={META_SECTION_LABEL_CLASS}>Portrait</h4>
-      <ImportImageUrlField
-        campaignHandle={campaignHandle}
-        value={portraitUrl ?? ''}
-        inputClassName={codexFieldClass}
-        onChange={(referenceUrl) =>
-          onChange({ portraitUrl: referenceUrl || null, portraitCredit })
-        }
-        onImported={async (referenceUrl) => {
-          await onPersist({ portraitUrl: referenceUrl });
-        }}
-      />
-      <ImageCreditEditor
-        value={portraitCredit}
-        onChange={(nextCredit) => onChange({ portraitUrl, portraitCredit: nextCredit })}
-        onPersist={(nextCredit) => onPersist({ portraitCredit: nextCredit })}
-        inputClassName={codexFieldClass}
-      />
+      {portraitUrl?.trim() ? (
+        <img
+          src={portraitUrl}
+          alt=""
+          className="max-h-48 w-auto rounded-lg border border-border/40 object-cover shadow-sm"
+        />
+      ) : null}
+
+      {collapsedTools ? (
+        <button
+          type="button"
+          onClick={() => setToolsOpen((open) => !open)}
+          className="flex w-fit items-center gap-1 text-[11px] font-medium text-muted hover:text-foreground"
+          aria-expanded={toolsOpen}
+        >
+          {toolsOpen ? (
+            <ChevronDown className="size-3.5 shrink-0" aria-hidden />
+          ) : (
+            <ChevronRight className="size-3.5 shrink-0" aria-hidden />
+          )}
+          {toolsOpen ? 'Image details' : 'Edit portrait or attribution'}
+        </button>
+      ) : (
+        <h4 className={META_SECTION_LABEL_CLASS}>Portrait</h4>
+      )}
+
+      {showTools ? (
+        <>
+          <ImportImageUrlField
+            campaignHandle={campaignHandle}
+            value={portraitUrl ?? ''}
+            inputClassName={codexFieldClass}
+            onChange={(referenceUrl) =>
+              onChange({ portraitUrl: referenceUrl || null, portraitCredit })
+            }
+            onImported={async (referenceUrl) => {
+              await onPersist({ portraitUrl: referenceUrl });
+            }}
+          />
+          <ImageCreditEditor
+            value={portraitCredit}
+            onChange={(nextCredit) => onChange({ portraitUrl, portraitCredit: nextCredit })}
+            onPersist={(nextCredit) => onPersist({ portraitCredit: nextCredit })}
+            inputClassName={codexFieldClass}
+          />
+        </>
+      ) : null}
     </div>
   );
 }
@@ -241,6 +278,10 @@ interface AppearanceEditorProps {
   onIdentityPersist?: (fields: Partial<{ gender: string | null; presentation: string | null }>) => void;
   /** When true, portrait URL/credit are managed by appearance-gallery instead. */
   hidePortrait?: boolean;
+  /** When true, summary is edited outside this block (e.g. appearance tab). */
+  hideSummary?: boolean;
+  /** Tags and identity fields only, after main appearance content. */
+  supportingMetadata?: boolean;
 }
 
 export function AppearanceEditor({
@@ -257,6 +298,8 @@ export function AppearanceEditor({
   onIdentityChange,
   onIdentityPersist,
   hidePortrait = false,
+  hideSummary = false,
+  supportingMetadata = false,
 }: AppearanceEditorProps) {
   const showTags = tags !== undefined && onTagsChange && onTagsPersist;
   const showIdentity =
@@ -264,104 +307,123 @@ export function AppearanceEditor({
   const showPortrait = !hidePortrait;
   const [tagsInput, setTagsInput] = useState(formatCommaList(tags ?? []));
 
+  const identityBlock =
+    showIdentity ? (
+      <div className="grid gap-2">
+        {!supportingMetadata ? (
+          <h4 className={META_SECTION_LABEL_CLASS}>Identity &amp; presence</h4>
+        ) : null}
+        <div className="space-y-1">
+          <AppearanceFieldLabel
+            label="Gender"
+            htmlFor="appearance.gender"
+            guidance={getAppearanceFieldGuidance('gender')}
+          />
+          <input
+            id="appearance.gender"
+            className={codexFieldClass}
+            placeholder="Optional"
+            value={identityFields.gender ?? ''}
+            onChange={(e) =>
+              onIdentityChange({
+                ...identityFields,
+                gender: e.target.value || null,
+              })
+            }
+            onBlur={() => onIdentityPersist({ gender: identityFields.gender })}
+          />
+        </div>
+        <div className="space-y-1">
+          <AppearanceFieldLabel
+            label="Presentation"
+            htmlFor="appearance.presentation"
+            guidance={getAppearanceFieldGuidance('presentation')}
+          />
+          <input
+            id="appearance.presentation"
+            className={codexFieldClass}
+            placeholder="Optional"
+            value={identityFields.presentation ?? ''}
+            onChange={(e) =>
+              onIdentityChange({
+                ...identityFields,
+                presentation: e.target.value || null,
+              })
+            }
+            onBlur={() => onIdentityPersist({ presentation: identityFields.presentation })}
+          />
+        </div>
+      </div>
+    ) : null;
+
+  const tagsBlock = showTags ? (
+    <div className="space-y-1">
+      <span className={META_FIELD_LABEL_CLASS}>Appearance tags</span>
+      <input
+        id={tagsFieldId}
+        className={codexFieldClass}
+        placeholder="Comma-separated tags"
+        value={tagsInput}
+        onChange={(e) => {
+          setTagsInput(e.target.value);
+          onTagsChange(parseCommaListDraft(e.target.value));
+        }}
+        onBlur={() => {
+          const normalized = parseCommaList(tagsInput);
+          setTagsInput(formatCommaList(normalized));
+          onTagsChange(normalized);
+          onTagsPersist(normalized);
+        }}
+      />
+    </div>
+  ) : null;
+
+  const summaryBlock = !hideSummary ? (
+    <AppearanceSummaryField
+      value={appearance.summary}
+      onChange={(summary) => onChange({ ...appearance, summary })}
+      onPersist={(summary) => onPersist({ summary })}
+    />
+  ) : null;
+
+  const portraitBlock =
+    showPortrait && campaignHandle ? (
+      <PortraitImageEditor
+        campaignHandle={campaignHandle}
+        portraitUrl={appearance.portraitUrl}
+        portraitCredit={appearance.portraitCredit}
+        onChange={({ portraitUrl, portraitCredit }) =>
+          onChange({ ...appearance, portraitUrl, portraitCredit })
+        }
+        onPersist={async (fields) => {
+          await onPersist(fields);
+        }}
+      />
+    ) : showPortrait ? (
+      <p className="text-[10px] text-muted">Portrait import requires campaign context.</p>
+    ) : null;
+
+  if (supportingMetadata) {
+    return (
+      <div className="grid gap-4 pb-2">
+        <h4 className={META_SECTION_LABEL_CLASS}>Notes</h4>
+        {tagsBlock}
+        {identityBlock}
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4">
-      {showIdentity ? (
-        <div className="grid gap-2">
-          <h4 className={META_SECTION_LABEL_CLASS}>
-            Identity &amp; presence
-          </h4>
-          <label className="space-y-1" id="appearance.gender">
-            <span className={META_FIELD_LABEL_CLASS}>
-              Gender
-            </span>
-            <input
-              className={codexFieldClass}
-              placeholder="Optional — self-identity, freeform"
-              value={identityFields.gender ?? ''}
-              onChange={(e) =>
-                onIdentityChange({
-                  ...identityFields,
-                  gender: e.target.value || null,
-                })
-              }
-              onBlur={() => onIdentityPersist({ gender: identityFields.gender })}
-            />
-          </label>
-          <label className="space-y-1" id="appearance.presentation">
-            <span className={META_FIELD_LABEL_CLASS}>
-              Presentation
-            </span>
-            <input
-              className={codexFieldClass}
-              placeholder="Optional — femme, androgynous, masc…"
-              value={identityFields.presentation ?? ''}
-              onChange={(e) =>
-                onIdentityChange({
-                  ...identityFields,
-                  presentation: e.target.value || null,
-                })
-              }
-              onBlur={() => onIdentityPersist({ presentation: identityFields.presentation })}
-            />
-          </label>
-        </div>
-      ) : null}
+      {identityBlock}
 
       <div className="grid gap-2">
         {showIdentity && showPortrait ? (
-          <h4 className={META_SECTION_LABEL_CLASS}>
-            Physical / embodied
-          </h4>
+          <h4 className={META_SECTION_LABEL_CLASS}>Physical / embodied</h4>
         ) : null}
-      {showPortrait ? (
-        <>
-      {campaignHandle ? (
-        <PortraitImageEditor
-          campaignHandle={campaignHandle}
-          portraitUrl={appearance.portraitUrl}
-          portraitCredit={appearance.portraitCredit}
-          onChange={({ portraitUrl, portraitCredit }) =>
-            onChange({ ...appearance, portraitUrl, portraitCredit })
-          }
-          onPersist={async (fields) => {
-            await onPersist(fields);
-          }}
-        />
-      ) : (
-        <p className="text-[10px] text-muted">
-          Portrait import requires campaign context.
-        </p>
-      )}
-        </>
-      ) : null}
-      <AppearanceSummaryField
-        value={appearance.summary}
-        onChange={(summary) => onChange({ ...appearance, summary })}
-        onPersist={(summary) => onPersist({ summary })}
-      />
-      {showTags ? (
-        <label className="space-y-1" id={tagsFieldId}>
-          <span className={META_FIELD_LABEL_CLASS}>
-            Appearance tags
-          </span>
-          <input
-            className={codexFieldClass}
-            placeholder="femme, androgynous, scarred, bioluminescent — comma-separated"
-            value={tagsInput}
-            onChange={(e) => {
-              setTagsInput(e.target.value);
-              onTagsChange(parseCommaListDraft(e.target.value));
-            }}
-            onBlur={() => {
-              const normalized = parseCommaList(tagsInput);
-              setTagsInput(formatCommaList(normalized));
-              onTagsChange(normalized);
-              onTagsPersist(normalized);
-            }}
-          />
-        </label>
-      ) : null}
+        {portraitBlock}
+        {summaryBlock}
+        {tagsBlock}
       </div>
     </div>
   );

@@ -31,6 +31,7 @@ import type { AncestryIdentityProjection } from '@/lib/ancestryIdentityProjectio
 import { DocumentBlockWidget } from './widgets/DocumentBlockWidget';
 import { EntityThreadPropertiesWidget } from './widgets/EntityThreadPropertiesWidget';
 import { EntityScenePropertiesWidget } from './widgets/EntityScenePropertiesWidget';
+import { EntityQuestPropertiesWidget } from './widgets/EntityQuestPropertiesWidget';
 import { EntityObjectivePropertiesWidget } from './widgets/EntityObjectivePropertiesWidget';
 import { EntityArcPropertiesWidget } from './widgets/EntityArcPropertiesWidget';
 import { getBlockDisplayTitle } from '@/utils/wikiWidgets';
@@ -48,7 +49,6 @@ export interface WidgetRegistryContext {
   memberRole?: string;
   allowPlayerChronologyManagement?: boolean;
   onMetadataSaved: (metadata: Record<string, unknown>) => void;
-  onTemplateTypeChange?: (templateType: string) => void;
   onVisibilityChange?: (visibility: 'Public' | 'Party' | 'DM_Only') => void | Promise<void>;
   onParentChange?: (next: {
     parentId: string | null;
@@ -72,6 +72,9 @@ export interface WidgetRegistryContext {
   onHeightChange?: (blockId: string, heightPx: number) => void;
   blockDisplayState?: BlockDisplayState;
   blockActionHandlers?: BlockActionHandlers;
+  prosePrimarySubview?: boolean;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
 }
 
 interface WidgetRegistryProps extends WidgetRegistryContext {
@@ -90,7 +93,10 @@ function WidgetRegistryInner({
 }: WidgetRegistryProps) {
   const interaction = { onInteractionStart, onInteractionEnd };
   const title = getBlockDisplayTitle(block);
-  const useChrome = isSemanticBlockType(block.type);
+  const isProseBlock = block.type === 'text-tiptap' || block.type === 'text-biography';
+  const useChrome =
+    isSemanticBlockType(block.type) &&
+    !(ctx.prosePrimarySubview && isProseBlock);
 
   const wrap = (body: React.ReactNode) => {
     if (!useChrome) return body;
@@ -122,6 +128,11 @@ function WidgetRegistryInner({
           content={block.content}
           onChange={onChange}
           isEditingLayout={ctx.isEditingPage}
+          prosePrimary={ctx.prosePrimarySubview}
+          workshopFromPageId={ctx.pageId}
+          templateType={ctx.templateType}
+          pageCanEdit={ctx.pageCanEdit}
+          confirmWorkshopLeave={ctx.confirmWorkshopLeave}
           {...interaction}
         />,
       );
@@ -131,6 +142,11 @@ function WidgetRegistryInner({
           content={block.content}
           onChange={onChange}
           isEditingPage={ctx.isEditingPage}
+          prosePrimary={ctx.prosePrimarySubview}
+          workshopFromPageId={ctx.pageId}
+          templateType={ctx.templateType}
+          pageCanEdit={ctx.pageCanEdit}
+          confirmWorkshopLeave={ctx.confirmWorkshopLeave}
           {...interaction}
         />,
       );
@@ -184,6 +200,10 @@ function WidgetRegistryInner({
           pageId={ctx.pageId}
           metadata={ctx.pageMetadata}
           flatPages={ctx.flatPages}
+          parentId={ctx.parentId ?? null}
+          onParentIdSaved={(nextParentId) =>
+            ctx.onParentChange?.({ parentId: nextParentId })
+          }
           isEditingPage={ctx.isEditingPage}
           onMetadataSaved={ctx.onMetadataSaved}
         />,
@@ -222,7 +242,7 @@ function WidgetRegistryInner({
           blockId={block.id}
           campaignHandle={ctx.campaignHandle}
           pageId={ctx.pageId}
-          templateType={ctx.templateType}
+          surfaceProfileKey={ctx.surfaceProfileKey ?? 'default'}
           metadata={ctx.pageMetadata}
           flatPages={ctx.flatPages}
           isEditingPage={ctx.isEditingPage}
@@ -300,6 +320,23 @@ function WidgetRegistryInner({
           onMetadataSaved={ctx.onMetadataSaved}
         />,
       );
+    case 'entity-quest-properties':
+      return wrap(
+        <EntityQuestPropertiesWidget
+          campaignHandle={ctx.campaignHandle}
+          pageId={ctx.pageId}
+          pageTitle={
+            ctx.flatPages.find((page) => page.id === ctx.pageId)?.title ?? 'Quest'
+          }
+          metadata={ctx.pageMetadata}
+          flatPages={ctx.flatPages}
+          pageTags={ctx.pageTags ?? []}
+          allCampaignTags={ctx.allCampaignTags ?? []}
+          isEditingPage={ctx.isEditingPage}
+          onMetadataSaved={ctx.onMetadataSaved}
+          onPageTagsChange={ctx.onPageTagsChange ?? (() => {})}
+        />,
+      );
     case 'entity-objective-properties':
       return wrap(
         <EntityObjectivePropertiesWidget
@@ -333,16 +370,16 @@ function WidgetRegistryInner({
           parentId={ctx.parentId ?? null}
           parentChain={ctx.parentChain}
           flatPages={ctx.flatPages}
-          templateType={ctx.templateType}
+          pageMetadata={ctx.pageMetadata}
           pageVisibility={ctx.pageVisibility ?? 'Party'}
           pageTags={ctx.pageTags ?? []}
           allCampaignTags={ctx.allCampaignTags ?? []}
-          onTemplateTypeChange={ctx.onTemplateTypeChange ?? (() => {})}
           onVisibilityChange={ctx.onVisibilityChange ?? (async () => {})}
           onParentChange={ctx.onParentChange ?? (() => {})}
           onTreeRefresh={ctx.onTreeRefresh ?? (async () => {})}
           onPageTagsChange={ctx.onPageTagsChange ?? (() => {})}
           isEditingPage={ctx.isEditingPage}
+          hideTags={ctx.templateType === 'QUEST'}
         />,
       );
     case 'image-display':

@@ -268,6 +268,48 @@ export async function patchThreadLifecycle(
   });
 }
 
+export async function patchQuestLifecycle(
+  campaignHandle: string,
+  pageId: string,
+  lifecycleState: string,
+  entityName?: string,
+): Promise<{
+  lifecycleState: string;
+  questStatus: string | null;
+}> {
+  return apiFetch(`/campaigns/${campaignHandle}/narrative-lifecycle/quest/${pageId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      lifecycleState,
+      ...(entityName ? { entityName } : {}),
+    }),
+  });
+}
+
+export async function fetchQuestLifecycleStates(
+  campaignHandle: string,
+  pageIds: string[],
+): Promise<{
+  items: Array<{
+    subjectId: string;
+    lifecycleState: string | null;
+    visible: string | null;
+  }>;
+}> {
+  const params = new URLSearchParams({
+    subjectKind: 'quest',
+    subjectIds: pageIds.join(','),
+  });
+  const data = await apiFetch<{
+    items: Array<{
+      subjectId: string;
+      lifecycleState: string | null;
+      visible: string | null;
+    }>;
+  }>(`/campaigns/${campaignHandle}/narrative-lifecycle?${params.toString()}`);
+  return data;
+}
+
 export async function fetchThreadLifecycleStates(
   campaignHandle: string,
   pageIds: string[],
@@ -748,6 +790,80 @@ export async function createThreadPage(
   });
 }
 
+export type CreateQuestPageInput = {
+  title: string;
+  questType?: string | null;
+  visibility?: 'Public' | 'Party' | 'DM_Only';
+};
+
+export async function createQuestPage(
+  campaignHandle: string,
+  questsRootId: string,
+  input: CreateQuestPageInput,
+): Promise<WikiTreeNode> {
+  const { buildQuestDefaultBlocks } = await import('@/utils/pageTemplates');
+  const { DEFAULT_QUEST_STATUS } = await import('@/lib/questMetadata');
+  const blocks = buildQuestDefaultBlocks();
+  const metadata: Record<string, unknown> = {
+    entityCategory: 'quests',
+    questStatus: DEFAULT_QUEST_STATUS,
+  };
+  const questType = input.questType?.trim();
+  if (questType) {
+    metadata.questType = questType;
+  }
+  return createWikiPage(campaignHandle, {
+    title: input.title.trim(),
+    parentId: questsRootId,
+    metadata,
+    blocks,
+    templateType: 'QUEST',
+    visibility: input.visibility,
+  });
+}
+
+export type CreateArcPageInput = {
+  title: string;
+  arcKind?: import('@/lib/arcMetadata').ArcKind;
+  pacingTarget?: string | null;
+  visibility?: 'Public' | 'Party' | 'DM_Only';
+};
+
+export async function createArcPage(
+  campaignHandle: string,
+  parentId: string,
+  input: CreateArcPageInput,
+): Promise<WikiTreeNode> {
+  const { mergeArcMetadata } = await import('@/lib/arcMetadata');
+  const { buildDefaultBlocks } = await import('@/utils/pageTemplates');
+  const bodyMarkdown = '## Premise\n\nDescribe the arc scope and stakes.\n';
+  const blocks = buildDefaultBlocks('default').map((block) =>
+    block.type === 'text-tiptap'
+      ? {
+          ...block,
+          content: {
+            ...(block.content ?? {}),
+            markdown: bodyMarkdown,
+          },
+        }
+      : block,
+  );
+  const metadata = mergeArcMetadata({}, {
+    arcKind: input.arcKind ?? 'campaign_arc',
+    containedPageIds: [],
+    actIndex: null,
+    pacingTarget: input.pacingTarget?.trim() || null,
+  });
+  return createWikiPage(campaignHandle, {
+    title: input.title.trim(),
+    parentId,
+    metadata,
+    blocks,
+    templateType: 'DEFAULT',
+    visibility: input.visibility,
+  });
+}
+
 export async function fetchWikiPageLayout(
   campaignHandle: string,
   pageId: string,
@@ -768,6 +884,27 @@ export async function updateWikiPage(
     method: 'PATCH',
     body: JSON.stringify(input),
   });
+}
+
+export interface WikiTransformResult {
+  pageId: string;
+  promotedQuestPageId?: string;
+  workspace: string | null;
+  pathKey: string | null;
+}
+
+export async function transformWikiPage(
+  campaignHandle: string,
+  pageId: string,
+  targetModule: string,
+): Promise<WikiTransformResult> {
+  return apiFetch<WikiTransformResult>(
+    `/campaigns/${campaignHandle}/wiki/${pageId}/transform`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ targetModule }),
+    },
+  );
 }
 
 export async function fetchCampaignTags(
@@ -998,22 +1135,6 @@ export async function fetchPersonalPins(
   try {
     const data = await apiFetch<{ shortcuts: PageShortcut[] }>(
       `/campaigns/${campaignHandle}/wiki/pins`,
-    );
-    return data.shortcuts ?? [];
-  } catch {
-    return [];
-  }
-}
-
-/** @deprecated Use fetchPersonalPins */
-export const fetchPinnedShortcuts = fetchPersonalPins;
-
-export async function fetchQuickAccessShortcuts(
-  campaignHandle: string,
-): Promise<PageShortcut[]> {
-  try {
-    const data = await apiFetch<{ shortcuts: PageShortcut[] }>(
-      `/campaigns/${campaignHandle}/wiki/quick-access`,
     );
     return data.shortcuts ?? [];
   } catch {

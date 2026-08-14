@@ -35,7 +35,7 @@ export function EntityRelationChip({
   campaignHandle,
   pageId,
   title,
-  templateType,
+  templateType: _templateType,
   stance = null,
   relationType,
   visibility,
@@ -50,7 +50,7 @@ export function EntityRelationChip({
       ? resolveStanceVisual(stance, relationType, visibility)
       : resolveNeutralEntityVisual(subtitle);
 
-  const href = campaignCategoryChildPath(campaignHandle, templateType, pageId);
+  const href = campaignCategoryChildPath(campaignHandle, pageId, undefined, flatPages);
   const [hoverOpen, setHoverOpen] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

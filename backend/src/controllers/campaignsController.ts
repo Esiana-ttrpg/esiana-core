@@ -17,8 +17,8 @@ import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilitie
 import {
   CampaignDiscoverability,
   discoverabilityWithLfg,
-  isValidDiscoverability,
   normalizeDiscoverability,
+  parseDiscoverabilityInput,
 } from '../../../shared/campaignPolicy/discoverability.js';
 import { seedWikiSkeleton } from '../lib/seedWiki.js';
 import { deleteCampaignAssetFiles, deleteUploadedFile, deleteUploadedFileSafe } from '../lib/assetFiles.js';
@@ -77,6 +77,7 @@ import {
 } from '../lib/timeTracking.js';
 import { resolveUserDisplayName } from '../lib/userDisplay.js';
 import { logCampaignActivity } from '../lib/campaignActivity.js';
+import { safeResolveJournalCampaign } from '../lib/journalResolution.js';
 import {
   CoreDomainEvents,
   dispatchDomainEvent,
@@ -665,9 +666,7 @@ export async function createCampaign(
   }
   const { gameSystem: normalizedGameSystem, customGameSystemName: normalizedCustomGameSystemName } =
     gameSystemValidation.value;
-  const normalizedDiscoverability = isValidDiscoverability(discoverability)
-    ? discoverability
-    : CampaignDiscoverability.PRIVATE;
+  const normalizedDiscoverability = normalizeDiscoverability(discoverability);
 
   const wizardFiles = [
     coverImageFile,
@@ -1252,13 +1251,14 @@ export async function updateCampaign(
   );
   let nextDiscoverability: string | undefined;
   if (body.discoverability !== undefined) {
-    if (!isValidDiscoverability(body.discoverability)) {
+    const parsed = parseDiscoverabilityInput(body.discoverability);
+    if (parsed === null) {
       res.status(400).json({
-        error: 'discoverability must be private, unlisted, or public',
+        error: 'discoverability must be private or public',
       });
       return;
     }
-    nextDiscoverability = body.discoverability;
+    nextDiscoverability = parsed;
   }
   if (nextIsLookingForGroup === true) {
     nextDiscoverability = CampaignDiscoverability.PUBLIC;
@@ -1715,6 +1715,13 @@ export async function advanceCampaignTime(
       unit: parsed.unit,
     }) as unknown as Record<string, unknown>,
   });
+
+  // Lazy journal resolution: a time jump can satisfy chronology-based release
+  // rules or series cadence. Best-effort and detached from the locked hook
+  // spine — the next Journal load reconciles anything missed here.
+  if (nextEpochMinute !== previousEpochMinute) {
+    void safeResolveJournalCampaign(campaignId);
+  }
 
   res.json({
     currentEpochMinute: serializeEpochMinute(nextEpochMinute),

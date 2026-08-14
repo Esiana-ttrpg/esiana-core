@@ -4,9 +4,11 @@
 
 export const CampaignDiscoverability = {
   PRIVATE: 'private',
-  UNLISTED: 'unlisted',
   PUBLIC: 'public',
 } as const;
+
+/** Legacy DB/API value; normalized to private on read. */
+export const LEGACY_DISCOVERABILITY_UNLISTED = 'unlisted';
 
 export type CampaignDiscoverabilityValue =
   (typeof CampaignDiscoverability)[keyof typeof CampaignDiscoverability];
@@ -19,9 +21,23 @@ export function isValidDiscoverability(
   return typeof value === 'string' && DISCOVERABILITY_VALUES.has(value);
 }
 
+/** Accepts private, public, or legacy unlisted (maps to private). Returns null if unrecognized. */
+export function parseDiscoverabilityInput(
+  value: string | null | undefined,
+): CampaignDiscoverabilityValue | null {
+  if (value === LEGACY_DISCOVERABILITY_UNLISTED) {
+    return CampaignDiscoverability.PRIVATE;
+  }
+  if (isValidDiscoverability(value)) return value;
+  return null;
+}
+
 export function normalizeDiscoverability(
   value: string | null | undefined,
 ): CampaignDiscoverabilityValue {
+  if (value === LEGACY_DISCOVERABILITY_UNLISTED) {
+    return CampaignDiscoverability.PRIVATE;
+  }
   if (isValidDiscoverability(value)) return value;
   return CampaignDiscoverability.PRIVATE;
 }
@@ -33,9 +49,9 @@ export function resolveDiscoverability(
 }
 
 export function allowsAnonymousCampaignView(
-  discoverability: CampaignDiscoverabilityValue,
+  discoverability: CampaignDiscoverabilityValue | string,
 ): boolean {
-  return discoverability !== CampaignDiscoverability.PRIVATE;
+  return normalizeDiscoverability(discoverability) === CampaignDiscoverability.PUBLIC;
 }
 
 /** Listed on Global Hub / recruitment marketplace index. */

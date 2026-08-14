@@ -19,7 +19,7 @@ export function PinnedItemsWidget({ pinned, customizeMode, onHide }: PinnedItems
   return (
     <DashboardWidgetShell
       title="Pinned Pages"
-      icon={<Pin className="size-4 text-rose-300" />}
+      icon={<Pin className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >
@@ -33,7 +33,7 @@ export function PinnedItemsWidget({ pinned, customizeMode, onHide }: PinnedItems
             <li key={item.id}>
               <Link
                 to={item.href}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 text-sm hover:border-rose-400/40"
+                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background/50 px-3 py-2 text-sm transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <span className="font-medium text-foreground">{item.title}</span>
                 {item.freshnessLabel ? (

@@ -316,7 +316,3 @@ export async function cancelOwnershipTransfer(
 
   res.json({ ok: true });
 }
-
-export async function expireOwnershipTransfers(): Promise<number> {
-  return expireStaleOwnershipTransfers({ notify: true });
-}

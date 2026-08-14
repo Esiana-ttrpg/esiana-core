@@ -226,11 +226,6 @@ export function normalizeBranchConditions(raw: unknown): BranchCondition[] {
   return conditions;
 }
 
-/** @deprecated Use normalizeBranchConditions */
-export function normalizeEntryConditions(raw: unknown): BranchCondition[] {
-  return normalizeBranchConditions(raw);
-}
-
 export function normalizeSceneOutcomes(raw: unknown): SceneOutcomeEntry[] {
   if (!Array.isArray(raw)) return [];
   const outcomes: SceneOutcomeEntry[] = [];

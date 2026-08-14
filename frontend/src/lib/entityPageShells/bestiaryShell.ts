@@ -3,11 +3,11 @@ import type { EntityPageShell, EntitySubviewDef, EntitySubviewId } from './types
 
 export const BESTIARY_SUBVIEWS: EntitySubviewDef[] = [
   { id: 'overview', label: 'Overview', navPriority: 0, collapseGroup: 'primary' },
-  { id: 'encounters', label: 'Encounters', navPriority: 1, collapseGroup: 'primary' },
-  { id: 'combat', label: 'Combat', navPriority: 2, collapseGroup: 'primary' },
-  { id: 'appearance', label: 'Appearance', navPriority: 3, collapseGroup: 'primary' },
-  { id: 'relationships', label: 'Related', navPriority: 4, collapseGroup: 'secondary' },
-  { id: 'lore', label: 'Lore', navPriority: 5, collapseGroup: 'secondary' },
+  { id: 'lore', label: 'Lore', navPriority: 1, collapseGroup: 'primary' },
+  { id: 'encounters', label: 'Encounters', navPriority: 2, collapseGroup: 'primary' },
+  { id: 'combat', label: 'Combat', navPriority: 3, collapseGroup: 'primary' },
+  { id: 'appearance', label: 'Appearance', navPriority: 4, collapseGroup: 'primary' },
+  { id: 'relationships', label: 'Related', navPriority: 5, collapseGroup: 'secondary' },
   { id: 'discovery', label: 'Discovery', navPriority: 6, collapseGroup: 'dm', dmOnly: true },
   { id: 'continuity', label: 'Continuity', navPriority: 7, collapseGroup: 'dm', dmOnly: true },
 ];
@@ -58,9 +58,6 @@ export const bestiaryPageShell: EntityPageShell = {
       ghostLabel: 'Field notes',
     },
   ],
-  railSectionOrder: ['callout', 'discovery', 'relations', 'continuity'],
-  railSectionsHidden: ['provenance', 'threads', 'timeline'],
-  defaultRailOpen: false,
   getVisibleSubviews: visibleSubviews,
   isValidSubview(subview, isDMUser) {
     return visibleSubviews(isDMUser).some((t) => t.id === subview);

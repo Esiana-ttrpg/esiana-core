@@ -182,9 +182,6 @@ export function cacheGlobalBackgroundTint(applyBackgroundTint: boolean): void {
   }
 }
 
-/** @deprecated Use {@link cacheGlobalBackgroundTint} */
-export const cacheGlobalPaletteApplyTints = cacheGlobalBackgroundTint;
-
 export function readCachedGlobalBackgroundTint(): boolean {
   try {
     const current = localStorage.getItem(GLOBAL_BACKGROUND_TINT_STORAGE_KEY);
@@ -194,6 +191,3 @@ export function readCachedGlobalBackgroundTint(): boolean {
     return false;
   }
 }
-
-/** @deprecated Use {@link readCachedGlobalBackgroundTint} */
-export const readCachedGlobalPaletteApplyTints = readCachedGlobalBackgroundTint;

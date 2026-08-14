@@ -29,8 +29,9 @@ describe('characterIdentityProjection', () => {
         {
           id: 'char-1',
           title: 'Snaks Miller',
-          templateType: 'CHARACTER',
+          templateType: 'DEFAULT',
           metadata: {
+            entityCategory: 'characters',
             firstName: 'Snaks',
             title: 'Scout',
             ancestry: 'Kobold',
@@ -41,7 +42,7 @@ describe('characterIdentityProjection', () => {
         {
           id: 'fam-1',
           title: 'House Miller',
-          templateType: 'FAMILY',
+          templateType: 'DEFAULT',
           metadata: {},
         },
       ],

@@ -14,14 +14,6 @@ export type ReadableMeasureTier = CodexMeasureTier | 'active';
 
 export type WorkspaceMode = 'focused' | 'balanced' | 'expanded' | 'immersive';
 
-/** @deprecated Use CODEX_COGNITIVE_MODES in codexWorkspaceUx for UI labels */
-export const WORKSPACE_MODES: { id: WorkspaceMode; label: string }[] = [
-  { id: 'focused', label: 'Reading' },
-  { id: 'balanced', label: 'Reading (wide)' },
-  { id: 'expanded', label: 'Writing' },
-  { id: 'immersive', label: 'Reading' },
-];
-
 export type { WorkspaceOrchestrationProfile, ExpandedLayoutBehavior };
 export { getWorkspaceOrchestration, getExpandedLayoutBehavior };
 
@@ -111,13 +103,4 @@ export function measureContentClass(
     return `w-full ${maxWidth}`;
   }
   return `w-full ${maxWidth} mx-auto`;
-}
-
-/** @deprecated Use shouldForceEditorialStack from workspaceOrchestration */
-export function shouldUseReaderFirstStack(
-  workspaceMode: WorkspaceMode,
-  gridWidth: number,
-): boolean {
-  const profile = getWorkspaceOrchestration(workspaceMode);
-  return gridWidth > 0 && gridWidth < profile.readerStackBreakpointPx;
 }

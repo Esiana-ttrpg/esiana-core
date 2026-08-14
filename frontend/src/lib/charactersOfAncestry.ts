@@ -1,3 +1,4 @@
+import { isCharacterEntityPage } from '@shared/resolveCanonicalEntityCategory';
 import { parseCharacterMetadata } from './characterMetadata';
 import { parseAncestryMetadata } from './ancestryMetadata';
 import { childLineagesOf } from './ancestryInheritanceProjection';
@@ -11,11 +12,8 @@ export interface CharacterAncestryRef {
   currentLocationId: string | null;
 }
 
-function isCharacterPage(page: WikiTreeNode): boolean {
-  const category = (page.metadata as Record<string, unknown> | undefined)
-    ?.entityCategory;
-  if (category === 'characters') return true;
-  return page.templateType === 'CHARACTER';
+function isCharacterPage(page: WikiTreeNode, flatPages: WikiTreeNode[]): boolean {
+  return isCharacterEntityPage(page, flatPages);
 }
 
 export function charactersOfAncestry(
@@ -33,7 +31,7 @@ export function charactersOfAncestry(
 
   const results: CharacterAncestryRef[] = [];
   for (const page of flatPages) {
-    if (!isCharacterPage(page)) continue;
+    if (!isCharacterPage(page, flatPages)) continue;
     const identity = parseCharacterMetadata(page.metadata);
     const matchesAncestry = identity.ancestryId === ancestryPageId;
     const matchesLineage =

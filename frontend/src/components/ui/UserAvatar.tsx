@@ -33,7 +33,7 @@ const SIZE_CLASSES: Record<AvatarSize, string> = {
 const COLOR_CLASSES = [
   'bg-rose-600/30 text-rose-200 border-rose-500/40',
   'bg-fuchsia-600/30 text-fuchsia-200 border-fuchsia-500/40',
-  'bg-indigo-600/30 text-indigo-200 border-indigo-500/40',
+  'bg-primary/30 text-primary border-primary/40',
   'bg-cyan-600/30 text-cyan-200 border-cyan-500/40',
   'bg-emerald-600/30 text-emerald-200 border-emerald-500/40',
   'bg-primary/30 text-primary border-primary/40',

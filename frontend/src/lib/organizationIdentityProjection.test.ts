@@ -8,7 +8,7 @@ describe('buildOrganizationIdentityProjection', () => {
       {
         id: 'o1',
         title: 'The Sapphire Order',
-        templateType: 'ORGANIZATION',
+        templateType: 'DEFAULT',
         metadata: {
           orgType: 'Knightly intelligence network',
           motivation: 'Operating from Rivendale',
@@ -18,7 +18,7 @@ describe('buildOrganizationIdentityProjection', () => {
       {
         id: 'loc1',
         title: 'Rivendale',
-        templateType: 'LOCATION',
+        templateType: 'DEFAULT',
         metadata: {},
       },
     ]);

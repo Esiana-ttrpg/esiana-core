@@ -1,13 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useWiki } from '@/contexts/WikiContext';
 import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { fetchAdventureHub, type AdventureHubPayload } from '@/lib/adventure';
 import {
-  readStoryViewFromSearch,
-  readThreadsLensFromSearch,
-  storyViewHref,
   storyViewToApiSection,
+  type StoryViewId,
   type ThreadsLensId,
 } from '@/lib/adventureLayout';
 import { campaignAdventureHubPath } from '@/lib/campaignPaths';
@@ -15,40 +12,40 @@ import {
   parseSystemCategoryKey,
   SYSTEM_CATEGORY_NARRATIVE_THREADS,
 } from '@/lib/wikiSystemCategory';
-import {
-  patchStoryFilters,
-  patchStoryView,
-  patchThreadsLens,
-  readCampaignWorkspaceState,
-  type StoryFilterState,
-} from '@/lib/workspacePersistence';
+import type { StoryFilterState } from '@/lib/workspacePersistence';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
-import { WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
-import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
-import { StoryNarrativeFilterPanel } from '@/components/adventure/StoryNarrativeFilterPanel';
-import { StoryViewTabs } from '@/components/adventure/StoryViewTabs';
 import { BoardSection } from '@/components/adventure/BoardSection';
 import { ArcsSection } from '@/components/adventure/ArcsSection';
 import { InvestigationSection } from '@/components/adventure/InvestigationSection';
 import { ThreadHubView } from '@/components/thread/ThreadHubView';
+import { ThreadsLensViewToggle } from '@/components/thread/ThreadsLensViewToggle';
 import { CreativeDriftContent } from '@/components/creativeDrift/CreativeDriftContent';
+import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
 import { ThreadActivityFeed } from '@/components/adventure/ThreadActivityFeed';
 
 interface StorySectionProps {
   campaignHandle: string;
   categoryPageId: string;
+  activeView: StoryViewId;
+  threadsLens: ThreadsLensId;
+  filters: StoryFilterState;
+  onThreadsLensChange: (lens: ThreadsLensId) => void;
+  onHeaderActionsChange?: (actions: ReactNode | null) => void;
 }
 
-export function StorySection({ campaignHandle, categoryPageId }: StorySectionProps) {
-  const location = useLocation();
-  const navigate = useNavigate();
+export function StorySection({
+  campaignHandle,
+  categoryPageId,
+  activeView,
+  threadsLens,
+  filters,
+  onThreadsLensChange,
+  onHeaderActionsChange,
+}: StorySectionProps) {
   const { flatPages } = useWiki();
   const { playerPreview, isDMUser } = useAdventureWorkspace();
 
   const basePath = campaignAdventureHubPath(campaignHandle);
-  const activeView = readStoryViewFromSearch(location.search, campaignHandle);
-  const threadsLens = readThreadsLensFromSearch(location.search, campaignHandle);
 
   const threadsCategoryId = useMemo(
     () =>
@@ -58,28 +55,12 @@ export function StorySection({ campaignHandle, categoryPageId }: StorySectionPro
     [flatPages],
   );
 
-  const [filters, setFilters] = useState<StoryFilterState>(() => {
-    const sticky = readCampaignWorkspaceState(campaignHandle).storyFilters;
-    return sticky ?? {};
-  });
   const [sectionData, setSectionData] = useState<AdventureHubPayload | null>(null);
   const [threadHistoryData, setThreadHistoryData] = useState<
     AdventureHubPayload['threadHistory'] | null
   >(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const showStoryToolbar = activeView === 'threads' || activeView === 'unresolved';
-
-  useEffect(() => {
-    patchStoryView(campaignHandle, activeView);
-  }, [activeView, campaignHandle]);
-
-  useEffect(() => {
-    if (showStoryToolbar) {
-      patchStoryFilters(campaignHandle, filters);
-    }
-  }, [campaignHandle, filters, showStoryToolbar]);
 
   const loadViewData = useCallback(async () => {
     if (activeView === 'quests') {
@@ -149,144 +130,136 @@ export function StorySection({ campaignHandle, categoryPageId }: StorySectionPro
     void loadViewData();
   }, [loadViewData]);
 
-  function handleFiltersChange(patch: Partial<StoryFilterState>) {
-    setFilters((prev) => ({ ...prev, ...patch }));
-  }
-
-  function setThreadsLens(lens: ThreadsLensId) {
-    patchThreadsLens(campaignHandle, lens);
-    navigate(storyViewHref(basePath, 'threads', lens === 'activity' ? 'activity' : undefined), {
-      replace: true,
-    });
-  }
-
-  const viewContent = (() => {
-    if (activeView === 'quests') {
-      return (
-        <BoardSection
-          campaignHandle={campaignHandle}
-          categoryPageId={categoryPageId}
-          playerPreview={playerPreview}
-        />
-      );
+  const threadsActivityToolbar = useMemo(() => {
+    if (
+      activeView !== 'threads' ||
+      threadsLens !== 'activity' ||
+      !isDMUser ||
+      playerPreview
+    ) {
+      return null;
     }
-    if (loading) {
-      return <LoadingSpinner label="Loading story view…" />;
-    }
-    if (error) {
-      return (
-        <p className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>
-      );
-    }
-    if (activeView === 'arcs') {
-      return (
-        <ArcsSection
-          campaignHandle={campaignHandle}
-          arcHierarchy={
-            sectionData?.arcHierarchy as import('@/lib/arcMetadata').ArcHierarchyProjection | null
-          }
-          actLanes={
-            (sectionData?.actLanes as Array<{ id: string; label: string; actIndex?: number }>) ??
-            []
-          }
-          embedded
-        />
-      );
-    }
-    if (activeView === 'threads') {
-      if (threadsLens === 'activity' && isDMUser && !playerPreview) {
-        return (
-          <ThreadActivityFeed
-            campaignHandle={campaignHandle}
-            data={threadHistoryData ?? undefined}
+    return (
+      <CategoryIndexToolbar
+        createAction={null}
+        createLabel="New thread"
+        onCreate={() => {}}
+        viewControl={
+          <ThreadsLensViewToggle
+            threadsLens={threadsLens}
+            onThreadsLensChange={onThreadsLensChange}
           />
-        );
-      }
-      if (!threadsCategoryId) {
-        return (
-          <p className="text-sm text-muted-foreground">Narrative Threads category not found.</p>
-        );
-      }
-      return (
-        <ThreadHubView
-          campaignHandle={campaignHandle}
-          categoryPageId={threadsCategoryId}
-          embedded
-          storyFilters={filters}
-          threadsLens={threadsLens}
-          onThreadsLensChange={setThreadsLens}
-          playerPreview={playerPreview}
-          adventureBasePath={basePath}
-        />
-      );
-    }
-    if (activeView === 'unresolved') {
-      if (!isDMUser || playerPreview) {
-        return (
-          <p className="text-sm text-muted-foreground">
-            Unresolved narrative drift is available to GMs only.
-          </p>
-        );
-      }
-      return <CreativeDriftContent campaignHandle={campaignHandle} embedded storyFilters={filters} />;
-    }
-    if (activeView === 'investigation') {
-      if (!isDMUser || playerPreview) {
-        return (
-          <p className="text-sm text-muted-foreground">
-            Investigation topology is available to GMs only.
-          </p>
-        );
-      }
-      return (
-        <InvestigationSection
-          campaignHandle={campaignHandle}
-          data={sectionData?.investigation}
-          embedded
-        />
-      );
-    }
-    return null;
-  })();
-
-  const storyRefineActive =
-    Boolean(filters.recent) || Boolean((filters.search ?? '').trim().length > 0);
-
-  return (
-    <>
-      <WorkspaceHeader
-        title="Adventure Board"
-        belowToolbar={
-          <StoryViewTabs basePath={basePath} activeView={activeView} isDMUser={isDMUser} />
-        }
-        actions={
-          showStoryToolbar ? (
-            <WorkspaceActionBar
-              refine={
-                <CategoryIndexRefinePopover
-                  facetDefs={[]}
-                  refineState={{}}
-                  children={[]}
-                  categoryTitle="Adventure"
-                  onRefineChange={() => {}}
-                  activeCount={storyRefineActive ? 1 : undefined}
-                  onResetRefine={() => handleFiltersChange({ search: '', recent: false })}
-                  searchQuery={filters.search ?? ''}
-                  onSearchChange={(value) => handleFiltersChange({ search: value })}
-                  searchPlaceholder="Filter narrative state…"
-                  customBody={
-                    <StoryNarrativeFilterPanel
-                      filters={filters}
-                      onFiltersChange={handleFiltersChange}
-                    />
-                  }
-                />
-              }
-            />
-          ) : undefined
         }
       />
-      <div className="story-workspace__content min-h-[480px]">{viewContent}</div>
-    </>
-  );
+    );
+  }, [activeView, isDMUser, onThreadsLensChange, playerPreview, threadsLens]);
+
+  useEffect(() => {
+    if (!onHeaderActionsChange) return;
+    if (!threadsActivityToolbar) {
+      return;
+    }
+    onHeaderActionsChange(threadsActivityToolbar);
+    return () => onHeaderActionsChange(null);
+  }, [onHeaderActionsChange, threadsActivityToolbar]);
+
+  if (activeView === 'quests') {
+    return (
+      <BoardSection
+        campaignHandle={campaignHandle}
+        categoryPageId={categoryPageId}
+        playerPreview={playerPreview}
+        onHeaderToolbarChange={onHeaderActionsChange}
+      />
+    );
+  }
+
+  if (loading) {
+    return <LoadingSpinner label="Loading story view…" />;
+  }
+
+  if (error) {
+    return (
+      <p className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>
+    );
+  }
+
+  if (activeView === 'arcs') {
+    return (
+      <ArcsSection
+        campaignHandle={campaignHandle}
+        categoryPageId={categoryPageId}
+        arcHierarchy={
+          sectionData?.arcHierarchy as import('@/lib/arcMetadata').ArcHierarchyProjection | null
+        }
+        actLanes={
+          (sectionData?.actLanes as Array<{ id: string; label: string; actIndex?: number }>) ??
+          []
+        }
+        embedded
+        onHeaderActionsChange={onHeaderActionsChange}
+      />
+    );
+  }
+
+  if (activeView === 'threads') {
+    if (threadsLens === 'activity' && isDMUser && !playerPreview) {
+      return (
+        <ThreadActivityFeed
+          campaignHandle={campaignHandle}
+          data={threadHistoryData ?? undefined}
+        />
+      );
+    }
+    if (!threadsCategoryId) {
+      return (
+        <p className="text-sm text-muted-foreground">Narrative Threads category not found.</p>
+      );
+    }
+    return (
+      <ThreadHubView
+        campaignHandle={campaignHandle}
+        categoryPageId={threadsCategoryId}
+        embedded
+        storyFilters={filters}
+        threadsLens={threadsLens}
+        onThreadsLensChange={onThreadsLensChange}
+        playerPreview={playerPreview}
+        onHeaderToolbarChange={onHeaderActionsChange}
+        isDMUser={isDMUser}
+      />
+    );
+  }
+
+  if (activeView === 'unresolved') {
+    if (!isDMUser || playerPreview) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Unresolved narrative drift is available to GMs only.
+        </p>
+      );
+    }
+    return <CreativeDriftContent campaignHandle={campaignHandle} embedded storyFilters={filters} />;
+  }
+
+  if (activeView === 'investigation') {
+    if (!isDMUser || playerPreview) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Investigation topology is available to GMs only.
+        </p>
+      );
+    }
+    return (
+      <InvestigationSection
+        campaignHandle={campaignHandle}
+        data={sectionData?.investigation}
+        threadsCategoryId={threadsCategoryId}
+        embedded
+        onHeaderActionsChange={onHeaderActionsChange}
+      />
+    );
+  }
+
+  return null;
 }

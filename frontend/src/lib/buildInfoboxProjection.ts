@@ -6,9 +6,10 @@ import { parseFamilyMetadata } from '@/lib/familyMetadata';
 import { parseBestiaryMetadata } from '@/lib/bestiaryMetadata';
 import { parseAncestryMetadata } from '@/lib/ancestryMetadata';
 import { parseObjectMetadata } from '@/lib/objectMetadata';
-import { parseLocationMetadata } from '@/lib/locationMetadata';
+import { parseLocationMetadata, resolveLocationRegionLabel } from '@/lib/locationMetadata';
 import { parseRuleResourceMetadata } from '@/lib/ruleResourceMetadata';
 import { formatCharacterStatusLabel, resolveCharacterStatus } from '@/lib/characterMetadata';
+import { readEntityCategoryFromMetadata, legacyTemplateTypeToEntityCategory } from '@shared/wikiTemplateType';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
 import type { WikiTreeNode } from '@/types/wiki';
 
@@ -24,23 +25,60 @@ function pageTitles(flatPages: WikiTreeNode[], ids: string[]): string {
     .join(', ');
 }
 
+function profileKeyFromMetadata(metadata: unknown): SurfaceProfileKey | null {
+  const category = readEntityCategoryFromMetadata(metadata);
+  if (category === 'characters') return 'character';
+  if (category === 'organizations') return 'organization';
+  if (category === 'families') return 'family';
+  if (category === 'bestiary') return 'bestiary';
+  if (category === 'ancestries') return 'ancestry';
+  if (category === 'objects') return 'object';
+  if (category === 'locations') return 'location';
+  if (category === 'rules-resources') return 'rule-resource';
+  return null;
+}
+
 export function buildInfoboxProjection(
-  templateType: string,
+  _templateType: string,
   metadata: unknown,
   flatPages: WikiTreeNode[],
   surfaceProfileKey?: SurfaceProfileKey | null,
 ): InfoboxField[] {
-  const profileKey =
-    surfaceProfileKey ??
-    (templateType === 'CHARACTER'
-      ? 'character'
-      : templateType === 'ORGANIZATION'
-        ? 'organization'
-        : templateType === 'FAMILY'
-          ? 'family'
-          : null);
+  let profileKey = surfaceProfileKey ?? profileKeyFromMetadata(metadata);
+  // Fallback: if metadata lacks entityCategory, derive from legacy templateType
+  if (!profileKey && _templateType) {
+    const legacyCategory = legacyTemplateTypeToEntityCategory(_templateType);
+    if (legacyCategory) {
+      // map legacy category string to SurfaceProfileKey
+      if (legacyCategory === 'characters') profileKey = 'character';
+      else if (legacyCategory === 'organizations') profileKey = 'organization';
+      else if (legacyCategory === 'families') profileKey = 'family';
+      else if (legacyCategory === 'bestiary') profileKey = 'bestiary';
+      else if (legacyCategory === 'ancestries') profileKey = 'ancestry';
+      else if (legacyCategory === 'objects') profileKey = 'object';
+      else if (legacyCategory === 'locations') profileKey = 'location';
+      else if (legacyCategory === 'rules-resources') profileKey = 'rule-resource';
+    }
+  }
 
-  if (profileKey === 'character' || templateType === 'CHARACTER') {
+  // Lightweight heuristic: infer profile from common metadata fields when
+  // entityCategory is not present (tests and legacy payloads rely on this).
+  if (!profileKey && metadata && typeof metadata === 'object') {
+    const m = metadata as Record<string, unknown>;
+    if (
+      'orgType' in m ||
+      'motto' in m ||
+      'leaderId' in m ||
+      'headquartersId' in m ||
+      'parentOrgId' in m
+    ) {
+      profileKey = 'organization';
+    } else if ('appearance' in m || 'profession' in m || 'primaryAffiliationId' in m) {
+      profileKey = 'character';
+    }
+  }
+
+  if (profileKey === 'character') {
     const identity = parseCharacterMetadata(metadata);
     const lineage = parseCharacterLineageMetadata(metadata);
     const status = resolveCharacterStatus(identity, lineage);
@@ -63,7 +101,7 @@ export function buildInfoboxProjection(
     return fields;
   }
 
-  if (profileKey === 'organization' || templateType === 'ORGANIZATION') {
+  if (profileKey === 'organization') {
     const org = parseOrganizationMetadata(metadata);
     const fields: InfoboxField[] = [];
     if (org.orgType) fields.push({ key: 'Type', value: org.orgType });
@@ -79,7 +117,7 @@ export function buildInfoboxProjection(
     return fields;
   }
 
-  if (profileKey === 'family' || templateType === 'FAMILY') {
+  if (profileKey === 'family') {
     const family = parseFamilyMetadata(metadata);
     const fields: InfoboxField[] = [];
     if (family.familyType) fields.push({ key: 'Type', value: family.familyType });
@@ -201,11 +239,18 @@ export function buildInfoboxProjection(
     const location = parseLocationMetadata(metadata);
     const fields: InfoboxField[] = [];
     if (location.locationType) fields.push({ key: 'Type', value: location.locationType });
-    if (location.region) fields.push({ key: 'Region', value: location.region });
+    if (location.currentStatus) fields.push({ key: 'Status', value: location.currentStatus });
+    const regionLabel = resolveLocationRegionLabel(location, flatPages);
+    if (regionLabel) fields.push({ key: 'Region', value: regionLabel });
     if (location.rulerOrAuthority) fields.push({ key: 'Ruler', value: location.rulerOrAuthority });
     if (location.population) fields.push({ key: 'Population', value: location.population });
     if (location.climate) fields.push({ key: 'Climate', value: location.climate });
-    if (location.knownFor) fields.push({ key: 'Known for', value: location.knownFor });
+    if (location.threats.length > 0) {
+      fields.push({ key: 'Threats', value: location.threats.join(', ') });
+    }
+    if (location.knownFor.length > 0) {
+      fields.push({ key: 'Known for', value: location.knownFor.join(' • ') });
+    }
     const mapPage = pageTitle(flatPages, location.mapPageId);
     if (mapPage) fields.push({ key: 'Map', value: mapPage });
     const related = pageTitles(flatPages, location.relatedLocationIds);

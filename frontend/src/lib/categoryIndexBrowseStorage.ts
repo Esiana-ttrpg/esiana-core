@@ -12,6 +12,8 @@ export interface CategoryIndexBrowseSnapshot {
   searchQuery: string;
   refineState: CategoryIndexRefineState;
   viewMode: CategoryIndexViewMode;
+  /** Effective optional table column keys (Locations atlas). */
+  columnKeys?: string[];
 }
 
 const STORAGE_PREFIX = 'esiana.categoryIndex.browse.';

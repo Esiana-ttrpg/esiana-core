@@ -33,45 +33,70 @@ function createBlock(
   };
 }
 
+const ENTITY_CATEGORY_LAYOUT: Record<string, WikiBlockSeed[]> = {
+  characters: [
+    createBlock('entity-hero', 0, 0, 3, 1),
+    createBlock('text-biography', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+    createBlock('entity-appearance', 0, 3, 3, 1),
+    createBlock('wiki-backlinks', 0, 4, 3, 1),
+  ],
+  locations: [
+    createBlock('entity-location-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+  ],
+  organizations: [
+    createBlock('entity-org-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+    createBlock('entity-relationships', 0, 3, 3, 1),
+  ],
+  families: [
+    createBlock('entity-family-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+    createBlock('entity-relationships', 0, 3, 3, 1),
+  ],
+  bestiary: [
+    createBlock('entity-bestiary-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 3, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 0, 3, 3, 1, { fields: [] }),
+  ],
+  ancestries: [
+    createBlock('entity-ancestry-hero', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+  ],
+  objects: [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+    createBlock('entity-relationships', 0, 2, 3, 1),
+  ],
+  journals: [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+  ],
+  events: [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+  ],
+  'rules-resources': [
+    createBlock('text-tiptap', 0, 0, 2, 2, { markdown: '' }),
+    createBlock('wiki-infobox', 2, 0, 1, 2, { fields: [] }),
+  ],
+};
+
 /**
  * Default block layout for new wiki pages (3-column grid coordinates).
- * Mirrors frontend `buildDefaultBlocks` in `frontend/src/utils/pageTemplates.ts`.
+ * Prefers entityCategory; templateType is structural-only (QUEST, SCENE, etc.).
  */
-export function buildDefaultBlocks(templateType = 'DEFAULT'): WikiBlockSeed[] {
-  if (templateType === 'CHARACTER') {
-    return [
-      createBlock('entity-hero', 0, 0, 3, 1),
-      createBlock('text-biography', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-      createBlock('entity-appearance', 0, 3, 3, 1),
-      createBlock('wiki-backlinks', 0, 4, 3, 1),
-    ];
-  }
-
-  if (templateType === 'LOCATION') {
-    return [
-      createBlock('entity-location-hero', 0, 0, 3, 1),
-      createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-    ];
-  }
-
-  if (templateType === 'ORGANIZATION') {
-    return [
-      createBlock('entity-org-hero', 0, 0, 3, 1),
-      createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-      createBlock('entity-relationships', 0, 3, 3, 1),
-    ];
-  }
-
-  if (templateType === 'FAMILY') {
-    return [
-      createBlock('entity-family-hero', 0, 0, 3, 1),
-      createBlock('text-tiptap', 0, 1, 2, 2, { markdown: '' }),
-      createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
-      createBlock('entity-relationships', 0, 3, 3, 1),
-    ];
+export function buildDefaultBlocks(
+  templateType = 'DEFAULT',
+  entityCategory?: string | null,
+): WikiBlockSeed[] {
+  if (entityCategory && ENTITY_CATEGORY_LAYOUT[entityCategory]) {
+    return ENTITY_CATEGORY_LAYOUT[entityCategory];
   }
 
   return [
@@ -108,6 +133,14 @@ export function buildArcDefaultBlocks(options?: { markdown?: string }): WikiBloc
 export function buildSceneDefaultBlocks(options?: { markdown?: string }): WikiBlockSeed[] {
   return [
     createBlock('entity-scene-properties', 0, 0, 3, 1),
+    createBlock('text-tiptap', 0, 1, 2, 2, { markdown: options?.markdown ?? '' }),
+    createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
+  ];
+}
+
+export function buildQuestDefaultBlocks(options?: { markdown?: string }): WikiBlockSeed[] {
+  return [
+    createBlock('entity-quest-properties', 0, 0, 3, 1),
     createBlock('text-tiptap', 0, 1, 2, 2, { markdown: options?.markdown ?? '' }),
     createBlock('wiki-infobox', 2, 1, 1, 2, { fields: [] }),
   ];

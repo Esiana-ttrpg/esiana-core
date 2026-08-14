@@ -29,8 +29,6 @@ import {
   ensureSessionAuthorNote,
   getSessionTimelinePoint,
   getPersonalPins,
-  getPinnedPageShortcuts,
-  getCampaignQuickAccessShortcuts,
   getCategoryIndex,
   getQuestHubBySystemKey,
   getQuestHubIndex,
@@ -99,6 +97,7 @@ import {
   updateWikiPageLayout,
   updateWikiPageVisibility,
   updateWikiPageMetadata,
+  transformWikiPage,
 } from '../controllers/wikiController.js';
 import {
   getAdventureHubBySystemKey,
@@ -296,12 +295,15 @@ import {
 } from '../controllers/authoringController.js';
 import { getCampaignWorldStats } from '../controllers/statsController.js';
 import {
+  applyWorkshopDraftHandler,
+  bootstrapAnchoredDraftHandler,
   createWorkshopDraftHandler,
   formalizeWorkshopDraftHandler,
   getWorkshopDraftHandler,
   listWorkshopDraftsHandler,
   patchWorkshopDraftHandler,
 } from '../controllers/workshopDraftController.js';
+import { getWorkshopWritingContextHandler } from '../controllers/workshopWritingContextController.js';
 import {
   listNarrativeLifecycleStates,
   patchNarrativeLifecycleState,
@@ -325,11 +327,10 @@ import {
 } from '../controllers/narrativePublishController.js';
 import { documentUpload, imageUpload, sidebarIconUpload, tagIconUpload, campaignWizardUpload } from '../lib/multer.js';
 import { enforceSystemUploadLimit, enforceWizardUploadLimits } from '../middleware/uploadLimit.js';
-import { campaignInviteEmailLimiter, campaignUrlImportLimiter } from '../middleware/rateLimit.js';
+import { campaignInviteEmailLimiter, campaignUrlImportLimiter, workshopDraftLimiter } from '../middleware/rateLimit.js';
 import {
   campaignScopeMiddleware,
   requireCampaignMember,
-  requireCampaignDm,
   requireCampaignMembership,
   requireCampaignOwner,
   requireChronologyManager,
@@ -347,7 +348,27 @@ import {
   requirePageVisibilityEdit,
   requirePageEditAny,
   requireAdventureStoryboardEdit,
+  requirePageCreate,
+  requireJournalPlannerAccess,
 } from '../middleware/campaignScope.js';
+import {
+  createJournalPublication,
+  deleteJournalPublication,
+  evaluateJournalPublication,
+  getJournalPublication,
+  getJournalPlanner,
+  listJournalLibrary,
+  releaseJournalPublication,
+  updateJournalPublication,
+  updateJournalPublicationRule,
+} from '../controllers/journalController.js';
+import {
+  createJournalSeries,
+  deleteJournalSeries,
+  generateNextSeriesIssue,
+  listJournalSeries,
+  updateJournalSeries,
+} from '../controllers/journalSeriesController.js';
 import {
   getCampaignInvite,
   listCampaignMembers,
@@ -428,10 +449,10 @@ campaignScopedRouter.delete(
 );
 campaignScopedRouter.delete('/members/me', leaveCampaign);
 campaignScopedRouter.get('/invite', requireGamemasterSettings, getCampaignInvite);
-campaignScopedRouter.post('/invite/rotate', requireCampaignDm, rotateCampaignInvite);
+campaignScopedRouter.post('/invite/rotate', requireGamemasterSettings, rotateCampaignInvite);
 campaignScopedRouter.post(
   '/invite/send',
-  requireCampaignDm,
+  requireGamemasterSettings,
   campaignInviteEmailLimiter,
   sendCampaignInviteEmail,
 );
@@ -479,7 +500,7 @@ campaignScopedRouter.get(
 );
 campaignScopedRouter.get(
   '/locations/:pageId/visit-suggestions',
-  requireCampaignDm,
+  requireGamemasterSettings,
   getLocationVisitSuggestions,
 );
 campaignScopedRouter.post(
@@ -489,12 +510,12 @@ campaignScopedRouter.post(
 );
 campaignScopedRouter.post(
   '/locations/:pageId/visit-suggestions/:suggestionId/dismiss',
-  requireCampaignDm,
+  requireGamemasterSettings,
   postDismissVisitSuggestion,
 );
 campaignScopedRouter.post(
   '/narrative-snapshots',
-  requireCampaignDm,
+  requireGamemasterSettings,
   postMilestoneSnapshot,
 );
 campaignScopedRouter.get('/narrative-snapshots', listMilestoneSnapshots);
@@ -591,8 +612,6 @@ campaignScopedRouter.post(
 campaignScopedRouter.get('/wiki/tree', getWikiTree);
 
 campaignScopedRouter.get('/wiki/pins', getPersonalPins);
-campaignScopedRouter.get('/wiki/bookmarks', getPinnedPageShortcuts);
-campaignScopedRouter.get('/wiki/quick-access', getCampaignQuickAccessShortcuts);
 
 campaignScopedRouter.get('/wiki/index/:pageId', getCategoryIndex);
 campaignScopedRouter.get('/wiki/character-hub/:pageId', getCharacterHubIndex);
@@ -735,27 +754,50 @@ campaignScopedRouter.post(
 );
 campaignScopedRouter.get(
   '/workshop/drafts',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   listWorkshopDraftsHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   createWorkshopDraftHandler,
+);
+campaignScopedRouter.post(
+  '/workshop/drafts/bootstrap',
+  requireNonObserverMember,
+  workshopDraftLimiter,
+  bootstrapAnchoredDraftHandler,
 );
 campaignScopedRouter.get(
   '/workshop/drafts/:draftId',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   getWorkshopDraftHandler,
 );
 campaignScopedRouter.patch(
   '/workshop/drafts/:draftId',
-  requirePageEditAny,
+  requireNonObserverMember,
+  workshopDraftLimiter,
   patchWorkshopDraftHandler,
+);
+campaignScopedRouter.post(
+  '/workshop/drafts/:draftId/apply',
+  requireNonObserverMember,
+  workshopDraftLimiter,
+  applyWorkshopDraftHandler,
+);
+campaignScopedRouter.get(
+  '/workshop/drafts/:draftId/writing-context',
+  requireNonObserverMember,
+  workshopDraftLimiter,
+  getWorkshopWritingContextHandler,
 );
 campaignScopedRouter.post(
   '/workshop/drafts/:draftId/formalize',
   requirePageEditAny,
+  workshopDraftLimiter,
   formalizeWorkshopDraftHandler,
 );
 campaignScopedRouter.get('/world-pressure/preview', getWorldPressurePreviewHandler);
@@ -1124,6 +1166,12 @@ campaignScopedRouter.patch(
   updateWikiPage,
 );
 
+campaignScopedRouter.post(
+  '/wiki/:pageId/transform',
+  requirePageEditAny,
+  transformWikiPage,
+);
+
 campaignScopedRouter.patch(
   '/wiki/:pageId/metadata',
   requireNonObserverMember,
@@ -1318,4 +1366,42 @@ campaignScopedRouter.patch(
   '/wiki/:pageId/map-asset',
   requireMapsEdit,
   bindWikiPageMapAsset,
+);
+
+// Journal — Library (released archive) is member-readable; authorship uses
+// PAGE_CREATE; the Planner and all release orchestration require the optional
+// JOURNAL_PLANNER_ACCESS capability.
+campaignScopedRouter.get('/journal/library', listJournalLibrary);
+campaignScopedRouter.get('/journal/planner', requireJournalPlannerAccess, getJournalPlanner);
+campaignScopedRouter.get('/journal/series', requirePageCreate, listJournalSeries);
+campaignScopedRouter.post('/journal/series', requirePageCreate, createJournalSeries);
+campaignScopedRouter.patch('/journal/series/:id', requireJournalPlannerAccess, updateJournalSeries);
+campaignScopedRouter.delete('/journal/series/:id', requireJournalPlannerAccess, deleteJournalSeries);
+campaignScopedRouter.post(
+  '/journal/series/:id/generate-next',
+  requireJournalPlannerAccess,
+  generateNextSeriesIssue,
+);
+campaignScopedRouter.post('/journal/publications', requirePageCreate, createJournalPublication);
+campaignScopedRouter.get('/journal/publications/:id', getJournalPublication);
+campaignScopedRouter.patch('/journal/publications/:id', requirePageCreate, updateJournalPublication);
+campaignScopedRouter.delete(
+  '/journal/publications/:id',
+  requirePageCreate,
+  deleteJournalPublication,
+);
+campaignScopedRouter.put(
+  '/journal/publications/:id/rule',
+  requireJournalPlannerAccess,
+  updateJournalPublicationRule,
+);
+campaignScopedRouter.post(
+  '/journal/publications/:id/evaluate',
+  requireJournalPlannerAccess,
+  evaluateJournalPublication,
+);
+campaignScopedRouter.post(
+  '/journal/publications/:id/release',
+  requireJournalPlannerAccess,
+  releaseJournalPublication,
 );

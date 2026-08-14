@@ -31,6 +31,7 @@ import {
   getGlobalPluginFromRow,
   type InstalledPluginAdminRow,
 } from '@/lib/pluginAdminPresentation';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 import { formatCatalogSyncedAgo } from '@/lib/pluginRegistrySearch';
 
 function ErrorBanner({ message }: { message: string }) {
@@ -367,6 +368,11 @@ export function AdminPluginsTab() {
             <Settings className="size-4" />
             Plugin Sources
           </button>
+          <DocsLearnMoreLink
+            doc="pluginsOverview"
+            label="Plugin catalog guide"
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          />
         </div>
         {hostCoreVersion ? (
           <p className="font-mono text-xs text-muted">

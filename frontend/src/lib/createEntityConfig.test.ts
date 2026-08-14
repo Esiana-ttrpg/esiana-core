@@ -188,6 +188,5 @@ describe('createEntityConfig', () => {
   it('uses bestiary surface blocks', () => {
     const config = getCreateEntityConfig('Bestiary');
     assert.equal(config.surfaceKey, 'bestiary');
-    assert.equal(config.templateType, 'DEFAULT');
   });
 });

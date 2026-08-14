@@ -4,14 +4,14 @@ import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { PLAYER_SESSION_NOTES_TITLE } from './seedWiki.js';
 import type { CampaignSizeSnapshot } from '../../../shared/campaignCapacityTiers.js';
+import { readEntityCategoryFromMetadata } from './wikiCategoryEntityIndex.js';
 
 function isCharactersRoot(row: {
-  templateType: string;
   metadata: unknown;
 }): boolean {
-  if (row.templateType === 'CHARACTER') return true;
   if (typeof row.metadata !== 'object' || row.metadata === null) return false;
-  return (row.metadata as Record<string, unknown>).categoryKey === 'characters';
+  const meta = row.metadata as Record<string, unknown>;
+  return meta.categoryKey === 'characters' || meta.systemCategoryKey === 'characters';
 }
 
 export async function buildCampaignSizeSnapshot(campaignId: string): Promise<CampaignSizeSnapshot> {
@@ -46,25 +46,14 @@ export async function buildCampaignSizeSnapshot(campaignId: string): Promise<Cam
   let imageDisplayCount = 0;
 
   for (const row of rows) {
-    if (row.templateType === 'CHARACTER' && row.parentId === charactersRootId) {
+    const entityCategory = readEntityCategoryFromMetadata(row.metadata);
+    if (entityCategory === 'characters' && row.parentId === charactersRootId) {
       characterCount += 1;
     }
-    if (row.templateType === 'LOCATION') {
-      locationCount += 1;
-    } else if (
-      typeof row.metadata === 'object' &&
-      row.metadata !== null &&
-      (row.metadata as Record<string, unknown>).entityCategory === 'locations'
-    ) {
+    if (entityCategory === 'locations') {
       locationCount += 1;
     }
-    if (row.templateType === 'ORGANIZATION') {
-      organizationCount += 1;
-    } else if (
-      typeof row.metadata === 'object' &&
-      row.metadata !== null &&
-      (row.metadata as Record<string, unknown>).entityCategory === 'organizations'
-    ) {
+    if (entityCategory === 'organizations') {
       organizationCount += 1;
     }
     if (row.templateType === 'SESSION_NOTE') {
@@ -84,7 +73,9 @@ export async function buildCampaignSizeSnapshot(campaignId: string): Promise<Cam
   }
 
   if (characterCount === 0) {
-    characterCount = rows.filter((row) => row.templateType === 'CHARACTER').length;
+    characterCount = rows.filter(
+      (row) => readEntityCategoryFromMetadata(row.metadata) === 'characters',
+    ).length;
   }
 
   const mapAssetCount = assets.filter((asset) => asset.type === 'map').length;

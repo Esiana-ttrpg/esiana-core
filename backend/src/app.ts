@@ -25,6 +25,9 @@ import {
   isOpenApiDocsEnabled,
 } from './routes/openapiDocs.js';
 import { getOrCreateSystemSettings } from './lib/systemSettings.js';
+import { validateAuthEnvContract } from './config/oidcEnv.js';
+import { syncEnvManagedIdentityProvider } from './lib/auth/oidcEnvSync.js';
+import { prisma } from './lib/prisma.js';
 import { setPluginHostReloader } from './lib/pluginRuntime/index.js';
 import { bootstrapStorageRegistry } from './lib/storage/storageRegistry.js';
 import { ensureStorageProviderPluginReady } from './lib/storage/ensureStorageProviderPlugin.js';
@@ -85,6 +88,11 @@ export async function createApp(): Promise<Express> {
   }
 
   await getOrCreateSystemSettings();
+  await syncEnvManagedIdentityProvider();
+  const enabledOidcCount = await prisma.identityProvider.count({
+    where: { enabled: true },
+  });
+  validateAuthEnvContract({ enabledOidcProviderCount: enabledOidcCount });
   bootstrapStorageRegistry();
   bootstrapGlobalTimeHooks();
   setPluginHostReloader(reloadPluginHost);

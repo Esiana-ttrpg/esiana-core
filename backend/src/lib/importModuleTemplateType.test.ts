@@ -5,13 +5,16 @@ import {
   resolveImportTemplateType,
 } from './importModuleTemplateType.js';
 
-test('resolveImportTemplateType maps Obsidian modules and respects frontmatter', () => {
-  assert.equal(resolveImportTemplateType('Characters', {}), 'CHARACTER');
+test('resolveImportTemplateType maps structural modules and coerces legacy frontmatter', () => {
+  assert.equal(resolveImportTemplateType('Characters', {}), 'DEFAULT');
+  assert.equal(resolveImportTemplateType('Locations', {}), 'DEFAULT');
   assert.equal(resolveImportTemplateType('Game/Journals', {}), 'JOURNAL');
   assert.equal(resolveImportTemplateType('Characters', { templateType: 'ARC' }), 'ARC');
+  assert.equal(resolveImportTemplateType('Characters', { templateType: 'CHARACTER' }), 'DEFAULT');
 });
 
 test('resolveImportEntityCategory stamps codex categories from module', () => {
+  assert.equal(resolveImportEntityCategory('Characters', {}), 'characters');
   assert.equal(resolveImportEntityCategory('Bestiary', {}), 'bestiary');
   assert.equal(resolveImportEntityCategory('Ancestries', {}), 'ancestries');
   assert.equal(resolveImportEntityCategory('Game/Rules & Resources', {}), 'rules-resources');

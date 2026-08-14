@@ -1,11 +1,9 @@
 import { useMemo } from 'react';
 import { AdventureContextStrip } from '@/components/adventure/AdventureContextStrip';
-import { AdventurePlayerPreviewToggle } from '@/components/adventure/AdventurePlayerPreviewToggle';
-import { AdventureSectionTabs } from '@/components/adventure/AdventureSectionTabs';
-import { DowntimeSectionTabs } from '@/components/downtime/DowntimeSectionTabs';
-import { ProgressionSectionTabs } from '@/components/progression/ProgressionSectionTabs';
 import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { useAdventureRoute } from '@/hooks/useAdventureRoute';
+import { DowntimeSectionTabs } from '@/components/downtime/DowntimeSectionTabs';
+import { ProgressionSectionTabs } from '@/components/progression/ProgressionSectionTabs';
 import { useDowntimeRoute } from '@/hooks/useDowntimeRoute';
 import { useProgressionRoute } from '@/hooks/useProgressionRoute';
 import {
@@ -37,16 +35,7 @@ export function useWorkspaceChrome(
         adventureWorkspace.playerPreview;
 
       return {
-        rail: {
-          variant: 'hybrid',
-          start: (
-            <AdventureSectionTabs
-              basePath={adventureRoute.basePath}
-              activeSection={adventureRoute.activeSection}
-            />
-          ),
-          end: <AdventurePlayerPreviewToggle />,
-        },
+        rail: null,
         strip: showStrip ? { items: <AdventureContextStrip /> } : null,
       };
     }

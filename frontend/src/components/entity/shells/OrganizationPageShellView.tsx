@@ -28,6 +28,7 @@ export function OrganizationPageShellView({
   flatPages,
   onEditFromStrip,
   onJumpToTab,
+  onBlocksChange,
   wikiPageRenderer,
   continuityPanel,
   onMetadataSaved,
@@ -59,11 +60,14 @@ export function OrganizationPageShellView({
           <OrganizationOverviewDashboard
             campaignHandle={campaignHandle}
             pageId={pageId}
+            templateType={templateType}
+            blocks={blocks}
             flatPages={flatPages}
             pageMetadata={pageData.metadata}
             isEditingPage={isEditingPage}
             onJumpToTab={onJumpToTab}
             onMetadataSaved={onMetadataSaved}
+            onBlocksChange={onBlocksChange}
           />
         );
       case 'structure':

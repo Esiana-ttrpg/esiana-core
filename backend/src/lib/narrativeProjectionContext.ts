@@ -1,8 +1,5 @@
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import {
-  CampaignMemberRoles,
-  type CampaignMemberRole,
-} from '../types/domain.js';
+import type { CampaignMemberRole } from '../types/domain.js';
 import {
   buildNarrativeViewerContext,
   type CampaignChronologyNow,
@@ -57,23 +54,4 @@ export async function buildNarrativeViewerContextFromRequest(
     ...options,
     allowPlayerChronologyManagement: undefined,
   });
-}
-
-export function roleFromRequest(req: CampaignScopedRequest): CampaignMemberRole | null {
-  return (req.campaign?.role as CampaignMemberRole | null) ?? null;
-}
-
-export function isElevatedWikiRoleFromContext(ctx: NarrativeViewerContext): boolean {
-  return ctx.capabilities.isElevatedWiki;
-}
-
-export function isElevatedMapRoleFromContext(ctx: NarrativeViewerContext): boolean {
-  return ctx.capabilities.isElevatedMap;
-}
-
-/** @deprecated Prefer NarrativeViewerContext.capabilities */
-export function isElevatedWikiRole(role: string | null): boolean {
-  return (
-    role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER
-  );
 }

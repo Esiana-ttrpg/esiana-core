@@ -47,7 +47,7 @@ export function FactionsAtWarWidget({
   return (
     <DashboardWidgetShell
       title={translateDashboardWidgetLabel('factionsAtWar', 'Factions at War')}
-      icon={<Swords className="size-4 text-rose-400" />}
+      icon={<Swords className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >
@@ -108,12 +108,12 @@ export function FactionsAtWarWidget({
                 <Link to={pair.factionA.href} className="text-primary hover:underline">
                   {pair.factionA.title}
                 </Link>
-                <Swords className="size-4 text-rose-400" aria-hidden />
+                <Swords className="size-4 text-primary" aria-hidden />
                 <Link to={pair.factionB.href} className="text-primary hover:underline">
                   {pair.factionB.title}
                 </Link>
                 {pair.mutual ? (
-                  <span className="rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-rose-400">
+                  <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary">
                     {t('campaign.dashboard.factionConflictMutual')}
                   </span>
                 ) : null}

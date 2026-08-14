@@ -105,8 +105,3 @@ export function deleteAssetRecordFiles(asset: {
 }): void {
   deleteAssetFilesFromUrls([asset.url, asset.displayUrl, asset.thumbnailUrl]);
 }
-
-/** @deprecated Use parseStoragePointer — temporary basename compatibility wrapper. */
-export function storageKeyFromUploadUrl(url: string): string | null {
-  return parseStoragePointer(url)?.key ?? null;
-}

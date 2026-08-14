@@ -3,10 +3,7 @@ import type { DiscoveryStateProjection } from '@shared/discoveryProjection';
 import type { ContinuityIssue } from '@shared/continuityIssue';
 import type { CharacterIdentityProjection } from '@/lib/characterIdentityProjection';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
-import type {
-  CodexRailSectionKey,
-  PageContinuitySummary,
-} from '@/lib/pageCodexDiagnostics';
+import type { PageContinuitySummary } from '@/lib/pageCodexDiagnostics';
 import type { UnresolvedWikilinkRow } from '@/lib/wikiLoreGraph';
 import type { PartyKnowledgeResponse } from '@/lib/loreKnowledgeApi';
 import type { WikiPageBlock, WikiPageLayoutPayload, WikiTag, WikiTagInput, WikiTreeNode } from '@/types/wiki';
@@ -36,7 +33,6 @@ export interface EntitySubviewDef {
   dmOnly?: boolean;
 }
 
-export type { CodexRailSectionKey };
 
 export interface EntityHeroProps {
   campaignHandle: string;
@@ -53,6 +49,7 @@ export interface EntityHeroProps {
 export interface EntityOverviewProps {
   campaignHandle: string;
   pageId: string;
+  displayTitle: string;
   templateType: string;
   blocks: WikiPageBlock[];
   flatPages: WikiTreeNode[];
@@ -61,8 +58,14 @@ export interface EntityOverviewProps {
   pageMetadata?: unknown;
   characterProjection?: CharacterIdentityProjection | null;
   discovery?: DiscoveryStateProjection | null;
+  pageTags: WikiTagInput[];
+  allCampaignTags: WikiTag[];
+  onPageTagsChange: (tags: WikiTagInput[]) => void;
+  onMetadataSaved: (metadata: Record<string, unknown>) => void;
   onJumpToTab: (subviewId: EntitySubviewId, focus?: string) => void;
   onBlocksChange: (updater: (blocks: WikiPageBlock[]) => WikiPageBlock[]) => void;
+  prosePrimary?: boolean;
+  inspectorFocusField?: string | null;
 }
 
 export interface EntitySubviewNavProps {
@@ -112,10 +115,6 @@ export interface EntityPageShell {
   key: SurfaceProfileKey;
   subviews: EntitySubviewDef[];
   systemBlocks: SystemBlockDef[];
-  railSectionOrder: CodexRailSectionKey[];
-  /** Sections to hide from rail for this shell */
-  railSectionsHidden?: CodexRailSectionKey[];
-  defaultRailOpen?: boolean;
   HeroSurface?: ComponentType<EntityHeroProps>;
   OverviewDashboard?: ComponentType<EntityOverviewProps>;
   filterBlocksForSubview: (
@@ -138,11 +137,11 @@ export interface PageSettingsDrawerProps {
   onClose: () => void;
   campaignHandle: string;
   pageId: string;
+  pageTitle: string;
   parentId: string | null;
   parentChain?: WikiPageLayoutPayload['parent'];
   flatPages: WikiTreeNode[];
-  templateType: string;
-  onTemplateTypeChange: (templateType: string) => void;
+  pageMetadata?: unknown;
   pageVisibility: string;
   onVisibilityChange: (visibility: 'Public' | 'Party' | 'DM_Only') => void | Promise<void>;
   onParentChange: (next: {
@@ -153,4 +152,5 @@ export interface PageSettingsDrawerProps {
   pageTags: WikiTagInput[];
   allCampaignTags: WikiTag[];
   onPageTagsChange: (tags: WikiTagInput[]) => void;
+  onPageTransformed?: (result: import('@/lib/wiki').WikiTransformResult) => void | Promise<void>;
 }

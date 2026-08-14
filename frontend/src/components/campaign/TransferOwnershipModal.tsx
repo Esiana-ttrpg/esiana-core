@@ -1,8 +1,8 @@
 import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import { campaignTransferOwnershipPath } from '@/lib/campaignPaths';
+import { fetchCampaignMembers } from '@/lib/campaigns';
 import { CampaignMemberRoles } from '@/types/domain';
 import {
   fetchOwnershipTransferStatus,
@@ -28,7 +28,6 @@ export function TransferOwnershipModal({
   campaignName,
   onClose,
 }: TransferOwnershipModalProps) {
-  const { token } = useAuth();
   const [members, setMembers] = useState<TransferMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +43,13 @@ export function TransferOwnershipModal({
     setError(null);
 
     Promise.all([
-      fetch(`/api/campaigns/${campaignHandle}/members`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      }).then(async (res) => {
-        if (!res.ok) throw new Error('Failed to load members');
-        const data = (await res.json()) as { members?: TransferMember[] };
-        return data.members ?? [];
-      }),
+      fetchCampaignMembers(campaignHandle).then((loadedMembers) =>
+        loadedMembers.map((member) => ({
+          userId: member.userId,
+          name: member.name,
+          role: member.role,
+        })),
+      ),
       fetchOwnershipTransferStatus(campaignHandle).then((data) => Boolean(data.transfer)),
     ])
       .then(([loadedMembers, hasPending]) => {
@@ -72,7 +71,7 @@ export function TransferOwnershipModal({
     return () => {
       cancelled = true;
     };
-  }, [open, campaignHandle, token]);
+  }, [open, campaignHandle]);
 
   if (!open) return null;
 

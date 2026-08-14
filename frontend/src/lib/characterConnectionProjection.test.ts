@@ -7,7 +7,7 @@ describe('characterConnectionProjection', () => {
     {
       id: 'char-a',
       title: 'Alden Sterling',
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
       metadata: {
         familyId: 'fam-1',
         orgAffiliations: [
@@ -26,7 +26,7 @@ describe('characterConnectionProjection', () => {
     {
       id: 'char-b',
       title: 'Nyri of Glass',
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
       metadata: {
         familyId: 'fam-1',
         orgAffiliations: [
@@ -45,13 +45,13 @@ describe('characterConnectionProjection', () => {
     {
       id: 'fam-1',
       title: 'House Sterling',
-      templateType: 'FAMILY',
+      templateType: 'DEFAULT',
       metadata: {},
     },
     {
       id: 'org-1',
       title: 'Imperial Court',
-      templateType: 'ORGANIZATION',
+      templateType: 'DEFAULT',
       metadata: {},
     },
     {

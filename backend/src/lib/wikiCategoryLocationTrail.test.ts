@@ -11,17 +11,17 @@ describe('wikiCategoryLocationTrail', () => {
     { id: 'world', title: 'World', parentId: null, templateType: 'DEFAULT', metadata: null },
     { id: 'characters', title: 'Characters', parentId: 'world', templateType: 'DEFAULT', metadata: null },
     { id: 'locations', title: 'Locations', parentId: 'world', templateType: 'DEFAULT', metadata: null },
-    { id: 'region', title: 'Sword Coast', parentId: 'locations', templateType: 'LOCATION', metadata: null },
-    { id: 'town', title: 'Greenest', parentId: 'region', templateType: 'LOCATION', metadata: null },
-    { id: 'inn', title: 'Purple Dragon Inn', parentId: 'town', templateType: 'LOCATION', metadata: null },
+    { id: 'region', title: 'Sword Coast', parentId: 'locations', templateType: 'DEFAULT', metadata: { entityCategory: 'locations' } },
+    { id: 'town', title: 'Greenest', parentId: 'region', templateType: 'DEFAULT', metadata: { entityCategory: 'locations' } },
+    { id: 'inn', title: 'Purple Dragon Inn', parentId: 'town', templateType: 'DEFAULT', metadata: { entityCategory: 'locations' } },
     {
       id: 'innkeeper',
       title: 'Innkeeper',
       parentId: 'inn',
-      templateType: 'CHARACTER',
-      metadata: null,
+      templateType: 'DEFAULT',
+      metadata: { entityCategory: 'characters' },
     },
-    { id: 'room', title: 'Back Room', parentId: 'inn', templateType: 'LOCATION', metadata: null },
+    { id: 'room', title: 'Back Room', parentId: 'inn', templateType: 'DEFAULT', metadata: { entityCategory: 'locations' } },
   ]);
 
   it('returns empty trail for direct child of category folder', () => {
@@ -67,8 +67,8 @@ describe('wikiCategoryLocationTrail', () => {
   it('builds trails for many children', () => {
     const trails = buildCategoryLocationTrails(
       [
-        { id: 'innkeeper', parentId: 'inn', title: 'Innkeeper', templateType: 'CHARACTER', metadata: null },
-        { id: 'direct', parentId: 'characters', title: 'Direct', templateType: 'CHARACTER', metadata: null },
+        { id: 'innkeeper', parentId: 'inn', title: 'Innkeeper', templateType: 'DEFAULT', metadata: { entityCategory: 'characters' } },
+        { id: 'direct', parentId: 'characters', title: 'Direct', templateType: 'DEFAULT', metadata: { entityCategory: 'characters' } },
       ],
       'characters',
       graph,

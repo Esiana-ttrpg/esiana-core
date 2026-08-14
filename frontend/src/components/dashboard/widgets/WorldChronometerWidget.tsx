@@ -21,7 +21,7 @@ export function WorldChronometerWidget({
   return (
     <DashboardWidgetShell
       title="World Chronometer"
-      icon={<Globe2 className="size-4 text-sky-400" />}
+      icon={<Globe2 className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

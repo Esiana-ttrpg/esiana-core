@@ -341,9 +341,7 @@ export async function duplicateCampaign(
         if (!copy.scheduling.sessionEventsLogs && isSessionLikePage(page)) {
           return false;
         }
-        const isCharacter =
-          page.templateType === 'CHARACTER' ||
-          pageMatchesCategory(page, 'characters', characterRootIds);
+        const isCharacter = pageMatchesCategory(page, 'characters', characterRootIds);
         const isMap =
           Boolean(page.mapAssetId) ||
           pageMatchesCategory(page, 'maps', mapRootIds);
@@ -444,15 +442,10 @@ export async function duplicateCampaign(
     if (copy.gameplay.characters && !copy.structure.wikiPages) {
       const characterWhere = buildCategoryIndexWhereClause('Characters');
       const characterPages = source.wikiPages.filter((page) => {
-        const matchesTemplate = page.templateType === 'CHARACTER';
         const matchesRoot =
           page.parentId != null && characterRootIds.has(page.parentId);
         const category = readEntityCategoryFromMetadata(page.metadata);
-        return (
-          matchesTemplate ||
-          matchesRoot ||
-          category === 'characters'
-        );
+        return matchesRoot || category === 'characters';
       });
 
       for (const page of characterPages) {

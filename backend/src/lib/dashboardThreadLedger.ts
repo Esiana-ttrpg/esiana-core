@@ -210,17 +210,3 @@ export async function buildDashboardThreadBundle(
     recentlyResolved: resolvedCandidates.slice(0, recentlyResolvedLimit),
   };
 }
-
-/** @deprecated Use buildDashboardThreadBundle */
-export async function buildDashboardOpenThreadEntries(
-  campaignId: string,
-  role: CampaignMemberRole | null,
-  options?: { limit?: number },
-): Promise<DashboardOpenThreadEntry[]> {
-  const bundle = await buildDashboardThreadBundle(campaignId, role, {
-    livingLimit: options?.limit ?? 8,
-    theoriesLimit: 0,
-    recentlyResolvedLimit: 0,
-  });
-  return bundle.living;
-}

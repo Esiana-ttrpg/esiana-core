@@ -16,6 +16,7 @@ import { EntityRelationChip } from '@/components/entity/EntityRelationChip';
 import { LineageGenerationsConnectors } from '@/components/entity/LineageGenerationsConnectors';
 import { ProjectionDebugPanel } from '@/components/entity/ProjectionDebugPanel';
 import { TemporalStatusBadge } from '@/components/entity/TemporalStatusBadge';
+import { isCharacterEntityPage } from '@shared/resolveCanonicalEntityCategory';
 import type { WikiTreeNode } from '@/types/wiki';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 
@@ -44,6 +45,7 @@ export function FamilyLineageTab({
         title: page.title,
         templateType: page.templateType,
         metadata: page.metadata,
+        parentId: page.parentId,
       })),
     [flatPages],
   );
@@ -65,7 +67,7 @@ export function FamilyLineageTab({
   const familyMetadata = familyPage?.metadata;
 
   const characterPages = useMemo(
-    () => snapshots.filter((p) => p.templateType === 'CHARACTER'),
+    () => snapshots.filter((p) => isCharacterEntityPage(p, snapshots)),
     [snapshots],
   );
 

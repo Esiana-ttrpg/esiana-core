@@ -1,4 +1,5 @@
 import { PageOwnerTypes } from '../../../shared/campaignPolicy/pageOwnership.js';
+import { isCharacterEntityPage } from '../../../shared/resolveCanonicalEntityCategory.js';
 import { readEntityCategoryFromMetadata } from './wikiCategoryEntityIndex.js';
 import { formatPlayerLabel } from './userDisplay.js';
 
@@ -9,11 +10,25 @@ export interface IdentityPageRef {
 }
 
 export function isCharacterWikiPage(page: {
+  id?: string;
+  title?: string;
+  parentId?: string | null;
   templateType: string | null;
   metadata: unknown;
 }): boolean {
-  if (page.templateType === 'CHARACTER') return true;
-  return readEntityCategoryFromMetadata(page.metadata) === 'characters';
+  if (!page.id) {
+    return readEntityCategoryFromMetadata(page.metadata) === 'characters';
+  }
+  return isCharacterEntityPage(
+    {
+      id: page.id,
+      title: page.title ?? '',
+      parentId: page.parentId ?? null,
+      templateType: page.templateType ?? 'DEFAULT',
+      metadata: page.metadata,
+    },
+    [],
+  );
 }
 
 export type IdentityPageOwnershipUpdate = {
@@ -23,7 +38,13 @@ export type IdentityPageOwnershipUpdate = {
 };
 
 export function resolveIdentityPageOwnershipUpdate(
-  page: { templateType: string | null; metadata: unknown },
+  page: {
+    id?: string;
+    title?: string;
+    parentId?: string | null;
+    templateType: string | null;
+    metadata: unknown;
+  },
   targetUserId: string,
 ): IdentityPageOwnershipUpdate | null {
   if (!isCharacterWikiPage(page)) return null;

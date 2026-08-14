@@ -10,6 +10,7 @@ import {
   resolvePackAssetRef,
   resolvePageMetadataSlugRefs,
 } from './pageMetadataRoundTrip.js';
+import { readEntityCategoryFromMetadata } from './wikiCategoryEntityIndex.js';
 import { reconcileCharacterIndexFromMetadata } from './characterMetadata.js';
 import type { PackCampaignConfigV1 } from './packCampaignConfig.js';
 import { normalizeDashboardConfig } from './dashboardConfig.js';
@@ -204,7 +205,7 @@ export async function bootstrapPackSatelliteRows(options: {
           ...(mapAssetId ? { mapAssetId } : {}),
         },
       });
-      if (page.templateType === 'CHARACTER') {
+      if (readEntityCategoryFromMetadata(metadata) === 'characters') {
         reconcileCharacterIndexFromMetadata(metadata);
       }
     }

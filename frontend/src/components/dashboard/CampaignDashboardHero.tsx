@@ -100,7 +100,7 @@ export function CampaignDashboardHero({
             className="pointer-events-none absolute inset-0"
             aria-hidden
             style={{
-              background: `radial-gradient(ellipse 90% 70% at 50% 30%, rgb(var(--color-atmosphere-glow-rgb) / var(--atmosphere-glow-alpha-dramatic, 0.19)), transparent 62%)`,
+              background: `radial-gradient(ellipse 90% 70% at 50% 30%, rgb(var(--color-atmosphere-glow-rgb) / calc(var(--atmosphere-glow-alpha-dramatic, 0.19) * 0.55)), transparent 62%)`,
             }}
           />
         ) : null}

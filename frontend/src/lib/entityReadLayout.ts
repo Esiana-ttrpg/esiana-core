@@ -1,3 +1,11 @@
-export function isEntityReaderFirst(templateType: string, isDMUser: boolean): boolean {
-  return !isDMUser && (templateType === 'ORGANIZATION' || templateType === 'FAMILY');
+import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
+
+export function isEntityReaderFirst(
+  surfaceProfileKey: SurfaceProfileKey,
+  isDMUser: boolean,
+): boolean {
+  return (
+    !isDMUser &&
+    (surfaceProfileKey === 'organization' || surfaceProfileKey === 'family')
+  );
 }

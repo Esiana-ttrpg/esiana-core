@@ -20,7 +20,7 @@ export function ContinueWhereYouLeftOffWidget({
   return (
     <DashboardWidgetShell
       title="Continue Your Journey"
-      icon={<Route className="size-4 text-indigo-400" />}
+      icon={<Route className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >
@@ -34,7 +34,7 @@ export function ContinueWhereYouLeftOffWidget({
             <li key={`${item.entityType}-${item.entityId}`}>
               <Link
                 to={item.href}
-                className="block rounded-lg border border-border bg-background/50 px-3 py-2 transition-colors hover:border-indigo-500/40"
+                className="block rounded-lg border border-border bg-background/50 px-3 py-2 transition-colors hover:border-primary/40"
               >
                 <p className="font-medium text-foreground">{item.title}</p>
                 <p className="text-xs text-muted">{item.reason}</p>

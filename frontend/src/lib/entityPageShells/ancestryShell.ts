@@ -50,9 +50,6 @@ export const ancestryPageShell: EntityPageShell = {
       ghostLabel: 'Cultural notes',
     },
   ],
-  railSectionOrder: ['callout', 'relations'],
-  railSectionsHidden: ['provenance', 'threads', 'timeline', 'discovery', 'continuity'],
-  defaultRailOpen: false,
   getVisibleSubviews: visibleSubviews,
   isValidSubview(subview) {
     return visibleSubviews().some((t) => t.id === subview);

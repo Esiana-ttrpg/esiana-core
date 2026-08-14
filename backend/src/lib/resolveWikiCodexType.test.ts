@@ -3,37 +3,35 @@ import { describe, it } from 'node:test';
 import { resolveWikiCodexType } from './resolveWikiCodexType.js';
 
 describe('resolveWikiCodexType', () => {
-  it('keeps explicit template types', () => {
+  it('resolves entity category from metadata', () => {
     assert.equal(
-      resolveWikiCodexType({ templateType: 'LOCATION' }),
+      resolveWikiCodexType({
+        templateType: 'DEFAULT',
+        metadata: { entityCategory: 'locations' },
+      }),
       'LOCATION',
     );
   });
 
-  it('resolves quests from metadata category', () => {
+  it('returns DEFAULT for generic pages', () => {
     assert.equal(
-      resolveWikiCodexType({
-        templateType: 'DEFAULT',
-        metadata: { entityCategory: 'quests' },
-      }),
-      'QUEST',
+      resolveWikiCodexType({ templateType: 'DEFAULT', metadata: {} }),
+      'DEFAULT',
     );
   });
 
-  it('resolves quests from quest fields', () => {
+  it('passes through structural template types', () => {
+    assert.equal(resolveWikiCodexType({ templateType: 'QUEST' }), 'QUEST');
+    assert.equal(resolveWikiCodexType({ templateType: 'SCENE' }), 'SCENE');
+  });
+
+  it('infers quest from metadata signals', () => {
     assert.equal(
       resolveWikiCodexType({
         templateType: 'DEFAULT',
         metadata: { questStatus: 'ACTIVE' },
       }),
       'QUEST',
-    );
-  });
-
-  it('returns DEFAULT when unknown', () => {
-    assert.equal(
-      resolveWikiCodexType({ templateType: 'DEFAULT', metadata: {} }),
-      'DEFAULT',
     );
   });
 });

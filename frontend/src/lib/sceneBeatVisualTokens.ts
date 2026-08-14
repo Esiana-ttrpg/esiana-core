@@ -35,14 +35,15 @@ export function sceneBeatDramaticGroup(
 export const SCENE_BEAT_GROUP_CHIP_CLASS: Record<NarrativeBeatDramaticGroup, string> = {
   setup: 'border-slate-500/35 bg-slate-500/10 text-slate-200',
   escalation: 'border-amber-600/30 bg-amber-950/20 text-amber-100/90',
-  pivot: 'border-violet-500/35 bg-violet-950/25 text-violet-100/90',
+  pivot:
+    'border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] text-[color:var(--color-status-legend-fg)]',
   resolution: 'border-teal-600/25 bg-teal-950/15 text-teal-100/85',
 };
 
 export const SCENE_BEAT_GROUP_BORDER_CLASS: Record<NarrativeBeatDramaticGroup, string> = {
   setup: 'border-slate-500/30',
   escalation: 'border-amber-600/25',
-  pivot: 'border-violet-500/30',
+  pivot: 'border-[color:var(--color-status-legend-border)]',
   resolution: 'border-teal-600/20',
 };
 

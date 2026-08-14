@@ -20,7 +20,7 @@ export function PartyRosterWidget({
   return (
     <DashboardWidgetShell
       title={t('campaign.dashboard.widgetPartyRoster')}
-      icon={<Users className="size-4 text-emerald-400" />}
+      icon={<Users className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >

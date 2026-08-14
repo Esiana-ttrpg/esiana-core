@@ -254,6 +254,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
           undiscoveredCount={discoverySummary.undiscoveredCount}
           discoveredCount={discoverySummary.discoveredCount}
           itemLabel="maps"
+          showDocsLink
         />
       ) : null}
 

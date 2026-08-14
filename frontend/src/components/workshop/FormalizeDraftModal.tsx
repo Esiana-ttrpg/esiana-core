@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
-import {
-  WORKSHOP_FORMALIZE_TARGETS,
-  type WorkshopDocument,
-  type WorkshopFormalizeTarget,
-} from '@shared/workshopDocument';
+import type { WorkshopDocument, WorkshopFormalizeTarget } from '@shared/workshopDocument';
 import {
   extractSummaryFromMarkdown,
-  LORE_NOTE_FOLDER_TITLES,
+  getWorkshopFormalizeTargetDef,
   WORKSHOP_FORMALIZE_TARGET_LABELS,
+  WORKSHOP_FORMALIZE_UI_GROUPS,
+  WORKSHOP_UI_FORMALIZE_TARGETS,
 } from '@shared/workshopFormalize';
 import { useWiki } from '@/contexts/WikiContext';
 import { formalizeWorkshopDraft } from '@/lib/workshopDrafts';
@@ -41,8 +39,6 @@ export function FormalizeDraftModal({
   const { flatPages, refresh } = useWiki();
   const [target, setTarget] = useState<WorkshopFormalizeTarget>('character');
   const [title, setTitle] = useState(draft.title);
-  const [summary, setSummary] = useState('');
-  const [loreParentId, setLoreParentId] = useState('');
   const [linkedQuestPageId, setLinkedQuestPageId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,9 +46,9 @@ export function FormalizeDraftModal({
   useEffect(() => {
     if (!open) return;
     setTitle(draft.title);
-    setSummary(extractSummaryFromMarkdown(draft.bodyMarkdown));
-    setTarget('character');
-    setLoreParentId('');
+    setTarget(draft.intendedTarget && WORKSHOP_UI_FORMALIZE_TARGETS.includes(draft.intendedTarget)
+      ? draft.intendedTarget
+      : 'character');
     setLinkedQuestPageId('');
     setError(null);
 
@@ -65,23 +61,6 @@ export function FormalizeDraftModal({
     }
   }, [open, draft, flatPages]);
 
-  const worldId = useMemo(
-    () => flatPages.find((p) => p.title === 'World' && !p.parentId)?.id ?? null,
-    [flatPages],
-  );
-
-  const loreFolderOptions = useMemo(() => {
-    if (!worldId) return [];
-    return flatPages
-      .filter(
-        (p) =>
-          p.parentId === worldId &&
-          (LORE_NOTE_FOLDER_TITLES as readonly string[]).includes(p.title),
-      )
-      .map((p) => ({ id: p.id, title: p.title }))
-      .sort((a, b) => a.title.localeCompare(b.title));
-  }, [flatPages, worldId]);
-
   const questOptions = useMemo(
     () =>
       flatPages
@@ -89,6 +68,17 @@ export function FormalizeDraftModal({
         .slice(0, 40)
         .map((p) => ({ id: p.id, title: p.title })),
     [flatPages],
+  );
+
+  const groupedTargets = useMemo(
+    () =>
+      WORKSHOP_FORMALIZE_UI_GROUPS.map((group) => ({
+        ...group,
+        targets: WORKSHOP_UI_FORMALIZE_TARGETS.filter(
+          (id) => getWorkshopFormalizeTargetDef(id).uiGroup === group.id,
+        ),
+      })).filter((group) => group.targets.length > 0),
+    [],
   );
 
   if (!open) return null;
@@ -101,8 +91,7 @@ export function FormalizeDraftModal({
       const result = await formalizeWorkshopDraft(campaignHandle, draft.id, {
         target,
         title: title.trim() || draft.title,
-        summary: summary.trim() || null,
-        loreParentId: target === 'lore_note' ? loreParentId || null : null,
+        summary: extractSummaryFromMarkdown(draft.bodyMarkdown) || null,
         linkedQuestPageId:
           target === 'scene' && linkedQuestPageId ? linkedQuestPageId : null,
       });
@@ -121,8 +110,7 @@ export function FormalizeDraftModal({
     }
   }
 
-  const titleLabel =
-    target === 'character' ? 'Name' : target === 'quest' ? 'Quest title' : 'Title';
+  const titleLabel = getWorkshopFormalizeTargetDef(target).titleFieldLabel;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -133,7 +121,7 @@ export function FormalizeDraftModal({
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 id="formalize-draft-title" className="text-sm font-semibold">
-            Formalize into campaign
+            Save as…
           </h2>
           <button
             type="button"
@@ -150,33 +138,40 @@ export function FormalizeDraftModal({
             later on the Codex page.
           </p>
 
-          <fieldset className="space-y-2">
-            <legend className="text-xs font-medium text-muted-foreground">Formalize as</legend>
-            {WORKSHOP_FORMALIZE_TARGETS.map((id) => {
-              const meta = WORKSHOP_FORMALIZE_TARGET_LABELS[id];
-              return (
-                <label
-                  key={id}
-                  className={`flex cursor-pointer gap-3 rounded-lg border p-3 text-sm ${
-                    target === id ? 'border-primary/60 bg-primary/5' : 'border-border'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="formalize-target"
-                    checked={target === id}
-                    onChange={() => setTarget(id)}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="font-medium text-foreground">{meta.label}</span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {meta.description}
-                    </span>
-                  </span>
-                </label>
-              );
-            })}
+          <fieldset className="space-y-3">
+            <legend className="text-xs font-medium text-muted-foreground">Save as</legend>
+            {groupedTargets.map((group) => (
+              <div key={group.id} className="space-y-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </div>
+                {group.targets.map((id) => {
+                  const meta = WORKSHOP_FORMALIZE_TARGET_LABELS[id];
+                  return (
+                    <label
+                      key={id}
+                      className={`flex cursor-pointer gap-3 rounded-lg border p-3 text-sm ${
+                        target === id ? 'border-primary/60 bg-primary/5' : 'border-border'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="formalize-target"
+                        checked={target === id}
+                        onChange={() => setTarget(id)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        <span className="font-medium text-foreground">{meta.label}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {meta.description}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
           </fieldset>
 
           <label className="block space-y-1">
@@ -188,37 +183,6 @@ export function FormalizeDraftModal({
               required
             />
           </label>
-
-          <label className="block space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              Summary <span className="font-normal">(optional)</span>
-            </span>
-            <textarea
-              className="min-h-[72px] w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              rows={3}
-            />
-          </label>
-
-          {target === 'lore_note' ? (
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">Lore folder</span>
-              <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                value={loreParentId}
-                onChange={(e) => setLoreParentId(e.target.value)}
-                required
-              >
-                <option value="">Select folder under World…</option>
-                {loreFolderOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
 
           {target === 'scene' && questOptions.length > 0 ? (
             <label className="block space-y-1">
@@ -255,7 +219,7 @@ export function FormalizeDraftModal({
               disabled={submitting}
               className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
             >
-              {submitting ? 'Creating…' : 'Create & open'}
+              {submitting ? 'Saving…' : 'Save As'}
             </button>
           </div>
         </form>

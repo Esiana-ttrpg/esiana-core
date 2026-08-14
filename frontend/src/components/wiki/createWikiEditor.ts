@@ -9,12 +9,19 @@ import type { Extensions } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { EditorHighlightExtension } from './extensions/EditorHighlightExtension';
 import { EditorTextColorExtension } from './extensions/EditorTextColorExtension';
+import { AdmonitionExtension } from './extensions/AdmonitionExtension';
 import { TableOfContentsExtension } from './extensions/TableOfContentsExtension';
 import { WikiLinkExtension } from './extensions/WikiLinkExtension';
 import { SocialMentionExtension } from './extensions/SocialMentionExtension';
 
 export const WIKI_EDITOR_PROSE_CLASS =
   'tiptap prose prose-invert prose-sm max-w-none focus:outline-none px-4 py-3 text-foreground';
+
+/** Default edit-mode writing area for wiki widget editors. */
+export const WIKI_EDITOR_SIZE_CLASS_DEFAULT = 'wiki-widget-editor--size-default';
+
+/** Dedicated lore/biography/description subviews — taller writing surface. */
+export const WIKI_EDITOR_SIZE_CLASS_PROSE_PRIMARY = 'wiki-widget-editor--size-prose';
 
 export function getWikiEditorMarkdown(editor: Editor): string {
   return editor.getMarkdown?.() ?? editor.getText();
@@ -41,6 +48,7 @@ export function buildWikiEditorExtensions(loreExtensions: Extensions = []): Exte
     TableCell,
     EditorTextColorExtension,
     EditorHighlightExtension,
+    AdmonitionExtension,
     TableOfContentsExtension,
   ];
 }

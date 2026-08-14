@@ -18,14 +18,6 @@ export function getInspectorSections(profile: InspectorProfile) {
 
 export { getInspectorProfileLabel, resolveSectionForFocusField };
 
-/** @deprecated Use TYPED_INFOBOX_SURFACE_KEYS + resolveEntitySurfaceProfile instead */
-export const TYPED_INFOBOX_TEMPLATES = new Set([
-  'CHARACTER',
-  'ORGANIZATION',
-  'FAMILY',
-  'BESTIARY',
-]);
-
 export function resolveInspectorProfile(
   pageId: string,
   templateType: string,

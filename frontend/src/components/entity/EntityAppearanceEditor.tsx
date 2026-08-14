@@ -7,6 +7,8 @@ import {
 } from '@/contexts/PageBlockDraftRegistry';
 import { BlockSaveStatusLine } from '@/components/wiki/BlockSaveStatusLine';
 import { Loader2, Sparkles } from 'lucide-react';
+import { AppearanceSummaryField } from '@/components/entity/AppearanceSummaryField';
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import {
   AppearanceEditor,
   CodexEditorShell,
@@ -260,14 +262,46 @@ export function EntityAppearanceEditor({
 
   const body = (
     <div className="grid gap-6">
-      <PortraitImageEditor
-        campaignHandle={campaignHandle}
-        portraitUrl={draft.portraitUrl}
-        portraitCredit={draft.portraitCredit}
-        onChange={({ portraitUrl, portraitCredit }) =>
-          setDraft((prev) => ({ ...prev, portraitUrl, portraitCredit }))
-        }
-        onPersist={(patch) => void persistAppearance(patch)}
+      <div className="grid gap-4">
+        <h4 className={META_SECTION_LABEL_CLASS}>Appearance</h4>
+        {!showForms ? (
+          <PortraitImageEditor
+            campaignHandle={campaignHandle}
+            portraitUrl={draft.portraitUrl}
+            portraitCredit={draft.portraitCredit}
+            collapsedTools
+            onChange={({ portraitUrl, portraitCredit }) =>
+              setDraft((prev) => ({ ...prev, portraitUrl, portraitCredit }))
+            }
+            onPersist={(patch) => void persistAppearance(patch)}
+          />
+        ) : draft.portraitUrl?.trim() ? (
+          <img
+            src={draft.portraitUrl}
+            alt=""
+            className="max-h-48 w-auto rounded-lg border border-border/40 object-cover shadow-sm"
+          />
+        ) : null}
+
+        {showDetails ? (
+          <AppearanceDetailsWidget
+            mode="edit"
+            details={draft.details}
+            onChange={(details) => setDraft((prev) => ({ ...prev, details }))}
+            onPersist={(patch) =>
+              void persistDraft({
+                ...draftRef.current,
+                details: { ...draftRef.current.details, ...patch },
+              })
+            }
+          />
+        ) : null}
+      </div>
+
+      <AppearanceSummaryField
+        value={draft.summary}
+        onChange={(summary) => setDraft((prev) => ({ ...prev, summary }))}
+        onPersist={(summary) => void persistAppearance({ summary })}
       />
 
       {showForms ? (
@@ -285,20 +319,6 @@ export function EntityAppearanceEditor({
         />
       ) : null}
 
-      {showDetails ? (
-        <AppearanceDetailsWidget
-          mode="edit"
-          details={draft.details}
-          onChange={(details) => setDraft((prev) => ({ ...prev, details }))}
-          onPersist={(patch) =>
-            void persistDraft({
-              ...draftRef.current,
-              details: { ...draftRef.current.details, ...patch },
-            })
-          }
-        />
-      ) : null}
-
       <AppearanceEditor
         appearance={{
           portraitUrl: draft.portraitUrl,
@@ -308,6 +328,8 @@ export function EntityAppearanceEditor({
         }}
         focusField={focusField}
         hidePortrait
+        hideSummary
+        supportingMetadata
         tags={draft.tags}
         tagsFieldId={tagsFieldId}
         identityFields={

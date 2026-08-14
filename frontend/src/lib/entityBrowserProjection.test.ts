@@ -93,6 +93,8 @@ describe('entityBrowser projection drift guard', () => {
     assert.match(source, /children=\{filteredChildren\}/);
     assert.match(source, /filteredChildren=\{filteredChildren\}/);
     assert.match(source, /\{filteredChildren\.map\(\(child\)/);
+    assert.match(source, /selectedOptionalColumnKeys/);
+    assert.match(source, /CategoryIndexColumnPicker/);
   });
 
   it('view shells do not run browse search/refine projection', () => {

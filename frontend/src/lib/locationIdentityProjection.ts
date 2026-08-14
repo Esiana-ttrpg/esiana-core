@@ -1,4 +1,8 @@
-import { parseLocationMetadata } from '@/lib/locationMetadata';
+import {
+  formatLocationKnownForDisplay,
+  parseLocationMetadata,
+  resolveLocationRegionLabel,
+} from '@/lib/locationMetadata';
 import {
   findCodexProjectionPage,
   type CodexIdentityProjection,
@@ -15,15 +19,17 @@ export function buildLocationIdentityProjection(
   if (!page) return null;
 
   const location = parseLocationMetadata(page.metadata);
+  const regionLabel = resolveLocationRegionLabel(location, flatPages);
   const lineParts: string[] = [];
   if (location.locationType) lineParts.push(location.locationType);
-  if (location.region) lineParts.push(location.region);
+  if (regionLabel) lineParts.push(regionLabel);
+  else if (location.currentStatus) lineParts.push(location.currentStatus);
   else if (location.rulerOrAuthority) lineParts.push(location.rulerOrAuthority);
 
   return {
     displayName: page.title,
     identityLine: lineParts.join(' • '),
-    knownFor: location.knownFor,
+    knownFor: formatLocationKnownForDisplay(location.knownFor),
     portraitUrl: null,
   };
 }

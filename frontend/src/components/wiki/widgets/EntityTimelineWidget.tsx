@@ -3,6 +3,7 @@ import { BlockEmptyState } from '@/components/wiki/BlockEmptyState';
 import { Calendar } from 'lucide-react';
 import { parseCharacterLineageMetadata } from '@/lib/characterLineageMetadata';
 import { formatTimelineSummary } from '@/components/entity/CollapsibleTimelineSection';
+import { isCharacterEntityPage } from '@shared/resolveCanonicalEntityCategory';
 import type { WikiTreeNode } from '@/types/wiki';
 
 interface EntityTimelineWidgetProps {
@@ -35,7 +36,13 @@ export function EntityTimelineWidget({
   });
   const hasDates = Boolean(summary?.trim());
 
-  if (isEditingPage && templateType === 'CHARACTER') {
+  if (
+    isEditingPage &&
+    isCharacterEntityPage(
+      { id: pageId, title: '', parentId: null, templateType, metadata },
+      flatPages,
+    )
+  ) {
     return (
       <CharacterLineageEditor
         blockId={blockId}

@@ -61,7 +61,6 @@ interface WikiPageRendererProps {
   showGridLines: boolean;
   onShowGridLinesChange?: (show: boolean) => void;
   onBlocksChange: (updater: BlocksUpdater) => void;
-  onTemplateTypeChange: (templateType: string) => void;
   isDirty?: boolean;
   isSaving?: boolean;
   onSaveLayout?: () => void;
@@ -99,6 +98,9 @@ interface WikiPageRendererProps {
   onBlockDisplayChange?: (next: BlockDisplayState) => void;
   onJumpToContinuity?: (blockId: string) => void;
   canDeleteBlock?: (block: WikiPageBlock) => boolean;
+  prosePrimarySubview?: boolean;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
 }
 
 export function WikiPageRenderer({
@@ -112,7 +114,6 @@ export function WikiPageRenderer({
   showGridLines,
   onShowGridLinesChange,
   onBlocksChange,
-  onTemplateTypeChange,
   isEventLorePage = false,
   readerFirstLayout = false,
   pageMetadata,
@@ -144,6 +145,9 @@ export function WikiPageRenderer({
   onBlockDisplayChange,
   onJumpToContinuity,
   canDeleteBlock,
+  prosePrimarySubview = false,
+  pageCanEdit = true,
+  confirmWorkshopLeave = false,
 }: WikiPageRendererProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const isEditingPage = isEditingPageProp ?? isEditingLayout ?? false;
@@ -577,7 +581,12 @@ export function WikiPageRenderer({
       blockDisplayState.activeBlockId === block.id &&
       blockDisplayState.scale !== 'compact' &&
       (block.type === 'text-biography' || block.type === 'text-tiptap');
-    const showReadTitle = orchestration.showBlockTitlesRead && !isActiveProse;
+    const isProseBlock =
+      block.type === 'text-biography' || block.type === 'text-tiptap';
+    const showReadTitle =
+      orchestration.showBlockTitlesRead &&
+      !isActiveProse &&
+      !(prosePrimarySubview && isEditingPage && isProseBlock);
 
     return (
       <WikiPageBlockShell
@@ -646,7 +655,6 @@ export function WikiPageRenderer({
         onParentChange={onParentChange}
         onTreeRefresh={onTreeRefresh}
         onPageTagsChange={onPageTagsChange}
-        onTemplateTypeChange={onTemplateTypeChange}
         onInteractionStart={() => setInteractionLockedBlockId(block.id)}
         onInteractionEnd={() =>
           setInteractionLockedBlockId((current) =>
@@ -655,6 +663,9 @@ export function WikiPageRenderer({
         }
         blockDisplayState={blockDisplayState}
         blockActionHandlers={blockActionHandlersForWidgets}
+        prosePrimarySubview={prosePrimarySubview}
+        pageCanEdit={pageCanEdit}
+        confirmWorkshopLeave={confirmWorkshopLeave}
       />
     );
   }

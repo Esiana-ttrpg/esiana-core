@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { adventureSectionHref } from './adventureLayout.js';
+import { adventureViewHref } from './adventureLayout.js';
 import {
   campaignAdventureHubPath,
   campaignCategoryChildPath,
@@ -9,14 +9,14 @@ import {
 import { resolveWorkspaceIndexPathForFolderTitle } from './campaignWorkspaceRoutes.js';
 
 describe('campaign workspace paths', () => {
-  it('builds adventure arcs tab URL from hub base path', () => {
-    const href = adventureSectionHref(campaignAdventureHubPath('mario-party-seven'), 'story', {
-      view: 'arcs',
-    });
-    assert.equal(
-      href,
-      '/campaigns/mario-party-seven/adventures?section=story&view=arcs',
-    );
+  it('builds adventure arcs view URL from hub base path', () => {
+    const href = adventureViewHref(campaignAdventureHubPath('mario-party-seven'), 'arcs');
+    assert.equal(href, '/campaigns/mario-party-seven/adventures?view=arcs');
+  });
+
+  it('builds adventure quests view URL with explicit view param', () => {
+    const href = adventureViewHref(campaignAdventureHubPath('mario-party-seven'), 'quests');
+    assert.equal(href, '/campaigns/mario-party-seven/adventures?view=quests');
   });
 
   it('resolves quest entity links under adventures workspace', () => {

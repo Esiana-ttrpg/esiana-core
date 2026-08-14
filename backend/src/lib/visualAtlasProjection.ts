@@ -155,16 +155,16 @@ export function classifyVisualAtlasFilter(page: {
 }): VisualAtlasFilter | null {
   const entityCategory = readEntityCategoryFromMetadata(page.metadata);
 
-  if (page.templateType === 'CHARACTER' || entityCategory === 'characters') {
+  if (entityCategory === 'characters') {
     return 'characters';
   }
-  if (page.templateType === 'LOCATION' || entityCategory === 'locations') {
+  if (entityCategory === 'locations') {
     return 'locations';
   }
   if (entityCategory === 'bestiary') {
     return 'bestiary';
   }
-  if (page.templateType === 'ORGANIZATION' || entityCategory === 'organizations') {
+  if (entityCategory === 'organizations') {
     return 'organizations';
   }
   if (entityCategory === 'rules-resources') {

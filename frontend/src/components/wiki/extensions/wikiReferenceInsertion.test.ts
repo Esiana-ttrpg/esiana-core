@@ -17,7 +17,7 @@ const entries: WikiLinkIndexEntry[] = [
     title: 'Captain Aldren',
     label: 'Captain Aldren',
     normalizedLabel: 'captain aldren',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     inboundLinkCount: 12,
   },
   {
@@ -25,7 +25,7 @@ const entries: WikiLinkIndexEntry[] = [
     title: 'Vel Astra',
     label: 'Vel Astra',
     normalizedLabel: 'vel astra',
-    templateType: 'CHARACTER',
+    templateType: 'DEFAULT',
     inboundLinkCount: 3,
   },
   {
@@ -33,7 +33,7 @@ const entries: WikiLinkIndexEntry[] = [
     title: 'Blackwater Keep',
     label: 'Blackwater Keep',
     normalizedLabel: 'blackwater keep',
-    templateType: 'LOCATION',
+    templateType: 'DEFAULT',
     inboundLinkCount: 8,
   },
   {
@@ -41,7 +41,7 @@ const entries: WikiLinkIndexEntry[] = [
     title: 'Pinned Harbor',
     label: 'Pinned Harbor',
     normalizedLabel: 'pinned harbor',
-    templateType: 'LOCATION',
+    templateType: 'DEFAULT',
     inboundLinkCount: 1,
   },
 ];

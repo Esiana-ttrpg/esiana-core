@@ -13,8 +13,8 @@ describe('entityWorkspaceEmphasis', () => {
         currentLocationId: 'l1',
       },
       [
-        { id: 'c1', title: 'Hero', templateType: 'CHARACTER', metadata: {} },
-        { id: 'l1', title: 'Nuln', templateType: 'LOCATION', metadata: {} },
+        { id: 'c1', title: 'Hero', templateType: 'DEFAULT', metadata: {} },
+        { id: 'l1', title: 'Nuln', templateType: 'DEFAULT', metadata: {} },
       ],
       [],
     );
@@ -31,7 +31,7 @@ describe('entityWorkspaceEmphasis', () => {
         provenance: 'Forged in the First Age',
         currentHolderId: 'c1',
       },
-      [{ id: 'c1', title: 'Keeper', templateType: 'CHARACTER', metadata: {} }],
+      [{ id: 'c1', title: 'Keeper', templateType: 'DEFAULT', metadata: {} }],
       [],
     );
     assert.equal(emphasis.holderTitle, 'Keeper');

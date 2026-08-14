@@ -302,6 +302,61 @@ export async function updateCampaignSettings(
   return data.campaign;
 }
 
+export interface CampaignAccessMemberRow {
+  userId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  role: string;
+  isCampaignOwner: boolean;
+  identityPageId?: string | null;
+  identityPageTitle?: string | null;
+  playerContext?: string;
+  label?: string;
+}
+
+export async function fetchCampaignMembers(
+  campaignHandle: string,
+): Promise<CampaignAccessMemberRow[]> {
+  const data = await apiFetch<{ members: CampaignAccessMemberRow[] }>(
+    `/campaigns/${campaignHandle}/members`,
+  );
+  return data.members ?? [];
+}
+
+export async function rotateCampaignInvite(campaignHandle: string): Promise<void> {
+  await apiFetch(`/campaigns/${campaignHandle}/invite/rotate`, { method: 'POST' });
+}
+
+export async function updateCampaignMemberRole(
+  campaignHandle: string,
+  userId: string,
+  role: string,
+): Promise<void> {
+  await apiFetch(`/campaigns/${campaignHandle}/members/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function removeCampaignMember(
+  campaignHandle: string,
+  userId: string,
+): Promise<void> {
+  await apiFetch(`/campaigns/${campaignHandle}/members/${userId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function fetchCampaignInviteInfo(campaignHandle: string): Promise<{
+  handle?: string;
+  slug?: string;
+  inviteToken: string;
+  emailAvailable?: boolean;
+}> {
+  return apiFetch(`/campaigns/${campaignHandle}/invite`);
+}
+
 export async function fetchCampaignJoinRequests(
   campaignHandle: string,
 ): Promise<import('@/types/recruitment').CampaignJoinRequestRow[]> {

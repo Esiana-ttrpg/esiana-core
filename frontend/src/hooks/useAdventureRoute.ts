@@ -1,16 +1,11 @@
 import { useMemo } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
-import {
-  readAdventureSectionFromSearch,
-  type AdventureSectionId,
-} from '@/lib/adventureLayout';
 import { campaignWorkspaceIndexPath } from '@/lib/campaignPaths';
 import { parseSystemCategoryKey, SYSTEM_CATEGORY_QUESTS } from '@/lib/wikiSystemCategory';
 
 export interface AdventureRouteContext {
   basePath: string;
-  activeSection: AdventureSectionId;
   categoryPageId: string;
 }
 
@@ -38,8 +33,7 @@ export function useAdventureRoute(): AdventureRouteContext | null {
 
     return {
       basePath: campaignWorkspaceIndexPath(campaignHandle, 'adventures'),
-      activeSection: readAdventureSectionFromSearch(location.search),
       categoryPageId,
     };
-  }, [campaignHandle, location.pathname, location.search, flatPages, resolvePageIdBySystemKey]);
+  }, [campaignHandle, location.pathname, flatPages, resolvePageIdBySystemKey]);
 }

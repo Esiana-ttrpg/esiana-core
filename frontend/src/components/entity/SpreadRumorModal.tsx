@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LoreCirculationExpectationNote } from '@/components/entity/lore/LoreKnowledgeUi';
 import { spreadRumor } from '@/lib/rumorEngineApi';
+import { useOptionalWiki } from '@/contexts/WikiContext';
+import {
+  filterLocationPages,
+  filterOrganizationPages,
+} from '@/lib/questHubLayout';
 import type { LorePageLookup } from '@/lib/resolveLoreSourceDisplay';
 import type { SpreadRumorTarget } from '@/types/rumorEngine';
 
@@ -31,8 +36,11 @@ export function SpreadRumorModal({
   sourceClaimId,
   draft,
   defaultTarget,
-  flatPages = [],
+  flatPages: _flatPages = [],
 }: SpreadRumorModalProps) {
+  const wiki = useOptionalWiki();
+  const wikiFlatPages = wiki?.flatPages ?? [];
+
   const [stance, setStance] = useState('asserts');
   const [visibility, setVisibility] = useState<'PARTY' | 'GM_ONLY'>('GM_ONLY');
   const [confirmed, setConfirmed] = useState(false);
@@ -44,12 +52,12 @@ export function SpreadRumorModal({
   const needsTargetPicker = !defaultTarget;
 
   const regionPages = useMemo(
-    () => flatPages.filter((p) => p.templateType === 'LOCATION'),
-    [flatPages],
+    () => filterLocationPages(wikiFlatPages),
+    [wikiFlatPages],
   );
   const factionPages = useMemo(
-    () => flatPages.filter((p) => p.templateType === 'ORGANIZATION'),
-    [flatPages],
+    () => filterOrganizationPages(wikiFlatPages),
+    [wikiFlatPages],
   );
   const targetOptions = targetKind === 'region' ? regionPages : factionPages;
 

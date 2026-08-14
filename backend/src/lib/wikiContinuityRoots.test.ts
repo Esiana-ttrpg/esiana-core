@@ -30,11 +30,12 @@ describe('wikiContinuityRoots', () => {
     assert.ok(roots.has('Maps'));
   });
 
-  it('classifies CHARACTER as narrative', () => {
+  it('classifies character entity as narrative', () => {
     const page = {
       id: 'c1',
       title: 'Johnny Nior',
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
+      metadata: { entityCategory: 'characters' },
     };
     assert.equal(isNarrativeEntity(page), true);
     assert.equal(classifyContinuityRole(page), 'narrative');
@@ -44,7 +45,8 @@ describe('wikiContinuityRoots', () => {
     const page = {
       id: 'c1',
       title: 'Johnny Nior',
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
+      metadata: { entityCategory: 'characters' },
     };
     assert.equal(
       isEligibleForUnlinkedEntityIssue(page, 0),

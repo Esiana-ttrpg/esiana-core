@@ -16,6 +16,10 @@ import {
   resolvePageMetadataSlugRefs,
 } from './pageMetadataRoundTrip.js';
 import { reconcileCharacterIndexFromMetadata } from './characterMetadata.js';
+import {
+  normalizeWikiPageTemplateFields,
+  readEntityCategoryFromMetadata,
+} from '../../../shared/wikiTemplateType.js';
 
 export interface MarkdownPackImportResult {
   importedPageCount: number;
@@ -145,10 +149,13 @@ export async function importMarkdownPagesFromPack(options: {
     const slug =
       customFields.slug?.trim() ||
       generateHandle(title);
-    const templateType =
-      customFields.templateType?.trim() ||
-      customFields.template?.trim() ||
-      'DEFAULT';
+    const templateType = normalizeWikiPageTemplateFields({
+      templateType:
+        customFields.templateType?.trim() ||
+        customFields.template?.trim() ||
+        'DEFAULT',
+      metadata: frontMatterFieldsToMetadata(customFields),
+    }).templateType;
     const visibility = customFields.visibility?.trim() || 'Party';
     const parentKey = customFields.parentKey ?? customFields.parent;
 
@@ -197,9 +204,14 @@ export async function importMarkdownPagesFromPack(options: {
       );
     }
 
-    if (page.templateType === 'CHARACTER') {
+    if (readEntityCategoryFromMetadata(metadata) === 'characters') {
       metadata = reconcileCharacterIndexFromMetadata(metadata);
     }
+
+    const normalized = normalizeWikiPageTemplateFields({
+      templateType: page.templateType,
+      metadata,
+    });
 
     const blocks = buildBlocksFromMarkdown(page.body, titleToPageId, assetMapForMarkdown);
     const temporalMeta = extractTemporalFromFrontMatter(page.customFields);
@@ -208,9 +220,9 @@ export async function importMarkdownPagesFromPack(options: {
       id: page.id,
       title: page.title,
       parentId,
-      templateType: page.templateType,
+      templateType: normalized.templateType,
       visibility: page.visibility,
-      metadata,
+      metadata: normalized.metadata,
       blocks,
       ...temporalTimestamps,
     };

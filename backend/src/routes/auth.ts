@@ -5,7 +5,7 @@ import {
   clearAuthCookie,
   requireAuth,
   setAuthCookie,
-  signAuthToken,
+  signAuthTokenForUser,
 } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { UserRoles } from '../types/domain.js';
@@ -21,6 +21,8 @@ import {
   authRegisterLimiter,
   authPasswordResetLimiter,
   authPasswordResetConsumeLimiter,
+  oidcCallbackLimiter,
+  oidcStartLimiter,
 } from '../middleware/rateLimit.js';
 import { isPasswordAuthEnabled } from '../lib/auth/passwordAuth.js';
 import {
@@ -38,6 +40,7 @@ import {
   oidcCallback,
   startOidcAuth,
 } from '../controllers/oidcAuthController.js';
+import { isLocalLoginEnabled } from '../config/oidcEnv.js';
 import type { NextFunction, Response } from 'express';
 
 export const authRouter = Router();
@@ -58,13 +61,21 @@ authRouter.get('/providers', listAuthProviders);
 
 authRouter.get(
   '/oidc/:providerId/start',
+  oidcStartLimiter,
   requireAuthForLinkMode,
   startOidcAuth,
 );
 
-authRouter.get('/oidc/:providerId/callback', oidcCallback);
+authRouter.get('/oidc/:providerId/callback', oidcCallbackLimiter, oidcCallback);
 
 authRouter.post('/register', authRegisterLimiter, async (req, res) => {
+  if (!isLocalLoginEnabled()) {
+    res.status(403).json({
+      error: 'Local email and password registration is disabled on this instance.',
+    });
+    return;
+  }
+
   const { email, password } = req.body as {
     email?: string;
     password?: string;
@@ -119,6 +130,7 @@ authRouter.post('/register', authRegisterLimiter, async (req, res) => {
       avatarUrl: true,
       role: true,
       passwordHash: true,
+      sessionVersion: true,
     },
   });
 
@@ -126,12 +138,19 @@ authRouter.post('/register', authRegisterLimiter, async (req, res) => {
     await bootstrapSystemSettings();
   }
 
-  const token = signAuthToken({ userId: user.id, email: user.email });
+  const token = await signAuthTokenForUser(user);
   setAuthCookie(res, token);
   res.status(201).json({ user: serializeUserIdentity(user) });
 });
 
 authRouter.post('/login', authLoginLimiter, authLoginEmailLimiter, async (req, res) => {
+  if (!isLocalLoginEnabled()) {
+    res.status(403).json({
+      error: 'Local email and password sign-in is disabled on this instance.',
+    });
+    return;
+  }
+
   const { email, password } = req.body as {
     email?: string;
     password?: string;
@@ -142,7 +161,18 @@ authRouter.post('/login', authLoginLimiter, authLoginEmailLimiter, async (req, r
     return;
   }
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      avatarUrl: true,
+      role: true,
+      passwordHash: true,
+      sessionVersion: true,
+    },
+  });
   if (!user || !isPasswordAuthEnabled(user)) {
     res.status(401).json({ error: 'Invalid credentials' });
     return;
@@ -159,7 +189,7 @@ authRouter.post('/login', authLoginLimiter, authLoginEmailLimiter, async (req, r
     data: { lastLogin: new Date() },
   });
 
-  const token = signAuthToken({ userId: user.id, email: user.email });
+  const token = await signAuthTokenForUser(user);
   setAuthCookie(res, token);
   res.json({
     user: serializeUserIdentity({

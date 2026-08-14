@@ -17,8 +17,9 @@ test('deriveAnnotationsForGap collects character presence and location mentions'
       {
         id: 'char-seren',
         title: 'Seren',
-        templateType: 'CHARACTER',
+        templateType: 'DEFAULT',
         metadata: {
+          entityCategory: 'characters',
           locationHistory: [
             {
               id: 'ev-1',
@@ -34,14 +35,15 @@ test('deriveAnnotationsForGap collects character presence and location mentions'
       {
         id: 'loc-south',
         title: 'Southern Provinces',
-        templateType: 'LOCATION',
-        metadata: {},
+        templateType: 'DEFAULT',
+        metadata: { entityCategory: 'locations' },
       },
       {
         id: 'loc-northwall',
         title: 'Northwall',
-        templateType: 'LOCATION',
+        templateType: 'DEFAULT',
         metadata: {
+          entityCategory: 'locations',
           downtimeAlterations: [
             {
               id: 'alt-1',

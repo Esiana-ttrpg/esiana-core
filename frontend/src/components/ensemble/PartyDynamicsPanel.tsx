@@ -24,19 +24,22 @@ export function PartyDynamicsPanel({
         <div className="space-y-2">
           <h2 className="font-serif text-lg font-semibold text-foreground">Connected through</h2>
           <ul className="flex flex-wrap gap-2">
-            {dynamics.sharedConnections.map((row) => (
+            {dynamics.sharedConnections.map((row) => {
+              const page = flatPages.find((p) => p.id === row.pageId);
+              return (
               <li key={`${row.kind}-${row.pageId}`}>
                 <EntityRelationChip
                   campaignHandle={campaignHandle}
                   pageId={row.pageId}
                   title={row.label}
-                  templateType={row.kind === 'family' ? 'FAMILY' : 'ORGANIZATION'}
+                  templateType={page?.templateType ?? 'DEFAULT'}
                   subtitle={`${row.memberCount} members`}
                   flatPages={flatPages}
                   showPreview
                 />
               </li>
-            ))}
+            );
+            })}
           </ul>
         </div>
       ) : null}

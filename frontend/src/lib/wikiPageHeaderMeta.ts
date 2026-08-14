@@ -53,7 +53,7 @@ export function discoveryBadgeTone(
 ): string {
   if (!discovery.available) {
     return discovery.gatedUntil
-      ? 'border-violet-500/40 bg-violet-500/10 text-violet-800 dark:text-violet-200'
+      ? 'border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] text-[color:var(--color-status-legend-fg)]'
       : 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200';
   }
   switch (discovery.state) {
@@ -75,6 +75,7 @@ export function discoveryControlLabel(state: ContentRevelationState | string): s
 }
 
 const NARRATIVE_KIND_BY_PROFILE: Partial<Record<SurfaceProfileKey, string>> = {
+  character: 'Character',
   organization: 'Organization',
   family: 'Family',
   location: 'Location',
@@ -85,7 +86,17 @@ const NARRATIVE_KIND_BY_PROFILE: Partial<Record<SurfaceProfileKey, string>> = {
   'rule-resource': 'Rule reference',
   quest: 'Quest',
   thread: 'Narrative thread',
+  scene: 'Scene',
 };
+
+/** Singular entity kind for the editor header (below page title). */
+export function resolveEntityKindLabel(
+  profileKey: SurfaceProfileKey,
+  templateType: string,
+): string | null {
+  if (templateType === 'SESSION_NOTE') return 'Session note';
+  return NARRATIVE_KIND_BY_PROFILE[profileKey] ?? null;
+}
 
 /** Closest category-index ancestor title (e.g. Characters, Locations). */
 export function resolveParentCategoryTitle(
@@ -185,13 +196,4 @@ export function resolvePageIdentitySubtitle(input: {
 
   if (parts.length === 0) return null;
   return parts.join(' · ');
-}
-
-/** @deprecated Use resolvePageIdentitySubtitle */
-export function getNarrativePageKindLabel(
-  profileKey: SurfaceProfileKey,
-  templateType: string,
-): string | null {
-  if (templateType === 'SESSION_NOTE') return 'Session note';
-  return NARRATIVE_KIND_BY_PROFILE[profileKey] ?? null;
 }

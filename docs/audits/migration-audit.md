@@ -1,7 +1,6 @@
 # Pre-1.0 migration audit
 
 **Audited:** 2026-06-13  
-**Squash executed:** 2026-06-13 — see [migration-squash-verification-20260613.md](./migration-squash-verification-20260613.md)  
 **Active migration count:** 1 (`20260613190000_v1_baseline`)  
 **Archived pre-squash count:** 78 folders → [`migration-history/pre-v1-squash-20260613/`](../migrations/migration-history/pre-v1-squash-20260613/)
 
@@ -63,7 +62,6 @@ No missing `campaignId` indexes flagged on hot paths during this audit. Post-fre
 |-------------|----------|
 | Active baseline | `backend/prisma/migrations/20260613190000_v1_baseline/` |
 | Archive (78 folders) | [`migration-history/pre-v1-squash-20260613/`](../migrations/migration-history/pre-v1-squash-20260613/) |
-| Verification report | [migration-squash-verification-20260613.md](./migration-squash-verification-20260613.md) |
 
 **Generation notes:** Baseline SQL generated with sqlite provider for dual-engine portability; JSON column defaults and timestamp types hand-normalized (`'{}'`, `'[]'`, `TIMESTAMP(3)`) so **Postgres `migrate deploy` succeeds on untouched repo state** (CI `test-postgres` applies no sed patches).
 
@@ -91,5 +89,5 @@ See also [database-portability-audit.md](./database-portability-audit.md) for th
 
 - [x] Extension points documented — [lore-knowledge-extension-points.md](./lore-knowledge-extension-points.md), [capability-matrix.md](../plugins/capability-matrix.md)
 - [x] Migration audit (this document)
-- [x] Squash execution — [migration-squash-verification-20260613.md](./migration-squash-verification-20260613.md) (2026-06-13, pre-tag PR)
+- [x] Squash execution (2026-06-13 baseline; see migration-history archive)
 - [x] No pending destructive migrations queued for post-1.0

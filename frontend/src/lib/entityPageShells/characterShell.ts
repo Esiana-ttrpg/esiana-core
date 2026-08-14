@@ -3,7 +3,6 @@ import type { EntityPageShell, EntitySubviewDef, EntitySubviewId } from './types
 
 export const CHARACTER_SUBVIEWS: EntitySubviewDef[] = [
   { id: 'overview', label: 'Overview', navPriority: 0, collapseGroup: 'primary' },
-  { id: 'biography', label: 'Biography', navPriority: 1, collapseGroup: 'primary' },
   { id: 'appearance', label: 'Appearance', navPriority: 2, collapseGroup: 'primary' },
   { id: 'relationships', label: 'Relationships', navPriority: 3, collapseGroup: 'secondary' },
   { id: 'timeline', label: 'Timeline', navPriority: 4, collapseGroup: 'secondary' },
@@ -12,7 +11,7 @@ export const CHARACTER_SUBVIEWS: EntitySubviewDef[] = [
 ];
 
 const CONTENT_TAB_BLOCKS: Record<string, WikiPageBlockType[]> = {
-  biography: ['text-biography', 'text-tiptap', 'image-display'],
+  overview: ['text-biography', 'text-tiptap'],
   appearance: ['entity-appearance', 'image-display'],
   relationships: ['entity-relationships', 'wiki-backlinks'],
   timeline: ['entity-timeline', 'text-tiptap'],
@@ -56,15 +55,16 @@ export const characterPageShell: EntityPageShell = {
       ghostLabel: 'Biography data',
     },
   ],
-  railSectionOrder: ['callout', 'discovery', 'continuity', 'relations'],
-  railSectionsHidden: ['provenance', 'threads', 'timeline'],
-  defaultRailOpen: false,
   getVisibleSubviews: visibleSubviews,
   isValidSubview(subview, isDMUser) {
     return visibleSubviews(isDMUser).some((t) => t.id === subview);
   },
   filterBlocksForSubview(blocks, subview, isDMUser) {
-    if (subview === 'overview') return [];
+    if (subview === 'overview') {
+      return blocks.filter((b) =>
+        (CONTENT_TAB_BLOCKS.overview ?? []).includes(b.type),
+      );
+    }
     const allowed = CONTENT_TAB_BLOCKS[subview];
     if (!allowed) return [];
     if (subview === 'discovery' && !isDMUser) return [];
@@ -87,7 +87,7 @@ export const characterPageShell: EntityPageShell = {
     if (type === 'entity-relationships' || type === 'wiki-backlinks') {
       return 'relationships';
     }
-    if (type === 'text-biography' || type === 'text-tiptap') return 'biography';
+    if (type === 'text-biography' || type === 'text-tiptap') return 'overview';
     return 'overview';
   },
   immatureTabPlaceholder(subview) {
@@ -107,7 +107,7 @@ export const characterPageShell: EntityPageShell = {
     };
     const msg = messages[subview];
     if (!msg) return null;
-    return null; // rendered by CharacterPageShellView with dedicated component
+    return null; // rendered via EntityPageShellView immature tab placeholders
   },
 };
 

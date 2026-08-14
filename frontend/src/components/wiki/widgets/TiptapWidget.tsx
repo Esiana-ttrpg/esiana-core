@@ -11,6 +11,8 @@ import {
 import {
   buildWikiEditorUseEditorConfig,
   getWikiEditorMarkdown,
+  WIKI_EDITOR_SIZE_CLASS_DEFAULT,
+  WIKI_EDITOR_SIZE_CLASS_PROSE_PRIMARY,
   WIKI_EDITOR_PROSE_CLASS,
 } from '../createWikiEditor';
 import {
@@ -26,6 +28,11 @@ interface TiptapWidgetProps {
   content: Record<string, unknown>;
   onChange: (newContent: Record<string, unknown>) => void;
   isEditingLayout: boolean;
+  prosePrimary?: boolean;
+  workshopFromPageId?: string;
+  templateType?: string;
+  pageCanEdit?: boolean;
+  confirmWorkshopLeave?: boolean;
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
 }
@@ -64,6 +71,11 @@ export function TiptapWidget({
   content,
   onChange,
   isEditingLayout,
+  prosePrimary = false,
+  workshopFromPageId,
+  templateType = '',
+  pageCanEdit = true,
+  confirmWorkshopLeave = false,
   onInteractionStart,
   onInteractionEnd,
 }: TiptapWidgetProps) {
@@ -171,7 +183,13 @@ export function TiptapWidget({
     <EditorColorPickerProvider editor={editor}>
       <div className="flex w-full min-w-0 flex-col rounded-lg border border-border bg-background/60">
         <div className="shrink-0">
-          <WikiEditorToolbar editor={editor} />
+          <WikiEditorToolbar
+            editor={editor}
+            workshopFromPageId={workshopFromPageId ?? pageId}
+            templateType={templateType}
+            pageCanEdit={pageCanEdit}
+            confirmWorkshopLeave={confirmWorkshopLeave}
+          />
           <EditorColorPickerPanel />
           <WikiSyntaxHint
           ambientEnabled={ambientEnabled}
@@ -184,7 +202,13 @@ export function TiptapWidget({
         />
       </div>
 
-      <div className="wiki-widget-editor w-full min-w-0">
+      <div
+        className={`wiki-widget-editor w-full min-w-0 ${
+          prosePrimary
+            ? WIKI_EDITOR_SIZE_CLASS_PROSE_PRIMARY
+            : WIKI_EDITOR_SIZE_CLASS_DEFAULT
+        }`}
+      >
         <EditorContent editor={editor} />
         <LorePopovers editor={editor} />
       </div>

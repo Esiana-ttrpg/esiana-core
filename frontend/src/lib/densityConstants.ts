@@ -32,15 +32,6 @@ export const WRITING_MEASURE_STANDARD_WIDE_CH = 90;
 export const WRITING_MEASURE_HYBRID_STANDARD_CH = 92;
 export const WRITING_MEASURE_HYBRID_WIDE_CH = 100;
 
-/** @deprecated Use tier-specific constants; kept for legacy imports. */
-export const READING_MEASURE_STANDARD_CH = READING_MEASURE_STANDARD_STANDARD_CH;
-/** @deprecated Use tier-specific constants; kept for legacy imports. */
-export const READING_MEASURE_WIDE_CH = READING_MEASURE_STANDARD_WIDE_CH;
-/** @deprecated Use tier-specific constants; kept for legacy imports. */
-export const WRITING_MEASURE_STANDARD_CH = WRITING_MEASURE_STANDARD_STANDARD_CH;
-/** @deprecated Use tier-specific constants; kept for legacy imports. */
-export const WRITING_MEASURE_WIDE_CH = WRITING_MEASURE_STANDARD_WIDE_CH;
-
 export const DASHBOARD_DEFAULT_MAX_ENABLED_WIDGETS = 6;
 
 export const DASHBOARD_MAX_ENABLED_WIDGETS = 10;

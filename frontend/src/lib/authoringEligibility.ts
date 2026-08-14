@@ -1,14 +1,40 @@
+import type { WorkshopFormalizeTarget } from '@shared/workshopDocument';
+import {
+  WORKSHOP_FORMALIZE_TARGET_DEFS,
+  workshopFormalizeTargetsForUiGroup,
+} from '@shared/workshopFormalize';
 import { inferAuthoringKindFromMetadata } from '@shared/authoringContext';
-import { isArcMetadataPresent } from '@shared/arcMetadata';
-import { isSceneMetadataPresent } from '@shared/sceneMetadata';
+
+export function isWorkshopEligiblePage(
+  canEdit: boolean,
+  templateType: string,
+): boolean {
+  if (!canEdit) return false;
+  if (templateType === 'TAGS_HUB') return false;
+  return true;
+}
 
 export function isAuthoringWorkshopEligible(
   templateType: string,
-  metadata: unknown,
+  metadata?: unknown,
+  canEdit = true,
 ): boolean {
-  if (templateType === 'SESSION_NOTE') return true;
-  if (isArcMetadataPresent(metadata)) return true;
-  if (isSceneMetadataPresent(metadata)) return true;
-  if (inferAuthoringKindFromMetadata(metadata)) return true;
-  return false;
+  if (!isWorkshopEligiblePage(canEdit, templateType)) return false;
+  const kind = inferAuthoringKindFromMetadata(metadata);
+  return kind !== 'scene';
 }
+
+export const WORKSHOP_CREATE_TARGETS: Array<{
+  target: WorkshopFormalizeTarget | 'blank';
+  label: string;
+  group: 'world' | 'narrative' | 'reference' | 'general';
+}> = [
+  ...WORKSHOP_FORMALIZE_TARGET_DEFS.filter((def) => def.showInUi).map((def) => ({
+    target: def.id,
+    label: def.label,
+    group: def.uiGroup,
+  })),
+  { target: 'blank' as const, label: 'Blank draft', group: 'general' as const },
+];
+
+export { workshopFormalizeTargetsForUiGroup };

@@ -4,13 +4,8 @@ import { createPortal } from 'react-dom';
 import {
   Archive,
   BookOpen,
-  CheckCircle2,
-  ChevronRight,
   FileArchive,
   FolderTree,
-  Globe,
-  Link2,
-  Lock,
   Map as MapIcon,
   Plus,
   Upload,
@@ -31,8 +26,9 @@ import {
   CampaignThemeMultiSelect,
   getCampaignThemeLabel,
 } from '@/components/campaign/CampaignThemeMultiSelect';
-import type { CampaignDiscoverabilityValue, CampaignSummary } from '@/types/campaign';
-import { CampaignDiscoverability } from '@shared/campaignPolicy/discoverability';
+import type { CampaignSummary } from '@/types/campaign';
+import { docsLinks } from '@/lib/docsLinks';
+import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
 import { discoverImportFolders, discoverKankaJsonFolders, detectZipImportFormat } from '@shared/importZipStructure';
 import { fuzzyMatchImportModule } from '@shared/importModuleSynonyms';
 import type { ImportModuleTarget } from '@shared/importSkeletonKeys';
@@ -41,91 +37,33 @@ import type { KankaFolderDiscovery } from '@shared/importZipStructure';
 import JSZip from 'jszip';
 import { getCampaignNameHandleError } from '@shared/campaignHandle';
 import { fetchUserCampaignDefaults } from '@/lib/userCampaignDefaults';
-import type { UserTemplateResourceKind } from '@/types/userCampaignDefaults';
+import { PartyStep } from '@/components/hub/newCampaignWizard/PartyStep';
+import { LocationStep } from '@/components/hub/newCampaignWizard/LocationStep';
+import { SchedulingStep } from '@/components/hub/newCampaignWizard/SchedulingStep';
+import { ReviewStep } from '@/components/hub/newCampaignWizard/ReviewStep';
+import {
+  applyWizardScheduleBestEffort,
+  seedCampaignFoundationBestEffort,
+} from '@/components/hub/newCampaignWizard/seedCampaignFoundation';
+import { TensionStep } from '@/components/hub/newCampaignWizard/TensionStep';
+import {
+  createInitialPayload,
+  INITIAL_FOUNDATION,
+  type FolderMapping,
+  type NewCampaignWizardPayload,
+  type WizardStepId,
+} from '@/components/hub/newCampaignWizard/types';
+import { WizardCreatedPanel } from '@/components/hub/newCampaignWizard/WizardCreatedPanel';
+import { WizardStepNav } from '@/components/hub/newCampaignWizard/WizardStepNav';
+import { buildWizardSteps } from '@/components/hub/newCampaignWizard/wizardSteps';
 
 type MappingTarget = ImportModuleTarget;
-
-interface FolderMapping {
-  sourceFolderName: string;
-  targetModule: MappingTarget | '';
-  isAutoMatched: boolean;
-}
-
-interface NewCampaignWizardPayload {
-  identity: {
-    title: string;
-    description: string;
-    gameSystem: string;
-    customGameSystemName: string | null;
-    coverImage: File | null;
-    genreThemes: string[];
-  };
-  imports: {
-    campaignSource: 'blank' | 'obsidian' | 'kanka' | 'esiana-backup' | 'contentPack' | 'sampleData';
-    contentPack: { pluginId: string; packId: string } | null;
-    sampleDataProfile: { profileId: string } | null;
-    importSource: 'none' | 'obsidian' | 'kanka' | 'esiana-backup';
-    importFormat: 'obsidian' | 'kanka-json' | null;
-    markdownZipFile: File | null;
-    backupZipFile: File | null;
-    calendarConfigFile: File | null;
-    folderMappings: FolderMapping[];
-    sampleDataSeed: string;
-    sampleDataDensity: 'quiet' | 'active' | 'obsessive';
-  };
-  access: {
-    discoverability: CampaignDiscoverabilityValue;
-  };
-  importDefaults: {
-    tableExpectations: boolean;
-    safetyGuidelines: boolean;
-    sessionZero: boolean;
-    houseRules: boolean;
-    recruitmentPreferences: boolean;
-  };
-}
 
 interface NewCampaignWizardProps {
   open: boolean;
   onClose: () => void;
   onCreated: (campaign: CampaignSummary) => void;
 }
-
-const INITIAL_PAYLOAD: NewCampaignWizardPayload = {
-  identity: {
-    title: '',
-    description: '',
-    gameSystem: 'dnd-5e',
-    customGameSystemName: null,
-    coverImage: null,
-    genreThemes: [],
-  },
-  imports: {
-    campaignSource: 'blank',
-    contentPack: null,
-    sampleDataProfile: null,
-    importSource: 'none',
-    importFormat: null,
-    markdownZipFile: null,
-    backupZipFile: null,
-    calendarConfigFile: null,
-    folderMappings: [],
-    sampleDataSeed: '',
-    sampleDataDensity: 'active',
-  },
-  access: {
-    discoverability: CampaignDiscoverability.PRIVATE,
-  },
-  importDefaults: {
-    tableExpectations: false,
-    safetyGuidelines: false,
-    sessionZero: false,
-    houseRules: false,
-    recruitmentPreferences: false,
-  },
-};
-
-const STEPS = ['Core Identity', 'Campaign Source', 'Access & Review'] as const;
 const MODULE_TARGETS: MappingTarget[] = [
   'Characters',
   'Bestiary',
@@ -210,7 +148,9 @@ export function NewCampaignWizard({
   onCreated,
 }: NewCampaignWizardProps) {
   const [step, setStep] = useState(0);
-  const [payload, setPayload] = useState<NewCampaignWizardPayload>(INITIAL_PAYLOAD);
+  const [maxReachedIndex, setMaxReachedIndex] = useState(0);
+  const [createdCampaign, setCreatedCampaign] = useState<CampaignSummary | null>(null);
+  const [payload, setPayload] = useState<NewCampaignWizardPayload>(() => createInitialPayload());
   const [coverDragOver, setCoverDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -236,6 +176,28 @@ export function NewCampaignWizard({
     Array<{ folder: string; entityCount: number; reason: string }>
   >([]);
   const [importFormatDetected, setImportFormatDetected] = useState<string | null>(null);
+
+  const steps = useMemo(
+    () => buildWizardSteps(payload.imports.campaignSource),
+    [payload.imports.campaignSource],
+  );
+  const currentStepId: WizardStepId = steps[step]?.id ?? 'identity';
+  const reviewStepIndex = steps.findIndex((s) => s.id === 'review');
+
+  useEffect(() => {
+    setStep((current) => Math.min(current, Math.max(steps.length - 1, 0)));
+    setMaxReachedIndex((current) => Math.min(current, Math.max(steps.length - 1, 0)));
+  }, [steps.length]);
+
+  function patchImports(
+    imports: NewCampaignWizardPayload['imports'],
+  ): Partial<NewCampaignWizardPayload> {
+    const resetFoundation = imports.campaignSource !== 'blank';
+    return {
+      imports,
+      ...(resetFoundation ? { foundation: { ...INITIAL_FOUNDATION } } : {}),
+    };
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -315,58 +277,75 @@ export function NewCampaignWizard({
     customGameSystemMissing,
     hasUnmappedFolders,
   };
-  const isValid =
-    !wizardErrors.titleMissing &&
-    !wizardErrors.titleHandleError &&
-    !wizardErrors.customGameSystemMissing &&
-    !wizardErrors.hasUnmappedFolders;
 
-  const summaryItems = useMemo(
-    () => [
-      `Title: ${payload.identity.title || '—'}`,
-      `Game System: ${getGameSystemLabel(
-        payload.identity.gameSystem,
-        payload.identity.customGameSystemName,
-      )}`,
-      `Themes: ${
-        payload.identity.genreThemes.length > 0
-          ? payload.identity.genreThemes.map(getCampaignThemeLabel).join(', ')
-          : 'None selected'
-      }`,
-      `Import directories mapped: ${payload.imports.folderMappings.length}`,
-      `Campaign source: ${
-        payload.imports.campaignSource === 'contentPack' && payload.imports.contentPack
-          ? payload.imports.contentPack.packId
-          : payload.imports.campaignSource === 'sampleData' &&
-              payload.imports.sampleDataProfile
-            ? payload.imports.sampleDataProfile.profileId
-            : payload.imports.campaignSource
-      }`,
-      `Calendar integration: ${
-        payload.imports.calendarConfigFile ? 'Configuration file attached' : 'Not attached'
-      }`,
-      `Discoverability: ${
-        payload.access.discoverability === CampaignDiscoverability.PUBLIC
-          ? 'Public'
-          : payload.access.discoverability === CampaignDiscoverability.UNLISTED
-            ? 'Unlisted'
-            : 'Private'
-      }`,
-    ],
-    [payload],
-  );
+  function isStepComplete(stepId: WizardStepId): boolean {
+    switch (stepId) {
+      case 'identity':
+        return (
+          !wizardErrors.titleMissing &&
+          !wizardErrors.titleHandleError &&
+          !wizardErrors.customGameSystemMissing
+        );
+      case 'source':
+        return true;
+      case 'party':
+        return (
+          payload.foundation.partySkipped ||
+          payload.foundation.party.some((row) => row.name.trim().length > 0)
+        );
+      case 'location': {
+        if (payload.foundation.locationSkipped) return true;
+        const loc = payload.foundation.startingLocation;
+        if (loc?.mode === 'later') return true;
+        if (loc?.mode === 'new') return Boolean(loc.title?.trim());
+        return false;
+      }
+      case 'tension':
+        return (
+          payload.foundation.tensionSkipped ||
+          Boolean(payload.foundation.tension?.title.trim())
+        );
+      case 'scheduling':
+        return payload.schedulingSkipped || payload.schedule !== null;
+      case 'review':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  function goToStep(index: number) {
+    setStep(index);
+    setError(null);
+  }
+
+  function navigateToStepId(stepId: WizardStepId) {
+    const index = steps.findIndex((s) => s.id === stepId);
+    if (index >= 0 && index <= maxReachedIndex) {
+      goToStep(index);
+    }
+  }
 
   if (!open) return null;
 
   function handleResetAndClose() {
-    setPayload(INITIAL_PAYLOAD);
+    setPayload(createInitialPayload());
     setStep(0);
+    setMaxReachedIndex(0);
+    setCreatedCampaign(null);
     setError(null);
     setTitleTouched(false);
     setKankaSkippedSummary([]);
     setImportFormatDetected(null);
     markdownZipSourceRef.current = 'obsidian';
     onClose();
+  }
+
+  function handleCreatedDone() {
+    if (createdCampaign) {
+      onCreated(createdCampaign);
+    }
+    handleResetAndClose();
   }
 
   function resizeDescriptionArea() {
@@ -449,7 +428,7 @@ export function NewCampaignWizard({
 
     setPayload((current) => ({
       ...current,
-      imports: {
+      ...patchImports({
         ...current.imports,
         campaignSource: file ? source : current.imports.campaignSource,
         contentPack: file ? null : current.imports.contentPack,
@@ -459,14 +438,14 @@ export function NewCampaignWizard({
         markdownZipFile: file,
         backupZipFile: null,
         folderMappings: mappings,
-      },
+      }),
     }));
   }
 
   function setBackupZip(file: File | null) {
     setPayload((current) => ({
       ...current,
-      imports: {
+      ...patchImports({
         ...current.imports,
         campaignSource: file ? 'esiana-backup' : current.imports.campaignSource,
         contentPack: file ? null : current.imports.contentPack,
@@ -475,7 +454,7 @@ export function NewCampaignWizard({
         backupZipFile: file,
         markdownZipFile: null,
         folderMappings: [],
-      },
+      }),
     }));
   }
 
@@ -522,22 +501,50 @@ export function NewCampaignWizard({
   }
 
   function handleNext() {
-    if (step === 0) {
+    if (currentStepId === 'identity') {
       setTitleTouched(true);
       if (titleMissing) return;
     }
-    if (step < STEPS.length - 1) {
-      setStep((value) => value + 1);
+    if (step < steps.length - 1) {
+      const next = step + 1;
+      setStep(next);
+      setMaxReachedIndex((value) => Math.max(value, next));
+      setError(null);
     }
+  }
+
+  function handleSkipOptionalStep() {
+    if (currentStepId === 'party') {
+      setPayload((current) => ({
+        ...current,
+        foundation: { ...current.foundation, partySkipped: true },
+      }));
+    } else if (currentStepId === 'location') {
+      setPayload((current) => ({
+        ...current,
+        foundation: { ...current.foundation, locationSkipped: true },
+      }));
+    } else if (currentStepId === 'tension') {
+      setPayload((current) => ({
+        ...current,
+        foundation: { ...current.foundation, tensionSkipped: true },
+      }));
+    } else if (currentStepId === 'scheduling') {
+      setPayload((current) => ({
+        ...current,
+        schedulingSkipped: true,
+      }));
+    }
+    handleNext();
   }
 
   function handleBack() {
     setError(null);
-    if (step > 0) setStep((value) => value - 1);
+    if (step > 0) goToStep(step - 1);
   }
 
   async function handleCreateCampaign() {
-    if (step !== STEPS.length - 1) return;
+    if (currentStepId !== 'review' || reviewStepIndex < 0) return;
     setTitleTouched(true);
     if (titleMissing) {
       setError('A campaign title is required before creating your campaign.');
@@ -620,8 +627,18 @@ export function NewCampaignWizard({
         backupZipFile: payload.imports.backupZipFile ?? undefined,
         calendarConfigFile: payload.imports.calendarConfigFile ?? undefined,
       });
-      onCreated(campaign);
-      handleResetAndClose();
+
+      if (payload.imports.campaignSource === 'blank') {
+        await seedCampaignFoundationBestEffort(campaign.handle, payload.foundation);
+      }
+      await applyWizardScheduleBestEffort(
+        campaign.id,
+        payload.schedule,
+        payload.schedulingSkipped,
+      );
+
+      setCreatedCampaign(campaign);
+      setMaxReachedIndex(steps.length - 1);
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : 'Failed to create campaign';
@@ -671,49 +688,31 @@ export function NewCampaignWizard({
         </div>
 
         <div className="border-b border-border px-6 py-4">
-          <ol className="grid gap-2 md:grid-cols-3">
-            {STEPS.map((label, index) => {
-              const active = index === step;
-              const done = index < step;
-              return (
-                <li
-                  key={label}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
-                    active
-                      ? 'border-primary/60 bg-primary/10 text-primary'
-                      : done
-                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
-                        : 'border-border text-muted'
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (index <= step) {
-                        setStep(index);
-                        setError(null);
-                      }
-                    }}
-                    disabled={index > step}
-                    className="inline-flex w-full items-center gap-2 text-left disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {done ? <CheckCircle2 className="size-4" /> : <ChevronRight className="size-4" />}
-                    Step {index + 1}: {label}
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
+          {!createdCampaign ? (
+            <WizardStepNav
+              steps={steps}
+              stepIndex={step}
+              maxReachedIndex={maxReachedIndex}
+              isStepComplete={isStepComplete}
+              onGoToStep={(index) => {
+                if (index <= maxReachedIndex) goToStep(index);
+              }}
+            />
+          ) : null}
         </div>
 
         <div className="max-h-[64vh] overflow-y-auto px-6 py-5">
+          {createdCampaign ? (
+            <WizardCreatedPanel campaign={createdCampaign} onDone={handleCreatedDone} />
+          ) : (
+            <>
           {error && (
             <p className="mb-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-300">
               {error}
             </p>
           )}
 
-          {step === 0 && (
+          {currentStepId === 'identity' && (
             <section className="space-y-6">
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-4">
@@ -779,7 +778,7 @@ export function NewCampaignWizard({
                           ...current,
                           identity: {
                             ...current.identity,
-                            gameSystem: slug ?? 'dnd-5e',
+                            gameSystem: slug ?? current.identity.gameSystem,
                             customGameSystemName:
                               slug === 'other' ? current.identity.customGameSystemName : null,
                           },
@@ -863,7 +862,7 @@ export function NewCampaignWizard({
             </section>
           )}
 
-          {step === 1 && (
+          {currentStepId === 'source' && (
             <section className="space-y-6">
               <div className="space-y-3">
                 <div>
@@ -880,7 +879,7 @@ export function NewCampaignWizard({
                     onClick={() =>
                       setPayload((current) => ({
                         ...current,
-                        imports: {
+                        ...patchImports({
                           ...current.imports,
                           campaignSource: 'blank',
                           contentPack: null,
@@ -889,7 +888,7 @@ export function NewCampaignWizard({
                           markdownZipFile: null,
                           backupZipFile: null,
                           folderMappings: [],
-                        },
+                        }),
                       }))
                     }
                     className={`flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors ${
@@ -941,7 +940,7 @@ export function NewCampaignWizard({
                                     ? { genreThemes: card.genreThemes }
                                     : {}),
                                 },
-                                imports: {
+                                ...patchImports({
                                   ...current.imports,
                                   campaignSource: 'contentPack',
                                   importSource: 'none',
@@ -953,7 +952,7 @@ export function NewCampaignWizard({
                                     packId: card.packId,
                                   },
                                   sampleDataProfile: null,
-                                },
+                                }),
                               }))
                             }
                             className={`flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors ${
@@ -1019,7 +1018,7 @@ export function NewCampaignWizard({
                             onClick={() =>
                               setPayload((current) => ({
                                 ...current,
-                                imports: {
+                                ...patchImports({
                                   ...current.imports,
                                   campaignSource: 'sampleData',
                                   importSource: 'none',
@@ -1031,7 +1030,7 @@ export function NewCampaignWizard({
                                   sampleDataSeed:
                                     current.imports.sampleDataSeed || profile.defaultSeed,
                                   sampleDataDensity: profile.defaultDensity,
-                                },
+                                }),
                               }))
                             }
                             className={`flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors ${
@@ -1112,7 +1111,7 @@ export function NewCampaignWizard({
 
               <div className="rounded-xl border border-border bg-background/50 p-4">
                 <a
-                  href="https://github.com/Esiana-ttrpg/docs/wiki/Import-Formats"
+                  href={docsLinks.importFormats}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary"
@@ -1212,7 +1211,7 @@ export function NewCampaignWizard({
                             backupZipInputRef.current?.click();
                             setPayload((current) => ({
                               ...current,
-                              imports: {
+                              ...patchImports({
                                 ...current.imports,
                                 campaignSource: 'esiana-backup',
                                 contentPack: null,
@@ -1220,21 +1219,21 @@ export function NewCampaignWizard({
                                 importSource: 'esiana-backup',
                                 markdownZipFile: null,
                                 folderMappings: [],
-                              },
+                              }),
                             }));
                           } else {
                             markdownZipSourceRef.current = isKanka ? 'kanka' : 'obsidian';
                             markdownZipInputRef.current?.click();
                             setPayload((current) => ({
                               ...current,
-                              imports: {
+                              ...patchImports({
                                 ...current.imports,
                                 campaignSource: isKanka ? 'kanka' : 'obsidian',
                                 contentPack: null,
                                 sampleDataProfile: null,
                                 importSource: isKanka ? 'kanka' : 'obsidian',
                                 backupZipFile: null,
-                              },
+                              }),
                             }));
                           }
                         }}
@@ -1404,230 +1403,81 @@ export function NewCampaignWizard({
             </section>
           )}
 
-          {step === 2 && (
-            <section className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPayload((current) => ({
-                      ...current,
-                      access: { discoverability: CampaignDiscoverability.PRIVATE },
-                    }))
-                  }
-                  className={`rounded-xl border p-4 text-left transition-colors ${
-                    payload.access.discoverability === CampaignDiscoverability.PRIVATE
-                      ? 'border-primary/60 bg-primary/10'
-                      : 'border-border bg-background/50 hover:border-border'
-                  }`}
-                  aria-pressed={
-                    payload.access.discoverability === CampaignDiscoverability.PRIVATE
-                  }
-                >
-                  <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <Lock className="size-4 text-primary" />
-                    Private
-                  </p>
-                  <p className="mt-2 text-sm text-muted">
-                    Only you and explicitly invited players can view this world.
-                  </p>
-                </button>
+          {currentStepId === 'party' && (
+            <PartyStep
+              rows={payload.foundation.party}
+              onChange={(party) =>
+                setPayload((current) => ({
+                  ...current,
+                  foundation: {
+                    ...current.foundation,
+                    party,
+                    partySkipped: false,
+                  },
+                }))
+              }
+            />
+          )}
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPayload((current) => ({
-                      ...current,
-                      access: { discoverability: CampaignDiscoverability.UNLISTED },
-                    }))
-                  }
-                  className={`rounded-xl border p-4 text-left transition-colors ${
-                    payload.access.discoverability === CampaignDiscoverability.UNLISTED
-                      ? 'border-primary/60 bg-primary/10'
-                      : 'border-border bg-background/50 hover:border-border'
-                  }`}
-                  aria-pressed={
-                    payload.access.discoverability === CampaignDiscoverability.UNLISTED
-                  }
-                >
-                  <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <Link2 className="size-4 text-primary" />
-                    Unlisted
-                  </p>
-                  <p className="mt-2 text-sm text-muted">
-                    Anyone with the campaign link can browse the anonymous codex. Not listed on
-                    the Global Hub.
-                  </p>
-                </button>
+          {currentStepId === 'location' && (
+            <LocationStep
+              startingLocation={payload.foundation.startingLocation}
+              onChange={(startingLocation) =>
+                setPayload((current) => ({
+                  ...current,
+                  foundation: {
+                    ...current.foundation,
+                    startingLocation,
+                    locationSkipped: false,
+                  },
+                }))
+              }
+            />
+          )}
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setPayload((current) => ({
-                      ...current,
-                      access: { discoverability: CampaignDiscoverability.PUBLIC },
-                    }))
-                  }
-                  className={`rounded-xl border p-4 text-left transition-colors ${
-                    payload.access.discoverability === CampaignDiscoverability.PUBLIC
-                      ? 'border-primary/60 bg-primary/10'
-                      : 'border-border bg-background/50 hover:border-border'
-                  }`}
-                  aria-pressed={
-                    payload.access.discoverability === CampaignDiscoverability.PUBLIC
-                  }
-                >
-                  <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                    <Globe className="size-4 text-primary" />
-                    Public
-                  </p>
-                  <p className="mt-2 text-sm text-muted">
-                    Listed on the Global Hub. Guests can browse the anonymous codex.
-                  </p>
-                </button>
-              </div>
+          {currentStepId === 'tension' && (
+            <TensionStep
+              tension={payload.foundation.tension}
+              onChange={(tension) =>
+                setPayload((current) => ({
+                  ...current,
+                  foundation: {
+                    ...current.foundation,
+                    tension,
+                    tensionSkipped: false,
+                  },
+                }))
+              }
+            />
+          )}
 
-              {(defaultsAvailable.tableExpectations ||
-                defaultsAvailable.houseRules ||
-                defaultsAvailable.sessionZero ||
-                defaultsAvailable.safetyGuidelines ||
-                defaultsAvailable.recruitmentPreferences) && (
-                <div className="rounded-xl border border-border bg-background/50 p-4">
-                  <p className="text-sm font-semibold text-foreground">Import Defaults</p>
-                  <p className="mt-1 text-xs text-muted">
-                    Copy saved templates and recruitment preferences from Campaign Defaults.
-                  </p>
-                  <ul className="mt-3 space-y-2">
-                    {defaultsAvailable.tableExpectations ? (
-                      <li>
-                        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            checked={payload.importDefaults.tableExpectations}
-                            onChange={(e) =>
-                              setPayload((current) => ({
-                                ...current,
-                                importDefaults: {
-                                  ...current.importDefaults,
-                                  tableExpectations: e.target.checked,
-                                },
-                              }))
-                            }
-                            className="size-4 rounded border-border"
-                          />
-                          Table Expectations
-                        </label>
-                      </li>
-                    ) : null}
-                    {defaultsAvailable.safetyGuidelines ? (
-                      <li>
-                        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            checked={payload.importDefaults.safetyGuidelines}
-                            onChange={(e) =>
-                              setPayload((current) => ({
-                                ...current,
-                                importDefaults: {
-                                  ...current.importDefaults,
-                                  safetyGuidelines: e.target.checked,
-                                },
-                              }))
-                            }
-                            className="size-4 rounded border-border"
-                          />
-                          Safety Guidelines
-                        </label>
-                      </li>
-                    ) : null}
-                    {defaultsAvailable.sessionZero ? (
-                      <li>
-                        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            checked={payload.importDefaults.sessionZero}
-                            onChange={(e) =>
-                              setPayload((current) => ({
-                                ...current,
-                                importDefaults: {
-                                  ...current.importDefaults,
-                                  sessionZero: e.target.checked,
-                                },
-                              }))
-                            }
-                            className="size-4 rounded border-border"
-                          />
-                          Session Zero
-                        </label>
-                      </li>
-                    ) : null}
-                    {defaultsAvailable.houseRules ? (
-                      <li>
-                        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            checked={payload.importDefaults.houseRules}
-                            onChange={(e) =>
-                              setPayload((current) => ({
-                                ...current,
-                                importDefaults: {
-                                  ...current.importDefaults,
-                                  houseRules: e.target.checked,
-                                },
-                              }))
-                            }
-                            className="size-4 rounded border-border"
-                          />
-                          House Rules
-                        </label>
-                      </li>
-                    ) : null}
-                    {defaultsAvailable.recruitmentPreferences ? (
-                      <li>
-                        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-foreground">
-                          <input
-                            type="checkbox"
-                            checked={payload.importDefaults.recruitmentPreferences}
-                            onChange={(e) =>
-                              setPayload((current) => ({
-                                ...current,
-                                importDefaults: {
-                                  ...current.importDefaults,
-                                  recruitmentPreferences: e.target.checked,
-                                },
-                              }))
-                            }
-                            className="size-4 rounded border-border"
-                          />
-                          Recruitment Preferences
-                        </label>
-                      </li>
-                    ) : null}
-                  </ul>
-                </div>
-              )}
+          {currentStepId === 'scheduling' && (
+            <SchedulingStep
+              schedule={payload.schedule}
+              onChange={(schedule) =>
+                setPayload((current) => ({
+                  ...current,
+                  schedule,
+                  schedulingSkipped: false,
+                }))
+              }
+            />
+          )}
 
-              <div className="rounded-xl border border-border bg-background/50 p-4">
-                <p className="text-sm font-semibold text-foreground">Creation Review</p>
-                <ul className="mt-3 space-y-2 text-sm text-foreground">
-                  {summaryItems.map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-300" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                {hasUnmappedFolders && (
-                  <p className="mt-3 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-xs text-red-300">
-                    Some imported folders are still unmapped. Return to the import step and
-                    assign every folder to continue.
-                  </p>
-                )}
-              </div>
-            </section>
+          {currentStepId === 'review' && (
+            <ReviewStep
+              payload={payload}
+              setPayload={setPayload}
+              onNavigate={navigateToStepId}
+              defaultsAvailable={defaultsAvailable}
+              hasUnmappedFolders={hasUnmappedFolders}
+            />
+          )}
+            </>
           )}
         </div>
 
+        {!createdCampaign ? (
         <div className="flex items-center justify-between border-t border-border px-6 py-4">
           <button
             type="button"
@@ -1637,10 +1487,20 @@ export function NewCampaignWizard({
             {step === 0 ? 'Cancel' : 'Back'}
           </button>
 
+          <div className="flex items-center gap-2">
+            {steps[step]?.optional ? (
+              <button
+                type="button"
+                onClick={handleSkipOptionalStep}
+                className="rounded-lg border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-elevated"
+              >
+                Skip
+              </button>
+            ) : null}
           <button
             type="button"
             onClick={
-              step === STEPS.length - 1
+              currentStepId === 'review'
                 ? () => {
                     void handleCreateCampaign();
                   }
@@ -1649,13 +1509,15 @@ export function NewCampaignWizard({
             disabled={submitting}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {step === STEPS.length - 1
+            {currentStepId === 'review'
               ? submitting
                 ? 'Creating…'
                 : 'Confirm & Create Campaign'
               : 'Next'}
           </button>
+          </div>
         </div>
+        ) : null}
       </div>
       </div>
     </div>,

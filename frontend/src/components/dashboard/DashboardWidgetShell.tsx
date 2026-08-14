@@ -1,6 +1,6 @@
 import { GripVertical } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { SURFACE_FLOAT_CLASS } from '@/lib/surfaceLayout';
+import { SURFACE_FLOAT_CLASS, SURFACE_OPERATIONAL_CLASS } from '@/lib/surfaceLayout';
 
 interface DashboardWidgetShellProps {
   title: string;
@@ -32,7 +32,9 @@ export function DashboardWidgetShell({
   loading = false,
 }: DashboardWidgetShellProps) {
   return (
-    <div className={`${SURFACE_FLOAT_CLASS} flex h-full flex-col p-4`}>
+    <div
+      className={`${customizeMode ? SURFACE_OPERATIONAL_CLASS : SURFACE_FLOAT_CLASS} region-depth-1 flex h-full flex-col p-4`}
+    >
       <header className="mb-3 flex items-center justify-between gap-2 pb-2">
         <div className="flex min-w-0 items-center gap-2">
           {customizeMode && (

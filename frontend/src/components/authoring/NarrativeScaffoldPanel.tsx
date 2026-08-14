@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { NARRATIVE_SCAFFOLDS, type NarrativeScaffoldId } from '@shared/narrativeScaffolds';
-import { campaignProgressionPath } from '@/lib/campaignPaths';
-import { progressionSectionHref } from '@/lib/progressionLayout';
+import { campaignWorkshopPath } from '@/lib/campaignPaths';
 import { createWorkshopDraft } from '@/lib/workshopDrafts';
 
 interface NarrativeScaffoldPanelProps {
@@ -48,7 +47,7 @@ export function NarrativeScaffoldPanel({
     }
   }
 
-  const workshopBase = campaignProgressionPath(campaignHandle);
+  const workshopBase = campaignWorkshopPath(campaignHandle);
 
   return (
     <section className="space-y-3">
@@ -87,7 +86,7 @@ export function NarrativeScaffoldPanel({
             {lastCreated.map((draft) => (
               <li key={draft.id}>
                 <Link
-                  to={`${progressionSectionHref(workshopBase, 'workshop')}&draft=${draft.id}`}
+                  to={campaignWorkshopPath(campaignHandle, { draftId: draft.id })}
                   className="text-primary hover:underline"
                 >
                   {draft.title}
@@ -96,7 +95,7 @@ export function NarrativeScaffoldPanel({
             ))}
           </ul>
           <Link
-            to={progressionSectionHref(workshopBase, 'workshop')}
+            to={workshopBase}
             className="mt-2 inline-block text-xs text-primary hover:underline"
           >
             Open in Workshop

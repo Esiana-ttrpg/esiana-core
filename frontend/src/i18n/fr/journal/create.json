@@ -1,0 +1,15 @@
+{
+  "journal.create.publicationHeading": "Nouvelle publication",
+  "journal.create.titleLabel": "Titre",
+  "journal.create.titlePlaceholder": "Un nom court et évocateur",
+  "journal.create.typeLabel": "Type",
+  "journal.create.titleRequired": "Un titre est requis.",
+  "journal.create.cancel": "Annuler",
+  "journal.create.submit": "Créer",
+  "journal.create.submitting": "Création…",
+  "journal.create.seriesHeading": "Nouvelle série",
+  "journal.create.seriesNameLabel": "Nom de la série",
+  "journal.create.seriesNamePlaceholder": "ex. Le Héraut hebdomadaire",
+  "journal.create.seriesRequired": "Un nom de série est requis.",
+  "journal.create.seriesSubmit": "Créer la série"
+}

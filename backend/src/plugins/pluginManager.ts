@@ -78,20 +78,6 @@ export function readRuntimeManifest(pluginDir: string): PluginManifest | null {
   }
 }
 
-/** @deprecated Use readRuntimeManifest */
-export function readManifest(pluginDir: string): RuntimePluginManifest | null {
-  const manifest = readRuntimeManifest(pluginDir);
-  if (!manifest?.backendEntry || !manifest.frontendEntry) return null;
-  return {
-    id: manifest.id,
-    name: manifest.name,
-    version: manifest.version,
-    githubUrl: manifest.githubUrl,
-    backendEntry: manifest.backendEntry,
-    frontendEntry: manifest.frontendEntry,
-  };
-}
-
 export function resolvePluginRoot(record: {
   name: string;
   installPath: string;
@@ -430,11 +416,6 @@ export async function reloadPluginHost(): Promise<void> {
   currentPluginRouter = hostRouter;
   rebuildPublicPluginRouter();
   initializeActiveStorageProvider();
-}
-
-/** @deprecated Use reloadPluginHost */
-export async function loadEnabledPlugins(_app: Express): Promise<void> {
-  await reloadPluginHost();
 }
 
 export async function setPluginEnabled(

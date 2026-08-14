@@ -13,6 +13,7 @@ import { serializeUserIdentity } from '../lib/userDisplay.js';
 export interface AuthTokenPayload {
   userId: string;
   email: string;
+  sv: number;
 }
 
 export type AuthMethod = 'session' | 'apiToken';
@@ -42,7 +43,23 @@ export function signAuthToken(payload: AuthTokenPayload): string {
   const options: SignOptions = {
     expiresIn: env.jwtExpiresIn as SignOptions['expiresIn'],
   };
-  return jwt.sign(payload, env.jwtSecret, options);
+  return jwt.sign(
+    { userId: payload.userId, email: payload.email, sv: payload.sv },
+    env.jwtSecret,
+    options,
+  );
+}
+
+export async function signAuthTokenForUser(user: {
+  id: string;
+  email: string;
+  sessionVersion: number;
+}): Promise<string> {
+  return signAuthToken({
+    userId: user.id,
+    email: user.email,
+    sv: user.sessionVersion,
+  });
 }
 
 export function setAuthCookie(res: Response, token: string): void {
@@ -71,7 +88,9 @@ async function attachUserFromCookie(
   if (!token) return false;
 
   try {
-    const decoded = jwt.verify(token, env.jwtSecret) as AuthTokenPayload;
+    const decoded = jwt.verify(token, env.jwtSecret) as AuthTokenPayload & {
+      sv?: number;
+    };
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -81,9 +100,12 @@ async function attachUserFromCookie(
         avatarUrl: true,
         role: true,
         passwordHash: true,
+        sessionVersion: true,
       },
     });
     if (!user) return false;
+    const tokenSv = typeof decoded.sv === 'number' ? decoded.sv : 0;
+    if (tokenSv !== user.sessionVersion) return false;
     req.user = serializeUserIdentity(user);
     return true;
   } catch {

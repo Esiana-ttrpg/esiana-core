@@ -1,5 +1,5 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { HUB_MOMENTUM_TONES, type HubMomentumLabel } from '@/lib/hubAmbientTheme';
+import { HUB_MOMENTUM_TONE_CLASS, type HubMomentumLabel } from '@/lib/hubAmbientTheme';
 
 interface HubMomentumBadgeProps {
   label: HubMomentumLabel;
@@ -7,17 +7,8 @@ interface HubMomentumBadgeProps {
 }
 
 export function HubMomentumBadge({ label, className = '' }: HubMomentumBadgeProps) {
-  const tone = HUB_MOMENTUM_TONES[label];
-
   return (
-    <span
-      className={`hub-momentum ${className}`.trim()}
-      style={{
-        color: tone.color,
-        backgroundColor: tone.bg,
-        borderColor: tone.border,
-      }}
-    >
+    <span className={`hub-momentum ${HUB_MOMENTUM_TONE_CLASS[label]} ${className}`.trim()}>
       {label}
     </span>
   );

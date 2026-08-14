@@ -1,4 +1,5 @@
 import { shouldShowPageNarrativeStatusBadge } from '@shared/pageNarrativeStatus';
+import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { useEffect, useMemo, useState } from 'react';
 import {
   EntityGraphEntityTypes,
@@ -40,11 +41,24 @@ function otherWikiPageId(edge: EntityGraphEdge, pageId: string): string | null {
 export function mapEntityGraphToRelationshipProjection(
   graph: LocalGraphQueryResult,
   pageId: string,
-  templateType: string,
+  _templateType: string,
   flatPages: readonly WikiPageLineageSnapshot[],
   date: ChronologyDateParts,
 ): EntityRelationshipProjection {
   const pageById = new Map(flatPages.map((page) => [page.id, page]));
+  const sourcePage = pageById.get(pageId);
+  const entityCategory = sourcePage
+    ? resolveCanonicalEntityCategory(
+        {
+          id: sourcePage.id,
+          title: sourcePage.title,
+          parentId: sourcePage.parentId ?? null,
+          templateType: sourcePage.templateType,
+          metadata: sourcePage.metadata,
+        },
+        flatPages,
+      )
+    : null;
   const previewByKey = new Map(graph.nodes.map((node) => [nodeRefKey(node), node]));
   const resolvedFromDate: ChronologyDateParts = {
     year: date.year,
@@ -105,7 +119,7 @@ export function mapEntityGraphToRelationshipProjection(
       });
     } else if (
       edge.relationKind === EntityRelationKinds.ORG_DIPLOMATIC &&
-      templateType === 'ORGANIZATION'
+      entityCategory === 'organizations'
     ) {
       const payload =
         edge.payload?.kind === EntityRelationKinds.ORG_DIPLOMATIC ? edge.payload : null;

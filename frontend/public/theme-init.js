@@ -3,6 +3,14 @@
  * Keep in sync with frontend/src/lib/theme/themeVariables.ts and globalPalette.ts
  */
 (function () {
+  var UI_FONT_KEY = 'esiana-ui-font';
+  try {
+    if (localStorage.getItem(UI_FONT_KEY) === 'atkinson') {
+      document.documentElement.setAttribute('data-ui-font', 'atkinson');
+    }
+  } catch (e) {
+    /* ignore */
+  }
   var STORAGE_KEY = 'esiana-global-theme-preset';
   var PALETTE_KEY = 'esiana-global-palette';
   var TINT_KEY = 'esiana-apply-background-tint';
@@ -22,13 +30,13 @@
     dark: {
       '--color-primary': '#f59e0b',
       '--color-primary-hover': '#d97706',
-      '--color-bg': '#020617',
-      '--color-bg-elevated': '#0f172a',
-      '--color-surface': '#1e293b',
-      '--color-border': '#334155',
-      '--color-text': '#f1f5f9',
-      '--color-text-muted': '#94a3b8',
-      '--color-accent': '#818cf8',
+      '--color-bg': '#090b11',
+      '--color-bg-elevated': '#0d1118',
+      '--color-surface': '#111827',
+      '--color-border': 'rgb(214 197 168 / 0.10)',
+      '--color-text': '#e8e4dc',
+      '--color-text-muted': '#8a8278',
+      '--color-accent': '#c4a574',
     },
     fantasy: {
       '--color-primary': '#a78bfa',

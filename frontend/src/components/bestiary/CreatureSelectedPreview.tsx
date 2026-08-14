@@ -93,7 +93,7 @@ export function CreatureSelectedPreview({
         </Link>
         {isDMUser ? (
           <Link
-            to={`${pagePath}?openInspector=1`}
+            to={pagePath}
             className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-elevated/60"
           >
             <Pencil className="size-3" aria-hidden />

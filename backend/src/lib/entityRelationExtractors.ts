@@ -460,6 +460,28 @@ export function extractWikiPageGraphEdges(input: WikiPageGraphExtractInput): Ent
     });
   }
 
+  for (const locRel of characterIdentity.locationRelations) {
+    pushDirected(rows, {
+      sourceEntityType: WIKI,
+      sourceEntityId: pageId,
+      targetEntityType: WIKI,
+      targetEntityId: locRel.locationPageId,
+      relationKind: EntityRelationKinds.CHARACTER_LOCATION,
+      startDate: null,
+      endDate: null,
+      visibility: null,
+      payload: {
+        kind: EntityRelationKinds.CHARACTER_LOCATION,
+        role: locRel.role,
+        featured: locRel.featured === true ? true : undefined,
+        preview: { sourceLabel: title },
+      },
+      sourceDomain: EntityRelationSourceDomains.WIKI_METADATA,
+      sourceRecordKey: `character_location:${pageId}:${locRel.locationPageId}:${locRel.role}`,
+      sourcePageId: pageId,
+    });
+  }
+
   const quest = parseQuestMetadata(metadata);
   if (quest.questGiverId) {
     pushDirected(rows, {

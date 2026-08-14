@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../prisma.js';
+import { bumpUserSessionVersion } from './sessionVersion.js';
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 const MIN_PASSWORD_LENGTH = 8;
@@ -84,6 +85,7 @@ export async function consumePasswordResetToken(
       data: { usedAt: new Date() },
     }),
   ]);
+  await bumpUserSessionVersion(row.userId);
 
   return { ok: true };
 }

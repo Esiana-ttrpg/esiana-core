@@ -8,21 +8,21 @@ import {
 } from './visualAtlasProjection.js';
 
 describe('classifyVisualAtlasFilter', () => {
-  it('maps character template type to characters filter', () => {
+  it('maps character entity category to characters filter', () => {
     assert.equal(
       classifyVisualAtlasFilter({
-        templateType: 'CHARACTER',
-        metadata: {},
+        templateType: 'DEFAULT',
+        metadata: { entityCategory: 'characters' },
       }),
       'characters',
     );
   });
 
-  it('maps organization template type to organizations filter', () => {
+  it('maps organization entity category to organizations filter', () => {
     assert.equal(
       classifyVisualAtlasFilter({
-        templateType: 'ORGANIZATION',
-        metadata: {},
+        templateType: 'DEFAULT',
+        metadata: { entityCategory: 'organizations' },
       }),
       'organizations',
     );

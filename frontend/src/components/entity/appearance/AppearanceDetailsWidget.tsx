@@ -2,6 +2,13 @@ import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useState } from 'react';
 import type { AppearanceDetailsFields } from '@shared/appearanceMetadata';
 import type { AppearanceDetailsViewModel } from '@/lib/entityAppearanceProjection';
+import { getAppearanceFieldGuidance } from '@/lib/appearanceFieldGuidance';
+import { AppearanceFieldLabel } from './AppearanceFieldLabel';
+import {
+  EntityFactReadValue,
+  EntityFactRow,
+  EntityFactRowList,
+} from '@/components/entity/shells/EntityFactRow';
 import {
   appearanceFieldClass,
   formatCommaList,
@@ -9,6 +16,60 @@ import {
   parseCommaListDraft,
   SectionLabel,
 } from './appearanceShared';
+
+function joinList(items: string[]): string {
+  return items.map((item) => item.trim()).filter(Boolean).join(', ');
+}
+
+/** Compact wiki fact rows for appearance read — omits empty fields. */
+export function AppearanceDetailsFactRows({
+  details,
+}: {
+  details: AppearanceDetailsViewModel;
+}) {
+  const features = joinList(details.distinguishingFeatures);
+  const injuries = joinList(details.visibleInjuries);
+
+  return (
+    <EntityFactRowList>
+      {details.atAGlance?.trim() ? (
+        <EntityFactRow label="At a glance">
+          <span className="font-normal">{details.atAGlance.trim()}</span>
+        </EntityFactRow>
+      ) : null}
+      {details.build?.trim() ? (
+        <EntityFactRow label="Build">
+          <EntityFactReadValue value={details.build} />
+        </EntityFactRow>
+      ) : null}
+      {details.voice?.trim() ? (
+        <EntityFactRow label="Voice">
+          <EntityFactReadValue value={details.voice} />
+        </EntityFactRow>
+      ) : null}
+      {details.vibeImpression?.trim() ? (
+        <EntityFactRow label="Presence">
+          <EntityFactReadValue value={details.vibeImpression} />
+        </EntityFactRow>
+      ) : null}
+      {details.clothingMotifs?.trim() ? (
+        <EntityFactRow label="Clothing motifs">
+          <EntityFactReadValue value={details.clothingMotifs} />
+        </EntityFactRow>
+      ) : null}
+      {features ? (
+        <EntityFactRow label="Distinguishing features">
+          <span>{features}</span>
+        </EntityFactRow>
+      ) : null}
+      {injuries ? (
+        <EntityFactRow label="Visible injuries">
+          <span>{injuries}</span>
+        </EntityFactRow>
+      ) : null}
+    </EntityFactRowList>
+  );
+}
 
 interface AppearanceDetailsReadProps {
   details: AppearanceDetailsViewModel;
@@ -104,20 +165,15 @@ export function AppearanceDetailsEditor({
   return (
     <div className="grid gap-3">
       <div className="space-y-1">
-        <SectionLabel>Details</SectionLabel>
-        <p className="text-[10px] text-muted">
-          Baseline characterization — form-specific shifts belong in a Form&apos;s presentation
-          notes.
-        </p>
-      </div>
-
-      <label className="space-y-1" id="appearance.atAGlance">
-        <span className={META_FIELD_LABEL_CLASS}>
-          At a glance
-        </span>
+        <AppearanceFieldLabel
+          label="At a glance"
+          htmlFor="appearance.atAGlance"
+          guidance={getAppearanceFieldGuidance('atAGlance')}
+        />
         <textarea
+          id="appearance.atAGlance"
           className={`${appearanceFieldClass} min-h-[4rem] resize-y`}
-          placeholder="Tall and composed, dressed in layered charcoal fabrics…"
+          placeholder="Optional snapshot…"
           value={details.atAGlance ?? ''}
           onChange={(e) =>
             onChange({ ...details, atAGlance: e.target.value || null })
@@ -125,72 +181,87 @@ export function AppearanceDetailsEditor({
           onBlur={() => onPersist({ atAGlance: details.atAGlance?.trim() || null })}
           rows={3}
         />
-      </label>
+      </div>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="space-y-1" id="appearance.build">
-          <span className={META_FIELD_LABEL_CLASS}>
-            Build
-          </span>
+        <div className="space-y-1">
+          <AppearanceFieldLabel
+            label="Build"
+            htmlFor="appearance.build"
+            guidance={getAppearanceFieldGuidance('build')}
+          />
           <input
+            id="appearance.build"
             className={appearanceFieldClass}
-            placeholder="Lean, broad-shouldered…"
+            placeholder="Optional"
             value={details.build ?? ''}
             onChange={(e) => onChange({ ...details, build: e.target.value || null })}
             onBlur={() => onPersist({ build: details.build?.trim() || null })}
           />
-        </label>
-        <label className="space-y-1" id="appearance.voice">
-          <span className={META_FIELD_LABEL_CLASS}>
-            Voice
-          </span>
+        </div>
+        <div className="space-y-1">
+          <AppearanceFieldLabel
+            label="Voice"
+            htmlFor="appearance.voice"
+            guidance={getAppearanceFieldGuidance('voice')}
+          />
           <input
+            id="appearance.voice"
             className={appearanceFieldClass}
-            placeholder="Soft, deliberate…"
+            placeholder="Optional"
             value={details.voice ?? ''}
             onChange={(e) => onChange({ ...details, voice: e.target.value || null })}
             onBlur={() => onPersist({ voice: details.voice?.trim() || null })}
           />
-        </label>
+        </div>
       </div>
 
-      <label className="space-y-1" id="appearance.vibeImpression">
-        <span className={META_FIELD_LABEL_CLASS}>
-          Vibe / impression
-        </span>
+      <div className="space-y-1">
+        <AppearanceFieldLabel
+          label="Presence"
+          htmlFor="appearance.vibeImpression"
+          guidance={getAppearanceFieldGuidance('presence')}
+        />
         <input
+          id="appearance.vibeImpression"
           className={appearanceFieldClass}
-          placeholder="Radiates calm authority…"
+          placeholder="Optional"
           value={details.vibeImpression ?? ''}
           onChange={(e) =>
             onChange({ ...details, vibeImpression: e.target.value || null })
           }
           onBlur={() => onPersist({ vibeImpression: details.vibeImpression?.trim() || null })}
         />
-      </label>
+      </div>
 
-      <label className="space-y-1" id="appearance.clothingMotifs">
-        <span className={META_FIELD_LABEL_CLASS}>
-          Clothing motifs
-        </span>
+      <div className="space-y-1">
+        <AppearanceFieldLabel
+          label="Clothing motifs"
+          htmlFor="appearance.clothingMotifs"
+          guidance={getAppearanceFieldGuidance('clothingMotifs')}
+        />
         <input
+          id="appearance.clothingMotifs"
           className={appearanceFieldClass}
-          placeholder="Moon-and-star regalia, ribboned sailor silhouettes, crescent gold accents……"
+          placeholder="Optional"
           value={details.clothingMotifs ?? ''}
           onChange={(e) =>
             onChange({ ...details, clothingMotifs: e.target.value || null })
           }
           onBlur={() => onPersist({ clothingMotifs: details.clothingMotifs?.trim() || null })}
         />
-      </label>
+      </div>
 
-      <label className="space-y-1" id="appearance.distinguishingFeatures">
-        <span className={META_FIELD_LABEL_CLASS}>
-          Distinguishing features
-        </span>
+      <div className="space-y-1">
+        <AppearanceFieldLabel
+          label="Distinguishing features"
+          htmlFor="appearance.distinguishingFeatures"
+          guidance={getAppearanceFieldGuidance('distinguishingFeatures')}
+        />
         <input
+          id="appearance.distinguishingFeatures"
           className={appearanceFieldClass}
-          placeholder="Silver burn scar, cedar smoke scent — comma-separated"
+          placeholder="Comma-separated"
           value={featuresInput}
           onChange={(e) => {
             setFeaturesInput(e.target.value);
@@ -206,15 +277,18 @@ export function AppearanceDetailsEditor({
             onPersist({ distinguishingFeatures: normalized });
           }}
         />
-      </label>
+      </div>
 
-      <label className="space-y-1" id="appearance.visibleInjuries">
-        <span className={META_FIELD_LABEL_CLASS}>
-          Visible injuries
-        </span>
+      <div className="space-y-1">
+        <AppearanceFieldLabel
+          label="Visible injuries"
+          htmlFor="appearance.visibleInjuries"
+          guidance={getAppearanceFieldGuidance('visibleInjuries')}
+        />
         <input
+          id="appearance.visibleInjuries"
           className={appearanceFieldClass}
-          placeholder="Limping left leg, bandaged hand — comma-separated"
+          placeholder="Comma-separated"
           value={injuriesInput}
           onChange={(e) => {
             setInjuriesInput(e.target.value);
@@ -230,7 +304,7 @@ export function AppearanceDetailsEditor({
             onPersist({ visibleInjuries: normalized });
           }}
         />
-      </label>
+      </div>
     </div>
   );
 }

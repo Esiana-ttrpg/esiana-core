@@ -30,9 +30,6 @@ export const NARRATIVE_STRUCTURE_TYPES: ReadonlySet<ContinuityIssueType> = new S
   'narrative_density_thread_overload',
 ]);
 
-/** @deprecated Use NARRATIVE_STRUCTURE_TYPES */
-export const NARRATIVE_DEAD_END_TYPES = NARRATIVE_STRUCTURE_TYPES;
-
 export const NARRATIVE_ORPHAN_TYPES: ReadonlySet<ContinuityIssueType> = new Set([
   'narrative_orphan_entity',
   'narrative_orphan_npc',
@@ -130,11 +127,6 @@ const TYPE_TO_CATEGORY: Partial<
 
 export function isNarrativeStructureIssue(issue: ContinuityIssue): boolean {
   return NARRATIVE_STRUCTURE_TYPES.has(issue.type);
-}
-
-/** @deprecated Use isNarrativeStructureIssue */
-export function isNarrativeDeadEndIssue(issue: ContinuityIssue): boolean {
-  return isNarrativeStructureIssue(issue);
 }
 
 export function isNarrativeOrphanIssue(issue: ContinuityIssue): boolean {

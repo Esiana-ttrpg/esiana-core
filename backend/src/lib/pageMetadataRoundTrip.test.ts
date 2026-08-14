@@ -16,7 +16,7 @@ describe('pageMetadataRoundTrip', () => {
   it('round-trips character appearance with gallery forms', () => {
     const metadata = {
       entityCategory: 'characters',
-      templateType: 'CHARACTER',
+      templateType: 'DEFAULT',
       profession: 'Student',
       activeArc: 'Hide the curse',
       partyParticipation: { active: true, role: 'PLAYER_CHARACTER' },

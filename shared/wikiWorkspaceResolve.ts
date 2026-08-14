@@ -42,7 +42,7 @@ export const CATEGORY_INDEX_TITLES = new Set([
 export type WikiPageWorkspaceInput = {
   id: string;
   title: string;
-  parentId: string | null;
+  parentId?: string | null;
   templateType: string;
   metadata?: unknown;
 };
@@ -67,7 +67,7 @@ function isPageUnderSystemCategory(
     const node = pageById.get(current);
     if (!node) break;
     if (parseSystemCategoryKey(node.metadata) === systemKey) return true;
-    current = node.parentId;
+    current = node.parentId ?? null;
   }
   return false;
 }
@@ -86,7 +86,7 @@ function isPageUnderCategoryTitle(
     const node = pageById.get(current);
     if (!node) break;
     if (node.title === categoryTitle) return true;
-    current = node.parentId;
+    current = node.parentId ?? null;
   }
   return false;
 }
@@ -160,18 +160,6 @@ export function resolveWorkspaceForPage(
   }
   if (page.templateType === DOWNTIME_PROJECT_TEMPLATE_TYPE) {
     return CampaignWorkspace.PROJECTS;
-  }
-  if (page.templateType === 'CHARACTER') {
-    return CampaignWorkspace.CHARACTERS;
-  }
-  if (page.templateType === 'ORGANIZATION') {
-    return CampaignWorkspace.ORGANIZATIONS;
-  }
-  if (page.templateType === 'FAMILY') {
-    return CampaignWorkspace.FAMILIES;
-  }
-  if (page.templateType === 'LOCATION') {
-    return CampaignWorkspace.LOCATIONS;
   }
 
   if (isPageUnderSystemCategory(page.id, flatPages, SYSTEM_CATEGORY_NARRATIVE_THREADS)) {

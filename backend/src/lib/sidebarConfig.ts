@@ -122,11 +122,6 @@ export function getDefaultSidebarConfig(): SidebarConfig {
   };
 }
 
-export function getBlankInitializerSidebarOrder(): SidebarOrderItem[] {
-  const config = getDefaultSidebarConfig();
-  return [...config.worldLoreOrder, ...config.playOrder, ...config.toolsOrder];
-}
-
 function isSidebarOrderItem(value: unknown): value is SidebarOrderItem {
   if (!value || typeof value !== 'object') return false;
   const row = value as Record<string, unknown>;

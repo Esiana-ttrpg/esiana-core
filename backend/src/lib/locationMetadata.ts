@@ -4,36 +4,43 @@ import {
   readLegacyMetadataField,
   syncMetadataIndexFields,
 } from './codexMetadataShared.js';
-import { normalizeNullableText } from './entityRelationTypes.js';
+import { normalizeNullableText, normalizeStringArray } from './entityRelationTypes.js';
+
+/** Short narrative entries (not taxonomy tags); v1 UI may present as chips. */
+export type LocationKnownForEntry = string;
 
 export interface LocationMetadataFields {
   locationType: string | null;
   region: string | null;
   regionKey: string | null;
   regionPageId: string | null;
-  dangerLevel: number | null;
+  threats: string[];
   rulerOrAuthority: string | null;
   population: string | null;
   climate: string | null;
-  knownFor: string | null;
+  knownFor: LocationKnownForEntry[];
+  currentStatus: string | null;
   mapPageId: string | null;
   relatedLocationIds: string[];
 }
 
-function normalizeDangerLevel(raw: unknown): number | null {
-  if (typeof raw === 'number' && Number.isFinite(raw)) {
-    const n = Math.round(raw);
-    if (n >= 1 && n <= 5) return n;
-    return null;
+function dedupeStringsCaseInsensitive(entries: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const entry of entries) {
+    const key = entry.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
   }
+  return out;
+}
+
+function normalizeShortEntryList(raw: unknown): string[] {
   if (typeof raw === 'string' && raw.trim()) {
-    const parsed = Number(raw);
-    if (Number.isFinite(parsed)) {
-      const n = Math.round(parsed);
-      if (n >= 1 && n <= 5) return n;
-    }
+    return [raw.trim()];
   }
-  return null;
+  return dedupeStringsCaseInsensitive(normalizeStringArray(raw));
 }
 
 function normalizeRegionKey(raw: unknown): string | null {
@@ -47,11 +54,12 @@ const LOCATION_METADATA_KEYS = [
   'region',
   'regionKey',
   'regionPageId',
-  'dangerLevel',
+  'threats',
   'rulerOrAuthority',
   'population',
   'climate',
   'knownFor',
+  'currentStatus',
   'mapPageId',
   'relatedLocationIds',
 ] as const;
@@ -61,11 +69,12 @@ const EMPTY: LocationMetadataFields = {
   region: null,
   regionKey: null,
   regionPageId: null,
-  dangerLevel: null,
+  threats: [],
   rulerOrAuthority: null,
   population: null,
   climate: null,
-  knownFor: null,
+  knownFor: [],
+  currentStatus: null,
   mapPageId: null,
   relatedLocationIds: [],
 };
@@ -96,11 +105,12 @@ export function parseLocationMetadata(metadata: unknown): LocationMetadataFields
       normalizeNullableText(raw.region) ?? readLegacyMetadataField(raw, 'Region'),
     regionKey: normalizeRegionKey(raw.regionKey),
     regionPageId: normalizeOptionalPageId(raw.regionPageId),
-    dangerLevel: normalizeDangerLevel(raw.dangerLevel),
+    threats: normalizeShortEntryList(raw.threats),
     rulerOrAuthority: normalizeNullableText(raw.rulerOrAuthority),
     population: normalizeNullableText(raw.population),
     climate: normalizeNullableText(raw.climate),
-    knownFor: normalizeNullableText(raw.knownFor),
+    knownFor: normalizeShortEntryList(raw.knownFor),
+    currentStatus: normalizeNullableText(raw.currentStatus),
     mapPageId: normalizeOptionalPageId(raw.mapPageId),
     relatedLocationIds: normalizePageIdList(raw.relatedLocationIds),
   };
@@ -117,9 +127,11 @@ export function mergeLocationMetadata(
   const parsed = parseLocationMetadata(base);
   const merged: LocationMetadataFields = { ...parsed, ...patch };
   const result: Record<string, unknown> = { ...base, ...merged };
+  delete result.dangerLevel;
   syncMetadataIndexFields(result, {
     Region: merged.region,
     Type: merged.locationType,
+    Status: merged.currentStatus,
     Ruler: merged.rulerOrAuthority,
     Population: merged.population,
   });

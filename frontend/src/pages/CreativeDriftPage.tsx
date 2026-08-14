@@ -1,7 +1,7 @@
 import { Navigate, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import { campaignAdventureHubPath } from '@/lib/campaignPaths';
-import { adventureSectionHref } from '@/lib/adventureLayout';
+import { adventureViewHref } from '@/lib/adventureLayout';
 import { parseSystemCategoryKey, SYSTEM_CATEGORY_QUESTS } from '@/lib/wikiSystemCategory';
 import { CreativeDriftContent } from '@/components/creativeDrift/CreativeDriftContent';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -39,9 +39,7 @@ export function CreativeDriftPage() {
   if (questsCategoryId) {
     return (
       <Navigate
-        to={adventureSectionHref(campaignAdventureHubPath(campaignHandle), 'story', {
-          view: 'unresolved',
-        })}
+        to={adventureViewHref(campaignAdventureHubPath(campaignHandle), 'unresolved')}
         replace
       />
     );

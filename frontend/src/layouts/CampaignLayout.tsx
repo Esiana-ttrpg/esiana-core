@@ -214,9 +214,11 @@ function CampaignLayoutShell() {
       <CampaignRecencyRecorder />
       <InviteJoinBridge />
       <SystemAnnouncementBanner />
-      <AppHeader />
+      <div data-print-hide>
+        <AppHeader />
+      </div>
       <div className={`${CANVAS_ATMOSPHERE_AMBIENT_CLASS} flex min-h-0 flex-1`}>
-        <div className="hidden min-h-0 shrink-0 self-stretch lg:flex">
+        <div className="hidden min-h-0 shrink-0 self-stretch lg:flex" data-print-hide>
           <Sidebar collapsed={sidebarCollapsed} />
         </div>
 
@@ -236,8 +238,10 @@ function CampaignLayoutShell() {
 
         <div className={`${WORKSPACE_SURFACE_CLASS} min-w-0 flex-1 overflow-y-auto overflow-x-hidden`}>
           <div className={workspaceContainerClasses}>
-            <WorkspaceRail config={workspaceChrome.rail} />
-            <WorkspaceContextStrip config={workspaceChrome.strip} />
+            <div data-print-hide>
+              <WorkspaceRail config={workspaceChrome.rail} />
+              <WorkspaceContextStrip config={workspaceChrome.strip} />
+            </div>
             <div
               className="workspace-gutter"
               data-workspace-rail={railVisible ? 'true' : undefined}

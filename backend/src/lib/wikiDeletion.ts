@@ -89,13 +89,11 @@ export function collectDirectChildIdsFromGraph(
 }
 
 export function isLocationPage(page: WikiPageGraphNode): boolean {
-  if (page.templateType === 'LOCATION') return true;
-  return readEntityCategoryFromMetadata(page.metadata) === 'Locations';
+  return readEntityCategoryFromMetadata(page.metadata) === 'locations';
 }
 
 export function isCharacterPage(page: WikiPageGraphNode): boolean {
-  if (page.templateType === 'CHARACTER') return true;
-  return readEntityCategoryFromMetadata(page.metadata) === 'Characters';
+  return readEntityCategoryFromMetadata(page.metadata) === 'characters';
 }
 
 export function isItemPage(

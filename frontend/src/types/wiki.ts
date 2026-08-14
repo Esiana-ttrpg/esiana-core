@@ -118,6 +118,7 @@ export type WikiPageBlockType =
   | 'entity-document'
   | 'entity-thread-properties'
   | 'entity-scene-properties'
+  | 'entity-quest-properties'
   | 'entity-objective-properties'
   | 'entity-arc-properties';
 
@@ -184,6 +185,8 @@ export interface WikiPageLayoutPayload {
   createdAt?: string;
   updatedAt?: string;
   narrativeStatus?: PageNarrativeStatusProjection;
+  canEdit?: boolean;
+  editBlock?: { kind: string; ownership?: string };
 }
 
 export interface WikiTagWithCount extends WikiTag {
@@ -388,6 +391,8 @@ export interface QuestMetadataFields {
   rewardsText: string | null;
   dmRewardsText: string | null;
   ledgerReward: import('@shared/ledgerMetadata').QuestLedgerReward | null;
+  summary: string | null;
+  gmNotes: string | null;
 }
 
 export interface QuestHubTagSummary {

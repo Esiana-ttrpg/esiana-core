@@ -1,15 +1,15 @@
-import { Pencil, Plus, Save, Search } from 'lucide-react';
+import { LayoutGrid, PenLine, Pencil, Plus, Save, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { usePageBlockDraftRegistry } from '@/contexts/PageBlockDraftRegistry';
 import type { WikiPageBlock } from '@/types/wiki';
-import type { WorkspaceMode } from '@/lib/surfaceDensityProfile';
-import { WikiPageEditStatusHint } from '@/components/wiki/WikiPageEditStatusHint';
-import type { BlockDisplayState } from '@/lib/blockDisplayState';
-import type { PageContinuitySummary } from '@/lib/pageCodexDiagnostics';
+import { WikiPageExportMenu } from '@/components/wiki/WikiPageExportMenu';
 import { WikiPageMoreMenu } from '@/components/wiki/WikiPageMoreMenu';
+import type { PageExportContext } from '@/lib/pageExport';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
+import { campaignWorkshopPath } from '@/lib/campaignPaths';
 
 function toolbarButtonClass(active: boolean): string {
-  return `inline-flex size-10 sm:size-8 items-center justify-center rounded-md border transition-all ${
+  return `inline-flex h-8 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-all ${
     active
       ? 'border-primary/50 bg-primary/10 text-primary'
       : 'border-transparent bg-transparent text-muted hover:border-border/60 hover:bg-surface/60 hover:text-foreground'
@@ -17,6 +17,10 @@ function toolbarButtonClass(active: boolean): string {
 }
 
 interface WikiPageRuntimeToolbarProps {
+  campaignHandle: string;
+  pageId?: string;
+  canOpenWorkshop?: boolean;
+  confirmWorkshopLeave?: boolean;
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;
@@ -24,29 +28,25 @@ interface WikiPageRuntimeToolbarProps {
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;
   isSearchOpen: boolean;
-  isCodexRailOpen: boolean;
   isEditingPage: boolean;
   showGridLines: boolean;
-  workspaceMode: WorkspaceMode;
   canDeleteWikiPage: boolean;
-  blockDisplayState: BlockDisplayState;
   widgetOptions: Array<{ value: string; label: string; group?: string }>;
   onTogglePin: () => void;
   onToggleSearch: () => void;
-  onToggleCodexRail: () => void;
-  onCodexDiagnosticsClick?: () => void;
-  codexDiagnosticsSummary?: PageContinuitySummary | null;
-  codexDiagnosticsLoading?: boolean;
-  codexDiagnosticsError?: string | null;
-  showPlayerCodexRail?: boolean;
   onToggleEditPage: () => void;
   onToggleGridLines: () => void;
   onOpenPageSettings?: () => void;
   onAddWidget: (type: WikiPageBlock['type']) => void;
   onDeletePage: () => void;
+  getExportContext?: () => PageExportContext;
 }
 
 export function WikiPageRuntimeToolbar({
+  campaignHandle,
+  pageId,
+  canOpenWorkshop = false,
+  confirmWorkshopLeave = false,
   isDMUser: isDMUserProp,
   isTagsHub,
   isLayoutDirty = false,
@@ -54,46 +54,64 @@ export function WikiPageRuntimeToolbar({
   onSavePage,
   isPinned,
   isSearchOpen,
-  isCodexRailOpen,
   isEditingPage,
   showGridLines,
-  workspaceMode,
   canDeleteWikiPage,
-  blockDisplayState,
   widgetOptions,
   onTogglePin,
   onToggleSearch,
-  onToggleCodexRail,
-  onCodexDiagnosticsClick,
-  codexDiagnosticsSummary = null,
-  showPlayerCodexRail = false,
   onToggleEditPage,
   onToggleGridLines,
   onOpenPageSettings,
   onAddWidget,
   onDeletePage,
+  getExportContext,
 }: WikiPageRuntimeToolbarProps) {
+  const navigate = useNavigate();
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const draftRegistry = usePageBlockDraftRegistry();
   const hasUnsavedWork =
     isLayoutDirty || (draftRegistry?.hasSemanticDirty ?? false);
 
+  const handleOpenWorkshop = () => {
+    if (!pageId) return;
+    if (confirmWorkshopLeave) {
+      const proceed = window.confirm(
+        'You have unsaved page changes. Open Workshop anyway?',
+      );
+      if (!proceed) return;
+    }
+    navigate(campaignWorkshopPath(campaignHandle, { fromPageId: pageId }));
+  };
+
+  const showReadBar = isDMUser || !isTagsHub;
+
+  if (!showReadBar) return null;
+
   return (
-    <div className="flex w-full shrink-0 flex-col items-stretch gap-1.5 sm:w-auto sm:items-end">
+    <div className="flex shrink-0 flex-col items-stretch gap-1.5">
       <div
-        className="flex max-w-full flex-wrap items-center justify-start gap-1 sm:justify-end sm:gap-0.5"
+        className="flex max-w-full flex-wrap items-center justify-end gap-0.5"
         role="toolbar"
         aria-label="Page tools"
+        data-print-hide
       >
-        <button
-          type="button"
-          onClick={onToggleSearch}
-          aria-pressed={isSearchOpen}
-          title="Search page"
-          className={toolbarButtonClass(isSearchOpen)}
-        >
-          <Search className="size-3.5" />
-        </button>
+        {!isTagsHub && getExportContext ? (
+          <WikiPageExportMenu isTagsHub={isTagsHub} getExportContext={getExportContext} />
+        ) : null}
+
+        {!isTagsHub ? (
+          <button
+            type="button"
+            onClick={onToggleSearch}
+            aria-pressed={isSearchOpen}
+            title="Search page"
+            className={toolbarButtonClass(isSearchOpen)}
+          >
+            <Search className="size-3.5 shrink-0" aria-hidden />
+            <span>Search</span>
+          </button>
+        ) : null}
 
         {isDMUser && !isTagsHub ? (
           <button
@@ -104,41 +122,38 @@ export function WikiPageRuntimeToolbar({
             title={isEditingPage ? 'Done editing' : 'Edit page'}
             className={`${toolbarButtonClass(isEditingPage)} disabled:opacity-50`}
           >
-            <Pencil className="size-3.5" />
+            <Pencil className="size-3.5 shrink-0" aria-hidden />
+            <span>{isEditingPage ? 'Done' : 'Edit'}</span>
           </button>
         ) : null}
 
-        <WikiPageMoreMenu
-          isTagsHub={isTagsHub}
-          isPinned={isPinned}
-          isCodexRailOpen={isCodexRailOpen}
-          isEditingPage={isEditingPage}
-          showGridLines={showGridLines}
-          canDeleteWikiPage={canDeleteWikiPage}
-          onTogglePin={onTogglePin}
-          onToggleCodexRail={onToggleCodexRail}
-          onOpenPageSettings={onOpenPageSettings}
-          onToggleGridLines={onToggleGridLines}
-          onCodexDiagnosticsClick={onCodexDiagnosticsClick}
-          codexDiagnosticsSummary={codexDiagnosticsSummary}
-          onDeletePage={onDeletePage}
-          showPlayerCodexRail={showPlayerCodexRail}
-        />
+        {isDMUser && !isTagsHub ? (
+          <WikiPageMoreMenu
+            isTagsHub={isTagsHub}
+            isPinned={isPinned}
+            canDeleteWikiPage={canDeleteWikiPage}
+            onTogglePin={onTogglePin}
+            onOpenPageSettings={onOpenPageSettings}
+            onDeletePage={onDeletePage}
+          />
+        ) : null}
       </div>
 
       {isDMUser && isEditingPage && !isTagsHub ? (
         <div
-          className="flex w-full flex-wrap items-center justify-start gap-1 border-t border-border/40 pt-1.5 sm:w-auto sm:justify-end sm:gap-0.5 sm:border-0 sm:pt-0"
+          className="flex flex-wrap items-center justify-end gap-0.5"
           role="toolbar"
           aria-label="Editing tools"
+          data-print-hide
         >
           <div className="relative">
             <button
               type="button"
-              title="Add block"
+              title="Add widget"
               className={toolbarButtonClass(false)}
             >
-              <Plus className="size-3.5" />
+              <Plus className="size-3.5 shrink-0" aria-hidden />
+              <span>Add Widget</span>
             </button>
             <select
               value=""
@@ -150,9 +165,9 @@ export function WikiPageRuntimeToolbar({
                 }
               }}
               className="absolute inset-0 cursor-pointer opacity-0"
-              aria-label="Add block"
+              aria-label="Add widget"
             >
-              <option value="">Add block</option>
+              <option value="">Add widget</option>
               {widgetOptions.map((option) => (
                 <option
                   key={`${option.group ?? 'widget'}-${option.value}`}
@@ -164,29 +179,43 @@ export function WikiPageRuntimeToolbar({
             </select>
           </div>
 
-          {hasUnsavedWork && onSavePage ? (
+          <button
+            type="button"
+            onClick={onToggleGridLines}
+            aria-pressed={showGridLines}
+            title={showGridLines ? 'Exit arrange mode' : 'Arrange blocks'}
+            className={toolbarButtonClass(showGridLines)}
+          >
+            <LayoutGrid className="size-3.5 shrink-0" aria-hidden />
+            <span>{showGridLines ? 'Done arranging' : 'Arrange Blocks'}</span>
+          </button>
+
+          {onSavePage ? (
             <button
               type="button"
               onClick={() => void onSavePage()}
-              disabled={isSaving}
+              disabled={isSaving || !hasUnsavedWork}
               title="Save page changes"
-              className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 text-xs font-medium text-primary transition-all hover:bg-primary/15 disabled:opacity-50"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2 text-xs font-medium text-primary transition-all hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Save className="size-3.5" />
+              <Save className="size-3.5 shrink-0" aria-hidden />
               Save
             </button>
           ) : null}
-        </div>
-      ) : null}
 
-      {isDMUser && isEditingPage ? (
-        <WikiPageEditStatusHint
-          workspaceMode={workspaceMode}
-          isEditingPage={isEditingPage}
-          showGridLines={showGridLines}
-          blockDisplayState={blockDisplayState}
-          className="max-w-[14rem] text-right"
-        />
+          {canOpenWorkshop && pageId ? (
+            <button
+              type="button"
+              onClick={handleOpenWorkshop}
+              disabled={isSaving}
+              title="Open in Workshop"
+              className={toolbarButtonClass(false)}
+            >
+              <PenLine className="size-3.5 shrink-0" aria-hidden />
+              <span>Workshop</span>
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

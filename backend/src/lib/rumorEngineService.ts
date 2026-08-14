@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { LoreClaim, Prisma, RumorCirculation } from '@prisma/client';
 import { prisma } from './prisma.js';
+import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { resolveRegionScope } from './regionSnapshotService.js';
 import { parseLocationMetadata } from './locationMetadata.js';
 import { parseOrganizationMetadata } from './organizationMetadata.js';
@@ -118,7 +119,7 @@ async function buildRegionProjectionScope(
   if (base.regionKey) regionKeys.add(base.regionKey);
 
   const orgPages = await prisma.wikiPage.findMany({
-    where: { campaignId, deletedAt: null, templateType: 'ORGANIZATION' },
+    where: { campaignId, deletedAt: null, ...buildEntityCategoryWhereClause('organizations') },
     select: { id: true, metadata: true },
     take: 300,
   });
@@ -151,7 +152,7 @@ async function buildFactionProjectionScope(
   orgPageId: string,
 ): Promise<FactionProjectionScope | null> {
   const page = await prisma.wikiPage.findFirst({
-    where: { id: orgPageId, campaignId, deletedAt: null, templateType: 'ORGANIZATION' },
+    where: { id: orgPageId, campaignId, deletedAt: null, ...buildEntityCategoryWhereClause('organizations') },
     select: { id: true, metadata: true },
   });
   if (!page) return null;

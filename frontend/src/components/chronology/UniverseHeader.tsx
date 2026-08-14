@@ -48,10 +48,10 @@ export function UniverseHeader({
   const [searchParams] = useSearchParams();
 
   return (
-    <header className="grid shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-xl border border-border bg-surface/40 px-3 py-2">
-      <div className="flex items-center gap-3">
-        <h1 className="text-base font-semibold text-foreground">Chronology Hub</h1>
-        <nav className="inline-flex rounded-lg border border-border bg-background p-0.5 text-xs">
+    <header className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+      <div className="flex min-w-0 flex-wrap items-center gap-3">
+        <h1 className="text-base font-semibold text-foreground">Chronology</h1>
+        <nav className="inline-flex rounded-md border border-border/40 bg-background/80 p-0.5 text-xs">
           {VIEW_TABS.map((tab) => (
             <Link
               key={tab.id}
@@ -71,7 +71,7 @@ export function UniverseHeader({
       <div className="min-w-0 overflow-x-auto">
         <div className="flex w-max items-center gap-2">
           {clockPills.length === 0 ? (
-            <span className="rounded-full border border-border bg-background px-2 py-1 text-[11px] text-muted">
+            <span className="rounded-full border border-border/40 bg-background px-2 py-0.5 text-xs text-muted">
               No active calendars
             </span>
           ) : (

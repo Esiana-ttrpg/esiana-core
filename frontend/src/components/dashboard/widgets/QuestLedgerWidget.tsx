@@ -27,7 +27,7 @@ export function QuestLedgerWidget({
   return (
     <DashboardWidgetShell
       title="Quest Ledger"
-      icon={<ScrollText className="size-4 text-emerald-400" />}
+      icon={<ScrollText className="size-4 text-primary" />}
       customizeMode={customizeMode}
       onHide={onHide}
     >
@@ -41,7 +41,7 @@ export function QuestLedgerWidget({
             <li key={quest.id}>
               <Link
                 to={campaignWikiPath(campaignHandle, quest.id, flatPages)}
-                className="block rounded-lg border border-border bg-background/50 px-3 py-2.5 text-sm text-foreground transition-colors hover:border-emerald-500/40 hover:text-emerald-200"
+                className="block rounded-lg border border-border bg-background/50 px-3 py-2.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="min-w-0 flex-1 font-medium leading-snug">
@@ -64,7 +64,7 @@ export function QuestLedgerWidget({
                     </div>
                     <div className="h-1 overflow-hidden rounded-full bg-elevated">
                       <div
-                        className="h-full rounded-full bg-emerald-500/80 transition-all"
+                        className="h-full rounded-full bg-primary/80 transition-all"
                         style={{ width: `${quest.progress.percent}%` }}
                       />
                     </div>

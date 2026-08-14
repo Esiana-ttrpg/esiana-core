@@ -203,3 +203,51 @@ export function publishedQuestStatusToLifecycleTarget(
       return null;
   }
 }
+
+/** GM-facing labels for quest orchestration lifecycle (not wiki ACL). */
+export const QUEST_LIFECYCLE_UI_LABELS: Record<NarrativeLifecycleState, string> = {
+  [NarrativeLifecycleStates.LOCKED]: 'Hidden',
+  [NarrativeLifecycleStates.DISCOVERED]: 'Available',
+  [NarrativeLifecycleStates.ACTIVE]: 'Active',
+  [NarrativeLifecycleStates.COMPLETED]: 'Completed',
+  [NarrativeLifecycleStates.FAILED]: 'Failed',
+};
+
+/** Orchestration states exposed in quest page settings. */
+export const QUEST_LIFECYCLE_EDITOR_OPTIONS: readonly NarrativeLifecycleState[] = [
+  NarrativeLifecycleStates.LOCKED,
+  NarrativeLifecycleStates.DISCOVERED,
+  NarrativeLifecycleStates.ACTIVE,
+];
+
+export function questLifecycleDisplayLabel(
+  state: NarrativeLifecycleState | string | null | undefined,
+): string {
+  const normalized = state ? normalizeNarrativeLifecycleState(state) : null;
+  if (!normalized) return QUEST_LIFECYCLE_UI_LABELS[NarrativeLifecycleStates.LOCKED];
+  return QUEST_LIFECYCLE_UI_LABELS[normalized] ?? normalized;
+}
+
+/**
+ * Seed quest lifecycle on create from wiki visibility.
+ * Post-create ACL changes must not call this — lifecycle stays independent.
+ */
+export function initialQuestLifecycleFromWikiVisibility(input: {
+  visibility: string;
+  questStatus?: unknown;
+}): NarrativeLifecycleState {
+  const status =
+    typeof input.questStatus === 'string' ? input.questStatus.trim().toUpperCase() : '';
+  if (status && status !== 'AVAILABLE') {
+    return publishedQuestStatusToLifecycleHint(input.questStatus);
+  }
+  const vis = input.visibility.trim();
+  const upper = vis.toUpperCase();
+  if (vis === 'DM_Only' || upper === 'DM_ONLY') {
+    return NarrativeLifecycleStates.LOCKED;
+  }
+  if (vis === 'Party' || vis === 'Public' || upper === 'PARTY' || upper === 'PUBLIC') {
+    return NarrativeLifecycleStates.DISCOVERED;
+  }
+  return DEFAULT_QUEST_LIFECYCLE_STATE;
+}

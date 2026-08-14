@@ -1,67 +1,21 @@
-import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { ArrowRight, Pencil, Plus, Trash2 } from 'lucide-react';
+import { META_SECTION_LABEL_CLASS, REGION_DEPTH_3_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
+import { Plus, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   MAX_CURRENT_PRESSURES,
   parseOrganizationMetadata,
 } from '@/lib/organizationMetadata';
-import { buildOrganizationStructureProjection } from '@/lib/organizationStructureProjection';
-import { buildOrganizationPresenceProjection } from '@/lib/organizationPresenceProjection';
-import { buildOrganizationPeopleProjection } from '@/lib/organizationPeopleProjection';
 import { orgDiplomaticTensions } from '@/lib/entityProjectionQueries';
 import { useOrganizationReputationStanding } from '@/hooks/useOrganizationReputationStanding';
 import { useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
 import { updateOrganizationMetadata } from '@/lib/wiki';
 import { campaignRelationsPath } from '@/lib/campaignPaths';
+import { buildInfoboxProjection } from '@/lib/buildInfoboxProjection';
+import { ProfileDetailsCard } from './ProfileDetailsCard';
 import type { EntitySubviewId } from '@/lib/entityPageShells/types';
-import type { WikiTreeNode } from '@/types/wiki';
+import type { WikiPageBlock, WikiTreeNode } from '@/types/wiki';
 import { useState } from 'react';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
-
-function DashboardCard({
-  title,
-  children,
-  editMode,
-  isEditingPage,
-  jumpLabel,
-  onJump,
-}: {
-  title: string;
-  children: React.ReactNode;
-  editMode: 'jump-to-tab' | 'read-only' | 'inline';
-  isEditingPage: boolean;
-  jumpLabel?: string;
-  onJump?: () => void;
-}) {
-  return (
-    <article className="rounded-lg border border-border/60 bg-surface/40 p-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className={META_SECTION_LABEL_CLASS}>{title}</h3>
-        {isEditingPage && editMode === 'jump-to-tab' && onJump ? (
-          <button
-            type="button"
-            onClick={onJump}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            <Pencil className="size-3" aria-hidden />
-            {jumpLabel ?? 'Edit'}
-          </button>
-        ) : null}
-        {!isEditingPage && onJump ? (
-          <button
-            type="button"
-            onClick={onJump}
-            className="inline-flex items-center gap-0.5 text-xs text-muted hover:text-primary"
-          >
-            View
-            <ArrowRight className="size-3" aria-hidden />
-          </button>
-        ) : null}
-      </div>
-      {children}
-    </article>
-  );
-}
 
 function toneClass(tone: string | undefined): string {
   if (tone === 'escalation') return 'text-red-400';
@@ -72,23 +26,29 @@ function toneClass(tone: string | undefined): string {
 interface OrganizationOverviewDashboardProps {
   campaignHandle: string;
   pageId: string;
+  templateType: string;
+  blocks: WikiPageBlock[];
   flatPages: WikiTreeNode[];
   pageMetadata: unknown;
   isDMUser?: boolean;
   isEditingPage: boolean;
   onJumpToTab: (subviewId: EntitySubviewId, focus?: string) => void;
   onMetadataSaved: (metadata: Record<string, unknown>) => void;
+  onBlocksChange: (updater: (blocks: WikiPageBlock[]) => WikiPageBlock[]) => void;
 }
 
 export function OrganizationOverviewDashboard({
   campaignHandle,
   pageId,
+  templateType,
+  blocks,
   flatPages,
   pageMetadata,
   isDMUser: isDMUserProp,
   isEditingPage,
   onJumpToTab,
   onMetadataSaved,
+  onBlocksChange,
 }: OrganizationOverviewDashboardProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const campaignNow = useCampaignChronologyNow(campaignHandle);
@@ -103,13 +63,25 @@ export function OrganizationOverviewDashboard({
     metadata: p.metadata ?? null,
   }));
 
-  const structure = buildOrganizationStructureProjection(pageId, snapshots);
-  const presence = buildOrganizationPresenceProjection(pageId, snapshots);
-  const people = buildOrganizationPeopleProjection(pageId, snapshots, campaignNow, isDMUser);
   const pageSnapshot = snapshots.find((s) => s.id === pageId);
   const tensions = pageSnapshot
     ? orgDiplomaticTensions(pageSnapshot, snapshots, campaignNow, isDMUser)
     : [];
+
+  const infoboxBlock = blocks.find((b) => b.type === 'wiki-infobox');
+  const infoboxFields =
+    (infoboxBlock?.content as { fields?: { key: string; value: string }[] })?.fields ??
+    buildInfoboxProjection(templateType, pageMetadata, flatPages, 'organization');
+
+  function updateInfoboxFields(fields: { key: string; value: string }[]) {
+    onBlocksChange((prev) =>
+      prev.map((b) =>
+        b.type === 'wiki-infobox'
+          ? { ...b, content: { ...(b.content as object), fields } }
+          : b,
+      ),
+    );
+  }
 
   async function persistPressures(next: string[]) {
     setSaving(true);
@@ -124,24 +96,26 @@ export function OrganizationOverviewDashboard({
   }
 
   return (
-    <div className="space-y-4">
-      <DashboardCard
-        title="Current pressures"
-        editMode={isEditingPage && isDMUser ? 'inline' : 'jump-to-tab'}
-        isEditingPage={isEditingPage}
-        onJump={() => onJumpToTab('overview', 'currentPressures')}
-      >
+    <div className="space-y-6">
+      <section>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className={META_SECTION_LABEL_CLASS}>Current pressures</h2>
+          {!isEditingPage ? (
+            <button
+              type="button"
+              onClick={() => onJumpToTab('overview', 'currentPressures')}
+              className="text-xs text-muted hover:text-primary"
+            >
+              View all
+            </button>
+          ) : null}
+        </div>
         {org.currentPressures.length === 0 ? (
-          <p className="text-sm text-muted">
-            No active pressures recorded. Add campaign-relevant stressors.
-          </p>
+          <p className="text-sm text-muted">No active pressures recorded.</p>
         ) : (
-          <ul className="space-y-1 text-sm text-foreground">
+          <ul className={`${TYPE_PROSE_CLASS} list-disc space-y-1 pl-5 text-sm`}>
             {org.currentPressures.map((pressure, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="text-amber-500">•</span>
-                <span>{pressure}</span>
-              </li>
+              <li key={i}>{pressure}</li>
             ))}
           </ul>
         )}
@@ -183,110 +157,62 @@ export function OrganizationOverviewDashboard({
             ) : null}
           </div>
         ) : null}
-      </DashboardCard>
+      </section>
 
-      <DashboardCard
-        title="Why they matter now"
-        editMode="read-only"
-        isEditingPage={isEditingPage}
-        onJump={() => onJumpToTab('relations')}
-      >
-        <div className="space-y-2 text-sm">
-          {org.worldState ? (
-            <p>
-              <span className="text-muted">State:</span>{' '}
-              <span className="font-medium capitalize">{org.worldState}</span>
-            </p>
-          ) : null}
-          {standing ? (
-            <p>
-              <span className="text-muted">Party standing:</span>{' '}
-              Trust{' '}
-              <span className={toneClass(standing.trustTone)}>{standing.trustBand}</span>
-              {' · '}
-              Notoriety{' '}
-              <span className={toneClass(standing.notorietyTone)}>{standing.notorietyBand}</span>
-            </p>
-          ) : (
-            <p className="text-muted">No party standing recorded.</p>
-          )}
-          {tensions.length > 0 ? (
-            <p>
-              <span className="text-muted">Active tensions:</span> {tensions.length}
-            </p>
-          ) : null}
-        </div>
-      </DashboardCard>
+      <div className={`${REGION_DEPTH_3_CLASS} space-y-2 text-sm text-muted`}>
+        {org.worldState ? (
+          <p>
+            State: <span className="text-foreground capitalize">{org.worldState}</span>
+          </p>
+        ) : null}
+        {standing ? (
+          <p>
+            Party standing: Trust{' '}
+            <span className={toneClass(standing.trustTone)}>{standing.trustBand}</span>
+            {' · '}
+            Notoriety{' '}
+            <span className={toneClass(standing.notorietyTone)}>{standing.notorietyBand}</span>
+          </p>
+        ) : null}
+        {tensions.length > 0 ? (
+          <p>
+            Active tensions: <span className="text-foreground">{tensions.length}</span>
+          </p>
+        ) : null}
+      </div>
 
-      <nav
-        className="flex flex-wrap gap-2 rounded-lg border border-border/40 bg-surface/20 p-3"
-        aria-label="Explore organization"
-      >
-        <TeaserLink
-          label="Structure"
-          detail={
-            structure
-              ? `${structure.children.length} division${structure.children.length === 1 ? '' : 's'}${
-                  structure.divergentChildCount > 0
-                    ? ` · ${structure.divergentChildCount} divergent`
-                    : ''
-                }`
-              : '—'
-          }
-          onClick={() => onJumpToTab('structure')}
-        />
-        <TeaserLink
-          label="Presence"
-          detail={presence?.excerpt ?? '—'}
-          onClick={() => onJumpToTab('presence')}
-        />
-        <TeaserLink
-          label="People"
-          detail={
-            people.length > 0
-              ? `${people.length} figure${people.length === 1 ? '' : 's'}`
-              : '—'
-          }
-          onClick={() => onJumpToTab('people')}
-        />
-        <TeaserLink
-          label="Relations"
-          detail={
-            tensions.length > 0 ? `${tensions.length} tension${tensions.length === 1 ? '' : 's'}` : '—'
-          }
-          onClick={() => onJumpToTab('relations')}
-        />
-        <TeaserLink label="Lore" detail="Historical notes" onClick={() => onJumpToTab('lore')} />
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        <button type="button" onClick={() => onJumpToTab('structure')} className="text-muted hover:text-primary">
+          Structure
+        </button>
+        <button type="button" onClick={() => onJumpToTab('presence')} className="text-muted hover:text-primary">
+          Presence
+        </button>
+        <button type="button" onClick={() => onJumpToTab('people')} className="text-muted hover:text-primary">
+          People
+        </button>
+        <button type="button" onClick={() => onJumpToTab('relations')} className="text-muted hover:text-primary">
+          Relations
+        </button>
+        <button type="button" onClick={() => onJumpToTab('lore')} className="text-muted hover:text-primary">
+          Lore
+        </button>
         {isDMUser ? (
           <Link
             to={campaignRelationsPath(campaignHandle, { lens: 'structure', focus: `bloc:${pageId}` })}
-            className="rounded-md border border-border/50 px-2 py-1 text-xs text-muted hover:border-primary/40 hover:text-primary"
+            className="text-muted hover:text-primary"
           >
-            Relations workspace →
+            Relations workspace
           </Link>
         ) : null}
-      </nav>
-    </div>
-  );
-}
+      </div>
 
-function TeaserLink({
-  label,
-  detail,
-  onClick,
-}: {
-  label: string;
-  detail: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-md border border-border/50 px-2 py-1 text-left text-xs transition-colors hover:border-primary/40"
-    >
-      <span className="font-medium text-foreground">{label}</span>
-      <span className="ml-1 text-muted">· {detail}</span>
-    </button>
+      <ProfileDetailsCard
+        fields={infoboxFields}
+        isEditingPage={isEditingPage}
+        isDMUser={isDMUser}
+        onFieldsChange={updateInfoboxFields}
+      />
+    </div>
   );
 }

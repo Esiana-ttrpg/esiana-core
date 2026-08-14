@@ -22,7 +22,7 @@ import {
 import { CAMPAIGN_WORKSPACE_ROUTES } from '@/lib/campaignWorkspaceRoutes';
 import {
   ADVENTURE_SIDEBAR_ITEMS,
-  adventureSectionHref,
+  adventureViewHref,
   type AdventureSidebarItem,
 } from '@/lib/adventureLayout';
 import {
@@ -174,7 +174,7 @@ function AdventureNavGroup({
   if (collapsed) {
     return (
       <NavLink
-        to={adventureSectionHref(adventureBase, 'story')}
+        to={adventureViewHref(adventureBase, 'quests')}
         onClick={onNavigate}
         title={label}
         aria-label={label}
@@ -197,7 +197,7 @@ function AdventureNavGroup({
     <div>
       <div className="flex min-h-11 items-stretch gap-0.5">
         <NavLink
-          to={adventureSectionHref(adventureBase, 'story')}
+          to={adventureViewHref(adventureBase, 'quests')}
           onClick={onNavigate}
           className={({ isActive }) =>
             [
