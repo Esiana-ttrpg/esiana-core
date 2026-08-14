@@ -492,7 +492,6 @@ model Campaign {
   mapSceneObjects         MapSceneObject[]
   mapPresentationPresets  MapPresentationPreset[]
   contentPresenceStates ContentPresenceState[]
-  templates          Template[]
   pageShortcuts      PageShortcut[]
   playerSandboxNotes PlayerSandboxNote[]
   dashboardWidgets   DashboardWidget[]
@@ -2151,21 +2150,6 @@ model UserHubAttentionDismissal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, dismissKey])
-}
-
-model Template {
-  id             String  @id @default(cuid())
-  campaignId     String?
-  name           String
-  defaultContent String?
-  isGlobal       Boolean @default(false)
-
-  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([campaignId])
 }
 
 // ---------------------------------------------------------------------------

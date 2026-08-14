@@ -15,7 +15,7 @@ import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
 import { useOptionalWiki } from '@/contexts/WikiContext';
 import { campaignWikiPath } from '@/lib/campaignPaths';
-import { formatWikiTemplateType } from '@/lib/formatWikiTemplateType';
+import { formatWikiPageKind } from '@/lib/formatWikiPageKind';
 import { resolveWikiCodexType } from '@/lib/resolveWikiCodexType';
 import { fetchWikiPagePreview, type WikiPagePreview } from '@/lib/wikiLoreGraph';
 import { useWikiLinkIndex } from '../hooks/useWikiLinkIndex';
@@ -148,7 +148,7 @@ export function WikiLinkNodeView({
 
   const typeLabel = useMemo(() => {
     if (!codexType || codexType === 'DEFAULT') return null;
-    return formatWikiTemplateType(codexType);
+    return formatWikiPageKind(codexType);
   }, [codexType]);
 
   const marginNoteTitle = preview?.title ?? indexEntry?.title ?? attrs.label;

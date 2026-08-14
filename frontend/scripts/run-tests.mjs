@@ -15,6 +15,7 @@ const result = spawnSync(
     'src/components/chronology/worldAdvanceFeedGrouping.test.ts',
     'src/lib/chronologyDates.test.ts',
     'src/lib/wikiHierarchy.test.ts',
+    'src/lib/formatWikiPageKind.test.ts',
     'src/lib/wikiIndexEntry.test.ts',
     'src/lib/wikiAutoLink.test.ts',
     'src/lib/campaignPaths.test.ts',
