@@ -1,6 +1,6 @@
 {
   "name": "esiana",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "private": true,
   "description": "Self-hosted, multi-campaign TTRPG manager",
   "license": "AGPL-3.0-only",
