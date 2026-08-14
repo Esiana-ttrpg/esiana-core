@@ -36,7 +36,8 @@ RUN set -eux; \
   cd "${DEPLOY}"; \
   node_modules/.bin/prisma generate; \
   node_modules/.bin/prisma --version; \
-  node --input-type=module -e "import('@prisma/client').then((m) => { if (!m.PrismaClient) process.exit(1); })"
+  node --input-type=module -e "import('@prisma/client').then((m) => { if (!m.PrismaClient) process.exit(1); })"; \
+  node --input-type=module -e "import('./dist/backend/src/lib/tagIconSvg.js')"
 
 FROM node:26-alpine AS runtime
 WORKDIR /app

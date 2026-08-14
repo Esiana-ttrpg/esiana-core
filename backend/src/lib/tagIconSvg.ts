@@ -1,10 +1,15 @@
-import DOMPurify from 'isomorphic-dompurify';
+import createDOMPurify, { type WindowLike } from 'dompurify';
+import { NodeFilter, parseHTML } from 'linkedom';
 import {
   ALLOWED_TAG_ICON_EXT,
   ALLOWED_TAG_ICON_MIME,
   MAX_TAG_ICON_BYTES,
 } from '../types/domain.js';
 import { UploadValidationError } from './uploadValidation.js';
+
+const purifyWindow = parseHTML('<!DOCTYPE html><html><body></body></html>') as unknown as WindowLike;
+Object.assign(purifyWindow, { NodeFilter });
+const DOMPurify = createDOMPurify(purifyWindow);
 
 const SVG_PURIFY_CONFIG = {
   USE_PROFILES: { svg: true, svgFilters: true },
@@ -47,11 +52,28 @@ export function sanitizeTagIconSvg(buffer: Buffer): Buffer {
     throw new UploadValidationError('SVG file is empty');
   }
 
-  const clean = DOMPurify.sanitize(raw, SVG_PURIFY_CONFIG);
-  const trimmed = typeof clean === 'string' ? clean.trim() : '';
+  const purified = DOMPurify.sanitize(raw, SVG_PURIFY_CONFIG);
+  const trimmed = stripForbiddenMarkup(
+    (typeof purified === 'string' ? purified : '').trim(),
+  );
   if (!trimmed || !trimmed.includes('<svg')) {
     throw new UploadValidationError('Invalid or unsupported SVG content');
   }
 
   return Buffer.from(trimmed, 'utf8');
+}
+
+function stripForbiddenMarkup(svg: string): string {
+  let text = svg;
+  for (const tag of SVG_PURIFY_CONFIG.FORBID_TAGS) {
+    text = text.replace(new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?</${tag}>`, 'gi'), '');
+    text = text.replace(new RegExp(`<${tag}\\b[^>]*/>`, 'gi'), '');
+  }
+  for (const attr of SVG_PURIFY_CONFIG.FORBID_ATTR) {
+    text = text.replace(
+      new RegExp(`\\s${attr}\\s*=\\s*(?:'[^']*'|"[^"]*"|[^\\s>]+)`, 'gi'),
+      '',
+    );
+  }
+  return text.trim();
 }
