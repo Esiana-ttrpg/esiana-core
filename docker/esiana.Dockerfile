@@ -1,7 +1,8 @@
-FROM node:20-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
-RUN corepack enable
+# Node 26 images no longer bundle Corepack; pin pnpm to packageManager.
+RUN npm install -g pnpm@9.15.9
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY backend/package.json backend/
@@ -37,7 +38,7 @@ RUN set -eux; \
   node_modules/.bin/prisma --version; \
   node --input-type=module -e "import('@prisma/client').then((m) => { if (!m.PrismaClient) process.exit(1); })"
 
-FROM node:20-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 
 ARG ESIANA_PRODUCT_VERSION

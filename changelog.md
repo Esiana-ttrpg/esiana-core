@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Docker build and runtime images use `node:26-alpine` (was `node:20-alpine`); the build stage installs `pnpm@9.15.9` via npm because Node 26 no longer bundles Corepack. Closes [#82](https://github.com/Esiana-ttrpg/esiana-core/issues/82).
+
 ## [1.4.0] - 2026-08-14
 
 ### Added
