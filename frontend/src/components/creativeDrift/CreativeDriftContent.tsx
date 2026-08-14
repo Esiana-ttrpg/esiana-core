@@ -10,9 +10,11 @@ import { fetchCreativeDrift } from '@/lib/creativeDrift';
 import {
   UNRESOLVED_ERROR_MESSAGE,
   UNRESOLVED_LOADING_LABEL,
+  UNRESOLVED_WIKI_LINK_LABEL,
   formatSetAsideToggle,
   formatUnresolvedSummary,
 } from '@/lib/unresolvedCopy';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 import type { StoryFilterState } from '@/lib/workspacePersistence';
 import {
   matchesStoryRecentFilter,
@@ -77,6 +79,7 @@ export function CreativeDriftContent({
           {data.summary.totalActive > 0 ? (
             <p className="text-xs text-muted">{formatUnresolvedSummary(data.summary.totalActive)}</p>
           ) : null}
+          <DocsLearnMoreLink doc="narrativeThreads" label={UNRESOLVED_WIKI_LINK_LABEL} />
         </header>
       ) : data.summary.totalActive > 0 ? (
         <p className="text-xs text-muted">{formatUnresolvedSummary(data.summary.totalActive)}</p>
