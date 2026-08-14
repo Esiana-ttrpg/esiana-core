@@ -8,6 +8,7 @@
 
 ### Changed
 
+- Production dependencies: TipTap 3.30, React 19.2.8, nodemailer 9, dotenv 17, sharp 0.35, and related patches. Slack integration icon uses Font Awesome (`FaSlack`) because Simple Icons dropped `SiSlack` in react-icons 5.7. Skipped Prisma 7, lucide-react 1, react-grid-layout 2, and react-resizable 4.
 - Docker build and runtime images use `node:26-alpine` (was `node:20-alpine`); the build stage installs `pnpm@9.15.9` via npm because Node 26 no longer bundles Corepack. Closes [#82](https://github.com/Esiana-ttrpg/esiana-core/issues/82).
 - Package `engines.node` is `>=22.10.0`; CI `setup-node` uses 26 to match Docker.
 
