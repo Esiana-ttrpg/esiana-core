@@ -25,11 +25,11 @@
   "dependencies": {
     "@esiana/plugin-source-policy": "workspace:*",
     "@esiana/ssrf-guard": "workspace:*",
-    "@prisma/client": "^6.8.2",
+    "@prisma/client": "^7.9.1",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
-    "dompurify": "^3.4.7",
+    "dompurify": "^3.4.13",
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "express-rate-limit": "^8.6.2",
