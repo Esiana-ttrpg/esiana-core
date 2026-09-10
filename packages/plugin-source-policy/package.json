@@ -20,8 +20,8 @@
     "@esiana/ssrf-guard": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.15.21",
-    "tsx": "^4.23.12",
+    "@types/node": "^26.4.1",
+    "tsx": "^4.23.13",
     "typescript": "^5.8.3"
   },
   "engines": {
