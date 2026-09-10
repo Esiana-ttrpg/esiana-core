@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Removed
+
+- Wiki page templates as a parallel structure system: unused `Template` table, create/layout no longer accept a client `templateType` to choose page structure, and user-facing template-type chips. Module create flows and generic Pages remain.
+
+### Database
+
+- Migration `20260814190000_drop_wiki_page_templates` — drops unused `Template` table.
+
 ## [1.4.2] - 2026-08-14
 
 ### Fixed

@@ -9,7 +9,7 @@ import {
   loreSectionLabel,
 } from '@/components/entity/lore/LoreKnowledgeUi';
 import type { CalendarEventRecord } from '@/lib/calendarEventsApi';
-import { formatWikiTemplateType } from '@/lib/formatWikiTemplateType';
+import { formatWikiPageKind } from '@/lib/formatWikiPageKind';
 import type { LoreClaimSourceRecord, LoreSourceEntityType } from '@/lib/loreKnowledgeProjection';
 import type { WikiTreeNode } from '@/types/wiki';
 
@@ -243,7 +243,7 @@ export function LoreSourcePicker({
               {flatPages.find((p) => p.id === value.sourceEntityId)?.title ?? 'Selected page'}
               <span>
                 ·{' '}
-                {formatWikiTemplateType(
+                {formatWikiPageKind(
                   flatPages.find((p) => p.id === value.sourceEntityId)?.templateType,
                 )}
               </span>

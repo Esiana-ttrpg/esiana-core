@@ -48,9 +48,9 @@ export const wikiBlockSchema = z
     }
   });
 
-export const wikiTemplateBlocksSchema = z
+export const wikiPageBlocksLayoutSchema = z
   .array(wikiBlockSchema)
-  .min(1, 'Template must include at least one block')
+  .min(1, 'Page must include at least one block')
   .superRefine((blocks, ctx) => {
     const hasBodyBlock = blocks.some(
       (b) => b.type === 'text-tiptap' || b.type === 'text-biography',
@@ -58,7 +58,7 @@ export const wikiTemplateBlocksSchema = z
     if (!hasBodyBlock) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Template must include at least one narrative body block',
+        message: 'Page must include at least one narrative body block',
       });
     }
   });
@@ -67,7 +67,19 @@ export type ValidatedWikiBlock = z.infer<typeof wikiBlockSchema>;
 
 export function formatWikiBlockValidationError(error: z.ZodError): string {
   const first = error.issues[0];
-  if (!first) return 'Invalid template blocks';
+  if (!first) return 'Invalid page blocks';
   const path = first.path.length > 0 ? `${first.path.join('.')}: ` : '';
   return `${path}${first.message}`;
+}
+
+export type ParseWikiBlocksResult =
+  | { ok: true; blocks: ValidatedWikiBlock[] }
+  | { ok: false; error: string };
+
+export function parseAndValidateWikiBlocks(raw: unknown): ParseWikiBlocksResult {
+  const parsed = wikiPageBlocksLayoutSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: formatWikiBlockValidationError(parsed.error) };
+  }
+  return { ok: true, blocks: parsed.data };
 }

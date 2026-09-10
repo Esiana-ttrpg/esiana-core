@@ -635,7 +635,7 @@ export function WikiPageRenderer({
         onMetadataSaved={
           onMetadataSaved ??
           (() => {
-            /* template workspace */
+            /* no-op */
           })
         }
         focusField={inspectorFocusField}

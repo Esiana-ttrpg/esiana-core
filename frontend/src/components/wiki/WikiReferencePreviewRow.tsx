@@ -7,7 +7,7 @@ import {
   fetchWikiPagePreview,
   type WikiPagePreview,
 } from '@/lib/wikiLoreGraph';
-import { formatWikiTemplateType } from '@/lib/formatWikiTemplateType';
+import { formatWikiPageKind } from '@/lib/formatWikiPageKind';
 
 interface WikiReferencePreviewRowProps {
   campaignHandle: string;
@@ -110,9 +110,9 @@ export function WikiReferencePreviewRow({
   const excerpt = snippet?.trim() || preview?.summary?.trim() || null;
   const typeLabel =
     preview?.codexType && preview.codexType !== 'DEFAULT'
-      ? formatWikiTemplateType(preview.codexType)
-      : preview?.templateType
-        ? formatWikiTemplateType(preview.templateType)
+      ? formatWikiPageKind(preview.codexType)
+      : preview?.templateType && preview.templateType !== 'DEFAULT'
+        ? formatWikiPageKind(preview.templateType)
         : null;
 
   return (

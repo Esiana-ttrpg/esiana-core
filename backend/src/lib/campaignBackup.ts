@@ -27,7 +27,6 @@ export async function buildFullCampaignBundle(campaignId: string) {
       },
       calendarEventCategories: true,
       joinRequests: true,
-      templates: true,
       pageShortcuts: true,
       playerSandboxNotes: true,
       dashboardWidgets: true,
