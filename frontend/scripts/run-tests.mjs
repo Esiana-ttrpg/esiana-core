@@ -19,6 +19,7 @@ const result = spawnSync(
     'src/lib/wikiIndexEntry.test.ts',
     'src/lib/wikiAutoLink.test.ts',
     'src/lib/campaignPaths.test.ts',
+    'src/lib/campaignDashboardNavigationState.test.ts',
     'src/lib/sessionSnapshotFormat.test.ts',
     'src/hooks/useIdentityDisplay.test.ts',
     'src/utils/sessionNoteConstants.test.ts',
