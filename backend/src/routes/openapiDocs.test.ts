@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { loadOpenApiSpec, resolveOpenApiSpecPath } from './openapiDocs.js';
+import express from 'express';
+import {
+  createOpenApiDocsRouter,
+  loadOpenApiSpec,
+  resolveOpenApiSpecPath,
+} from './openapiDocs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sourceSpecPath = path.resolve(__dirname, '../../openapi/openapi.yaml');
@@ -34,6 +42,58 @@ test('OpenAPI spec loads from source path', () => {
 test('resolveOpenApiSpecPath finds source spec in dev layout', () => {
   const resolved = resolveOpenApiSpecPath();
   assert.ok(resolved.endsWith('openapi.yaml'));
+});
+
+test('production layout resolves the spec copied by copy-openapi.mjs', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'esiana-openapi-'));
+  try {
+    const routesDirectory = path.join(root, 'dist/backend/src/routes');
+    const copiedSpecPath = path.join(root, 'dist/backend/openapi/openapi.yaml');
+    fs.mkdirSync(routesDirectory, { recursive: true });
+    fs.mkdirSync(path.dirname(copiedSpecPath), { recursive: true });
+    fs.copyFileSync(sourceSpecPath, copiedSpecPath);
+
+    assert.equal(resolveOpenApiSpecPath(routesDirectory), copiedSpecPath);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('public docs and raw OpenAPI endpoints respond in production layout', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'esiana-openapi-http-'));
+  const routesDirectory = path.join(root, 'dist/backend/src/routes');
+  const copiedSpecPath = path.join(root, 'dist/backend/openapi/openapi.yaml');
+  fs.mkdirSync(routesDirectory, { recursive: true });
+  fs.mkdirSync(path.dirname(copiedSpecPath), { recursive: true });
+  fs.copyFileSync(sourceSpecPath, copiedSpecPath);
+
+  const app = express();
+  app.use(
+    '/api/docs',
+    createOpenApiDocsRouter(resolveOpenApiSpecPath(routesDirectory)),
+  );
+  const server = createServer(app);
+
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    const docsResponse = await fetch(`${baseUrl}/api/docs`);
+    assert.equal(docsResponse.status, 200);
+    assert.match(await docsResponse.text(), /id="swagger-ui"/);
+
+    const rawResponse = await fetch(`${baseUrl}/api/docs/openapi.yaml`);
+    assert.equal(rawResponse.status, 200);
+    assert.match(rawResponse.headers.get('content-type') ?? '', /yaml/);
+    assert.match(await rawResponse.text(), /^openapi: 3\.1\.0/m);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('RC tag groups are present', () => {
