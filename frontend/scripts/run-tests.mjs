@@ -86,6 +86,7 @@ const result = spawnSync(
     'src/lib/theme/luminanceEcology.test.ts',
     'src/lib/theme/themeStack.test.ts',
     'src/lib/hubAmbientTheme.test.ts',
+    'src/lib/buildCampaignWorldPresentation.test.ts',
     'src/lib/workshopNavigation.test.ts',
     'src/lib/workshopLaunchGuard.test.ts',
     'src/lib/workshopFieldSchema.test.ts',

@@ -20,6 +20,10 @@ export interface CampaignWorldPresentation {
   continuityLines: string[];
 }
 
+function normalizeDisplayText(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
 export function buildCampaignWorldPresentation(
   campaign: CampaignSummary,
   arcIdentity?: HubArcIdentity | null,
@@ -54,7 +58,11 @@ export function buildCampaignWorldPresentation(
   };
 
   const arc = arcIdentity?.currentArc?.trim() || null;
-  const tension = truncateTensionLine(arcIdentity?.tensionLine);
+  const candidateTension = truncateTensionLine(arcIdentity?.tensionLine);
+  const tension =
+    arc && candidateTension && normalizeDisplayText(arc) === normalizeDisplayText(candidateTension)
+      ? null
+      : candidateTension;
 
   return {
     coverUrl,
