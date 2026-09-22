@@ -12,6 +12,8 @@ const result = spawnSync(
     '--import',
     'tsx',
     '--test',
+    '../shared/recruitmentSeats.test.ts',
+    'src/components/recruitment/RecruitmentHostSection.test.tsx',
     'src/components/chronology/worldAdvanceFeedGrouping.test.ts',
     'src/lib/chronologyDates.test.ts',
     'src/lib/wikiHierarchy.test.ts',

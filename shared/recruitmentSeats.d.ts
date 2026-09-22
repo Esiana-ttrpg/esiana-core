@@ -4,6 +4,8 @@ export interface RecruitmentSeatLimits {
 }
 /** Open LFG slots (recruiting count when set, otherwise party size). */
 export declare function getRecruitingPlayerCapacity(limits: RecruitmentSeatLimits): number;
+/** Player seats already occupied at the real-world table. */
+export declare function getFilledTableSeats(limits: RecruitmentSeatLimits): number;
 export declare function isRecruitmentTableFull(filledSeats: number, limits: RecruitmentSeatLimits): boolean;
 /** Open spots listed for recruitment (recruiting cap when set, capped by party size). */
 export declare function getOpenRecruitingSlots(filledSeats: number, limits: RecruitmentSeatLimits): number;

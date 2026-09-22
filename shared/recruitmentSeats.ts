@@ -10,6 +10,13 @@ export function getRecruitingPlayerCapacity(limits: RecruitmentSeatLimits): numb
   return 0;
 }
 
+/** Player seats already occupied at the real-world table. */
+export function getFilledTableSeats(limits: RecruitmentSeatLimits): number {
+  const partySize = getPartyPlayerCapacity(limits.maxPlayers);
+  if (partySize <= 0) return 0;
+  return Math.max(0, partySize - Math.min(partySize, getRecruitingPlayerCapacity(limits)));
+}
+
 export function isRecruitmentTableFull(
   filledSeats: number,
   limits: RecruitmentSeatLimits,
@@ -20,14 +27,12 @@ export function isRecruitmentTableFull(
 
 /** Open spots listed for recruitment (recruiting cap when set, capped by party size). */
 export function getOpenRecruitingSlots(
-  filledSeats: number,
+  _filledSeats: number,
   limits: RecruitmentSeatLimits,
 ): number {
-  const partyOpen = getOpenPartySlots(filledSeats, limits.maxPlayers);
-  if (limits.maxSeats <= 0) return partyOpen;
-  const recruitingRemaining = Math.max(0, limits.maxSeats - filledSeats);
-  if (limits.maxPlayers > 0) return Math.min(recruitingRemaining, partyOpen);
-  return recruitingRemaining;
+  const recruitingFor = getRecruitingPlayerCapacity(limits);
+  const partySize = getPartyPlayerCapacity(limits.maxPlayers);
+  return partySize > 0 ? Math.min(recruitingFor, partySize) : recruitingFor;
 }
 
 /** Party size differs from recruiting count (show both on public pages). */
@@ -64,11 +69,8 @@ export function getLobbyTableCapacity(limits: RecruitmentSeatLimits): number {
 
 /** Whether applicants can no longer join (party full or recruiting target reached). */
 export function isLobbyTableFull(
-  filledSeats: number,
+  _filledSeats: number,
   limits: RecruitmentSeatLimits,
 ): boolean {
-  if (isPartyTableFull(filledSeats, limits.maxPlayers)) return true;
-  if (limits.maxSeats > 0 && filledSeats >= limits.maxSeats) return true;
-  if (limits.maxPlayers > 0) return false;
-  return isRecruitmentTableFull(filledSeats, limits);
+  return getOpenRecruitingSlots(0, limits) <= 0;
 }

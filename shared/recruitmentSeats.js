@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRecruitingPlayerCapacity = getRecruitingPlayerCapacity;
+exports.getFilledTableSeats = getFilledTableSeats;
 exports.isRecruitmentTableFull = isRecruitmentTableFull;
 exports.getOpenRecruitingSlots = getOpenRecruitingSlots;
 exports.showsDistinctPartySize = showsDistinctPartySize;
@@ -17,19 +18,22 @@ function getRecruitingPlayerCapacity(limits) {
         return limits.maxPlayers;
     return 0;
 }
+/** Player seats already occupied at the real-world table. */
+function getFilledTableSeats(limits) {
+    const partySize = getPartyPlayerCapacity(limits.maxPlayers);
+    if (partySize <= 0)
+        return 0;
+    return Math.max(0, partySize - Math.min(partySize, getRecruitingPlayerCapacity(limits)));
+}
 function isRecruitmentTableFull(filledSeats, limits) {
     const capacity = getRecruitingPlayerCapacity(limits);
     return capacity > 0 && filledSeats >= capacity;
 }
 /** Open spots listed for recruitment (recruiting cap when set, capped by party size). */
-function getOpenRecruitingSlots(filledSeats, limits) {
-    const partyOpen = getOpenPartySlots(filledSeats, limits.maxPlayers);
-    if (limits.maxSeats <= 0)
-        return partyOpen;
-    const recruitingRemaining = Math.max(0, limits.maxSeats - filledSeats);
-    if (limits.maxPlayers > 0)
-        return Math.min(recruitingRemaining, partyOpen);
-    return recruitingRemaining;
+function getOpenRecruitingSlots(_filledSeats, limits) {
+    const recruitingFor = getRecruitingPlayerCapacity(limits);
+    const partySize = getPartyPlayerCapacity(limits.maxPlayers);
+    return partySize > 0 ? Math.min(recruitingFor, partySize) : recruitingFor;
 }
 /** Party size differs from recruiting count (show both on public pages). */
 function showsDistinctPartySize(limits) {
@@ -59,13 +63,7 @@ function getLobbyTableCapacity(limits) {
     return getRecruitingPlayerCapacity(limits);
 }
 /** Whether applicants can no longer join (party full or recruiting target reached). */
-function isLobbyTableFull(filledSeats, limits) {
-    if (isPartyTableFull(filledSeats, limits.maxPlayers))
-        return true;
-    if (limits.maxSeats > 0 && filledSeats >= limits.maxSeats)
-        return true;
-    if (limits.maxPlayers > 0)
-        return false;
-    return isRecruitmentTableFull(filledSeats, limits);
+function isLobbyTableFull(_filledSeats, limits) {
+    return getOpenRecruitingSlots(0, limits) <= 0;
 }
 //# sourceMappingURL=recruitmentSeats.js.map
