@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { fetchCampaign } from '@/lib/campaigns';
@@ -20,6 +20,10 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { LinkYourCharacterCard } from '@/components/dashboard/LinkYourCharacterCard';
 import { PluginSlotHost, PluginUiSlots } from '@/plugins/slots';
 import { useDeclaredPluginSlot } from '@/plugins/useDeclaredPluginSlot';
+import {
+  campaignDashboardNavigationReducer,
+  createCampaignDashboardNavigationState,
+} from '@/lib/campaignDashboardNavigationState';
 
 const LAYOUT_EDIT_ROLES = [
   CampaignMemberRoles.GAMEMASTER,
@@ -34,28 +38,37 @@ export function CampaignDashboardPage() {
   const { t } = useTranslation();
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const { campaign: wikiCampaign } = useWiki();
-  const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
-  const [bundle, setBundle] = useState<DashboardBundle | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [navigationState, dispatch] = useReducer(
+    campaignDashboardNavigationReducer,
+    campaignHandle,
+    createCampaignDashboardNavigationState,
+  );
+  const activeState =
+    navigationState.campaignHandle === campaignHandle
+      ? navigationState
+      : createCampaignDashboardNavigationState(campaignHandle);
+  const { campaign, bundle, loading, error } = activeState;
 
   const loadDashboard = useCallback(async () => {
     if (!campaignHandle) return;
-    setLoading(true);
-    setError(null);
+    dispatch({ type: 'load', campaignHandle });
     try {
       const [campaignData, dashboardBundle] = await Promise.all([
         fetchCampaign(campaignHandle),
         fetchDashboardBundle(campaignHandle),
       ]);
-      setCampaign(campaignData);
-      setBundle(dashboardBundle);
+      dispatch({
+        type: 'success',
+        campaignHandle,
+        campaign: campaignData,
+        bundle: dashboardBundle,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('campaign.dashboard.loadError'));
-      setCampaign(null);
-      setBundle(null);
-    } finally {
-      setLoading(false);
+      dispatch({
+        type: 'failure',
+        campaignHandle,
+        error: err instanceof Error ? err.message : t('campaign.dashboard.loadError'),
+      });
     }
   }, [campaignHandle, t]);
 
@@ -89,11 +102,14 @@ export function CampaignDashboardPage() {
 
   return (
     <CampaignDashboardContent
+      key={campaignHandle}
       campaignHandle={campaignHandle}
       campaign={campaign}
       bundle={bundle}
       displayName={wikiCampaign?.name ?? campaign.name}
-      onBundleChange={setBundle}
+      onBundleChange={(nextBundle) =>
+        dispatch({ type: 'bundleChanged', campaignHandle, bundle: nextBundle })
+      }
     />
   );
 }
