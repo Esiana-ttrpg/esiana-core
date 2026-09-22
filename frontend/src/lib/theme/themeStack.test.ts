@@ -14,6 +14,7 @@ import {
   normalizeThemeProfile,
   resolvePaletteFromProfile,
   resolveThemePresetFromProfile,
+  selectAppearanceOption,
   type ThemeProfile,
 } from './themeProfile.ts';
 import { THEME_CONFIGS } from './themeVariables.ts';
@@ -25,6 +26,68 @@ function stackVars(profile: ThemeProfile) {
 }
 
 describe('themeStack', () => {
+  it('resolves appearance selections atomically across modes and layers', () => {
+    const dark = normalizeThemeProfile({
+      foundation: 'dark',
+      foundationPalette: 'ocean',
+      genre: 'none',
+      identity: 'none',
+    });
+
+    const genre = selectAppearanceOption(dark, { category: 'genre', value: 'parchment' });
+    assert.equal(genre.foundation, 'light');
+    assert.equal(genre.foundationPalette, 'arctic');
+    assert.equal(genre.genre, 'parchment');
+
+    const genreNone = selectAppearanceOption(genre, { category: 'genre', value: 'none' });
+    assert.equal(genreNone.genre, 'none');
+
+    const identity = selectAppearanceOption(dark, { category: 'identity', value: 'trans' });
+    assert.equal(identity.foundation, 'light');
+    assert.equal(identity.foundationPalette, 'arctic');
+    assert.equal(identity.identity, 'trans');
+    assert.equal(
+      selectAppearanceOption(identity, { category: 'identity', value: 'none' }).identity,
+      'none',
+    );
+
+    const genreB = selectAppearanceOption(genre, { category: 'genre', value: 'cyberpunk' });
+    assert.equal(genreB.foundation, 'dark');
+    assert.equal(genreB.genre, 'cyberpunk');
+
+    const identityWins = selectAppearanceOption(genreB, {
+      category: 'identity',
+      value: 'pride',
+    });
+    assert.equal(identityWins.identity, 'pride');
+    assert.equal(identityWins.genre, 'none');
+    assert.equal(identityWins.foundation, 'light');
+
+    const genreWins = selectAppearanceOption(identityWins, {
+      category: 'genre',
+      value: 'fantasy',
+    });
+    assert.equal(genreWins.genre, 'fantasy');
+    assert.equal(genreWins.identity, 'none');
+    assert.equal(genreWins.foundation, 'dark');
+
+    const backToFoundation = selectAppearanceOption(genreWins, {
+      category: 'foundation',
+      value: 'light',
+    });
+    assert.equal(backToFoundation.foundation, 'light');
+    assert.equal(backToFoundation.genre, 'none');
+    assert.equal(backToFoundation.identity, 'none');
+
+    const backToDark = selectAppearanceOption(identity, {
+      category: 'foundation',
+      value: 'dark',
+    });
+    assert.equal(backToDark.foundation, 'dark');
+    assert.equal(backToDark.foundationPalette, 'ocean');
+    assert.equal(backToDark.genre, 'none');
+    assert.equal(backToDark.identity, 'none');
+  });
   it('resolvePaletteFromProfile keeps foundation palette when identity is active', () => {
     const profile = normalizeThemeProfile({
       foundation: 'dark',
