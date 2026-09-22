@@ -1,5 +1,5 @@
 import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Palette, X } from 'lucide-react';
 import type { CampaignDetail } from '@/types/campaign';
@@ -42,6 +42,15 @@ export function CampaignPresentationSheet({
   onHeroChange,
 }: CampaignPresentationSheetProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [taglineDraft, setTaglineDraft] = useState(hero.summary ?? '');
+  const wasOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      setTaglineDraft(hero.summary ?? '');
+    }
+    wasOpenRef.current = open;
+  }, [hero.summary, open]);
 
   if (!open) return null;
 
@@ -216,13 +225,15 @@ export function CampaignPresentationSheet({
             </label>
             <textarea
               id="campaign-tagline"
-              value={hero.summary ?? ''}
+              value={taglineDraft}
               placeholder={
                 fallbackDescription ?? 'A short line that sets the tone for your table…'
               }
-              onChange={(event) =>
-                onHeroChange({ ...hero, summary: event.target.value || null })
-              }
+              onChange={(event) => {
+                const summary = event.target.value;
+                setTaglineDraft(summary);
+                onHeroChange({ ...hero, summary: summary || null });
+              }}
               rows={4}
               className="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
             />
