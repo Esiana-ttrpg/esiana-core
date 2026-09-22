@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { CampaignMemberRoles, JoinRequestStatus } from '../types/domain.js';
 import {
-  countFilledPlayerSeats,
+  getFilledTableSeats,
   getLobbyTableCapacity,
   isLobbyTableFull,
   mapPublicTablePlayers,
@@ -132,18 +132,18 @@ function resolveTableStyleLabels(tags: string[]): string[] {
 }
 
 function mapRecruitmentCampaign(campaign: any) {
-  const filledSeats = countFilledPlayerSeats(campaign.members);
   const seatLimits = {
     maxSeats: campaign.maxSeats,
     maxPlayers: campaign.maxPlayers,
   };
+  const filledSeats = getFilledTableSeats(seatLimits);
   const tableCapacity = getLobbyTableCapacity(seatLimits);
   const tablePlayers = mapPublicTablePlayers(
     campaign.members,
     (user) => resolveUserDisplayName(user),
     (userId, hasAvatar) => (hasAvatar ? avatarApiUrl(userId) : null),
     tableCapacity,
-  );
+  ).slice(0, filledSeats);
   const dmRecord = campaign.members.find((m: any) => m.role === CampaignMemberRoles.GAMEMASTER)?.user;
   const tableStyleTags = parseTableStyleTags(campaign.tableStyleTags);
   return {
