@@ -72,6 +72,7 @@ const result = spawnSync(
     'src/components/wiki/extensions/EditorHighlightExtension.test.ts',
     'src/components/wiki/extensions/AdmonitionExtension.test.ts',
     'src/components/wiki/extensions/EditorTextColorExtension.test.ts',
+    'src/components/wiki/extensions/WikiFormattingCommands.test.ts',
     'src/lib/editor/editorColorTokens.test.ts',
     'src/hooks/useBlockDraft.test.ts',
     'src/lib/loreSemanticBundle.test.ts',

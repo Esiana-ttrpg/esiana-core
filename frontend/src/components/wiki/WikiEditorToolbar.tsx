@@ -61,6 +61,7 @@ function ToolbarButton({
     <button
       type="button"
       title={title}
+      onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
       className={`rounded-md p-1.5 transition-colors ${
         active
