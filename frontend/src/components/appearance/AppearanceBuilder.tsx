@@ -16,6 +16,7 @@ import {
   GLOBAL_PALETTES,
   normalizeThemeProfile,
   PALETTE_DISPLAY_NAMES,
+  selectAppearanceOption,
   themeProfileSignature,
   type FoundationId,
   type FoundationPaletteId,
@@ -300,12 +301,9 @@ function AppearanceBuilderInner({
                   title={meta.label}
                   description={meta.description}
                   onClick={() =>
-                    setProfile((prev) => ({
-                      ...prev,
-                      foundation: id,
-                      genre: 'none',
-                      foundationPalette: meta.defaultPalette,
-                    }))
+                    setProfile((prev) =>
+                      selectAppearanceOption(prev, { category: 'foundation', value: id }),
+                    )
                   }
                 />
               );
@@ -329,10 +327,12 @@ function AppearanceBuilderInner({
                     title={PALETTE_DISPLAY_NAMES[paletteId]}
                     description={`Primary ${swatch.primary}`}
                     onClick={() =>
-                      setProfile((prev) => ({
-                        ...prev,
-                        foundationPalette: paletteId as FoundationPaletteId,
-                      }))
+                      setProfile((prev) =>
+                        selectAppearanceOption(prev, {
+                          category: 'foundationPalette',
+                          value: paletteId as FoundationPaletteId,
+                        }),
+                      )
                     }
                   >
                     <div className="mt-2 flex gap-1">
@@ -366,10 +366,9 @@ function AppearanceBuilderInner({
               title="None"
               description="Use foundation mode only — no genre overlay."
               onClick={() =>
-                setProfile((prev) => ({
-                  ...prev,
-                  genre: 'none',
-                }))
+                setProfile((prev) =>
+                  selectAppearanceOption(prev, { category: 'genre', value: 'none' }),
+                )
               }
             />
             {(Object.keys(APPEARANCE_PRESETS.genre) as Array<
@@ -384,11 +383,12 @@ function AppearanceBuilderInner({
                   title={meta.label}
                   description={meta.description}
                   onClick={() =>
-                    setProfile((prev) => ({
-                      ...prev,
-                      genre: genreKey as GenreId,
-                      foundation: meta.mode,
-                    }))
+                    setProfile((prev) =>
+                      selectAppearanceOption(prev, {
+                        category: 'genre',
+                        value: genreKey as GenreId,
+                      }),
+                    )
                   }
                 />
               );
@@ -410,10 +410,9 @@ function AppearanceBuilderInner({
               title="None"
               description="Use the foundation palette accents only."
               onClick={() =>
-                setProfile((prev) => ({
-                  ...prev,
-                  identity: 'none',
-                }))
+                setProfile((prev) =>
+                  selectAppearanceOption(prev, { category: 'identity', value: 'none' }),
+                )
               }
             />
             {(Object.keys(APPEARANCE_PRESETS.holiday) as Array<
@@ -429,24 +428,12 @@ function AppearanceBuilderInner({
                   title={meta.label}
                   description={`${meta.description} (${meta.mode} mode)`}
                   onClick={() => {
-                    const holidayFoundationPalettes =
-                      APPEARANCE_PRESETS.foundation[meta.mode].palettes;
-                    setProfile((prev) => ({
-                      ...prev,
-                      identity: holidayKey as IdentityId,
-                      ...(prev.genre === 'none'
-                        ? {
-                            foundation: meta.mode,
-                            foundationPalette:
-                              prev.foundation === meta.mode &&
-                              (holidayFoundationPalettes as readonly string[]).includes(
-                                prev.foundationPalette,
-                              )
-                                ? prev.foundationPalette
-                                : APPEARANCE_PRESETS.foundation[meta.mode].defaultPalette,
-                          }
-                        : {}),
-                    }));
+                    setProfile((prev) =>
+                      selectAppearanceOption(prev, {
+                        category: 'identity',
+                        value: holidayKey as IdentityId,
+                      }),
+                    );
                   }}
                 >
                   <div className="mt-2 flex gap-1">
