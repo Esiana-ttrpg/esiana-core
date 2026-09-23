@@ -20,7 +20,7 @@ type OpenApiSpec = {
   tags?: Array<{ name: string }>;
   paths?: Record<
     string,
-    Record<string, { responses?: Record<string, { content?: Record<string, { example?: unknown }> }> }>
+    Record<string, { security?: Array<Record<string, unknown>>; responses?: Record<string, { content?: Record<string, { example?: unknown }> }> }>
   >;
 };
 
@@ -37,6 +37,15 @@ function responseExample(
 test('OpenAPI spec loads from source path', () => {
   const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
   assert.equal(spec.openapi, '3.1.0');
+});
+
+test('asset reads advertise anonymous, session, and bearer authentication', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  assert.deepEqual(spec.paths?.['/api/assets/{assetId}']?.get?.security, [
+    {},
+    { cookieAuth: [] },
+    { bearerAuth: [] },
+  ]);
 });
 
 test('resolveOpenApiSpecPath finds source spec in dev layout', () => {

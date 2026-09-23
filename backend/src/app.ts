@@ -39,7 +39,7 @@ import { startAssetRetentionSweep } from './lib/assetRetention.js';
 import { startNotificationSweep } from './lib/notifications/notificationScheduledJobs.js';
 import { pluginAssetsRouter } from './routes/pluginAssets.js';
 import { assetsRouter } from './routes/assets.js';
-import { optionalAuth } from './middleware/auth.js';
+import { authenticateApiOrSession } from './middleware/auth.js';
 import { getUploadByFilename } from './controllers/assetsController.js';
 
 export async function createApp(): Promise<Express> {
@@ -62,7 +62,7 @@ export async function createApp(): Promise<Express> {
   app.use(apiUsageLogger);
 
   fs.mkdirSync(env.uploadsDir, { recursive: true });
-  app.get('/uploads/:filename', optionalAuth, getUploadByFilename);
+  app.get('/uploads/:filename', authenticateApiOrSession, getUploadByFilename);
 
   app.use('/api/health', healthRouter);
   app.use('/api/public-directory', publicDirectoryRouter);
