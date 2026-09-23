@@ -103,7 +103,6 @@ export async function duplicateCampaign(
       wikiPages: true,
       tags: { include: { pages: { select: { id: true } } } },
       assets: true,
-      templates: true,
       pageShortcuts: true,
       playerSandboxNotes: true,
       sessionTimelinePoints: true,

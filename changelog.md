@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+## [1.4.3] - 2026-09-22
+
+### Added
+
+- Complete OpenAPI 3.1 contract coverage for the backend API, with route-inventory tooling and public YAML/JSON specifications under `/api/docs`.
+
+### Fixed
+
+- Campaign assets accept bearer authentication as well as session authentication.
+- Campaign dashboard navigation no longer shows stale hero artwork from the previously viewed campaign.
+- Campaign presentation tagline edits remain stable, and duplicate headline/tagline text is suppressed on campaign cards.
+- Recruitment lobbies distinguish real-world party size from open recruiting seats and display the campaign host separately.
+- Theme switching preserves the active theme profile and correctly reapplies its surface tokens.
+- Wiki formatting toolbar actions preserve the editor selection so inline and block formatting applies to the intended text.
+- OpenAPI documentation and raw specification routes resolve correctly in production builds.
+
+### Removed
+
+- Wiki page templates as a parallel structure system: unused `Template` table, create/layout no longer accept a client `templateType` to choose page structure, and user-facing template-type chips. Module create flows and generic Pages remain.
+
+### Database
+
+- Migration `20260814190000_drop_wiki_page_templates` — drops unused `Template` table.
+
 ## [1.4.2] - 2026-08-14
 
 ### Fixed

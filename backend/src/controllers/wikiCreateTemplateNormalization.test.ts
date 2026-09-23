@@ -1,46 +1,53 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { normalizeWikiPageTemplateFields } from '../../../shared/wikiTemplateType.js';
+import { resolveLiveCreateWikiPageKind } from '../lib/resolveLiveCreateWikiPageKind.js';
 
-/**
- * Regression for wiki create/update boundary: legacy entity templateType values
- * must never persist; entity identity belongs in metadata.entityCategory.
- */
-describe('wiki create template normalization (API boundary)', () => {
-  it('coerces CHARACTER to DEFAULT and stamps entityCategory', () => {
-    const result = normalizeWikiPageTemplateFields({
-      templateType: 'CHARACTER',
+describe('live wiki create page kind', () => {
+  it('ignores posted template types and stays DEFAULT without module metadata', () => {
+    assert.equal(
+      resolveLiveCreateWikiPageKind({
+        metadata: {},
+        sceneBootstrapped: false,
+      }),
+      'DEFAULT',
+    );
+  });
+
+  it('does not stamp character structure from a legacy CHARACTER type in metadata-only payload', () => {
+    const kind = resolveLiveCreateWikiPageKind({
       metadata: { profession: 'Scout' },
+      sceneBootstrapped: false,
     });
-    assert.equal(result.templateType, 'DEFAULT');
-    assert.equal(result.metadata.entityCategory, 'characters');
-    assert.equal(result.metadata.profession, 'Scout');
+    assert.equal(kind, 'DEFAULT');
   });
 
-  it('preserves explicit entityCategory when legacy type is coerced', () => {
-    const result = normalizeWikiPageTemplateFields({
-      templateType: 'CHARACTER',
-      metadata: { entityCategory: 'characters', profession: 'Scout' },
-    });
-    assert.equal(result.templateType, 'DEFAULT');
-    assert.equal(result.metadata.entityCategory, 'characters');
+  it('uses QUEST when quest metadata is present', () => {
+    assert.equal(
+      resolveLiveCreateWikiPageKind({
+        metadata: { entityCategory: 'quests', questStatus: 'open' },
+        sceneBootstrapped: false,
+      }),
+      'QUEST',
+    );
   });
 
-  it('accepts DEFAULT with entityCategory for character create payload', () => {
-    const result = normalizeWikiPageTemplateFields({
-      templateType: 'DEFAULT',
-      metadata: { entityCategory: 'characters' },
-    });
-    assert.equal(result.templateType, 'DEFAULT');
-    assert.equal(result.metadata.entityCategory, 'characters');
+  it('uses SCENE when scene bootstrap ran', () => {
+    assert.equal(
+      resolveLiveCreateWikiPageKind({
+        metadata: {},
+        sceneBootstrapped: true,
+      }),
+      'SCENE',
+    );
   });
 
-  it('leaves structural template types unchanged', () => {
-    const result = normalizeWikiPageTemplateFields({
-      templateType: 'QUEST',
-      metadata: { entityCategory: 'quests' },
-    });
-    assert.equal(result.templateType, 'QUEST');
-    assert.equal(result.metadata.entityCategory, 'quests');
+  it('uses JOURNAL when entityCategory is journals', () => {
+    assert.equal(
+      resolveLiveCreateWikiPageKind({
+        metadata: { entityCategory: 'journals' },
+        sceneBootstrapped: false,
+      }),
+      'JOURNAL',
+    );
   });
 });

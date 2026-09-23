@@ -1,4 +1,5 @@
 import type { WikiLinkIndexEntry } from '@/lib/wikiLoreGraph';
+import { formatWikiPageKind } from '@/lib/formatWikiPageKind';
 
 interface WikiCodexSuggestionListProps {
   matches: WikiLinkIndexEntry[];
@@ -31,9 +32,9 @@ export function WikiCodexSuggestionList({
             {entry.label !== entry.title ? (
               <span className="ml-1 text-xs text-muted">({entry.title})</span>
             ) : null}
-            {entry.templateType ? (
+            {entry.templateType && entry.templateType !== 'DEFAULT' ? (
               <span className="ml-1 text-[10px] uppercase text-muted">
-                {entry.templateType}
+                {formatWikiPageKind(entry.templateType)}
               </span>
             ) : null}
           </button>

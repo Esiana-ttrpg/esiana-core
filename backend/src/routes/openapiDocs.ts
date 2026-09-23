@@ -8,19 +8,24 @@ import { env } from '../config/env.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const SPEC_CANDIDATES = [
-  path.resolve(__dirname, '../../openapi/openapi.yaml'),
-  path.resolve(__dirname, '../../../../openapi/openapi.yaml'),
-];
+function openApiSpecCandidates(moduleDirectory: string): string[] {
+  return [
+    // Production: dist/backend/src/routes -> dist/backend/openapi
+    path.resolve(moduleDirectory, '../../openapi/openapi.yaml'),
+    // Development: backend/src/routes -> backend/openapi
+    path.resolve(moduleDirectory, '../../../../openapi/openapi.yaml'),
+  ];
+}
 
-export function resolveOpenApiSpecPath(): string {
-  for (const candidate of SPEC_CANDIDATES) {
+export function resolveOpenApiSpecPath(moduleDirectory = __dirname): string {
+  const candidates = openApiSpecCandidates(moduleDirectory);
+  for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
       return candidate;
     }
   }
   throw new Error(
-    `OpenAPI spec not found. Tried: ${SPEC_CANDIDATES.join(', ')}`,
+    `OpenAPI spec not found. Tried: ${candidates.join(', ')}`,
   );
 }
 
@@ -29,9 +34,16 @@ export function loadOpenApiSpec(specPath = resolveOpenApiSpecPath()): Record<str
   return yaml.parse(raw) as Record<string, unknown>;
 }
 
-export function createOpenApiDocsRouter(): Router {
+export function createOpenApiDocsRouter(
+  specPath = resolveOpenApiSpecPath(),
+): Router {
   const router = Router();
-  const spec = loadOpenApiSpec();
+  const rawSpec = fs.readFileSync(specPath, 'utf8');
+  const spec = yaml.parse(rawSpec) as Record<string, unknown>;
+
+  router.get('/openapi.yaml', (_req, res) => {
+    res.type('application/yaml').send(rawSpec);
+  });
 
   router.get('/openapi.json', (_req, res) => {
     res.json(spec);

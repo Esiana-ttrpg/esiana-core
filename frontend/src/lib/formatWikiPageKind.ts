@@ -1,4 +1,4 @@
-const WIKI_TEMPLATE_TYPE_LABELS: Record<string, string> = {
+const WIKI_PAGE_KIND_LABELS: Record<string, string> = {
   DEFAULT: 'Page',
   CHARACTER: 'Character',
   LOCATION: 'Location',
@@ -12,13 +12,15 @@ const WIKI_TEMPLATE_TYPE_LABELS: Record<string, string> = {
   ANCESTRY: 'Ancestry',
   LANGUAGE: 'Language',
   RULE_RESOURCE: 'Rule',
+  JOURNAL: 'Journal',
+  SESSION_NOTE: 'Session note',
 };
 
-/** Human-readable codex page type for tooltips and margin notes. */
-export function formatWikiTemplateType(templateType: string | null | undefined): string {
-  if (!templateType?.trim()) return 'Page';
-  const key = templateType.trim().toUpperCase();
-  if (WIKI_TEMPLATE_TYPE_LABELS[key]) return WIKI_TEMPLATE_TYPE_LABELS[key];
+/** Human-readable page kind for tooltips and margin notes. */
+export function formatWikiPageKind(kind: string | null | undefined): string {
+  if (!kind?.trim()) return 'Page';
+  const key = kind.trim().toUpperCase();
+  if (WIKI_PAGE_KIND_LABELS[key]) return WIKI_PAGE_KIND_LABELS[key];
   return key
     .split('_')
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())

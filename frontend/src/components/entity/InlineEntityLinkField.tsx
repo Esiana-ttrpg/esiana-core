@@ -1,6 +1,7 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useMemo, useState } from 'react';
 import { Link2 } from 'lucide-react';
+import { formatWikiPageKind } from '@/lib/formatWikiPageKind';
 import type { WikiTreeNode } from '@/types/wiki';
 
 const fieldClass =
@@ -83,7 +84,7 @@ export function InlineEntityLinkField({
               >
                 <span className="font-medium text-foreground">{page.title}</span>
                 <span className="shrink-0 rounded bg-surface px-1 py-0.5 text-[9px] uppercase tracking-wide text-muted">
-                  {page.templateType}
+                  {formatWikiPageKind(page.templateType)}
                 </span>
               </button>
             </li>

@@ -94,6 +94,15 @@ export function getRecruitingPlayerCapacity(limits: RecruitmentSeatLimits): numb
   return 0;
 }
 
+/** Player seats already occupied at the real-world table. */
+export function getFilledTableSeats(limits: RecruitmentSeatLimits): number {
+  if (limits.maxPlayers <= 0) return 0;
+  return Math.max(
+    0,
+    limits.maxPlayers - Math.min(limits.maxPlayers, getRecruitingPlayerCapacity(limits)),
+  );
+}
+
 /** Lobby / table fill: party size when set, else recruiting capacity. */
 export function getLobbyTableCapacity(limits: RecruitmentSeatLimits): number {
   const party = limits.maxPlayers > 0 ? limits.maxPlayers : 0;
@@ -110,11 +119,8 @@ export function isRecruitmentTableFull(
 }
 
 export function isLobbyTableFull(
-  filledSeats: number,
+  _filledSeats: number,
   limits: RecruitmentSeatLimits,
 ): boolean {
-  if (limits.maxPlayers > 0 && filledSeats >= limits.maxPlayers) return true;
-  if (limits.maxSeats > 0 && filledSeats >= limits.maxSeats) return true;
-  if (limits.maxPlayers > 0) return false;
-  return isRecruitmentTableFull(filledSeats, limits);
+  return getRecruitingPlayerCapacity(limits) <= 0;
 }

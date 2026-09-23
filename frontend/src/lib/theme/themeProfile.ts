@@ -52,6 +52,12 @@ export const DEFAULT_THEME_PROFILE: ThemeProfile = {
 
 export const THEME_PROFILE_STORAGE_KEY = 'esiana-theme-profile';
 
+export type AppearanceSelection =
+  | { category: 'foundation'; value: FoundationId }
+  | { category: 'foundationPalette'; value: FoundationPaletteId }
+  | { category: 'genre'; value: GenreId }
+  | { category: 'identity'; value: IdentityId };
+
 /** Classes toggled on `<html>` when applying a theme profile or preset. */
 export const GLOBAL_THEME_HTML_CLASSES = [
   'theme-light',
@@ -157,6 +163,82 @@ export function normalizeThemeProfile(
     foundationPalette,
     applyBackgroundTint: Boolean(base.applyBackgroundTint),
   };
+}
+
+/**
+ * Resolve a user selection as one atomic appearance transition.
+ *
+ * Normalization intentionally has no knowledge of which field changed, so it cannot make the
+ * newly selected option win an incompatibility. Interactive controls must use this function
+ * instead of patching fields independently.
+ */
+export function selectAppearanceOption(
+  profile: ThemeProfile,
+  selection: AppearanceSelection,
+): ThemeProfile {
+  const current = normalizeThemeProfile(profile);
+
+  if (selection.category === 'foundation') {
+    return normalizeThemeProfile({
+      ...current,
+      foundation: selection.value,
+      foundationPalette: getDefaultFoundationPalette(selection.value),
+      genre: 'none',
+      identity: 'none',
+    });
+  }
+
+  if (selection.category === 'foundationPalette') {
+    const mode = getPaletteColorMode(selection.value);
+    return normalizeThemeProfile({
+      ...current,
+      foundation: mode,
+      foundationPalette: selection.value,
+      genre: 'none',
+      identity: 'none',
+    });
+  }
+
+  if (selection.category === 'genre') {
+    if (selection.value === 'none') {
+      return normalizeThemeProfile({ ...current, genre: 'none' });
+    }
+    const mode = APPEARANCE_PRESETS.genre[selection.value].mode;
+    const identity =
+      current.identity !== 'none' &&
+      APPEARANCE_PRESETS.holiday[current.identity].mode !== mode
+        ? 'none'
+        : current.identity;
+    return normalizeThemeProfile({
+      ...current,
+      foundation: mode,
+      foundationPalette:
+        getPaletteColorMode(current.foundationPalette) === mode
+          ? current.foundationPalette
+          : getDefaultFoundationPalette(mode),
+      genre: selection.value,
+      identity,
+    });
+  }
+
+  if (selection.value === 'none') {
+    return normalizeThemeProfile({ ...current, identity: 'none' });
+  }
+  const mode = APPEARANCE_PRESETS.holiday[selection.value].mode;
+  const genre =
+    current.genre !== 'none' && APPEARANCE_PRESETS.genre[current.genre].mode !== mode
+      ? 'none'
+      : current.genre;
+  return normalizeThemeProfile({
+    ...current,
+    foundation: mode,
+    foundationPalette:
+      getPaletteColorMode(current.foundationPalette) === mode
+        ? current.foundationPalette
+        : getDefaultFoundationPalette(mode),
+    genre,
+    identity: selection.value,
+  });
 }
 
 /** Maps profile to persisted SystemSetting branding fields. */

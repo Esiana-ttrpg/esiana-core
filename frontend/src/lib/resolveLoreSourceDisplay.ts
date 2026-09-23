@@ -1,5 +1,5 @@
 import { campaignWikiPath } from '@/lib/campaignPaths';
-import { formatWikiTemplateType } from '@/lib/formatWikiTemplateType';
+import { formatWikiPageKind } from '@/lib/formatWikiPageKind';
 import { SOURCE_TYPE_OPTIONS } from '@/components/entity/lore/LoreKnowledgeUi';
 import type { CalendarEventRecord } from '@/lib/calendarEventsApi';
 import type { LoreClaimSourceRecord } from '@/lib/loreKnowledgeProjection';
@@ -30,10 +30,10 @@ export function resolveLoreSourceDisplay(
   if (source.sourceEntityType === 'WIKI_PAGE' && source.sourceEntityId) {
     const page = flatPages.find((p) => p.id === source.sourceEntityId);
     const title = page?.title ?? source.label ?? 'Wiki page';
-    const templateLabel = page ? formatWikiTemplateType(page.templateType) : 'Wiki page';
+    const kindLabel = page ? formatWikiPageKind(page.templateType) : 'Wiki page';
     return {
       primaryTitle: title,
-      secondaryLine: `${typeLabel} · ${templateLabel}`,
+      secondaryLine: `${typeLabel} · ${kindLabel}`,
       href: campaignWikiPath(
         campaignHandle,
         source.sourceEntityId,

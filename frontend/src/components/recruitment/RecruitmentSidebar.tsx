@@ -9,7 +9,6 @@ import {
 import {
   getLobbyTableCapacity,
   getOpenRecruitingSlots,
-  getRecruitingPlayerCapacity,
 } from '@shared/recruitmentSeats';
 import { getContinuityLine } from './recruitmentContinuity';
 import { RecruitmentBeforeApplyNote } from './RecruitmentBeforeApplyNote';
@@ -25,7 +24,6 @@ export function RecruitmentSidebar({ campaign, onRequestSeat, isFull }: Recruitm
   const seatLimits = { maxSeats: r.maxSeats, maxPlayers: r.maxPlayers };
   const tableCapacity = getLobbyTableCapacity(seatLimits);
   const spotsOpen = getOpenRecruitingSlots(r.filledSeats, seatLimits);
-  const recruitingFor = getRecruitingPlayerCapacity(seatLimits);
   const continuity = getContinuityLine(campaign);
   const viewerTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -70,13 +68,6 @@ export function RecruitmentSidebar({ campaign, onRequestSeat, isFull }: Recruitm
                 ? 'No spots open.'
                 : 'Set party size in campaign settings.'}
         </p>
-        {r.maxSeats > 0 && recruitingFor !== tableCapacity ? (
-          <p className="mt-2 text-xs text-muted">
-            Recruiting for {recruitingFor} player{recruitingFor === 1 ? '' : 's'} (party size{' '}
-            {r.maxPlayers})
-          </p>
-        ) : null}
-
         <div className="mt-5 space-y-2 border-t border-border/70 pt-4 text-sm">
           <p className="font-medium text-foreground">{scheduleSummary}</p>
           {viewerTz ? (

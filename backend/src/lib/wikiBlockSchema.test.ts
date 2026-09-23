@@ -1,23 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildDefaultBlocks } from './pageTemplates.js';
-import { parseAndValidateTemplateBlocks } from './templateBlocks.js';
+import { parseAndValidateWikiBlocks } from './wikiBlockSchema.js';
 
-test('parseAndValidateTemplateBlocks accepts default CHARACTER layout', () => {
-  const result = parseAndValidateTemplateBlocks(buildDefaultBlocks('CHARACTER'));
+test('parseAndValidateWikiBlocks accepts default character layout', () => {
+  const result = parseAndValidateWikiBlocks(buildDefaultBlocks('DEFAULT', 'characters'));
   assert.equal(result.ok, true);
 });
 
-test('parseAndValidateTemplateBlocks rejects empty array', () => {
-  const result = parseAndValidateTemplateBlocks([]);
+test('parseAndValidateWikiBlocks rejects empty array', () => {
+  const result = parseAndValidateWikiBlocks([]);
   assert.equal(result.ok, false);
   if (!result.ok) {
     assert.match(result.error, /at least one block/i);
   }
 });
 
-test('parseAndValidateTemplateBlocks rejects layout without narrative body', () => {
-  const result = parseAndValidateTemplateBlocks([
+test('parseAndValidateWikiBlocks rejects layout without narrative body', () => {
+  const result = parseAndValidateWikiBlocks([
     {
       id: 'infobox-1',
       type: 'wiki-infobox',
@@ -35,9 +35,9 @@ test('parseAndValidateTemplateBlocks rejects layout without narrative body', () 
   }
 });
 
-test('parseAndValidateTemplateBlocks rejects block outside grid width', () => {
-  const blocks = buildDefaultBlocks('DEFAULT');
+test('parseAndValidateWikiBlocks rejects block outside grid width', () => {
+  const blocks = buildDefaultBlocks();
   const wide = { ...blocks[0], x: 2, w: 2 };
-  const result = parseAndValidateTemplateBlocks([wide, blocks[1]]);
+  const result = parseAndValidateWikiBlocks([wide, blocks[1]]);
   assert.equal(result.ok, false);
 });

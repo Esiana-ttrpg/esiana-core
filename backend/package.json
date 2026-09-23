@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsx watch src/index.ts",
+    "test:assets": "node --import tsx --test --test-concurrency=1 src/routes/assets.http.test.ts src/lib/assetAccess.test.ts",
     "build": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsc && node scripts/copy-openapi.mjs",
     "start": "node dist/backend/src/index.js",
     "db:generate": "prisma generate",
