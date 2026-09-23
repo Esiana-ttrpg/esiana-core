@@ -426,6 +426,7 @@ paths:
       tags: [Assets]
       summary: Stream campaign asset
       security:
+        - {}
         - cookieAuth: []
         - bearerAuth: []
       parameters:
