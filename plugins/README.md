@@ -4,13 +4,13 @@ Esiana loads enabled plugins from **`PLUGINS_DIR`** (default: this folder). This
 
 ## Operators
 
-1. Admin → **Plugins & Integrations** → confirm registry URL (default: community-plugins `registry.json` blob link)
+1. Admin → **Plugins & Integrations** → confirm the default community-plugins `registry.json` URL
 2. **Sync Registry** → install → enable plugins
 
 Default registry URL:
 
 ```text
-https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json
+https://github.com/Esiana-ttrpg/community-plugins/registry.json
 ```
 
 See [Self-hosting: installation](../../docs/self-hosting/installation.md) and [`community-plugins/README.md`](../../community-plugins/README.md).

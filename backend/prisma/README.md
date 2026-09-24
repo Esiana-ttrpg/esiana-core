@@ -68,7 +68,7 @@ Manual SQL (SQLite example):
 
 ```sql
 UPDATE SystemSetting
-SET pluginRegistryUrl = 'https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json'
+SET pluginRegistryUrl = 'https://github.com/Esiana-ttrpg/community-plugins/registry.json'
 WHERE id = 'GLOBAL_CONFIG'
   AND pluginRegistryUrl IN (
     'https://raw.githubusercontent.com/esiana-app/core-plugins/main/registry.json',
