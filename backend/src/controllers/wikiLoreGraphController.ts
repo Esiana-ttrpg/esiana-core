@@ -456,13 +456,20 @@ export async function createWikiPageAlias(
   }
 
   try {
-    const created = await prisma.wikiPageAlias.create({
-      data: {
-        campaignId: ctx.campaignId,
-        pageId,
-        alias: alias.trim(),
-        normalizedAlias,
-      },
+    const created = await prisma.$transaction(async (tx) => {
+      const nextAlias = await tx.wikiPageAlias.create({
+        data: {
+          campaignId: ctx.campaignId,
+          pageId,
+          alias: alias.trim(),
+          normalizedAlias,
+        },
+      });
+      await tx.wikiPage.update({
+        where: { id: pageId },
+        data: { updatedAt: new Date() },
+      });
+      return nextAlias;
     });
     if (req.user?.id) {
       await appendNarrativeEvent(prisma, {
@@ -487,9 +494,22 @@ export async function deleteWikiPageAlias(
   const ctx = req.campaign!;
   const aliasId = String(req.params.aliasId);
 
-  await prisma.wikiPageAlias.deleteMany({
+  const alias = await prisma.wikiPageAlias.findFirst({
     where: { id: aliasId, campaignId: ctx.campaignId },
+    select: { pageId: true },
   });
+
+  if (alias) {
+    await prisma.$transaction([
+      prisma.wikiPageAlias.deleteMany({
+        where: { id: aliasId, campaignId: ctx.campaignId },
+      }),
+      prisma.wikiPage.update({
+        where: { id: alias.pageId },
+        data: { updatedAt: new Date() },
+      }),
+    ]);
+  }
 
   res.json({ ok: true });
 }

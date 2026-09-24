@@ -2048,7 +2048,6 @@ export async function updateWikiPageLayout(
     select: { createdAt: true },
   });
 
-  let layoutTemporal: { updatedAt?: Date } = {};
   let temporalEventAt: Date | undefined;
   try {
     const applied = applyWikiPageTemporalData(
@@ -2057,7 +2056,6 @@ export async function updateWikiPageLayout(
       temporalActor,
       { campaignCreatedAt: campaignRow?.createdAt, now: new Date() },
     );
-    layoutTemporal = applied.data;
     temporalEventAt = applied.data.updatedAt;
   } catch (err) {
     rejectTemporalError(res, err);
@@ -2068,7 +2066,6 @@ export async function updateWikiPageLayout(
     where: { id: page.id },
     data: {
       blocks: normalizedLayoutBlocks.blocks as any,
-      ...(layoutTemporal.updatedAt ? { updatedAt: layoutTemporal.updatedAt } : {}),
     },
     select: {
       blocks: true,

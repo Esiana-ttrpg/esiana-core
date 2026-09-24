@@ -94,6 +94,10 @@ export async function postEntityHistoricalAlias(
     pageId,
     req.body as Record<string, unknown>,
   );
+  await prisma.wikiPage.update({
+    where: { id: pageId },
+    data: { updatedAt: new Date() },
+  });
   if (req.user?.id) {
     await appendNarrativeEvent(prisma, {
       campaignId: ctx.campaignId,
@@ -122,6 +126,10 @@ export async function patchEntityHistoricalAlias(
     res.status(404).json({ error: 'Alias not found' });
     return;
   }
+  await prisma.wikiPage.update({
+    where: { id: alias.pageId },
+    data: { updatedAt: new Date() },
+  });
   if (req.user?.id) {
     await appendNarrativeEvent(prisma, {
       campaignId: ctx.campaignId,
@@ -141,10 +149,20 @@ export async function removeEntityHistoricalAlias(
 ): Promise<void> {
   const ctx = req.campaign!;
   const aliasId = String(req.params.aliasId);
+  const existing = await prisma.entityHistoricalAlias.findFirst({
+    where: { id: aliasId, campaignId: ctx.campaignId },
+    select: { pageId: true },
+  });
   const ok = await deleteHistoricalAlias(ctx.campaignId, aliasId);
   if (!ok) {
     res.status(404).json({ error: 'Alias not found' });
     return;
+  }
+  if (existing) {
+    await prisma.wikiPage.update({
+      where: { id: existing.pageId },
+      data: { updatedAt: new Date() },
+    });
   }
   res.json({ ok: true });
 }
