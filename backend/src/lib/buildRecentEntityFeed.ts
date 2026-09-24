@@ -1,4 +1,4 @@
-import { isReservedSystemWikiPage } from './wikiSystemPages.js';
+import { newestVisibleCampaignPages } from './wikiSystemPages.js';
 import { prisma } from './prisma.js';
 import { canViewWikiPage } from './wikiTree.js';
 import { campaignWikiHref } from './dashboardPaths.js';
@@ -33,28 +33,26 @@ async function fetchWikiFeedItems(
   role: CampaignMemberRole | null,
   campaignHandle: string,
   limit: number,
-  options?: { excludeSystemPages?: boolean },
 ): Promise<RecentEntityFeedItem[]> {
   const rows = await prisma.wikiPage.findMany({
-    where: { campaignId },
+    where: { campaignId, deletedAt: null },
     select: {
       ...wikiPageHrefSelect,
       visibility: true,
       updatedAt: true,
     },
     orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
-    take: WIKI_FETCH_BUFFER,
+    take: Math.max(WIKI_FETCH_BUFFER, limit + WIKI_FETCH_BUFFER),
   });
 
+  const qualifyingRows = newestVisibleCampaignPages(
+    rows,
+    limit,
+    (row) => canViewWikiPage(row.visibility, role),
+  );
+
   const items: RecentEntityFeedItem[] = [];
-  for (const row of rows) {
-    if (!canViewWikiPage(row.visibility, role)) continue;
-    if (
-      options?.excludeSystemPages &&
-      isReservedSystemWikiPage({ title: row.title, templateType: row.templateType })
-    ) {
-      continue;
-    }
+  for (const row of qualifyingRows) {
     const updatedAt = row.updatedAt;
     items.push({
       entityType: 'WIKI_PAGE',
@@ -65,7 +63,6 @@ async function fetchWikiFeedItems(
       visibility: normalizeVisibility(row.visibility),
       freshnessLabel: formatEditorialFreshness(updatedAt),
     });
-    if (items.length >= limit) break;
   }
   return items;
 }
@@ -205,9 +202,7 @@ export async function buildRecentEntityFeed(
 
   if (wantsType(types, 'WIKI_PAGE')) {
     buckets.push(
-      ...(await fetchWikiFeedItems(campaignId, role, campaignHandle, limit, {
-        excludeSystemPages: options?.excludeSystemWikiPages,
-      })),
+      ...(await fetchWikiFeedItems(campaignId, role, campaignHandle, limit)),
     );
   }
   if (wantsType(types, 'QUEST')) {
@@ -236,6 +231,5 @@ export async function buildRecentLoreFeed(
   return buildRecentEntityFeed(campaignId, campaignHandle, role, null, {
     entityTypes: ['WIKI_PAGE'],
     limit,
-    excludeSystemWikiPages: true,
   });
 }

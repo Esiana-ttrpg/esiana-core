@@ -16,6 +16,8 @@ import {
   campaignThreadsHubPath,
 } from './notifications/deepLinks.js';
 import { countPendingLedgerSuggestions } from './ledgerSuggestionService.js';
+import { newestVisibleCampaignPages } from './wikiSystemPages.js';
+import { canViewWikiPage } from './wikiTree.js';
 
 export type HubMomentumLabel = 'strong' | 'steady' | 'fading' | 'stalled';
 
@@ -379,7 +381,7 @@ export async function batchRecentEditsForCampaigns(
   await Promise.all(
     contexts.map(async (ctx) => {
       const rows = await prisma.wikiPage.findMany({
-        where: { campaignId: ctx.campaignId },
+        where: { campaignId: ctx.campaignId, deletedAt: null },
         select: {
           id: true,
           title: true,
@@ -389,13 +391,19 @@ export async function batchRecentEditsForCampaigns(
           workspace: true,
           pathKey: true,
           metadata: true,
+          visibility: true,
         },
         orderBy: { updatedAt: 'desc' },
-        take: perCampaign,
+        take: perCampaign + 20,
       });
+      const qualifyingRows = newestVisibleCampaignPages(
+        rows,
+        perCampaign,
+        (row) => canViewWikiPage(row.visibility, ctx.role),
+      );
       map.set(
         ctx.campaignId,
-        rows.map((r) => ({
+        qualifyingRows.map((r) => ({
           campaignId: ctx.campaignId,
           campaignName: ctx.name,
           campaignHandle: ctx.handle,
