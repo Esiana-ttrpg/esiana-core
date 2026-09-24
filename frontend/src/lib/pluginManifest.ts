@@ -1,6 +1,6 @@
-/** Official community plugin catalog index (blob link — normalized to raw on fetch). */
+/** Official community plugin catalog index (resolved through the default branch on fetch). */
 export const DEFAULT_PLUGIN_REGISTRY_URL =
-  'https://github.com/Esiana-ttrpg/community-plugins/blob/main/registry.json';
+  'https://github.com/Esiana-ttrpg/community-plugins/registry.json';
 
 /** Monorepo / dev default — same catalog. */
 export const DEV_PLUGIN_REGISTRY_URL = DEFAULT_PLUGIN_REGISTRY_URL;

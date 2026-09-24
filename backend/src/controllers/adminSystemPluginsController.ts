@@ -186,11 +186,13 @@ export async function fetchAdminPluginRegistry(
 
   const warnings: string[] = [];
   let plugins: PluginRegistryEntry[] = [];
+  let remoteLoaded = false;
 
   if (target) {
     const fetched = await fetchAndParsePluginRegistry(target);
     if (fetched.ok) {
       plugins = fetched.plugins;
+      remoteLoaded = true;
     } else {
       warnings.push(`Remote registry unavailable: ${fetched.error}`);
       const fallback = collectLocalRegistryFallback();
@@ -209,6 +211,7 @@ export async function fetchAdminPluginRegistry(
   res.json({
     registryUrl,
     plugins,
+    remoteLoaded,
     ...(warnings.length > 0 ? { warnings } : {}),
   });
 }

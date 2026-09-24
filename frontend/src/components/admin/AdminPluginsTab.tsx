@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api';
 import {
   fetchAdminPlugins,
   fetchPluginRegistry,
+  registrySyncWarnings,
   installPluginFromLink,
   installPluginFromRegistry,
   saveAdminPluginConfig,
@@ -148,11 +149,7 @@ export function AdminPluginsTab() {
       setRegistryUrl(response.registryUrl);
       setDiscovered(response.plugins);
       setLastSyncedAt(new Date().toISOString());
-      const warnings = [...(response.warnings ?? [])];
-      if (response.plugins.length === 0) {
-        warnings.push('Registry loaded but contains no plugin entries.');
-      }
-      setRegistryWarnings(warnings);
+      setRegistryWarnings(registrySyncWarnings(response));
     } catch (err) {
       setRegistryError(
         err instanceof Error

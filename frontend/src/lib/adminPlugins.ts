@@ -9,7 +9,16 @@ import type {
 export interface PluginRegistryResponse {
   registryUrl: string;
   plugins: PluginRegistryEntry[];
+  remoteLoaded: boolean;
   warnings?: string[];
+}
+
+export function registrySyncWarnings(response: PluginRegistryResponse): string[] {
+  const warnings = [...(response.warnings ?? [])];
+  if (response.remoteLoaded && response.plugins.length === 0) {
+    warnings.push('Registry loaded but contains no plugin entries.');
+  }
+  return warnings;
 }
 
 export interface PluginRegistryInstallResponse {

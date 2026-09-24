@@ -6,13 +6,14 @@ export const MAX_REGISTRY_BYTES = 512 * 1024;
 
 const PLUGIN_REGISTRY_TIMEOUT_SECONDS = 15;
 
-function isAllowedPluginJsonContentType(contentType: string | null): boolean {
+function isAllowedPluginJsonContentType(contentType: string | null, url: URL): boolean {
   if (!contentType) return false;
   const normalized = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
   return (
     normalized === 'application/json' ||
     normalized === 'text/json' ||
-    normalized === 'application/manifest+json'
+    normalized === 'application/manifest+json' ||
+    (normalized === 'text/plain' && url.hostname === 'raw.githubusercontent.com')
   );
 }
 
@@ -39,6 +40,7 @@ function mapNetworkFetchFailure(error: unknown): {
 
 export async function fetchAndParsePluginRegistry(
   url: URL,
+  fetchText: typeof fetchPluginRemoteText = fetchPluginRemoteText,
 ): Promise<
   | ReturnType<typeof parsePluginRegistryIndex> & { ok: true }
   | { ok: false; status: number; error: string; details?: string[] }
@@ -48,7 +50,7 @@ export async function fetchAndParsePluginRegistry(
   let rawText: string;
   let contentType: string | null;
   try {
-    const fetched = await fetchPluginRemoteText(fetchUrl, {
+    const fetched = await fetchText(fetchUrl, {
       maxBytes: MAX_REGISTRY_BYTES,
       timeoutSeconds: PLUGIN_REGISTRY_TIMEOUT_SECONDS,
       headers: { Accept: 'application/json' },
@@ -60,7 +62,7 @@ export async function fetchAndParsePluginRegistry(
     return { ok: false, status: mapped.status, error: mapped.error };
   }
 
-  if (!isAllowedPluginJsonContentType(contentType)) {
+  if (!isAllowedPluginJsonContentType(contentType, fetchUrl)) {
     return {
       ok: false,
       status: 400,

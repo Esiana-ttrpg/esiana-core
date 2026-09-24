@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { normalizeRemoteJsonUrl } from './fetchPluginManifest.js';
+import './fetchPluginRegistry.test.js';
 
 test('normalizeRemoteJsonUrl converts github blob links to raw.githubusercontent.com', () => {
   const normalized = normalizeRemoteJsonUrl(
@@ -9,6 +10,16 @@ test('normalizeRemoteJsonUrl converts github blob links to raw.githubusercontent
   assert.equal(
     normalized.toString(),
     'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/main/manifest.json',
+  );
+});
+
+test('normalizeRemoteJsonUrl converts canonical GitHub repository file URLs using the default branch', () => {
+  const normalized = normalizeRemoteJsonUrl(
+    new URL('https://github.com/Esiana-ttrpg/community-plugins/registry.json'),
+  );
+  assert.equal(
+    normalized.toString(),
+    'https://raw.githubusercontent.com/Esiana-ttrpg/community-plugins/HEAD/registry.json',
   );
 });
 
