@@ -15,6 +15,7 @@ const result = spawnSync(
     '../shared/recruitmentSeats.test.ts',
     'src/components/recruitment/RecruitmentHostSection.test.tsx',
     'src/components/chronology/worldAdvanceFeedGrouping.test.ts',
+    'src/components/progression/DevelopmentsSection.test.ts',
     'src/lib/chronologyDates.test.ts',
     'src/lib/wikiHierarchy.test.ts',
     'src/lib/formatWikiPageKind.test.ts',
