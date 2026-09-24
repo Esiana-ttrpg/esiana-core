@@ -73,6 +73,7 @@ export const PluginCapabilities = {
   IMPORT_PROVIDER: 'importProvider',
   DEVELOPMENT_PROVIDER: 'developmentProvider',
   STORAGE_PROVIDER: 'storageProvider',
+  SOURCE_PROVIDER: 'sourceProvider',
 } as const;
 
 export type PluginCapability =
@@ -186,7 +187,8 @@ export function isBackendOnlyGlobalPlugin(
     caps.includes(PluginCapabilities.CAMPAIGN_GENERATOR) ||
     caps.includes(PluginCapabilities.CONTENT_PACK) ||
     caps.includes(PluginCapabilities.DEVELOPMENT_PROVIDER) ||
-    caps.includes(PluginCapabilities.STORAGE_PROVIDER)
+    caps.includes(PluginCapabilities.STORAGE_PROVIDER) ||
+    caps.includes(PluginCapabilities.SOURCE_PROVIDER)
   );
 }
 

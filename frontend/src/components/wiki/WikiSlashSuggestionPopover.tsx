@@ -19,6 +19,7 @@ interface WikiSlashSuggestionPopoverProps {
   onSelect: (entry: WikiLinkIndexEntry) => void;
   onCreateStub?: (label: string) => void;
   onMentionPlayer: () => void;
+  onSource: () => void;
   onClose: () => void;
 }
 
@@ -29,6 +30,7 @@ export function WikiSlashSuggestionPopover({
   onSelect,
   onCreateStub,
   onMentionPlayer,
+  onSource,
   onClose,
 }: WikiSlashSuggestionPopoverProps) {
   const [mode, setMode] = useState<SlashMode>('default');
@@ -53,6 +55,7 @@ export function WikiSlashSuggestionPopover({
   }, [mode, hasQuery]);
 
   const showUtilityActions = mode === 'default' && !hasQuery;
+  const showSourceAction = mode === 'default' && state.query.toLowerCase() === 'source';
   const showStubAction = hasQuery && onCreateStub;
 
   return createPortal(
@@ -110,6 +113,8 @@ export function WikiSlashSuggestionPopover({
           Create stub “{state.query.trim()}”
         </button>
       ) : null}
+
+      {showSourceAction ? <button type="button" className="w-full border-t border-border px-3 py-2 text-left text-xs text-primary hover:bg-muted/20" onMouseDown={(e) => { e.preventDefault(); onSource(); onClose(); }}>Search sources…</button> : null}
 
       {showUtilityActions ? (
         <div className="border-t border-border py-1">

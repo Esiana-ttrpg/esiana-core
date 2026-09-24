@@ -126,6 +126,7 @@ From `backend/src/lib/pluginManifest.ts` (`PluginUiSlots`):
 | **Campaign settings extensions** | Partial | `configSchema` / `configTemplate` in manifest → auto-settings UI; no plugin-defined campaign-level settings panels beyond per-plugin config |
 | **World state providers** | Yes | `developmentProvider` capability — settlement-life reference |
 | **Search integration** | No | PluginData and plugin entities invisible to core search |
+| **Source references** | Yes | `sourceProvider` capability; core owns citation persistence, picker, rendering, and campaign authorization |
 | **Timeline integration** | No | No plugin write API for timeline events |
 | **Calendar integration** | Partial | Plugins can listen to `core:calendar:advanced` / `core:world:advanced`; no register-holiday API |
 | **Codex / wiki blocks** | Partial | `wiki:decorate` injects metadata/display hints; no TipTap block registration from plugins |

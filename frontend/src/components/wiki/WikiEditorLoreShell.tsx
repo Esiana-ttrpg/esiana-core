@@ -31,6 +31,9 @@ import {
 import { WikiAmbientRecognitionExtension } from './extensions/wikiAmbientRecognition';
 import { useOptionalWiki } from '@/contexts/WikiContext';
 import { collectWikiLinkTargetIdsFromEditor } from './extensions/wikiReferenceInsertion';
+import { OPEN_SOURCE_PICKER_EVENT, SourcePicker, type SourcePickerRequest } from './SourcePicker';
+import { SOURCE_REFERENCE_INTERACT_EVENT } from './extensions/SourceReferenceExtension';
+import { SourceReferencePopover, type SourceInteraction } from './SourceReferencePopover';
 
 function mapApiMentionTarget(t: MentionTarget): AtTarget {
   return {
@@ -53,6 +56,8 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
   const [atState, setAtState] = useState<AtSuggestionState | null>(null);
   const [mentionTargets, setMentionTargets] = useState<AtTarget[]>([]);
   const [ambientEnabled, setAmbientEnabled] = useState(false);
+  const [sourceRequest, setSourceRequest] = useState<SourcePickerRequest | null>(null);
+  const [sourceInteraction, setSourceInteraction] = useState<SourceInteraction | null>(null);
 
   useEffect(() => {
     if (!campaignHandle) {
@@ -182,6 +187,10 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
             setSlashState(null);
           }}
           onMentionPlayer={() => openMentionFromSlash(editor)}
+          onSource={() => {
+            const selection = editor.state.selection;
+            setSourceRequest({ editor, range: selection.empty ? { from: slashState.from, to: slashState.from } : { from: selection.from, to: selection.to }, replaceRange: { from: slashState.from, to: slashState.to } });
+          }}
           onClose={() => setSlashState(null)}
         />
       );
@@ -235,14 +244,29 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
   );
 
   const LorePopovers = useCallback(
-    ({ editor }: { editor: Editor | null }) => (
-      <>
+    ({ editor }: { editor: Editor | null }) => {
+      useEffect(() => {
+        const listener = (event: Event) => {
+          const detail = (event as CustomEvent<{ editor: Editor }>).detail;
+          if (editor && detail?.editor === editor) setSourceRequest({ editor, range: { from: editor.state.selection.from, to: editor.state.selection.to } });
+        };
+        window.addEventListener(OPEN_SOURCE_PICKER_EVENT, listener);
+        const sourceListener = (event: Event) => {
+          const detail = (event as CustomEvent<Omit<SourceInteraction, 'editor'> & { editorView: Editor['view'] }>).detail;
+          if (editor && detail?.editorView === editor.view) setSourceInteraction({ ...detail, editor });
+        };
+        window.addEventListener(SOURCE_REFERENCE_INTERACT_EVENT, sourceListener);
+        return () => { window.removeEventListener(OPEN_SOURCE_PICKER_EVENT, listener); window.removeEventListener(SOURCE_REFERENCE_INTERACT_EVENT, sourceListener); };
+      }, [editor]);
+      return <>
         <BracketPopover editor={editor} />
         <SlashPopover editor={editor} />
         <AtPopover editor={editor} />
+        {sourceRequest && wiki?.campaign?.id ? <SourcePicker campaignId={wiki.campaign.id} request={sourceRequest} onClose={() => setSourceRequest(null)} /> : null}
+        {sourceInteraction && wiki?.campaign?.id ? <SourceReferencePopover campaignId={wiki.campaign.id} interaction={sourceInteraction} onClose={() => setSourceInteraction(null)} /> : null}
       </>
-    ),
-    [BracketPopover, SlashPopover, AtPopover],
+    },
+    [BracketPopover, SlashPopover, AtPopover, sourceRequest, sourceInteraction, wiki?.campaign?.id],
   );
 
   return {
@@ -267,7 +291,8 @@ export function WikiSyntaxHint({
       <span>
         <span className="text-foreground/80">[[Name]]</span> links the codex ·{' '}
         <span className="text-foreground/80">/Name</span> quick reference ·{' '}
-        <span className="text-foreground/80">@Name</span> notifies a player
+        <span className="text-foreground/80">@Name</span> notifies a player ·{' '}
+        <span className="text-foreground/80">/source</span> cites a source
       </span>
       {onAmbientToggle ? (
         <label className="flex items-center gap-1.5 cursor-pointer">

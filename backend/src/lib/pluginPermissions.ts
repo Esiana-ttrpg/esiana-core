@@ -21,6 +21,7 @@ export const PLUGIN_PERMISSIONS = [
   'plugin:secrets',
   'plugin:assets',
   'campaign:import',
+  'source:provider',
 ] as const;
 
 export type PluginPermission = (typeof PLUGIN_PERMISSIONS)[number];
