@@ -326,8 +326,8 @@ export async function buildCampaignNarrativeSnapshot(input: {
     : {
         label: 'Current Date',
         value: 'World date not set',
-        emptyPrompt: 'Configure your fantasy calendar',
-        href: campaignPath(campaignHandle, 'settings'),
+        emptyPrompt: 'Set your current campaign time',
+        href: campaignPath(campaignHandle, 'chronology'),
       };
 
   const partyCount = partyMembers.length;
