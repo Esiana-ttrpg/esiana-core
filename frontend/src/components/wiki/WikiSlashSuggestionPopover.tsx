@@ -114,7 +114,7 @@ export function WikiSlashSuggestionPopover({
         </button>
       ) : null}
 
-      {showSourceAction ? <button type="button" className="w-full border-t border-border px-3 py-2 text-left text-xs text-primary hover:bg-muted/20" onMouseDown={(e) => { e.preventDefault(); onSource(); onClose(); }}>Search sources…</button> : null}
+      {showSourceAction ? <button type="button" className="w-full border-t border-border px-3 py-2 text-left text-xs text-primary hover:bg-muted/20" onMouseDown={(e) => e.preventDefault()} onClick={() => { onSource(); onClose(); }}>Search sources…</button> : null}
 
       {showUtilityActions ? (
         <div className="border-t border-border py-1">

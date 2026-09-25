@@ -35,6 +35,7 @@ export function SourcePicker({ campaignId, request, onClose }: { campaignId: str
 
   useEffect(() => { fetchSourceProviders(campaignId).then(setProviders).catch(() => setProviders([])); }, [campaignId]);
   useEffect(() => {
+    setResults([]);
     if (query.trim().length < 2) { setResults([]); setLoading(false); return; }
     const controller = new AbortController();
     const current = ++requestNumber.current;

@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/react';
 import type { SourceReference } from '@shared/sourceReferences';
 import { encodeSourceReference } from '@shared/sourceReferences';
 import { fetchSourceOpenTarget, resolveSource } from '@/lib/sourceReferencesApi';
+import { findSourceReferenceRange } from './extensions/sourceReferenceRange';
 
 export interface SourceInteraction {
   editor: Editor;
@@ -12,21 +13,6 @@ export interface SourceInteraction {
   reference: SourceReference;
   atom: boolean;
   rect: DOMRect;
-}
-
-function matchingRange(editor: Editor, interaction: SourceInteraction): { from: number; to: number; atom: boolean } | null {
-  let found: { from: number; to: number; atom: boolean } | null = null;
-  editor.state.doc.descendants((node, pos) => {
-    if (found) return false;
-    if (interaction.atom && node.type.name === 'sourceReferenceAtom' && node.attrs.payload === interaction.payload && Math.abs(pos - interaction.pos) <= 2) {
-      found = { from: pos, to: pos + node.nodeSize, atom: true }; return false;
-    }
-    if (!interaction.atom && node.isText && node.marks.some((mark) => mark.type.name === 'sourceReference' && mark.attrs.payload === interaction.payload) && interaction.pos >= pos && interaction.pos <= pos + node.nodeSize) {
-      found = { from: pos, to: pos + node.nodeSize, atom: false }; return false;
-    }
-    return true;
-  });
-  return found;
 }
 
 export function SourceReferencePopover({ campaignId, interaction, onClose }: { campaignId: string; interaction: SourceInteraction; onClose: () => void }) {
@@ -39,7 +25,7 @@ export function SourceReferencePopover({ campaignId, interaction, onClose }: { c
   }, [campaignId, interaction]);
 
   const update = (next: SourceReference) => {
-    const range = matchingRange(interaction.editor, interaction); if (!range) return;
+    const range = findSourceReferenceRange(interaction.editor, interaction); if (!range) return;
     const payload = encodeSourceReference(next);
     const tr = interaction.editor.state.tr;
     if (range.atom) tr.setNodeMarkup(range.from, undefined, { payload });
@@ -51,7 +37,7 @@ export function SourceReferencePopover({ campaignId, interaction, onClose }: { c
   };
 
   const remove = () => {
-    const range = matchingRange(interaction.editor, interaction); if (!range) return;
+    const range = findSourceReferenceRange(interaction.editor, interaction); if (!range) return;
     const tr = interaction.editor.state.tr;
     if (range.atom) tr.delete(range.from, range.to);
     else tr.removeMark(range.from, range.to, interaction.editor.schema.marks.sourceReference);

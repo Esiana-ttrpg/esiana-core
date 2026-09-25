@@ -86,17 +86,35 @@ async function bounded<T>(operation: (signal: AbortSignal) => Promise<T>): Promi
   finally { if (timer) clearTimeout(timer); }
 }
 
-function normalizeMetadata(metadata: SourceMetadata): SourceMetadata | null {
-  if (!metadata || typeof metadata.title !== 'string' || !metadata.title.trim()) return null;
+function boundedText(value: unknown, max: number): string | undefined {
+  return typeof value === 'string' && value.trim()
+    ? value.trim().slice(0, max)
+    : undefined;
+}
+
+function normalizeMetadata(input: unknown): SourceMetadata | null {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const metadata = input as Record<string, unknown>;
+  const title = boundedText(metadata.title, 512);
+  if (!title) return null;
+  const subtitle = boundedText(metadata.subtitle, 512);
+  const publisher = boundedText(metadata.publisher, 256);
+  const library = boundedText(metadata.library, 256);
+  const thumbnail = typeof metadata.thumbnail === 'string' ? safeUrl(metadata.thumbnail) : undefined;
+  const year = typeof metadata.year === 'number' && Number.isInteger(metadata.year) && metadata.year >= 0 && metadata.year <= 9999 ? metadata.year : undefined;
+  const authors = Array.isArray(metadata.authors)
+    ? metadata.authors.map((author) => boundedText(author, 256)).filter((author): author is string => Boolean(author)).slice(0, 32)
+    : undefined;
+  const kind = ['book', 'document', 'web', 'compendium', 'other'].includes(String(metadata.kind)) ? metadata.kind as SourceMetadata['kind'] : undefined;
   return {
-    title: metadata.title.trim().slice(0, 512),
-    ...(metadata.subtitle ? { subtitle: metadata.subtitle.slice(0, 512) } : {}),
-    ...(Array.isArray(metadata.authors) ? { authors: metadata.authors.filter((v): v is string => typeof v === 'string').slice(0, 32).map((v) => v.slice(0, 256)) } : {}),
-    ...(metadata.publisher ? { publisher: metadata.publisher.slice(0, 256) } : {}),
-    ...(Number.isInteger(metadata.year) ? { year: metadata.year } : {}),
-    ...(metadata.library ? { library: metadata.library.slice(0, 256) } : {}),
-    ...(safeUrl(metadata.thumbnail) ? { thumbnail: safeUrl(metadata.thumbnail) } : {}),
-    ...(['book', 'document', 'web', 'compendium', 'other'].includes(String(metadata.kind)) ? { kind: metadata.kind } : {}),
+    title,
+    ...(subtitle ? { subtitle } : {}),
+    ...(authors?.length ? { authors } : {}),
+    ...(publisher ? { publisher } : {}),
+    ...(year !== undefined ? { year } : {}),
+    ...(library ? { library } : {}),
+    ...(thumbnail ? { thumbnail } : {}),
+    ...(kind ? { kind } : {}),
   };
 }
 
@@ -110,10 +128,17 @@ export async function searchSources(input: { campaignId: string; userId: string;
   const settled = await Promise.all(active.map(async (registration) => {
     try {
       const results = await bounded((signal) => registration.definition.searchSources(input.query, { campaignId: input.campaignId, userId: input.userId, limit, signal }));
-      return { providerId: registration.definition.id, results: results.slice(0, limit).flatMap((result) => {
-        const metadata = normalizeMetadata(result.metadata);
-        if (!metadata || result.identity.providerId !== registration.definition.id || !result.identity.sourceId) return [];
-        return [{ identity: { providerId: registration.definition.id, sourceId: result.identity.sourceId.slice(0, 512) }, metadata }];
+      if (!await registration.isEnabledForCampaign(input.campaignId).catch(() => false)) {
+        return { providerId: registration.definition.id, results: [], diagnostic: 'disabled' };
+      }
+      return { providerId: registration.definition.id, results: (Array.isArray(results) ? results : []).slice(0, limit).flatMap((result: unknown) => {
+        if (!result || typeof result !== 'object' || Array.isArray(result)) return [];
+        const candidate = result as { identity?: unknown; metadata?: unknown };
+        const identity = candidate.identity && typeof candidate.identity === 'object' && !Array.isArray(candidate.identity) ? candidate.identity as Record<string, unknown> : null;
+        const sourceId = boundedText(identity?.sourceId, 512);
+        const metadata = normalizeMetadata(candidate.metadata);
+        if (!metadata || identity?.providerId !== registration.definition.id || !sourceId) return [];
+        return [{ identity: { providerId: registration.definition.id, sourceId }, metadata }];
       }) };
     } catch (error) {
       return { providerId: registration.definition.id, results: [], diagnostic: error instanceof Error && error.message === 'Provider timed out' ? 'timeout' : 'unavailable' };
@@ -130,6 +155,7 @@ export async function resolveSourceReference(input: { campaignId: string; userId
   const provider = await requireProvider(input.campaignId, input.reference.identity.providerId);
   if (!provider) return null;
   const metadata = await bounded((signal) => provider.definition.resolveSource(input.reference.identity.sourceId, { campaignId: input.campaignId, userId: input.userId, limit: 1, signal }));
+  if (!await provider.isEnabledForCampaign(input.campaignId).catch(() => false)) return null;
   const normalized = metadata ? normalizeMetadata(metadata) : null;
   return normalized ? { ...input.reference, metadata: normalized } : null;
 }
@@ -138,6 +164,7 @@ export async function resolveSourceOpenTarget(input: { campaignId: string; userI
   const provider = await requireProvider(input.campaignId, input.reference.identity.providerId);
   if (!provider?.definition.resolveOpenTarget) return null;
   const target = await bounded((signal) => provider.definition.resolveOpenTarget!(input.reference.identity.sourceId, input.reference.locator, { campaignId: input.campaignId, userId: input.userId, limit: 1, signal }));
+  if (!await provider.isEnabledForCampaign(input.campaignId).catch(() => false)) return null;
   if (!target || target.type !== 'url') return null;
   const url = safeUrl(target.url);
   return url?.startsWith('http://') || url?.startsWith('https://') ? { type: 'url', url } : null;

@@ -14,6 +14,8 @@ A plugin declares the `sourceProvider` capability and `source:provider` permissi
 
 Core authenticates the caller, authorizes campaign membership, checks that the provider is enabled, validates inputs, invokes the provider with a three-second timeout, normalizes output, and sanitizes open targets. Providers receive campaign and user IDs only after these checks. An `AbortSignal` is advisory; core also ignores stale client results.
 
+Provider enablement is checked again after asynchronous work before results are returned. The timeout bounds the core response, but JavaScript cannot forcibly terminate an in-process provider that ignores its `AbortSignal`; providers must pass the signal to their own cancellable I/O and stop work when aborted.
+
 Provider icons are presentation-only. They may be plugin asset URIs or policy-approved HTTP(S) images, never markup or components. Citations do not persist provider icons and fall back to the generic citation glyph when the provider is unavailable.
 
 ## Security and deferred work

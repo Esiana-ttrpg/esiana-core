@@ -36,3 +36,20 @@ test('registration rejects duplicate and mismatched provider identities', () => 
   assert.throws(() => registerSourceProvider('fixture-library', provider, async () => true), /already registered/);
   assert.throws(() => registerSourceProvider('other-library', { ...provider, id: 'third-library' }, async () => true), /must match/);
 });
+
+test('malformed provider results are skipped without dropping valid siblings', async () => {
+  registerSourceProvider('fixture-library', {
+    id: 'fixture-library', displayName: 'Fixture',
+    async searchSources() {
+      return [
+        { identity: { providerId: 'fixture-library', sourceId: 42 }, metadata: { title: true } },
+        { identity: { providerId: 'fixture-library', sourceId: 'valid' }, metadata: { title: 'Valid', year: 10000 } },
+      ] as never;
+    },
+    async resolveSource() { return { title: 'Valid' }; },
+  }, async () => true);
+  const response = await searchSources({ campaignId: 'campaign', userId: 'mira', query: 'valid' });
+  assert.equal(response.results.length, 1);
+  assert.equal(response.results[0]?.metadata.title, 'Valid');
+  assert.equal(response.results[0]?.metadata.year, undefined);
+});

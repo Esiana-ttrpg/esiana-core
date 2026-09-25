@@ -1,5 +1,5 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor, Extensions } from '@tiptap/react';
 import type { BracketSuggestionState } from './extensions/wikiBracketSuggestionPlugin';
@@ -243,8 +243,25 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
     [atState, mentionTargets],
   );
 
-  const LorePopovers = useCallback(
-    ({ editor }: { editor: Editor | null }) => {
+  const lorePopoverState = useRef({
+    BracketPopover,
+    SlashPopover,
+    AtPopover,
+    sourceRequest,
+    sourceInteraction,
+    campaignId: wiki?.campaign?.id,
+  });
+  lorePopoverState.current = {
+    BracketPopover,
+    SlashPopover,
+    AtPopover,
+    sourceRequest,
+    sourceInteraction,
+    campaignId: wiki?.campaign?.id,
+  };
+
+  const LorePopovers = useMemo(
+    () => function LorePopoversStable({ editor }: { editor: Editor | null }) {
       useEffect(() => {
         const listener = (event: Event) => {
           const detail = (event as CustomEvent<{ editor: Editor }>).detail;
@@ -258,15 +275,19 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
         window.addEventListener(SOURCE_REFERENCE_INTERACT_EVENT, sourceListener);
         return () => { window.removeEventListener(OPEN_SOURCE_PICKER_EVENT, listener); window.removeEventListener(SOURCE_REFERENCE_INTERACT_EVENT, sourceListener); };
       }, [editor]);
+      const current = lorePopoverState.current;
+      const CurrentBracketPopover = current.BracketPopover;
+      const CurrentSlashPopover = current.SlashPopover;
+      const CurrentAtPopover = current.AtPopover;
       return <>
-        <BracketPopover editor={editor} />
-        <SlashPopover editor={editor} />
-        <AtPopover editor={editor} />
-        {sourceRequest && wiki?.campaign?.id ? <SourcePicker campaignId={wiki.campaign.id} request={sourceRequest} onClose={() => setSourceRequest(null)} /> : null}
-        {sourceInteraction && wiki?.campaign?.id ? <SourceReferencePopover campaignId={wiki.campaign.id} interaction={sourceInteraction} onClose={() => setSourceInteraction(null)} /> : null}
+        <CurrentBracketPopover editor={editor} />
+        <CurrentSlashPopover editor={editor} />
+        <CurrentAtPopover editor={editor} />
+        {current.sourceRequest && current.campaignId ? <SourcePicker campaignId={current.campaignId} request={current.sourceRequest} onClose={() => setSourceRequest(null)} /> : null}
+        {current.sourceInteraction && current.campaignId ? <SourceReferencePopover campaignId={current.campaignId} interaction={current.sourceInteraction} onClose={() => setSourceInteraction(null)} /> : null}
       </>
     },
-    [BracketPopover, SlashPopover, AtPopover, sourceRequest, sourceInteraction, wiki?.campaign?.id],
+    [],
   );
 
   return {

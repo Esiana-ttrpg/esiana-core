@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import { encodeSourceReference, type SourceReference } from '../../../../../shared/sourceReferences';
 import { SourceReferenceAtom, SourceReferenceMark } from './SourceReferenceExtension';
+import { findSourceReferenceRange } from './sourceReferenceRange';
 
 const reference: SourceReference = {
   payloadVersion: 1,
@@ -36,4 +37,15 @@ test('applying a source replaces an existing source mark in the range', () => {
   const json = instance.getJSON();
   const marked = JSON.stringify(json).match(/sourceReference/g) ?? [];
   assert.ok(marked.length >= 2, 'the prior mark is split/replaced rather than nested');
+});
+
+test('matching a citation spans text nodes split by formatting marks', () => {
+  const payload = encodeSourceReference(reference);
+  const instance = editor(`<span data-esiana-source="${payload}">plain **bold** plain</span>`);
+  const range = findSourceReferenceRange(instance, {
+    pos: 10,
+    payload,
+    atom: false,
+  });
+  assert.deepEqual(range, { from: 1, to: 17, atom: false });
 });

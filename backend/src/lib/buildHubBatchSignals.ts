@@ -1,6 +1,6 @@
 import { prisma } from './prisma.js';
 import { SessionScheduleStatus } from './notifications/types.js';
-import { CampaignMemberRoles } from '../types/domain.js';
+import { CampaignMemberRoles, WikiVisibility } from '../types/domain.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import {
   NarrativeLifecycleStates,
@@ -381,7 +381,14 @@ export async function batchRecentEditsForCampaigns(
   await Promise.all(
     contexts.map(async (ctx) => {
       const rows = await prisma.wikiPage.findMany({
-        where: { campaignId: ctx.campaignId, deletedAt: null },
+        where: {
+          campaignId: ctx.campaignId,
+          deletedAt: null,
+          ...(ctx.role === CampaignMemberRoles.GAMEMASTER ||
+          ctx.role === CampaignMemberRoles.WRITER
+            ? {}
+            : { visibility: { in: [WikiVisibility.PUBLIC, WikiVisibility.PARTY] } }),
+        },
         select: {
           id: true,
           title: true,
@@ -394,7 +401,7 @@ export async function batchRecentEditsForCampaigns(
           visibility: true,
         },
         orderBy: { updatedAt: 'desc' },
-        take: perCampaign + 20,
+        take: perCampaign,
       });
       const qualifyingRows = newestVisibleCampaignPages(
         rows,

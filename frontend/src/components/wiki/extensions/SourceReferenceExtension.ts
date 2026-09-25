@@ -1,5 +1,5 @@
 import { Mark, Node, mergeAttributes } from '@tiptap/core';
-import { Plugin } from '@tiptap/pm/state';
+import { NodeSelection, Plugin } from '@tiptap/pm/state';
 import { decodeSourceReference, encodeSourceReference, type SourceReference } from '../../../../../shared/sourceReferences';
 
 declare module '@tiptap/core' {
@@ -51,7 +51,12 @@ export const SourceReferenceMark = Mark.create({
   },
   addProseMirrorPlugins() {
     return [new Plugin({ props: {
-      clipboardTextSerializer: (slice) => slice.content.textBetween(0, slice.content.size, '\n', ''),
+      clipboardTextSerializer: (slice) => slice.content.textBetween(
+        0,
+        slice.content.size,
+        '\n',
+        (node) => node.type.name === 'hardBreak' ? '\n' : '',
+      ),
       handleDOMEvents: { copy: (_view, event) => { event.clipboardData?.setData(CLIPBOARD_MIME, 'v1'); return false; } },
       handleClick: (view, pos, event) => {
         const element = (event.target as HTMLElement | null)?.closest?.('[data-esiana-source], [data-esiana-source-atom]') as HTMLElement | null;
@@ -62,13 +67,23 @@ export const SourceReferenceMark = Mark.create({
         window.dispatchEvent(new CustomEvent(SOURCE_REFERENCE_INTERACT_EVENT, { detail: { editorView: view, pos: view.posAtDOM(element, 0), payload, reference, atom: element.hasAttribute('data-esiana-source-atom'), rect: element.getBoundingClientRect() } }));
         return true;
       },
+      handleKeyDown: (view, event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return false;
+        const selection = view.state.selection;
+        if (!(selection instanceof NodeSelection) || selection.node.type.name !== 'sourceReferenceAtom') return false;
+        const payload = String(selection.node.attrs.payload ?? '');
+        const reference = decodeSourceReference(payload);
+        const element = view.nodeDOM(selection.from) as HTMLElement | null;
+        if (!reference || !element) return false;
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SOURCE_REFERENCE_INTERACT_EVENT, { detail: { editorView: view, pos: selection.from, payload, reference, atom: true, rect: element.getBoundingClientRect() } }));
+        return true;
+      },
       handlePaste: (view, event) => {
         const html = event.clipboardData?.getData('text/html') ?? '';
         if (!html.includes('data-esiana-source') || event.clipboardData?.getData(CLIPBOARD_MIME) === 'v1') return false;
-        const container = document.createElement('div'); container.innerHTML = html;
-        container.querySelectorAll('[data-esiana-source-atom]').forEach((node) => node.remove());
-        container.querySelectorAll('[data-esiana-source]').forEach((node) => node.replaceWith(...Array.from(node.childNodes)));
-        view.dispatch(view.state.tr.replaceSelectionWith(view.state.schema.text(container.textContent ?? '')));
+        const text = event.clipboardData?.getData('text/plain') ?? '';
+        view.dispatch(view.state.tr.insertText(text, view.state.selection.from, view.state.selection.to));
         return true;
       },
     } })];
