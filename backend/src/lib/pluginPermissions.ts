@@ -4,6 +4,7 @@ export const PLUGIN_PERMISSIONS = [
   'plugin:data',
   'data:interceptor',
   'network:fetch',
+  'connections:use',
   'feed:public',
   'wiki:read-public',
   'feed:opds',

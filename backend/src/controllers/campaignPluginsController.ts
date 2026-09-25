@@ -10,13 +10,6 @@ import {
 } from '../lib/campaignPlugins.js';
 import { prisma } from '../lib/prisma.js';
 
-function parseConfigBody(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-  return value as Record<string, unknown>;
-}
-
 async function resolveCampaignId(param: string): Promise<string | null> {
   const byId = await prisma.campaign.findUnique({
     where: { id: param },
@@ -41,16 +34,18 @@ export async function listCampaignPlugins(
     return;
   }
 
-  const [available, active] = await Promise.all([
+  const [available, active, connections] = await Promise.all([
     listAvailableCampaignPlugins(),
     listCampaignPluginSettings(campaignId),
+    prisma.pluginConnection.findMany({ select: { pluginId: true, status: true } }),
   ]);
+  const connectionStatus = new Map(connections.map((row) => [row.pluginId, row.status]));
 
   const activeIds = new Set(active.map((row) => row.pluginId));
 
   res.json({
     available: available.filter((plugin) => !activeIds.has(plugin.id)),
-    active,
+    active: active.map((row) => ({ ...row, connectionStatus: connectionStatus.get(row.pluginId) ?? null })),
   });
 }
 
@@ -122,12 +117,7 @@ export async function saveCampaignPluginConfig(
     return;
   }
 
-  const body = req.body as { config?: unknown; isEnabled?: unknown };
-  const config = parseConfigBody(body.config);
-  if (!config) {
-    res.status(400).json({ error: 'config must be a JSON object' });
-    return;
-  }
+  const body = req.body as { isEnabled?: unknown };
 
   const isEnabled =
     body.isEnabled === undefined
@@ -142,10 +132,12 @@ export async function saveCampaignPluginConfig(
   }
 
   try {
+    const existing = await prisma.campaignPluginSetting.findUnique({ where: { campaignId_pluginId: { campaignId, pluginId } }, select: { config: true } });
+    if (!existing) { res.status(404).json({ error: 'Campaign plugin not found' }); return; }
     const row = await updateCampaignPluginSetting(
       campaignId,
       pluginId,
-      config,
+      existing.config as Record<string, unknown>,
       isEnabled,
     );
     res.json({ plugin: row });

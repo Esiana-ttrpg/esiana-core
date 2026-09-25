@@ -236,8 +236,22 @@ model SystemPlugin {
   config      Json
 
   campaignSettings CampaignPluginSetting[]
+  oauthConfig      PluginOAuthClient?
+  connection       PluginConnection?
+  connectionAuthStates PluginConnectionAuthState[]
 
   updatedAt DateTime @updatedAt
+}
+
+/// Instance-owned OAuth client registration for a connection provider.
+model PluginOAuthClient {
+  pluginId        String   @id
+  clientId        String
+  clientSecretEnc String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  plugin SystemPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
 }
 
 /// Per-campaign enablement and configuration for campaign-scoped plugins.
@@ -404,6 +418,41 @@ model PluginSecret {
   @@unique([pluginId, campaignId, key])
   @@index([campaignId])
   @@index([pluginId, campaignId])
+}
+
+/// Redacted lifecycle record plus one opaque encrypted credential payload.
+model PluginConnection {
+  pluginId        String    @id
+  authType        String
+  status          String    @default("disconnected")
+  credentialEnc   String?
+  credentialVersion Int     @default(0)
+  accountLabel    String?
+  scopes          Json?
+  expiresAt       DateTime?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  plugin SystemPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+}
+
+/// Single-use OAuth CSRF/PKCE state for plugin connection authorization.
+model PluginConnectionAuthState {
+  id           String   @id @default(cuid())
+  stateHash    String   @unique
+  pluginId     String
+  initiatorId  String
+  connectionVersion Int?
+  codeVerifier String
+  returnTo     String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  plugin SystemPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@index([pluginId])
+  @@index([expiresAt])
 }
 
 model Campaign {

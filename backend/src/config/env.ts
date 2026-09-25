@@ -69,6 +69,8 @@ export const env = {
   enableDemoUsers: process.env.ENABLE_DEMO_USERS === 'true',
   /** When true, core Sample Data profiles are available (dev fixtures). Does not affect Content Packs. */
   enableSampleData: process.env.ENABLE_SAMPLE_DATA === 'true',
+  /** Explicit opt-in for isolated local plugin-connection fixture endpoints. */
+  enablePluginConnectionFixtures: process.env.ENABLE_PLUGIN_CONNECTION_FIXTURES === 'true',
   /** Optional instance UI locale for guests and users on browser auto (BCP 47, e.g. fr). */
   defaultUiLocale: process.env.ESIANA_DEFAULT_LOCALE?.trim() ?? '',
 };

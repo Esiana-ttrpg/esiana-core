@@ -2,7 +2,6 @@ import { apiFetch } from '@/lib/api';
 import type {
   CampaignPluginDescriptor,
   CampaignPluginSettingRecord,
-  SystemPluginConfigPayload,
 } from '@/types/admin';
 
 export interface CampaignPluginsListResponse {
@@ -42,7 +41,7 @@ export async function removeCampaignPlugin(
 export async function saveCampaignPluginConfig(
   campaignId: string,
   pluginId: string,
-  payload: SystemPluginConfigPayload,
+  payload: { isEnabled: boolean },
 ): Promise<CampaignPluginSettingRecord> {
   const data = await apiFetch<{ plugin: CampaignPluginSettingRecord }>(
     `/campaigns/${encodeURIComponent(campaignId)}/plugins/${encodeURIComponent(pluginId)}/config`,

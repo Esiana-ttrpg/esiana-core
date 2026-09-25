@@ -22,4 +22,4 @@ Provider icons are presentation-only. They may be plugin asset URIs or policy-ap
 
 Pasted external HTML cannot create citation marks through the editor paste path. Citation data never grants access: resolve and open operations always repeat campaign authorization. Payload size, depth, field, and collection limits are enforced.
 
-OAuth, provider credential refresh, authenticated fetch helpers, and the Grimmory implementation are intentionally outside this foundation.
+OAuth, API-key, and bearer authentication compose through plugin connections and `context.connections.request`. Core injects credentials only for manifest-declared origins; providers never receive the raw value. This is a non-disclosure boundary, not a sandbox: trusted backend plugins can exercise upstream credentials and inspect responses. Grimmory remains a separate provider implementation.

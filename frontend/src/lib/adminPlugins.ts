@@ -69,6 +69,20 @@ export async function saveAdminPluginConfig(
   return data.plugin;
 }
 
+export interface PluginOAuthClientRecord { clientId: string; hasClientSecret: boolean; updatedAt: string }
+export async function fetchPluginOAuthClient(pluginId: string) {
+  return apiFetch<{ oauthClient: PluginOAuthClientRecord | null }>(`/admin/plugins/${encodeURIComponent(pluginId)}/oauth-client`);
+}
+export async function savePluginOAuthClient(pluginId: string, clientId: string, clientSecret: string) {
+  return apiFetch<{ oauthClient: PluginOAuthClientRecord }>(`/admin/plugins/${encodeURIComponent(pluginId)}/oauth-client`, { method: 'PUT', body: JSON.stringify({ clientId, ...(clientSecret ? { clientSecret } : {}) }) });
+}
+export interface AdminPluginConnection { pluginId: string; authType: string; status: string; accountLabel: string | null; scopes: string[]; expiresAt: string | null; lastError: string | null; updatedAt: string }
+export interface AdminPluginConnectionResponse { provider: { id: string; displayName: string; authType: 'oauth2' | 'apiKey' | 'bearer' }; connection: AdminPluginConnection | null }
+export const fetchAdminPluginConnection = (pluginId: string) => apiFetch<AdminPluginConnectionResponse>(`/admin/plugins/${encodeURIComponent(pluginId)}/connection`);
+export const connectAdminPluginStatic = (pluginId: string, credential: string) => apiFetch<{ connection: AdminPluginConnection }>(`/admin/plugins/${encodeURIComponent(pluginId)}/connection/static`, { method: 'POST', body: JSON.stringify({ credential }) });
+export const startAdminPluginOAuth = (pluginId: string, returnTo: string) => apiFetch<{ authorizationUrl: string }>(`/admin/plugins/${encodeURIComponent(pluginId)}/connection/oauth/start`, { method: 'POST', body: JSON.stringify({ returnTo }) });
+export const disconnectAdminPluginConnection = (pluginId: string) => apiFetch<{ connection: AdminPluginConnection }>(`/admin/plugins/${encodeURIComponent(pluginId)}/connection`, { method: 'DELETE' });
+
 export async function registerPluginManifest(
   manifest: PluginManifest,
 ): Promise<SystemPluginRecord> {

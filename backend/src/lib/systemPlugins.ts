@@ -35,6 +35,7 @@ function buildManifestMetaConfig(manifest: PluginManifest): Record<string, unkno
       ...(manifest.configSchema ? { configSchema: manifest.configSchema } : {}),
       ...(manifest.uiSlots?.length ? { uiSlots: manifest.uiSlots } : {}),
       ...(manifest.permissions?.length ? { permissions: manifest.permissions } : {}),
+      ...(manifest.outboundOrigins?.length ? { outboundOrigins: manifest.outboundOrigins } : {}),
       ...(manifest.engines ? { engines: manifest.engines } : {}),
       ...(manifest.compatibility ? { compatibility: manifest.compatibility } : {}),
     },
@@ -72,6 +73,7 @@ export function serializeSystemPlugin(row: SystemPlugin) {
     configSchema: meta?.configSchema,
     uiSlots: meta?.uiSlots ?? [],
     permissions: meta?.permissions ?? [],
+    outboundOrigins: meta?.outboundOrigins ?? [],
     engines: meta?.engines ?? {},
     compatibility: meta?.compatibility,
     config: userConfig,
@@ -130,8 +132,8 @@ export async function updateSystemPluginConfig(
     throw new Error('Unknown plugin');
   }
 
-  if (existing.scope !== PluginScopes.GLOBAL) {
-    throw new Error('Campaign-scoped plugins must be configured per campaign');
+  if (existing.scope !== PluginScopes.GLOBAL && isEnabled !== undefined) {
+    throw new Error('Campaign-scoped plugins must be enabled per campaign');
   }
 
   const prior = parsePluginConfig(existing.config);

@@ -16,6 +16,8 @@ export const CORE_ROUTER_MOUNTS = Object.freeze({
   authRouter: ['/api/auth', 'src/routes/auth.ts'],
   userRouter: ['/api/user', 'src/routes/user.ts'],
   campaignsRouter: ['/api/campaigns', 'src/routes/campaigns.ts'],
+  pluginConnectionsRouter: ['/api/plugin-connections', 'src/routes/pluginConnections.ts'],
+  pluginConnectionFixturesRouter: ['/api/plugin-connection-fixtures', 'src/routes/pluginConnectionFixtures.ts'],
   campaignScopedRouter: ['/api/campaigns/:campaignHandle', 'src/routes/campaignScoped.ts'],
   assetsRouter: ['/api/assets', 'src/routes/assets.ts'],
   router: ['/api/plugins', 'src/routes/plugins.ts'],
