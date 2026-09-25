@@ -273,8 +273,8 @@ export function DuplicateCampaignWizard({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border border-border bg-background shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col rounded-2xl border border-border bg-background shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className={TYPE_DISPLAY_CLASS}>Duplicate Campaign</h2>
             <p className="text-sm text-muted">From {source.name}</p>
@@ -289,7 +289,7 @@ export function DuplicateCampaignWizard({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {error ? (
             <p className="mb-4 rounded border border-red-700 bg-red-950/50 px-3 py-2 text-sm text-red-200">
               {error}
@@ -387,7 +387,7 @@ export function DuplicateCampaignWizard({
           )}
         </div>
 
-        <div className="flex items-center justify-between border-t border-border px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-t border-border px-6 py-4">
           {step === 2 ? (
             <button
               type="button"

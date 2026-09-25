@@ -14,6 +14,7 @@ const result = spawnSync(
     '--test',
     '../shared/recruitmentSeats.test.ts',
     'src/components/recruitment/RecruitmentHostSection.test.tsx',
+    'src/components/hub/NewCampaignWizard.layout.test.ts',
     'src/components/chronology/worldAdvanceFeedGrouping.test.ts',
     'src/components/progression/DevelopmentsSection.test.ts',
     'src/lib/chronologyDates.test.ts',
