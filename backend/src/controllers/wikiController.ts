@@ -1220,8 +1220,21 @@ export async function createWikiPage(
   dispatchDomainEvent({
     type: CoreDomainEvents.WIKI_CREATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'wiki_page',
+    resourceId: page.id,
     payload: toWikiPageEventDto(page),
   });
+  if (page.templateType === 'CHARACTER') {
+    dispatchDomainEvent({
+      type: CoreDomainEvents.CHARACTER_CREATED,
+      campaignId: ctx.campaignId,
+      actorId: req.user?.id,
+      resourceType: 'character',
+      resourceId: page.id,
+      payload: {},
+    });
+  }
 
   const parentRows = await prisma.wikiPage.findMany({
     where: { campaignId: ctx.campaignId },
@@ -2122,12 +2135,25 @@ export async function updateWikiPageLayout(
   dispatchDomainEvent({
     type: CoreDomainEvents.WIKI_UPDATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'wiki_page',
+    resourceId: page.id,
     payload: toWikiPageEventDto({
       ...page,
       templateType: responseTemplateType,
       updatedAt: updatedPage.updatedAt,
     }),
   });
+  if (responseTemplateType === 'CHARACTER') {
+    dispatchDomainEvent({
+      type: CoreDomainEvents.CHARACTER_UPDATED,
+      campaignId: ctx.campaignId,
+      actorId: req.user?.id,
+      resourceType: 'character',
+      resourceId: page.id,
+      payload: {},
+    });
+  }
 
   res.json({ blocks: responseBlocks, templateType: responseTemplateType });
 }
@@ -4204,6 +4230,9 @@ export async function createNotebookArc(
   dispatchDomainEvent({
     type: CoreDomainEvents.NOTEBOOK_ARC_CREATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'notebook_arc',
+    resourceId: notebook.id,
     payload: toNotebookArcEventDto({
       ...notebook,
       campaignId: ctx.campaignId,
@@ -4244,6 +4273,9 @@ export async function deleteNotebookArc(
   dispatchDomainEvent({
     type: CoreDomainEvents.NOTEBOOK_ARC_DELETED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'notebook_arc',
+    resourceId: notebook.id,
     payload: toNotebookArcEventDto({
       ...notebook,
       campaignId: ctx.campaignId,
@@ -4288,6 +4320,9 @@ export async function updateNotebookArc(
   dispatchDomainEvent({
     type: CoreDomainEvents.NOTEBOOK_ARC_UPDATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'notebook_arc',
+    resourceId: updated.id,
     payload: toNotebookArcEventDto({
       ...updated,
       campaignId: ctx.campaignId,
@@ -4814,6 +4849,9 @@ export async function deleteWikiPage(
       dispatchDomainEvent({
         type: CoreDomainEvents.WIKI_DELETED,
         campaignId: ctx.campaignId,
+        actorId,
+        resourceType: 'wiki_page',
+        resourceId: pageId,
         payload: toWikiPageDeletedDto({
           id: preview.page.id,
           campaignId: ctx.campaignId,
@@ -4839,6 +4877,9 @@ export async function deleteWikiPage(
     dispatchDomainEvent({
       type: CoreDomainEvents.WIKI_DELETED,
       campaignId: ctx.campaignId,
+      actorId,
+      resourceType: 'wiki_page',
+      resourceId: pageId,
       payload: toWikiPageDeletedDto({
         id: preview.page.id,
         campaignId: ctx.campaignId,
@@ -4924,6 +4965,9 @@ export async function deleteSessionNotePage(
         dispatchDomainEvent({
           type: CoreDomainEvents.WIKI_DELETED,
           campaignId: ctx.campaignId,
+          actorId,
+          resourceType: 'wiki_page',
+          resourceId: pageId,
           payload: toWikiPageDeletedDto({
             id: page.id,
             campaignId: ctx.campaignId,
@@ -4949,6 +4993,9 @@ export async function deleteSessionNotePage(
       dispatchDomainEvent({
         type: CoreDomainEvents.WIKI_DELETED,
         campaignId: ctx.campaignId,
+        actorId,
+        resourceType: 'wiki_page',
+        resourceId: pageId,
         payload: toWikiPageDeletedDto({
           id: page.id,
           campaignId: ctx.campaignId,
@@ -5007,6 +5054,9 @@ export async function deleteSessionNotePage(
   dispatchDomainEvent({
     type: CoreDomainEvents.WIKI_DELETED,
     campaignId: ctx.campaignId,
+    actorId,
+    resourceType: 'wiki_page',
+    resourceId: pageId,
     payload: toWikiPageDeletedDto({
       id: page.id,
       campaignId: ctx.campaignId,

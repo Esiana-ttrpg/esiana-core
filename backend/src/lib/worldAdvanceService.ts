@@ -474,6 +474,9 @@ export async function applyWorldAdvance(
   dispatchDomainEvent({
     type: CoreDomainEvents.WORLD_ADVANCED,
     campaignId,
+    actorId: actorUserId,
+    resourceType: 'world_advance',
+    resourceId: batchId,
     payload: {
       batchId,
       chronologyEventId: txResult.result.chronologyEventId,
@@ -490,6 +493,9 @@ export async function applyWorldAdvance(
     dispatchDomainEvent({
       type: CoreDomainEvents.CALENDAR_ADVANCED,
       campaignId,
+      actorId: actorUserId,
+      resourceType: 'campaign_time',
+      resourceId: campaignId,
       payload: toCalendarAdvancedDto({
         campaignId,
         previousEpochMinute: txResult.previousEpochMinute,

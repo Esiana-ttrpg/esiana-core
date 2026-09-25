@@ -1,14 +1,19 @@
 /** Core domain event type strings (open bus — plugins use `{pluginId}:entity:action`). */
 export const CoreDomainEvents = {
-  WIKI_CREATED: 'core:wiki:created',
-  WIKI_UPDATED: 'core:wiki:updated',
-  WIKI_DELETED: 'core:wiki:deleted',
-  NOTEBOOK_ARC_CREATED: 'core:notebook_arc:created',
-  NOTEBOOK_ARC_UPDATED: 'core:notebook_arc:updated',
-  NOTEBOOK_ARC_DELETED: 'core:notebook_arc:deleted',
-  CALENDAR_ADVANCED: 'core:calendar:advanced',
-  WORLD_ADVANCED: 'core:world:advanced',
-  CAMPAIGN_CREATED: 'core:campaign:created',
+  WIKI_CREATED: 'wiki.page.created',
+  WIKI_UPDATED: 'wiki.page.updated',
+  WIKI_DELETED: 'wiki.page.deleted',
+  NOTEBOOK_ARC_CREATED: 'wiki.notebook-arc.created',
+  NOTEBOOK_ARC_UPDATED: 'wiki.notebook-arc.updated',
+  NOTEBOOK_ARC_DELETED: 'wiki.notebook-arc.deleted',
+  CALENDAR_ADVANCED: 'campaign.time.advanced',
+  WORLD_ADVANCED: 'campaign.world.advanced',
+  CAMPAIGN_CREATED: 'campaign.created',
+  TIMELINE_EVENT_CREATED: 'timeline.event.created',
+  DEVELOPMENT_PROPOSED: 'development.proposed',
+  DEVELOPMENT_APPLIED: 'development.applied',
+  CHARACTER_CREATED: 'character.created',
+  CHARACTER_UPDATED: 'character.updated',
 } as const;
 
 export type CoreDomainEventType =
@@ -19,8 +24,11 @@ export type DomainEventSource = 'core' | 'plugin';
 export interface DomainEvent<TPayload = Record<string, unknown>> {
   type: string;
   campaignId?: string;
+  actorId?: string;
+  resourceType?: string;
+  resourceId?: string;
   payload: TPayload;
-  emittedAt: string;
+  occurredAt: string;
   source: DomainEventSource;
   /** Plugin manifest id when source is `plugin`. */
   sourceId?: string;
@@ -31,6 +39,9 @@ export type DomainEventListener = (event: DomainEvent) => void | Promise<void>;
 export interface DispatchDomainEventInput<TPayload = Record<string, unknown>> {
   type: string;
   campaignId?: string;
+  actorId?: string;
+  resourceType?: string;
+  resourceId?: string;
   payload: TPayload;
   source?: DomainEventSource;
   sourceId?: string;

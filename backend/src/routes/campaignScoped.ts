@@ -289,6 +289,7 @@ import {
   respondToJoinRequest,
 } from '../controllers/recruitmentController.js';
 import { listCampaignActivity } from '../controllers/campaignActivityController.js';
+import { streamCampaignEvents } from '../controllers/campaignEventsController.js';
 import {
   getCampaignGrowthMetrics,
   postWritingSession,
@@ -458,6 +459,7 @@ campaignScopedRouter.post(
 );
 
 campaignScopedRouter.get('/activity', listCampaignActivity);
+campaignScopedRouter.get('/events', streamCampaignEvents);
 
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
 campaignScopedRouter.get('/chronology/timeline', getChronologyTimelineBundle);

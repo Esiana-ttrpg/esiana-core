@@ -76,8 +76,11 @@ export function dispatchDomainEvent<TPayload = Record<string, unknown>>(
   const event: DomainEvent<TPayload> = {
     type: input.type,
     campaignId: input.campaignId,
+    actorId: input.actorId,
+    resourceType: input.resourceType,
+    resourceId: input.resourceId,
     payload: input.payload,
-    emittedAt: new Date().toISOString(),
+    occurredAt: new Date().toISOString(),
     source: input.source ?? 'core',
     ...(input.sourceId ? { sourceId: input.sourceId } : {}),
   };

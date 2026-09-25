@@ -23,6 +23,10 @@ import type { CampaignCapability } from '@shared/campaignPolicy/capabilities';
 import type { CampaignActor } from '@shared/campaignPolicy/policy';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCampaignPolicy } from '@/hooks/useCampaignPolicy';
+import {
+  dispatchCampaignDomainEvent,
+  type CampaignDomainEvent,
+} from '@/lib/campaignEvents';
 import type {
   WikiCampaignMeta,
   WikiPlayerEntry,
@@ -103,6 +107,47 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!campaignHandle || typeof EventSource === 'undefined') return;
+
+    const source = new EventSource(
+      `/api/campaigns/${encodeURIComponent(campaignHandle)}/events`,
+      { withCredentials: true },
+    );
+    let refreshTimer: number | undefined;
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => void refresh(), 100);
+    };
+    const onMessage = (message: MessageEvent<string>) => {
+      try {
+        const event = JSON.parse(message.data) as CampaignDomainEvent;
+        dispatchCampaignDomainEvent(campaignHandle, event);
+        if (
+          event.type === 'wiki.page.created' ||
+          event.type === 'wiki.page.updated' ||
+          event.type === 'wiki.page.deleted' ||
+          event.type === 'character.created' ||
+          event.type === 'character.updated'
+        ) {
+          scheduleRefresh();
+        }
+      } catch {
+        // Ignore malformed messages; EventSource will continue receiving events.
+      }
+    };
+
+    source.onmessage = onMessage;
+    // The stream is transient and has no replay cursor. Refreshing after every
+    // successful connection makes initial-connect races and reconnect gaps safe.
+    source.onopen = scheduleRefresh;
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      source.close();
+    };
+  }, [campaignHandle, refresh]);
 
   const flatPages = useMemo(() => flattenWikiTree(tree), [tree]);
 
