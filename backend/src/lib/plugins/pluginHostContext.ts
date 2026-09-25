@@ -397,7 +397,7 @@ export function createPluginHostContext(
     },
     registerConnectionProvider(definition) {
       assertPermission(pluginId, manifestPermissions, 'connections:use');
-      registerConnectionProviderEntry(pluginId, definition);
+      registerConnectionProviderEntry(pluginId, definition, options.outboundOrigins ?? []);
     },
     assets: {
       buildUri: buildPluginAssetUri,

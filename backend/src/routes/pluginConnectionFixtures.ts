@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 
 export const pluginConnectionFixturesRouter = Router();
 pluginConnectionFixturesRouter.use((_req, res, next) => {
-  if (env.nodeEnv === 'production') { res.status(404).end(); return; }
+  if (env.nodeEnv === 'production' || !env.enablePluginConnectionFixtures) { res.status(404).end(); return; }
   next();
 });
 pluginConnectionFixturesRouter.use(express.urlencoded({ extended: false }));
@@ -12,8 +12,9 @@ pluginConnectionFixturesRouter.use(express.urlencoded({ extended: false }));
 pluginConnectionFixturesRouter.get('/oauth/authorize', (req, res) => {
   const redirectUri = String(req.query.redirect_uri ?? '');
   const state = String(req.query.state ?? '');
-  if (!redirectUri || !state || req.query.code_challenge_method !== 'S256') { res.status(400).send('invalid fixture authorization request'); return; }
-  const target = new URL(redirectUri); target.searchParams.set('state', state); target.searchParams.set('code', `fixture-code:${String(req.query.code_challenge ?? '')}`); res.redirect(target.toString());
+  const expectedRedirect = `${env.backendPublicOrigin.replace(/\/$/, '')}/api/plugin-connections/oauth/callback`;
+  if (redirectUri !== expectedRedirect || req.query.client_id !== 'fixture-client' || !state || req.query.code_challenge_method !== 'S256') { res.status(400).send('invalid fixture authorization request'); return; }
+  const target = new URL(expectedRedirect); target.searchParams.set('state', state); target.searchParams.set('code', `fixture-code:${String(req.query.code_challenge ?? '')}`); res.redirect(target.toString());
 });
 
 pluginConnectionFixturesRouter.post('/oauth/token', (req, res) => {

@@ -12,7 +12,14 @@ import { isCampaignPluginEnabled } from '../lib/campaignPlugins.js';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('base64url');
 const callbackUri = () => `${env.backendPublicOrigin.replace(/\/$/, '')}/api/plugin-connections/oauth/callback`;
-const safeReturnTo = (value: unknown) => typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value.slice(0, 1024) : '/';
+export function safePluginReturnTo(value: unknown): string {
+  if (typeof value !== 'string' || value.length > 1024 || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '/';
+  try {
+    const base = new URL(env.frontendOrigin);
+    const resolved = new URL(value, base);
+    return resolved.origin === base.origin ? `${resolved.pathname}${resolved.search}${resolved.hash}` : '/';
+  } catch { return '/'; }
+}
 
 export async function startPluginOAuth(req: CampaignScopedRequest, res: Response): Promise<void> {
   const pluginId = String(req.params.pluginId ?? '');
@@ -30,8 +37,13 @@ export async function startPluginOAuth(req: CampaignScopedRequest, res: Response
   const state = randomBytes(32).toString('base64url');
   const verifier = randomBytes(48).toString('base64url');
   const ownerId = body.ownerType === 'campaign' ? req.campaign!.campaignId : req.user!.id;
-  const existing = await prisma.pluginConnection.findUnique({ where: { pluginId_campaignId_ownerType_ownerId: { pluginId, campaignId: req.campaign!.campaignId, ownerType: body.ownerType, ownerId } } });
-  await prisma.pluginConnectionAuthState.create({ data: { stateHash: hash(state), pluginId, campaignId: req.campaign!.campaignId, initiatorId: req.user!.id, ownerType: body.ownerType, ownerId, connectionId: existing?.id, codeVerifier: encryptSecretOrDevStore(verifier), returnTo: safeReturnTo(body.returnTo), expiresAt: new Date(Date.now() + 10 * 60_000) } });
+  const existing = await prisma.pluginConnection.upsert({
+    where: { pluginId_campaignId_ownerType_ownerId: { pluginId, campaignId: req.campaign!.campaignId, ownerType: body.ownerType, ownerId } },
+    create: { pluginId, campaignId: req.campaign!.campaignId, ownerType: body.ownerType, ownerId, authType: 'oauth2', status: 'disconnected' },
+    update: {},
+  });
+  await prisma.pluginConnectionAuthState.deleteMany({ where: { pluginId, campaignId: req.campaign!.campaignId, ownerType: body.ownerType, ownerId } });
+  await prisma.pluginConnectionAuthState.create({ data: { stateHash: hash(state), pluginId, campaignId: req.campaign!.campaignId, initiatorId: req.user!.id, ownerType: body.ownerType, ownerId, connectionId: existing?.id, connectionVersion: existing?.credentialVersion, codeVerifier: encryptSecretOrDevStore(verifier), returnTo: safePluginReturnTo(body.returnTo), expiresAt: new Date(Date.now() + 10 * 60_000) } });
   authorizationUrl.searchParams.set('response_type', 'code'); authorizationUrl.searchParams.set('client_id', client.clientId); authorizationUrl.searchParams.set('redirect_uri', callbackUri()); authorizationUrl.searchParams.set('scope', provider.auth.scopes.join(' ')); authorizationUrl.searchParams.set('state', state); authorizationUrl.searchParams.set('code_challenge', hash(verifier)); authorizationUrl.searchParams.set('code_challenge_method', 'S256');
   res.json({ authorizationUrl: authorizationUrl.toString() });
 }
@@ -60,7 +72,14 @@ export async function pluginOAuthCallback(req: AuthenticatedRequest, res: Respon
     const tokens = JSON.parse(response.body.toString('utf8')) as { access_token?: unknown; refresh_token?: unknown; expires_in?: unknown; scope?: unknown };
     if (response.status < 200 || response.status >= 300 || typeof tokens.access_token !== 'string') throw new Error('token exchange rejected');
     const expiresAt = typeof tokens.expires_in === 'number' ? new Date(Date.now() + Math.max(0, tokens.expires_in - 30) * 1000) : null;
-    await prisma.pluginConnection.upsert({ where: { pluginId_campaignId_ownerType_ownerId: { pluginId: authState.pluginId, campaignId: authState.campaignId, ownerType: authState.ownerType, ownerId: authState.ownerId } }, create: { pluginId: authState.pluginId, campaignId: authState.campaignId, ownerType: authState.ownerType, ownerId: authState.ownerId, authType: 'oauth2', status: 'connected', credentialEnc: encryptSecretOrDevStore(JSON.stringify({ accessToken: tokens.access_token, refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : undefined })), expiresAt, scopes: typeof tokens.scope === 'string' ? tokens.scope.split(/\s+/) : provider.auth.scopes }, update: { authType: 'oauth2', status: 'connected', credentialEnc: encryptSecretOrDevStore(JSON.stringify({ accessToken: tokens.access_token, refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : undefined })), expiresAt, scopes: typeof tokens.scope === 'string' ? tokens.scope.split(/\s+/) : provider.auth.scopes, lastError: null } });
-    res.redirect(new URL(safeReturnTo(authState.returnTo), env.frontendOrigin).toString());
+    const credentialEnc = encryptSecretOrDevStore(JSON.stringify({ accessToken: tokens.access_token, refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : undefined }));
+    if (authState.connectionId && authState.connectionVersion !== null) {
+      const updated = await prisma.pluginConnection.updateMany({ where: { id: authState.connectionId, pluginId: authState.pluginId, campaignId: authState.campaignId, ownerType: authState.ownerType, ownerId: authState.ownerId, credentialVersion: authState.connectionVersion }, data: { authType: 'oauth2', status: 'connected', credentialEnc, credentialVersion: { increment: 1 }, expiresAt, scopes: typeof tokens.scope === 'string' ? tokens.scope.split(/\s+/) : provider.auth.scopes, lastError: null } });
+      if (updated.count === 0) { res.status(409).send('OAuth connection changed while authorization was in progress'); return; }
+    } else {
+      try { await prisma.pluginConnection.create({ data: { pluginId: authState.pluginId, campaignId: authState.campaignId, ownerType: authState.ownerType, ownerId: authState.ownerId, authType: 'oauth2', status: 'connected', credentialEnc, credentialVersion: 1, expiresAt, scopes: typeof tokens.scope === 'string' ? tokens.scope.split(/\s+/) : provider.auth.scopes } }); }
+      catch { res.status(409).send('OAuth connection was superseded by another authorization'); return; }
+    }
+    res.redirect(new URL(safePluginReturnTo(authState.returnTo), env.frontendOrigin).toString());
   } catch { res.status(502).send('OAuth token exchange failed'); }
 }

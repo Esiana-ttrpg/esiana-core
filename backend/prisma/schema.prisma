@@ -428,6 +428,7 @@ model PluginConnection {
   authType        String
   status          String    @default("disconnected")
   credentialEnc   String?
+  credentialVersion Int     @default(0)
   accountLabel    String?
   scopes          Json?
   expiresAt       DateTime?
@@ -453,6 +454,7 @@ model PluginConnectionAuthState {
   ownerType    String
   ownerId      String
   connectionId String?
+  connectionVersion Int?
   codeVerifier String
   returnTo     String?
   expiresAt    DateTime
