@@ -69,6 +69,14 @@ export async function saveAdminPluginConfig(
   return data.plugin;
 }
 
+export interface PluginOAuthClientRecord { clientId: string; hasClientSecret: boolean; updatedAt: string }
+export async function fetchPluginOAuthClient(pluginId: string) {
+  return apiFetch<{ oauthClient: PluginOAuthClientRecord | null }>(`/admin/plugins/${encodeURIComponent(pluginId)}/oauth-client`);
+}
+export async function savePluginOAuthClient(pluginId: string, clientId: string, clientSecret: string) {
+  return apiFetch<{ oauthClient: PluginOAuthClientRecord }>(`/admin/plugins/${encodeURIComponent(pluginId)}/oauth-client`, { method: 'PUT', body: JSON.stringify({ clientId, ...(clientSecret ? { clientSecret } : {}) }) });
+}
+
 export async function registerPluginManifest(
   manifest: PluginManifest,
 ): Promise<SystemPluginRecord> {

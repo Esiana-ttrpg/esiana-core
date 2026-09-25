@@ -149,6 +149,10 @@ export async function deleteAdminUser(
     return;
   }
 
-  await prisma.user.delete({ where: { id: userId } });
+  await prisma.$transaction([
+    prisma.pluginConnectionAuthState.deleteMany({ where: { OR: [{ initiatorId: userId }, { ownerType: 'user', ownerId: userId }] } }),
+    prisma.pluginConnection.deleteMany({ where: { ownerType: 'user', ownerId: userId } }),
+    prisma.user.delete({ where: { id: userId } }),
+  ]);
   res.json({ ok: true });
 }

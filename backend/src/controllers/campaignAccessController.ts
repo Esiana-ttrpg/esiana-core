@@ -622,14 +622,11 @@ export async function removeCampaignMember(
     return;
   }
 
-  await prisma.campaignMember.delete({
-    where: {
-      userId_campaignId: {
-        userId: targetUserId,
-        campaignId,
-      },
-    },
-  });
+  await prisma.$transaction([
+    prisma.pluginConnectionAuthState.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: targetUserId } }),
+    prisma.pluginConnection.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: targetUserId } }),
+    prisma.campaignMember.delete({ where: { userId_campaignId: { userId: targetUserId, campaignId } } }),
+  ]);
 
   const slug = req.campaign!.campaignHandle;
   const managerIds = await getOperationalManagerUserIds(campaignId);
@@ -678,11 +675,11 @@ export async function leaveCampaign(
     return;
   }
 
-  await prisma.campaignMember.delete({
-    where: {
-      userId_campaignId: { userId, campaignId },
-    },
-  });
+  await prisma.$transaction([
+    prisma.pluginConnectionAuthState.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: userId } }),
+    prisma.pluginConnection.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: userId } }),
+    prisma.campaignMember.delete({ where: { userId_campaignId: { userId, campaignId } } }),
+  ]);
 
   const managerIds = await getOperationalManagerUserIds(campaignId);
   notifyUsersFromTemplateAsync({

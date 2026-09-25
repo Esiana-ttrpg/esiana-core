@@ -28,6 +28,8 @@ function buildCampaignPluginDefinitionConfig(
       ...(manifest.configSchemaUrl ? { configSchemaUrl: manifest.configSchemaUrl } : {}),
       ...(manifest.configSchema ? { configSchema: manifest.configSchema } : {}),
       ...(manifest.uiSlots?.length ? { uiSlots: manifest.uiSlots } : {}),
+      ...(manifest.permissions?.length ? { permissions: manifest.permissions } : {}),
+      ...(manifest.outboundOrigins?.length ? { outboundOrigins: manifest.outboundOrigins } : {}),
     },
   };
 }
@@ -49,6 +51,8 @@ function serializePluginDescriptor(
     configSchema: meta?.configSchema,
     uiSlots: manifest?.uiSlots ?? meta?.uiSlots ?? [],
     frontendEntry: record?.frontendEntry ?? manifest?.frontendEntry ?? null,
+    permissions: manifest?.permissions ?? meta?.permissions ?? [],
+    outboundOrigins: manifest?.outboundOrigins ?? meta?.outboundOrigins ?? [],
   };
 }
 
@@ -71,6 +75,8 @@ export function serializeCampaignPluginSetting(row: CampaignPluginRow) {
       configTemplate: meta?.configTemplate ?? [],
       configSchema: meta?.configSchema,
       uiSlots: meta?.uiSlots ?? [],
+      permissions: meta?.permissions ?? [],
+      outboundOrigins: meta?.outboundOrigins ?? [],
     },
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -261,6 +267,8 @@ export async function removeCampaignPlugin(
   }
 
   await prisma.pluginData.deleteMany({ where: { pluginId, campaignId } });
+  await prisma.pluginConnectionAuthState.deleteMany({ where: { pluginId, campaignId } });
+  await prisma.pluginConnection.deleteMany({ where: { pluginId, campaignId } });
   await deleteCampaignPluginSecrets(pluginId, campaignId);
   await deletePluginAssets(pluginId, campaignId);
   await prisma.campaignPluginSetting.delete({

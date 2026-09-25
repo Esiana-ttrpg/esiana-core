@@ -16,6 +16,7 @@ import { PluginConfigForm } from '@/components/admin/PluginConfigForm';
 import { mergePluginConfigFields } from '@/lib/configSchemaParser';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PluginCampaignSettingsSlot } from '@/plugins/slots';
+import { PluginConnectionsPanel } from './PluginConnectionsPanel';
 
 function ErrorBanner({ message }: { message: string }) {
   return (
@@ -291,6 +292,9 @@ export function CampaignPluginsSettingsTab({
                           setDraftConfig((prev) => ({ ...prev, [key]: value }))
                         }
                       />
+                      {row.plugin.permissions?.includes('connections:use') ? (
+                        <PluginConnectionsPanel campaignId={campaignId} pluginId={row.pluginId} origins={row.plugin.outboundOrigins ?? []} />
+                      ) : null}
                       {row.plugin.frontendEntry ? (
                         <PluginCampaignSettingsSlot
                           pluginId={row.pluginId}

@@ -616,6 +616,63 @@ paths:
           - Membership in the addressed campaign
           - Resource-level visibility and ownership checks performed by the controller/service
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignId}/plugins/{pluginId}/connections:
+    get:
+      tags: [Campaigns]
+      summary: List redacted plugin connections
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Provider metadata and visible redacted connections }
+        "403": { $ref: "#/components/responses/Forbidden" }
+      description: Raw credentials are never returned. Shared campaign connections and the caller's personal connection are visible.
+  /api/campaigns/{campaignId}/plugins/{pluginId}/connections/static:
+    post:
+      tags: [Campaigns]
+      summary: Connect or reconnect an API key or bearer token
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerType, credential]
+              properties:
+                ownerType: { type: string, enum: [campaign, user] }
+                credential: { type: string, minLength: 1, maxLength: 8192, writeOnly: true }
+                accountLabel: { type: string, maxLength: 160 }
+      responses:
+        "201": { description: Redacted connected record }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/campaigns/{campaignId}/plugins/{pluginId}/connections/oauth/start:
+    post:
+      tags: [Campaigns]
+      summary: Start an OAuth 2 authorization-code + PKCE connection
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Approved provider authorization URL }
+        "409": { description: OAuth client or provider is not configured }
+  /api/campaigns/{campaignId}/plugins/{pluginId}/connections/{connectionId}:
+    delete:
+      tags: [Campaigns]
+      summary: Disconnect a plugin connection
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - { name: connectionId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Redacted disconnected record }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/campaigns/{campaignId}/source-providers:
     get:
       tags:
@@ -1358,6 +1415,63 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
+  /api/admin/plugins/{pluginId}/oauth-client:
+    get:
+      tags: [Administration]
+      summary: Read redacted plugin OAuth client configuration
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Client ID and secret-presence flag }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      tags: [Administration]
+      summary: Configure a plugin OAuth client
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Redacted OAuth client configuration }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/plugin-connections/oauth/callback:
+    get:
+      tags: [Plugins]
+      summary: Complete a plugin OAuth connection
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: state, in: query, required: true, schema: { type: string } }
+        - { name: code, in: query, required: true, schema: { type: string } }
+      responses:
+        "302": { description: Connection completed and browser returned to Esiana }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/plugin-connection-fixtures/oauth/authorize:
+    get:
+      tags: [Plugins]
+      summary: Development-only fixture OAuth authorization
+      responses: { "302": { description: Returns a deterministic fixture authorization code } }
+  /api/plugin-connection-fixtures/oauth/token:
+    post:
+      tags: [Plugins]
+      summary: Development-only fixture OAuth token exchange
+      responses: { "200": { description: Deterministic fixture token response } }
+  /api/plugin-connection-fixtures/oauth/revoke:
+    post:
+      tags: [Plugins]
+      summary: Development-only fixture OAuth revocation
+      responses: { "200": { description: Fixture token accepted for revocation } }
+  /api/plugin-connection-fixtures/oauth/library:
+    get:
+      tags: [Plugins]
+      summary: Development-only OAuth-protected fixture resource
+      responses: { "200": { description: Deterministic fixture library } }
+  /api/plugin-connection-fixtures/api-key/library:
+    get:
+      tags: [Plugins]
+      summary: Development-only API-key-protected fixture resource
+      responses: { "200": { description: Deterministic fixture library } }
   /api/admin/plugins/install-from-link:
     post:
       tags:

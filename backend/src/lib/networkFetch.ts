@@ -21,6 +21,7 @@ import {
   isUrlSafeForImportSync,
   resolveUrlSafeForRemoteFetch,
 } from '@esiana/ssrf-guard';
+import { env } from '../config/env.js';
 
 export class NetworkFetchError extends Error {
   constructor(message: string) {
@@ -51,6 +52,103 @@ export type PluginRemoteFetchOptions = RemoteFetchOptions;
 interface FetchBodyResult {
   buffer: Buffer;
   contentType: string | null;
+}
+
+export interface AuthenticatedRemoteFetchOptions {
+  allowedOrigins: string[];
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  headers?: Record<string, string>;
+  body?: string | Uint8Array;
+  timeoutSeconds?: number;
+  maxBytes?: number;
+  signal?: AbortSignal;
+}
+
+export interface AuthenticatedRemoteResponse {
+  status: number;
+  contentType: string | null;
+  body: Buffer;
+}
+
+const FORBIDDEN_PLUGIN_HEADERS = new Set([
+  'authorization', 'cookie', 'host', 'proxy-authorization', 'forwarded',
+  'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto',
+]);
+
+/** Guarded transport for connection credentials. Callers cannot supply auth headers. */
+export async function fetchAuthenticatedRemote(
+  url: URL,
+  injectedHeader: { name: string; value: string },
+  options: AuthenticatedRemoteFetchOptions,
+): Promise<AuthenticatedRemoteResponse> {
+  if (!options.allowedOrigins.includes(url.origin)) {
+    throw new NetworkFetchError('Destination origin is not declared by the plugin');
+  }
+  const allowHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !allowHttp) throw new NetworkFetchError('Authenticated fetch requires HTTPS');
+  const devLoopback = allowHttp && env.nodeEnv !== 'production';
+  if (!devLoopback) {
+    if (!isUrlSafeForImportSync(url, { allowHttp })) return rejectRemoteFetchPolicy(url, 'asset', allowHttp);
+    try { await resolveUrlSafeForRemoteFetch(url, { allowHttp }); }
+    catch (error) { throw mapPolicyError(error); }
+  }
+
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(options.headers ?? {})) {
+    const lower = name.toLowerCase();
+    if (FORBIDDEN_PLUGIN_HEADERS.has(lower) || lower === injectedHeader.name.toLowerCase() || lower.startsWith('x-forwarded-')) {
+      throw new NetworkFetchError(`Header "${name}" is not allowed`);
+    }
+    headers[name] = value;
+  }
+  headers[injectedHeader.name] = injectedHeader.value;
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', onAbort, { once: true });
+  const timeoutSeconds = Math.min(Math.max(options.timeoutSeconds ?? 10, 1), 30);
+  const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutSeconds * 1000);
+  try {
+    const response = await fetch(url, {
+      method: options.method ?? 'GET', headers, body: options.body,
+      redirect: REDIRECT_POLICY, signal: controller.signal,
+    });
+    const body = response.body;
+    if (!body) return { status: response.status, contentType: response.headers.get('content-type'), body: Buffer.alloc(0) };
+    const reader = body.getReader();
+    const chunks: Buffer[] = [];
+    let total = 0;
+    const maxBytes = Math.min(Math.max(options.maxBytes ?? 1024 * 1024, 1), 5 * 1024 * 1024);
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        abortRequest(controller, 'size-limit', reader);
+        throw new NetworkFetchError('Response exceeded size limit');
+      }
+      chunks.push(Buffer.from(value));
+    }
+    return { status: response.status, contentType: response.headers.get('content-type'), body: Buffer.concat(chunks) };
+  } catch (error) {
+    throw toNetworkFetchError(error, controller, timeoutSeconds);
+  } finally {
+    clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', onAbort);
+  }
+}
+
+/** Core-only OAuth exchange transport. Values are sent only to a declared origin. */
+export function fetchOAuthRemote(
+  url: URL,
+  options: Omit<AuthenticatedRemoteFetchOptions, 'allowedOrigins'> & { allowedOrigins: string[]; authorization?: string },
+): Promise<AuthenticatedRemoteResponse> {
+  return fetchAuthenticatedRemote(
+    url,
+    options.authorization
+      ? { name: 'Authorization', value: options.authorization }
+      : { name: 'Content-Type', value: 'application/x-www-form-urlencoded' },
+    { ...options, headers: { Accept: 'application/json', ...(options.authorization ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}), ...(options.headers ?? {}) } },
+  );
 }
 
 const abortReasonByController = new WeakMap<AbortController, AbortReason>();

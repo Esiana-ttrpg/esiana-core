@@ -23,7 +23,7 @@ Canonical reference for every supported Esiana environment variable.
 |------|---------|----------|-------------|---------|
 | `PUBLIC_ORIGIN` | `http://localhost:8080` (matches `COMPOSE_HTTP_PORT`) | Optional | Public browser URL (no trailing slash). Sets `FRONTEND_ORIGIN`, `CORS_ORIGIN`, and `BACKEND_PUBLIC_ORIGIN`. Required when using a reverse proxy — see [Reverse Proxies.md](Reverse%20Proxies.md). | `https://esiana.example.com` |
 | `ESIANA_VERSION` | `latest` | Optional | GHCR image tag. Pin for pull-based upgrades. | `v1.0.1` |
-| `AUTH_SECRETS_KEY` | (empty) | Optional | Encrypts **stored** IdP client secrets (AES). Separate from `JWT_SECRET`. Required with Identity Providers in production. | `openssl rand -base64 32` |
+| `AUTH_SECRETS_KEY` | (empty) | Optional | Encrypts stored IdP secrets, plugin OAuth client secrets, and plugin connection credentials (AES). Separate from `JWT_SECRET`; required for these features in production. | `openssl rand -base64 32` |
 | `OPENAPI_DOCS_ENABLED` | `true` | Optional | `true` exposes `/api/docs` in production; `false` hides Swagger on public hosts. | `false` |
 | `COMPOSE_HTTP_PORT` | `8080` | Optional | Host port mapped to the esiana container. | `8080` |
 | `TRUST_PROXY` | `false` | Optional | `true` when behind a reverse proxy that sets `X-Forwarded-*` headers. | `true` |

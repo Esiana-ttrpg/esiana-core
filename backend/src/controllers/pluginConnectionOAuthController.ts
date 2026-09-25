@@ -1,0 +1,66 @@
+import { createHash, randomBytes } from 'node:crypto';
+import type { Response } from 'express';
+import type { AuthenticatedRequest } from '../middleware/auth.js';
+import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
+import { env } from '../config/env.js';
+import { prisma } from '../lib/prisma.js';
+import { decryptSecretOrDevStore, encryptSecretOrDevStore } from '../lib/crypto/secretBox.js';
+import { getConnectionProvider } from '../lib/plugins/connectionProviderRegistry.js';
+import { fetchOAuthRemote } from '../lib/networkFetch.js';
+import { getPluginManifest } from '../plugins/pluginManager.js';
+import { isCampaignPluginEnabled } from '../lib/campaignPlugins.js';
+
+const hash = (value: string) => createHash('sha256').update(value).digest('base64url');
+const callbackUri = () => `${env.backendPublicOrigin.replace(/\/$/, '')}/api/plugin-connections/oauth/callback`;
+const safeReturnTo = (value: unknown) => typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') ? value.slice(0, 1024) : '/';
+
+export async function startPluginOAuth(req: CampaignScopedRequest, res: Response): Promise<void> {
+  const pluginId = String(req.params.pluginId ?? '');
+  const provider = getConnectionProvider(pluginId);
+  if (!provider || provider.auth.type !== 'oauth2' || !await isCampaignPluginEnabled(req.campaign!.campaignId, pluginId)) { res.status(404).json({ error: 'OAuth provider not found' }); return; }
+  const body = req.body as { ownerType?: unknown; returnTo?: unknown };
+  if (body.ownerType !== 'campaign' && body.ownerType !== 'user') { res.status(400).json({ error: 'ownerType must be campaign or user' }); return; }
+  if (body.ownerType === 'campaign' && req.campaign!.campaignOwnerUserId !== req.user!.id) { res.status(403).json({ error: 'Only the campaign owner may manage a campaign connection' }); return; }
+  if (!provider.ownership?.includes(body.ownerType)) { res.status(400).json({ error: 'Provider does not support this owner type' }); return; }
+  const client = await prisma.pluginOAuthClient.findUnique({ where: { pluginId } });
+  if (!client) { res.status(409).json({ error: 'OAuth client is not configured by the server administrator' }); return; }
+  const manifest = getPluginManifest(pluginId);
+  const authorizationUrl = new URL(provider.auth.authorizationUrl);
+  if (!manifest?.outboundOrigins?.includes(authorizationUrl.origin)) { res.status(409).json({ error: 'OAuth authorization origin is not declared by the plugin' }); return; }
+  const state = randomBytes(32).toString('base64url');
+  const verifier = randomBytes(48).toString('base64url');
+  const ownerId = body.ownerType === 'campaign' ? req.campaign!.campaignId : req.user!.id;
+  const existing = await prisma.pluginConnection.findUnique({ where: { pluginId_campaignId_ownerType_ownerId: { pluginId, campaignId: req.campaign!.campaignId, ownerType: body.ownerType, ownerId } } });
+  await prisma.pluginConnectionAuthState.create({ data: { stateHash: hash(state), pluginId, campaignId: req.campaign!.campaignId, initiatorId: req.user!.id, ownerType: body.ownerType, ownerId, connectionId: existing?.id, codeVerifier: encryptSecretOrDevStore(verifier), returnTo: safeReturnTo(body.returnTo), expiresAt: new Date(Date.now() + 10 * 60_000) } });
+  authorizationUrl.searchParams.set('response_type', 'code'); authorizationUrl.searchParams.set('client_id', client.clientId); authorizationUrl.searchParams.set('redirect_uri', callbackUri()); authorizationUrl.searchParams.set('scope', provider.auth.scopes.join(' ')); authorizationUrl.searchParams.set('state', state); authorizationUrl.searchParams.set('code_challenge', hash(verifier)); authorizationUrl.searchParams.set('code_challenge_method', 'S256');
+  res.json({ authorizationUrl: authorizationUrl.toString() });
+}
+
+export async function pluginOAuthCallback(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const state = typeof req.query.state === 'string' ? req.query.state : '';
+  const code = typeof req.query.code === 'string' ? req.query.code : '';
+  const authState = state ? await prisma.pluginConnectionAuthState.findUnique({ where: { stateHash: hash(state) } }) : null;
+  if (!authState || authState.expiresAt <= new Date() || authState.initiatorId !== req.user!.id || !code) { res.status(400).send('Invalid or expired OAuth connection state'); return; }
+  await prisma.pluginConnectionAuthState.delete({ where: { id: authState.id } });
+  const membership = await prisma.campaignMember.findUnique({ where: { userId_campaignId: { userId: req.user!.id, campaignId: authState.campaignId } }, include: { campaign: { select: { campaignOwnerUserId: true } } } });
+  if (!membership || (authState.ownerType === 'campaign' && membership.campaign.campaignOwnerUserId !== req.user!.id) || (authState.ownerType === 'user' && authState.ownerId !== req.user!.id)) { res.status(403).send('Connection authority changed'); return; }
+  const provider = getConnectionProvider(authState.pluginId); const client = await prisma.pluginOAuthClient.findUnique({ where: { pluginId: authState.pluginId } }); const manifest = getPluginManifest(authState.pluginId);
+  if (!provider || provider.auth.type !== 'oauth2' || !client || !manifest || !await isCampaignPluginEnabled(authState.campaignId, authState.pluginId)) { res.status(409).send('OAuth provider is unavailable'); return; }
+  const tokenUrl = new URL(provider.auth.tokenUrl);
+  if (!manifest.outboundOrigins?.includes(tokenUrl.origin)) { res.status(409).send('OAuth token origin is not approved'); return; }
+  const params = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: callbackUri(), client_id: client.clientId, code_verifier: decryptSecretOrDevStore(authState.codeVerifier) });
+  let authorization: string | undefined;
+  if (provider.auth.clientAuth === 'basic') {
+    if (!client.clientSecretEnc) { res.status(409).send('OAuth client secret is not configured'); return; }
+    authorization = `Basic ${Buffer.from(`${client.clientId}:${decryptSecretOrDevStore(client.clientSecretEnc)}`).toString('base64')}`;
+    params.delete('client_id');
+  } else if (provider.auth.clientAuth === 'body' && client.clientSecretEnc) params.set('client_secret', decryptSecretOrDevStore(client.clientSecretEnc));
+  try {
+    const response = await fetchOAuthRemote(tokenUrl, { allowedOrigins: manifest.outboundOrigins ?? [], method: 'POST', body: params.toString(), authorization });
+    const tokens = JSON.parse(response.body.toString('utf8')) as { access_token?: unknown; refresh_token?: unknown; expires_in?: unknown; scope?: unknown };
+    if (response.status < 200 || response.status >= 300 || typeof tokens.access_token !== 'string') throw new Error('token exchange rejected');
+    const expiresAt = typeof tokens.expires_in === 'number' ? new Date(Date.now() + Math.max(0, tokens.expires_in - 30) * 1000) : null;
+    await prisma.pluginConnection.upsert({ where: { pluginId_campaignId_ownerType_ownerId: { pluginId: authState.pluginId, campaignId: authState.campaignId, ownerType: authState.ownerType, ownerId: authState.ownerId } }, create: { pluginId: authState.pluginId, campaignId: authState.campaignId, ownerType: authState.ownerType, ownerId: authState.ownerId, authType: 'oauth2', status: 'connected', credentialEnc: encryptSecretOrDevStore(JSON.stringify({ accessToken: tokens.access_token, refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : undefined })), expiresAt, scopes: typeof tokens.scope === 'string' ? tokens.scope.split(/\s+/) : provider.auth.scopes }, update: { authType: 'oauth2', status: 'connected', credentialEnc: encryptSecretOrDevStore(JSON.stringify({ accessToken: tokens.access_token, refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : undefined })), expiresAt, scopes: typeof tokens.scope === 'string' ? tokens.scope.split(/\s+/) : provider.auth.scopes, lastError: null } });
+    res.redirect(new URL(safeReturnTo(authState.returnTo), env.frontendOrigin).toString());
+  } catch { res.status(502).send('OAuth token exchange failed'); }
+}

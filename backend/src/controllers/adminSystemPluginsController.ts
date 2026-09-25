@@ -39,6 +39,7 @@ import { env } from '../config/env.js';
 import {
   isPluginEngineMismatchError,
 } from '../lib/plugins/pluginEngineMismatchError.js';
+import { encryptSecretOrDevStore } from '../lib/crypto/secretBox.js';
 
 function parseConfigBody(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -322,6 +323,24 @@ export async function saveAdminPluginConfig(
   }
 
   res.json({ plugin: serializeSystemPlugin(row) });
+}
+
+export async function getAdminPluginOAuthClient(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const pluginId = String(req.params.pluginId ?? '');
+  const row = await prisma.pluginOAuthClient.findUnique({ where: { pluginId }, select: { clientId: true, clientSecretEnc: true, updatedAt: true } });
+  res.json({ oauthClient: row ? { clientId: row.clientId, hasClientSecret: Boolean(row.clientSecretEnc), updatedAt: row.updatedAt.toISOString() } : null });
+}
+
+export async function putAdminPluginOAuthClient(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const pluginId = String(req.params.pluginId ?? '');
+  const plugin = await prisma.systemPlugin.findUnique({ where: { id: pluginId } });
+  if (!plugin) { res.status(404).json({ error: 'Plugin not found' }); return; }
+  const body = req.body as { clientId?: unknown; clientSecret?: unknown };
+  if (typeof body.clientId !== 'string' || !body.clientId.trim() || body.clientId.length > 512) { res.status(400).json({ error: 'clientId is required' }); return; }
+  const existing = await prisma.pluginOAuthClient.findUnique({ where: { pluginId } });
+  const secret = typeof body.clientSecret === 'string' && body.clientSecret ? encryptSecretOrDevStore(body.clientSecret) : existing?.clientSecretEnc ?? null;
+  const row = await prisma.pluginOAuthClient.upsert({ where: { pluginId }, create: { pluginId, clientId: body.clientId.trim(), clientSecretEnc: secret }, update: { clientId: body.clientId.trim(), clientSecretEnc: secret } });
+  res.json({ oauthClient: { clientId: row.clientId, hasClientSecret: Boolean(row.clientSecretEnc), updatedAt: row.updatedAt.toISOString() } });
 }
 
 export async function registerAdminPluginManifest(

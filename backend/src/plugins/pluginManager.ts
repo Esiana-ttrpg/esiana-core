@@ -6,6 +6,7 @@ import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
 import { clearImportProviderRegistry } from '../lib/plugins/importProviderRegistry.js';
 import { clearSearchCollectionRegistry } from '../lib/plugins/pluginSearchRegistry.js';
+import { clearConnectionProviderRegistry } from '../lib/plugins/connectionProviderRegistry.js';
 import {
   PluginScopes,
   isBackendOnlyGlobalPlugin,
@@ -329,6 +330,7 @@ export async function reloadPluginHost(): Promise<void> {
   clearPublicPluginRouteRegistrars();
   clearImportProviderRegistry();
   clearSearchCollectionRegistry();
+  clearConnectionProviderRegistry();
   initializeDevelopmentRegistry();
   const hostRouter = Router();
   const installed = await prisma.installedPlugin.findMany({
@@ -381,7 +383,7 @@ export async function reloadPluginHost(): Promise<void> {
       record.name,
       manifest?.permissions ?? [],
       pluginRoot,
-      { scope: manifest?.scope ?? PluginScopes.GLOBAL },
+      { scope: manifest?.scope ?? PluginScopes.GLOBAL, outboundOrigins: manifest?.outboundOrigins ?? [] },
     );
 
     try {
@@ -392,6 +394,7 @@ export async function reloadPluginHost(): Promise<void> {
         manifest?.permissions ?? [],
         pluginRoot,
         manifest?.scope ?? PluginScopes.GLOBAL,
+        manifest?.outboundOrigins ?? [],
       );
       const shouldMountRoutes = isCampaignScope || record.isEnabled;
       if (shouldMountRoutes) {

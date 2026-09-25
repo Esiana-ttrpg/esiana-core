@@ -6,7 +6,21 @@ import {
   parsePluginRegistryIndex,
   validatePluginGithubSource,
   validatePluginRegistryEntry,
+  validatePluginManifest,
 } from './pluginManifest.js';
+
+test('connection manifests accept exact HTTPS and loopback origins', () => {
+  const result = validatePluginManifest({ id: 'fixture-provider', name: 'Fixture', version: '1.0.0', description: 'Fixture provider', scope: 'campaign', permissions: ['connections:use', 'network:fetch'], outboundOrigins: ['https://api.example.com', 'http://localhost:4319'] });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.deepEqual(result.manifest.outboundOrigins, ['https://api.example.com', 'http://localhost:4319']);
+});
+
+test('connection manifests reject paths, wildcard hosts, and non-loopback HTTP', () => {
+  for (const origin of ['https://api.example.com/v1', 'https://*.example.com', 'http://api.example.com']) {
+    const result = validatePluginManifest({ id: 'fixture-provider', name: 'Fixture', version: '1.0.0', description: 'Fixture provider', scope: 'campaign', outboundOrigins: [origin] });
+    assert.equal(result.ok, false, origin);
+  }
+});
 
 test('isValidCommitSha accepts 40-char hex and rejects branch-like refs', () => {
   assert.equal(isValidCommitSha('abcdef0123456789abcdef0123456789abcdef01'), true);

@@ -236,8 +236,20 @@ model SystemPlugin {
   config      Json
 
   campaignSettings CampaignPluginSetting[]
+  oauthConfig      PluginOAuthClient?
 
   updatedAt DateTime @updatedAt
+}
+
+/// Instance-owned OAuth client registration for a connection provider.
+model PluginOAuthClient {
+  pluginId        String   @id
+  clientId        String
+  clientSecretEnc String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  plugin SystemPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
 }
 
 /// Per-campaign enablement and configuration for campaign-scoped plugins.
@@ -406,6 +418,52 @@ model PluginSecret {
   @@index([pluginId, campaignId])
 }
 
+/// Redacted lifecycle record plus one opaque encrypted credential payload.
+model PluginConnection {
+  id              String    @id @default(cuid())
+  pluginId        String
+  campaignId      String
+  ownerType       String
+  ownerId         String
+  authType        String
+  status          String    @default("disconnected")
+  credentialEnc   String?
+  accountLabel    String?
+  scopes          Json?
+  expiresAt       DateTime?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([pluginId, campaignId, ownerType, ownerId])
+  @@index([campaignId])
+  @@index([pluginId, campaignId])
+  @@index([ownerType, ownerId])
+}
+
+/// Single-use OAuth CSRF/PKCE state for plugin connection authorization.
+model PluginConnectionAuthState {
+  id           String   @id @default(cuid())
+  stateHash    String   @unique
+  pluginId     String
+  campaignId   String
+  initiatorId  String
+  ownerType    String
+  ownerId      String
+  connectionId String?
+  codeVerifier String
+  returnTo     String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([expiresAt])
+}
+
 model Campaign {
   id               String      @id @default(cuid())
   name             String
@@ -504,6 +562,8 @@ model Campaign {
   ownershipTransfers   CampaignOwnershipTransfer[]
   pluginData           PluginData[]
   pluginSecrets        PluginSecret[]
+  pluginConnections    PluginConnection[]
+  pluginConnectionAuthStates PluginConnectionAuthState[]
   narrativeStateSnapshots NarrativeStateSnapshot[]
   partyRegionVisits       PartyRegionVisit[]
   partyVisitSuggestions   PartyVisitSuggestion[]

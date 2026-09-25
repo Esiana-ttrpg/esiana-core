@@ -7,6 +7,8 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { userRouter } from './routes/user.js';
 import { campaignsRouter } from './routes/campaigns.js';
+import { pluginConnectionsRouter } from './routes/pluginConnections.js';
+import { pluginConnectionFixturesRouter } from './routes/pluginConnectionFixtures.js';
 import { campaignScopedRouter } from './routes/campaignScoped.js';
 import { createPluginsRouter } from './routes/plugins.js';
 import { publicDirectoryRouter } from './routes/publicDirectory.js';
@@ -74,6 +76,8 @@ export async function createApp(): Promise<Express> {
   app.use('/api/auth', authRouter);
   app.use('/api/user', userRouter);
   app.use('/api/campaigns', campaignsRouter);
+  app.use('/api/plugin-connections', pluginConnectionsRouter);
+  app.use('/api/plugin-connection-fixtures', pluginConnectionFixturesRouter);
   app.use('/api/campaigns/:campaignHandle', campaignScopedRouter);
   app.use('/api/assets', assetsRouter);
   app.use('/api/plugins', createPluginsRouter());

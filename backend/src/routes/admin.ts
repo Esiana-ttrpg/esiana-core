@@ -14,6 +14,8 @@ import {
   registerAdminPluginManifest,
   reloadAdminPluginRuntime,
   saveAdminPluginConfig,
+  getAdminPluginOAuthClient,
+  putAdminPluginOAuthClient,
 } from '../controllers/adminSystemPluginsController.js';
 import { installPluginFromLink } from '../controllers/pluginController.js';
 import { checkSystemVersion } from '../controllers/systemController.js';
@@ -82,6 +84,8 @@ adminRouter.post(
   verifySystemAdmin,
   pruneUnusedMediaAssets,
 );
+adminRouter.get('/plugins/:pluginId/oauth-client', requireAuth, verifySystemAdmin, getAdminPluginOAuthClient);
+adminRouter.put('/plugins/:pluginId/oauth-client', requireAuth, verifySystemAdmin, putAdminPluginOAuthClient);
 
 adminRouter.get(
   '/system/check-version',

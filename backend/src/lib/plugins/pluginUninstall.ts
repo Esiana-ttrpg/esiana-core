@@ -28,6 +28,10 @@ export async function uninstallPlugin(pluginId: string): Promise<void> {
     await deletePluginAssets(pluginId);
   }
 
+  // Credentials and pending grants are never retained after provider code is removed.
+  await prisma.pluginConnectionAuthState.deleteMany({ where: { pluginId } });
+  await prisma.pluginConnection.deleteMany({ where: { pluginId } });
+
   await prisma.systemPlugin.deleteMany({ where: { id: pluginId } });
 
   const pluginRoot = resolvePluginRoot(record);

@@ -166,6 +166,8 @@ export interface PluginManifest {
     connectSrc?: string[];
     imgSrc?: string[];
   };
+  /** Exact server-side origins eligible to receive injected connection credentials. */
+  outboundOrigins?: string[];
   /** Uninstall data policy. Default preserveData. */
   uninstallPolicy?: 'preserveData' | 'removePluginData';
   /** Host-facing capability flags (e.g. campaignGenerator). */
@@ -250,6 +252,7 @@ export interface StoredPluginManifestMeta {
   engines?: Record<string, string>;
   compatibility?: PluginCompatibilityMeta;
   uiSlots?: PluginUiSlotId[];
+  outboundOrigins?: string[];
 }
 
 export type ManifestValidationResult =
@@ -744,6 +747,22 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
         ? (errors.push('configSchema must be an object when provided'), undefined)
         : undefined;
   const uiSlots = parseUiSlots(raw.uiSlots, errors);
+  const outboundOriginsRaw = parseStringArray(raw.outboundOrigins, 'outboundOrigins', errors);
+  const outboundOrigins = outboundOriginsRaw?.flatMap((value, index) => {
+    try {
+      const url = new URL(value);
+      const loopback = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
+      if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) || url.hostname.includes('*') ||
+          url.username || url.password || url.pathname !== '/' || url.search || url.hash || url.origin !== value.replace(/\/$/, '')) {
+        errors.push(`outboundOrigins[${index}] must be an exact HTTPS origin (HTTP is allowed only for loopback)`);
+        return [];
+      }
+      return [url.origin];
+    } catch {
+      errors.push(`outboundOrigins[${index}] must be a valid origin`);
+      return [];
+    }
+  });
 
   let cspExtensions: PluginManifest['cspExtensions'];
   if (raw.cspExtensions !== undefined) {
@@ -806,6 +825,7 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
       ...(configSchema ? { configSchema } : {}),
       ...(configSchemaUrl ? { configSchemaUrl } : {}),
       ...(uiSlots?.length ? { uiSlots } : {}),
+      ...(outboundOrigins?.length ? { outboundOrigins: [...new Set(outboundOrigins)] } : {}),
       ...(cspExtensions && Object.keys(cspExtensions).length ? { cspExtensions } : {}),
       ...(uninstallPolicy ? { uninstallPolicy } : {}),
       ...(capabilities?.length ? { capabilities } : {}),
@@ -996,6 +1016,9 @@ export function extractManifestMeta(
           typeof slot === 'string' && UI_SLOT_VALUES.has(slot),
       )
     : undefined;
+  const outboundOrigins = Array.isArray(raw.outboundOrigins)
+    ? raw.outboundOrigins.filter((origin): origin is string => typeof origin === 'string')
+    : undefined;
   return {
     version,
     description,
@@ -1007,6 +1030,7 @@ export function extractManifestMeta(
     ...(engines ? { engines } : {}),
     ...(compatibility ? { compatibility } : {}),
     ...(uiSlots?.length ? { uiSlots } : {}),
+    ...(outboundOrigins?.length ? { outboundOrigins } : {}),
   };
 }
 

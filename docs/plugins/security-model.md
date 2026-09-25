@@ -39,6 +39,9 @@ Only **system administrators** may install, upgrade, or remove plugin packages o
 5. **HTTPS exfiltration is a known trust-boundary limitation.**
    A trusted admin-installed plugin with allowed `connect-src` can exfiltrate data. CSP filters domains; admin install review and provenance are the controls.
 
+6. **Connections conceal credentials, not their authority.**
+   `context.connections` never returns raw OAuth tokens, API keys, or bearer tokens. A backend plugin granted both `connections:use` and `network:fetch` can still direct authenticated calls to reviewed `outboundOrigins` and inspect the results. Origin restrictions prevent sending credentials elsewhere; they do not constrain behavior within an approved upstream API.
+
 ## Interceptor semantics
 
 - **Execution order:** plugin host load order (registration order).
