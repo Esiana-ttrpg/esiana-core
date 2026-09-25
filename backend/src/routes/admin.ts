@@ -17,6 +17,9 @@ import {
   getAdminPluginOAuthClient,
   putAdminPluginOAuthClient,
 } from '../controllers/adminSystemPluginsController.js';
+import { connectAdminStatic, disconnectAdminConnection, getAdminConnection } from '../controllers/pluginConnectionsController.js';
+import { startAdminPluginOAuth } from '../controllers/pluginConnectionOAuthController.js';
+import { oidcStartLimiter } from '../middleware/rateLimit.js';
 import { installPluginFromLink } from '../controllers/pluginController.js';
 import { checkSystemVersion } from '../controllers/systemController.js';
 import {
@@ -86,6 +89,10 @@ adminRouter.post(
 );
 adminRouter.get('/plugins/:pluginId/oauth-client', requireAuth, verifySystemAdmin, getAdminPluginOAuthClient);
 adminRouter.put('/plugins/:pluginId/oauth-client', requireAuth, verifySystemAdmin, putAdminPluginOAuthClient);
+adminRouter.get('/plugins/:pluginId/connection', requireAuth, verifySystemAdmin, getAdminConnection);
+adminRouter.post('/plugins/:pluginId/connection/static', requireAuth, verifySystemAdmin, connectAdminStatic);
+adminRouter.post('/plugins/:pluginId/connection/oauth/start', oidcStartLimiter, requireAuth, verifySystemAdmin, startAdminPluginOAuth);
+adminRouter.delete('/plugins/:pluginId/connection', requireAuth, verifySystemAdmin, disconnectAdminConnection);
 
 adminRouter.get(
   '/system/check-version',

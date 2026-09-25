@@ -229,6 +229,7 @@ export interface CampaignPluginCapabilityRecord {
   commitSha?: string;
   trustedInstall?: boolean;
   installedFrom?: PluginInstalledFrom;
+  config: Record<string, unknown>;
 }
 
 export interface CampaignPluginDescriptor {
@@ -249,6 +250,7 @@ export interface CampaignPluginSettingRecord {
   campaignId: string;
   pluginId: string;
   isEnabled: boolean;
+  connectionStatus?: string | null;
   config: Record<string, unknown>;
   plugin: {
     id: string;

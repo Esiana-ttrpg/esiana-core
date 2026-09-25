@@ -11,14 +11,27 @@ import {
   formatLastUpdatedDisplay,
   formatLastVerifiedDisplay,
   getGlobalPluginFromRow,
-  isGlobalPluginRow,
   scopeLabel,
   type InstalledPluginAdminRow,
 } from '@/lib/pluginAdminPresentation';
 import { PLUGIN_CATEGORY_LABELS } from '@/lib/pluginManifest';
 import type { SystemPluginRecord } from '@/types/admin';
 import { formatInstalledFromLabel } from '@/types/admin';
-import { fetchPluginOAuthClient, savePluginOAuthClient } from '@/lib/adminPlugins';
+import { connectAdminPluginStatic, disconnectAdminPluginConnection, fetchAdminPluginConnection, fetchPluginOAuthClient, savePluginOAuthClient, startAdminPluginOAuth, type AdminPluginConnectionResponse } from '@/lib/adminPlugins';
+
+function AdminConnectionConfig({ pluginId }: { pluginId: string }) {
+  const [data, setData] = useState<AdminPluginConnectionResponse | null>(null);
+  const [credential, setCredential] = useState(''); const [busy, setBusy] = useState(false); const [message, setMessage] = useState<string | null>(null);
+  const load = () => fetchAdminPluginConnection(pluginId).then(setData).catch((error) => setMessage(error instanceof Error ? error.message : 'Unable to load connection'));
+  useEffect(() => { void load(); }, [pluginId]);
+  if (!data) return <p className="text-sm text-muted">{message ?? 'Loading connection…'}</p>;
+  return <div className="space-y-3">
+    <p className="text-sm text-muted">{data.connection?.status === 'connected' ? `Connected${data.connection.accountLabel ? ` as ${data.connection.accountLabel}` : ''}.` : data.connection?.status === 'reconnect_required' ? 'Reconnect required.' : 'Not connected.'}</p>
+    {data.provider.authType === 'oauth2' ? <button type="button" disabled={busy} className="rounded bg-primary px-3 py-2 text-sm font-semibold text-background" onClick={() => { setBusy(true); void startAdminPluginOAuth(pluginId, window.location.pathname + window.location.search).then(({ authorizationUrl }) => window.location.assign(authorizationUrl)).catch((error) => { setMessage(error instanceof Error ? error.message : 'Unable to start OAuth'); setBusy(false); }); }}>{data.connection?.status === 'connected' ? 'Reconnect' : 'Connect with OAuth'}</button> : <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); setBusy(true); void connectAdminPluginStatic(pluginId, credential).then(() => { setCredential(''); return load(); }).catch((error) => setMessage(error instanceof Error ? error.message : 'Unable to connect')).finally(() => setBusy(false)); }}><input type="password" autoComplete="off" value={credential} onChange={(e) => setCredential(e.target.value)} placeholder={data.provider.authType === 'apiKey' ? 'API key' : 'Bearer token'} className="min-w-0 flex-1 rounded border border-border bg-background px-3 py-2 text-sm" /><button disabled={busy || !credential} className="rounded bg-primary px-3 py-2 text-sm font-semibold text-background">{data.connection?.status === 'connected' ? 'Replace' : 'Connect'}</button></form>}
+    {data.connection?.status === 'connected' ? <button type="button" disabled={busy} className="text-sm text-red-300" onClick={() => { setBusy(true); void disconnectAdminPluginConnection(pluginId).then(load).catch((error) => setMessage(error instanceof Error ? error.message : 'Unable to disconnect')).finally(() => setBusy(false)); }}>Disconnect</button> : null}
+    {message ? <p className="text-xs text-muted">{message}</p> : null}
+  </div>;
+}
 
 function OAuthClientConfig({ pluginId }: { pluginId: string }) {
   const [clientId, setClientId] = useState(''); const [clientSecret, setClientSecret] = useState('');
@@ -173,16 +186,16 @@ export function PluginInspectorDrawer({
               {'permissions' in row.source && row.source.permissions?.includes('connections:use') ? <p className="mt-3 rounded border border-amber-700/40 bg-amber-950/20 p-3 text-xs text-amber-200">This trusted backend plugin can exercise connected credentials against approved origins and inspect returned data. Origin restrictions prevent raw credential forwarding elsewhere; they do not limit behavior within an approved API.</p> : null}
             </InspectorSection>
 
-            {'permissions' in row.source && row.source.permissions?.includes('connections:use') ? <InspectorSection title="OAuth client"><OAuthClientConfig pluginId={row.id} /></InspectorSection> : null}
+            {'permissions' in row.source && row.source.permissions?.includes('connections:use') ? <><InspectorSection title="Connection"><AdminConnectionConfig pluginId={row.id} /></InspectorSection><InspectorSection title="OAuth client"><OAuthClientConfig pluginId={row.id} /></InspectorSection></> : null}
 
-            {isGlobalPluginRow(row) && globalPlugin ? (
+            {'config' in row.source ? (
               <InspectorSection title="Configuration">
                 <form onSubmit={onSave} className="space-y-4">
-                  <ToggleRow
+                  {row.isGlobal ? <ToggleRow
                     label="Enable plugin"
                     checked={draftEnabled}
                     onChange={onDraftEnabledChange}
-                  />
+                  /> : null}
                   <PluginConfigForm
                     template={draftTemplate}
                     config={draftConfig}

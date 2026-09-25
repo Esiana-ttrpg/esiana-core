@@ -12,9 +12,9 @@ test('API key providers reject credential-conflicting headers', () => {
   assert.throws(() => registerConnectionProvider('example', { id: 'example', displayName: 'Example', resourceOrigins: ['https://api.example.com'], auth: { type: 'apiKey', headerName: 'Authorization' } }, ['https://api.example.com']), /not allowed/);
 });
 
-test('providers default to both explicit ownership modes', () => {
+test('providers have no per-user or per-campaign ownership modes', () => {
   registerConnectionProvider('example', { id: 'example', displayName: 'Example', resourceOrigins: ['https://api.example.com'], auth: { type: 'bearer' } }, ['https://api.example.com']);
-  assert.deepEqual(getConnectionProvider('example')?.ownership, ['campaign', 'user']);
+  assert.equal('ownership' in getConnectionProvider('example')!, false);
 });
 
 test('resource origins must be explicitly declared by the manifest', () => {

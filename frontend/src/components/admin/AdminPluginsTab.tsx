@@ -238,14 +238,14 @@ export function AdminPluginsTab() {
     setSaveMessage(null);
     setEnableError(null);
 
-    const globalPlugin = getGlobalPluginFromRow(row);
-    if (globalPlugin) {
-      setDraftConfig({ ...globalPlugin.config });
-      setDraftEnabled(globalPlugin.isEnabled);
+    const configurable = row.source;
+    if ('config' in configurable) {
+      setDraftConfig({ ...configurable.config });
+      setDraftEnabled(row.isGlobal ? Boolean(row.isEnabled) : true);
       setDraftTemplate(
         mergePluginConfigFields({
-          configTemplate: globalPlugin.configTemplate,
-          configSchema: globalPlugin.configSchema,
+          configTemplate: configurable.configTemplate,
+          configSchema: configurable.configSchema,
         }),
       );
     } else {
@@ -307,8 +307,8 @@ export function AdminPluginsTab() {
   async function handleSavePlugin(event: FormEvent) {
     event.preventDefault();
     if (!inspectorRow) return;
-    const globalPlugin = getGlobalPluginFromRow(inspectorRow);
-    if (!globalPlugin) return;
+    const configurable = inspectorRow.source;
+    if (!('config' in configurable)) return;
 
     setSaving(true);
     setSaveError(null);
@@ -316,7 +316,7 @@ export function AdminPluginsTab() {
     setEnableError(null);
 
     try {
-      const updated = await persistPluginState(globalPlugin.id, draftConfig, draftEnabled);
+      const updated = await persistPluginState(inspectorRow.id, draftConfig, inspectorRow.isGlobal ? draftEnabled : true);
       setPlugins((prev) =>
         prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
       );

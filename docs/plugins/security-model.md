@@ -40,7 +40,7 @@ Only **system administrators** may install, upgrade, or remove plugin packages o
    A trusted admin-installed plugin with allowed `connect-src` can exfiltrate data. CSP filters domains; admin install review and provenance are the controls.
 
 6. **Connections conceal credentials, not their authority.**
-   `context.connections` never returns raw OAuth tokens, API keys, or bearer tokens. Calls are bound to a core-authenticated request identity and campaign jail; plugins cannot choose another user or campaign. A backend plugin granted both `connections:use` and `network:fetch` can still direct authenticated calls to its narrower registered `resourceOrigins` and inspect the results. Origin restrictions prevent sending credentials elsewhere; they do not constrain behavior within an approved upstream API.
+   `context.connections` never returns raw OAuth tokens, API keys, or bearer tokens. The single application-level connection is configured by a system administrator. Calls are bound to a core-authenticated request and campaign jail, and the plugin must be enabled for that campaign. A backend plugin granted both `connections:use` and `network:fetch` can still direct authenticated calls to its narrower registered `resourceOrigins` and inspect the results. Origin restrictions prevent sending credentials elsewhere; they do not constrain behavior within an approved upstream API. Guarded fetch pins the HTTP socket to an address from the validated DNS answer set while preserving the original hostname for TLS and `Host` validation.
 
 ## Interceptor semantics
 

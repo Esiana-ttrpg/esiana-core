@@ -5,7 +5,7 @@ import { isTerminalOAuthRefreshFailure, redactConnection } from './pluginConnect
 
 test('redacted connection metadata never includes encrypted or raw credentials', () => {
   const row = {
-    id: 'connection-1', pluginId: 'provider', campaignId: 'campaign-1', ownerType: 'user', ownerId: 'user-1',
+    pluginId: 'provider',
     authType: 'oauth2', status: 'connected', credentialEnc: 'encrypted-secret-payload', credentialVersion: 1, accountLabel: 'Library account',
     scopes: ['library.read'], expiresAt: new Date('2030-01-01T00:00:00Z'), lastError: null,
     createdAt: new Date('2029-01-01T00:00:00Z'), updatedAt: new Date('2029-01-02T00:00:00Z'),

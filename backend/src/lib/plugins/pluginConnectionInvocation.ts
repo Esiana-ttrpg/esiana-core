@@ -2,7 +2,6 @@ import type { Request } from 'express';
 
 export interface PluginConnectionInvocation {
   campaignId: string;
-  userId: string;
 }
 
 const invocations = new WeakMap<Request, PluginConnectionInvocation>();

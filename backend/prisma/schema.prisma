@@ -237,6 +237,8 @@ model SystemPlugin {
 
   campaignSettings CampaignPluginSetting[]
   oauthConfig      PluginOAuthClient?
+  connection       PluginConnection?
+  connectionAuthStates PluginConnectionAuthState[]
 
   updatedAt DateTime @updatedAt
 }
@@ -420,11 +422,7 @@ model PluginSecret {
 
 /// Redacted lifecycle record plus one opaque encrypted credential payload.
 model PluginConnection {
-  id              String    @id @default(cuid())
-  pluginId        String
-  campaignId      String
-  ownerType       String
-  ownerId         String
+  pluginId        String    @id
   authType        String
   status          String    @default("disconnected")
   credentialEnc   String?
@@ -436,12 +434,7 @@ model PluginConnection {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-
-  @@unique([pluginId, campaignId, ownerType, ownerId])
-  @@index([campaignId])
-  @@index([pluginId, campaignId])
-  @@index([ownerType, ownerId])
+  plugin SystemPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
 }
 
 /// Single-use OAuth CSRF/PKCE state for plugin connection authorization.
@@ -449,20 +442,16 @@ model PluginConnectionAuthState {
   id           String   @id @default(cuid())
   stateHash    String   @unique
   pluginId     String
-  campaignId   String
   initiatorId  String
-  ownerType    String
-  ownerId      String
-  connectionId String?
   connectionVersion Int?
   codeVerifier String
   returnTo     String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  plugin SystemPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
 
-  @@index([campaignId])
+  @@index([pluginId])
   @@index([expiresAt])
 }
 
@@ -564,8 +553,6 @@ model Campaign {
   ownershipTransfers   CampaignOwnershipTransfer[]
   pluginData           PluginData[]
   pluginSecrets        PluginSecret[]
-  pluginConnections    PluginConnection[]
-  pluginConnectionAuthStates PluginConnectionAuthState[]
   narrativeStateSnapshots NarrativeStateSnapshot[]
   partyRegionVisits       PartyRegionVisit[]
   partyVisitSuggestions   PartyVisitSuggestion[]

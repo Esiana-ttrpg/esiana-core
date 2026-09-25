@@ -6,6 +6,6 @@ import { registerPluginConnectionInvocation, requirePluginConnectionInvocation }
 test('plugin connection identity must be minted by core middleware', () => {
   const fabricated = {} as Request;
   assert.throws(() => requirePluginConnectionInvocation(fabricated), /Authenticated plugin request context/);
-  registerPluginConnectionInvocation(fabricated, { campaignId: 'campaign-1', userId: 'user-1' });
-  assert.deepEqual(requirePluginConnectionInvocation(fabricated), { campaignId: 'campaign-1', userId: 'user-1' });
+  registerPluginConnectionInvocation(fabricated, { campaignId: 'campaign-1' });
+  assert.deepEqual(requirePluginConnectionInvocation(fabricated), { campaignId: 'campaign-1' });
 });

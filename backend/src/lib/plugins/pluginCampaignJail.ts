@@ -83,7 +83,7 @@ export async function requirePluginCampaignJail(
   }
 
   req.pluginJailedCampaignId = campaign.id;
-  registerPluginConnectionInvocation(req, { campaignId: campaign.id, userId: req.user.id });
+  registerPluginConnectionInvocation(req, { campaignId: campaign.id });
   next();
 }
 

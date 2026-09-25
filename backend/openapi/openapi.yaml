@@ -616,25 +616,32 @@ paths:
           - Membership in the addressed campaign
           - Resource-level visibility and ownership checks performed by the controller/service
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-  /api/campaigns/{campaignId}/plugins/{pluginId}/connections:
+  /api/admin/plugins/{pluginId}/connection:
     get:
-      tags: [Campaigns]
-      summary: List redacted plugin connections
+      tags: [Admin]
+      summary: Get the app-level redacted plugin connection
       security: [{ cookieAuth: [] }, { bearerAuth: [] }]
       parameters:
-        - $ref: "#/components/parameters/campaignId"
         - { name: pluginId, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Provider metadata and visible redacted connections }
         "403": { $ref: "#/components/responses/Forbidden" }
-      description: Raw credentials are never returned. Shared campaign connections and the caller's personal connection are visible.
-  /api/campaigns/{campaignId}/plugins/{pluginId}/connections/static:
+      description: System administrators only. Raw credentials are never returned.
+    delete:
+      tags: [Admin]
+      summary: Disconnect the app-level plugin connection
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: pluginId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Redacted disconnected record }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/admin/plugins/{pluginId}/connection/static:
     post:
-      tags: [Campaigns]
+      tags: [Admin]
       summary: Connect or reconnect an API key or bearer token
       security: [{ cookieAuth: [] }, { bearerAuth: [] }]
       parameters:
-        - $ref: "#/components/parameters/campaignId"
         - { name: pluginId, in: path, required: true, schema: { type: string } }
       requestBody:
         required: true
@@ -642,37 +649,23 @@ paths:
           application/json:
             schema:
               type: object
-              required: [ownerType, credential]
+              required: [credential]
               properties:
-                ownerType: { type: string, enum: [campaign, user] }
                 credential: { type: string, minLength: 1, maxLength: 8192, writeOnly: true }
                 accountLabel: { type: string, maxLength: 160 }
       responses:
         "201": { description: Redacted connected record }
         "403": { $ref: "#/components/responses/Forbidden" }
-  /api/campaigns/{campaignId}/plugins/{pluginId}/connections/oauth/start:
+  /api/admin/plugins/{pluginId}/connection/oauth/start:
     post:
-      tags: [Campaigns]
+      tags: [Admin]
       summary: Start an OAuth 2 authorization-code + PKCE connection
       security: [{ cookieAuth: [] }]
       parameters:
-        - $ref: "#/components/parameters/campaignId"
         - { name: pluginId, in: path, required: true, schema: { type: string } }
       responses:
         "200": { description: Approved provider authorization URL }
         "409": { description: OAuth client or provider is not configured }
-  /api/campaigns/{campaignId}/plugins/{pluginId}/connections/{connectionId}:
-    delete:
-      tags: [Campaigns]
-      summary: Disconnect a plugin connection
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
-      parameters:
-        - $ref: "#/components/parameters/campaignId"
-        - { name: pluginId, in: path, required: true, schema: { type: string } }
-        - { name: connectionId, in: path, required: true, schema: { type: string } }
-      responses:
-        "200": { description: Redacted disconnected record }
-        "404": { $ref: "#/components/responses/NotFound" }
   /api/campaigns/{campaignId}/source-providers:
     get:
       tags:

@@ -156,6 +156,7 @@ export async function listAdminPlugins(
       const compatibility = runtimeManifest?.compatibility;
       return {
         ...capability,
+        config: (systemRow?.config as Record<string, unknown> | undefined) ?? {},
         ...(compatibility ? { compatibility } : {}),
         installedAt: systemRow?.installedAt.toISOString(),
         updatedAt: systemRow?.updatedAt.toISOString(),
@@ -268,8 +269,8 @@ export async function saveAdminPluginConfig(
   }
 
   const existing = await getSystemPluginById(pluginId);
-  if (!existing || existing.scope !== PluginScopes.GLOBAL) {
-    res.status(404).json({ error: 'Unknown global system plugin' });
+  if (!existing) {
+    res.status(404).json({ error: 'Unknown system plugin' });
     return;
   }
 
@@ -296,7 +297,7 @@ export async function saveAdminPluginConfig(
     return;
   }
 
-  if (isEnabled === true) {
+  if (existing.scope === PluginScopes.GLOBAL && isEnabled === true) {
     try {
       await assertPluginCanEnable(pluginId);
     } catch (err) {
@@ -308,9 +309,10 @@ export async function saveAdminPluginConfig(
     }
   }
 
-  const row = await updateSystemPluginConfig(pluginId, config, isEnabled);
+  const effectiveEnabled = existing.scope === PluginScopes.GLOBAL ? isEnabled : undefined;
+  const row = await updateSystemPluginConfig(pluginId, config, effectiveEnabled);
 
-  if (isEnabled !== undefined) {
+  if (existing.scope === PluginScopes.GLOBAL && isEnabled !== undefined) {
     try {
       await syncInstalledPluginEnabled(pluginId, isEnabled);
     } catch (err) {

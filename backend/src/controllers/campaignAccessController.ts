@@ -623,8 +623,6 @@ export async function removeCampaignMember(
   }
 
   await prisma.$transaction([
-    prisma.pluginConnectionAuthState.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: targetUserId } }),
-    prisma.pluginConnection.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: targetUserId } }),
     prisma.campaignMember.delete({ where: { userId_campaignId: { userId: targetUserId, campaignId } } }),
   ]);
 
@@ -676,8 +674,6 @@ export async function leaveCampaign(
   }
 
   await prisma.$transaction([
-    prisma.pluginConnectionAuthState.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: userId } }),
-    prisma.pluginConnection.deleteMany({ where: { campaignId, ownerType: 'user', ownerId: userId } }),
     prisma.campaignMember.delete({ where: { userId_campaignId: { userId, campaignId } } }),
   ]);
 

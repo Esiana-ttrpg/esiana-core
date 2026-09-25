@@ -1,5 +1,3 @@
-export type ConnectionOwnerType = 'campaign' | 'user';
-
 export interface OAuth2ConnectionDefinition {
   type: 'oauth2';
   authorizationUrl: string;
@@ -21,7 +19,6 @@ export type ConnectionAuthDefinition = OAuth2ConnectionDefinition | ApiKeyConnec
 export interface ConnectionProviderDefinition {
   id: string;
   displayName: string;
-  ownership?: ConnectionOwnerType[];
   auth: ConnectionAuthDefinition;
   /** Exact subset of manifest outboundOrigins eligible for resource credentials. */
   resourceOrigins: string[];
@@ -44,7 +41,7 @@ export function registerConnectionProvider(pluginId: string, definition: Connect
       throw new Error('API key header name is not allowed');
     }
   }
-  providers.set(pluginId, { ...definition, resourceOrigins: [...new Set(definition.resourceOrigins)], ownership: definition.ownership?.length ? definition.ownership : ['campaign', 'user'] });
+  providers.set(pluginId, { ...definition, resourceOrigins: [...new Set(definition.resourceOrigins)] });
 }
 
 export function getConnectionProvider(pluginId: string): ConnectionProviderDefinition | undefined { return providers.get(pluginId); }

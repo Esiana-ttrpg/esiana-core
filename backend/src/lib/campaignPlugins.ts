@@ -267,8 +267,6 @@ export async function removeCampaignPlugin(
   }
 
   await prisma.pluginData.deleteMany({ where: { pluginId, campaignId } });
-  await prisma.pluginConnectionAuthState.deleteMany({ where: { pluginId, campaignId } });
-  await prisma.pluginConnection.deleteMany({ where: { pluginId, campaignId } });
   await deleteCampaignPluginSecrets(pluginId, campaignId);
   await deletePluginAssets(pluginId, campaignId);
   await prisma.campaignPluginSetting.delete({

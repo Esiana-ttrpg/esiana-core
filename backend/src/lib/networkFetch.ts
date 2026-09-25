@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import { createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { finished } from 'node:stream/promises';
+import { Agent, fetch as undiciFetch } from 'undici';
 import {
   PluginSourcePolicyError,
   assertPluginSourceUrl,
@@ -19,7 +20,9 @@ import {
   SsrfGuardError,
   assertUrlSafeForImport,
   isUrlSafeForImportSync,
+  resolveUrlAddressesForRemoteFetch,
   resolveUrlSafeForRemoteFetch,
+  type ValidatedRemoteAddress,
 } from '@esiana/ssrf-guard';
 import { env } from '../config/env.js';
 
@@ -32,8 +35,6 @@ export class NetworkFetchError extends Error {
 
 // INVARIANT: untrusted URLs are fetched exactly once at the validated URL.
 // redirect is always 'error'. Redirects are never followed.
-const REDIRECT_POLICY = 'error' as const;
-
 type FetchMode = 'asset' | 'plugin';
 type AbortReason = 'timeout' | 'size-limit';
 
@@ -75,6 +76,23 @@ const FORBIDDEN_PLUGIN_HEADERS = new Set([
   'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto',
 ]);
 
+function pinnedDispatcher(addresses: ValidatedRemoteAddress[]): Agent {
+  const selected = addresses[0];
+  if (!selected) throw new NetworkFetchError('URL hostname did not resolve');
+  return new Agent({ connect: { lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family) } });
+}
+
+async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: NonNullable<Parameters<typeof undiciFetch>[1]>): Promise<{ response: globalThis.Response; dispatcher: Agent }> {
+  const dispatcher = pinnedDispatcher(addresses);
+  try {
+    const response = await undiciFetch(url, { ...init, dispatcher, redirect: 'error' }) as unknown as globalThis.Response;
+    return { response, dispatcher };
+  } catch (error) {
+    await dispatcher.close().catch(() => {});
+    throw error;
+  }
+}
+
 /** Guarded transport for connection credentials. Callers cannot supply auth headers. */
 export async function fetchAuthenticatedRemote(
   url: URL,
@@ -86,12 +104,13 @@ export async function fetchAuthenticatedRemote(
   }
   const allowHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
   if (url.protocol !== 'https:' && !allowHttp) throw new NetworkFetchError('Authenticated fetch requires HTTPS');
-  const devLoopback = allowHttp && env.nodeEnv !== 'production';
+  const devLoopback = allowHttp && env.nodeEnv !== 'production' && env.enablePluginConnectionFixtures;
+  let addresses: ValidatedRemoteAddress[];
   if (!devLoopback) {
     if (!isUrlSafeForImportSync(url, { allowHttp })) return rejectRemoteFetchPolicy(url, 'asset', allowHttp);
-    try { await resolveUrlSafeForRemoteFetch(url, { allowHttp }); }
+    try { addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp }); }
     catch (error) { throw mapPolicyError(error); }
-  }
+  } else addresses = [{ address: url.hostname === '::1' ? '::1' : '127.0.0.1', family: url.hostname === '::1' ? 6 : 4 }];
 
   const headers: Record<string, string> = {};
   for (const [name, value] of Object.entries(options.headers ?? {})) {
@@ -107,11 +126,13 @@ export async function fetchAuthenticatedRemote(
   options.signal?.addEventListener('abort', onAbort, { once: true });
   const timeoutSeconds = Math.min(Math.max(options.timeoutSeconds ?? 10, 1), 30);
   const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutSeconds * 1000);
+  let dispatcher: Agent | undefined;
   try {
-    const response = await fetch(url, {
+    const pinned = await fetchPinned(url, addresses, {
       method: options.method ?? 'GET', headers, body: options.body,
-      redirect: REDIRECT_POLICY, signal: controller.signal,
+      signal: controller.signal,
     });
+    const response = pinned.response; dispatcher = pinned.dispatcher;
     const body = response.body;
     if (!body) return { status: response.status, contentType: response.headers.get('content-type'), body: Buffer.alloc(0) };
     const reader = body.getReader();
@@ -134,6 +155,7 @@ export async function fetchAuthenticatedRemote(
   } finally {
     clearTimeout(timeout);
     options.signal?.removeEventListener('abort', onAbort);
+    await dispatcher?.close().catch(() => {});
   }
 }
 
@@ -278,23 +300,25 @@ async function fetchRemoteBody(
       } catch (error) {
         throw mapPolicyError(error);
       }
+      let addresses: ValidatedRemoteAddress[];
+      try { addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false }); }
+      catch (error) { throw mapPolicyError(error); }
 
       const controller = new AbortController();
       const timeoutMs = options.timeoutSeconds * 1000;
       const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
 
       try {
-        const response = await fetch(url, {
-          redirect: REDIRECT_POLICY,
+        const pinned = await fetchPinned(url, addresses, {
           signal: controller.signal,
           headers: options.headers,
         });
-        return await readResponseBody(
-          response,
+        try { return await readResponseBody(
+          pinned.response,
           controller,
           options.maxBytes,
           options.timeoutSeconds,
-        );
+        ); } finally { await pinned.dispatcher.close().catch(() => {}); }
       } catch (error) {
         throw toNetworkFetchError(error, controller, options.timeoutSeconds);
       } finally {
@@ -317,17 +341,17 @@ async function fetchRemoteBody(
     const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
 
     try {
-      const response = await fetch(url, {
-        redirect: REDIRECT_POLICY,
+      const addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp });
+      const pinned = await fetchPinned(url, addresses, {
         signal: controller.signal,
         headers: options.headers,
       });
-      return await readResponseBody(
-        response,
+      try { return await readResponseBody(
+        pinned.response,
         controller,
         options.maxBytes,
         options.timeoutSeconds,
-      );
+      ); } finally { await pinned.dispatcher.close().catch(() => {}); }
     } catch (error) {
       throw toNetworkFetchError(error, controller, options.timeoutSeconds);
     } finally {
@@ -386,13 +410,15 @@ export async function fetchPluginRemoteStream(
     const out = createWriteStream(destinationPath);
     let total = 0;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let dispatcher: Agent | undefined;
 
     try {
-      const response = await fetch(url, {
-        redirect: REDIRECT_POLICY,
+      const addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false });
+      const pinned = await fetchPinned(url, addresses, {
         signal: controller.signal,
         headers: options.headers,
       });
+      const response = pinned.response; dispatcher = pinned.dispatcher;
 
       if (!response.ok) {
         throw new NetworkFetchError(`URL returned HTTP ${response.status}`);
@@ -431,6 +457,7 @@ export async function fetchPluginRemoteStream(
     } finally {
       clearTimeout(timeout);
       void reader?.cancel().catch(() => {});
+      await dispatcher?.close().catch(() => {});
     }
   }
 

@@ -34,12 +34,9 @@ import {
 import { listCampaignFrontendRuntime } from '../controllers/frontendPluginsController.js';
 import { searchCampaignPlugins } from '../controllers/pluginSearchController.js';
 import { listCampaignSourceProviders, resolveCampaignSource, resolveCampaignSourceOpenTarget, searchCampaignSources } from '../controllers/sourceProvidersController.js';
-import { connectStatic, disconnectConnection, listConnections } from '../controllers/pluginConnectionsController.js';
-import { startPluginOAuth } from '../controllers/pluginConnectionOAuthController.js';
 import {
   applyGlobalLimiter,
   applyToCampaignLimiter,
-  oidcStartLimiter,
 } from '../middleware/rateLimit.js';
 
 export const campaignsRouter = Router();
@@ -97,10 +94,6 @@ campaignsRouter.get(
   requireCampaignMembership,
   searchCampaignPlugins,
 );
-campaignsRouter.get('/:campaignId/plugins/:pluginId/connections', attachCampaignByIdParam, requireCampaignMembership, listConnections);
-campaignsRouter.post('/:campaignId/plugins/:pluginId/connections/static', attachCampaignByIdParam, requireCampaignMembership, connectStatic);
-campaignsRouter.post('/:campaignId/plugins/:pluginId/connections/oauth/start', oidcStartLimiter, attachCampaignByIdParam, requireCampaignMembership, startPluginOAuth);
-campaignsRouter.delete('/:campaignId/plugins/:pluginId/connections/:connectionId', attachCampaignByIdParam, requireCampaignMembership, disconnectConnection);
 campaignsRouter.get('/:campaignId/source-providers', attachCampaignByIdParam, requireCampaignMembership, listCampaignSourceProviders);
 campaignsRouter.get('/:campaignId/sources/search', attachCampaignByIdParam, requireCampaignMembership, searchCampaignSources);
 campaignsRouter.post('/:campaignId/sources/resolve', attachCampaignByIdParam, requireCampaignMembership, resolveCampaignSource);
