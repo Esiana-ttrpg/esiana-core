@@ -189,7 +189,7 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
           onMentionPlayer={() => openMentionFromSlash(editor)}
           onSource={() => {
             const selection = editor.state.selection;
-            setSourceRequest({ editor, range: selection.empty ? { from: slashState.from, to: slashState.from } : { from: selection.from, to: selection.to }, replaceRange: { from: slashState.from, to: slashState.to } });
+            setSourceRequest({ editor, doc: editor.state.doc, range: selection.empty ? { from: slashState.from, to: slashState.from } : { from: selection.from, to: selection.to }, replaceRange: { from: slashState.from, to: slashState.to } });
           }}
           onClose={() => setSlashState(null)}
         />
@@ -265,7 +265,7 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
       useEffect(() => {
         const listener = (event: Event) => {
           const detail = (event as CustomEvent<{ editor: Editor }>).detail;
-          if (editor && detail?.editor === editor) setSourceRequest({ editor, range: { from: editor.state.selection.from, to: editor.state.selection.to } });
+          if (editor && detail?.editor === editor) setSourceRequest({ editor, doc: editor.state.doc, range: { from: editor.state.selection.from, to: editor.state.selection.to } });
         };
         window.addEventListener(OPEN_SOURCE_PICKER_EVENT, listener);
         const sourceListener = (event: Event) => {

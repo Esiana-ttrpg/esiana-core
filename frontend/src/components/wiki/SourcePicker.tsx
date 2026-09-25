@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { Editor } from '@tiptap/react';
 import { BookOpen, X } from 'lucide-react';
 import type { SourceProviderPresentation, SourceSearchResult } from '@shared/sourceReferences';
@@ -7,6 +8,8 @@ import { fetchSourceProviders, searchSourceProviders } from '@/lib/sourceReferen
 
 export interface SourcePickerRequest {
   editor: Editor;
+  /** Document content at the moment the picker was opened. */
+  doc: ProseMirrorNode;
   range: { from: number; to: number };
   replaceRange?: { from: number; to: number };
 }
@@ -50,8 +53,13 @@ export function SourcePicker({ campaignId, request, onClose }: { campaignId: str
   }, [campaignId, providerId, query]);
 
   const choose = (result: SourceSearchResult) => {
+    const { editor, doc, range, replaceRange } = request;
+    if (!editor.state.doc.eq(doc)) {
+      setResults([]);
+      setError('The page changed while this picker was open. Close it and try again.');
+      return;
+    }
     const reference = { payloadVersion: 1 as const, identity: result.identity, metadata: result.metadata, ...(locator.trim() ? { locator: { label: locator.trim() } } : {}) };
-    const { editor, range, replaceRange } = request;
     const chain = editor.chain().focus();
     if (replaceRange) chain.deleteRange(replaceRange);
     if (range.from !== range.to) chain.setTextSelection(range).applySourceReference(reference).run();
