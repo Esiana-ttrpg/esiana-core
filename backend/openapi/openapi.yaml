@@ -618,7 +618,7 @@ paths:
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/admin/plugins/{pluginId}/connection:
     get:
-      tags: [Admin]
+      tags: [Administration]
       summary: Get the app-level redacted plugin connection
       security: [{ cookieAuth: [] }, { bearerAuth: [] }]
       parameters:
@@ -628,7 +628,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
       description: System administrators only. Raw credentials are never returned.
     delete:
-      tags: [Admin]
+      tags: [Administration]
       summary: Disconnect the app-level plugin connection
       security: [{ cookieAuth: [] }, { bearerAuth: [] }]
       parameters:
@@ -638,7 +638,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
   /api/admin/plugins/{pluginId}/connection/static:
     post:
-      tags: [Admin]
+      tags: [Administration]
       summary: Connect or reconnect an API key or bearer token
       security: [{ cookieAuth: [] }, { bearerAuth: [] }]
       parameters:
@@ -658,7 +658,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
   /api/admin/plugins/{pluginId}/connection/oauth/start:
     post:
-      tags: [Admin]
+      tags: [Administration]
       summary: Start an OAuth 2 authorization-code + PKCE connection
       security: [{ cookieAuth: [] }]
       parameters:

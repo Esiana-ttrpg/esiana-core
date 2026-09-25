@@ -2,9 +2,18 @@ import assert from 'node:assert/strict';
 import test, { afterEach, mock } from 'node:test';
 import {
   NetworkFetchError,
+  createPinnedLookup,
   fetchAssetRemoteBuffer,
   fetchPluginRemoteText,
 } from './networkFetch.js';
+
+test('pinned lookup returns the validated address instead of resolving the hostname again', async () => {
+  const lookup = createPinnedLookup([{ address: '203.0.113.20', family: 4 }]);
+  const result = await new Promise<{ address: string; family: number }>((resolve, reject) => {
+    lookup('rebinding.example', {}, (error, address, family) => error ? reject(error) : resolve({ address, family }));
+  });
+  assert.deepEqual(result, { address: '203.0.113.20', family: 4 });
+});
 
 const originalFetch = globalThis.fetch;
 

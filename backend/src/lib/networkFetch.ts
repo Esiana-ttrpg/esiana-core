@@ -76,10 +76,14 @@ const FORBIDDEN_PLUGIN_HEADERS = new Set([
   'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto',
 ]);
 
-function pinnedDispatcher(addresses: ValidatedRemoteAddress[]): Agent {
+export function createPinnedLookup(addresses: ValidatedRemoteAddress[]) {
   const selected = addresses[0];
   if (!selected) throw new NetworkFetchError('URL hostname did not resolve');
-  return new Agent({ connect: { lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family) } });
+  return (_hostname: string, _options: unknown, callback: (error: Error | null, address: string, family: number) => void) => callback(null, selected.address, selected.family);
+}
+
+function pinnedDispatcher(addresses: ValidatedRemoteAddress[]): Agent {
+  return new Agent({ connect: { lookup: createPinnedLookup(addresses) } });
 }
 
 async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: NonNullable<Parameters<typeof undiciFetch>[1]>): Promise<{ response: globalThis.Response; dispatcher: Agent }> {
