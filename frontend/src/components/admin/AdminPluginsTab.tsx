@@ -320,6 +320,14 @@ export function AdminPluginsTab() {
       setPlugins((prev) =>
         prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
       );
+      if (!inspectorRow.isGlobal) {
+        setCampaignCapabilities((prev) =>
+          prev.map((plugin) =>
+            plugin.id === updated.id ? { ...plugin, config: updated.config, updatedAt: updated.updatedAt } : plugin,
+          ),
+        );
+        setInspectorRow((current) => current?.id === updated.id ? { ...current, source: { ...current.source, config: updated.config, updatedAt: updated.updatedAt } } : current);
+      }
       setSaveMessage(`${updated.name} configuration saved.`);
     } catch (err) {
       const message =

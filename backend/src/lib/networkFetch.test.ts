@@ -15,6 +15,15 @@ test('pinned lookup returns the validated address instead of resolving the hostn
   assert.deepEqual(result, { address: '203.0.113.20', family: 4 });
 });
 
+test('pinned lookup returns every validated address when Node requests options.all', async () => {
+  const addresses = [{ address: '203.0.113.20', family: 4 as const }, { address: '2001:db8::20', family: 6 as const }];
+  const lookup = createPinnedLookup(addresses);
+  const result = await new Promise<typeof addresses>((resolve, reject) => {
+    lookup('rebinding.example', { all: true }, (error, resolved) => error ? reject(error) : resolve(resolved as typeof addresses));
+  });
+  assert.deepEqual(result, addresses);
+});
+
 const originalFetch = globalThis.fetch;
 
 afterEach(() => {

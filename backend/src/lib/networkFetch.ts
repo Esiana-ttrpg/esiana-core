@@ -79,7 +79,17 @@ const FORBIDDEN_PLUGIN_HEADERS = new Set([
 export function createPinnedLookup(addresses: ValidatedRemoteAddress[]) {
   const selected = addresses[0];
   if (!selected) throw new NetworkFetchError('URL hostname did not resolve');
-  return (_hostname: string, _options: unknown, callback: (error: Error | null, address: string, family: number) => void) => callback(null, selected.address, selected.family);
+  return (
+    _hostname: string,
+    options: { all?: boolean },
+    callback: (...args: [Error | null, string, number] | [Error | null, ValidatedRemoteAddress[]]) => void,
+  ) => {
+    if (options.all) {
+      callback(null, addresses.map(({ address, family }) => ({ address, family })));
+      return;
+    }
+    callback(null, selected.address, selected.family);
+  };
 }
 
 function pinnedDispatcher(addresses: ValidatedRemoteAddress[]): Agent {

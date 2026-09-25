@@ -132,8 +132,8 @@ export async function updateSystemPluginConfig(
     throw new Error('Unknown plugin');
   }
 
-  if (existing.scope !== PluginScopes.GLOBAL) {
-    throw new Error('Campaign-scoped plugins must be configured per campaign');
+  if (existing.scope !== PluginScopes.GLOBAL && isEnabled !== undefined) {
+    throw new Error('Campaign-scoped plugins must be enabled per campaign');
   }
 
   const prior = parsePluginConfig(existing.config);
