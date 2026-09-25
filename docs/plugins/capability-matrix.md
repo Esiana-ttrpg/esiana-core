@@ -126,6 +126,7 @@ From `backend/src/lib/pluginManifest.ts` (`PluginUiSlots`):
 | **Campaign settings extensions** | Partial | `configSchema` / `configTemplate` in manifest → auto-settings UI; no plugin-defined campaign-level settings panels beyond per-plugin config |
 | **World state providers** | Yes | `developmentProvider` capability — settlement-life reference |
 | **Search integration** | No | PluginData and plugin entities invisible to core search |
+| **Source references** | Yes | `sourceProvider` capability; core owns citation persistence, picker, rendering, and campaign authorization |
 | **Timeline integration** | No | No plugin write API for timeline events |
 | **Calendar integration** | Partial | Plugins can listen to `core:calendar:advanced` / `core:world:advanced`; no register-holiday API |
 | **Codex / wiki blocks** | Partial | `wiki:decorate` injects metadata/display hints; no TipTap block registration from plugins |
@@ -149,6 +150,7 @@ Backend plugins receive `PluginHostContext` from `register(router, context)`:
 | `registerEligibilityProvider(provider)` | `world-development:provider` | Yes |
 | `registerRationaleProvider(provider)` | `world-development:provider` | Yes |
 | `registerDevelopmentResolveProvider(provider)` | `world-development:provider` | Yes |
+| `registerSourceProvider(provider)` | `source:provider` | Yes |
 | `publicWiki.*` | `wiki:read-public` | Yes |
 | `feeds.buildOpdsAtom(feed)` | `feed:opds` | Yes |
 | `isEnabledForCampaign(campaignId)` | — | Yes |
@@ -162,6 +164,7 @@ Source: `backend/src/lib/plugins/pluginHostContext.ts`.
 |------------|--------|-------|
 | `contentPack` | Yes | Manifest `contentPacks[]`; core `importContentPack()` |
 | `developmentProvider` | Yes | World development candidate providers |
+| `sourceProvider` | Yes | Search, resolve, and optional safe open-target contract for core source references |
 | `importProvider` | Stub | Declared in manifest; **no host wiring** |
 | `campaignGenerator` | Retired | Legacy shim; superseded by content packs + Sample Data |
 
@@ -169,7 +172,7 @@ Source: `backend/src/lib/plugins/pluginHostContext.ts`.
 
 From `backend/src/lib/pluginPermissions.ts`:
 
-`storage:provider`, `plugin:data`, `data:interceptor`, `network:fetch`, `feed:public`, `wiki:read-public`, `feed:opds`, `ui:slot`, `wiki:decorate`, `campaign:seed`, `world-development:provider`
+`storage:provider`, `plugin:data`, `data:interceptor`, `network:fetch`, `feed:public`, `wiki:read-public`, `feed:opds`, `ui:slot`, `wiki:decorate`, `campaign:seed`, `world-development:provider`, `source:provider`
 
 `network:fetch` and `ui:slot` are declarative (CSP / slot gating). `campaign:seed` is an API bearer scope, not a host registration hook.
 

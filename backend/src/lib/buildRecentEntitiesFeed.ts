@@ -3,7 +3,7 @@ import { canViewWikiPage } from './wikiTree.js';
 import { campaignWikiHref } from './dashboardPaths.js';
 import { wikiPageHrefSelect } from './wikiPageHrefSelect.js';
 import { buildCategoryIndexWhereClause } from './wikiCategoryEntityIndex.js';
-import { isReservedSystemWikiPage } from './wikiSystemPages.js';
+import { newestVisibleCampaignPages } from './wikiSystemPages.js';
 import { ENTITY_CATEGORY_DISPLAY_BY_KEY } from './entityCategoryKeys.js';
 import {
   buildWikiIndexSubtitle,
@@ -70,12 +70,14 @@ export async function buildRecentEntitiesFeed(input: {
     take: FETCH_BUFFER,
   });
 
+  const qualifyingRows = newestVisibleCampaignPages(
+    rows,
+    limit,
+    (row) => canViewWikiPage(row.visibility, role),
+  );
+
   const items: RecentEntitiesFeedItem[] = [];
-  for (const row of rows) {
-    if (!canViewWikiPage(row.visibility, role)) continue;
-    if (isReservedSystemWikiPage({ title: row.title, templateType: row.templateType })) {
-      continue;
-    }
+  for (const row of qualifyingRows) {
     const pageCategoryTitle = resolveCategoryTitleForPage(row.metadata, category === 'all' ? null : category);
     const subtitle = buildWikiIndexSubtitle(row.metadata, pageCategoryTitle);
     const timestamp =
@@ -90,7 +92,6 @@ export async function buildRecentEntitiesFeed(input: {
       categoryKey: category === 'all' ? null : category,
       templateType: row.templateType,
     });
-    if (items.length >= limit) break;
   }
 
   return { items };

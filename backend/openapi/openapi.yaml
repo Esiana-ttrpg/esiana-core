@@ -616,6 +616,187 @@ paths:
           - Membership in the addressed campaign
           - Resource-level visibility and ownership checks performed by the controller/service
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignId}/source-providers:
+    get:
+      tags:
+        - Campaigns
+      summary: List enabled source providers
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+      responses:
+        "200":
+          description: Source providers enabled for the campaign
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [providers]
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SourceProviderPresentation"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+      description: "Authorization: authenticated campaign membership. Only providers currently enabled for the campaign are returned."
+  /api/campaigns/{campaignId}/sources/search:
+    get:
+      tags:
+        - Campaigns
+      summary: Search enabled source providers
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - name: providerId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Normalized source results and non-sensitive provider diagnostics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, diagnostics]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SourceSearchResult"
+                  diagnostics:
+                    type: array
+                    items:
+                      type: object
+                      required: [providerId, status]
+                      properties:
+                        providerId:
+                          type: string
+                        status:
+                          type: string
+                          enum: [timeout, unavailable, disabled]
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+      description: "Authorization: authenticated campaign membership. Core selects enabled providers before invoking plugin code."
+  /api/campaigns/{campaignId}/sources/resolve:
+    post:
+      tags:
+        - Campaigns
+      summary: Refresh cached source metadata
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference]
+              properties:
+                reference:
+                  $ref: "#/components/schemas/SourceReference"
+      responses:
+        "200":
+          description: Reference with refreshed cached metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reference]
+                properties:
+                  reference:
+                    $ref: "#/components/schemas/SourceReference"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+      description: "Authorization: authenticated campaign membership. Identity, locator, and extensions are retained while cached metadata is refreshed."
+  /api/campaigns/{campaignId}/sources/open-target:
+    post:
+      tags:
+        - Campaigns
+      summary: Resolve a safe source open target
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/campaignId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reference]
+              properties:
+                reference:
+                  $ref: "#/components/schemas/SourceReference"
+      responses:
+        "200":
+          description: Sanitized provider target
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [target]
+                properties:
+                  target:
+                    $ref: "#/components/schemas/SourceOpenTarget"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+      description: "Authorization: authenticated campaign membership. Version one accepts only sanitized HTTP(S) URL targets."
   /api/assets/{assetId}:
     get:
       tags:
@@ -17887,6 +18068,12 @@ components:
       scheme: bearer
       bearerFormat: API token with scopes
   parameters:
+    campaignId:
+      name: campaignId
+      in: path
+      required: true
+      schema:
+        type: string
     campaignHandle:
       name: campaignHandle
       in: path
@@ -17895,6 +18082,117 @@ components:
         type: string
       example: port-haven
   schemas:
+    SourceIdentity:
+      type: object
+      required: [providerId, sourceId]
+      properties:
+        providerId:
+          type: string
+          maxLength: 128
+        sourceId:
+          type: string
+          maxLength: 512
+    SourceMetadata:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 512
+        subtitle:
+          type: string
+          maxLength: 512
+        authors:
+          type: array
+          maxItems: 32
+          items:
+            type: string
+            maxLength: 256
+        publisher:
+          type: string
+          maxLength: 256
+        year:
+          type: integer
+          minimum: 0
+          maximum: 9999
+        library:
+          type: string
+          maxLength: 256
+        thumbnail:
+          type: string
+          maxLength: 2048
+        kind:
+          type: string
+          enum: [book, document, web, compendium, other]
+    SourceLocator:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          maxLength: 256
+        data: {}
+    SourceReference:
+      type: object
+      required: [payloadVersion, identity, metadata]
+      properties:
+        payloadVersion:
+          type: integer
+          const: 1
+        identity:
+          $ref: "#/components/schemas/SourceIdentity"
+        metadata:
+          $ref: "#/components/schemas/SourceMetadata"
+        locator:
+          $ref: "#/components/schemas/SourceLocator"
+        extensions:
+          type: object
+          additionalProperties: true
+    SourceSearchResult:
+      type: object
+      required: [identity, metadata]
+      properties:
+        identity:
+          $ref: "#/components/schemas/SourceIdentity"
+        metadata:
+          $ref: "#/components/schemas/SourceMetadata"
+    SourceProviderPresentation:
+      type: object
+      required: [id, displayName, capabilities]
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        icon:
+          type: string
+        origin:
+          type: string
+        capabilities:
+          type: object
+          properties:
+            search:
+              type: boolean
+            resolve:
+              type: boolean
+            open:
+              type: boolean
+            locators:
+              type: boolean
+    SourceOpenTarget:
+      type: object
+      required: [type, url]
+      properties:
+        type:
+          type: string
+          const: url
+        url:
+          type: string
+          format: uri
     ErrorResponse:
       type: object
       required:

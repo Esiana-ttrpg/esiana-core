@@ -87,6 +87,7 @@ import {
 import { mountPluginPlatformRoutes } from './pluginPlatformRoutes.js';
 import { requirePluginCampaignJail } from './pluginCampaignJail.js';
 import { requireAuth } from '../../middleware/auth.js';
+import { registerSourceProvider as registerSourceProviderEntry, type SourceProviderDefinition } from './sourceProviderRegistry.js';
 
 export type { WikiContentDecoratorFn };
 
@@ -162,6 +163,7 @@ export interface PluginHostContext {
   registerDevelopmentResolveProvider(provider: DevelopmentResolveProvider): void;
   registerImportProvider(definition: Omit<ImportProviderDefinition, 'id'> & { id: string }): void;
   registerSearchCollection(definition: PluginSearchCollectionDefinition): void;
+  registerSourceProvider(definition: SourceProviderDefinition): void;
   assets: {
     buildUri(assetId: string): string;
     buildDisplayName(label: string): string;
@@ -374,6 +376,17 @@ export function createPluginHostContext(
     },
     registerSearchCollection(definition) {
       registerSearchCollectionEntry(pluginId, definition);
+    },
+    registerSourceProvider(definition) {
+      assertPermission(pluginId, manifestPermissions, 'source:provider');
+      registerSourceProviderEntry(pluginId, definition, async (campaignId) => {
+        if (scope === PluginScopes.CAMPAIGN) return isCampaignPluginEnabled(campaignId, pluginId);
+        const [installed, system] = await Promise.all([
+          prisma.installedPlugin.findUnique({ where: { name: pluginId }, select: { isEnabled: true } }),
+          prisma.systemPlugin.findUnique({ where: { id: pluginId }, select: { isEnabled: true } }),
+        ]);
+        return Boolean(installed?.isEnabled && system?.isEnabled);
+      });
     },
     assets: {
       buildUri: buildPluginAssetUri,

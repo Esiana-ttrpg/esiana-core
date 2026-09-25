@@ -1,3 +1,8 @@
+import {
+  isWorkshopDraftMetadata,
+  isWorkshopDraftsRootMetadata,
+} from '@shared/workshopDocument';
+
 /** Keep in sync with `backend/src/lib/wikiSystemPages.ts`. */
 
 export const RESERVED_SYSTEM_SLUGS = [
@@ -94,7 +99,16 @@ export function matchesReservedSystemSlug(slug: string): boolean {
 export function isReservedSystemWikiPage(page: {
   title: string;
   templateType?: string | null;
+  pathKey?: string | null;
+  metadata?: unknown;
 }): boolean {
+  if (
+    isWorkshopDraftMetadata(page.metadata) ||
+    isWorkshopDraftsRootMetadata(page.metadata)
+  ) {
+    return true;
+  }
+
   const templateType = page.templateType?.trim();
   if (
     templateType &&
@@ -103,6 +117,6 @@ export function isReservedSystemWikiPage(page: {
     return true;
   }
 
-  const slug = wikiPageTitleToSlug(page.title);
+  const slug = page.pathKey?.trim() || wikiPageTitleToSlug(page.title);
   return matchesReservedSystemSlug(slug);
 }
