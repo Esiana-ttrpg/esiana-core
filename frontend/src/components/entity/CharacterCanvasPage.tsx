@@ -12,6 +12,7 @@ interface CharacterCanvasPageProps {
   page: CharacterPageDescriptor;
   canEdit: boolean;
   widgetOptions: Array<{ value: string; label: string; group?: string }>;
+  onPageSaved?: (page: CharacterPageDescriptor) => void;
 }
 
 export function CharacterCanvasPage({
@@ -20,11 +21,13 @@ export function CharacterCanvasPage({
   page,
   canEdit,
   widgetOptions,
+  onPageSaved,
 }: CharacterCanvasPageProps) {
   const [blocks, setBlocks] = useState<WikiPageBlock[]>((page.blocks ?? []) as unknown as WikiPageBlock[]);
   const [arranging, setArranging] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const editVersionRef = useRef(0);
   useEffect(() => {
     if (dirty) return;
@@ -48,9 +51,13 @@ export function CharacterCanvasPage({
     const savingVersion = editVersionRef.current;
     const savingBlocks = blocks;
     setSaving(true);
+    setSaveError(null);
     try {
-      await saveCharacterPageBlocks(campaignHandle, characterPageId, page.id, savingBlocks);
+      const savedPage = await saveCharacterPageBlocks(campaignHandle, characterPageId, page.id, savingBlocks);
+      onPageSaved?.(savedPage);
       if (editVersionRef.current === savingVersion) setDirty(false);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save this character page');
     } finally {
       setSaving(false);
     }
@@ -90,6 +97,7 @@ export function CharacterCanvasPage({
           </button>
         </div>
       ) : null}
+      {saveError ? <p className="text-sm text-destructive" role="alert">{saveError}</p> : null}
       <WikiPageRenderer
         blocks={blocks}
         templateType="DEFAULT"

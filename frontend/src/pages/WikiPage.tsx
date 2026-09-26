@@ -1381,6 +1381,11 @@ export function WikiPage() {
           page={activeCharacterPage}
           canEdit={pageCanEdit && activeCharacterPage.capabilities.canEdit}
           widgetOptions={widgetOptions}
+          onPageSaved={(savedPage) => {
+            setCharacterPages((previous) => previous.map((candidate) =>
+              candidate.id === savedPage.id ? savedPage : candidate,
+            ));
+          }}
         />
       );
     }

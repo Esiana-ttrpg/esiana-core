@@ -303,6 +303,25 @@ export function EntityAppearanceEditor({
             gender: draft.gender,
             presentation: draft.presentation,
           }}
+          defaultPortrait={{
+            imageUrl: draft.portraitUrl ?? '',
+            imageCredit: draft.portraitCredit,
+            onChange: ({ imageUrl, imageCredit }) =>
+              setDraft((prev) => ({
+                ...prev,
+                portraitUrl: imageUrl.trim() || null,
+                portraitCredit: imageCredit,
+              })),
+            onPersist: (patch) => void persistDraft({
+              ...draftRef.current,
+              ...(patch?.imageUrl !== undefined
+                ? { portraitUrl: patch.imageUrl.trim() || null }
+                : {}),
+              ...(patch?.imageCredit !== undefined
+                ? { portraitCredit: patch.imageCredit }
+                : {}),
+            }),
+          }}
           onChange={(gallery) => setDraft((prev) => ({ ...prev, gallery }))}
           onPersist={(gallery) =>
             void persistDraft(

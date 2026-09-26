@@ -117,6 +117,12 @@ interface AppearanceFormsEditorProps {
   onChange: (gallery: AppearanceGalleryState) => void;
   onPersist: (gallery: AppearanceGalleryState) => void;
   defaultEntryTemplate?: Partial<AppearanceGalleryEntry>;
+  defaultPortrait?: {
+    imageUrl: string;
+    imageCredit: AppearanceGalleryEntry['imageCredit'];
+    onChange: (patch: Pick<AppearanceGalleryEntry, 'imageUrl' | 'imageCredit'>) => void;
+    onPersist: (patch?: Partial<Pick<AppearanceGalleryEntry, 'imageUrl' | 'imageCredit'>>) => void;
+  };
 }
 
 function newGalleryEntryId(): string {
@@ -136,7 +142,7 @@ function EntryPortraitEditor({
   imageCredit: AppearanceGalleryEntry['imageCredit'];
   onImageUrlChange: (url: string) => void;
   onImageCreditChange: (credit: AppearanceGalleryEntry['imageCredit']) => void;
-  onPersist: () => void;
+  onPersist: (patch?: Partial<Pick<AppearanceGalleryEntry, 'imageUrl' | 'imageCredit'>>) => void;
 }) {
   const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -171,14 +177,14 @@ function EntryPortraitEditor({
               inputClassName={appearanceFieldClass}
               suppressPreview
               onChange={onImageUrlChange}
-              onImported={async () => {
-                onPersist();
+              onImported={async (imageUrl) => {
+                onPersist({ imageUrl });
               }}
             />
             <ImageCreditEditor
               value={imageCredit}
               onChange={onImageCreditChange}
-              onPersist={onPersist}
+              onPersist={(imageCredit) => onPersist({ imageCredit })}
               inputClassName={appearanceFieldClass}
             />
           </>
@@ -464,6 +470,7 @@ export function AppearanceFormsEditor({
   onChange,
   onPersist,
   defaultEntryTemplate,
+  defaultPortrait,
 }: AppearanceFormsEditorProps) {
   const entries = gallery.entries;
   const entriesRef = useRef(entries);
@@ -603,9 +610,21 @@ export function AppearanceFormsEditor({
       ) : null}
 
       {selectedEntryId === DEFAULT_APPEARANCE_PRESENTATION_ID ? (
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-muted">Default uses the character portrait and baseline appearance fields above.</p>
-          <button type="button" onClick={duplicateDefault} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"><Copy className="size-3.5" /> Duplicate Default</button>
+        <div className="grid gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted">Default uses the character portrait and baseline appearance fields above.</p>
+            <button type="button" onClick={duplicateDefault} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"><Copy className="size-3.5" /> Duplicate Default</button>
+          </div>
+          {defaultPortrait ? (
+            <EntryPortraitEditor
+              campaignHandle={campaignHandle}
+              imageUrl={defaultPortrait.imageUrl}
+              imageCredit={defaultPortrait.imageCredit}
+              onImageUrlChange={(imageUrl) => defaultPortrait.onChange({ imageUrl, imageCredit: defaultPortrait.imageCredit })}
+              onImageCreditChange={(imageCredit) => defaultPortrait.onChange({ imageUrl: defaultPortrait.imageUrl, imageCredit })}
+              onPersist={defaultPortrait.onPersist}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -647,6 +666,7 @@ interface AppearanceFormsWidgetProps {
   filterEntries?: (entry: AppearanceGalleryEntry) => boolean;
   alternatesOnly?: boolean;
   defaultEntryTemplate?: Partial<AppearanceGalleryEntry>;
+  defaultPortrait?: AppearanceFormsEditorProps['defaultPortrait'];
 }
 
 export function AppearanceFormsWidget({
@@ -658,6 +678,7 @@ export function AppearanceFormsWidget({
   filterEntries,
   alternatesOnly,
   defaultEntryTemplate,
+  defaultPortrait,
 }: AppearanceFormsWidgetProps) {
   const viewModel: AppearanceFormsViewModel =
     'primaryEntry' in forms
@@ -692,6 +713,7 @@ export function AppearanceFormsWidget({
       onChange={onChange}
       onPersist={onPersist}
       defaultEntryTemplate={defaultEntryTemplate}
+      defaultPortrait={defaultPortrait}
     />
   );
 }

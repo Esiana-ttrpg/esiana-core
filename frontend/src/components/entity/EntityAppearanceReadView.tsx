@@ -43,16 +43,15 @@ export function EntityAppearanceReadView({
   );
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const expandButtonRef = useRef<HTMLButtonElement>(null);
+  const lightboxRef = useRef<HTMLDialogElement>(null);
+  const previousLightboxOpenRef = useRef(false);
   useEffect(() => {
-    if (!lightboxOpen) return;
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') setLightboxOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    const dialog = lightboxRef.current;
+    if (lightboxOpen && dialog && !dialog.open) dialog.showModal();
   }, [lightboxOpen]);
   useEffect(() => {
-    if (!lightboxOpen) expandButtonRef.current?.focus();
+    if (previousLightboxOpenRef.current && !lightboxOpen) expandButtonRef.current?.focus();
+    previousLightboxOpenRef.current = lightboxOpen;
   }, [lightboxOpen]);
 
   const presentation = useMemo(
@@ -187,26 +186,34 @@ export function EntityAppearanceReadView({
         </EntityPageSection>
       ) : null}
       {lightboxOpen && portraitSrc ? (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
-          role="dialog"
-          aria-modal="true"
+        <dialog
+          ref={lightboxRef}
+          className="m-auto max-h-none max-w-none border-0 bg-transparent p-4 backdrop:bg-black/80"
           aria-label="Full-size portrait"
-          onMouseDown={(event) => {
-            if (event.currentTarget === event.target) setLightboxOpen(false);
+          onCancel={(event) => {
+            event.preventDefault();
+            setLightboxOpen(false);
           }}
+          onClose={() => setLightboxOpen(false)}
         >
-          <img src={portraitSrc} alt="" className="max-h-full max-w-full object-contain" />
-          <button
-            type="button"
-            autoFocus
-            className="absolute right-4 top-4 rounded-md bg-surface p-2 text-foreground"
-            onClick={() => setLightboxOpen(false)}
-            aria-label="Close full-size portrait"
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4"
+            onMouseDown={(event) => {
+              if (event.currentTarget === event.target) setLightboxOpen(false);
+            }}
           >
-            <X className="size-5" aria-hidden />
-          </button>
-        </div>
+            <img src={portraitSrc} alt="" className="max-h-full max-w-full object-contain" />
+            <button
+              type="button"
+              autoFocus
+              className="absolute right-4 top-4 rounded-md bg-surface p-2 text-foreground"
+              onClick={() => setLightboxOpen(false)}
+              aria-label="Close full-size portrait"
+            >
+              <X className="size-5" aria-hidden />
+            </button>
+          </div>
+        </dialog>
       ) : null}
     </div>
   );
