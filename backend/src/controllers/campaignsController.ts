@@ -1045,6 +1045,9 @@ export async function createCampaign(
     dispatchDomainEvent({
       type: CoreDomainEvents.CAMPAIGN_CREATED,
       campaignId: campaignResult.id,
+      actorId: req.user!.id,
+      resourceType: 'campaign',
+      resourceId: campaignResult.id,
       payload: {
         campaignId: campaignResult.id,
         handle: campaignResult.handle,
@@ -1707,6 +1710,9 @@ export async function advanceCampaignTime(
   dispatchDomainEvent({
     type: CoreDomainEvents.CALENDAR_ADVANCED,
     campaignId,
+    actorId: req.user?.id,
+    resourceType: 'campaign_time',
+    resourceId: campaignId,
     payload: toCalendarAdvancedDto({
       campaignId,
       previousEpochMinute,

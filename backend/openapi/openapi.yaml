@@ -5865,6 +5865,40 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign page-edit capability; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/events:
+    get:
+      tags:
+        - Campaigns
+      summary: Stream campaign domain events
+      operationId: get_api_campaigns_campaignHandle_events
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Campaign-scoped server-sent event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign. Events are transient invalidation signals; reconnecting clients refetch canonical resources."
   /api/campaigns/{campaignHandle}/files:
     get:
       tags:

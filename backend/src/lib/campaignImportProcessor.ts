@@ -43,6 +43,7 @@ import {
   resolvePlacement,
 } from './importPlacementResolver.js';
 import { resolveWorkspaceForPage } from '../../../shared/wikiWorkspaceResolve.js';
+import { CoreDomainEvents, dispatchDomainEvent } from './domainEvents/index.js';
 
 interface ImportManifest {
   importFormat?: 'obsidian' | 'kanka-json';
@@ -1046,6 +1047,32 @@ export async function processCampaignImportZip(
     await rebuildEntityRelationsForCampaign(campaignId);
     const { rebuildNarrativeLifecycleForCampaign } = await import('./narrativeLifecycleService.js');
     await rebuildNarrativeLifecycleForCampaign(campaignId);
+
+    const finalImportedPages = await prisma.wikiPage.findMany({
+      where: { campaignId, id: { in: preparedRows.map((row) => row.id) } },
+      select: { id: true, templateType: true },
+    });
+    for (const page of finalImportedPages) {
+      const created = !existingWikiPageIds.has(page.id);
+      dispatchDomainEvent({
+        type: created ? CoreDomainEvents.WIKI_CREATED : CoreDomainEvents.WIKI_UPDATED,
+        campaignId,
+        resourceType: 'wiki_page',
+        resourceId: page.id,
+        payload: { mutationSource: 'import' },
+      });
+      if (page.templateType === 'CHARACTER') {
+        dispatchDomainEvent({
+          type: created
+            ? CoreDomainEvents.CHARACTER_CREATED
+            : CoreDomainEvents.CHARACTER_UPDATED,
+          campaignId,
+          resourceType: 'character',
+          resourceId: page.id,
+          payload: { mutationSource: 'import' },
+        });
+      }
+    }
 
     updateBackgroundTask(task.id, {
       status: 'COMPLETED',
