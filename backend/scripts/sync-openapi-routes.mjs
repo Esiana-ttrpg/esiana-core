@@ -33,6 +33,30 @@ const publicOperations = new Set([
   'GET /api/users/{id}/public-profile',
 ]);
 
+// These development-only protocol endpoints are mounted without Esiana
+// authentication middleware. Protected fixture resources perform their own
+// provider credential checks and therefore are intentionally not included.
+const explicitlyAnonymousOperations = new Set([
+  'GET /api/plugin-connection-fixtures/oauth/authorize',
+  'POST /api/plugin-connection-fixtures/oauth/token',
+  'POST /api/plugin-connection-fixtures/oauth/revoke',
+]);
+
+// Keep route discovery, parameters, authorization, and security synchronized;
+// override only protocol details the generic JSON operation cannot express.
+const operationOverrides = new Map([
+  ['GET /api/campaigns/{campaignHandle}/events', {
+    summary: 'Stream campaign domain events',
+    description: 'Authorization: Authenticated application user or API token; Membership in the addressed campaign. Events are transient invalidation signals; reconnecting clients refetch canonical resources.',
+    responses: {
+      '200': {
+        description: 'Campaign-scoped server-sent event stream',
+        content: { 'text/event-stream': { schema: { type: 'string' } } },
+      },
+    },
+  }],
+]);
+
 const tagRules = [
   [/^\/api\/admin\//, 'Administration'],
   [/^\/api\/auth\//, 'Authentication'],
@@ -147,6 +171,7 @@ function authorizationFor(route) {
 
 function securityFor(route) {
   const key = `${route.method.toUpperCase()} ${route.path}`;
+  if (explicitlyAnonymousOperations.has(key)) return [{}];
   if (publicOperations.has(key) || route.path.startsWith('/api/plugin-assets/')) return undefined;
   if (route.path === '/uploads/{filename}' || route.path.startsWith('/api/assets/')) {
     return [{}, { cookieAuth: [] }, { bearerAuth: [] }];
@@ -235,6 +260,12 @@ for (const route of inventoryCoreRoutes(backendRoot)) {
     if (!String(operation.description ?? '').includes('Authorization:')) {
       operation.description = [operation.description, statement].filter(Boolean).join('\n\n');
     }
+  }
+  const override = operationOverrides.get(`${route.method.toUpperCase()} ${route.path}`);
+  if (override) {
+    if (override.summary) operation.summary = override.summary;
+    if (override.description) operation.description = override.description;
+    if (override.responses) operation.responses = { ...operation.responses, ...override.responses };
   }
 }
 

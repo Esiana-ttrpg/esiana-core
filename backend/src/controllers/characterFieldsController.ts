@@ -15,6 +15,47 @@ import type {
 
 const fieldsDb = prisma as typeof prisma & { characterField: any; characterPageTab: any };
 const FIELD_TYPES = new Set<CharacterFieldType>(['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'JSON']);
+const VALIDATION_KEYS = new Set(['required', 'min', 'max', 'maxLength', 'options']);
+const MAX_FIELD_LENGTH = 10_000;
+const MAX_ENUM_OPTIONS = 100;
+const MAX_ENUM_OPTION_LENGTH = 200;
+
+function parseValidation(raw: unknown): { validation: CharacterFieldValidation; error: string | null } {
+  if (raw == null) return { validation: {}, error: null };
+  if (typeof raw !== 'object' || Array.isArray(raw)) return { validation: {}, error: 'validation must be an object' };
+  const input = raw as Record<string, unknown>;
+  const unknown = Object.keys(input).find((key) => !VALIDATION_KEYS.has(key));
+  if (unknown) return { validation: {}, error: `Unsupported validation rule: ${unknown}` };
+  const validation: CharacterFieldValidation = {};
+  if (input.required !== undefined) {
+    if (typeof input.required !== 'boolean') return { validation: {}, error: 'validation.required must be boolean' };
+    validation.required = input.required;
+  }
+  for (const key of ['min', 'max'] as const) {
+    if (input[key] === undefined) continue;
+    if (typeof input[key] !== 'number' || !Number.isFinite(input[key])) {
+      return { validation: {}, error: `validation.${key} must be a finite number` };
+    }
+    validation[key] = input[key];
+  }
+  if (validation.min != null && validation.max != null && validation.min > validation.max) {
+    return { validation: {}, error: 'validation.min cannot exceed validation.max' };
+  }
+  if (input.maxLength !== undefined) {
+    if (!Number.isInteger(input.maxLength) || (input.maxLength as number) < 0 || (input.maxLength as number) > MAX_FIELD_LENGTH) {
+      return { validation: {}, error: `validation.maxLength must be an integer from 0 to ${MAX_FIELD_LENGTH}` };
+    }
+    validation.maxLength = input.maxLength as number;
+  }
+  if (input.options !== undefined) {
+    if (!Array.isArray(input.options) || input.options.length > MAX_ENUM_OPTIONS
+      || input.options.some((option) => typeof option !== 'string' || option.length > MAX_ENUM_OPTION_LENGTH)) {
+      return { validation: {}, error: `validation.options must contain at most ${MAX_ENUM_OPTIONS} strings of at most ${MAX_ENUM_OPTION_LENGTH} characters` };
+    }
+    validation.options = [...input.options] as string[];
+  }
+  return { validation, error: null };
+}
 
 function pluginFieldKey(pluginId: string, sourceKey: string, providerKey: string): string {
   return `plugin:${pluginId}:${sourceKey}:${providerKey}`;
@@ -139,11 +180,12 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
   if (!access.canEdit) { res.status(403).json({ error: 'Forbidden: cannot edit this character' }); return; }
   const label = typeof req.body?.label === 'string' ? req.body.label.trim() : '';
   const fieldType = req.body?.type as CharacterFieldType;
-  const validation = req.body?.validation && typeof req.body.validation === 'object' && !Array.isArray(req.body.validation)
-    ? req.body.validation as CharacterFieldValidation : {};
+  const parsedValidation = parseValidation(req.body?.validation);
   if (!label || label.length > 100 || !FIELD_TYPES.has(fieldType)) {
     res.status(400).json({ error: 'label and a valid field type are required' }); return;
   }
+  if (parsedValidation.error) { res.status(400).json({ error: parsedValidation.error }); return; }
+  const validation = parsedValidation.validation;
   const problem = validateValue(fieldType, req.body?.value ?? null, validation);
   if (problem) { res.status(400).json({ error: problem }); return; }
   let pageTabId: string | null = null;
@@ -178,7 +220,26 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   if (!row) { res.status(404).json({ error: 'Character field not found' }); return; }
   const capabilities = row.capabilities && typeof row.capabilities === 'object' ? row.capabilities : {};
   if (capabilities.writable === false) { res.status(403).json({ error: 'Field is read-only' }); return; }
-  const problem = validateValue(row.fieldType, req.body?.value, row.validation ?? {});
+  if (row.origin === 'PLUGIN') {
+    const states = await (prisma as typeof prisma & { pluginCharacterPageState: any }).pluginCharacterPageState.findMany({
+      where: {
+        campaignId: req.campaign!.campaignId,
+        characterPageId: access.page.id,
+        pluginId: row.pluginId,
+        sourceKey: row.sourceKey,
+      },
+      select: { providerState: true },
+    });
+    const definitions = await listEnabledCampaignCharacterPageDefinitions(req.campaign!.campaignId);
+    const definitionAvailable = definitions.some((entry) => entry.pluginId === row.pluginId && entry.definition.key === row.sourceKey);
+    const providerAvailable = states.length > 0
+      ? states.some((state: any) => state.providerState === 'AVAILABLE')
+      : definitionAvailable;
+    if (!providerAvailable) { res.status(409).json({ error: 'Plugin provider is unavailable' }); return; }
+  }
+  const parsedStoredValidation = parseValidation(row.validation);
+  if (parsedStoredValidation.error) { res.status(400).json({ error: 'Field has invalid stored validation rules' }); return; }
+  const problem = validateValue(row.fieldType, req.body?.value, parsedStoredValidation.validation);
   if (problem) { res.status(400).json({ error: problem }); return; }
   const updated = await fieldsDb.characterField.update({ where: { id: row.id }, data: { value: toNullableInputJsonValue(req.body.value) } });
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_UPDATED, campaignId: req.campaign!.campaignId,

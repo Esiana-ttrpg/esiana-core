@@ -1575,8 +1575,7 @@ paths:
         boundary: public-or-resource-conditional
         requires: []
       security:
-        - cookieAuth: []
-        - bearerAuth: []
+        - {}
   /api/plugin-connection-fixtures/oauth/token:
     post:
       tags:
@@ -1589,8 +1588,7 @@ paths:
         boundary: public-or-resource-conditional
         requires: []
       security:
-        - cookieAuth: []
-        - bearerAuth: []
+        - {}
   /api/plugin-connection-fixtures/oauth/revoke:
     post:
       tags:
@@ -1603,8 +1601,7 @@ paths:
         boundary: public-or-resource-conditional
         requires: []
       security:
-        - cookieAuth: []
-        - bearerAuth: []
+        - {}
   /api/plugin-connection-fixtures/oauth/library:
     get:
       tags:
@@ -6037,7 +6034,7 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get CampaignHandle Events
+      summary: Stream campaign domain events
       operationId: get_api_campaigns_campaignHandle_events
       x-esiana-authorization:
         boundary: campaign
@@ -6055,11 +6052,11 @@ paths:
             type: string
       responses:
         "200":
-          description: Successful response
+          description: Campaign-scoped server-sent event stream
           content:
-            application/json:
+            text/event-stream:
               schema:
-                $ref: "#/components/schemas/ApiResponse"
+                type: string
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -6072,7 +6069,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign. Events are transient invalidation signals; reconnecting clients refetch canonical resources."
   /api/campaigns/{campaignHandle}/files:
     get:
       tags:
@@ -18345,6 +18342,7 @@ paths:
       security:
         - {}
         - cookieAuth: []
+        - bearerAuth: []
       parameters:
         - name: filename
           in: path

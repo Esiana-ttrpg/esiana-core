@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { Prisma } from '@prisma/client';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { prisma } from '../lib/prisma.js';
 import { canViewWikiPage } from '../lib/wikiTree.js';
@@ -167,6 +168,7 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
   ]);
   const definitions = await listEnabledCampaignCharacterPageDefinitions(ctx.campaignId);
   const virtualPluginPages: CharacterPageDescriptor[] = definitions
+    .filter(() => access.canEdit)
     .filter(({ pluginId, definition }) => !materializedKeys.has(`${pluginId}:${definition.key}`))
     .map(({ pluginId, definition }, index) => ({
       id: `virtual:${pluginId}:${definition.key}`,
@@ -205,6 +207,10 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
 export async function materializePluginCharacterPage(req: CampaignScopedRequest, res: Response): Promise<void> {
   const access = await loadCharacterPageAccess(req, res);
   if (!access) return;
+  if (!access.canEdit) {
+    res.status(403).json({ error: 'Forbidden: cannot edit this character' });
+    return;
+  }
   const pluginId = typeof req.body?.pluginId === 'string' ? req.body.pluginId : '';
   const sourceKey = typeof req.body?.sourceKey === 'string' ? req.body.sourceKey : '';
   const available = await listEnabledCampaignCharacterPageDefinitions(req.campaign!.campaignId);
@@ -219,45 +225,58 @@ export async function materializePluginCharacterPage(req: CampaignScopedRequest,
     orderBy: { displayOrder: 'desc' },
     select: { displayOrder: true },
   });
-  const tab = await prisma.$transaction(async (tx) => {
-    const db = tx as typeof tx & { characterPageTab: any; pluginCharacterPageState: any; characterField: any };
-    let state = await db.pluginCharacterPageState.findUnique({
-      where: { characterPageId_pluginId_sourceKey: { characterPageId: access.page.id, pluginId, sourceKey } },
-      include: { tab: true },
+  let tab: any;
+  try {
+    tab = await prisma.$transaction(async (tx) => {
+      const db = tx as typeof tx & { characterPageTab: any; pluginCharacterPageState: any; characterField: any };
+      let state = await db.pluginCharacterPageState.findUnique({
+        where: { characterPageId_pluginId_sourceKey: { characterPageId: access.page.id, pluginId, sourceKey } },
+        include: { tab: true },
+      });
+      if (state?.tab) return state.tab;
+      state = await db.pluginCharacterPageState.upsert({
+        where: { characterPageId_pluginId_sourceKey: { characterPageId: access.page.id, pluginId, sourceKey } },
+        create: {
+          campaignId: req.campaign!.campaignId,
+          characterPageId: access.page.id,
+          pluginId,
+          sourceKey,
+          pluginSchemaVersion: definition.schemaVersion,
+          providerState: 'AVAILABLE',
+          renderer: definition.renderer,
+          definition: toInputJsonValue(definition),
+        },
+        update: {
+          providerState: 'AVAILABLE',
+          renderer: definition.renderer,
+          definition: toInputJsonValue(definition),
+        },
+      });
+      return db.characterPageTab.create({
+        data: {
+          campaignId: req.campaign!.campaignId,
+          characterPageId: access.page.id,
+          origin: 'PLUGIN',
+          renderMode: state.retainedRenderMode ?? definition.renderMode,
+          title: state.retainedTitle ?? definition.title,
+          displayOrder: state.retainedDisplayOrder ?? Math.max(last?.displayOrder ?? 50, 50) + 10,
+          visibility: state.retainedVisibility ?? definition.defaultVisibility ?? access.page.visibility,
+          blocks: state.retainedBlocks ?? [],
+          pluginStateId: state.id,
+        },
+      });
     });
-    if (state?.tab) return state.tab;
-    state = await db.pluginCharacterPageState.upsert({
-      where: { characterPageId_pluginId_sourceKey: { characterPageId: access.page.id, pluginId, sourceKey } },
-      create: {
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+    tab = await characterDb.characterPageTab.findFirst({
+      where: {
         campaignId: req.campaign!.campaignId,
         characterPageId: access.page.id,
-        pluginId,
-        sourceKey,
-        pluginSchemaVersion: definition.schemaVersion,
-        providerState: 'AVAILABLE',
-        renderer: definition.renderer,
-        definition: toInputJsonValue(definition),
-      },
-      update: {
-        providerState: 'AVAILABLE',
-        renderer: definition.renderer,
-        definition: toInputJsonValue(definition),
+        pluginState: { is: { pluginId, sourceKey } },
       },
     });
-    return db.characterPageTab.create({
-      data: {
-        campaignId: req.campaign!.campaignId,
-        characterPageId: access.page.id,
-        origin: 'PLUGIN',
-        renderMode: state.retainedRenderMode ?? definition.renderMode,
-        title: state.retainedTitle ?? definition.title,
-        displayOrder: state.retainedDisplayOrder ?? Math.max(last?.displayOrder ?? 50, 50) + 10,
-        visibility: state.retainedVisibility ?? definition.defaultVisibility ?? access.page.visibility,
-        blocks: state.retainedBlocks ?? [],
-        pluginStateId: state.id,
-      },
-    });
-  });
+    if (!tab) throw error;
+  }
   const row = await characterDb.characterPageTab.findUnique({ where: { id: tab.id }, include: { pluginState: true } });
   res.status(201).json({ page: serializeStoredTab(row, access.canEdit) });
 }
