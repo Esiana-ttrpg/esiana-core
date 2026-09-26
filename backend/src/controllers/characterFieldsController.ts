@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma.js';
 import { toInputJsonValue, toNullableInputJsonValue } from '../lib/inputJsonValue.js';
 import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
 import { listEnabledCampaignCharacterPageDefinitions } from '../lib/campaignPlugins.js';
-import { loadCharacterPageAccess } from './characterPagesController.js';
+import { canReadCharacterPageTab, loadCharacterPageAccess } from './characterPagesController.js';
 import type {
   CharacterFieldDescriptor,
   CharacterFieldType,
@@ -15,6 +15,35 @@ import type {
 
 const fieldsDb = prisma as typeof prisma & { characterField: any; characterPageTab: any };
 const FIELD_TYPES = new Set<CharacterFieldType>(['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'JSON']);
+const MAX_PATTERN_LENGTH = 256;
+const MAX_PATTERN_VALUE_LENGTH = 4096;
+
+function validatePattern(pattern: unknown): string | null {
+  if (pattern == null) return null;
+  if (typeof pattern !== 'string' || pattern.length === 0 || pattern.length > MAX_PATTERN_LENGTH) {
+    return `Validation pattern must be 1 to ${MAX_PATTERN_LENGTH} characters`;
+  }
+  // JavaScript RegExp has no execution timeout. Disallow grouping and
+  // backreferences, which prevents the nested/ambiguous quantified constructs
+  // responsible for catastrophic backtracking while retaining useful anchors,
+  // character classes, alternation, and simple quantifiers.
+  if (/[()]/.test(pattern) || /\\[1-9]/.test(pattern)) {
+    return 'Validation pattern contains unsupported constructs';
+  }
+  let escaped = false;
+  let inClass = false;
+  let quantifiers = 0;
+  for (const character of pattern) {
+    if (escaped) { escaped = false; continue; }
+    if (character === '\\') { escaped = true; continue; }
+    if (character === '[') { inClass = true; continue; }
+    if (character === ']') { inClass = false; continue; }
+    if (!inClass && (character === '*' || character === '+' || character === '?' || character === '{')) quantifiers += 1;
+  }
+  if (quantifiers > 1) return 'Validation pattern may contain at most one quantifier';
+  try { new RegExp(pattern); } catch { return 'Field validation pattern is invalid'; }
+  return null;
+}
 
 function pluginFieldKey(pluginId: string, sourceKey: string, providerKey: string): string {
   return `plugin:${pluginId}:${sourceKey}:${providerKey}`;
@@ -28,8 +57,10 @@ function validateValue(type: CharacterFieldType, value: unknown, rules: Characte
     if (type === 'DATE' && Number.isNaN(Date.parse(value))) return 'Value must be a valid date';
     if (type === 'ENUM' && rules.options && !rules.options.includes(value)) return 'Value is not an allowed option';
     if (rules.pattern) {
-      try { if (!new RegExp(rules.pattern).test(value)) return 'Value does not match the required pattern'; }
-      catch { return 'Field validation pattern is invalid'; }
+      const patternProblem = validatePattern(rules.pattern);
+      if (patternProblem) return patternProblem;
+      if (value.length > MAX_PATTERN_VALUE_LENGTH) return `Pattern-validated values cannot exceed ${MAX_PATTERN_VALUE_LENGTH} characters`;
+      if (!new RegExp(rules.pattern).test(value)) return 'Value does not match the required pattern';
     }
   } else if (type === 'NUMBER') {
     if (typeof value !== 'number' || !Number.isFinite(value)) return 'Value must be a finite number';
@@ -73,7 +104,13 @@ async function ensurePluginFields(campaignId: string, characterPageId: string): 
     where: { campaignId, characterPageId, origin: 'PLUGIN' },
     include: { pluginState: true },
   });
+  const removedStates = await (prisma as typeof prisma & { pluginCharacterPageState: any }).pluginCharacterPageState.findMany({
+    where: { campaignId, characterPageId, providerState: 'REMOVED' },
+    select: { pluginId: true, sourceKey: true },
+  });
+  const removed = new Set(removedStates.map((state: any) => `${state.pluginId}:${state.sourceKey}`));
   for (const { pluginId, definition } of definitions) {
+    if (removed.has(`${pluginId}:${definition.key}`)) continue;
     const pageTabId = tabs.find((tab: any) => tab.pluginState?.pluginId === pluginId && tab.pluginState?.sourceKey === definition.key)?.id ?? null;
     for (const field of definition.fields ?? []) {
       const fieldKey = pluginFieldKey(pluginId, definition.key, field.key);
@@ -103,6 +140,7 @@ export async function listCharacterFields(req: CampaignScopedRequest, res: Respo
   await ensurePluginFields(req.campaign!.campaignId, access.page.id);
   const rows = await fieldsDb.characterField.findMany({
     where: { campaignId: req.campaign!.campaignId, characterPageId: access.page.id },
+    include: { pageTab: true },
     orderBy: [{ updatedAt: 'desc' }, { createdAt: 'asc' }],
   });
   const states = await (prisma as typeof prisma & { pluginCharacterPageState: any }).pluginCharacterPageState.findMany({
@@ -110,10 +148,18 @@ export async function listCharacterFields(req: CampaignScopedRequest, res: Respo
     select: { pluginId: true, sourceKey: true, providerState: true },
   });
   const available = new Set(states.filter((state: any) => state.providerState === 'AVAILABLE').map((state: any) => `${state.pluginId}:${state.sourceKey}`));
+  const removed = new Set(states.filter((state: any) => state.providerState === 'REMOVED').map((state: any) => `${state.pluginId}:${state.sourceKey}`));
   for (const entry of await listEnabledCampaignCharacterPageDefinitions(req.campaign!.campaignId)) {
-    available.add(`${entry.pluginId}:${entry.definition.key}`);
+    const key = `${entry.pluginId}:${entry.definition.key}`;
+    if (!removed.has(key)) available.add(key);
   }
-  res.json({ fields: rows.map((row: any) => descriptor(
+  const visibleRows = rows.filter((row: any) => {
+    const declared = row.capabilities && typeof row.capabilities === 'object' ? row.capabilities : {};
+    if (declared.readable === false) return false;
+    if (row.origin === 'PLUGIN' && !available.has(`${row.pluginId}:${row.sourceKey}`)) return false;
+    return !row.pageTab || canReadCharacterPageTab(row.pageTab, access, req.campaign!.role);
+  });
+  res.json({ fields: visibleRows.map((row: any) => descriptor(
     row,
     access.canEdit && (row.origin !== 'PLUGIN' || available.has(`${row.pluginId}:${row.sourceKey}`)),
   )) });
@@ -130,6 +176,8 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
   if (!label || label.length > 100 || !FIELD_TYPES.has(fieldType)) {
     res.status(400).json({ error: 'label and a valid field type are required' }); return;
   }
+  const patternProblem = validatePattern(validation.pattern);
+  if (patternProblem) { res.status(400).json({ error: patternProblem }); return; }
   const problem = validateValue(fieldType, req.body?.value ?? null, validation);
   if (problem) { res.status(400).json({ error: problem }); return; }
   let pageTabId: string | null = null;

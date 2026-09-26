@@ -31,6 +31,7 @@ export function PluginCharacterPageHost({
   const [pluginData, setPluginData] = useState<unknown>();
   const [fields, setFields] = useState<CharacterFieldDescriptor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadedPageId, setLoadedPageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export function PluginCharacterPageHost({
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
+    setLoadedPageId(null);
     setError(null);
     void Promise.all([
       fetchPluginCharacterPageData(campaignHandle, character.id, page.id),
@@ -54,6 +56,7 @@ export function PluginCharacterPageHost({
       if (!controller.signal.aborted) {
         setPluginData(result.data);
         setFields(allFields.filter((field) => field.pluginId === page.pluginId && field.sourceKey === page.sourceKey));
+        setLoadedPageId(page.id);
       }
     }).catch((reason: unknown) => {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Unable to load plugin page');
@@ -65,7 +68,7 @@ export function PluginCharacterPageHost({
 
   useEffect(() => {
     const root = rootRef.current;
-    if (!root || loading || error || !page.pluginId || !page.sourceKey) return;
+    if (!root || loading || loadedPageId !== page.id || error || !page.pluginId || !page.sourceKey) return;
     const registration = getPluginCharacterPageRenderer(page.pluginId, page.sourceKey);
     if (!registration) {
       setError(`The ${page.title} renderer is unavailable.`);
@@ -117,7 +120,11 @@ export function PluginCharacterPageHost({
       cleanup?.();
       root.replaceChildren();
     };
-  }, [campaignHandle, character, displayMode, error, fields, loading, page, pluginData]);
+    // The plugin owns this DOM subtree. State updates and responsive width
+    // changes must not tear it down, because doing so discards renderer-local
+    // edits. A page identity change or reload is the only remount boundary.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignHandle, character.id, error, loadedPageId, loading, page.id]);
 
   return (
     <section className="min-w-0" aria-label={page.title}>

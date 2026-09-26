@@ -148,7 +148,9 @@ function authorizationFor(route) {
 function securityFor(route) {
   const key = `${route.method.toUpperCase()} ${route.path}`;
   if (publicOperations.has(key) || route.path.startsWith('/api/plugin-assets/')) return undefined;
-  if (route.path === '/uploads/{filename}' || route.path.startsWith('/api/assets/')) return [{}, { cookieAuth: [] }];
+  if (route.path === '/uploads/{filename}' || route.path.startsWith('/api/assets/')) {
+    return [{}, { cookieAuth: [] }, { bearerAuth: [] }];
+  }
   if (route.source === 'src/routes/admin.ts'
     || route.source === 'src/routes/user.ts'
     || route.source === 'src/routes/contentPacks.ts'

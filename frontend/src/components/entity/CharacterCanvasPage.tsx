@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LayoutGrid, Plus, Save } from 'lucide-react';
 import type { CharacterPageDescriptor } from '@shared/characterPages';
 import type { WikiPageBlock } from '@/types/wiki';
@@ -25,21 +25,32 @@ export function CharacterCanvasPage({
   const [arranging, setArranging] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const editVersionRef = useRef(0);
   useEffect(() => {
+    if (dirty) return;
     setBlocks((page.blocks ?? []) as unknown as WikiPageBlock[]);
-    setDirty(false);
-  }, [page.id, page.blocks]);
+  }, [dirty, page.id, page.blocks]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   const changeBlocks = (updater: WikiPageBlock[] | ((previous: WikiPageBlock[]) => WikiPageBlock[])) => {
     setBlocks((previous) => typeof updater === 'function' ? updater(previous) : updater);
+    editVersionRef.current += 1;
     setDirty(true);
   };
 
   const save = async () => {
+    const savingVersion = editVersionRef.current;
+    const savingBlocks = blocks;
     setSaving(true);
     try {
-      await saveCharacterPageBlocks(campaignHandle, characterPageId, page.id, blocks);
-      setDirty(false);
+      await saveCharacterPageBlocks(campaignHandle, characterPageId, page.id, savingBlocks);
+      if (editVersionRef.current === savingVersion) setDirty(false);
     } finally {
       setSaving(false);
     }
@@ -59,6 +70,7 @@ export function CharacterCanvasPage({
                 onChange={(event) => {
                   if (!event.target.value) return;
                   setBlocks((previous) => [...previous, createWikiBlock(event.target.value as WikiPageBlock['type'], 0, previous.length * 2, 3, 2)]);
+                  editVersionRef.current += 1;
                   setDirty(true);
                   event.target.value = '';
                 }}

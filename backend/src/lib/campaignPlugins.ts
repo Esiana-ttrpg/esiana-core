@@ -26,7 +26,13 @@ async function setCharacterPageProviderState(
   providerState: 'AVAILABLE' | 'UNAVAILABLE',
 ): Promise<void> {
   await characterPageStateDb.pluginCharacterPageState.updateMany({
-    where: { campaignId, pluginId },
+    where: {
+      campaignId,
+      pluginId,
+      // Per-character removal is an explicit user choice and must survive a
+      // campaign-level disable/re-enable cycle.
+      providerState: { not: 'REMOVED' },
+    },
     data: { providerState },
   });
 }

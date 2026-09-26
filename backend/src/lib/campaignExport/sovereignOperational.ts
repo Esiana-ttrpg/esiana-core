@@ -99,6 +99,48 @@ function stripOperationalRow(
   return rest;
 }
 
+async function validateCharacterRestoreOwnership(
+  campaignId: string,
+  payload: SovereignOperational,
+): Promise<void> {
+  const characterDb = prisma as typeof prisma & {
+    characterPageTab: any;
+    pluginCharacterPageState: any;
+    characterField: any;
+  };
+  const groups = [
+    ['plugin character page state', payload.pluginCharacterPageStates ?? [], characterDb.pluginCharacterPageState],
+    ['character page tab', payload.characterPageTabs ?? [], characterDb.characterPageTab],
+    ['character field', payload.characterFields ?? [], characterDb.characterField],
+  ] as const;
+  const pageIds = new Set<string>();
+  for (const [, rows] of groups) {
+    for (const row of rows) {
+      if (row && typeof row === 'object' && typeof row.characterPageId === 'string') pageIds.add(row.characterPageId);
+    }
+  }
+  if (pageIds.size > 0) {
+    const ownedPages = await prisma.wikiPage.findMany({
+      where: { campaignId, id: { in: [...pageIds] } },
+      select: { id: true },
+    });
+    const ownedIds = new Set(ownedPages.map((page) => page.id));
+    const foreignOrMissing = [...pageIds].find((id) => !ownedIds.has(id));
+    if (foreignOrMissing) throw new Error(`Character restore references a page outside the target campaign: ${foreignOrMissing}`);
+  }
+  for (const [label, rows, model] of groups) {
+    const ids = rows
+      .filter((row): row is Record<string, unknown> => Boolean(row && typeof row === 'object' && typeof row.id === 'string'))
+      .map((row) => row.id as string);
+    if (ids.length === 0) continue;
+    const collisions = await model.findMany({
+      where: { id: { in: ids }, campaignId: { not: campaignId } },
+      select: { id: true },
+    });
+    if (collisions.length > 0) throw new Error(`${label} id belongs to another campaign: ${collisions[0].id}`);
+  }
+}
+
 export async function restoreOperationalPayload(
   campaignId: string,
   payload: SovereignOperational | null,
@@ -106,6 +148,10 @@ export async function restoreOperationalPayload(
   if (!payload) {
     return { havenCount: 0, projectCount: 0, pluginDataCount: 0 };
   }
+
+  // Validate all new character-shell rows before any operational row is
+  // mutated, so a malformed/colliding backup fails atomically at this layer.
+  await validateCharacterRestoreOwnership(campaignId, payload);
 
   let havenCount = 0;
   let projectCount = 0;

@@ -5,6 +5,7 @@ import { canViewWikiPage } from '../lib/wikiTree.js';
 import { isCharacterWikiPage } from '../lib/memberIdentity.js';
 import { canEditPage, type PageOwnerType } from '../../../shared/campaignPolicy/pageOwnership.js';
 import { canManageNotebooksFromActor, hasElevatedNarrativeView } from '../lib/acl.js';
+import type { CampaignMemberRole } from '../types/domain.js';
 import { validateWikiBlocksAssetReferences } from '../lib/assetReferenceValidation.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import { listEnabledCampaignCharacterPageDefinitions } from '../lib/campaignPlugins.js';
@@ -28,6 +29,15 @@ const characterDb = prisma as typeof prisma & {
 
 const VALID_VISIBILITY = new Set(['Public', 'Party', 'DM_Only']);
 const MAX_PLUGIN_DATA_BYTES = 256 * 1024;
+
+export function canReadCharacterPageTab(
+  row: { hidden: boolean; visibility: string | null },
+  access: { canEdit: boolean },
+  role: CampaignMemberRole | null,
+): boolean {
+  return (access.canEdit || !row.hidden)
+    && (row.visibility == null || canViewWikiPage(row.visibility, role));
+}
 
 export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: Response) {
   const ctx = req.campaign!;
@@ -145,7 +155,16 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
     .filter((row: any) => row.origin !== 'CORE')
     .filter((row: any) => row.pluginState?.providerState !== 'UNAVAILABLE')
     .map((row: any) => serializeStoredTab(row, access.canEdit));
-  const materializedKeys = new Set(storedNonCore.map((page) => `${page.pluginId ?? ''}:${page.sourceKey ?? ''}`));
+  const states = await characterDb.pluginCharacterPageState.findMany({
+    where: { campaignId: ctx.campaignId, characterPageId: access.page.id },
+    select: { pluginId: true, sourceKey: true },
+  });
+  // A state without a tab is a durable removal/retention tombstone. Do not
+  // immediately recreate it as a virtual page while its plugin stays enabled.
+  const materializedKeys = new Set([
+    ...storedNonCore.map((page) => `${page.pluginId ?? ''}:${page.sourceKey ?? ''}`),
+    ...states.map((state: any) => `${state.pluginId}:${state.sourceKey}`),
+  ]);
   const definitions = await listEnabledCampaignCharacterPageDefinitions(ctx.campaignId);
   const virtualPluginPages: CharacterPageDescriptor[] = definitions
     .filter(({ pluginId, definition }) => !materializedKeys.has(`${pluginId}:${definition.key}`))
@@ -293,6 +312,10 @@ async function loadStoredTab(req: CampaignScopedRequest, res: Response, requireE
   });
   if (!row) {
     res.status(404).json({ error: 'Character page not found' });
+    return null;
+  }
+  if (!requireEdit && !canReadCharacterPageTab(row, access, req.campaign!.role)) {
+    res.status(403).json({ error: 'Forbidden: character page is not visible to your role' });
     return null;
   }
   return { access, row };
@@ -563,10 +586,15 @@ export async function removePluginCharacterPage(req: CampaignScopedRequest, res:
           retainedDisplayOrder: row.displayOrder,
           retainedVisibility: row.visibility,
           retainedRenderMode: row.renderMode,
+          providerState: 'REMOVED',
         },
       });
       await db.characterPageTab.delete({ where: { id: row.id } });
     } else if (mode === 'CONVERT_TO_CUSTOM') {
+      await db.pluginCharacterPageState.update({
+        where: { id: row.pluginState.id },
+        data: { providerState: 'REMOVED' },
+      });
       await db.characterPageTab.update({
         where: { id: row.id },
         data: { origin: 'CUSTOM', renderMode: 'CANVAS', pluginStateId: null, blocks: row.renderMode === 'CANVAS' ? row.blocks : [] },
@@ -579,7 +607,18 @@ export async function removePluginCharacterPage(req: CampaignScopedRequest, res:
         sourceKey: row.pluginState.sourceKey,
       } });
       await db.characterPageTab.delete({ where: { id: row.id } });
-      await db.pluginCharacterPageState.delete({ where: { id: row.pluginState.id } });
+      await db.pluginCharacterPageState.update({
+        where: { id: row.pluginState.id },
+        data: {
+          providerState: 'REMOVED',
+          pluginData: toInputJsonValue(null),
+          retainedBlocks: toInputJsonValue(null),
+          retainedTitle: null,
+          retainedDisplayOrder: null,
+          retainedVisibility: null,
+          retainedRenderMode: null,
+        },
+      });
     }
   });
   res.status(204).end();
