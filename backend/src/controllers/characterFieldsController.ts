@@ -15,53 +15,21 @@ import type {
 
 const fieldsDb = prisma as typeof prisma & { characterField: any; characterPageTab: any };
 const FIELD_TYPES = new Set<CharacterFieldType>(['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'JSON']);
-const MAX_PATTERN_LENGTH = 256;
-const MAX_PATTERN_VALUE_LENGTH = 4096;
-
-function validatePattern(pattern: unknown): string | null {
-  if (pattern == null) return null;
-  if (typeof pattern !== 'string' || pattern.length === 0 || pattern.length > MAX_PATTERN_LENGTH) {
-    return `Validation pattern must be 1 to ${MAX_PATTERN_LENGTH} characters`;
-  }
-  // JavaScript RegExp has no execution timeout. Disallow grouping and
-  // backreferences, which prevents the nested/ambiguous quantified constructs
-  // responsible for catastrophic backtracking while retaining useful anchors,
-  // character classes, alternation, and simple quantifiers.
-  if (/[()]/.test(pattern) || /\\[1-9]/.test(pattern)) {
-    return 'Validation pattern contains unsupported constructs';
-  }
-  let escaped = false;
-  let inClass = false;
-  let quantifiers = 0;
-  for (const character of pattern) {
-    if (escaped) { escaped = false; continue; }
-    if (character === '\\') { escaped = true; continue; }
-    if (character === '[') { inClass = true; continue; }
-    if (character === ']') { inClass = false; continue; }
-    if (!inClass && (character === '*' || character === '+' || character === '?' || character === '{')) quantifiers += 1;
-  }
-  if (quantifiers > 1) return 'Validation pattern may contain at most one quantifier';
-  try { new RegExp(pattern); } catch { return 'Field validation pattern is invalid'; }
-  return null;
-}
 
 function pluginFieldKey(pluginId: string, sourceKey: string, providerKey: string): string {
   return `plugin:${pluginId}:${sourceKey}:${providerKey}`;
 }
 
 function validateValue(type: CharacterFieldType, value: unknown, rules: CharacterFieldValidation): string | null {
+  // JavaScript RegExp cannot be given a reliable execution deadline. Never
+  // execute campaign- or plugin-authored patterns in the shared API process.
+  if (rules.pattern != null) return 'Regular-expression validation patterns are not supported';
   if (value == null) return rules.required ? 'A value is required' : null;
   if (type === 'STRING' || type === 'DATE' || type === 'ENUM') {
     if (typeof value !== 'string') return `Value must be a ${type.toLowerCase()}`;
     if (rules.maxLength != null && value.length > rules.maxLength) return `Value exceeds ${rules.maxLength} characters`;
     if (type === 'DATE' && Number.isNaN(Date.parse(value))) return 'Value must be a valid date';
     if (type === 'ENUM' && rules.options && !rules.options.includes(value)) return 'Value is not an allowed option';
-    if (rules.pattern) {
-      const patternProblem = validatePattern(rules.pattern);
-      if (patternProblem) return patternProblem;
-      if (value.length > MAX_PATTERN_VALUE_LENGTH) return `Pattern-validated values cannot exceed ${MAX_PATTERN_VALUE_LENGTH} characters`;
-      if (!new RegExp(rules.pattern).test(value)) return 'Value does not match the required pattern';
-    }
   } else if (type === 'NUMBER') {
     if (typeof value !== 'number' || !Number.isFinite(value)) return 'Value must be a finite number';
     if (rules.min != null && value < rules.min) return `Value must be at least ${rules.min}`;
@@ -176,8 +144,6 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
   if (!label || label.length > 100 || !FIELD_TYPES.has(fieldType)) {
     res.status(400).json({ error: 'label and a valid field type are required' }); return;
   }
-  const patternProblem = validatePattern(validation.pattern);
-  if (patternProblem) { res.status(400).json({ error: patternProblem }); return; }
   const problem = validateValue(fieldType, req.body?.value ?? null, validation);
   if (problem) { res.status(400).json({ error: problem }); return; }
   let pageTabId: string | null = null;
