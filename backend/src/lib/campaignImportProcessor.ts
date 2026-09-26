@@ -1061,17 +1061,6 @@ export async function processCampaignImportZip(
         resourceId: page.id,
         payload: { mutationSource: 'import' },
       });
-      if (page.templateType === 'CHARACTER') {
-        dispatchDomainEvent({
-          type: created
-            ? CoreDomainEvents.CHARACTER_CREATED
-            : CoreDomainEvents.CHARACTER_UPDATED,
-          campaignId,
-          resourceType: 'character',
-          resourceId: page.id,
-          payload: { mutationSource: 'import' },
-        });
-      }
     }
 
     updateBackgroundTask(task.id, {

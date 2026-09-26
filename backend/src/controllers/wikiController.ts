@@ -1225,16 +1225,6 @@ export async function createWikiPage(
     resourceId: page.id,
     payload: toWikiPageEventDto(page),
   });
-  if (page.templateType === 'CHARACTER') {
-    dispatchDomainEvent({
-      type: CoreDomainEvents.CHARACTER_CREATED,
-      campaignId: ctx.campaignId,
-      actorId: req.user?.id,
-      resourceType: 'character',
-      resourceId: page.id,
-      payload: {},
-    });
-  }
 
   const parentRows = await prisma.wikiPage.findMany({
     where: { campaignId: ctx.campaignId },
@@ -2144,16 +2134,6 @@ export async function updateWikiPageLayout(
       updatedAt: updatedPage.updatedAt,
     }),
   });
-  if (responseTemplateType === 'CHARACTER') {
-    dispatchDomainEvent({
-      type: CoreDomainEvents.CHARACTER_UPDATED,
-      campaignId: ctx.campaignId,
-      actorId: req.user?.id,
-      resourceType: 'character',
-      resourceId: page.id,
-      payload: {},
-    });
-  }
 
   res.json({ blocks: responseBlocks, templateType: responseTemplateType });
 }
@@ -4857,6 +4837,7 @@ export async function deleteWikiPage(
           campaignId: ctx.campaignId,
           title: preview.page.title,
           parentId: preview.page.parentId,
+          visibility: preview.page.visibility ?? WikiVisibility.DM_ONLY,
           deletedPageIds: [pageId],
         }),
       });
@@ -4885,6 +4866,7 @@ export async function deleteWikiPage(
         campaignId: ctx.campaignId,
         title: preview.page.title,
         parentId: preview.page.parentId,
+        visibility: preview.page.visibility ?? WikiVisibility.DM_ONLY,
         deletedPageIds: result.deletedPageIds,
       }),
     });
@@ -4910,6 +4892,7 @@ export async function deleteSessionNotePage(
       id: true,
       title: true,
       parentId: true,
+      visibility: true,
       blocks: true,
       metadata: true,
       templateType: true,
@@ -4973,6 +4956,7 @@ export async function deleteSessionNotePage(
             campaignId: ctx.campaignId,
             title: page.title,
             parentId: page.parentId,
+            visibility: page.visibility,
             deletedPageIds: [pageId],
           }),
         });
@@ -5001,6 +4985,7 @@ export async function deleteSessionNotePage(
           campaignId: ctx.campaignId,
           title: page.title,
           parentId: page.parentId,
+          visibility: page.visibility,
           deletedPageIds: result.deletedPageIds,
         }),
       });
@@ -5062,6 +5047,7 @@ export async function deleteSessionNotePage(
       campaignId: ctx.campaignId,
       title: page.title,
       parentId: page.parentId,
+      visibility: page.visibility,
       deletedPageIds: idsToDelete,
     }),
   });

@@ -12,8 +12,9 @@ export const CoreDomainEvents = {
   TIMELINE_EVENT_CREATED: 'timeline.event.created',
   DEVELOPMENT_PROPOSED: 'development.proposed',
   DEVELOPMENT_APPLIED: 'development.applied',
-  CHARACTER_CREATED: 'character.created',
-  CHARACTER_UPDATED: 'character.updated',
+  CHARACTER_FIELD_CREATED: 'character.field.created',
+  CHARACTER_FIELD_UPDATED: 'character.field.updated',
+  CHARACTER_FIELD_DELETED: 'character.field.deleted',
 } as const;
 
 export type CoreDomainEventType =
