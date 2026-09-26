@@ -21,6 +21,14 @@ export async function uninstallPlugin(pluginId: string): Promise<void> {
       : undefined,
   );
 
+  const characterDb = prisma as typeof prisma & {
+    pluginCharacterPageState: { updateMany(args: unknown): Promise<unknown> };
+  };
+  await characterDb.pluginCharacterPageState.updateMany({
+    where: { pluginId },
+    data: { providerState: 'UNAVAILABLE' },
+  });
+
   if (uninstallPolicy === 'removePluginData') {
     await prisma.pluginData.deleteMany({ where: { pluginId } });
     await prisma.campaignPluginSetting.deleteMany({ where: { pluginId } });

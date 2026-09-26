@@ -80,6 +80,9 @@ export interface SovereignOperational {
   downtimeProjects: Array<Record<string, unknown>>;
   pluginData: Array<Record<string, unknown>>;
   pluginSettings?: Array<Record<string, unknown>>;
+  characterPageTabs?: Array<Record<string, unknown>>;
+  pluginCharacterPageStates?: Array<Record<string, unknown>>;
+  characterFields?: Array<Record<string, unknown>>;
 }
 
 export interface SovereignExportFile {

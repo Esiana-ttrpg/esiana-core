@@ -24,7 +24,9 @@ import {
   SectionLabel,
 } from './appearanceShared';
 import { ImportImageUrlField } from '@/components/media/ImportImageUrlField';
-import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Plus, Trash2 } from 'lucide-react';
+import { AppearancePresentationSelector } from './AppearancePresentationSelector';
+import { DEFAULT_APPEARANCE_PRESENTATION_ID } from '@/lib/entityAppearanceProjection';
 
 function PresentationTypeBadge({ type }: { type?: AppearancePresentationType }) {
   if (!type || type === 'default') return null;
@@ -114,6 +116,7 @@ interface AppearanceFormsEditorProps {
   gallery: AppearanceGalleryState;
   onChange: (gallery: AppearanceGalleryState) => void;
   onPersist: (gallery: AppearanceGalleryState) => void;
+  defaultEntryTemplate?: Partial<AppearanceGalleryEntry>;
 }
 
 function newGalleryEntryId(): string {
@@ -460,11 +463,15 @@ export function AppearanceFormsEditor({
   gallery,
   onChange,
   onPersist,
+  defaultEntryTemplate,
 }: AppearanceFormsEditorProps) {
   const entries = gallery.entries;
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
+  const [selectedEntryId, setSelectedEntryId] = useState<string>(
+    entries.find((entry) => entry.isPrimary)?.id ?? DEFAULT_APPEARANCE_PRESENTATION_ID,
+  );
 
   const persistCurrent = () => {
     onPersist({ entries: entriesRef.current });
@@ -491,6 +498,7 @@ export function AppearanceFormsEditor({
       ...emptyGalleryEntryOverlays(),
     };
     setHighlightEntryId(entry.id);
+    setSelectedEntryId(entry.id);
     updateEntries([...entries, entry]);
   };
 
@@ -513,6 +521,41 @@ export function AppearanceFormsEditor({
       next[0] = { ...next[0], isPrimary: true };
     }
     updateEntries(next, true);
+    setSelectedEntryId(DEFAULT_APPEARANCE_PRESENTATION_ID);
+  };
+
+  const duplicateEntry = (source: AppearanceGalleryEntry) => {
+    const entry = {
+      ...source,
+      id: newGalleryEntryId(),
+      label: `${source.label} copy`,
+      isPrimary: undefined,
+      tags: [...source.tags],
+      distinguishingFeatures: [...source.distinguishingFeatures],
+    };
+    setSelectedEntryId(entry.id);
+    setHighlightEntryId(entry.id);
+    updateEntries([...entriesRef.current, entry], true);
+  };
+
+  const duplicateDefault = () => {
+    const entry: AppearanceGalleryEntry = {
+      id: newGalleryEntryId(),
+      label: 'Default copy',
+      imageUrl: defaultEntryTemplate?.imageUrl ?? '',
+      imageCredit: defaultEntryTemplate?.imageCredit ?? null,
+      tags: [...(defaultEntryTemplate?.tags ?? [])],
+      presentationType: 'default',
+      isPrimary: undefined,
+      timelinePin: null,
+      presentationNotes: defaultEntryTemplate?.presentationNotes ?? null,
+      ...emptyGalleryEntryOverlays(),
+      ...defaultEntryTemplate,
+      distinguishingFeatures: [...(defaultEntryTemplate?.distinguishingFeatures ?? [])],
+    };
+    setSelectedEntryId(entry.id);
+    setHighlightEntryId(entry.id);
+    updateEntries([...entriesRef.current, entry], true);
   };
 
   const setPrimary = (id: string) => {
@@ -540,27 +583,55 @@ export function AppearanceFormsEditor({
         </div>
       </div>
 
+      <AppearancePresentationSelector
+        presentations={[
+          { id: DEFAULT_APPEARANCE_PRESENTATION_ID, label: 'Default' },
+          ...entries.map((entry) => ({
+            id: entry.id,
+            label: entry.label,
+            presentationType: entry.presentationType,
+            imageUrl: entry.imageUrl || null,
+          })),
+        ]}
+        selectedId={selectedEntryId}
+        onSelect={setSelectedEntryId}
+        ariaLabel="Appearance being edited"
+      />
+
       {entries.length === 0 ? (
         <p className="text-xs text-muted">Add an appearance to capture another presentation state.</p>
       ) : null}
 
+      {selectedEntryId === DEFAULT_APPEARANCE_PRESENTATION_ID ? (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted">Default uses the character portrait and baseline appearance fields above.</p>
+          <button type="button" onClick={duplicateDefault} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"><Copy className="size-3.5" /> Duplicate Default</button>
+        </div>
+      ) : null}
+
       <div className="grid gap-4">
-        {entries.map((entry) => (
-          <AppearanceEntryEditorCard
-            key={entry.id}
-            entry={entry}
-            campaignHandle={campaignHandle}
-            highlighted={highlightEntryId === entry.id}
-            onPatch={(patch, persist) => {
-              const next = entriesRef.current.map((item) =>
-                item.id === entry.id ? { ...item, ...patch } : item,
-              );
-              updateEntries(next, persist ?? false);
-            }}
-            onRemove={() => removeEntry(entry.id)}
-            onSetPrimary={() => setPrimary(entry.id)}
-            onPersist={persistCurrent}
-          />
+        {entries.filter((entry) => entry.id === selectedEntryId).map((entry) => (
+          <div key={entry.id} className="space-y-2">
+            <div className="flex justify-end">
+              <button type="button" onClick={() => duplicateEntry(entry)} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground">
+                <Copy className="size-3.5" aria-hidden /> Duplicate
+              </button>
+            </div>
+            <AppearanceEntryEditorCard
+              entry={entry}
+              campaignHandle={campaignHandle}
+              highlighted={highlightEntryId === entry.id}
+              onPatch={(patch, persist) => {
+                const next = entriesRef.current.map((item) =>
+                  item.id === entry.id ? { ...item, ...patch } : item,
+                );
+                updateEntries(next, persist ?? false);
+              }}
+              onRemove={() => removeEntry(entry.id)}
+              onSetPrimary={() => setPrimary(entry.id)}
+              onPersist={persistCurrent}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -575,6 +646,7 @@ interface AppearanceFormsWidgetProps {
   onPersist?: (gallery: AppearanceGalleryState) => void;
   filterEntries?: (entry: AppearanceGalleryEntry) => boolean;
   alternatesOnly?: boolean;
+  defaultEntryTemplate?: Partial<AppearanceGalleryEntry>;
 }
 
 export function AppearanceFormsWidget({
@@ -585,6 +657,7 @@ export function AppearanceFormsWidget({
   onPersist,
   filterEntries,
   alternatesOnly,
+  defaultEntryTemplate,
 }: AppearanceFormsWidgetProps) {
   const viewModel: AppearanceFormsViewModel =
     'primaryEntry' in forms
@@ -618,6 +691,7 @@ export function AppearanceFormsWidget({
       gallery={editorGallery}
       onChange={onChange}
       onPersist={onPersist}
+      defaultEntryTemplate={defaultEntryTemplate}
     />
   );
 }

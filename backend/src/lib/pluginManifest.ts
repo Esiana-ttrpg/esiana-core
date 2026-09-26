@@ -21,6 +21,8 @@ export const MANIFEST_META_KEY = '__manifest';
 export { PluginScopes, type PluginScope } from './systemPlugins.js';
 import { PluginScopes, type PluginScope } from './systemPlugins.js';
 import { validatePluginPermissions } from './pluginPermissions.js';
+import type { PluginCharacterPageDefinition } from '../../../shared/characterPages.js';
+export type { PluginCharacterPageDefinition } from '../../../shared/characterPages.js';
 
 export const GLOBAL_SCOPE_REJECT_MESSAGE =
   'This plugin is designed for campaign implementation and cannot be deployed as global system infrastructure.';
@@ -176,6 +178,8 @@ export interface PluginManifest {
   generatorPresets?: GeneratorPreset[];
   /** Content packs when capabilities includes contentPack. */
   contentPacks?: ContentPackManifestEntry[];
+  /** Character tabs contributed by this plugin. Esiana owns the shell and persistence boundary. */
+  characterPages?: PluginCharacterPageDefinition[];
 }
 
 /** Global plugins that run backend-only (no frontendEntry required). */
@@ -239,6 +243,7 @@ export interface PluginRegistryEntry {
   compatibility?: PluginCompatibilityMeta;
   lastUpdated?: string;
   tags?: string[];
+  characterPages?: PluginCharacterPageDefinition[];
 }
 
 export interface StoredPluginManifestMeta {
@@ -253,6 +258,7 @@ export interface StoredPluginManifestMeta {
   compatibility?: PluginCompatibilityMeta;
   uiSlots?: PluginUiSlotId[];
   outboundOrigins?: string[];
+  characterPages?: PluginCharacterPageDefinition[];
 }
 
 export type ManifestValidationResult =
@@ -396,6 +402,109 @@ function parseUiSlots(raw: unknown, errors: string[]): PluginUiSlotId[] | undefi
     }
   }
   return slots.length > 0 ? slots : undefined;
+}
+
+function parseCharacterPages(
+  raw: unknown,
+  errors: string[],
+): PluginCharacterPageDefinition[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) {
+    errors.push('characterPages must be an array when provided');
+    return undefined;
+  }
+  const result: PluginCharacterPageDefinition[] = [];
+  const keys = new Set<string>();
+  raw.forEach((value, index) => {
+    if (!isRecord(value)) {
+      errors.push(`characterPages[${index}] must be an object`);
+      return;
+    }
+    const key = typeof value.key === 'string' ? value.key.trim() : '';
+    const title = typeof value.title === 'string' ? value.title.trim() : '';
+    const renderMode = value.renderMode;
+    const renderer = typeof value.renderer === 'string' ? value.renderer.trim() : undefined;
+    const schemaVersion = value.schemaVersion;
+    if (!key || !PLUGIN_ID_PATTERN.test(key)) errors.push(`characterPages[${index}].key must be lowercase kebab-case`);
+    if (keys.has(key)) errors.push(`characterPages contains duplicate key "${key}"`);
+    if (!title || title.length > 100) errors.push(`characterPages[${index}].title must be 1 to 100 characters`);
+    if (renderMode !== 'CANVAS' && renderMode !== 'PLUGIN') errors.push(`characterPages[${index}].renderMode must be CANVAS or PLUGIN`);
+    if (!Number.isInteger(schemaVersion) || (schemaVersion as number) < 1) errors.push(`characterPages[${index}].schemaVersion must be a positive integer`);
+    if (renderMode === 'PLUGIN' && !renderer) errors.push(`characterPages[${index}].renderer is required for PLUGIN mode`);
+    if (renderMode === 'CANVAS' && renderer) errors.push(`characterPages[${index}].renderer is only valid for PLUGIN mode`);
+    const canvasRaw = value.canvas;
+    let fields: PluginCharacterPageDefinition['fields'];
+    if (value.fields !== undefined) {
+      if (!Array.isArray(value.fields)) {
+        errors.push(`characterPages[${index}].fields must be an array`);
+      } else {
+        const fieldKeys = new Set<string>();
+        fields = value.fields.flatMap((field, fieldIndex) => {
+          const path = `characterPages[${index}].fields[${fieldIndex}]`;
+          if (!isRecord(field)) {
+            errors.push(`${path} must be an object`);
+            return [];
+          }
+          const fieldKey = typeof field.key === 'string' ? field.key.trim() : '';
+          const label = typeof field.label === 'string' ? field.label.trim() : '';
+          const fieldType = field.type;
+          if (!fieldKey || !PLUGIN_ID_PATTERN.test(fieldKey)) errors.push(`${path}.key must be lowercase kebab-case`);
+          if (fieldKeys.has(fieldKey)) errors.push(`${path}.key must be unique within the page`);
+          if (!label || label.length > 100) errors.push(`${path}.label must be 1 to 100 characters`);
+          if (!['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'JSON'].includes(String(fieldType))) {
+            errors.push(`${path}.type is invalid`);
+          }
+          if (!fieldKey || !label || !['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'JSON'].includes(String(fieldType))) return [];
+          fieldKeys.add(fieldKey);
+          return [{
+            key: fieldKey,
+            label,
+            type: fieldType as NonNullable<PluginCharacterPageDefinition['fields']>[number]['type'],
+            ...(field.defaultValue !== undefined ? { defaultValue: field.defaultValue } : {}),
+            ...(isRecord(field.validation) ? { validation: field.validation } : {}),
+            ...(Array.isArray(field.capabilities) ? { capabilities: field.capabilities.filter((item): item is string => typeof item === 'string') } : {}),
+          }];
+        });
+      }
+    }
+    let canvas: PluginCharacterPageDefinition['canvas'];
+    if (canvasRaw !== undefined) {
+      if (!isRecord(canvasRaw)) {
+        errors.push(`characterPages[${index}].canvas must be an object`);
+      } else if (renderMode !== 'CANVAS') {
+        errors.push(`characterPages[${index}].canvas is only valid for CANVAS mode`);
+      } else {
+        const allowedWidgets = parseStringArray(canvasRaw.allowedWidgets, `characterPages[${index}].canvas.allowedWidgets`, errors);
+        const requiredWidgets = parseStringArray(canvasRaw.requiredWidgets, `characterPages[${index}].canvas.requiredWidgets`, errors);
+        if (typeof canvasRaw.allowAddWidget !== 'boolean' || typeof canvasRaw.allowArrange !== 'boolean') {
+          errors.push(`characterPages[${index}].canvas requires boolean allowAddWidget and allowArrange`);
+        } else {
+          canvas = {
+            ...(allowedWidgets?.length ? { allowedWidgets } : {}),
+            ...(requiredWidgets?.length ? { requiredWidgets } : {}),
+            allowAddWidget: canvasRaw.allowAddWidget,
+            allowArrange: canvasRaw.allowArrange,
+          };
+        }
+      }
+    }
+    if (key && title && (renderMode === 'CANVAS' || renderMode === 'PLUGIN') && Number.isInteger(schemaVersion) && (schemaVersion as number) > 0) {
+      keys.add(key);
+      result.push({
+        key,
+        title,
+        renderMode,
+        ...(renderer ? { renderer } : {}),
+        schemaVersion: schemaVersion as number,
+        ...(typeof value.defaultVisibility === 'string' ? { defaultVisibility: value.defaultVisibility } : {}),
+        ...(canvas ? { canvas } : {}),
+        ...(Array.isArray(value.capabilities) ? { capabilities: value.capabilities.filter((item): item is string => typeof item === 'string') } : {}),
+        ...(typeof value.exportToCanvas === 'string' && value.exportToCanvas.trim() ? { exportToCanvas: value.exportToCanvas.trim() } : {}),
+        ...(fields?.length ? { fields } : {}),
+      });
+    }
+  });
+  return result.length ? result : undefined;
 }
 
 function parseCapabilities(raw: unknown, errors: string[]): PluginCapability[] | undefined {
@@ -799,6 +908,7 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
   const capabilities = parseCapabilities(raw.capabilities, errors);
   const generatorPresets = parseGeneratorPresets(raw.generatorPresets, errors);
   const contentPacks = parseContentPacks(raw.contentPacks, errors);
+  const characterPages = parseCharacterPages(raw.characterPages, errors);
 
   if (errors.length > 0) {
     return { ok: false, errors };
@@ -831,6 +941,7 @@ export function validatePluginManifest(raw: unknown): ManifestValidationResult {
       ...(capabilities?.length ? { capabilities } : {}),
       ...(generatorPresets?.length ? { generatorPresets } : {}),
       ...(contentPacks?.length ? { contentPacks } : {}),
+      ...(characterPages?.length ? { characterPages } : {}),
     },
   };
 }
@@ -1019,6 +1130,7 @@ export function extractManifestMeta(
   const outboundOrigins = Array.isArray(raw.outboundOrigins)
     ? raw.outboundOrigins.filter((origin): origin is string => typeof origin === 'string')
     : undefined;
+  const characterPages = parseCharacterPages(raw.characterPages, []);
   return {
     version,
     description,
@@ -1031,6 +1143,7 @@ export function extractManifestMeta(
     ...(compatibility ? { compatibility } : {}),
     ...(uiSlots?.length ? { uiSlots } : {}),
     ...(outboundOrigins?.length ? { outboundOrigins } : {}),
+    ...(characterPages?.length ? { characterPages } : {}),
   };
 }
 

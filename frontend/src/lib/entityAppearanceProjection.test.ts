@@ -6,6 +6,7 @@ import {
   projectAppearanceForms,
   projectAppearancePresentation,
   projectEntityAppearance,
+  DEFAULT_APPEARANCE_PRESENTATION_ID,
   resolveAlternateGalleryEntries,
   resolvePrimaryGalleryPortrait,
   shouldShowPresentationSelector,
@@ -34,20 +35,19 @@ describe('entityAppearanceProjection', () => {
     },
   };
 
-  it('projectEntityAppearance uses primary gallery portrait', () => {
+  it('projectEntityAppearance keeps the canonical portrait separate from variants', () => {
     const vm = projectEntityAppearance(characterMeta, 'character');
-    assert.equal(vm.portraitUrl, 'https://example.com/armor.jpg');
+    assert.equal(vm.portraitUrl, 'https://example.com/hero.jpg');
     assert.equal(vm.summary, 'A wandering knight');
   });
 
-  it('projectAppearanceForms synthesizes legacy portrait', () => {
+  it('projectAppearanceForms leaves the canonical portrait in virtual Default', () => {
     const legacyOnly = {
       appearance: { portraitUrl: 'https://legacy.jpg', portraitCredit: null },
     };
     const forms = projectAppearanceForms(legacyOnly, 'character');
-    assert.equal(forms.entries.length, 1);
-    assert.equal(forms.entries[0]?.id, '__legacy_portrait__');
-    assert.equal(forms.hasContent, true);
+    assert.equal(forms.entries.length, 0);
+    assert.equal(forms.hasContent, false);
   });
 
   it('projectAppearanceDetails maps apparelDescription to clothingMotifs', () => {
@@ -139,7 +139,7 @@ describe('entityAppearanceProjection', () => {
     const options = listAppearancePresentations(forms);
     assert.deepEqual(
       options.map((o) => o.label),
-      ['Human', 'Hybrid', 'Fox'],
+      ['Default', 'Human', 'Hybrid', 'Fox'],
     );
     assert.equal(shouldShowPresentationSelector(forms, true), true);
   });
@@ -167,14 +167,14 @@ describe('entityAppearanceProjection', () => {
       appearance: kitsuneAppearance,
       forms,
       details,
-      selectedEntryId: 'human',
+      selectedEntryId: DEFAULT_APPEARANCE_PRESENTATION_ID,
     });
 
     assert.equal(vm.isBaseline, true);
-    assert.equal(vm.portraitUrl, 'https://example.com/human.jpg');
+    assert.equal(vm.portraitUrl, 'https://example.com/legacy.jpg');
     assert.equal(vm.details?.build, 'Slender');
-    assert.equal(vm.description, 'A wandering kitsune.\n\nUsually in town clothes.');
-    assert.deepEqual(vm.tags, ['mysterious', 'calm']);
+    assert.equal(vm.description, 'A wandering kitsune.');
+    assert.deepEqual(vm.tags, ['mysterious']);
     assert.equal(vm.gender, 'Woman');
   });
 

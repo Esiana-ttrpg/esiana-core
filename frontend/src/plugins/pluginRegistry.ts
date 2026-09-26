@@ -12,6 +12,7 @@ import {
 import { clearPluginPresentationRegistry } from '@/lib/pluginPresentation';
 import { clearPluginNavigationRegistry } from '@/lib/pluginNavigation';
 import { clearPluginPageRegistry } from '@/lib/pluginPages';
+import { clearPluginCharacterPageRenderers } from '@/lib/pluginCharacterPages';
 
 const loadedModules = new Map<string, PluginFrontendModule>();
 
@@ -108,6 +109,7 @@ export async function bootstrapFrontendPlugins(
   clearPluginPresentationRegistry();
   clearPluginNavigationRegistry();
   clearPluginPageRegistry();
+  clearPluginCharacterPageRenderers();
 
   for (const descriptor of descriptors) {
     const mod = await loadFrontendPlugin(
@@ -151,4 +153,5 @@ export function resetFrontendPluginLoader(): void {
   clearPluginPresentationRegistry();
   clearPluginNavigationRegistry();
   clearPluginPageRegistry();
+  clearPluginCharacterPageRenderers();
 }

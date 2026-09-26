@@ -27,18 +27,31 @@ export function parseOperationalPayload(raw: unknown): SovereignOperational | nu
     downtimeProjects: Array.isArray(payload.downtimeProjects) ? payload.downtimeProjects : [],
     pluginData: Array.isArray(payload.pluginData) ? payload.pluginData : [],
     pluginSettings: Array.isArray(payload.pluginSettings) ? payload.pluginSettings : [],
+    characterPageTabs: Array.isArray(payload.characterPageTabs) ? payload.characterPageTabs : [],
+    pluginCharacterPageStates: Array.isArray(payload.pluginCharacterPageStates)
+      ? payload.pluginCharacterPageStates
+      : [],
+    characterFields: Array.isArray(payload.characterFields) ? payload.characterFields : [],
   };
 }
 
 export async function buildOperationalPayload(
   campaignId: string,
 ): Promise<SovereignOperational> {
-  const [downtimeHavens, downtimeProjects, pluginData, pluginSettings] =
+  const characterDb = prisma as typeof prisma & {
+    characterPageTab: { findMany(args: unknown): Promise<unknown[]> };
+    pluginCharacterPageState: { findMany(args: unknown): Promise<unknown[]> };
+    characterField: { findMany(args: unknown): Promise<unknown[]> };
+  };
+  const [downtimeHavens, downtimeProjects, pluginData, pluginSettings, characterPageTabs, pluginCharacterPageStates, characterFields] =
     await Promise.all([
       prisma.downtimeHaven.findMany({ where: { campaignId } }),
       prisma.downtimeProject.findMany({ where: { campaignId } }),
       prisma.pluginData.findMany({ where: { campaignId } }),
       prisma.campaignPluginSetting.findMany({ where: { campaignId } }),
+      characterDb.characterPageTab.findMany({ where: { campaignId } }),
+      characterDb.pluginCharacterPageState.findMany({ where: { campaignId } }),
+      characterDb.characterField.findMany({ where: { campaignId } }),
     ]);
 
   return serializeForOperationalJson({
@@ -46,6 +59,9 @@ export async function buildOperationalPayload(
     downtimeProjects,
     pluginData,
     pluginSettings,
+    characterPageTabs: characterPageTabs as Array<Record<string, unknown>>,
+    pluginCharacterPageStates: pluginCharacterPageStates as Array<Record<string, unknown>>,
+    characterFields: characterFields as Array<Record<string, unknown>>,
   });
 }
 
@@ -190,6 +206,39 @@ export async function restoreOperationalPayload(
         isEnabled: Boolean(entry.isEnabled),
         config: (entry.config ?? {}) as Prisma.InputJsonValue,
       },
+    });
+  }
+
+  const characterDb = prisma as typeof prisma & {
+    characterPageTab: any;
+    pluginCharacterPageState: any;
+    characterField: any;
+  };
+  for (const row of payload.pluginCharacterPageStates ?? []) {
+    if (!row || typeof row !== 'object' || typeof row.id !== 'string' || typeof row.characterPageId !== 'string') continue;
+    const data = stripOperationalRow(row);
+    await characterDb.pluginCharacterPageState.upsert({
+      where: { id: row.id },
+      create: { ...data, id: row.id, campaignId },
+      update: { ...data, campaignId },
+    });
+  }
+  for (const row of payload.characterPageTabs ?? []) {
+    if (!row || typeof row !== 'object' || typeof row.id !== 'string' || typeof row.characterPageId !== 'string') continue;
+    const data = stripOperationalRow(row);
+    await characterDb.characterPageTab.upsert({
+      where: { id: row.id },
+      create: { ...data, id: row.id, campaignId },
+      update: { ...data, campaignId },
+    });
+  }
+  for (const row of payload.characterFields ?? []) {
+    if (!row || typeof row !== 'object' || typeof row.id !== 'string' || typeof row.characterPageId !== 'string') continue;
+    const data = stripOperationalRow(row);
+    await characterDb.characterField.upsert({
+      where: { id: row.id },
+      create: { ...data, id: row.id, campaignId },
+      update: { ...data, campaignId },
     });
   }
 

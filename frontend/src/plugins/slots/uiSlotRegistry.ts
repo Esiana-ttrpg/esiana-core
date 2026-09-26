@@ -3,6 +3,7 @@ import {
   type LayoutWidget,
 } from '@/lib/pluginPresentation';
 import { registerPluginPage } from '@/lib/pluginPages';
+import { registerPluginCharacterPageRenderer } from '@/lib/pluginCharacterPages';
 import {
   registerPluginSidebarItem,
   type PluginSidebarSection,
@@ -74,6 +75,9 @@ export function createPluginUiRegistry(
     },
     registerPage(definition) {
       registerPluginPage(pluginId, definition);
+    },
+    registerCharacterPageRenderer(definition) {
+      registerPluginCharacterPageRenderer(pluginId, definition);
     },
     registerSidebarItem(definition) {
       registerPluginSidebarItem(pluginId, definition);
