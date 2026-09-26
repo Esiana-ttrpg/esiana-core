@@ -149,8 +149,8 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
     capabilities: toInputJsonValue({ readable: true, writable: true }),
   }});
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_CREATED, campaignId: req.campaign!.campaignId,
-    actorId: req.user?.id, resourceType: 'character_field', resourceId: row.id,
-    payload: { characterId: access.page.id, fieldKey: row.fieldKey, origin: row.origin } });
+    actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
+    payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin } });
   res.status(201).json({ field: descriptor(row, true) });
 }
 
@@ -168,8 +168,8 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   if (problem) { res.status(400).json({ error: problem }); return; }
   const updated = await fieldsDb.characterField.update({ where: { id: row.id }, data: { value: toNullableInputJsonValue(req.body.value) } });
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_UPDATED, campaignId: req.campaign!.campaignId,
-    actorId: req.user?.id, resourceType: 'character_field', resourceId: row.id,
-    payload: { characterId: access.page.id, fieldKey: row.fieldKey, origin: row.origin, updatedAt: updated.updatedAt.toISOString() } });
+    actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
+    payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin, updatedAt: updated.updatedAt.toISOString() } });
   res.json({ field: descriptor(updated, true) });
 }
 
@@ -184,7 +184,7 @@ export async function deleteCustomCharacterField(req: CampaignScopedRequest, res
   if (row.origin !== 'CUSTOM') { res.status(400).json({ error: 'Plugin fields cannot be deleted by consumers' }); return; }
   await fieldsDb.characterField.delete({ where: { id: row.id } });
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_DELETED, campaignId: req.campaign!.campaignId,
-    actorId: req.user?.id, resourceType: 'character_field', resourceId: row.id,
-    payload: { characterId: access.page.id, fieldKey: row.fieldKey, origin: row.origin } });
+    actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
+    payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin } });
   res.status(204).end();
 }
