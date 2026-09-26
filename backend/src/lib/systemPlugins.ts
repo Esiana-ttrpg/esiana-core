@@ -36,6 +36,7 @@ function buildManifestMetaConfig(manifest: PluginManifest): Record<string, unkno
       ...(manifest.uiSlots?.length ? { uiSlots: manifest.uiSlots } : {}),
       ...(manifest.permissions?.length ? { permissions: manifest.permissions } : {}),
       ...(manifest.outboundOrigins?.length ? { outboundOrigins: manifest.outboundOrigins } : {}),
+      ...(manifest.characterPages?.length ? { characterPages: manifest.characterPages } : {}),
       ...(manifest.engines ? { engines: manifest.engines } : {}),
       ...(manifest.compatibility ? { compatibility: manifest.compatibility } : {}),
     },

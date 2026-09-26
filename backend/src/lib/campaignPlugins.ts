@@ -16,6 +16,27 @@ import { deleteCampaignPluginSecrets } from './plugins/pluginSecretsService.js';
 
 type CampaignPluginRow = CampaignPluginSetting & { plugin: SystemPlugin };
 
+const characterPageStateDb = prisma as typeof prisma & {
+  pluginCharacterPageState: { updateMany(args: unknown): Promise<unknown> };
+};
+
+async function setCharacterPageProviderState(
+  campaignId: string,
+  pluginId: string,
+  providerState: 'AVAILABLE' | 'UNAVAILABLE',
+): Promise<void> {
+  await characterPageStateDb.pluginCharacterPageState.updateMany({
+    where: {
+      campaignId,
+      pluginId,
+      // Per-character removal is an explicit user choice and must survive a
+      // campaign-level disable/re-enable cycle.
+      providerState: { not: 'REMOVED' },
+    },
+    data: { providerState },
+  });
+}
+
 function buildCampaignPluginDefinitionConfig(
   manifest: PluginManifest,
 ): Record<string, unknown> {
@@ -30,6 +51,7 @@ function buildCampaignPluginDefinitionConfig(
       ...(manifest.uiSlots?.length ? { uiSlots: manifest.uiSlots } : {}),
       ...(manifest.permissions?.length ? { permissions: manifest.permissions } : {}),
       ...(manifest.outboundOrigins?.length ? { outboundOrigins: manifest.outboundOrigins } : {}),
+      ...(manifest.characterPages?.length ? { characterPages: manifest.characterPages } : {}),
     },
   };
 }
@@ -53,6 +75,7 @@ function serializePluginDescriptor(
     frontendEntry: record?.frontendEntry ?? manifest?.frontendEntry ?? null,
     permissions: manifest?.permissions ?? meta?.permissions ?? [],
     outboundOrigins: manifest?.outboundOrigins ?? meta?.outboundOrigins ?? [],
+    characterPages: manifest?.characterPages ?? meta?.characterPages ?? [],
   };
 }
 
@@ -77,6 +100,7 @@ export function serializeCampaignPluginSetting(row: CampaignPluginRow) {
       uiSlots: meta?.uiSlots ?? [],
       permissions: meta?.permissions ?? [],
       outboundOrigins: meta?.outboundOrigins ?? [],
+      characterPages: meta?.characterPages ?? [],
     },
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -93,6 +117,24 @@ export async function isCampaignPluginEnabled(
     select: { isEnabled: true },
   });
   return Boolean(setting?.isEnabled);
+}
+
+export async function listEnabledCampaignCharacterPageDefinitions(campaignId: string) {
+  const settings = await prisma.campaignPluginSetting.findMany({
+    where: { campaignId, isEnabled: true },
+    select: { pluginId: true },
+  });
+  if (settings.length === 0) return [];
+  const installed = await prisma.installedPlugin.findMany({
+    where: { name: { in: settings.map((setting) => setting.pluginId) } },
+  });
+  return installed.flatMap((record) => {
+    const manifest = readManifestForRecord(record);
+    return (manifest?.characterPages ?? []).map((definition) => ({
+      pluginId: record.name,
+      definition,
+    }));
+  });
 }
 
 export async function getCampaignPluginUserConfig(
@@ -175,6 +217,7 @@ export async function listCampaignPluginSettings(campaignId: string) {
         ...serialized.plugin,
         uiSlots: manifest?.uiSlots ?? serialized.plugin.uiSlots,
         frontendEntry: record?.frontendEntry ?? manifest?.frontendEntry ?? null,
+        characterPages: manifest?.characterPages ?? serialized.plugin.characterPages,
       },
     };
   });
@@ -240,6 +283,8 @@ export async function enableCampaignPlugin(
     include: { plugin: true },
   });
 
+  await setCharacterPageProviderState(campaignId, pluginId, 'AVAILABLE');
+
   return serializeCampaignPluginSetting(row);
 }
 
@@ -247,7 +292,9 @@ export async function disableCampaignPlugin(
   campaignId: string,
   pluginId: string,
 ): Promise<ReturnType<typeof serializeCampaignPluginSetting>> {
-  return updateCampaignPluginSetting(campaignId, pluginId, {}, false);
+  const row = await updateCampaignPluginSetting(campaignId, pluginId, {}, false);
+  await setCharacterPageProviderState(campaignId, pluginId, 'UNAVAILABLE');
+  return row;
 }
 
 export async function removeCampaignPlugin(
@@ -265,6 +312,8 @@ export async function removeCampaignPlugin(
   if (!existing) {
     throw new Error('Campaign plugin not found');
   }
+
+  await setCharacterPageProviderState(campaignId, pluginId, 'UNAVAILABLE');
 
   await prisma.pluginData.deleteMany({ where: { pluginId, campaignId } });
   await deleteCampaignPluginSecrets(pluginId, campaignId);

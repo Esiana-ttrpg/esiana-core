@@ -129,6 +129,25 @@ import {
 } from '../controllers/downtimeHavenController.js';
 import { putDowntimeGapOverlay } from '../controllers/downtimeGapOverlayController.js';
 import {
+  createCustomCharacterPage,
+  deleteCustomCharacterPage,
+  duplicateCharacterPageToCustom,
+  getPluginCharacterPageData,
+  listCharacterPages,
+  materializePluginCharacterPage,
+  removePluginCharacterPage,
+  reorderCharacterPages,
+  updateCharacterPage,
+  updateCharacterPageBlocks,
+  updatePluginCharacterPageData,
+} from '../controllers/characterPagesController.js';
+import {
+  createCustomCharacterField,
+  deleteCustomCharacterField,
+  listCharacterFields,
+  updateCharacterField,
+} from '../controllers/characterFieldsController.js';
+import {
   acceptLedgerSuggestionHandler,
   createLedgerEntryHandler,
   deleteLedgerEntryHandler,
@@ -849,6 +868,21 @@ campaignScopedRouter.get(
 );
 
 campaignScopedRouter.get('/wiki/:pageId', getWikiPage);
+campaignScopedRouter.get('/wiki/:pageId/character-pages', listCharacterPages);
+campaignScopedRouter.get('/wiki/:pageId/character-fields', listCharacterFields);
+campaignScopedRouter.post('/wiki/:pageId/character-fields', createCustomCharacterField);
+campaignScopedRouter.put('/wiki/:pageId/character-fields/:fieldId', updateCharacterField);
+campaignScopedRouter.delete('/wiki/:pageId/character-fields/:fieldId', deleteCustomCharacterField);
+campaignScopedRouter.post('/wiki/:pageId/character-pages', createCustomCharacterPage);
+campaignScopedRouter.post('/wiki/:pageId/character-pages/materialize', materializePluginCharacterPage);
+campaignScopedRouter.patch('/wiki/:pageId/character-pages/order', reorderCharacterPages);
+campaignScopedRouter.patch('/wiki/:pageId/character-pages/:tabId', updateCharacterPage);
+campaignScopedRouter.delete('/wiki/:pageId/character-pages/:tabId', deleteCustomCharacterPage);
+campaignScopedRouter.post('/wiki/:pageId/character-pages/:tabId/duplicate', duplicateCharacterPageToCustom);
+campaignScopedRouter.put('/wiki/:pageId/character-pages/:tabId/blocks', updateCharacterPageBlocks);
+campaignScopedRouter.get('/wiki/:pageId/character-pages/:tabId/plugin-data', getPluginCharacterPageData);
+campaignScopedRouter.put('/wiki/:pageId/character-pages/:tabId/plugin-data', updatePluginCharacterPageData);
+campaignScopedRouter.post('/wiki/:pageId/character-pages/:tabId/remove-plugin', removePluginCharacterPage);
 campaignScopedRouter.get('/wiki/:pageId/narrative-status', getWikiPageNarrativeStatus);
 campaignScopedRouter.patch(
   '/wiki/:pageId/narrative-status',

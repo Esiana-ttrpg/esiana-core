@@ -11,14 +11,15 @@ import type { AppearanceCapabilities } from '@/lib/entitySurfaceProfile';
 import {
   listAppearancePresentations,
   projectAppearancePresentation,
-  resolveSelectedGalleryEntry,
+  DEFAULT_APPEARANCE_PRESENTATION_ID,
   shouldShowPresentationSelector,
   type AppearanceDetailsViewModel,
   type AppearanceFormsViewModel,
   type EntityAppearanceViewModel,
 } from '@/lib/entityAppearanceProjection';
 import type { AppearanceGalleryEntry } from '@shared/appearanceMetadata';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Maximize2, X } from 'lucide-react';
 
 interface EntityAppearanceReadViewProps {
   appearance: EntityAppearanceViewModel;
@@ -37,11 +38,21 @@ export function EntityAppearanceReadView({
   appearanceCapabilities = { forms: true, details: true, discoveryVariants: false },
   filterFormEntries,
 }: EntityAppearanceReadViewProps) {
-  const initialEntryId =
-    resolveSelectedGalleryEntry(forms ?? { entries: [], primaryEntry: null, hasContent: false }, null)
-      ?.id ?? null;
-
-  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(initialEntryId);
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(
+    forms?.primaryEntry?.id ?? DEFAULT_APPEARANCE_PRESENTATION_ID,
+  );
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const expandButtonRef = useRef<HTMLButtonElement>(null);
+  const lightboxRef = useRef<HTMLDialogElement>(null);
+  const previousLightboxOpenRef = useRef(false);
+  useEffect(() => {
+    const dialog = lightboxRef.current;
+    if (lightboxOpen && dialog && !dialog.open) dialog.showModal();
+  }, [lightboxOpen]);
+  useEffect(() => {
+    if (previousLightboxOpenRef.current && !lightboxOpen) expandButtonRef.current?.focus();
+    previousLightboxOpenRef.current = lightboxOpen;
+  }, [lightboxOpen]);
 
   const presentation = useMemo(
     () =>
@@ -105,12 +116,23 @@ export function EntityAppearanceReadView({
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
               {portraitSrc ? (
-                <img
-                  key={presentation.selectedEntryId ?? 'default'}
-                  src={portraitSrc}
-                  alt=""
-                  className="max-h-80 w-auto shrink-0 rounded-lg border border-border/40 object-cover shadow-sm transition-opacity duration-200"
-                />
+                <div className="relative w-fit shrink-0">
+                  <img
+                    key={presentation.selectedEntryId ?? 'default'}
+                    src={portraitSrc}
+                    alt=""
+                    className="max-h-80 w-auto rounded-lg border border-border/40 object-cover shadow-sm transition-opacity duration-200"
+                  />
+                  <button
+                    ref={expandButtonRef}
+                    type="button"
+                    className="absolute right-2 top-2 rounded-md border border-border/50 bg-surface/90 p-1.5 text-foreground shadow-sm hover:bg-elevated"
+                    onClick={() => setLightboxOpen(true)}
+                    aria-label="View full-size portrait"
+                  >
+                    <Maximize2 className="size-4" aria-hidden />
+                  </button>
+                </div>
               ) : null}
 
               <div className="min-w-0 flex-1 sm:max-w-md">
@@ -162,6 +184,36 @@ export function EntityAppearanceReadView({
             </div>
           ) : null}
         </EntityPageSection>
+      ) : null}
+      {lightboxOpen && portraitSrc ? (
+        <dialog
+          ref={lightboxRef}
+          className="m-auto max-h-none max-w-none border-0 bg-transparent p-4 backdrop:bg-black/80"
+          aria-label="Full-size portrait"
+          onCancel={(event) => {
+            event.preventDefault();
+            setLightboxOpen(false);
+          }}
+          onClose={() => setLightboxOpen(false)}
+        >
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4"
+            onMouseDown={(event) => {
+              if (event.currentTarget === event.target) setLightboxOpen(false);
+            }}
+          >
+            <img src={portraitSrc} alt="" className="max-h-full max-w-full object-contain" />
+            <button
+              type="button"
+              autoFocus
+              className="absolute right-4 top-4 rounded-md bg-surface p-2 text-foreground"
+              onClick={() => setLightboxOpen(false)}
+              aria-label="Close full-size portrait"
+            >
+              <X className="size-5" aria-hidden />
+            </button>
+          </div>
+        </dialog>
       ) : null}
     </div>
   );

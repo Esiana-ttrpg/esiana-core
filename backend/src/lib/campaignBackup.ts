@@ -39,13 +39,21 @@ export async function buildFullCampaignBundle(campaignId: string) {
 
   if (!campaign) return null;
 
-  const [wikiLinks, mapPins] = await Promise.all([
+  const characterDb = prisma as typeof prisma & {
+    characterPageTab: { findMany(args: unknown): Promise<unknown[]> };
+    pluginCharacterPageState: { findMany(args: unknown): Promise<unknown[]> };
+    characterField: { findMany(args: unknown): Promise<unknown[]> };
+  };
+  const [wikiLinks, mapPins, characterPageTabs, pluginCharacterPageStates, characterFields] = await Promise.all([
     prisma.wikiLink.findMany({ where: { campaignId } }),
     prisma.mapPin.findMany({
       where: {
         asset: { campaignId },
       },
     }),
+    characterDb.characterPageTab.findMany({ where: { campaignId } }),
+    characterDb.pluginCharacterPageState.findMany({ where: { campaignId } }),
+    characterDb.characterField.findMany({ where: { campaignId } }),
   ]);
 
   const mediaRefs = campaign.assets.map((asset) => ({
@@ -64,5 +72,8 @@ export async function buildFullCampaignBundle(campaignId: string) {
     },
     wikiLinks,
     mapPins,
+    characterPageTabs,
+    pluginCharacterPageStates,
+    characterFields,
   });
 }

@@ -29,10 +29,12 @@ type OpenApiSpec = {
   paths?: Record<
     string,
     Record<string, {
+      summary?: string;
+      description?: string;
       tags?: string[];
       parameters?: Array<{ name?: string; in?: string }>;
       security?: Array<Record<string, unknown>>;
-      responses?: Record<string, { content?: Record<string, { example?: unknown }> }>;
+      responses?: Record<string, { content?: Record<string, { example?: unknown; schema?: unknown }> }>;
     }>
   >;
 };
@@ -67,6 +69,34 @@ test('asset reads advertise anonymous, session, and bearer authentication', () =
     { cookieAuth: [] },
     { bearerAuth: [] },
   ]);
+  assert.deepEqual(spec.paths?.['/uploads/{filename}']?.get?.security, [
+    {},
+    { cookieAuth: [] },
+    { bearerAuth: [] },
+  ]);
+});
+
+test('campaign events retain their server-sent event contract', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  const operation = spec.paths?.['/api/campaigns/{campaignHandle}/events']?.get;
+  assert.equal(operation?.summary, 'Stream campaign domain events');
+  assert.match(String(operation?.description), /transient invalidation signals/);
+  assert.deepEqual(operation?.responses?.['200']?.content?.['text/event-stream']?.schema, {
+    type: 'string',
+  });
+});
+
+test('only anonymous development fixture operations advertise anonymous access', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  for (const [pathKey, method] of [
+    ['/api/plugin-connection-fixtures/oauth/authorize', 'get'],
+    ['/api/plugin-connection-fixtures/oauth/token', 'post'],
+    ['/api/plugin-connection-fixtures/oauth/revoke', 'post'],
+  ] as const) {
+    assert.deepEqual(spec.paths?.[pathKey]?.[method]?.security, [{}]);
+  }
+  assert.notDeepEqual(spec.paths?.['/api/plugin-connection-fixtures/oauth/library']?.get?.security, [{}]);
+  assert.notDeepEqual(spec.paths?.['/api/plugin-connection-fixtures/api-key/library']?.get?.security, [{}]);
 });
 
 test('OpenAPI document is structurally valid and all local references resolve', () => {

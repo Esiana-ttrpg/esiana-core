@@ -30,7 +30,6 @@ import type {
 } from '@shared/appearanceMetadata';
 import { appearanceDetailsToMetadataPatch } from '@shared/appearanceMetadata';
 import { EMPTY_DETAILS } from '@/components/entity/appearance/appearanceShared';
-import { resolvePrimaryGalleryPortrait } from '@/lib/entityAppearanceProjection';
 
 interface EntityAppearanceEditorProps {
   campaignHandle: string;
@@ -105,19 +104,6 @@ function parseAppearanceDraft(
   };
 }
 
-function syncPortraitFromGallery(draft: AppearanceDraft): AppearanceDraft {
-  const portrait = resolvePrimaryGalleryPortrait(
-    draft.gallery,
-    draft.portraitUrl,
-    draft.portraitCredit,
-  );
-  return {
-    ...draft,
-    portraitUrl: portrait.portraitUrl,
-    portraitCredit: portrait.portraitCredit,
-  };
-}
-
 export function EntityAppearanceEditor({
   campaignHandle,
   pageId,
@@ -162,11 +148,8 @@ export function EntityAppearanceEditor({
   }, [focusField]);
 
   const persistDraft = useCallback(
-    async (nextDraft: AppearanceDraft, options?: { syncGalleryPortrait?: boolean }) => {
-      const synced =
-        showForms && options?.syncGalleryPortrait
-          ? syncPortraitFromGallery(nextDraft)
-          : nextDraft;
+    async (nextDraft: AppearanceDraft) => {
+      const synced = nextDraft;
       setDraft((prev) => {
         if (JSON.stringify(prev) === JSON.stringify(synced)) return prev;
         return synced;
@@ -309,11 +292,40 @@ export function EntityAppearanceEditor({
           mode="edit"
           campaignHandle={campaignHandle}
           forms={draft.gallery}
+          defaultEntryTemplate={{
+            imageUrl: draft.portraitUrl ?? '',
+            imageCredit: draft.portraitCredit,
+            tags: draft.tags,
+            presentationNotes: draft.summary,
+            distinguishingFeatures: draft.details.distinguishingFeatures,
+            voice: draft.details.voice,
+            clothingMotifs: draft.details.clothingMotifs,
+            gender: draft.gender,
+            presentation: draft.presentation,
+          }}
+          defaultPortrait={{
+            imageUrl: draft.portraitUrl ?? '',
+            imageCredit: draft.portraitCredit,
+            onChange: ({ imageUrl, imageCredit }) =>
+              setDraft((prev) => ({
+                ...prev,
+                portraitUrl: imageUrl.trim() || null,
+                portraitCredit: imageCredit,
+              })),
+            onPersist: (patch) => void persistDraft({
+              ...draftRef.current,
+              ...(patch?.imageUrl !== undefined
+                ? { portraitUrl: patch.imageUrl.trim() || null }
+                : {}),
+              ...(patch?.imageCredit !== undefined
+                ? { portraitCredit: patch.imageCredit }
+                : {}),
+            }),
+          }}
           onChange={(gallery) => setDraft((prev) => ({ ...prev, gallery }))}
           onPersist={(gallery) =>
             void persistDraft(
               { ...draftRef.current, gallery },
-              { syncGalleryPortrait: true },
             )
           }
         />

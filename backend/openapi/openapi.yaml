@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Esiana Core API
-  version: 1.4.2
+  version: 1.4.3
   description: |
     REST API for Esiana campaign narrative infrastructure.
 
@@ -618,54 +618,119 @@ paths:
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/admin/plugins/{pluginId}/connection:
     get:
-      tags: [Administration]
+      tags:
+        - Administration
       summary: Get the app-level redacted plugin connection
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security:
+        - cookieAuth: []
       parameters:
-        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        "200": { description: Provider metadata and visible redacted connections }
-        "403": { $ref: "#/components/responses/Forbidden" }
-      description: System administrators only. Raw credentials are never returned.
+        "200":
+          description: Provider metadata and visible redacted connections
+        "403":
+          $ref: "#/components/responses/Forbidden"
+      description: |-
+        System administrators only. Raw credentials are never returned.
+
+        Authorization: Authenticated application user; SYSTEM_ADMIN application role.
+      x-esiana-authorization:
+        boundary: system-administration
+        requires:
+          - Authenticated application user
+          - SYSTEM_ADMIN application role
     delete:
-      tags: [Administration]
+      tags:
+        - Administration
       summary: Disconnect the app-level plugin connection
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security:
+        - cookieAuth: []
       parameters:
-        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        "200": { description: Redacted disconnected record }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "200":
+          description: Redacted disconnected record
+        "404":
+          $ref: "#/components/responses/NotFound"
+      x-esiana-authorization:
+        boundary: system-administration
+        requires:
+          - Authenticated application user
+          - SYSTEM_ADMIN application role
+      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
   /api/admin/plugins/{pluginId}/connection/static:
     post:
-      tags: [Administration]
+      tags:
+        - Administration
       summary: Connect or reconnect an API key or bearer token
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security:
+        - cookieAuth: []
       parameters:
-        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [credential]
+              required:
+                - credential
               properties:
-                credential: { type: string, minLength: 1, maxLength: 8192, writeOnly: true }
-                accountLabel: { type: string, maxLength: 160 }
+                credential:
+                  type: string
+                  minLength: 1
+                  maxLength: 8192
+                  writeOnly: true
+                accountLabel:
+                  type: string
+                  maxLength: 160
       responses:
-        "201": { description: Redacted connected record }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "201":
+          description: Redacted connected record
+        "403":
+          $ref: "#/components/responses/Forbidden"
+      x-esiana-authorization:
+        boundary: system-administration
+        requires:
+          - Authenticated application user
+          - SYSTEM_ADMIN application role
+      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
   /api/admin/plugins/{pluginId}/connection/oauth/start:
     post:
-      tags: [Administration]
+      tags:
+        - Administration
       summary: Start an OAuth 2 authorization-code + PKCE connection
-      security: [{ cookieAuth: [] }]
+      security:
+        - cookieAuth: []
       parameters:
-        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        "200": { description: Approved provider authorization URL }
-        "409": { description: OAuth client or provider is not configured }
+        "200":
+          description: Approved provider authorization URL
+        "409":
+          description: OAuth client or provider is not configured
+      x-esiana-authorization:
+        boundary: system-administration
+        requires:
+          - Authenticated application user
+          - SYSTEM_ADMIN application role
+      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
   /api/campaigns/{campaignId}/source-providers:
     get:
       tags:
@@ -683,7 +748,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [providers]
+                required:
+                  - providers
                 properties:
                   providers:
                     type: array
@@ -692,7 +758,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
       x-esiana-authorization:
-        boundary: campaign
+        boundary: campaign-or-account
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
@@ -734,7 +800,9 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [results, diagnostics]
+                required:
+                  - results
+                  - diagnostics
                 properties:
                   results:
                     type: array
@@ -744,19 +812,24 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [providerId, status]
+                      required:
+                        - providerId
+                        - status
                       properties:
                         providerId:
                           type: string
                         status:
                           type: string
-                          enum: [timeout, unavailable, disabled]
+                          enum:
+                            - timeout
+                            - unavailable
+                            - disabled
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
       x-esiana-authorization:
-        boundary: campaign
+        boundary: campaign-or-account
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
@@ -777,7 +850,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [reference]
+              required:
+                - reference
               properties:
                 reference:
                   $ref: "#/components/schemas/SourceReference"
@@ -788,7 +862,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [reference]
+                required:
+                  - reference
                 properties:
                   reference:
                     $ref: "#/components/schemas/SourceReference"
@@ -799,7 +874,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
       x-esiana-authorization:
-        boundary: campaign
+        boundary: campaign-or-account
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
@@ -820,7 +895,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [reference]
+              required:
+                - reference
               properties:
                 reference:
                   $ref: "#/components/schemas/SourceReference"
@@ -831,7 +907,8 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [target]
+                required:
+                  - target
                 properties:
                   target:
                     $ref: "#/components/schemas/SourceOpenTarget"
@@ -842,7 +919,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
       x-esiana-authorization:
-        boundary: campaign
+        boundary: campaign-or-account
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
@@ -1410,61 +1487,149 @@ paths:
       description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
   /api/admin/plugins/{pluginId}/oauth-client:
     get:
-      tags: [Administration]
+      tags:
+        - Administration
       summary: Read redacted plugin OAuth client configuration
-      security: [{ cookieAuth: [] }]
+      security:
+        - cookieAuth: []
       parameters:
-        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        "200": { description: Client ID and secret-presence flag }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "200":
+          description: Client ID and secret-presence flag
+        "403":
+          $ref: "#/components/responses/Forbidden"
+      x-esiana-authorization:
+        boundary: system-administration
+        requires:
+          - Authenticated application user
+          - SYSTEM_ADMIN application role
+      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
     put:
-      tags: [Administration]
+      tags:
+        - Administration
       summary: Configure a plugin OAuth client
-      security: [{ cookieAuth: [] }]
+      security:
+        - cookieAuth: []
       parameters:
-        - { name: pluginId, in: path, required: true, schema: { type: string } }
+        - name: pluginId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
-        "200": { description: Redacted OAuth client configuration }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+        "200":
+          description: Redacted OAuth client configuration
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      x-esiana-authorization:
+        boundary: system-administration
+        requires:
+          - Authenticated application user
+          - SYSTEM_ADMIN application role
+      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
   /api/plugin-connections/oauth/callback:
     get:
-      tags: [Plugins]
+      tags:
+        - Plugins
       summary: Complete a plugin OAuth connection
-      security: [{ cookieAuth: [] }]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
       parameters:
-        - { name: state, in: query, required: true, schema: { type: string } }
-        - { name: code, in: query, required: true, schema: { type: string } }
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
-        "302": { description: Connection completed and browser returned to Esiana }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+        "302":
+          description: Connection completed and browser returned to Esiana
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
   /api/plugin-connection-fixtures/oauth/authorize:
     get:
-      tags: [Plugins]
+      tags:
+        - Plugins
       summary: Development-only fixture OAuth authorization
-      responses: { "302": { description: Returns a deterministic fixture authorization code } }
+      responses:
+        "302":
+          description: Returns a deterministic fixture authorization code
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
+      security:
+        - {}
   /api/plugin-connection-fixtures/oauth/token:
     post:
-      tags: [Plugins]
+      tags:
+        - Plugins
       summary: Development-only fixture OAuth token exchange
-      responses: { "200": { description: Deterministic fixture token response } }
+      responses:
+        "200":
+          description: Deterministic fixture token response
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
+      security:
+        - {}
   /api/plugin-connection-fixtures/oauth/revoke:
     post:
-      tags: [Plugins]
+      tags:
+        - Plugins
       summary: Development-only fixture OAuth revocation
-      responses: { "200": { description: Fixture token accepted for revocation } }
+      responses:
+        "200":
+          description: Fixture token accepted for revocation
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
+      security:
+        - {}
   /api/plugin-connection-fixtures/oauth/library:
     get:
-      tags: [Plugins]
+      tags:
+        - Plugins
       summary: Development-only OAuth-protected fixture resource
-      responses: { "200": { description: Deterministic fixture library } }
+      responses:
+        "200":
+          description: Deterministic fixture library
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
   /api/plugin-connection-fixtures/api-key/library:
     get:
-      tags: [Plugins]
+      tags:
+        - Plugins
       summary: Development-only API-key-protected fixture resource
-      responses: { "200": { description: Deterministic fixture library } }
+      responses:
+        "200":
+          description: Deterministic fixture library
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
   /api/admin/plugins/install-from-link:
     post:
       tags:
@@ -5892,12 +6057,18 @@ paths:
             text/event-stream:
               schema:
                 type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign. Events are transient invalidation signals; reconnecting clients refetch canonical resources."
   /api/campaigns/{campaignHandle}/files:
     get:
@@ -18198,6 +18369,806 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-fields:
+    get:
+      tags:
+        - Wiki
+      summary: Get PageId Character Fields
+      operationId: get_api_campaigns_campaignHandle_wiki_pageId_character_fields
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    post:
+      tags:
+        - Wiki
+      summary: Create or run PageId Character Fields
+      operationId: post_api_campaigns_campaignHandle_wiki_pageId_character_fields
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-fields/{fieldId}:
+    delete:
+      tags:
+        - Wiki
+      summary: Delete Character Fields FieldId
+      operationId: delete_api_campaigns_campaignHandle_wiki_pageId_character_fields_fieldId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    put:
+      tags:
+        - Wiki
+      summary: Replace Character Fields FieldId
+      operationId: put_api_campaigns_campaignHandle_wiki_pageId_character_fields_fieldId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages:
+    get:
+      tags:
+        - Wiki
+      summary: Get PageId Character Pages
+      operationId: get_api_campaigns_campaignHandle_wiki_pageId_character_pages
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    post:
+      tags:
+        - Wiki
+      summary: Create or run PageId Character Pages
+      operationId: post_api_campaigns_campaignHandle_wiki_pageId_character_pages
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages/{tabId}:
+    delete:
+      tags:
+        - Wiki
+      summary: Delete Character Pages TabId
+      operationId: delete_api_campaigns_campaignHandle_wiki_pageId_character_pages_tabId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tabId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    patch:
+      tags:
+        - Wiki
+      summary: Update Character Pages TabId
+      operationId: patch_api_campaigns_campaignHandle_wiki_pageId_character_pages_tabId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tabId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages/{tabId}/blocks:
+    put:
+      tags:
+        - Wiki
+      summary: Replace TabId Blocks
+      operationId: put_api_campaigns_campaignHandle_wiki_pageId_character_pages_tabId_blocks
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tabId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages/{tabId}/duplicate:
+    post:
+      tags:
+        - Wiki
+      summary: Create or run TabId Duplicate
+      operationId: post_api_campaigns_campaignHandle_wiki_pageId_character_pages_tabId_duplicate
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tabId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages/{tabId}/plugin-data:
+    get:
+      tags:
+        - Wiki
+      summary: Get TabId Plugin Data
+      operationId: get_api_campaigns_campaignHandle_wiki_pageId_character_pages_tabId_plugin_data
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tabId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    put:
+      tags:
+        - Wiki
+      summary: Replace TabId Plugin Data
+      operationId: put_api_campaigns_campaignHandle_wiki_pageId_character_pages_tabId_plugin_data
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tabId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages/{tabId}/remove-plugin:
+    post:
+      tags:
+        - Wiki
+      summary: Create or run TabId Remove Plugin
+      operationId: post_api_campaigns_campaignHandle_wiki_pageId_character_pages_tabId_remove_plugin
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tabId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages/materialize:
+    post:
+      tags:
+        - Wiki
+      summary: Create or run Character Pages Materialize
+      operationId: post_api_campaigns_campaignHandle_wiki_pageId_character_pages_materialize
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/character-pages/order:
+    patch:
+      tags:
+        - Wiki
+      summary: Update Character Pages Order
+      operationId: patch_api_campaigns_campaignHandle_wiki_pageId_character_pages_order
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
 components:
   securitySchemes:
     cookieAuth:
@@ -18225,7 +19196,9 @@ components:
   schemas:
     SourceIdentity:
       type: object
-      required: [providerId, sourceId]
+      required:
+        - providerId
+        - sourceId
       properties:
         providerId:
           type: string
@@ -18235,7 +19208,8 @@ components:
           maxLength: 512
     SourceMetadata:
       type: object
-      required: [title]
+      required:
+        - title
       properties:
         title:
           type: string
@@ -18264,10 +19238,16 @@ components:
           maxLength: 2048
         kind:
           type: string
-          enum: [book, document, web, compendium, other]
+          enum:
+            - book
+            - document
+            - web
+            - compendium
+            - other
     SourceLocator:
       type: object
-      required: [label]
+      required:
+        - label
       properties:
         label:
           type: string
@@ -18275,7 +19255,10 @@ components:
         data: {}
     SourceReference:
       type: object
-      required: [payloadVersion, identity, metadata]
+      required:
+        - payloadVersion
+        - identity
+        - metadata
       properties:
         payloadVersion:
           type: integer
@@ -18291,7 +19274,9 @@ components:
           additionalProperties: true
     SourceSearchResult:
       type: object
-      required: [identity, metadata]
+      required:
+        - identity
+        - metadata
       properties:
         identity:
           $ref: "#/components/schemas/SourceIdentity"
@@ -18299,7 +19284,10 @@ components:
           $ref: "#/components/schemas/SourceMetadata"
     SourceProviderPresentation:
       type: object
-      required: [id, displayName, capabilities]
+      required:
+        - id
+        - displayName
+        - capabilities
       properties:
         id:
           type: string
@@ -18326,7 +19314,9 @@ components:
               type: boolean
     SourceOpenTarget:
       type: object
-      required: [type, url]
+      required:
+        - type
+        - url
       properties:
         type:
           type: string

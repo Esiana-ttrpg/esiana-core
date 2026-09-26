@@ -22,6 +22,42 @@ test('connection manifests reject paths, wildcard hosts, and non-loopback HTTP',
   }
 });
 
+test('character pages support canvas and plugin-owned renderers', () => {
+  const result = validatePluginManifest({
+    id: 'sheet-provider',
+    name: 'Sheet Provider',
+    version: '1.0.0',
+    description: 'Purpose-built character sheets',
+    scope: 'campaign',
+    characterPages: [
+      {
+        key: 'sheet', title: 'Sheet', renderMode: 'PLUGIN', renderer: 'characterSheet', schemaVersion: 3,
+        fields: [{ key: 'armor-class', label: 'Armor Class', type: 'NUMBER', validation: { min: 0 } }],
+      },
+      { key: 'notes', title: 'Notes', renderMode: 'CANVAS', schemaVersion: 1, canvas: { allowAddWidget: true, allowArrange: true } },
+    ],
+  });
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.manifest.characterPages?.length, 2);
+    assert.deepEqual(result.manifest.characterPages?.[0]?.fields?.[0], {
+      key: 'armor-class', label: 'Armor Class', type: 'NUMBER', validation: { min: 0 },
+    });
+  }
+});
+
+test('plugin-owned character pages require a renderer', () => {
+  const result = validatePluginManifest({
+    id: 'bad-sheet',
+    name: 'Bad Sheet',
+    version: '1.0.0',
+    description: 'Missing renderer',
+    scope: 'campaign',
+    characterPages: [{ key: 'sheet', title: 'Sheet', renderMode: 'PLUGIN', schemaVersion: 1 }],
+  });
+  assert.equal(result.ok, false);
+});
+
 test('isValidCommitSha accepts 40-char hex and rejects branch-like refs', () => {
   assert.equal(isValidCommitSha('abcdef0123456789abcdef0123456789abcdef01'), true);
   assert.equal(isValidCommitSha('main'), false);

@@ -52,7 +52,10 @@ export interface AppearancePresentationOption {
   id: string;
   label: string;
   presentationType?: AppearancePresentationType;
+  imageUrl?: string | null;
 }
+
+export const DEFAULT_APPEARANCE_PRESENTATION_ID = '__default__';
 
 export interface AppearancePresentationViewModel {
   selectedEntryId: string | null;
@@ -119,13 +122,13 @@ export function projectAppearanceForms(
     portraitCredit = appearance.portraitCredit;
   }
 
-  const entries = resolveGalleryEntriesWithLegacy(gallery, portraitUrl, portraitCredit);
+  const entries = gallery.entries;
   const primaryEntry = resolvePrimaryGalleryEntry(entries, context);
 
   return {
     entries,
     primaryEntry,
-    hasContent: sharedHasGalleryContent(gallery, portraitUrl),
+    hasContent: sharedHasGalleryContent(gallery, null),
   };
 }
 
@@ -168,17 +171,11 @@ export function projectEntityAppearance(
 ): EntityAppearanceViewModel {
   if (surfaceProfileKey === 'character') {
     const { appearance } = parseCharacterMetadata(metadata);
-    const portrait = resolvePrimaryGalleryPortrait(
-      appearance.gallery,
-      appearance.portraitUrl ?? featuredImageUrl ?? null,
-      appearance.portraitCredit,
-      context,
-    );
     return {
       summary: appearance.summary,
       tags: appearance.appearanceTags,
-      portraitUrl: portrait.portraitUrl,
-      portraitCredit: portrait.portraitCredit,
+      portraitUrl: appearance.portraitUrl ?? featuredImageUrl ?? null,
+      portraitCredit: appearance.portraitCredit,
       pronouns: appearance.pronouns,
       gender: appearance.gender,
       presentation: appearance.presentation,
@@ -187,17 +184,11 @@ export function projectEntityAppearance(
 
   if (surfaceProfileKey === 'bestiary') {
     const { appearance } = parseBestiaryMetadata(metadata);
-    const portrait = resolvePrimaryGalleryPortrait(
-      appearance.gallery,
-      appearance.portraitUrl ?? featuredImageUrl ?? null,
-      appearance.portraitCredit,
-      context,
-    );
     return {
       summary: appearance.summary,
       tags: appearance.tags,
-      portraitUrl: portrait.portraitUrl,
-      portraitCredit: portrait.portraitCredit,
+      portraitUrl: appearance.portraitUrl ?? featuredImageUrl ?? null,
+      portraitCredit: appearance.portraitCredit,
       pronouns: null,
       gender: null,
       presentation: null,
@@ -289,11 +280,11 @@ export function resolveSelectedGalleryEntry(
   forms: AppearanceFormsViewModel,
   selectedEntryId: string | null | undefined,
 ): AppearanceGalleryEntry | null {
-  if (selectedEntryId) {
+  if (selectedEntryId && selectedEntryId !== DEFAULT_APPEARANCE_PRESENTATION_ID) {
     const match = forms.entries.find((entry) => entry.id === selectedEntryId);
     if (match) return match;
   }
-  return forms.primaryEntry ?? forms.entries[0] ?? null;
+  return null;
 }
 
 export function isBaselinePresentationSelection(
@@ -311,11 +302,15 @@ export function listAppearancePresentations(
   filterEntries?: (entry: AppearanceGalleryEntry) => boolean,
 ): AppearancePresentationOption[] {
   const entries = filterEntries ? forms.entries.filter(filterEntries) : forms.entries;
-  return entries.map((entry) => ({
-    id: entry.id,
-    label: entry.label,
-    presentationType: entry.presentationType,
-  }));
+  return [
+    { id: DEFAULT_APPEARANCE_PRESENTATION_ID, label: 'Default' },
+    ...entries.map((entry) => ({
+      id: entry.id,
+      label: entry.label,
+      presentationType: entry.presentationType,
+      imageUrl: entry.imageUrl || null,
+    })),
+  ];
 }
 
 export function shouldShowPresentationSelector(
@@ -346,15 +341,11 @@ export function projectAppearancePresentation(input: {
 
   const presentations = listAppearancePresentations(forms, filterEntries);
   const selectedEntry = resolveSelectedGalleryEntry(forms, selectedEntryId);
-  const isBaseline = isBaselinePresentationSelection(
-    selectedEntry,
-    forms.primaryEntry,
-    presentations.length,
-  );
+  const isBaseline = !selectedEntry;
 
   const emptyPresentation: AppearancePresentationViewModel = {
-    selectedEntryId: selectedEntry?.id ?? null,
-    label: selectedEntry?.label ?? null,
+    selectedEntryId: selectedEntry?.id ?? DEFAULT_APPEARANCE_PRESENTATION_ID,
+    label: selectedEntry?.label ?? 'Default',
     presentationType: selectedEntry?.presentationType,
     isBaseline,
     portraitUrl: appearance.portraitUrl?.trim() || null,
@@ -369,28 +360,6 @@ export function projectAppearancePresentation(input: {
 
   if (!selectedEntry) {
     return emptyPresentation;
-  }
-
-  if (isBaseline) {
-    const entryPortrait = selectedEntry.imageUrl.trim();
-    const portraitUrl = entryPortrait || appearance.portraitUrl?.trim() || null;
-    const portraitCredit = entryPortrait
-      ? selectedEntry.imageCredit
-      : appearance.portraitCredit;
-
-    return {
-      selectedEntryId: selectedEntry.id,
-      label: selectedEntry.label,
-      presentationType: selectedEntry.presentationType,
-      isBaseline: true,
-      portraitUrl,
-      portraitCredit,
-      details: detailsCapability && details?.hasContent ? details : null,
-      description: combineDescription(appearance.summary, selectedEntry.presentationNotes),
-      tags: mergeUniqueTags(appearance.tags, selectedEntry.tags),
-      gender: appearance.gender,
-      presentation: appearance.presentation,
-    };
   }
 
   const portraitUrl = selectedEntry.imageUrl.trim() || null;

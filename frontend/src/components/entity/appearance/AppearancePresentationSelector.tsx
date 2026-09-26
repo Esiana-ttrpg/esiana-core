@@ -9,7 +9,7 @@ interface AppearancePresentationSelectorProps {
 }
 
 function chipClass(isSelected: boolean): string {
-  return `rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+  return `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
     isSelected
       ? 'border-primary/40 bg-primary/15 text-primary'
       : 'border-border/50 bg-elevated/40 text-muted hover:border-border hover:text-foreground'
@@ -76,6 +76,13 @@ export function AppearancePresentationSelector({
             onClick={() => onSelect(presentation.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
           >
+            {presentation.imageUrl ? (
+              <img src={presentation.imageUrl} alt="" className="size-5 rounded-full object-cover" />
+            ) : (
+              <span className="flex size-5 items-center justify-center rounded-full bg-elevated text-[9px]" aria-hidden>
+                {presentation.label.slice(0, 1).toUpperCase()}
+              </span>
+            )}
             {presentation.label}
           </button>
         );

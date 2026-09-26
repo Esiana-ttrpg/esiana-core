@@ -534,6 +534,9 @@ model Campaign {
   calendarEventCategories CalendarEventCategory[]
   joinRequests       CampaignJoinRequest[]
   wikiPages          WikiPage[]
+  characterPageTabs  CharacterPageTab[]
+  pluginCharacterPageStates PluginCharacterPageState[]
+  characterFields CharacterField[]
   notebookArcs       NoteBookArc[]
   assets             Asset[]
   mapLayers               MapLayer[]
@@ -1467,6 +1470,9 @@ model WikiPage {
   campaignWorldEventSuggestionsAsOrg CampaignWorldEventSuggestion[] @relation("CampaignWorldEventSuggestionOrg")
   campaignScheduledEffectsAtHaven CampaignScheduledEffect[] @relation("CampaignScheduledEffectHaven")
   narrativeStatus PageNarrativeStatus?
+  characterPageTabs CharacterPageTab[] @relation("CharacterPageTabs")
+  pluginCharacterPageStates PluginCharacterPageState[] @relation("PluginCharacterPageStates")
+  characterFields CharacterField[] @relation("CharacterFields")
 
   deletedAt DateTime?
 
@@ -1479,6 +1485,91 @@ model WikiPage {
   @@index([parentId])
   @@index([notebookArcId])
   @@index([mapAssetId])
+}
+
+/// A navigable view inside a canonical character WikiPage.
+model CharacterPageTab {
+  id              String @id @default(cuid())
+  campaignId      String
+  characterPageId String
+  origin          String
+  renderMode      String
+  coreKey         String?
+  title           String
+  displayOrder    Int
+  hidden          Boolean @default(false)
+  visibility      String?
+  blocks          Json @default("[]")
+  pluginStateId   String? @unique
+
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterPage   WikiPage @relation("CharacterPageTabs", fields: [characterPageId], references: [id], onDelete: Cascade)
+  pluginState     PluginCharacterPageState? @relation(fields: [pluginStateId], references: [id], onDelete: SetNull)
+  fields          CharacterField[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([characterPageId, coreKey])
+  @@index([campaignId, characterPageId, displayOrder])
+}
+
+/// Representation-independent character data discoverable by stable field identity.
+model CharacterField {
+  id              String @id @default(cuid())
+  campaignId      String
+  characterPageId String
+  pageTabId       String?
+  fieldKey        String
+  origin          String
+  pluginId        String?
+  sourceKey       String?
+  providerKey     String?
+  label           String
+  fieldType       String
+  value           Json?
+  validation      Json?
+  capabilities    Json?
+
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterPage   WikiPage @relation("CharacterFields", fields: [characterPageId], references: [id], onDelete: Cascade)
+  pageTab         CharacterPageTab? @relation(fields: [pageTabId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([characterPageId, fieldKey])
+  @@index([campaignId, characterPageId, updatedAt])
+  @@index([characterPageId, pluginId, sourceKey, providerKey])
+}
+
+/// Opaque, versioned state owned by one plugin character-page definition.
+model PluginCharacterPageState {
+  id                    String @id @default(cuid())
+  campaignId            String
+  characterPageId       String
+  pluginId              String
+  sourceKey             String
+  pluginSchemaVersion   Int
+  providerState         String @default("AVAILABLE")
+  renderer              String?
+  definition            Json?
+  pluginData            Json?
+  retainedBlocks        Json?
+  retainedTitle         String?
+  retainedDisplayOrder  Int?
+  retainedVisibility    String?
+  retainedRenderMode    String?
+
+  campaign              Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterPage         WikiPage @relation("PluginCharacterPageStates", fields: [characterPageId], references: [id], onDelete: Cascade)
+  tab                    CharacterPageTab?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([characterPageId, pluginId, sourceKey])
+  @@index([campaignId, pluginId, providerState])
 }
 
 model NoteBookArc {
