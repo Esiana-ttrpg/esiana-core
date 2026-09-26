@@ -21,6 +21,7 @@ export interface WikiPageGraphNode {
   id: string;
   title: string;
   parentId: string | null;
+  visibility?: string;
   templateType: string;
   metadata: unknown;
 }
@@ -335,6 +336,7 @@ export async function loadCampaignWikiGraph(
       id: true,
       title: true,
       parentId: true,
+      visibility: true,
       templateType: true,
       metadata: true,
     },

@@ -38,6 +38,10 @@ import {
 } from '../lib/notifications/notificationService.js';
 import { NotificationType } from '../lib/notifications/types.js';
 import { campaignSettingsPath } from '../lib/notifications/deepLinks.js';
+import {
+  revokeAllCampaignEventStreams,
+  revokeCampaignEventStreams,
+} from '../lib/campaignEventStreams.js';
 
 const MUTABLE_MEMBER_ROLES: readonly CampaignMemberRole[] = [
   CampaignMemberRoles.GAMEMASTER,
@@ -499,6 +503,7 @@ export async function updateCampaignMemberRole(
       },
     },
   });
+  revokeCampaignEventStreams(campaignId, targetUserId);
 
   if (previousRole !== updated.role) {
     notifyUsersFromTemplateAsync({
@@ -571,6 +576,8 @@ export async function transferGamemaster(
       });
     }
   });
+  revokeCampaignEventStreams(campaignId, targetUserId);
+  if (demoteCallerToWriter) revokeCampaignEventStreams(campaignId, callerId);
 
   notifyUsersFromTemplateAsync({
     userIds: [targetUserId],
@@ -625,6 +632,7 @@ export async function removeCampaignMember(
   await prisma.$transaction([
     prisma.campaignMember.delete({ where: { userId_campaignId: { userId: targetUserId, campaignId } } }),
   ]);
+  revokeCampaignEventStreams(campaignId, targetUserId);
 
   const slug = req.campaign!.campaignHandle;
   const managerIds = await getOperationalManagerUserIds(campaignId);
@@ -676,6 +684,7 @@ export async function leaveCampaign(
   await prisma.$transaction([
     prisma.campaignMember.delete({ where: { userId_campaignId: { userId, campaignId } } }),
   ]);
+  revokeCampaignEventStreams(campaignId, userId);
 
   const managerIds = await getOperationalManagerUserIds(campaignId);
   notifyUsersFromTemplateAsync({
@@ -793,5 +802,6 @@ export async function saveCampaignCapabilityOverrides(
   });
 
   invalidateCampaignCapabilityOverrideCache(campaignId);
+  revokeAllCampaignEventStreams(campaignId);
   res.json({ ok: true });
 }

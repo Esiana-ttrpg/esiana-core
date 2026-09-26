@@ -83,6 +83,7 @@ import {
   dispatchDomainEvent,
   toCalendarAdvancedDto,
 } from '../lib/domainEvents/index.js';
+import { revokeAllCampaignEventStreams } from '../lib/campaignEventStreams.js';
 import {
   computeNextEpochMinute,
   NoMasterCalendarError,
@@ -1471,6 +1472,10 @@ export async function updateCampaign(
     },
     select: campaignSelect(),
   });
+
+  if (body.allowPlayerChronologyManagement !== undefined) {
+    revokeAllCampaignEventStreams(campaignId);
+  }
 
   res.json({
     campaign: {

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -76,13 +77,19 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refreshGenerationRef = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!campaignHandle) return;
+    const generation = ++refreshGenerationRef.current;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchWikiTreePayload(campaignHandle);
+      const [data, pins] = await Promise.all([
+        fetchWikiTreePayload(campaignHandle),
+        fetchPersonalPins(campaignHandle),
+      ]);
+      if (generation !== refreshGenerationRef.current) return;
       setTree(data.tree ?? []);
       setCampaign(data.campaign ?? null);
       setSidebarConfig(normalizeSidebarConfig(data.campaign?.sidebarConfig));
@@ -90,9 +97,9 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPlayerSessionNotesFolderTitle(
         data.playerSessionNotesFolderTitle ?? PLAYER_SESSION_NOTES_TITLE,
       );
-      const pins = await fetchPersonalPins(campaignHandle);
       setPinnedShortcuts(pins);
     } catch (err) {
+      if (generation !== refreshGenerationRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load wiki');
       setTree([]);
       setCampaign(null);
@@ -100,7 +107,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPinnedShortcuts([]);
       setSidebarConfig(normalizeSidebarConfig(null));
     } finally {
-      setLoading(false);
+      if (generation === refreshGenerationRef.current) setLoading(false);
     }
   }, [campaignHandle]);
 
@@ -127,9 +134,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
         if (
           event.type === 'wiki.page.created' ||
           event.type === 'wiki.page.updated' ||
-          event.type === 'wiki.page.deleted' ||
-          event.type === 'character.created' ||
-          event.type === 'character.updated'
+          event.type === 'wiki.page.deleted'
         ) {
           scheduleRefresh();
         }
