@@ -1305,6 +1305,13 @@ export function WikiPage() {
     }
   }
 
+  async function handleMastheadMetadataSaved(next: Record<string, unknown>) {
+    setPageData((prev) =>
+      prev ? { ...prev, metadata: next as typeof prev.metadata } : prev,
+    );
+    await refresh();
+  }
+
   async function handleToggleEditPage() {
     if (isEditingPage) {
       const hasSemanticDirty = draftRegistryRef.current?.hasSemanticDirty ?? false;
@@ -2008,7 +2015,7 @@ export function WikiPage() {
                       pageId={pageId}
                       metadata={pageData.metadata}
                       flatPages={flatPages}
-                      onSaved={(next) => setPageData((prev) => prev ? { ...prev, metadata: next as typeof prev.metadata } : prev)}
+                      onSaved={handleMastheadMetadataSaved}
                       focusField={inspectorFocusField}
                       section="hero"
                       bare
@@ -2020,7 +2027,7 @@ export function WikiPage() {
                       pageId={pageId}
                       metadata={pageData.metadata}
                       flatPages={flatPages}
-                      onSaved={(next) => setPageData((prev) => prev ? { ...prev, metadata: next as typeof prev.metadata } : prev)}
+                      onSaved={handleMastheadMetadataSaved}
                       focusField={inspectorFocusField}
                       section="masthead"
                       bare

@@ -25,9 +25,13 @@ export function CharacterMasthead({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const expandRef = useRef<HTMLButtonElement>(null);
   const portrait = presentation.portraitUrl?.trim() || null;
+  const temporalLine = (identity?.temporalBadges ?? [])
+    .map((badge) => badge.label)
+    .filter(Boolean)
+    .join(' · ');
   const quickLine = [
     identity?.roleSubtitle,
-    ...(identity?.temporalBadges ?? []).map((badge) => badge.label),
+    temporalLine,
     identity?.statusLabel,
   ].filter(Boolean).join(' · ');
   const context = [identity?.ancestryLabel, identity?.locationLabel, identity?.familyTitle]
@@ -52,7 +56,10 @@ export function CharacterMasthead({
         ) : null}
         <div className="min-w-0 flex-1 space-y-1 pt-1">
           {nameControl ?? <h1 className={`${TYPE_DISPLAY_CLASS} text-2xl text-focal-foreground sm:text-3xl`}>{identity?.displayName}</h1>}
-          {identityEditor ?? <>
+          {identityEditor ? <>
+            {identityEditor}
+            {temporalLine ? <p className={`${TYPE_META_CLASS} text-muted`}>{temporalLine}</p> : null}
+          </> : <>
             {identity?.pronouns ? <p className={`${TYPE_META_CLASS} italic text-muted`}>{identity.pronouns}</p> : null}
             {title ? <p className="pt-2 text-base text-foreground">{title}</p> : null}
             {quickLine ? <p className={`${TYPE_META_CLASS} text-muted`}>{quickLine}</p> : null}
