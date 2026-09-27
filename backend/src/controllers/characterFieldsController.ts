@@ -6,6 +6,7 @@ import { toInputJsonValue, toNullableInputJsonValue } from '../lib/inputJsonValu
 import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
 import { listEnabledCampaignCharacterPageDefinitions } from '../lib/campaignPlugins.js';
 import { canReadCharacterPageTab, loadCharacterPageAccess } from './characterPagesController.js';
+import { characterResourceProvenance, isUserDeletableCharacterResource } from '../lib/characterResourceProvenance.js';
 import type {
   CharacterFieldDescriptor,
   CharacterFieldType,
@@ -94,13 +95,15 @@ function descriptor(row: any, canEdit: boolean): CharacterFieldDescriptor {
     origin: row.origin,
     pageId: row.pageTabId,
     ...(row.pluginId ? { pluginId: row.pluginId } : {}),
+    ...(row.apiSourceId ? { apiSourceId: row.apiSourceId } : {}),
+    ...(row.apiSourceName ? { apiSourceName: row.apiSourceName } : {}),
     ...(row.sourceKey ? { sourceKey: row.sourceKey } : {}),
     ...(row.providerKey ? { providerKey: row.providerKey } : {}),
     validation,
     capabilities: {
       readable: declared.readable !== false,
       writable: canEdit && declared.writable !== false,
-      deletable: canEdit && row.origin === 'CUSTOM',
+      deletable: canEdit && isUserDeletableCharacterResource(row.origin),
     },
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -197,10 +200,13 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
     pageTabId = tab.id;
   }
   const id = randomUUID();
+  const provenance = characterResourceProvenance(req);
   const row = await fieldsDb.characterField.create({ data: {
     id, campaignId: req.campaign!.campaignId, characterPageId: access.page.id,
     pageTabId,
-    fieldKey: id, origin: 'CUSTOM', label, fieldType,
+    fieldKey: id, origin: provenance.origin,
+    apiSourceId: provenance.apiSourceId, apiSourceName: provenance.apiSourceName,
+    label, fieldType,
     value: toNullableInputJsonValue(req.body?.value ?? null), validation: toInputJsonValue(validation),
     capabilities: toInputJsonValue({ readable: true, writable: true }),
   }});
@@ -256,7 +262,7 @@ export async function deleteCustomCharacterField(req: CampaignScopedRequest, res
     id: String(req.params.fieldId), campaignId: req.campaign!.campaignId, characterPageId: access.page.id,
   }});
   if (!row) { res.status(404).json({ error: 'Character field not found' }); return; }
-  if (row.origin !== 'CUSTOM') { res.status(400).json({ error: 'Plugin fields cannot be deleted by consumers' }); return; }
+  if (!isUserDeletableCharacterResource(row.origin)) { res.status(400).json({ error: 'Provider-managed fields cannot be deleted here' }); return; }
   await fieldsDb.characterField.delete({ where: { id: row.id } });
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_DELETED, campaignId: req.campaign!.campaignId,
     actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,

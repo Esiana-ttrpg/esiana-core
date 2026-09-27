@@ -11,6 +11,8 @@ test('origin and render mode combinations preserve ownership boundaries', () => 
   assert.equal(isValidOriginRenderMode('CORE', 'CANVAS'), false);
   assert.equal(isValidOriginRenderMode('CUSTOM', 'CANVAS'), true);
   assert.equal(isValidOriginRenderMode('CUSTOM', 'PLUGIN'), false);
+  assert.equal(isValidOriginRenderMode('API', 'CANVAS'), true);
+  assert.equal(isValidOriginRenderMode('API', 'PLUGIN'), false);
   assert.equal(isValidOriginRenderMode('PLUGIN', 'CANVAS'), true);
   assert.equal(isValidOriginRenderMode('PLUGIN', 'PLUGIN'), true);
 });
