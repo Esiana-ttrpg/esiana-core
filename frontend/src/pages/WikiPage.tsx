@@ -75,6 +75,8 @@ import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageSh
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { CharacterMasthead } from '@/components/entity/shells/CharacterMasthead';
+import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
+import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
 import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVisibilityBadge';
 import { CharacterCanvasPage } from '@/components/entity/CharacterCanvasPage';
 import { PluginCharacterPageHost } from '@/components/entity/PluginCharacterPageHost';
@@ -1998,6 +2000,33 @@ export function WikiPage() {
                 presentation={characterAppearancePresentation}
                 title={pageData ? parseCharacterMetadata(pageData.metadata).title : null}
                 nameControl={nameControl}
+                identityEditor={isEditingPage && isDMUser && pageData ? (
+                  <div className="mt-2 grid gap-3 lg:grid-cols-2">
+                    <CharacterIdentityEditor
+                      blockId={`character-masthead-identity:${pageId}`}
+                      campaignHandle={campaignHandle}
+                      pageId={pageId}
+                      metadata={pageData.metadata}
+                      flatPages={flatPages}
+                      onSaved={(next) => setPageData((prev) => prev ? { ...prev, metadata: next as typeof prev.metadata } : prev)}
+                      focusField={inspectorFocusField}
+                      section="hero"
+                      bare
+                      heroSheetLayout
+                    />
+                    <CharacterLineageEditor
+                      blockId={`character-masthead-lineage:${pageId}`}
+                      campaignHandle={campaignHandle}
+                      pageId={pageId}
+                      metadata={pageData.metadata}
+                      flatPages={flatPages}
+                      onSaved={(next) => setPageData((prev) => prev ? { ...prev, metadata: next as typeof prev.metadata } : prev)}
+                      focusField={inspectorFocusField}
+                      section="masthead"
+                      bare
+                    />
+                  </div>
+                ) : undefined}
                 visibilityControl={
                   <NarrativeVisibilityBadge
                     pageVisibility={pageVisibility}

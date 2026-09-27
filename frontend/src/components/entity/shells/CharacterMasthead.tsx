@@ -10,6 +10,7 @@ interface CharacterMastheadProps {
   title: string | null;
   nameControl?: ReactNode;
   visibilityControl?: ReactNode;
+  identityEditor?: ReactNode;
 }
 
 export function CharacterMasthead({
@@ -18,12 +19,17 @@ export function CharacterMasthead({
   title,
   nameControl,
   visibilityControl,
+  identityEditor,
 }: CharacterMastheadProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const expandRef = useRef<HTMLButtonElement>(null);
   const portrait = presentation.portraitUrl?.trim() || null;
-  const quickLine = [identity?.roleSubtitle, identity?.statusLabel].filter(Boolean).join(' · ');
+  const quickLine = [
+    identity?.roleSubtitle,
+    ...(identity?.temporalBadges ?? []).map((badge) => badge.label),
+    identity?.statusLabel,
+  ].filter(Boolean).join(' · ');
   const context = [identity?.ancestryLabel, identity?.locationLabel, identity?.familyTitle]
     .filter((value, index, all): value is string => Boolean(value) && all.indexOf(value) === index)
     .slice(0, 3);
@@ -46,10 +52,12 @@ export function CharacterMasthead({
         ) : null}
         <div className="min-w-0 flex-1 space-y-1 pt-1">
           {nameControl ?? <h1 className={`${TYPE_DISPLAY_CLASS} text-2xl text-focal-foreground sm:text-3xl`}>{identity?.displayName}</h1>}
-          {identity?.pronouns ? <p className={`${TYPE_META_CLASS} italic text-muted`}>{identity.pronouns}</p> : null}
-          {title ? <p className="pt-2 text-base text-foreground">{title}</p> : null}
-          {quickLine ? <p className={`${TYPE_META_CLASS} text-muted`}>{quickLine}</p> : null}
-          {context.length ? <p className={`${TYPE_META_CLASS} pt-1 text-muted`}>{context.join(' · ')}</p> : null}
+          {identityEditor ?? <>
+            {identity?.pronouns ? <p className={`${TYPE_META_CLASS} italic text-muted`}>{identity.pronouns}</p> : null}
+            {title ? <p className="pt-2 text-base text-foreground">{title}</p> : null}
+            {quickLine ? <p className={`${TYPE_META_CLASS} text-muted`}>{quickLine}</p> : null}
+            {context.length ? <p className={`${TYPE_META_CLASS} pt-1 text-muted`}>{context.join(' · ')}</p> : null}
+          </>}
         </div>
         {visibilityControl ? <div className="shrink-0 self-start">{visibilityControl}</div> : null}
       </div>
