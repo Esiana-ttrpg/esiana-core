@@ -45,6 +45,8 @@ import { authenticateApiOrSession } from './middleware/auth.js';
 import { getUploadByFilename } from './controllers/assetsController.js';
 import { bootstrapWebhookDispatcher } from './lib/webhooks/dispatcher.js';
 import { startWebhookDeliverySweep } from './lib/webhooks/delivery.js';
+import { bootstrapDiscordDispatcher } from './lib/discord/dispatcher.js';
+import { startDiscordDeliverySweep } from './lib/discord/delivery.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -103,6 +105,8 @@ export async function createApp(): Promise<Express> {
   bootstrapGlobalTimeHooks();
   bootstrapWebhookDispatcher();
   startWebhookDeliverySweep();
+  bootstrapDiscordDispatcher();
+  startDiscordDeliverySweep();
   setPluginHostReloader(reloadPluginHost);
   await reconcileStaleSystemPluginsFromDisk();
   await syncGlobalSystemPluginsFromDisk();

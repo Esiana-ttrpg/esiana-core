@@ -310,6 +310,7 @@ import {
 import { listCampaignActivity } from '../controllers/campaignActivityController.js';
 import { streamCampaignEvents } from '../controllers/campaignEventsController.js';
 import { createWebhook, deleteWebhook, getWebhookCatalog, listWebhookDeliveries, listWebhooks, redeliverWebhook, rotateWebhookSecret, testWebhook, updateWebhook } from '../controllers/webhooksController.js';
+import { createDiscord, deleteDiscord, getDiscordCatalog, listDiscord, listDiscordDeliveries, testDiscord, updateDiscord } from '../controllers/discordController.js';
 import {
   getCampaignGrowthMetrics,
   postWritingSession,
@@ -489,6 +490,13 @@ campaignScopedRouter.post('/webhooks/:webhookId/rotate-secret', requireGamemaste
 campaignScopedRouter.post('/webhooks/:webhookId/test', requireGamemasterSettings, testWebhook);
 campaignScopedRouter.get('/webhooks/:webhookId/deliveries', requireGamemasterSettings, listWebhookDeliveries);
 campaignScopedRouter.post('/webhook-deliveries/:deliveryId/redeliver', requireGamemasterSettings, redeliverWebhook);
+campaignScopedRouter.get('/discord/catalog', requireGamemasterSettings, getDiscordCatalog);
+campaignScopedRouter.get('/discord', requireGamemasterSettings, listDiscord);
+campaignScopedRouter.post('/discord', requireGamemasterSettings, createDiscord);
+campaignScopedRouter.patch('/discord/:destinationId', requireGamemasterSettings, updateDiscord);
+campaignScopedRouter.delete('/discord/:destinationId', requireGamemasterSettings, deleteDiscord);
+campaignScopedRouter.post('/discord/:destinationId/test', requireGamemasterSettings, testDiscord);
+campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemasterSettings, listDiscordDeliveries);
 
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
 campaignScopedRouter.get('/chronology/timeline', getChronologyTimelineBundle);

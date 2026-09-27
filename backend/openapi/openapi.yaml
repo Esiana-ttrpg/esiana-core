@@ -19601,6 +19601,332 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord:
+    get:
+      tags:
+        - Campaigns
+      summary: Get CampaignHandle Discord
+      operationId: get_api_campaigns_campaignHandle_discord
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run CampaignHandle Discord
+      operationId: post_api_campaigns_campaignHandle_discord
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/{destinationId}:
+    delete:
+      tags:
+        - Campaigns
+      summary: Delete Discord DestinationId
+      operationId: delete_api_campaigns_campaignHandle_discord_destinationId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+    patch:
+      tags:
+        - Campaigns
+      summary: Update Discord DestinationId
+      operationId: patch_api_campaigns_campaignHandle_discord_destinationId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/{destinationId}/deliveries:
+    get:
+      tags:
+        - Campaigns
+      summary: Get DestinationId Deliveries
+      operationId: get_api_campaigns_campaignHandle_discord_destinationId_deliveries
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/{destinationId}/test:
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run DestinationId Test
+      operationId: post_api_campaigns_campaignHandle_discord_destinationId_test
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/catalog:
+    get:
+      tags:
+        - Campaigns
+      summary: Get Discord Catalog
+      operationId: get_api_campaigns_campaignHandle_discord_catalog
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
 components:
   securitySchemes:
     cookieAuth:
