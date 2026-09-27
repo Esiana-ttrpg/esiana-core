@@ -8,6 +8,7 @@ import { useWiki } from '@/contexts/WikiContext';
 import { StatusTab } from '@/components/StatusTab';
 import { CampaignBackupTab } from '@/components/campaign/CampaignBackupTab';
 import { CampaignPluginsSettingsTab } from '@/components/campaign/CampaignPluginsSettingsTab';
+import { CampaignWebhooksSettings } from '@/components/campaign/CampaignWebhooksSettings';
 import { RecruitmentSettingsTab } from '@/components/campaign/RecruitmentSettingsTab';
 import { SchedulingSettingsTab } from '@/components/campaign/SchedulingSettingsTab';
 import { WorldDevelopmentSettingsTab } from '@/components/campaign/WorldDevelopmentSettingsTab';
@@ -848,6 +849,7 @@ export function CampaignSettingsPage() {
         </div>
       ) : activeTab === 'integrations' ? (
         <div className="space-y-6">
+          <CampaignWebhooksSettings campaignHandle={campaignHandle} />
           <div className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-2 text-lg font-semibold text-white">Integrations</h2>
             <p className="text-sm text-muted">

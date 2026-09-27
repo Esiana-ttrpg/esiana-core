@@ -43,6 +43,8 @@ import { pluginAssetsRouter } from './routes/pluginAssets.js';
 import { assetsRouter } from './routes/assets.js';
 import { authenticateApiOrSession } from './middleware/auth.js';
 import { getUploadByFilename } from './controllers/assetsController.js';
+import { bootstrapWebhookDispatcher } from './lib/webhooks/dispatcher.js';
+import { startWebhookDeliverySweep } from './lib/webhooks/delivery.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -99,6 +101,8 @@ export async function createApp(): Promise<Express> {
   validateAuthEnvContract({ enabledOidcProviderCount: enabledOidcCount });
   bootstrapStorageRegistry();
   bootstrapGlobalTimeHooks();
+  bootstrapWebhookDispatcher();
+  startWebhookDeliverySweep();
   setPluginHostReloader(reloadPluginHost);
   await reconcileStaleSystemPluginsFromDisk();
   await syncGlobalSystemPluginsFromDisk();

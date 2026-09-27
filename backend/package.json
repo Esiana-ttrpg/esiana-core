@@ -8,6 +8,7 @@
     "test:assets": "node --import tsx --test --test-concurrency=1 src/routes/assets.http.test.ts src/lib/assetAccess.test.ts",
     "test:wiki-updated-at": "node --import tsx --test --test-concurrency=1 src/routes/wikiPageUpdatedAt.http.test.ts",
     "test:realtime": "node --import tsx --test --test-concurrency=1 src/lib/domainEvents/domainEvents.test.ts src/lib/campaignEventStreams.test.ts src/controllers/campaignEventsController.test.ts src/lib/campaignEventVisibility.test.ts src/lib/campaignWebSocketServer.test.ts",
+    "test:webhooks": "node --import tsx --test --test-concurrency=1 src/lib/webhooks/webhooks.test.ts src/lib/ssrfGuard.test.ts src/lib/networkFetch.test.ts",
     "build": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsc && node scripts/copy-openapi.mjs",
     "start": "node dist/backend/src/index.js",
     "db:generate": "prisma generate",
