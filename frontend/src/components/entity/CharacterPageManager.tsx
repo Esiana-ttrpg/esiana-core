@@ -7,6 +7,7 @@ import {
   removePluginCharacterPage,
   reorderCharacterPages,
 } from '@/lib/wiki';
+import { characterResourceDeleteWarning, characterResourceSourceLabel } from '@/lib/characterResourceProvenance';
 
 interface CharacterPageManagerProps {
   campaignHandle: string;
@@ -92,7 +93,7 @@ export function CharacterPageManager({
             <div key={page.key} className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{page.title}</p>
-                <p className="text-xs text-muted">{page.origin.toLowerCase()} · {page.renderMode.toLowerCase()}</p>
+                <p className="text-xs text-muted">{characterResourceSourceLabel(page)} · {page.renderMode.toLowerCase()}</p>
               </div>
               {page.capabilities.canRename ? <button type="button" className="text-xs text-muted hover:text-foreground" onClick={() => void rename(page)}>Rename</button> : null}
               {page.capabilities.canHide ? (
@@ -113,7 +114,8 @@ export function CharacterPageManager({
               })}><Copy className="size-4" /></button> : null}
               {page.capabilities.canDelete ? (
                 <button type="button" className="rounded p-1 text-muted hover:text-destructive" aria-label={`Delete ${page.title}`} onClick={() => {
-                  if (!window.confirm(`Delete ${page.title}?`)) return;
+                  const warning = characterResourceDeleteWarning(page, page.title);
+                  if (!window.confirm(warning)) return;
                   void deleteCustomCharacterPage(campaignHandle, characterPageId, page.id).then(() => onPagesChange(pages.filter((item) => item.id !== page.id)));
                 }}><Trash2 className="size-4" /></button>
               ) : null}

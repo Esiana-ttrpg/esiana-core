@@ -19,7 +19,7 @@ export const CORE_CHARACTER_PAGE_ORDER = new Map<string, number>(
 );
 
 export function isCharacterPageOrigin(value: unknown): value is CharacterPageOrigin {
-  return value === 'CORE' || value === 'CUSTOM' || value === 'PLUGIN';
+  return value === 'CORE' || value === 'CUSTOM' || value === 'PLUGIN' || value === 'API';
 }
 
 export function isCharacterPageRenderMode(value: unknown): value is CharacterPageRenderMode {
@@ -31,7 +31,7 @@ export function isValidOriginRenderMode(
   renderMode: CharacterPageRenderMode,
 ): boolean {
   if (origin === 'CORE') return renderMode === 'CORE';
-  if (origin === 'CUSTOM') return renderMode === 'CANVAS';
+  if (origin === 'CUSTOM' || origin === 'API') return renderMode === 'CANVAS';
   return renderMode === 'CANVAS' || renderMode === 'PLUGIN';
 }
 

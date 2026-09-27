@@ -1501,6 +1501,9 @@ model CharacterPageTab {
   visibility      String?
   blocks          Json @default("[]")
   pluginStateId   String? @unique
+  /// API token identity captured at creation time; informational, not ownership.
+  apiSourceId     String?
+  apiSourceName   String?
 
   campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   characterPage   WikiPage @relation("CharacterPageTabs", fields: [characterPageId], references: [id], onDelete: Cascade)
@@ -1523,6 +1526,9 @@ model CharacterField {
   fieldKey        String
   origin          String
   pluginId        String?
+  /// API token identity captured at creation time; informational, not ownership.
+  apiSourceId     String?
+  apiSourceName   String?
   sourceKey       String?
   providerKey     String?
   label           String

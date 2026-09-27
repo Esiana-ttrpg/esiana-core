@@ -22,6 +22,7 @@ import {
   normalizeCharacterPageBlocks,
   normalizeCharacterPageTitle,
 } from '../lib/characterPages.js';
+import { characterResourceProvenance, isUserDeletableCharacterResource } from '../lib/characterResourceProvenance.js';
 
 const characterDb = prisma as typeof prisma & {
   characterPageTab: any;
@@ -87,7 +88,9 @@ function serializeStoredTab(row: any, canEdit: boolean): CharacterPageDescriptor
         ? row.coreKey
         : origin === 'PLUGIN'
           ? `plugin:${plugin?.pluginId ?? 'unknown'}:${plugin?.sourceKey ?? row.id}`
-          : `custom:${row.id}`,
+          : origin === 'API'
+            ? `api:${row.id}`
+            : `custom:${row.id}`,
     title: row.title,
     origin,
     renderMode,
@@ -95,6 +98,8 @@ function serializeStoredTab(row: any, canEdit: boolean): CharacterPageDescriptor
     hidden: row.hidden,
     visibility: row.visibility,
     ...(row.coreKey ? { coreKey: row.coreKey } : {}),
+    ...(row.apiSourceId ? { apiSourceId: row.apiSourceId } : {}),
+    ...(row.apiSourceName ? { apiSourceName: row.apiSourceName } : {}),
     ...(plugin
       ? {
           pluginId: plugin.pluginId,
@@ -107,10 +112,10 @@ function serializeStoredTab(row: any, canEdit: boolean): CharacterPageDescriptor
     ...(renderMode === 'CANVAS' ? { blocks: Array.isArray(row.blocks) ? row.blocks : [] } : {}),
     capabilities: {
       canEdit,
-      canRename: canEdit && origin === 'CUSTOM',
+      canRename: canEdit && isUserDeletableCharacterResource(origin),
       canReorder: canEdit && row.coreKey !== 'overview',
       canHide: canEdit && row.coreKey !== 'overview',
-      canDelete: canEdit && origin === 'CUSTOM',
+      canDelete: canEdit && isUserDeletableCharacterResource(origin),
       allowAddWidget: canEdit && renderMode === 'CANVAS' && (origin !== 'PLUGIN' || definition?.canvas?.allowAddWidget === true),
       allowArrange: canEdit && renderMode === 'CANVAS' && (origin !== 'PLUGIN' || definition?.canvas?.allowArrange === true),
     },
@@ -298,11 +303,14 @@ export async function createCustomCharacterPage(req: CampaignScopedRequest, res:
     orderBy: { displayOrder: 'desc' },
     select: { displayOrder: true },
   });
+  const provenance = characterResourceProvenance(req);
   const row = await characterDb.characterPageTab.create({
     data: {
       campaignId: req.campaign!.campaignId,
       characterPageId: access.page.id,
-      origin: 'CUSTOM',
+      origin: provenance.origin,
+      apiSourceId: provenance.apiSourceId,
+      apiSourceName: provenance.apiSourceName,
       renderMode: 'CANVAS',
       title,
       displayOrder: Math.max(last?.displayOrder ?? 50, 50) + 10,
@@ -381,8 +389,8 @@ export async function updateCharacterPage(req: CampaignScopedRequest, res: Respo
   const { row } = loaded;
   const data: Record<string, unknown> = {};
   if (req.body?.title !== undefined) {
-    if (row.origin !== 'CUSTOM') {
-      res.status(400).json({ error: 'Only custom pages can be renamed' });
+    if (!isUserDeletableCharacterResource(row.origin)) {
+      res.status(400).json({ error: 'Only user- or API-created pages can be renamed' });
       return;
     }
     const title = normalizeCharacterPageTitle(req.body.title);
@@ -455,6 +463,11 @@ export async function reorderCharacterPages(req: CampaignScopedRequest, res: Res
           where: { id: key.slice(7), campaignId: req.campaign!.campaignId, characterPageId: access.page.id },
           data: { displayOrder },
         });
+      } else if (key.startsWith('api:')) {
+        await db.characterPageTab.updateMany({
+          where: { id: key.slice(4), campaignId: req.campaign!.campaignId, characterPageId: access.page.id, origin: 'API' },
+          data: { displayOrder },
+        });
       } else if (key.startsWith('plugin:')) {
         const [, pluginId, ...sourceParts] = key.split(':');
         const sourceKey = sourceParts.join(':');
@@ -502,8 +515,8 @@ export async function updateCharacterPageBlocks(req: CampaignScopedRequest, res:
 export async function deleteCustomCharacterPage(req: CampaignScopedRequest, res: Response): Promise<void> {
   const loaded = await loadStoredTab(req, res, true);
   if (!loaded) return;
-  if (loaded.row.origin !== 'CUSTOM') {
-    res.status(400).json({ error: 'Only custom pages can be deleted here' });
+  if (!isUserDeletableCharacterResource(loaded.row.origin)) {
+    res.status(400).json({ error: 'Only user- or API-created pages can be deleted here' });
     return;
   }
   await characterDb.characterPageTab.delete({ where: { id: loaded.row.id } });
@@ -518,11 +531,14 @@ export async function duplicateCharacterPageToCustom(req: CampaignScopedRequest,
     return;
   }
   const title = normalizeCharacterPageTitle(req.body?.title) ?? `${loaded.row.title} copy`;
+  const provenance = characterResourceProvenance(req);
   const duplicate = await characterDb.characterPageTab.create({
     data: {
       campaignId: req.campaign!.campaignId,
       characterPageId: loaded.access.page.id,
-      origin: 'CUSTOM',
+      origin: provenance.origin,
+      apiSourceId: provenance.apiSourceId,
+      apiSourceName: provenance.apiSourceName,
       renderMode: 'CANVAS',
       title,
       displayOrder: loaded.row.displayOrder + 1,

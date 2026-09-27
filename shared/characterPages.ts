@@ -8,11 +8,11 @@ export const CHARACTER_CORE_PAGE_KEYS = [
 ] as const;
 
 export type CharacterCorePageKey = (typeof CHARACTER_CORE_PAGE_KEYS)[number];
-export type CharacterPageOrigin = 'CORE' | 'CUSTOM' | 'PLUGIN';
+export type CharacterPageOrigin = 'CORE' | 'CUSTOM' | 'PLUGIN' | 'API';
 export type CharacterPageRenderMode = 'CORE' | 'CANVAS' | 'PLUGIN';
 export type PluginProviderState = 'AVAILABLE' | 'UNAVAILABLE' | 'REMOVED';
 export type CharacterPageDisplayMode = 'narrow' | 'standard' | 'wide';
-export type CharacterFieldOrigin = 'CUSTOM' | 'PLUGIN';
+export type CharacterFieldOrigin = 'CUSTOM' | 'PLUGIN' | 'API';
 export type CharacterFieldType = 'STRING' | 'NUMBER' | 'BOOLEAN' | 'DATE' | 'ENUM' | 'JSON';
 
 export interface CharacterFieldValidation {
@@ -50,6 +50,8 @@ export interface CharacterFieldDescriptor {
   origin: CharacterFieldOrigin;
   pageId: string | null;
   pluginId?: string;
+  apiSourceId?: string;
+  apiSourceName?: string;
   sourceKey?: string;
   providerKey?: string;
   validation: CharacterFieldValidation;
@@ -79,6 +81,8 @@ export interface CharacterPageDescriptor {
   visibility: string | null;
   coreKey?: CharacterCorePageKey;
   pluginId?: string;
+  apiSourceId?: string;
+  apiSourceName?: string;
   sourceKey?: string;
   renderer?: string;
   pluginSchemaVersion?: number;
