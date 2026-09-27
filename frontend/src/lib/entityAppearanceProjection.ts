@@ -55,6 +55,12 @@ export interface AppearancePresentationOption {
   imageUrl?: string | null;
 }
 
+export type AppearanceFieldSource = 'default' | 'override' | 'explicit-empty';
+export interface ResolvedAppearanceField<T> {
+  value: T;
+  source: AppearanceFieldSource;
+}
+
 export const DEFAULT_APPEARANCE_PRESENTATION_ID = '__default__';
 
 export interface AppearancePresentationViewModel {
@@ -69,6 +75,32 @@ export interface AppearancePresentationViewModel {
   tags: string[];
   gender: string | null;
   presentation: string | null;
+  fields: {
+    atAGlance: ResolvedAppearanceField<string | null>;
+    build: ResolvedAppearanceField<string | null>;
+    voice: ResolvedAppearanceField<string | null>;
+    presence: ResolvedAppearanceField<string | null>;
+    clothingMotifs: ResolvedAppearanceField<string | null>;
+    distinguishingFeatures: ResolvedAppearanceField<string[]>;
+    visibleInjuries: ResolvedAppearanceField<string[]>;
+    description: ResolvedAppearanceField<string | null>;
+    tags: ResolvedAppearanceField<string[]>;
+    gender: ResolvedAppearanceField<string | null>;
+    presentation: ResolvedAppearanceField<string | null>;
+    authorNotes: ResolvedAppearanceField<string | null>;
+  };
+}
+
+function resolveText(overlay: string | undefined, fallback: string | null): ResolvedAppearanceField<string | null> {
+  if (overlay === undefined) return { value: fallback, source: 'default' };
+  if (overlay === '') return { value: null, source: 'explicit-empty' };
+  return { value: overlay, source: 'override' };
+}
+
+function resolveList(overlay: string[] | undefined, fallback: string[]): ResolvedAppearanceField<string[]> {
+  if (overlay === undefined) return { value: fallback, source: 'default' };
+  if (overlay.length === 0) return { value: [], source: 'explicit-empty' };
+  return { value: overlay, source: 'override' };
 }
 
 const EMPTY: EntityAppearanceViewModel = {
@@ -93,7 +125,7 @@ export function resolvePrimaryGalleryPortrait(
     legacyPortraitCredit,
   );
   const primary = resolvePrimaryGalleryEntry(entries, context);
-  if (primary?.imageUrl.trim()) {
+  if (primary?.imageUrl?.trim()) {
     return { portraitUrl: primary.imageUrl, portraitCredit: primary.imageCredit };
   }
   return { portraitUrl: legacyPortraitUrl, portraitCredit: legacyPortraitCredit };
@@ -356,13 +388,40 @@ export function projectAppearancePresentation(input: {
     tags: appearance.tags,
     gender: appearance.gender,
     presentation: appearance.presentation,
+    fields: {
+      atAGlance: { value: details?.atAGlance ?? null, source: 'default' },
+      build: { value: details?.build ?? null, source: 'default' },
+      voice: { value: details?.voice ?? null, source: 'default' },
+      presence: { value: details?.vibeImpression ?? null, source: 'default' },
+      clothingMotifs: { value: details?.clothingMotifs ?? null, source: 'default' },
+      distinguishingFeatures: { value: details?.distinguishingFeatures ?? [], source: 'default' },
+      visibleInjuries: { value: details?.visibleInjuries ?? [], source: 'default' },
+      description: { value: appearance.summary, source: 'default' },
+      tags: { value: appearance.tags, source: 'default' },
+      gender: { value: appearance.gender, source: 'default' },
+      presentation: { value: appearance.presentation, source: 'default' },
+      authorNotes: { value: null, source: 'default' },
+    },
   };
 
   if (!selectedEntry) {
     return emptyPresentation;
   }
 
-  const portraitUrl = selectedEntry.imageUrl.trim() || null;
+  const portraitUrl = selectedEntry.imageUrl === undefined
+    ? appearance.portraitUrl?.trim() || null
+    : selectedEntry.imageUrl.trim() || null;
+  const atAGlance = resolveText(selectedEntry.atAGlance, details?.atAGlance ?? null);
+  const build = resolveText(selectedEntry.build, details?.build ?? null);
+  const voice = resolveText(selectedEntry.voice, details?.voice ?? null);
+  const presence = resolveText(selectedEntry.presence, details?.vibeImpression ?? null);
+  const clothing = resolveText(selectedEntry.clothingMotifs, details?.clothingMotifs ?? null);
+  const features = resolveList(selectedEntry.distinguishingFeatures, details?.distinguishingFeatures ?? []);
+  const injuries = resolveList(selectedEntry.visibleInjuries, details?.visibleInjuries ?? []);
+  const description = resolveText(selectedEntry.presentationNotes, appearance.summary);
+  const tags = resolveList(selectedEntry.tags, appearance.tags);
+  const gender = resolveText(selectedEntry.gender, appearance.gender);
+  const presentation = resolveText(selectedEntry.presentation, appearance.presentation);
 
   return {
     selectedEntryId: selectedEntry.id,
@@ -370,11 +429,27 @@ export function projectAppearancePresentation(input: {
     presentationType: selectedEntry.presentationType,
     isBaseline: false,
     portraitUrl,
-    portraitCredit: portraitUrl ? selectedEntry.imageCredit : null,
-    details: null,
-    description: selectedEntry.presentationNotes?.trim() || null,
-    tags: [...selectedEntry.tags],
-    gender: null,
-    presentation: null,
+    portraitCredit: selectedEntry.imageUrl === undefined ? appearance.portraitCredit : (portraitUrl ? selectedEntry.imageCredit : null),
+    details: {
+      atAGlance: atAGlance.value,
+      build: build.value,
+      voice: voice.value,
+      vibeImpression: presence.value,
+      clothingMotifs: clothing.value,
+      distinguishingFeatures: features.value,
+      visibleInjuries: injuries.value,
+      hasContent: Boolean(atAGlance.value || build.value || voice.value || presence.value || clothing.value || features.value.length || injuries.value.length),
+      formattedSummary: '',
+    },
+    description: description.value,
+    tags: tags.value,
+    gender: gender.value,
+    presentation: presentation.value,
+    fields: {
+      atAGlance, build, voice, presence, clothingMotifs: clothing,
+      distinguishingFeatures: features, visibleInjuries: injuries,
+      description, tags, gender, presentation,
+      authorNotes: resolveText(selectedEntry.authorNotes, null),
+    },
   };
 }

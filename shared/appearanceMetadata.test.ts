@@ -191,4 +191,18 @@ describe('appearanceMetadata', () => {
     });
     assert.equal(gallery.entries[0]?.timelinePin, 'epoch-3-session-12');
   });
+
+  it('preserves explicit empty overlays separately from inheritance', () => {
+    const gallery = normalizeAppearanceGallery({
+      entries: [
+        { id: 'empty', label: 'Quiet guise', voice: '', tags: [], visibleInjuries: [] },
+        { id: 'inherited', label: 'Inherited guise' },
+      ],
+    });
+    assert.equal(gallery.entries[0]?.voice, '');
+    assert.deepEqual(gallery.entries[0]?.tags, []);
+    assert.deepEqual(gallery.entries[0]?.visibleInjuries, []);
+    assert.equal(gallery.entries[1]?.voice, undefined);
+    assert.equal(gallery.entries[1]?.tags, undefined);
+  });
 });

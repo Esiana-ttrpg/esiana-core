@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import type { EntitySubviewDef, EntitySubviewId } from '@/lib/entityPageShells/types';
 import { resolveEntityKindLabel } from '@/lib/wikiPageHeaderMeta';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
@@ -61,6 +61,7 @@ interface WikiPageEditorHeaderProps {
   titleFocusField?: string | null;
   onAddSubview?: () => void;
   onManageSubviews?: () => void;
+  characterMasthead?: (nameControl: ReactNode) => ReactNode;
 }
 
 const titleInputClass = `${TYPE_DISPLAY_CLASS} w-full min-w-0 rounded-md border border-transparent bg-transparent px-0 py-0 text-2xl text-focal-foreground outline-none focus:border-border/60 focus:bg-surface/30 sm:text-3xl`;
@@ -88,6 +89,7 @@ export function WikiPageEditorHeader({
   titleFocusField,
   onAddSubview,
   onManageSubviews,
+  characterMasthead,
   ...toolbarProps
 }: WikiPageEditorHeaderProps) {
   const entityKind = resolveEntityKindLabel(profileKey, templateType);
@@ -116,7 +118,7 @@ export function WikiPageEditorHeader({
 
       <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1">
-          {showTitleEditor ? (
+          {!characterMasthead && showTitleEditor ? (
             <input
               id="character-field-name"
               type="text"
@@ -126,14 +128,14 @@ export function WikiPageEditorHeader({
               onBlur={() => void onPageTitleForEditBlur?.()}
               aria-label="Character name"
             />
-          ) : (
+          ) : !characterMasthead ? (
             <h1
               className={`${TYPE_DISPLAY_CLASS} text-2xl text-focal-foreground sm:text-3xl`}
             >
               {displayTitle}
             </h1>
-          )}
-          {entityKind ? (
+          ) : null}
+          {!characterMasthead && entityKind ? (
             <p className={`${TYPE_META_CLASS} mt-0.5 text-muted`}>{entityKind}</p>
           ) : null}
         </div>
@@ -148,6 +150,12 @@ export function WikiPageEditorHeader({
           {...toolbarProps}
         />
       </div>
+
+      {characterMasthead ? characterMasthead(showTitleEditor ? (
+        <input id="character-field-name" type="text" className={titleInputClass} value={titleValue} onChange={(e) => onPageTitleForEditChange?.(e.target.value)} onBlur={() => void onPageTitleForEditBlur?.()} aria-label="Character name" />
+      ) : (
+        <h1 className={`${TYPE_DISPLAY_CLASS} text-2xl text-focal-foreground sm:text-3xl`}>{displayTitle}</h1>
+      )) : null}
 
       {havenBackLink ? (
         <Link

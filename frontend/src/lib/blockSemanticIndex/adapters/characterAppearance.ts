@@ -11,7 +11,7 @@ export const characterAppearanceAdapter: BlockSemanticIndexAdapter = ({ pageMeta
     entry.presentationType
       ? APPEARANCE_PRESENTATION_TYPE_LABELS[entry.presentationType]
       : null,
-    ...entry.tags,
+    ...(entry.tags ?? []),
     entry.presentationNotes,
   ]);
 
@@ -41,7 +41,7 @@ export const characterAppearanceAdapter: BlockSemanticIndexAdapter = ({ pageMeta
       ...appearance.appearanceTags,
       ...appearance.distinguishingFeatures,
       ...appearance.gallery.entries.map((e) => e.label),
-      ...appearance.gallery.entries.flatMap((e) => e.tags),
+      ...appearance.gallery.entries.flatMap((e) => e.tags ?? []),
     ].filter((k): k is string => Boolean(k?.trim())),
   };
 };

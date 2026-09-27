@@ -178,7 +178,7 @@ describe('entityAppearanceProjection', () => {
     assert.equal(vm.gender, 'Woman');
   });
 
-  it('projectAppearancePresentation non-baseline suppresses entity inheritance', () => {
+  it('projectAppearancePresentation resolves persisted overlays over inherited defaults', () => {
     const details = projectAppearanceDetails(
       {
         appearance: {
@@ -206,11 +206,28 @@ describe('entityAppearanceProjection', () => {
 
     assert.equal(vm.isBaseline, false);
     assert.equal(vm.portraitUrl, 'https://example.com/fox.jpg');
-    assert.equal(vm.details, null);
+    assert.equal(vm.details?.build, 'Slender');
     assert.equal(vm.description, 'Full fox shape.');
     assert.deepEqual(vm.tags, ['wild']);
-    assert.equal(vm.gender, null);
-    assert.equal(vm.presentation, null);
+    assert.equal(vm.gender, 'Woman');
+    assert.equal(vm.presentation, 'Feminine');
+    assert.equal(vm.fields.build.source, 'default');
+    assert.equal(vm.fields.description.source, 'override');
+  });
+
+  it('does not inherit explicitly empty scalar or collection overlays', () => {
+    const forms = projectAppearanceForms({ appearance: { gallery: { entries: [{
+      id: 'quiet', label: 'Quiet', imageUrl: '', voice: '', tags: [], visibleInjuries: [],
+    }] } } }, 'character');
+    const details = projectAppearanceDetails({ appearance: { voice: 'Bright', visibleInjuries: ['Scar'] } }, 'character');
+    const vm = projectAppearancePresentation({
+      appearance: { ...kitsuneAppearance, tags: ['default-tag'] }, forms, details, selectedEntryId: 'quiet',
+    });
+    assert.equal(vm.fields.voice.source, 'explicit-empty');
+    assert.equal(vm.fields.voice.value, null);
+    assert.equal(vm.fields.tags.source, 'explicit-empty');
+    assert.deepEqual(vm.tags, []);
+    assert.equal(vm.portraitUrl, null);
   });
 
   it('projectAppearancePresentation legacy single entry is baseline', () => {
