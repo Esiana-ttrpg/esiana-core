@@ -11,9 +11,24 @@ interface EntityCustomFieldsPanelProps {
 
 export function EntityCustomFieldsPanel({ campaignHandle, entityPageId, activePageId, canEdit }: EntityCustomFieldsPanelProps) {
   const [fields, setFields] = useState<CharacterFieldDescriptor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadedPageId, setLoadedPageId] = useState<string | null | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    void fetchEntityFields(campaignHandle, entityPageId).then((all) => setFields(all.filter((field) => field.pageId === activePageId)));
-  }, [activePageId, campaignHandle, entityPageId]);
+    let active = true;
+    setLoading(true);
+    setLoadedPageId(undefined);
+    setError(null);
+    setFields([]);
+    void fetchEntityFields(campaignHandle, entityPageId)
+      .then((all) => { if (active) { setFields(all.filter((field) => field.pageId === activePageId)); setLoadedPageId(activePageId); } })
+      .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load custom fields'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [activePageId, campaignHandle, entityPageId, retry]);
+  if (error) return <div className="mt-4 text-sm text-destructive" role="alert"><p>{error}</p><button type="button" className="mt-2 text-primary" onClick={() => setRetry((value) => value + 1)}>Retry</button></div>;
+  if (loading || loadedPageId !== activePageId) return <p className="mt-4 text-sm text-muted" role="status">Loading custom fields…</p>;
   if (fields.length === 0) return null;
 
   return (

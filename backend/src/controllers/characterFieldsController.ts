@@ -22,17 +22,21 @@ const MAX_FIELD_LENGTH = 10_000;
 const MAX_ENUM_OPTIONS = 100;
 const MAX_ENUM_OPTION_LENGTH = 200;
 
-async function resolveFieldPageTab(campaignId: string, entityPageId: string, requested: unknown): Promise<string | null | undefined> {
+async function resolveFieldPageTab(campaignId: string, entityPageId: string, shell: string, requested: unknown): Promise<string | null | undefined> {
   if (requested == null) return null;
   if (typeof requested !== 'string') return undefined;
   const stored = await fieldsDb.characterPageTab.findFirst({
-    where: { id: requested, campaignId, characterPageId: entityPageId }, select: { id: true },
+    where: { id: requested, campaignId, characterPageId: entityPageId }, select: { id: true, coreKey: true },
   });
-  if (stored) return stored.id;
+  const coreDefinitions = ENTITY_SHELL_CORE_PAGES[shell];
+  if (!coreDefinitions) return undefined;
+  if (stored) {
+    if (stored.coreKey && !coreDefinitions.some((candidate) => candidate.key === stored.coreKey)) return undefined;
+    return stored.id;
+  }
   if (!requested.startsWith('core:')) return undefined;
   const coreKey = requested.slice('core:'.length);
-  const allCore = Object.values(ENTITY_SHELL_CORE_PAGES).flat();
-  const definition = allCore.find((candidate) => candidate.key === coreKey);
+  const definition = coreDefinitions.find((candidate) => candidate.key === coreKey);
   if (!definition) return undefined;
   const existing = await fieldsDb.characterPageTab.findFirst({
     where: { campaignId, characterPageId: entityPageId, coreKey }, select: { id: true },
@@ -40,7 +44,7 @@ async function resolveFieldPageTab(campaignId: string, entityPageId: string, req
   if (existing) return existing.id;
   const row = await fieldsDb.characterPageTab.create({ data: {
     campaignId, characterPageId: entityPageId, origin: 'CORE', renderMode: 'CORE',
-    coreKey, title: definition.title, displayOrder: Math.max(0, allCore.findIndex((candidate) => candidate.key === coreKey)) * 10,
+    coreKey, title: definition.title, displayOrder: coreDefinitions.findIndex((candidate) => candidate.key === coreKey) * 10,
     blocks: [],
   }, select: { id: true } });
   return row.id;
@@ -219,7 +223,7 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
   if (problem) { res.status(400).json({ error: problem }); return; }
   let pageTabId: string | null = null;
   if (req.body?.pageId != null) {
-    const resolved = await resolveFieldPageTab(req.campaign!.campaignId, access.page.id, req.body.pageId);
+    const resolved = await resolveFieldPageTab(req.campaign!.campaignId, access.page.id, access.shell, req.body.pageId);
     if (resolved === undefined) { res.status(400).json({ error: 'pageId is not a page of this entity' }); return; }
     pageTabId = resolved;
   }
@@ -255,6 +259,11 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   const capabilities = row.capabilities && typeof row.capabilities === 'object' ? row.capabilities : {};
   if (capabilities.writable === false) { res.status(403).json({ error: 'Field is read-only' }); return; }
   if (row.origin === 'PLUGIN') {
+    if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'label')
+      || Object.prototype.hasOwnProperty.call(req.body ?? {}, 'pageId')) {
+      res.status(400).json({ error: 'Provider-managed field labels and page placement cannot be changed' });
+      return;
+    }
     const states = await (prisma as typeof prisma & { pluginCharacterPageState: any }).pluginCharacterPageState.findMany({
       where: {
         campaignId: req.campaign!.campaignId,
@@ -280,7 +289,7 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'pageId')) {
     if (req.body.pageId == null) pageTabId = null;
     else {
-      const resolved = await resolveFieldPageTab(req.campaign!.campaignId, access.page.id, req.body.pageId);
+      const resolved = await resolveFieldPageTab(req.campaign!.campaignId, access.page.id, access.shell, req.body.pageId);
       if (resolved === undefined) { res.status(400).json({ error: 'pageId is not a page of this entity' }); return; }
       pageTabId = resolved;
     }

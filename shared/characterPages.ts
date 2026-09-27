@@ -161,3 +161,14 @@ export const ENTITY_SHELL_CORE_PAGES: Record<string, ReadonlyArray<{ key: string
     ['overview', 'Overview'], ['lore', 'Lore'], ['continuity', 'Continuity'],
   ].map(([key, title]) => ({ key, title, dmOnly: key === 'continuity' })),
 };
+
+/** Canonical entityCategory metadata values supported by managed page shells. */
+export const ENTITY_CATEGORY_TO_SHELL: Readonly<Record<string, string>> = {
+  characters: 'character',
+  locations: 'location',
+  organizations: 'organization',
+  bestiary: 'bestiary',
+  ancestries: 'ancestry',
+  families: 'family',
+  quests: 'quest',
+};
