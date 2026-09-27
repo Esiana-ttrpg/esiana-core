@@ -14,6 +14,7 @@ import type {
   PluginCharacterFieldDefinition,
 } from '../../../shared/characterPages.js';
 import { ENTITY_SHELL_CORE_PAGES } from '../../../shared/characterPages.js';
+import type { CampaignMemberRole } from '../types/domain.js';
 
 const fieldsDb = prisma as typeof prisma & { characterField: any; characterPageTab: any };
 const FIELD_TYPES = new Set<CharacterFieldType>(['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'JSON']);
@@ -27,18 +28,22 @@ async function resolveFieldPageTab(
   entityPageId: string,
   shell: string,
   canViewDmOnly: boolean,
+  access: { canEdit: boolean; canViewDmOnly: boolean; shell: string },
+  role: CampaignMemberRole | null,
   requested: unknown,
 ): Promise<string | null | undefined> {
   if (requested == null) return null;
   if (typeof requested !== 'string') return undefined;
   const stored = await fieldsDb.characterPageTab.findFirst({
-    where: { id: requested, campaignId, characterPageId: entityPageId }, select: { id: true, coreKey: true },
+    where: { id: requested, campaignId, characterPageId: entityPageId },
+    select: { id: true, coreKey: true, hidden: true, visibility: true },
   });
   const coreDefinitions = ENTITY_SHELL_CORE_PAGES[shell];
   if (!coreDefinitions) return undefined;
   if (stored) {
     const definition = stored.coreKey ? coreDefinitions.find((candidate) => candidate.key === stored.coreKey) : undefined;
     if (stored.coreKey && (!definition || (definition.dmOnly && !canViewDmOnly))) return undefined;
+    if (!canReadCharacterPageTab(stored, access, role)) return undefined;
     return stored.id;
   }
   if (!requested.startsWith('core:')) return undefined;
@@ -46,9 +51,10 @@ async function resolveFieldPageTab(
   const definition = coreDefinitions.find((candidate) => candidate.key === coreKey);
   if (!definition || (definition.dmOnly && !canViewDmOnly)) return undefined;
   const existing = await fieldsDb.characterPageTab.findFirst({
-    where: { campaignId, characterPageId: entityPageId, coreKey }, select: { id: true },
+    where: { campaignId, characterPageId: entityPageId, coreKey },
+    select: { id: true, coreKey: true, hidden: true, visibility: true },
   });
-  if (existing) return existing.id;
+  if (existing) return canReadCharacterPageTab(existing, access, role) ? existing.id : undefined;
   const row = await fieldsDb.characterPageTab.create({ data: {
     campaignId, characterPageId: entityPageId, origin: 'CORE', renderMode: 'CORE',
     coreKey, title: definition.title, displayOrder: coreDefinitions.findIndex((candidate) => candidate.key === coreKey) * 10,
@@ -230,7 +236,10 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
   if (problem) { res.status(400).json({ error: problem }); return; }
   let pageTabId: string | null = null;
   if (req.body?.pageId != null) {
-    const resolved = await resolveFieldPageTab(req.campaign!.campaignId, access.page.id, access.shell, access.canViewDmOnly, req.body.pageId);
+    const resolved = await resolveFieldPageTab(
+      req.campaign!.campaignId, access.page.id, access.shell, access.canViewDmOnly,
+      access, req.campaign!.role, req.body.pageId,
+    );
     if (resolved === undefined) { res.status(400).json({ error: 'pageId is not a page of this entity' }); return; }
     pageTabId = resolved;
   }
@@ -303,7 +312,10 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'pageId')) {
     if (req.body.pageId == null) pageTabId = null;
     else {
-      const resolved = await resolveFieldPageTab(req.campaign!.campaignId, access.page.id, access.shell, access.canViewDmOnly, req.body.pageId);
+      const resolved = await resolveFieldPageTab(
+        req.campaign!.campaignId, access.page.id, access.shell, access.canViewDmOnly,
+        access, req.campaign!.role, req.body.pageId,
+      );
       if (resolved === undefined) { res.status(400).json({ error: 'pageId is not a page of this entity' }); return; }
       pageTabId = resolved;
     }
