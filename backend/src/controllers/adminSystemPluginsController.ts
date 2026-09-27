@@ -39,6 +39,7 @@ import { env } from '../config/env.js';
 import {
   isPluginEngineMismatchError,
 } from '../lib/plugins/pluginEngineMismatchError.js';
+import { encryptSecretOrDevStore } from '../lib/crypto/secretBox.js';
 
 function parseConfigBody(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -155,6 +156,7 @@ export async function listAdminPlugins(
       const compatibility = runtimeManifest?.compatibility;
       return {
         ...capability,
+        config: (systemRow?.config as Record<string, unknown> | undefined) ?? {},
         ...(compatibility ? { compatibility } : {}),
         installedAt: systemRow?.installedAt.toISOString(),
         updatedAt: systemRow?.updatedAt.toISOString(),
@@ -186,11 +188,13 @@ export async function fetchAdminPluginRegistry(
 
   const warnings: string[] = [];
   let plugins: PluginRegistryEntry[] = [];
+  let remoteLoaded = false;
 
   if (target) {
     const fetched = await fetchAndParsePluginRegistry(target);
     if (fetched.ok) {
       plugins = fetched.plugins;
+      remoteLoaded = true;
     } else {
       warnings.push(`Remote registry unavailable: ${fetched.error}`);
       const fallback = collectLocalRegistryFallback();
@@ -209,6 +213,7 @@ export async function fetchAdminPluginRegistry(
   res.json({
     registryUrl,
     plugins,
+    remoteLoaded,
     ...(warnings.length > 0 ? { warnings } : {}),
   });
 }
@@ -264,8 +269,8 @@ export async function saveAdminPluginConfig(
   }
 
   const existing = await getSystemPluginById(pluginId);
-  if (!existing || existing.scope !== PluginScopes.GLOBAL) {
-    res.status(404).json({ error: 'Unknown global system plugin' });
+  if (!existing) {
+    res.status(404).json({ error: 'Unknown system plugin' });
     return;
   }
 
@@ -292,7 +297,7 @@ export async function saveAdminPluginConfig(
     return;
   }
 
-  if (isEnabled === true) {
+  if (existing.scope === PluginScopes.GLOBAL && isEnabled === true) {
     try {
       await assertPluginCanEnable(pluginId);
     } catch (err) {
@@ -304,9 +309,10 @@ export async function saveAdminPluginConfig(
     }
   }
 
-  const row = await updateSystemPluginConfig(pluginId, config, isEnabled);
+  const effectiveEnabled = existing.scope === PluginScopes.GLOBAL ? isEnabled : undefined;
+  const row = await updateSystemPluginConfig(pluginId, config, effectiveEnabled);
 
-  if (isEnabled !== undefined) {
+  if (existing.scope === PluginScopes.GLOBAL && isEnabled !== undefined) {
     try {
       await syncInstalledPluginEnabled(pluginId, isEnabled);
     } catch (err) {
@@ -319,6 +325,24 @@ export async function saveAdminPluginConfig(
   }
 
   res.json({ plugin: serializeSystemPlugin(row) });
+}
+
+export async function getAdminPluginOAuthClient(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const pluginId = String(req.params.pluginId ?? '');
+  const row = await prisma.pluginOAuthClient.findUnique({ where: { pluginId }, select: { clientId: true, clientSecretEnc: true, updatedAt: true } });
+  res.json({ oauthClient: row ? { clientId: row.clientId, hasClientSecret: Boolean(row.clientSecretEnc), updatedAt: row.updatedAt.toISOString() } : null });
+}
+
+export async function putAdminPluginOAuthClient(req: AuthenticatedRequest, res: Response): Promise<void> {
+  const pluginId = String(req.params.pluginId ?? '');
+  const plugin = await prisma.systemPlugin.findUnique({ where: { id: pluginId } });
+  if (!plugin) { res.status(404).json({ error: 'Plugin not found' }); return; }
+  const body = req.body as { clientId?: unknown; clientSecret?: unknown };
+  if (typeof body.clientId !== 'string' || !body.clientId.trim() || body.clientId.length > 512) { res.status(400).json({ error: 'clientId is required' }); return; }
+  const existing = await prisma.pluginOAuthClient.findUnique({ where: { pluginId } });
+  const secret = typeof body.clientSecret === 'string' && body.clientSecret ? encryptSecretOrDevStore(body.clientSecret) : existing?.clientSecretEnc ?? null;
+  const row = await prisma.pluginOAuthClient.upsert({ where: { pluginId }, create: { pluginId, clientId: body.clientId.trim(), clientSecretEnc: secret }, update: { clientId: body.clientId.trim(), clientSecretEnc: secret } });
+  res.json({ oauthClient: { clientId: row.clientId, hasClientSecret: Boolean(row.clientSecretEnc), updatedAt: row.updatedAt.toISOString() } });
 }
 
 export async function registerAdminPluginManifest(

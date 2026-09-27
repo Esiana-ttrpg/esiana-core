@@ -3,6 +3,7 @@ import { prisma } from '../prisma.js';
 import { canAccessCampaign, normalizeCampaignMemberRole } from '../acl.js';
 import type { AuthenticatedRequest } from '../../middleware/auth.js';
 import { isCampaignPluginEnabled } from '../campaignPlugins.js';
+import { registerPluginConnectionInvocation } from './pluginConnectionInvocation.js';
 
 export interface PluginCampaignJailRequest extends AuthenticatedRequest {
   /** Set by campaign-scoped plugin HTTP middleware after validation. */
@@ -82,6 +83,7 @@ export async function requirePluginCampaignJail(
   }
 
   req.pluginJailedCampaignId = campaign.id;
+  registerPluginConnectionInvocation(req, { campaignId: campaign.id });
   next();
 }
 

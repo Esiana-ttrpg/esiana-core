@@ -8,6 +8,7 @@ import type {
   LayoutWidget,
 } from '@/lib/pluginPresentation';
 import type { PluginSidebarSection } from '@/lib/pluginNavigation';
+import type { PluginCharacterPageRenderer } from '@/lib/pluginCharacterPages';
 
 export const PluginUiSlots = {
   HEADER: 'header',
@@ -91,6 +92,13 @@ export interface PluginUiRegistry {
     id: string;
     title: string;
     render?: PluginPageRenderer;
+  }): void;
+  registerCharacterPageRenderer(definition: {
+    key: string;
+    render: PluginCharacterPageRenderer;
+    exportToCanvas?: (
+      context: Parameters<PluginCharacterPageRenderer>[1],
+    ) => Promise<Array<Record<string, unknown>>>;
   }): void;
   registerSidebarItem(definition: {
     id: string;

@@ -66,12 +66,14 @@ function assertHostnameAllowed(hostname: string): void {
   }
 }
 
-async function resolveAndAssertHostname(hostname: string): Promise<void> {
+export interface ValidatedRemoteAddress { address: string; family: 4 | 6 }
+
+async function resolveAndAssertHostname(hostname: string): Promise<ValidatedRemoteAddress[]> {
   assertHostnameAllowed(hostname);
-  let addresses: string[];
+  let addresses: ValidatedRemoteAddress[];
   try {
     addresses = await lookup(hostname, { all: true, verbatim: true }).then(
-      (results) => results.map((entry) => entry.address),
+      (results) => results.map((entry) => ({ address: entry.address, family: entry.family as 4 | 6 })),
     );
   } catch {
     throw new SsrfGuardError('Unable to resolve URL hostname');
@@ -79,9 +81,10 @@ async function resolveAndAssertHostname(hostname: string): Promise<void> {
   if (addresses.length === 0) {
     throw new SsrfGuardError('URL hostname did not resolve');
   }
-  for (const address of addresses) {
+  for (const { address } of addresses) {
     assertIpAllowed(address);
   }
+  return addresses;
 }
 
 export function assertAllowedImportProtocol(
@@ -125,4 +128,14 @@ export async function resolveUrlSafeForRemoteFetch(
 ): Promise<URL> {
   await assertUrlSafeForImport(url, options);
   return url;
+}
+
+/** Resolve once, reject the whole answer set if any address is unsafe, and return addresses for socket pinning. */
+export async function resolveUrlAddressesForRemoteFetch(
+  url: URL,
+  options: { allowHttp: boolean },
+): Promise<ValidatedRemoteAddress[]> {
+  if (url.username || url.password) throw new SsrfGuardError('URL credentials are not allowed');
+  assertAllowedImportProtocol(url, options.allowHttp);
+  return resolveAndAssertHostname(url.hostname);
 }

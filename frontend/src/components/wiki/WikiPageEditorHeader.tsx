@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import type { EntitySubviewDef, EntitySubviewId } from '@/lib/entityPageShells/types';
 import { resolveEntityKindLabel } from '@/lib/wikiPageHeaderMeta';
 import type { SurfaceProfileKey } from '@/lib/entitySurfaceProfile';
@@ -12,6 +12,7 @@ import { WikiPageBreadcrumbs } from '@/components/wiki/WikiPageBreadcrumbs';
 import { WikiPageRuntimeToolbar } from '@/components/wiki/WikiPageRuntimeToolbar';
 import { EntitySubviewNav } from '@/components/entity/shells/EntitySubviewNav';
 import type { WikiPageBlock } from '@/types/wiki';
+import { Plus } from 'lucide-react';
 
 interface WikiBreadcrumb {
   id: string;
@@ -50,6 +51,7 @@ interface WikiPageEditorHeaderProps {
   onAddWidget: (type: WikiPageBlock['type']) => void;
   onDeletePage: () => void;
   getExportContext?: () => import('@/lib/pageExport').PageExportContext;
+  allowCanvasTools?: boolean;
   havenBackLink?: { to: string; label: string } | null;
   /** Character page: edit wiki page title in the h1 slot */
   editablePageTitle?: boolean;
@@ -57,6 +59,9 @@ interface WikiPageEditorHeaderProps {
   onPageTitleForEditChange?: (value: string) => void;
   onPageTitleForEditBlur?: () => void | Promise<void>;
   titleFocusField?: string | null;
+  onAddSubview?: () => void;
+  onManageSubviews?: () => void;
+  characterMasthead?: (nameControl: ReactNode) => ReactNode;
 }
 
 const titleInputClass = `${TYPE_DISPLAY_CLASS} w-full min-w-0 rounded-md border border-transparent bg-transparent px-0 py-0 text-2xl text-focal-foreground outline-none focus:border-border/60 focus:bg-surface/30 sm:text-3xl`;
@@ -82,6 +87,9 @@ export function WikiPageEditorHeader({
   onPageTitleForEditChange,
   onPageTitleForEditBlur,
   titleFocusField,
+  onAddSubview,
+  onManageSubviews,
+  characterMasthead,
   ...toolbarProps
 }: WikiPageEditorHeaderProps) {
   const entityKind = resolveEntityKindLabel(profileKey, templateType);
@@ -110,7 +118,7 @@ export function WikiPageEditorHeader({
 
       <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1">
-          {showTitleEditor ? (
+          {!characterMasthead && showTitleEditor ? (
             <input
               id="character-field-name"
               type="text"
@@ -120,14 +128,14 @@ export function WikiPageEditorHeader({
               onBlur={() => void onPageTitleForEditBlur?.()}
               aria-label="Character name"
             />
-          ) : (
+          ) : !characterMasthead ? (
             <h1
               className={`${TYPE_DISPLAY_CLASS} text-2xl text-focal-foreground sm:text-3xl`}
             >
               {displayTitle}
             </h1>
-          )}
-          {entityKind ? (
+          ) : null}
+          {!characterMasthead && entityKind ? (
             <p className={`${TYPE_META_CLASS} mt-0.5 text-muted`}>{entityKind}</p>
           ) : null}
         </div>
@@ -142,6 +150,12 @@ export function WikiPageEditorHeader({
           {...toolbarProps}
         />
       </div>
+
+      {characterMasthead ? characterMasthead(showTitleEditor ? (
+        <input id="character-field-name" type="text" className={titleInputClass} value={titleValue} onChange={(e) => onPageTitleForEditChange?.(e.target.value)} onBlur={() => void onPageTitleForEditBlur?.()} aria-label="Character name" />
+      ) : (
+        <h1 className={`${TYPE_DISPLAY_CLASS} text-2xl text-focal-foreground sm:text-3xl`}>{displayTitle}</h1>
+      )) : null}
 
       {havenBackLink ? (
         <Link
@@ -165,13 +179,21 @@ export function WikiPageEditorHeader({
       ) : null}
 
       {showSectionSubviews ? (
-        <div data-print-hide>
+        <div className="flex items-end gap-1" data-print-hide>
           <EntitySubviewNav
             subviews={subviews}
             activeSubview={activeSubview}
             onSubviewChange={onSubviewChange}
             isDMUser={isDMUser}
           />
+          {onAddSubview ? (
+            <button type="button" className="mb-0.5 rounded-md p-1.5 text-muted hover:bg-elevated hover:text-foreground" onClick={onAddSubview} aria-label="Add character page" title="Add character page">
+              <Plus className="size-3.5" aria-hidden />
+            </button>
+          ) : null}
+          {onManageSubviews ? (
+            <button type="button" className="mb-0.5 rounded-md px-2 py-1.5 text-xs font-medium text-muted hover:bg-elevated hover:text-foreground" onClick={onManageSubviews}>Manage pages</button>
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -1220,6 +1220,9 @@ export async function createWikiPage(
   dispatchDomainEvent({
     type: CoreDomainEvents.WIKI_CREATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'wiki_page',
+    resourceId: page.id,
     payload: toWikiPageEventDto(page),
   });
 
@@ -2048,7 +2051,6 @@ export async function updateWikiPageLayout(
     select: { createdAt: true },
   });
 
-  let layoutTemporal: { updatedAt?: Date } = {};
   let temporalEventAt: Date | undefined;
   try {
     const applied = applyWikiPageTemporalData(
@@ -2057,7 +2059,6 @@ export async function updateWikiPageLayout(
       temporalActor,
       { campaignCreatedAt: campaignRow?.createdAt, now: new Date() },
     );
-    layoutTemporal = applied.data;
     temporalEventAt = applied.data.updatedAt;
   } catch (err) {
     rejectTemporalError(res, err);
@@ -2068,7 +2069,6 @@ export async function updateWikiPageLayout(
     where: { id: page.id },
     data: {
       blocks: normalizedLayoutBlocks.blocks as any,
-      ...(layoutTemporal.updatedAt ? { updatedAt: layoutTemporal.updatedAt } : {}),
     },
     select: {
       blocks: true,
@@ -2125,6 +2125,9 @@ export async function updateWikiPageLayout(
   dispatchDomainEvent({
     type: CoreDomainEvents.WIKI_UPDATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'wiki_page',
+    resourceId: page.id,
     payload: toWikiPageEventDto({
       ...page,
       templateType: responseTemplateType,
@@ -4207,6 +4210,9 @@ export async function createNotebookArc(
   dispatchDomainEvent({
     type: CoreDomainEvents.NOTEBOOK_ARC_CREATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'notebook_arc',
+    resourceId: notebook.id,
     payload: toNotebookArcEventDto({
       ...notebook,
       campaignId: ctx.campaignId,
@@ -4247,6 +4253,9 @@ export async function deleteNotebookArc(
   dispatchDomainEvent({
     type: CoreDomainEvents.NOTEBOOK_ARC_DELETED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'notebook_arc',
+    resourceId: notebook.id,
     payload: toNotebookArcEventDto({
       ...notebook,
       campaignId: ctx.campaignId,
@@ -4291,6 +4300,9 @@ export async function updateNotebookArc(
   dispatchDomainEvent({
     type: CoreDomainEvents.NOTEBOOK_ARC_UPDATED,
     campaignId: ctx.campaignId,
+    actorId: req.user?.id,
+    resourceType: 'notebook_arc',
+    resourceId: updated.id,
     payload: toNotebookArcEventDto({
       ...updated,
       campaignId: ctx.campaignId,
@@ -4817,11 +4829,15 @@ export async function deleteWikiPage(
       dispatchDomainEvent({
         type: CoreDomainEvents.WIKI_DELETED,
         campaignId: ctx.campaignId,
+        actorId,
+        resourceType: 'wiki_page',
+        resourceId: pageId,
         payload: toWikiPageDeletedDto({
           id: preview.page.id,
           campaignId: ctx.campaignId,
           title: preview.page.title,
           parentId: preview.page.parentId,
+          visibility: preview.page.visibility ?? WikiVisibility.DM_ONLY,
           deletedPageIds: [pageId],
         }),
       });
@@ -4842,11 +4858,15 @@ export async function deleteWikiPage(
     dispatchDomainEvent({
       type: CoreDomainEvents.WIKI_DELETED,
       campaignId: ctx.campaignId,
+      actorId,
+      resourceType: 'wiki_page',
+      resourceId: pageId,
       payload: toWikiPageDeletedDto({
         id: preview.page.id,
         campaignId: ctx.campaignId,
         title: preview.page.title,
         parentId: preview.page.parentId,
+        visibility: preview.page.visibility ?? WikiVisibility.DM_ONLY,
         deletedPageIds: result.deletedPageIds,
       }),
     });
@@ -4872,6 +4892,7 @@ export async function deleteSessionNotePage(
       id: true,
       title: true,
       parentId: true,
+      visibility: true,
       blocks: true,
       metadata: true,
       templateType: true,
@@ -4927,11 +4948,15 @@ export async function deleteSessionNotePage(
         dispatchDomainEvent({
           type: CoreDomainEvents.WIKI_DELETED,
           campaignId: ctx.campaignId,
+          actorId,
+          resourceType: 'wiki_page',
+          resourceId: pageId,
           payload: toWikiPageDeletedDto({
             id: page.id,
             campaignId: ctx.campaignId,
             title: page.title,
             parentId: page.parentId,
+            visibility: page.visibility,
             deletedPageIds: [pageId],
           }),
         });
@@ -4952,11 +4977,15 @@ export async function deleteSessionNotePage(
       dispatchDomainEvent({
         type: CoreDomainEvents.WIKI_DELETED,
         campaignId: ctx.campaignId,
+        actorId,
+        resourceType: 'wiki_page',
+        resourceId: pageId,
         payload: toWikiPageDeletedDto({
           id: page.id,
           campaignId: ctx.campaignId,
           title: page.title,
           parentId: page.parentId,
+          visibility: page.visibility,
           deletedPageIds: result.deletedPageIds,
         }),
       });
@@ -5010,11 +5039,15 @@ export async function deleteSessionNotePage(
   dispatchDomainEvent({
     type: CoreDomainEvents.WIKI_DELETED,
     campaignId: ctx.campaignId,
+    actorId,
+    resourceType: 'wiki_page',
+    resourceId: pageId,
     payload: toWikiPageDeletedDto({
       id: page.id,
       campaignId: ctx.campaignId,
       title: page.title,
       parentId: page.parentId,
+      visibility: page.visibility,
       deletedPageIds: idsToDelete,
     }),
   });

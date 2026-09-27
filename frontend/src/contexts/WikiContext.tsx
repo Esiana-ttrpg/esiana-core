@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -23,6 +24,10 @@ import type { CampaignCapability } from '@shared/campaignPolicy/capabilities';
 import type { CampaignActor } from '@shared/campaignPolicy/policy';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCampaignPolicy } from '@/hooks/useCampaignPolicy';
+import {
+  dispatchCampaignDomainEvent,
+  type CampaignDomainEvent,
+} from '@/lib/campaignEvents';
 import type {
   WikiCampaignMeta,
   WikiPlayerEntry,
@@ -72,13 +77,19 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refreshGenerationRef = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!campaignHandle) return;
+    const generation = ++refreshGenerationRef.current;
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchWikiTreePayload(campaignHandle);
+      const [data, pins] = await Promise.all([
+        fetchWikiTreePayload(campaignHandle),
+        fetchPersonalPins(campaignHandle),
+      ]);
+      if (generation !== refreshGenerationRef.current) return;
       setTree(data.tree ?? []);
       setCampaign(data.campaign ?? null);
       setSidebarConfig(normalizeSidebarConfig(data.campaign?.sidebarConfig));
@@ -86,9 +97,9 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPlayerSessionNotesFolderTitle(
         data.playerSessionNotesFolderTitle ?? PLAYER_SESSION_NOTES_TITLE,
       );
-      const pins = await fetchPersonalPins(campaignHandle);
       setPinnedShortcuts(pins);
     } catch (err) {
+      if (generation !== refreshGenerationRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load wiki');
       setTree([]);
       setCampaign(null);
@@ -96,13 +107,52 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPinnedShortcuts([]);
       setSidebarConfig(normalizeSidebarConfig(null));
     } finally {
-      setLoading(false);
+      if (generation === refreshGenerationRef.current) setLoading(false);
     }
   }, [campaignHandle]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!campaignHandle || typeof EventSource === 'undefined') return;
+
+    const source = new EventSource(
+      `/api/campaigns/${encodeURIComponent(campaignHandle)}/events`,
+      { withCredentials: true },
+    );
+    let refreshTimer: number | undefined;
+    const scheduleRefresh = () => {
+      window.clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => void refresh(), 100);
+    };
+    const onMessage = (message: MessageEvent<string>) => {
+      try {
+        const event = JSON.parse(message.data) as CampaignDomainEvent;
+        dispatchCampaignDomainEvent(campaignHandle, event);
+        if (
+          event.type === 'wiki.page.created' ||
+          event.type === 'wiki.page.updated' ||
+          event.type === 'wiki.page.deleted'
+        ) {
+          scheduleRefresh();
+        }
+      } catch {
+        // Ignore malformed messages; EventSource will continue receiving events.
+      }
+    };
+
+    source.onmessage = onMessage;
+    // The stream is transient and has no replay cursor. Refreshing after every
+    // successful connection makes initial-connect races and reconnect gaps safe.
+    source.onopen = scheduleRefresh;
+
+    return () => {
+      window.clearTimeout(refreshTimer);
+      source.close();
+    };
+  }, [campaignHandle, refresh]);
 
   const flatPages = useMemo(() => flattenWikiTree(tree), [tree]);
 

@@ -47,7 +47,7 @@ async function downloadToFile(url: string, destination: string): Promise<void> {
     });
   } catch (error) {
     if (error instanceof NetworkFetchError) {
-      throw new Error(error.message);
+      throw new Error(`Download failed: ${error.message}`);
     }
     throw error;
   }

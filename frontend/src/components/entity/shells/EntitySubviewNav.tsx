@@ -18,6 +18,7 @@ export function EntitySubviewNav({
 }: EntitySubviewNavProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const containerRef = useRef<HTMLDivElement>(null);
+  const measurementRef = useRef<HTMLDivElement>(null);
   const [overflowOpen, setOverflowOpen] = useState(false);
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
 
@@ -29,26 +30,28 @@ export function EntitySubviewNav({
 
     function measure() {
       const width = el?.offsetWidth ?? 0;
-      if (width < 360) {
-        setSplitIndex(1);
-        return;
+      const measured = measurementRef.current
+        ? Array.from(measurementRef.current.children).map((child) => (child as HTMLElement).offsetWidth)
+        : [];
+      const total = measured.reduce((sum, tabWidth) => sum + tabWidth + 2, 0);
+      if (total <= width) return setSplitIndex(null);
+      // Reserve the real width of the More control only when overflow exists.
+      const moreWidth = 72;
+      let used = moreWidth;
+      let count = 0;
+      for (const tabWidth of measured) {
+        if (count > 0 && used + tabWidth + 2 > width) break;
+        used += tabWidth + 2;
+        count += 1;
       }
-      if (width < 520) {
-        setSplitIndex(3);
-        return;
-      }
-      if (width < 680) {
-        setSplitIndex(5);
-        return;
-      }
-      setSplitIndex(null);
+      setSplitIndex(Math.max(1, count));
     }
 
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [tabs.length]);
+  }, [tabs]);
 
   const sorted = useMemo(
     () => [...tabs].sort((a, b) => a.navPriority - b.navPriority),
@@ -100,6 +103,13 @@ export function EntitySubviewNav({
       role="tablist"
       aria-label="Page sections"
     >
+      <div ref={measurementRef} className="pointer-events-none absolute invisible flex gap-0.5" aria-hidden="true">
+        {sorted.map((tab) => (
+          <span key={tab.id} className="whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium">
+            {tab.label}{tab.dmOnly ? ' DM' : ''}
+          </span>
+        ))}
+      </div>
       {inlineTabs.map((tab) => renderTab(tab))}
 
       {overflowTabs.length > 0 ? (

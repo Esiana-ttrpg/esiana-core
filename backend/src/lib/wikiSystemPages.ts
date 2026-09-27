@@ -1,4 +1,8 @@
 import { generateHandle } from './handleUtils.js';
+import {
+  isWorkshopDraftMetadata,
+  isWorkshopDraftsRootMetadata,
+} from '../../../shared/workshopDocument.js';
 
 /** Keep in sync with `frontend/src/lib/wikiSystemPages.ts`. */
 export const RESERVED_SYSTEM_SLUGS = [
@@ -90,7 +94,19 @@ export function matchesReservedSystemSlug(handle: string): boolean {
 export function isReservedSystemWikiPage(page: {
   title: string;
   templateType?: string | null;
+  pathKey?: string | null;
+  metadata?: unknown;
 }): boolean {
+  // Workshop pages carry explicit structural metadata. Check this before the
+  // legacy route/title fallbacks so ordinary underscore-prefixed pages remain
+  // eligible for user-facing feeds.
+  if (
+    isWorkshopDraftMetadata(page.metadata) ||
+    isWorkshopDraftsRootMetadata(page.metadata)
+  ) {
+    return true;
+  }
+
   const templateType = page.templateType?.trim();
   if (
     templateType &&
@@ -99,6 +115,28 @@ export function isReservedSystemWikiPage(page: {
     return true;
   }
 
-  const slug = wikiPageTitleToSlug(page.title);
+  const slug = page.pathKey?.trim() || wikiPageTitleToSlug(page.title);
   return matchesReservedSystemSlug(slug);
+}
+
+export function newestVisibleCampaignPages<
+  T extends {
+    id: string;
+    title: string;
+    templateType?: string | null;
+    pathKey?: string | null;
+    metadata?: unknown;
+  },
+>(rows: readonly T[], limit: number, canView: (row: T) => boolean = () => true): T[] {
+  const seenPageIds = new Set<string>();
+  const result: T[] = [];
+
+  for (const row of rows) {
+    if (seenPageIds.has(row.id) || !canView(row) || isReservedSystemWikiPage(row)) continue;
+    seenPageIds.add(row.id);
+    result.push(row);
+    if (result.length >= limit) break;
+  }
+
+  return result;
 }

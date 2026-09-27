@@ -87,6 +87,9 @@ import {
 import { mountPluginPlatformRoutes } from './pluginPlatformRoutes.js';
 import { requirePluginCampaignJail } from './pluginCampaignJail.js';
 import { requireAuth } from '../../middleware/auth.js';
+import { registerSourceProvider as registerSourceProviderEntry, type SourceProviderDefinition } from './sourceProviderRegistry.js';
+import { registerConnectionProvider as registerConnectionProviderEntry, type ConnectionProviderDefinition } from './connectionProviderRegistry.js';
+import { createConnectionsApi, type PluginConnectionsApi } from './pluginConnectionsService.js';
 
 export type { WikiContentDecoratorFn };
 
@@ -162,6 +165,10 @@ export interface PluginHostContext {
   registerDevelopmentResolveProvider(provider: DevelopmentResolveProvider): void;
   registerImportProvider(definition: Omit<ImportProviderDefinition, 'id'> & { id: string }): void;
   registerSearchCollection(definition: PluginSearchCollectionDefinition): void;
+  registerSourceProvider(definition: SourceProviderDefinition): void;
+  registerConnectionProvider(definition: ConnectionProviderDefinition): void;
+  /** Redacted metadata plus credential-injecting fetch; raw credentials are never returned. */
+  connections: PluginConnectionsApi;
   assets: {
     buildUri(assetId: string): string;
     buildDisplayName(label: string): string;
@@ -231,10 +238,11 @@ export function createPluginHostContext(
   pluginId: string,
   manifestPermissions: string[] = [],
   pluginRoot = '',
-  options: { jailedCampaignId?: string; scope?: string } = {},
+  options: { jailedCampaignId?: string; scope?: string; outboundOrigins?: string[] } = {},
 ): PluginHostContext {
   const scope = options.scope ?? PluginScopes.GLOBAL;
   const jailedCampaignId = options.jailedCampaignId;
+  const connections = createConnectionsApi({ pluginId, campaignId: jailedCampaignId, permissions: manifestPermissions, outboundOrigins: options.outboundOrigins ?? [] });
 
   const createDataService = (requestedCampaignId?: string): PluginDataService => {
     if (!manifestPermissions.includes('plugin:data')) {
@@ -283,6 +291,7 @@ export function createPluginHostContext(
     publicWiki: createPublicWikiApi(pluginId, manifestPermissions),
     feeds: createFeedsApi(pluginId, manifestPermissions),
     ...services,
+    connections,
     registerStorageProvider(registration: PluginStorageProviderRegistration) {
       if (!manifestPermissions.includes('storage:provider')) {
         throw new Error(
@@ -375,6 +384,21 @@ export function createPluginHostContext(
     registerSearchCollection(definition) {
       registerSearchCollectionEntry(pluginId, definition);
     },
+    registerSourceProvider(definition) {
+      assertPermission(pluginId, manifestPermissions, 'source:provider');
+      registerSourceProviderEntry(pluginId, definition, async (campaignId) => {
+        if (scope === PluginScopes.CAMPAIGN) return isCampaignPluginEnabled(campaignId, pluginId);
+        const [installed, system] = await Promise.all([
+          prisma.installedPlugin.findUnique({ where: { name: pluginId }, select: { isEnabled: true } }),
+          prisma.systemPlugin.findUnique({ where: { id: pluginId }, select: { isEnabled: true } }),
+        ]);
+        return Boolean(installed?.isEnabled && system?.isEnabled);
+      });
+    },
+    registerConnectionProvider(definition) {
+      assertPermission(pluginId, manifestPermissions, 'connections:use');
+      registerConnectionProviderEntry(pluginId, definition, options.outboundOrigins ?? []);
+    },
     assets: {
       buildUri: buildPluginAssetUri,
       buildDisplayName(label: string) {
@@ -416,6 +440,7 @@ export function attachPluginPlatformRoutes(
   manifestPermissions: string[],
   pluginRoot: string,
   scope: string,
+  outboundOrigins: string[] = [],
 ): void {
   const platformRouter = Router({ mergeParams: true });
   platformRouter.use(requireAuth);
@@ -424,6 +449,7 @@ export function attachPluginPlatformRoutes(
     createPluginHostContext(pluginId, manifestPermissions, pluginRoot, {
       jailedCampaignId: campaignId,
       scope,
+      outboundOrigins,
     }),
   );
   router.use(platformRouter);

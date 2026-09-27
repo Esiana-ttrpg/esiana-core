@@ -33,6 +33,7 @@ import {
 } from '../controllers/campaignPluginsController.js';
 import { listCampaignFrontendRuntime } from '../controllers/frontendPluginsController.js';
 import { searchCampaignPlugins } from '../controllers/pluginSearchController.js';
+import { listCampaignSourceProviders, resolveCampaignSource, resolveCampaignSourceOpenTarget, searchCampaignSources } from '../controllers/sourceProvidersController.js';
 import {
   applyGlobalLimiter,
   applyToCampaignLimiter,
@@ -93,6 +94,10 @@ campaignsRouter.get(
   requireCampaignMembership,
   searchCampaignPlugins,
 );
+campaignsRouter.get('/:campaignId/source-providers', attachCampaignByIdParam, requireCampaignMembership, listCampaignSourceProviders);
+campaignsRouter.get('/:campaignId/sources/search', attachCampaignByIdParam, requireCampaignMembership, searchCampaignSources);
+campaignsRouter.post('/:campaignId/sources/resolve', attachCampaignByIdParam, requireCampaignMembership, resolveCampaignSource);
+campaignsRouter.post('/:campaignId/sources/open-target', attachCampaignByIdParam, requireCampaignMembership, resolveCampaignSourceOpenTarget);
 campaignsRouter.get(
   '/:campaignId/plugins',
   attachCampaignByIdParam,

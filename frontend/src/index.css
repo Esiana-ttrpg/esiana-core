@@ -2637,3 +2637,8 @@ html.theme-parchment {
     min-height: 18rem;
   }
 }
+/* Source references stay quiet until the reader asks for provenance. */
+.source-reference-mark { text-decoration: underline dotted color-mix(in srgb, currentColor 28%, transparent); text-underline-offset: .18em; }
+.source-reference-mark:hover, .source-reference-mark:focus { text-decoration-color: currentColor; }
+.source-reference-mark::after { content: ' ◈'; color: var(--muted-foreground); font-size: .72em; }
+.source-reference-atom { color: var(--muted-foreground); cursor: pointer; font-size: .78em; margin-inline: .12em; }

@@ -16,6 +16,7 @@ export interface WikiPageDeletedDto {
   campaignId: string;
   title: string;
   parentId: string | null;
+  visibility: string;
   deletedPageIds?: string[];
 }
 
@@ -66,6 +67,7 @@ export function toWikiPageDeletedDto(input: {
   campaignId: string;
   title: string;
   parentId: string | null;
+  visibility: string;
   deletedPageIds?: string[];
 }): WikiPageDeletedDto {
   return {
@@ -73,6 +75,7 @@ export function toWikiPageDeletedDto(input: {
     campaignId: input.campaignId,
     title: input.title,
     parentId: input.parentId,
+    visibility: input.visibility,
     ...(input.deletedPageIds?.length ? { deletedPageIds: input.deletedPageIds } : {}),
   };
 }

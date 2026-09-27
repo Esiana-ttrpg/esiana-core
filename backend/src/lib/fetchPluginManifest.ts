@@ -23,9 +23,7 @@ export function parseTargetUrl(raw: unknown): URL | null {
   }
 }
 
-/**
- * Rewrites github.com blob/raw links to raw.githubusercontent.com so fetches return JSON.
- */
+/** Rewrites GitHub file links to raw.githubusercontent.com so fetches return file contents. */
 export function normalizeRemoteJsonUrl(input: URL): URL {
   if (input.hostname !== 'github.com') {
     return input;
@@ -43,6 +41,15 @@ export function normalizeRemoteJsonUrl(input: URL): URL {
     const [owner, repo, , ref, ...pathParts] = parts;
     return new URL(
       `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${pathParts.join('/')}`,
+    );
+  }
+
+  // GitHub's branchless repository-file form addresses a file on the default branch.
+  // raw.githubusercontent.com accepts HEAD as an alias for that branch.
+  if (parts.length >= 3) {
+    const [owner, repo, ...pathParts] = parts;
+    return new URL(
+      `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${pathParts.join('/')}`,
     );
   }
 

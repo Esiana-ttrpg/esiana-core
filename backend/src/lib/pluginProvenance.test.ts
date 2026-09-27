@@ -8,8 +8,11 @@ import {
   isPinnedCommitSha,
 } from './pluginProvenance.js';
 
-test('DEFAULT_PLUGIN_REGISTRY_URL uses inspectable GitHub blob link', () => {
-  assert.match(DEFAULT_PLUGIN_REGISTRY_URL, /github\.com\/.*\/blob\/main\/registry\.json$/);
+test('DEFAULT_PLUGIN_REGISTRY_URL uses the canonical GitHub repository registry URL', () => {
+  assert.equal(
+    DEFAULT_PLUGIN_REGISTRY_URL,
+    'https://github.com/Esiana-ttrpg/community-plugins/registry.json',
+  );
 });
 
 test('isPinnedCommitSha accepts 40-char hex', () => {

@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api';
 import {
   fetchAdminPlugins,
   fetchPluginRegistry,
+  registrySyncWarnings,
   installPluginFromLink,
   installPluginFromRegistry,
   saveAdminPluginConfig,
@@ -148,11 +149,7 @@ export function AdminPluginsTab() {
       setRegistryUrl(response.registryUrl);
       setDiscovered(response.plugins);
       setLastSyncedAt(new Date().toISOString());
-      const warnings = [...(response.warnings ?? [])];
-      if (response.plugins.length === 0) {
-        warnings.push('Registry loaded but contains no plugin entries.');
-      }
-      setRegistryWarnings(warnings);
+      setRegistryWarnings(registrySyncWarnings(response));
     } catch (err) {
       setRegistryError(
         err instanceof Error
@@ -241,14 +238,14 @@ export function AdminPluginsTab() {
     setSaveMessage(null);
     setEnableError(null);
 
-    const globalPlugin = getGlobalPluginFromRow(row);
-    if (globalPlugin) {
-      setDraftConfig({ ...globalPlugin.config });
-      setDraftEnabled(globalPlugin.isEnabled);
+    const configurable = row.source;
+    if ('config' in configurable) {
+      setDraftConfig({ ...configurable.config });
+      setDraftEnabled(row.isGlobal ? Boolean(row.isEnabled) : true);
       setDraftTemplate(
         mergePluginConfigFields({
-          configTemplate: globalPlugin.configTemplate,
-          configSchema: globalPlugin.configSchema,
+          configTemplate: configurable.configTemplate,
+          configSchema: configurable.configSchema,
         }),
       );
     } else {
@@ -310,8 +307,8 @@ export function AdminPluginsTab() {
   async function handleSavePlugin(event: FormEvent) {
     event.preventDefault();
     if (!inspectorRow) return;
-    const globalPlugin = getGlobalPluginFromRow(inspectorRow);
-    if (!globalPlugin) return;
+    const configurable = inspectorRow.source;
+    if (!('config' in configurable)) return;
 
     setSaving(true);
     setSaveError(null);
@@ -319,10 +316,18 @@ export function AdminPluginsTab() {
     setEnableError(null);
 
     try {
-      const updated = await persistPluginState(globalPlugin.id, draftConfig, draftEnabled);
+      const updated = await persistPluginState(inspectorRow.id, draftConfig, inspectorRow.isGlobal ? draftEnabled : true);
       setPlugins((prev) =>
         prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)),
       );
+      if (!inspectorRow.isGlobal) {
+        setCampaignCapabilities((prev) =>
+          prev.map((plugin) =>
+            plugin.id === updated.id ? { ...plugin, config: updated.config, updatedAt: updated.updatedAt } : plugin,
+          ),
+        );
+        setInspectorRow((current) => current?.id === updated.id ? { ...current, source: { ...current.source, config: updated.config, updatedAt: updated.updatedAt } } : current);
+      }
       setSaveMessage(`${updated.name} configuration saved.`);
     } catch (err) {
       const message =

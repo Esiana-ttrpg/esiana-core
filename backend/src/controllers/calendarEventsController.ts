@@ -5,6 +5,7 @@ import { canManageChronology } from '../lib/acl.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import { convertEpochToCalendarState } from '../lib/timeEngine.js';
+import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
 
 const REPEAT_UNITS = ['DAYS', 'MONTHS', 'YEARS', 'ERAS'] as const;
 type RepeatUnit = (typeof REPEAT_UNITS)[number];
@@ -418,6 +419,15 @@ export async function createCalendarEvent(
     );
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
     return event;
+  });
+
+  dispatchDomainEvent({
+    type: CoreDomainEvents.TIMELINE_EVENT_CREATED,
+    campaignId,
+    actorId: req.user?.id,
+    resourceType: 'timeline_event',
+    resourceId: created.id,
+    payload: { calendarId },
   });
 
   res.status(201).json({ event: serializeEvent(created) });

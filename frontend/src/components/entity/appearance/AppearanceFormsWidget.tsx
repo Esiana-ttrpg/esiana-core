@@ -10,7 +10,6 @@ import {
   APPEARANCE_PRESENTATION_TYPE_LABELS,
   APPEARANCE_PRESENTATION_TYPES,
   emptyGalleryEntryOverlays,
-  enforceSinglePrimaryInEditor,
 } from '@shared/appearanceMetadata';
 import type { AppearanceFormsViewModel } from '@/lib/entityAppearanceProjection';
 import { resolveAlternateGalleryEntries } from '@/lib/entityAppearanceProjection';
@@ -24,7 +23,10 @@ import {
   SectionLabel,
 } from './appearanceShared';
 import { ImportImageUrlField } from '@/components/media/ImportImageUrlField';
-import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Plus, Trash2 } from 'lucide-react';
+import { AppearancePresentationSelector } from './AppearancePresentationSelector';
+import { useSearchParams } from 'react-router-dom';
+import { DEFAULT_APPEARANCE_PRESENTATION_ID } from '@/lib/entityAppearanceProjection';
 
 function PresentationTypeBadge({ type }: { type?: AppearancePresentationType }) {
   if (!type || type === 'default') return null;
@@ -49,7 +51,7 @@ function AlternateAppearanceCard({ entry }: { entry: AppearanceGalleryEntry }) {
         <h3 className="text-sm font-medium text-foreground">{entry.label}</h3>
         <PresentationTypeBadge type={entry.presentationType} />
       </div>
-      {entry.imageUrl.trim() ? (
+      {entry.imageUrl?.trim() ? (
         <img
           src={entry.imageUrl}
           alt=""
@@ -61,9 +63,9 @@ function AlternateAppearanceCard({ entry }: { entry: AppearanceGalleryEntry }) {
           {entry.presentationNotes}
         </p>
       ) : null}
-      {entry.tags.length > 0 ? (
+      {(entry.tags?.length ?? 0) > 0 ? (
         <div className="flex flex-wrap gap-1.5">
-          {entry.tags.map((tag) => (
+          {(entry.tags ?? []).map((tag) => (
             <span
               key={tag}
               className="rounded-full border border-border/40 bg-elevated/60 px-2 py-0.5 text-xs text-foreground"
@@ -114,6 +116,13 @@ interface AppearanceFormsEditorProps {
   gallery: AppearanceGalleryState;
   onChange: (gallery: AppearanceGalleryState) => void;
   onPersist: (gallery: AppearanceGalleryState) => void;
+  defaultEntryTemplate?: Partial<AppearanceGalleryEntry>;
+  defaultPortrait?: {
+    imageUrl: string;
+    imageCredit: AppearanceGalleryEntry['imageCredit'];
+    onChange: (patch: Pick<AppearanceGalleryEntry, 'imageUrl' | 'imageCredit'>) => void;
+    onPersist: (patch?: Partial<Pick<AppearanceGalleryEntry, 'imageUrl' | 'imageCredit'>>) => void;
+  };
 }
 
 function newGalleryEntryId(): string {
@@ -133,7 +142,7 @@ function EntryPortraitEditor({
   imageCredit: AppearanceGalleryEntry['imageCredit'];
   onImageUrlChange: (url: string) => void;
   onImageCreditChange: (credit: AppearanceGalleryEntry['imageCredit']) => void;
-  onPersist: () => void;
+  onPersist: (patch?: Partial<Pick<AppearanceGalleryEntry, 'imageUrl' | 'imageCredit'>>) => void;
 }) {
   const [toolsOpen, setToolsOpen] = useState(false);
 
@@ -168,14 +177,14 @@ function EntryPortraitEditor({
               inputClassName={appearanceFieldClass}
               suppressPreview
               onChange={onImageUrlChange}
-              onImported={async () => {
-                onPersist();
+              onImported={async (imageUrl) => {
+                onPersist({ imageUrl });
               }}
             />
             <ImageCreditEditor
               value={imageCredit}
               onChange={onImageCreditChange}
-              onPersist={onPersist}
+              onPersist={(imageCredit) => onPersist({ imageCredit })}
               inputClassName={appearanceFieldClass}
             />
           </>
@@ -195,7 +204,6 @@ interface AppearanceEntryEditorCardProps {
   highlighted: boolean;
   onPatch: (patch: Partial<AppearanceGalleryEntry>, persist?: boolean) => void;
   onRemove: () => void;
-  onSetPrimary: () => void;
   onPersist: () => void;
 }
 
@@ -205,7 +213,6 @@ function AppearanceEntryEditorCard({
   highlighted,
   onPatch,
   onRemove,
-  onSetPrimary,
   onPersist,
 }: AppearanceEntryEditorCardProps) {
   return (
@@ -215,18 +222,7 @@ function AppearanceEntryEditorCard({
         highlighted ? 'border-primary/50 ring-2 ring-primary/25' : 'border-border/40'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <label className="flex flex-1 items-center gap-2">
-          <input
-            type="radio"
-            name="appearances-default"
-            checked={entry.isPrimary === true}
-            onChange={onSetPrimary}
-            className="size-3.5"
-            aria-label={`Set ${entry.label} as default wiki view`}
-          />
-          <span className={META_FIELD_LABEL_CLASS}>Default view</span>
-        </label>
+      <div className="flex items-start justify-end gap-2">
         <button
           type="button"
           onClick={onRemove}
@@ -253,7 +249,7 @@ function AppearanceEntryEditorCard({
           <span className={META_FIELD_LABEL_CLASS}>Portrait</span>
           <EntryPortraitEditor
             campaignHandle={campaignHandle}
-            imageUrl={entry.imageUrl}
+            imageUrl={entry.imageUrl ?? ''}
             imageCredit={entry.imageCredit}
             onImageUrlChange={(referenceUrl) => onPatch({ imageUrl: referenceUrl })}
             onImageCreditChange={(imageCredit) => onPatch({ imageCredit })}
@@ -281,7 +277,7 @@ function AppearanceEntryEditorCard({
           <input
             className={appearanceFieldClass}
             placeholder="formal, battle-worn, winter — comma-separated"
-            value={entry.tags.join(', ')}
+            value={(entry.tags ?? []).join(', ')}
             onChange={(e) => {
               onPatch({ tags: parseCommaListDraft(e.target.value) });
             }}
@@ -306,7 +302,7 @@ function AppearanceEntryEditorCard({
             placeholder="How this presentation looks and feels…"
             value={entry.presentationNotes ?? ''}
             onChange={(e) => {
-              onPatch({ presentationNotes: e.target.value || null });
+              onPatch({ presentationNotes: e.target.value });
             }}
             onBlur={onPersist}
             rows={3}
@@ -327,6 +323,18 @@ function AppearanceEntryEditorCard({
         </summary>
         <div className="mt-3 grid gap-3 pb-2">
           <SectionLabel>Details</SectionLabel>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1">
+              <span className={META_FIELD_LABEL_CLASS}>At a glance</span>
+              <input className={appearanceFieldClass} placeholder={entry.atAGlance === undefined ? 'Inherited from Default' : 'Intentionally blank'} value={entry.atAGlance ?? ''} onChange={(e) => onPatch({ atAGlance: e.target.value })} onBlur={onPersist} />
+              {entry.atAGlance !== undefined ? <button type="button" className="text-[10px] text-muted hover:text-foreground" onClick={() => onPatch({ atAGlance: undefined }, true)}>Revert to Default</button> : null}
+            </label>
+            <label className="space-y-1">
+              <span className={META_FIELD_LABEL_CLASS}>Build</span>
+              <input className={appearanceFieldClass} placeholder={entry.build === undefined ? 'Inherited from Default' : 'Intentionally blank'} value={entry.build ?? ''} onChange={(e) => onPatch({ build: e.target.value })} onBlur={onPersist} />
+              {entry.build !== undefined ? <button type="button" className="text-[10px] text-muted hover:text-foreground" onClick={() => onPatch({ build: undefined }, true)}>Revert to Default</button> : null}
+            </label>
+          </div>
           <div className="space-y-1">
             <AppearanceFieldLabel
               label="Distinguishing features"
@@ -337,7 +345,7 @@ function AppearanceEntryEditorCard({
               id={`appearance-entry-features-${entry.id}`}
               className={appearanceFieldClass}
               placeholder="Comma-separated — optional for this state"
-              value={formatCommaList(entry.distinguishingFeatures)}
+              value={formatCommaList(entry.distinguishingFeatures ?? [])}
               onChange={(e) => {
                 onPatch({
                   distinguishingFeatures: parseCommaListDraft(e.target.value),
@@ -347,6 +355,7 @@ function AppearanceEntryEditorCard({
                 onPatch({ distinguishingFeatures: parseCommaList(e.target.value) }, true);
               }}
             />
+            {entry.distinguishingFeatures !== undefined ? <button type="button" className="text-[10px] text-muted hover:text-foreground" onClick={() => onPatch({ distinguishingFeatures: undefined }, true)}>Revert to Default</button> : <p className="text-[10px] text-muted">Inherited from Default</p>}
           </div>
           <div className="space-y-1">
             <AppearanceFieldLabel
@@ -359,9 +368,10 @@ function AppearanceEntryEditorCard({
               className={appearanceFieldClass}
               placeholder="Optional"
               value={entry.voice ?? ''}
-              onChange={(e) => onPatch({ voice: e.target.value || null })}
+              onChange={(e) => onPatch({ voice: e.target.value })}
               onBlur={onPersist}
             />
+            {entry.voice !== undefined ? <button type="button" className="text-[10px] text-muted hover:text-foreground" onClick={() => onPatch({ voice: undefined }, true)}>Revert to Default</button> : <p className="text-[10px] text-muted">Inherited from Default</p>}
           </div>
           <div className="space-y-1">
             <AppearanceFieldLabel
@@ -374,10 +384,11 @@ function AppearanceEntryEditorCard({
               className={`${appearanceFieldClass} min-h-[2.5rem] resize-y`}
               placeholder="Optional"
               value={entry.presence ?? ''}
-              onChange={(e) => onPatch({ presence: e.target.value || null })}
+              onChange={(e) => onPatch({ presence: e.target.value })}
               onBlur={onPersist}
               rows={2}
             />
+            {entry.presence !== undefined ? <button type="button" className="text-[10px] text-muted hover:text-foreground" onClick={() => onPatch({ presence: undefined }, true)}>Revert to Default</button> : <p className="text-[10px] text-muted">Inherited from Default</p>}
           </div>
           <div className="space-y-1">
             <AppearanceFieldLabel
@@ -390,10 +401,16 @@ function AppearanceEntryEditorCard({
               className={`${appearanceFieldClass} min-h-[2.5rem] resize-y`}
               placeholder="Optional"
               value={entry.clothingMotifs ?? ''}
-              onChange={(e) => onPatch({ clothingMotifs: e.target.value || null })}
+              onChange={(e) => onPatch({ clothingMotifs: e.target.value })}
               onBlur={onPersist}
               rows={2}
             />
+            {entry.clothingMotifs !== undefined ? <button type="button" className="text-[10px] text-muted hover:text-foreground" onClick={() => onPatch({ clothingMotifs: undefined }, true)}>Revert to Default</button> : <p className="text-[10px] text-muted">Inherited from Default</p>}
+          </div>
+          <div className="space-y-1">
+            <AppearanceFieldLabel label="Visible injuries" htmlFor={`appearance-entry-injuries-${entry.id}`} />
+            <input id={`appearance-entry-injuries-${entry.id}`} className={appearanceFieldClass} placeholder="Comma-separated" value={formatCommaList(entry.visibleInjuries ?? [])} onChange={(e) => onPatch({ visibleInjuries: parseCommaListDraft(e.target.value) })} onBlur={(e) => onPatch({ visibleInjuries: parseCommaList(e.target.value) }, true)} />
+            {entry.visibleInjuries !== undefined ? <button type="button" className="text-[10px] text-muted hover:text-foreground" onClick={() => onPatch({ visibleInjuries: undefined }, true)}>Revert to Default</button> : <p className="text-[10px] text-muted">Inherited from Default</p>}
           </div>
 
           <SectionLabel>Supporting</SectionLabel>
@@ -409,7 +426,7 @@ function AppearanceEntryEditorCard({
                 className={appearanceFieldClass}
                 placeholder="This state only"
                 value={entry.gender ?? ''}
-                onChange={(e) => onPatch({ gender: e.target.value || null })}
+                onChange={(e) => onPatch({ gender: e.target.value })}
                 onBlur={onPersist}
               />
             </div>
@@ -424,7 +441,7 @@ function AppearanceEntryEditorCard({
                 className={appearanceFieldClass}
                 placeholder="This state only"
                 value={entry.presentation ?? ''}
-                onChange={(e) => onPatch({ presentation: e.target.value || null })}
+                onChange={(e) => onPatch({ presentation: e.target.value })}
                 onBlur={onPersist}
               />
             </div>
@@ -445,7 +462,7 @@ function AppearanceEntryEditorCard({
             className={`${appearanceFieldClass} min-h-[2.5rem] resize-y`}
             placeholder="Optional"
             value={entry.authorNotes ?? ''}
-            onChange={(e) => onPatch({ authorNotes: e.target.value || null })}
+            onChange={(e) => onPatch({ authorNotes: e.target.value })}
             onBlur={onPersist}
             rows={2}
           />
@@ -460,11 +477,23 @@ export function AppearanceFormsEditor({
   gallery,
   onChange,
   onPersist,
+  defaultEntryTemplate,
+  defaultPortrait,
 }: AppearanceFormsEditorProps) {
   const entries = gallery.entries;
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedEntryId = searchParams.get('appearance') ?? DEFAULT_APPEARANCE_PRESENTATION_ID;
+  const setSelectedEntryId = (id: string) => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (id === DEFAULT_APPEARANCE_PRESENTATION_ID) next.delete('appearance');
+      else next.set('appearance', id);
+      return next;
+    });
+  };
 
   const persistCurrent = () => {
     onPersist({ entries: entriesRef.current });
@@ -485,12 +514,13 @@ export function AppearanceFormsEditor({
       imageCredit: null,
       tags: [],
       presentationType: 'default',
-      isPrimary: entries.length === 0 ? true : undefined,
+      isPrimary: undefined,
       timelinePin: null,
-      presentationNotes: null,
+      presentationNotes: undefined,
       ...emptyGalleryEntryOverlays(),
     };
     setHighlightEntryId(entry.id);
+    setSelectedEntryId(entry.id);
     updateEntries([...entries, entry]);
   };
 
@@ -509,14 +539,45 @@ export function AppearanceFormsEditor({
 
   const removeEntry = (id: string) => {
     const next = entries.filter((e) => e.id !== id);
-    if (next.length > 0 && !next.some((e) => e.isPrimary)) {
+    if (next.length > 0 && entries.find((e) => e.id === id)?.isPrimary && !next.some((e) => e.isPrimary)) {
       next[0] = { ...next[0], isPrimary: true };
     }
     updateEntries(next, true);
+    setSelectedEntryId(DEFAULT_APPEARANCE_PRESENTATION_ID);
   };
 
-  const setPrimary = (id: string) => {
-    updateEntries(enforceSinglePrimaryInEditor(entries, id), true);
+  const duplicateEntry = (source: AppearanceGalleryEntry) => {
+    const entry = {
+      ...source,
+      id: newGalleryEntryId(),
+      label: `${source.label} copy`,
+      isPrimary: undefined,
+      tags: source.tags ? [...source.tags] : undefined,
+      distinguishingFeatures: source.distinguishingFeatures ? [...source.distinguishingFeatures] : undefined,
+    };
+    setSelectedEntryId(entry.id);
+    setHighlightEntryId(entry.id);
+    updateEntries([...entriesRef.current, entry], true);
+  };
+
+  const duplicateDefault = () => {
+    const entry: AppearanceGalleryEntry = {
+      id: newGalleryEntryId(),
+      label: 'Default copy',
+      imageUrl: defaultEntryTemplate?.imageUrl ?? '',
+      imageCredit: defaultEntryTemplate?.imageCredit ?? null,
+      tags: [...(defaultEntryTemplate?.tags ?? [])],
+      presentationType: 'default',
+      isPrimary: undefined,
+      timelinePin: null,
+      presentationNotes: defaultEntryTemplate?.presentationNotes,
+      ...emptyGalleryEntryOverlays(),
+      ...defaultEntryTemplate,
+      distinguishingFeatures: [...(defaultEntryTemplate?.distinguishingFeatures ?? [])],
+    };
+    setSelectedEntryId(entry.id);
+    setHighlightEntryId(entry.id);
+    updateEntries([...entriesRef.current, entry], true);
   };
 
   return (
@@ -540,27 +601,66 @@ export function AppearanceFormsEditor({
         </div>
       </div>
 
+      <AppearancePresentationSelector
+        presentations={[
+          { id: DEFAULT_APPEARANCE_PRESENTATION_ID, label: 'Default' },
+          ...entries.map((entry) => ({
+            id: entry.id,
+            label: entry.label,
+            presentationType: entry.presentationType,
+            imageUrl: entry.imageUrl || null,
+          })),
+        ]}
+        selectedId={selectedEntryId}
+        onSelect={setSelectedEntryId}
+        ariaLabel="Appearance being edited"
+      />
+
       {entries.length === 0 ? (
         <p className="text-xs text-muted">Add an appearance to capture another presentation state.</p>
       ) : null}
 
+      {selectedEntryId === DEFAULT_APPEARANCE_PRESENTATION_ID ? (
+        <div className="grid gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted">Default uses the character portrait and baseline appearance fields above.</p>
+            <button type="button" onClick={duplicateDefault} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground"><Copy className="size-3.5" /> Duplicate Default</button>
+          </div>
+          {defaultPortrait ? (
+            <EntryPortraitEditor
+              campaignHandle={campaignHandle}
+              imageUrl={defaultPortrait.imageUrl}
+              imageCredit={defaultPortrait.imageCredit}
+              onImageUrlChange={(imageUrl) => defaultPortrait.onChange({ imageUrl, imageCredit: defaultPortrait.imageCredit })}
+              onImageCreditChange={(imageCredit) => defaultPortrait.onChange({ imageUrl: defaultPortrait.imageUrl, imageCredit })}
+              onPersist={defaultPortrait.onPersist}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="grid gap-4">
-        {entries.map((entry) => (
-          <AppearanceEntryEditorCard
-            key={entry.id}
-            entry={entry}
-            campaignHandle={campaignHandle}
-            highlighted={highlightEntryId === entry.id}
-            onPatch={(patch, persist) => {
-              const next = entriesRef.current.map((item) =>
-                item.id === entry.id ? { ...item, ...patch } : item,
-              );
-              updateEntries(next, persist ?? false);
-            }}
-            onRemove={() => removeEntry(entry.id)}
-            onSetPrimary={() => setPrimary(entry.id)}
-            onPersist={persistCurrent}
-          />
+        {entries.filter((entry) => entry.id === selectedEntryId).map((entry) => (
+          <div key={entry.id} className="space-y-2">
+            <div className="flex justify-end">
+              <button type="button" onClick={() => duplicateEntry(entry)} className="inline-flex items-center gap-1 text-xs text-muted hover:text-foreground">
+                <Copy className="size-3.5" aria-hidden /> Duplicate
+              </button>
+            </div>
+            <AppearanceEntryEditorCard
+              entry={entry}
+              campaignHandle={campaignHandle}
+              highlighted={highlightEntryId === entry.id}
+              onPatch={(patch, persist) => {
+                const next = entriesRef.current.map((item) =>
+                  item.id === entry.id ? { ...item, ...patch } : item,
+                );
+                updateEntries(next, persist ?? false);
+              }}
+              onRemove={() => removeEntry(entry.id)}
+              onPersist={persistCurrent}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -575,6 +675,8 @@ interface AppearanceFormsWidgetProps {
   onPersist?: (gallery: AppearanceGalleryState) => void;
   filterEntries?: (entry: AppearanceGalleryEntry) => boolean;
   alternatesOnly?: boolean;
+  defaultEntryTemplate?: Partial<AppearanceGalleryEntry>;
+  defaultPortrait?: AppearanceFormsEditorProps['defaultPortrait'];
 }
 
 export function AppearanceFormsWidget({
@@ -585,6 +687,8 @@ export function AppearanceFormsWidget({
   onPersist,
   filterEntries,
   alternatesOnly,
+  defaultEntryTemplate,
+  defaultPortrait,
 }: AppearanceFormsWidgetProps) {
   const viewModel: AppearanceFormsViewModel =
     'primaryEntry' in forms
@@ -618,6 +722,8 @@ export function AppearanceFormsWidget({
       gallery={editorGallery}
       onChange={onChange}
       onPersist={onPersist}
+      defaultEntryTemplate={defaultEntryTemplate}
+      defaultPortrait={defaultPortrait}
     />
   );
 }

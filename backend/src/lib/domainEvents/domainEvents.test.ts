@@ -8,26 +8,32 @@ import {
 } from './dispatcher.js';
 import { CoreDomainEvents } from './types.js';
 
-test('dispatchDomainEvent fan-out matches exact and prefix patterns', async () => {
+test('dispatchDomainEvent creates the canonical envelope and matches patterns', async () => {
   clearDomainEventListenersForTests();
   const received: string[] = [];
+  let occurredAt = '';
 
-  subscribeToDomainEvent('core:wiki:updated', (event) => {
+  subscribeToDomainEvent(CoreDomainEvents.WIKI_UPDATED, (event) => {
     received.push(event.type);
+    occurredAt = event.occurredAt;
   });
-  subscribeToDomainEvent('core:*', (event) => {
+  subscribeToDomainEvent('wiki.*', (event) => {
     received.push(`prefix:${event.type}`);
   });
 
   dispatchDomainEvent({
     type: CoreDomainEvents.WIKI_UPDATED,
     campaignId: 'camp-1',
+    actorId: 'user-1',
+    resourceType: 'wiki_page',
+    resourceId: 'page-1',
     payload: { id: 'page-1' },
   });
 
   await new Promise((resolve) => setImmediate(resolve));
   assert.ok(received.includes(CoreDomainEvents.WIKI_UPDATED));
   assert.ok(received.some((entry) => entry.startsWith('prefix:')));
+  assert.ok(Number.isFinite(Date.parse(occurredAt)));
   clearDomainEventListenersForTests();
 });
 

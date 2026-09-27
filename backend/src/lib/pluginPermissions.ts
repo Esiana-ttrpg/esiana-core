@@ -4,6 +4,7 @@ export const PLUGIN_PERMISSIONS = [
   'plugin:data',
   'data:interceptor',
   'network:fetch',
+  'connections:use',
   'feed:public',
   'wiki:read-public',
   'feed:opds',
@@ -21,6 +22,7 @@ export const PLUGIN_PERMISSIONS = [
   'plugin:secrets',
   'plugin:assets',
   'campaign:import',
+  'source:provider',
 ] as const;
 
 export type PluginPermission = (typeof PLUGIN_PERMISSIONS)[number];

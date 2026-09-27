@@ -191,6 +191,7 @@ export interface SystemPluginRecord {
   configSchema?: Record<string, unknown>;
   uiSlots?: string[];
   permissions?: string[];
+  outboundOrigins?: string[];
   engines?: Record<string, string>;
   compatibility?: PluginCompatibilityMeta;
   config: Record<string, unknown>;
@@ -217,6 +218,8 @@ export interface CampaignPluginCapabilityRecord {
   configSchema?: Record<string, unknown>;
   uiSlots?: string[];
   frontendEntry?: string | null;
+  permissions?: string[];
+  outboundOrigins?: string[];
   compatibility?: PluginCompatibilityMeta;
   installedAt?: string;
   updatedAt?: string;
@@ -226,6 +229,7 @@ export interface CampaignPluginCapabilityRecord {
   commitSha?: string;
   trustedInstall?: boolean;
   installedFrom?: PluginInstalledFrom;
+  config: Record<string, unknown>;
 }
 
 export interface CampaignPluginDescriptor {
@@ -239,11 +243,14 @@ export interface CampaignPluginDescriptor {
   configSchema?: Record<string, unknown>;
   uiSlots?: string[];
   frontendEntry?: string | null;
+  permissions?: string[];
+  outboundOrigins?: string[];
 }
 export interface CampaignPluginSettingRecord {
   campaignId: string;
   pluginId: string;
   isEnabled: boolean;
+  connectionStatus?: string | null;
   config: Record<string, unknown>;
   plugin: {
     id: string;
@@ -256,6 +263,8 @@ export interface CampaignPluginSettingRecord {
     configSchema?: Record<string, unknown>;
     uiSlots?: string[];
     frontendEntry?: string | null;
+    permissions?: string[];
+    outboundOrigins?: string[];
   };
   updatedAt: string;
 }

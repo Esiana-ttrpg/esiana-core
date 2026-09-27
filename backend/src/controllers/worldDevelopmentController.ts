@@ -26,6 +26,7 @@ import {
   acceptReputationSuggestion,
   dismissReputationSuggestion,
 } from '../lib/reputationSuggestionService.js';
+import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
 
 function campaignHandleFromRequest(req: CampaignScopedRequest): string {
   const ctx = req.campaign!;
@@ -170,6 +171,14 @@ export async function resolveDevelopmentSuggestionHandler(
         userId: req.user.id,
         narrative,
       });
+      dispatchDomainEvent({
+        type: CoreDomainEvents.DEVELOPMENT_APPLIED,
+        campaignId: req.campaign!.campaignId,
+        actorId: req.user.id,
+        resourceType: 'development',
+        resourceId: String(req.params.id),
+        payload: { source: 'reputation' },
+      });
       res.json({ ...result, source: 'reputation' });
       return;
     }
@@ -188,6 +197,16 @@ export async function resolveDevelopmentSuggestionHandler(
           ? normalizeWorldEventNarrative(body.narrative)
           : undefined,
     });
+    if (action === 'accept') {
+      dispatchDomainEvent({
+        type: CoreDomainEvents.DEVELOPMENT_APPLIED,
+        campaignId: req.campaign!.campaignId,
+        actorId: req.user.id,
+        resourceType: 'development',
+        resourceId: String(req.params.id),
+        payload: { source: 'world_event' },
+      });
+    }
     res.json({ ...result, source: 'world_event' });
   } catch (err) {
     handleServiceError(res, err);
@@ -213,6 +232,14 @@ export async function suggestOnDemandDevelopmentsHandler(
       campaignHandleFromRequest(req),
       req.user.id,
     );
+    dispatchDomainEvent({
+      type: CoreDomainEvents.DEVELOPMENT_PROPOSED,
+      campaignId: req.campaign!.campaignId,
+      actorId: req.user.id,
+      resourceType: 'campaign',
+      resourceId: req.campaign!.campaignId,
+      payload: {},
+    });
     res.json(result);
   } catch (err) {
     handleServiceError(res, err);

@@ -26,9 +26,186 @@ import type {
 } from '@/types/wiki';
 import type { DiscoveryStateProjection } from '@shared/discoveryProjection';
 import type { PageNarrativeStatusProjection } from '@shared/pageNarrativeStatus';
+import type { CharacterFieldDescriptor, CharacterFieldType, CharacterFieldValidation, CharacterPageDescriptor, PluginPageRemovalMode } from '@shared/characterPages';
 
 export type { DiscoveryStateProjection };
 export type { PageNarrativeStatusProjection };
+
+export interface CharacterPagesPayload {
+  pages: CharacterPageDescriptor[];
+  canEdit: boolean;
+  canManagePlugins: boolean;
+}
+
+export async function fetchCharacterPages(
+  campaignHandle: string,
+  characterPageId: string,
+): Promise<CharacterPagesPayload> {
+  return apiFetch<CharacterPagesPayload>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages`,
+  );
+}
+
+export async function fetchCharacterFields(
+  campaignHandle: string,
+  characterPageId: string,
+): Promise<CharacterFieldDescriptor[]> {
+  const result = await apiFetch<{ fields: CharacterFieldDescriptor[] }>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields`,
+  );
+  return result.fields;
+}
+
+export async function updateCharacterField(
+  campaignHandle: string,
+  characterPageId: string,
+  fieldId: string,
+  value: unknown,
+): Promise<CharacterFieldDescriptor> {
+  const result = await apiFetch<{ field: CharacterFieldDescriptor }>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields/${fieldId}`,
+    { method: 'PUT', body: JSON.stringify({ value }) },
+  );
+  return result.field;
+}
+
+export async function createCustomCharacterField(
+  campaignHandle: string,
+  characterPageId: string,
+  input: { label: string; type: CharacterFieldType; value?: unknown; validation?: CharacterFieldValidation; pageId?: string },
+): Promise<CharacterFieldDescriptor> {
+  const result = await apiFetch<{ field: CharacterFieldDescriptor }>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields`,
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+  return result.field;
+}
+
+export async function deleteCustomCharacterField(
+  campaignHandle: string,
+  characterPageId: string,
+  fieldId: string,
+): Promise<void> {
+  await apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields/${fieldId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function createCustomCharacterPage(
+  campaignHandle: string,
+  characterPageId: string,
+  title: string,
+): Promise<CharacterPageDescriptor> {
+  const result = await apiFetch<{ page: CharacterPageDescriptor }>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages`,
+    { method: 'POST', body: JSON.stringify({ title }) },
+  );
+  return result.page;
+}
+
+export async function materializePluginCharacterPage(
+  campaignHandle: string,
+  characterPageId: string,
+  pluginId: string,
+  sourceKey: string,
+): Promise<CharacterPageDescriptor> {
+  const result = await apiFetch<{ page: CharacterPageDescriptor }>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/materialize`,
+    { method: 'POST', body: JSON.stringify({ pluginId, sourceKey }) },
+  );
+  return result.page;
+}
+
+export async function patchCharacterPage(
+  campaignHandle: string,
+  characterPageId: string,
+  tabId: string,
+  patch: { title?: string; hidden?: boolean; visibility?: string | null },
+): Promise<CharacterPageDescriptor> {
+  const result = await apiFetch<{ page: CharacterPageDescriptor }>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}`,
+    { method: 'PATCH', body: JSON.stringify(patch) },
+  );
+  return result.page;
+}
+
+export async function reorderCharacterPages(
+  campaignHandle: string,
+  characterPageId: string,
+  keys: string[],
+): Promise<void> {
+  await apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/order`, {
+    method: 'PATCH',
+    body: JSON.stringify({ keys }),
+  });
+}
+
+export async function deleteCustomCharacterPage(
+  campaignHandle: string,
+  characterPageId: string,
+  tabId: string,
+): Promise<void> {
+  await apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function duplicateCharacterPageToCustom(
+  campaignHandle: string,
+  characterPageId: string,
+  tabId: string,
+): Promise<{ page: CharacterPageDescriptor; conversion: { portable: boolean; omitted: string[] } }> {
+  return apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function saveCharacterPageBlocks(
+  campaignHandle: string,
+  characterPageId: string,
+  tabId: string,
+  blocks: WikiPageBlock[],
+): Promise<CharacterPageDescriptor> {
+  const result = await apiFetch<{ page: CharacterPageDescriptor }>(
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}/blocks`,
+    { method: 'PUT', body: JSON.stringify({ blocks }) },
+  );
+  return result.page;
+}
+
+export async function fetchPluginCharacterPageData<T>(
+  campaignHandle: string,
+  characterPageId: string,
+  tabId: string,
+): Promise<{ data: T; schemaVersion: number }> {
+  return apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}/plugin-data`);
+}
+
+export async function updatePluginCharacterPageData<T>(
+  campaignHandle: string,
+  characterPageId: string,
+  tabId: string,
+  data: T,
+  schemaVersion: number,
+): Promise<{ data: T; schemaVersion: number }> {
+  return apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}/plugin-data`, {
+    method: 'PUT',
+    body: JSON.stringify({ data, schemaVersion }),
+  });
+}
+
+export async function removePluginCharacterPage(
+  campaignHandle: string,
+  characterPageId: string,
+  tabId: string,
+  mode: PluginPageRemovalMode,
+): Promise<void> {
+  await apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}/remove-plugin`, {
+    method: 'POST',
+    body: JSON.stringify({ mode }),
+  });
+}
 
 export async function fetchWikiTreePayload(
   campaignHandle: string,

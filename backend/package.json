@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsx watch src/index.ts",
     "test:assets": "node --import tsx --test --test-concurrency=1 src/routes/assets.http.test.ts src/lib/assetAccess.test.ts",
+    "test:wiki-updated-at": "node --import tsx --test --test-concurrency=1 src/routes/wikiPageUpdatedAt.http.test.ts",
     "build": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsc && node scripts/copy-openapi.mjs",
     "start": "node dist/backend/src/index.js",
     "db:generate": "prisma generate",
@@ -44,6 +45,7 @@
     "sharp": "^0.35.3",
     "swagger-ui-express": "^5.0.1",
     "tar": "^7.5.22",
+    "undici": "^7.16.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },

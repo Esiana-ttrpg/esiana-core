@@ -663,8 +663,8 @@ export function NewCampaignWizard({
       aria-labelledby="new-campaign-wizard-title"
     >
       <div className="flex min-h-full items-center justify-center p-4">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2
               id="new-campaign-wizard-title"
@@ -687,7 +687,7 @@ export function NewCampaignWizard({
           </button>
         </div>
 
-        <div className="border-b border-border px-6 py-4">
+        <div className="shrink-0 border-b border-border px-6 py-4">
           {!createdCampaign ? (
             <WizardStepNav
               steps={steps}
@@ -701,7 +701,7 @@ export function NewCampaignWizard({
           ) : null}
         </div>
 
-        <div className="max-h-[64vh] overflow-y-auto px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {createdCampaign ? (
             <WizardCreatedPanel campaign={createdCampaign} onDone={handleCreatedDone} />
           ) : (
@@ -1478,7 +1478,7 @@ export function NewCampaignWizard({
         </div>
 
         {!createdCampaign ? (
-        <div className="flex items-center justify-between border-t border-border px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-t border-border px-6 py-4">
           <button
             type="button"
             onClick={step === 0 ? handleResetAndClose : handleBack}

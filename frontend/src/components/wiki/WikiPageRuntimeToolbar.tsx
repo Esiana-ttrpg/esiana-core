@@ -40,6 +40,7 @@ interface WikiPageRuntimeToolbarProps {
   onAddWidget: (type: WikiPageBlock['type']) => void;
   onDeletePage: () => void;
   getExportContext?: () => PageExportContext;
+  allowCanvasTools?: boolean;
 }
 
 export function WikiPageRuntimeToolbar({
@@ -66,6 +67,7 @@ export function WikiPageRuntimeToolbar({
   onAddWidget,
   onDeletePage,
   getExportContext,
+  allowCanvasTools = true,
 }: WikiPageRuntimeToolbarProps) {
   const navigate = useNavigate();
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
@@ -146,7 +148,7 @@ export function WikiPageRuntimeToolbar({
           aria-label="Editing tools"
           data-print-hide
         >
-          <div className="relative">
+          {allowCanvasTools ? <div className="relative">
             <button
               type="button"
               title="Add widget"
@@ -177,9 +179,9 @@ export function WikiPageRuntimeToolbar({
                 </option>
               ))}
             </select>
-          </div>
+          </div> : null}
 
-          <button
+          {allowCanvasTools ? <button
             type="button"
             onClick={onToggleGridLines}
             aria-pressed={showGridLines}
@@ -188,7 +190,7 @@ export function WikiPageRuntimeToolbar({
           >
             <LayoutGrid className="size-3.5 shrink-0" aria-hidden />
             <span>{showGridLines ? 'Done arranging' : 'Arrange Blocks'}</span>
-          </button>
+          </button> : null}
 
           {onSavePage ? (
             <button

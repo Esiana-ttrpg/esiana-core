@@ -24,7 +24,11 @@ import {
   saveWikiPageLayout,
   updateWikiPage,
   updateWikiPageVisibility,
+  fetchCharacterPages,
+  createCustomCharacterPage,
+  materializePluginCharacterPage,
 } from '@/lib/wiki';
+import type { CharacterPageDescriptor } from '@shared/characterPages';
 import {
   campaignDashboardPath,
   campaignNotePath,
@@ -70,6 +74,11 @@ import { WikiPageRendererSlot } from '@/components/wiki/WikiPageRendererSlot';
 import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageShellView';
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
+import { CharacterMasthead } from '@/components/entity/shells/CharacterMasthead';
+import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVisibilityBadge';
+import { CharacterCanvasPage } from '@/components/entity/CharacterCanvasPage';
+import { PluginCharacterPageHost } from '@/components/entity/PluginCharacterPageHost';
+import { CharacterPageManager } from '@/components/entity/CharacterPageManager';
 import { QuestPageShellView } from '@/components/entity/shells/QuestPageShellView';
 import { LocationPageShellView } from '@/components/entity/shells/LocationPageShellView';
 import { OrganizationPageShellView } from '@/components/entity/shells/OrganizationPageShellView';
@@ -114,6 +123,13 @@ import { entityWorkspaceReaderFirst } from '@/lib/entityWorkspaceSlots';
 import { EntityWorkspaceSurface } from '@/components/wiki/EntityWorkspaceSurface';
 import type { WorkspaceCompositionId } from '@/lib/workspaceComposition';
 import { parseCharacterMetadata } from '@/lib/characterMetadata';
+import {
+  DEFAULT_APPEARANCE_PRESENTATION_ID,
+  projectAppearanceDetails,
+  projectAppearanceForms,
+  projectAppearancePresentation,
+  projectEntityAppearance,
+} from '@/lib/entityAppearanceProjection';
 import { parseOrganizationMetadata } from '@/lib/organizationMetadata';
 import { parseFamilyMetadata } from '@/lib/familyMetadata';
 import { useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
@@ -318,6 +334,8 @@ export function WikiPage() {
   const [embeddedMap, setEmbeddedMap] = useState<CampaignMapAsset | null>(null);
   const [embeddedCampaignMaps, setEmbeddedCampaignMaps] = useState<CampaignMapAsset[]>([]);
   const [entityDetailTab, setEntityDetailTab] = useState<'lore' | 'structure'>('lore');
+  const [characterPages, setCharacterPages] = useState<CharacterPageDescriptor[]>([]);
+  const [characterPageManagerOpen, setCharacterPageManagerOpen] = useState(false);
   const hasEditorSlot = useDeclaredPluginSlot(PluginUiSlots.EDITOR);
 
   useEffect(() => {
@@ -450,6 +468,70 @@ export function WikiPage() {
   );
 
   useEffect(() => {
+    if (entityPageShell.key !== 'character' || !pageId || !campaignHandle || !pageData) {
+      setCharacterPages([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchCharacterPages(campaignHandle, pageId)
+      .then((result) => {
+        if (!cancelled) setCharacterPages(result.pages);
+      })
+      .catch(() => {
+        if (!cancelled) setCharacterPages([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignHandle, entityPageShell.key, pageData, pageId]);
+
+  const activeCharacterPage = useMemo(
+    () => characterPages.find((page) => page.key === pageSubview) ?? null,
+    [characterPages, pageSubview],
+  );
+  const characterSubviewDefs = useMemo(
+    () =>
+      characterPages.length > 0
+        ? characterPages.filter((page) => !page.hidden).map((page) => ({
+            id: page.key,
+            label: page.title,
+            navPriority: page.displayOrder,
+            dmOnly: page.coreKey === 'discovery' || page.coreKey === 'continuity',
+          }))
+        : entityPageShell.subviews,
+    [characterPages, entityPageShell.subviews],
+  );
+  const handleCharacterSubviewChange = useCallback((id: string) => {
+    const open = async () => {
+      const registry = draftRegistryRef.current;
+      if (registry?.hasSemanticDirty) {
+        const failures = await registry.flushAll();
+        if (failures.length > 0) {
+          window.alert('Unable to save the current appearance. Fix the save error before changing pages.');
+          return;
+        }
+      }
+    const target = characterPages.find((page) => page.key === id);
+    if (!target || !target.id.startsWith('virtual:') || !target.pluginId || !target.sourceKey) {
+      setPageSubview(id);
+      return;
+    }
+    void materializePluginCharacterPage(
+      campaignHandle,
+      pageId,
+      target.pluginId,
+      target.sourceKey,
+    ).then((materialized) => {
+      setCharacterPages((previous) => previous.map((page) => page.key === id ? materialized : page));
+      setPageSubview(materialized.key);
+    }).catch((error: unknown) => {
+      window.alert(error instanceof Error ? error.message : 'Unable to open plugin page');
+    });
+    };
+    void open();
+  }, [campaignHandle, characterPages, pageId]);
+
+  useEffect(() => {
     if (
       entityPageShell.key === 'character' &&
       pageSubview === 'biography'
@@ -457,10 +539,12 @@ export function WikiPage() {
       setPageSubview('overview');
       return;
     }
-    if (!entityPageShell.isValidSubview(pageSubview, isDMUser)) {
+    const isCharacterExtension =
+      entityPageShell.key === 'character' && characterPages.some((page) => page.key === pageSubview);
+    if (!isCharacterExtension && !entityPageShell.isValidSubview(pageSubview, isDMUser)) {
       setPageSubview('overview');
     }
-  }, [pageSubview, entityPageShell, isDMUser]);
+  }, [pageSubview, entityPageShell, isDMUser, characterPages]);
 
   const canDeleteWikiPage =
     isDMUser &&
@@ -715,6 +799,49 @@ export function WikiPage() {
     if (entitySurfaceProfile.identityStrip !== 'character' || !pageId) return null;
     return buildCharacterIdentityProjection(pageId, characterSnapshots, campaignNow);
   }, [entitySurfaceProfile.identityStrip, pageId, characterSnapshots, campaignNow]);
+
+  const [characterAppearanceDraft, setCharacterAppearanceDraft] = useState<Record<string, unknown> | null>(null);
+  useEffect(() => {
+    setCharacterAppearanceDraft(null);
+    const handleDraft = (event: Event) => {
+      const detail = (event as CustomEvent<{ pageId: string; appearance: Record<string, unknown> | null }>).detail;
+      if (detail.pageId === pageId) setCharacterAppearanceDraft(detail.appearance);
+    };
+    window.addEventListener('esiana:character-appearance-draft', handleDraft);
+    return () => window.removeEventListener('esiana:character-appearance-draft', handleDraft);
+  }, [pageId]);
+  const characterAppearanceMetadata = useMemo(() => {
+    const base = pageData?.metadata && typeof pageData.metadata === 'object'
+      ? pageData.metadata as Record<string, unknown>
+      : {};
+    return characterAppearanceDraft ? { ...base, appearance: characterAppearanceDraft } : base;
+  }, [characterAppearanceDraft, pageData?.metadata]);
+
+  const characterAppearanceForms = useMemo(
+    () => pageData && entitySurfaceProfile.key === 'character'
+      ? projectAppearanceForms(characterAppearanceMetadata, 'character')
+      : { entries: [], primaryEntry: null, hasContent: false },
+    [entitySurfaceProfile.key, pageData, characterAppearanceMetadata],
+  );
+  const selectedAppearanceId = searchParams.get('appearance') ?? DEFAULT_APPEARANCE_PRESENTATION_ID;
+  const characterAppearancePresentation = useMemo(() => {
+    const metadata = characterAppearanceMetadata;
+    return projectAppearancePresentation({
+      appearance: projectEntityAppearance(metadata, 'character'),
+      forms: characterAppearanceForms,
+      details: projectAppearanceDetails(metadata, 'character'),
+      selectedEntryId: selectedAppearanceId,
+    });
+  }, [characterAppearanceForms, characterAppearanceMetadata, selectedAppearanceId]);
+  useEffect(() => {
+    if (entitySurfaceProfile.key !== 'character' || selectedAppearanceId === DEFAULT_APPEARANCE_PRESENTATION_ID) return;
+    if (characterAppearanceForms.entries.some((entry) => entry.id === selectedAppearanceId)) return;
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('appearance');
+      return next;
+    }, { replace: true });
+  }, [characterAppearanceForms.entries, entitySurfaceProfile.key, selectedAppearanceId, setSearchParams]);
 
   const organizationIdentityProjection = useMemo(() => {
     if (entitySurfaceProfile.identityStrip !== 'organization' || !pageId) return null;
@@ -1309,6 +1436,31 @@ export function WikiPage() {
 
   const wikiPageRendererSlot = useMemo(() => {
     if (!pageData) return null;
+    if (entityPageShell.key === 'character' && activeCharacterPage?.renderMode === 'CANVAS') {
+      return (
+        <CharacterCanvasPage
+          campaignHandle={campaignHandle}
+          characterPageId={pageId}
+          page={activeCharacterPage}
+          canEdit={pageCanEdit && activeCharacterPage.capabilities.canEdit}
+          widgetOptions={widgetOptions}
+          onPageSaved={(savedPage) => {
+            setCharacterPages((previous) => previous.map((candidate) =>
+              candidate.id === savedPage.id ? savedPage : candidate,
+            ));
+          }}
+        />
+      );
+    }
+    if (entityPageShell.key === 'character' && activeCharacterPage?.renderMode === 'PLUGIN') {
+      return (
+        <PluginCharacterPageHost
+          campaignHandle={campaignHandle}
+          character={{ id: pageId, title: displayTitle, visibility: pageVisibility }}
+          page={activeCharacterPage}
+        />
+      );
+    }
     return (
       <WikiPageRendererSlot
         blocks={displayBlocks}
@@ -1381,6 +1533,10 @@ export function WikiPage() {
     );
   }, [
     pageData,
+    activeCharacterPage,
+    widgetOptions,
+    pageCanEdit,
+    displayTitle,
     displayBlocks,
     templateType,
     isEditingPage,
@@ -1836,10 +1992,53 @@ export function WikiPage() {
             titleFocusField={
               entitySurfaceProfile.key === 'character' ? inspectorFocusField : null
             }
+            characterMasthead={entitySurfaceProfile.key === 'character' ? (nameControl) => (
+              <CharacterMasthead
+                identity={characterIdentityProjection}
+                presentation={characterAppearancePresentation}
+                title={pageData ? parseCharacterMetadata(pageData.metadata).title : null}
+                nameControl={nameControl}
+                visibilityControl={
+                  <NarrativeVisibilityBadge
+                    pageVisibility={pageVisibility}
+                    discovery={pageCodexDiagnostics.discovery}
+                    isEditingPage={isEditingPage}
+                    onVisibilityChange={handleVisibilityChange}
+                  />
+                }
+              />
+            ) : undefined}
             showSectionSubviews={showSectionSubviews}
-            subviews={entityPageShell.subviews}
+            subviews={
+              entityPageShell.key === 'character'
+                ? characterSubviewDefs
+                : entityPageShell.subviews
+            }
             activeSubview={pageSubview}
-            onSubviewChange={setPageSubview}
+            onSubviewChange={
+              entityPageShell.key === 'character'
+                ? handleCharacterSubviewChange
+                : setPageSubview
+            }
+            onAddSubview={
+              entityPageShell.key === 'character' && pageCanEdit
+                ? () => {
+                    const title = window.prompt('Page name');
+                    if (!title?.trim()) return;
+                    void createCustomCharacterPage(campaignHandle, pageId, title).then((page) => {
+                      setCharacterPages((previous) => [...previous, page].sort((a, b) => a.displayOrder - b.displayOrder));
+                      setPageSubview(page.key);
+                    }).catch((error: unknown) => {
+                      window.alert(error instanceof Error ? error.message : 'Unable to create page');
+                    });
+                  }
+                : undefined
+            }
+            onManageSubviews={
+              entityPageShell.key === 'character' && pageCanEdit
+                ? () => setCharacterPageManagerOpen(true)
+                : undefined
+            }
             isDMUser={isDMUser}
             isTagsHub={isTagsHub}
             isLayoutDirty={isDirty}
@@ -1859,6 +2058,7 @@ export function WikiPage() {
             onAddWidget={handleAddWidget}
             onDeletePage={() => setIsDeleteDialogOpen(true)}
             getExportContext={getPageExportContext}
+            allowCanvasTools={entitySurfaceProfile.key !== 'character'}
             havenBackLink={
               templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
               searchParams.get('view') === 'lore'
@@ -1889,6 +2089,15 @@ export function WikiPage() {
           />
         ) : null}
       </WikiWorkspaceShell>
+      {characterPageManagerOpen && entityPageShell.key === 'character' ? (
+        <CharacterPageManager
+          campaignHandle={campaignHandle}
+          characterPageId={pageId}
+          pages={characterPages}
+          onPagesChange={setCharacterPages}
+          onClose={() => setCharacterPageManagerOpen(false)}
+        />
+      ) : null}
 
       {isDeleteDialogOpen && (
         <WikiPageDeleteDialog

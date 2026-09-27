@@ -18,6 +18,7 @@ import {
   Minus,
   PenLine,
   Quote,
+  BookOpen,
   Strikethrough,
   Underline,
   Eraser,
@@ -35,6 +36,7 @@ import {
   EditorColorPickerToolbarButton,
 } from './EditorColorPickerContext';
 import { AdmonitionToolbarDropdown } from './AdmonitionToolbarDropdown';
+import { OPEN_SOURCE_PICKER_EVENT } from './SourcePicker';
 
 interface WikiEditorToolbarProps {
   editor: Editor | null;
@@ -387,6 +389,7 @@ export function WikiEditorToolbar({
       >
         <Link className="size-4" />
       </ToolbarButton>
+      <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => window.dispatchEvent(new CustomEvent(OPEN_SOURCE_PICKER_EVENT, { detail: { editor } }))} className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border/60 px-2 py-1.5 text-xs font-medium text-muted hover:bg-surface/60 hover:text-foreground" title="Add source"><BookOpen className="size-3.5" /><span className="hidden sm:inline">Source</span></button>
 
       {/* Table of Contents */}
       <ToolbarButton onClick={handleInsertToc} title="Table of Contents">

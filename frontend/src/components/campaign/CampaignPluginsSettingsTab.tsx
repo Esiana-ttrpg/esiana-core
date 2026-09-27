@@ -12,10 +12,7 @@ import type {
   CampaignPluginSettingRecord,
 } from '@/types/admin';
 import { ToggleRow } from '@/components/admin/AdminSectionCard';
-import { PluginConfigForm } from '@/components/admin/PluginConfigForm';
-import { mergePluginConfigFields } from '@/lib/configSchemaParser';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { PluginCampaignSettingsSlot } from '@/plugins/slots';
 
 function ErrorBanner({ message }: { message: string }) {
   return (
@@ -27,7 +24,7 @@ function ErrorBanner({ message }: { message: string }) {
 
 export function CampaignPluginsSettingsTab({
   campaignId,
-  campaignHandle,
+  campaignHandle: _campaignHandle,
 }: {
   campaignId: string;
   campaignHandle: string;
@@ -43,7 +40,6 @@ export function CampaignPluginsSettingsTab({
   const [removingId, setRemovingId] = useState<string | null>(null);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [draftConfig, setDraftConfig] = useState<Record<string, unknown>>({});
   const [draftEnabled, setDraftEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -129,7 +125,6 @@ export function CampaignPluginsSettingsTab({
 
   function openConfigure(row: CampaignPluginSettingRecord) {
     setExpandedId(row.pluginId);
-    setDraftConfig({ ...row.config });
     setDraftEnabled(row.isEnabled);
     setSaveError(null);
   }
@@ -142,11 +137,10 @@ export function CampaignPluginsSettingsTab({
 
     try {
       const updated = await saveCampaignPluginConfig(campaignId, pluginId, {
-        config: draftConfig,
         isEnabled: draftEnabled,
       });
       setActive((prev) =>
-        prev.map((row) => (row.pluginId === updated.pluginId ? updated : row)),
+        prev.map((row) => (row.pluginId === updated.pluginId ? { ...row, ...updated } : row)),
       );
       setActionMessage('Plugin configuration saved.');
     } catch (err) {
@@ -281,31 +275,7 @@ export function CampaignPluginsSettingsTab({
                         checked={draftEnabled}
                         onChange={setDraftEnabled}
                       />
-                      <PluginConfigForm
-                        template={mergePluginConfigFields({
-                          configTemplate: row.plugin.configTemplate,
-                          configSchema: row.plugin.configSchema,
-                        })}
-                        config={draftConfig}
-                        onChange={(key, value) =>
-                          setDraftConfig((prev) => ({ ...prev, [key]: value }))
-                        }
-                      />
-                      {row.plugin.frontendEntry ? (
-                        <PluginCampaignSettingsSlot
-                          pluginId={row.pluginId}
-                          frontendEntry={row.plugin.frontendEntry}
-                          campaignId={campaignId}
-                          campaignHandle={campaignHandle}
-                          config={draftConfig}
-                          isEnabled={draftEnabled}
-                          uiSlots={row.plugin.uiSlots ?? []}
-                          apiBase={
-                            import.meta.env.VITE_API_BASE_URL?.trim().replace(/\/+$/, '') ||
-                            window.location.origin.replace(/\/+$/, '')
-                          }
-                        />
-                      ) : null}
+                      {row.plugin.permissions?.includes('connections:use') ? <p className="rounded border border-border bg-elevated/30 p-3 text-sm text-muted">{row.connectionStatus === 'connected' ? 'Connection configured by an application administrator.' : 'Connection unavailable. Ask an application administrator to configure it.'}</p> : null}
                       {saveError && (
                         <p className="text-sm text-red-300">{saveError}</p>
                       )}

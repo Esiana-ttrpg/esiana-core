@@ -13,6 +13,7 @@ import { AdmonitionExtension } from './extensions/AdmonitionExtension';
 import { TableOfContentsExtension } from './extensions/TableOfContentsExtension';
 import { WikiLinkExtension } from './extensions/WikiLinkExtension';
 import { SocialMentionExtension } from './extensions/SocialMentionExtension';
+import { SourceReferenceAtom, SourceReferenceMark } from './extensions/SourceReferenceExtension';
 
 export const WIKI_EDITOR_PROSE_CLASS =
   'tiptap prose prose-invert prose-sm max-w-none focus:outline-none px-4 py-3 text-foreground';
@@ -33,6 +34,8 @@ export function buildWikiEditorExtensions(loreExtensions: Extensions = []): Exte
     Markdown,
     WikiLinkExtension,
     SocialMentionExtension,
+    SourceReferenceMark,
+    SourceReferenceAtom,
     ...loreExtensions,
     TextAlign.configure({
       types: ['heading', 'paragraph'],
