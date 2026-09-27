@@ -1,9 +1,7 @@
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import {
-  subscribeToDomainEvent,
-  type DomainEvent,
-} from '../lib/domainEvents/index.js';
+import { subscribeToDomainEvent } from '../lib/domainEvents/index.js';
+import { campaignEventEnvelope } from '../lib/campaignEventEnvelope.js';
 import { canReceiveCampaignEvent } from '../lib/campaignEventVisibility.js';
 import { registerCampaignEventStream } from '../lib/campaignEventStreams.js';
 import { prisma } from '../lib/prisma.js';
@@ -82,21 +80,4 @@ export function streamCampaignEvents(
   res.on('finish', cleanup);
 }
 
-/** Only the canonical, intentionally small envelope crosses the trust boundary. */
-export function campaignEventEnvelope(event: DomainEvent): DomainEvent {
-  const payload =
-    event.type.startsWith('wiki.') || event.type.startsWith('character.')
-      ? {}
-      : event.payload;
-  return {
-    type: event.type,
-    campaignId: event.campaignId,
-    actorId: event.actorId,
-    resourceType: event.resourceType,
-    resourceId: event.resourceId,
-    occurredAt: event.occurredAt,
-    payload,
-    source: event.source,
-    ...(event.sourceId ? { sourceId: event.sourceId } : {}),
-  };
-}
+export { campaignEventEnvelope } from '../lib/campaignEventEnvelope.js';

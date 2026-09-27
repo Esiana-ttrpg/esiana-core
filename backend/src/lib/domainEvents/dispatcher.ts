@@ -3,6 +3,7 @@ import type {
   DomainEventListener,
   DispatchDomainEventInput,
 } from './types.js';
+import { randomUUID } from 'node:crypto';
 
 const listeners = new Map<string, Set<DomainEventListener>>();
 
@@ -74,6 +75,8 @@ export function dispatchDomainEvent<TPayload = Record<string, unknown>>(
   input: DispatchDomainEventInput<TPayload>,
 ): void {
   const event: DomainEvent<TPayload> = {
+    id: `evt_${randomUUID()}`,
+    version: 1,
     type: input.type,
     campaignId: input.campaignId,
     actorId: input.actorId,

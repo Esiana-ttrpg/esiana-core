@@ -4,6 +4,8 @@ import { campaignEventEnvelope } from './campaignEventsController.js';
 
 test('campaignEventEnvelope strips wiki payloads while retaining routing fields', () => {
   const result = campaignEventEnvelope({
+    id: 'evt_test',
+    version: 1,
     type: 'wiki.page.updated',
     campaignId: 'campaign-1',
     actorId: 'user-1',
