@@ -1533,6 +1533,7 @@ model CharacterField {
   providerKey     String?
   label           String
   fieldType       String
+  displayOrder    Int @default(0)
   value           Json?
   validation      Json?
   capabilities    Json?

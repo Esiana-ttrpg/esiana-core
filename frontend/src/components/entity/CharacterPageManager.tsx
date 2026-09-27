@@ -8,6 +8,8 @@ import {
   reorderCharacterPages,
 } from '@/lib/wiki';
 import { characterResourceDeleteWarning, characterResourceSourceLabel } from '@/lib/characterResourceProvenance';
+import { useState } from 'react';
+import { EntityFieldManager } from './EntityFieldManager';
 
 interface CharacterPageManagerProps {
   campaignHandle: string;
@@ -24,6 +26,7 @@ export function CharacterPageManager({
   onPagesChange,
   onClose,
 }: CharacterPageManagerProps) {
+  const [fieldsOpen, setFieldsOpen] = useState(false);
   const ordered = [...pages].sort((a, b) => a.displayOrder - b.displayOrder);
 
   const move = async (index: number, delta: number) => {
@@ -86,7 +89,7 @@ export function CharacterPageManager({
       <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border bg-surface p-4 shadow-xl">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 id="manage-character-pages-title" className="text-lg font-semibold text-foreground">Manage pages</h2>
-          <button type="button" onClick={onClose} className="rounded p-1 text-muted hover:text-foreground" aria-label="Close manage pages"><X className="size-4" /></button>
+          <div className="flex items-center gap-2"><button type="button" className="rounded-md border border-border/50 px-2 py-1 text-xs text-muted hover:text-foreground" onClick={() => setFieldsOpen(true)}>Manage fields</button><button type="button" onClick={onClose} className="rounded p-1 text-muted hover:text-foreground" aria-label="Close manage pages"><X className="size-4" /></button></div>
         </div>
         <div className="space-y-1">
           {ordered.map((page, index) => (
@@ -123,6 +126,7 @@ export function CharacterPageManager({
           ))}
         </div>
       </div>
+      {fieldsOpen ? <EntityFieldManager campaignHandle={campaignHandle} entityPageId={characterPageId} pages={pages} onClose={() => setFieldsOpen(false)} /> : null}
     </div>
   );
 }

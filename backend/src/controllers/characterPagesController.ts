@@ -11,14 +11,12 @@ import { validateWikiBlocksAssetReferences } from '../lib/assetReferenceValidati
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import { listEnabledCampaignCharacterPageDefinitions } from '../lib/campaignPlugins.js';
 import {
-  CHARACTER_CORE_PAGE_KEYS,
-  type CharacterCorePageKey,
+  ENTITY_SHELL_CORE_PAGES,
   type CharacterPageDescriptor,
   type PluginPageRemovalMode,
 } from '../../../shared/characterPages.js';
 import {
   CORE_CHARACTER_PAGE_ORDER,
-  CORE_CHARACTER_PAGE_TITLES,
   normalizeCharacterPageBlocks,
   normalizeCharacterPageTitle,
 } from '../lib/characterPages.js';
@@ -31,6 +29,11 @@ const characterDb = prisma as typeof prisma & {
 
 const VALID_VISIBILITY = new Set(['Public', 'Party', 'DM_Only']);
 const MAX_PLUGIN_DATA_BYTES = 256 * 1024;
+const ALL_ENTITY_CORE_PAGES = Object.values(ENTITY_SHELL_CORE_PAGES).flat();
+
+function entityCorePage(key: string) {
+  return ALL_ENTITY_CORE_PAGES.find((page) => page.key === key);
+}
 
 export function canReadCharacterPageTab(
   row: { hidden: boolean; visibility: string | null },
@@ -58,8 +61,8 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
       ownerPartyId: true,
     },
   });
-  if (!page || !isCharacterWikiPage(page)) {
-    res.status(404).json({ error: 'Character not found' });
+  if (!page) {
+    res.status(404).json({ error: 'Entity not found' });
     return null;
   }
   if (!canViewWikiPage(page.visibility, ctx.role)) {
@@ -71,7 +74,7 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
     ownerUserId: page.ownerUserId,
     ownerPartyId: page.ownerPartyId,
   });
-  return { page, canEdit, canManagePlugins: canManageNotebooksFromActor(ctx.actor) };
+  return { page, canEdit, canManagePlugins: canManageNotebooksFromActor(ctx.actor), isCharacter: isCharacterWikiPage(page) };
 }
 
 function serializeStoredTab(row: any, canEdit: boolean): CharacterPageDescriptor {
@@ -132,19 +135,22 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
     orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
   });
   const byCoreKey = new Map(rows.filter((row: any) => row.coreKey).map((row: any) => [row.coreKey, row]));
-  const core = CHARACTER_CORE_PAGE_KEYS.map((coreKey) => {
+  const requestedShell = typeof req.query.shell === 'string' ? req.query.shell : 'character';
+  const coreDefinitions = ENTITY_SHELL_CORE_PAGES[requestedShell] ?? ENTITY_SHELL_CORE_PAGES.character!;
+  const core = coreDefinitions.map(({ key: coreKey, title, dmOnly }, coreIndex) => {
     const stored = byCoreKey.get(coreKey);
     if (stored) return serializeStoredTab(stored, access.canEdit);
     return {
       id: `core:${coreKey}`,
       key: coreKey,
-      title: CORE_CHARACTER_PAGE_TITLES[coreKey],
+      title,
       origin: 'CORE' as const,
       renderMode: 'CORE' as const,
-      displayOrder: CORE_CHARACTER_PAGE_ORDER.get(coreKey) ?? 0,
+      displayOrder: CORE_CHARACTER_PAGE_ORDER.get(coreKey as any) ?? coreIndex * 10,
       hidden: false,
       visibility: null,
       coreKey,
+      ...(dmOnly ? { dmOnly: true } : {}),
       capabilities: {
         canEdit: access.canEdit,
         canRename: false,
@@ -171,7 +177,7 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
     ...storedNonCore.map((page) => `${page.pluginId ?? ''}:${page.sourceKey ?? ''}`),
     ...states.map((state: any) => `${state.pluginId}:${state.sourceKey}`),
   ]);
-  const definitions = await listEnabledCampaignCharacterPageDefinitions(ctx.campaignId);
+  const definitions = access.isCharacter ? await listEnabledCampaignCharacterPageDefinitions(ctx.campaignId) : [];
   const virtualPluginPages: CharacterPageDescriptor[] = definitions
     .filter(() => access.canEdit)
     .filter(({ pluginId, definition }) => !materializedKeys.has(`${pluginId}:${definition.key}`))
@@ -202,7 +208,7 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
       },
     }));
   const pages = [...core, ...storedNonCore, ...virtualPluginPages]
-    .filter((page) => elevated || (page.coreKey !== 'discovery' && page.coreKey !== 'continuity'))
+    .filter((page) => elevated || !coreDefinitions.find((corePage) => corePage.key === page.coreKey)?.dmOnly)
     .filter((page) => access.canEdit || !page.hidden)
     .filter((page) => page.visibility == null || canViewWikiPage(page.visibility, ctx.role))
     .sort((a, b) => a.displayOrder - b.displayOrder || a.title.localeCompare(b.title));
@@ -358,8 +364,9 @@ export async function updateCharacterPage(req: CampaignScopedRequest, res: Respo
       return;
     }
     const coreKey = requestedId.slice(5);
-    if (!CHARACTER_CORE_PAGE_KEYS.includes(coreKey as CharacterCorePageKey) || coreKey === 'overview') {
-      res.status(400).json({ error: 'Invalid core character page' });
+    const definition = entityCorePage(coreKey);
+    if (!definition || coreKey === 'overview') {
+      res.status(400).json({ error: 'Invalid core entity page' });
       return;
     }
     if (typeof req.body?.hidden !== 'boolean') {
@@ -374,8 +381,8 @@ export async function updateCharacterPage(req: CampaignScopedRequest, res: Respo
         origin: 'CORE',
         renderMode: 'CORE',
         coreKey,
-        title: CORE_CHARACTER_PAGE_TITLES[coreKey as CharacterCorePageKey],
-        displayOrder: CORE_CHARACTER_PAGE_ORDER.get(coreKey) ?? 0,
+        title: definition.title,
+        displayOrder: ALL_ENTITY_CORE_PAGES.findIndex((page) => page.key === coreKey) * 10,
         hidden: req.body.hidden,
       },
       update: { hidden: req.body.hidden },
@@ -443,8 +450,9 @@ export async function reorderCharacterPages(req: CampaignScopedRequest, res: Res
     for (let index = 0; index < keys.length; index += 1) {
       const key = keys[index]!;
       const displayOrder = index * 10;
-      if ((CHARACTER_CORE_PAGE_KEYS as readonly string[]).includes(key)) {
-        const coreKey = key as CharacterCorePageKey;
+      const coreDefinition = entityCorePage(key);
+      if (coreDefinition) {
+        const coreKey = key;
         await db.characterPageTab.upsert({
           where: { characterPageId_coreKey: { characterPageId: access.page.id, coreKey } },
           create: {
@@ -453,7 +461,7 @@ export async function reorderCharacterPages(req: CampaignScopedRequest, res: Res
             origin: 'CORE',
             renderMode: 'CORE',
             coreKey,
-            title: CORE_CHARACTER_PAGE_TITLES[coreKey],
+            title: coreDefinition.title,
             displayOrder,
           },
           update: { displayOrder },
