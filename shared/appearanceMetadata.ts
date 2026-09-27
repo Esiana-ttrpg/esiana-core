@@ -63,10 +63,12 @@ export const APPEARANCE_PRESENTATION_TYPE_LABELS: Record<AppearancePresentationT
 export interface AppearanceGalleryEntry {
   id: string;
   label: string;
-  imageUrl: string;
+  /** Undefined inherits the canonical portrait; an empty string intentionally suppresses it. */
+  imageUrl?: string;
   imageCredit: ImageCredit | null;
   /** Mood/aesthetic only — formal, battle-worn, winter… */
-  tags: string[];
+  /** Undefined inherits canonical tags; an empty array intentionally clears them. */
+  tags?: string[];
   /** Structured semantics — disguise, transformation, corrupted, public/private, etc. */
   presentationType?: AppearancePresentationType;
   /** Optional; schema allows multiple primaries for future projection contexts. */
@@ -74,18 +76,21 @@ export interface AppearanceGalleryEntry {
   /** @deprecated Editor removed; opaque chronology hook preserved for existing JSON only. */
   timelinePin: string | null;
   /** Presentation-specific description — how this state looks and feels (UI: Description). */
-  presentationNotes: string | null;
+  presentationNotes?: string;
+  atAGlance?: string;
+  build?: string;
   /** Physical/body traits for this presentation state only. */
-  distinguishingFeatures: string[];
-  voice: string | null;
-  presence: string | null;
-  clothingMotifs: string | null;
+  distinguishingFeatures?: string[];
+  visibleInjuries?: string[];
+  voice?: string;
+  presence?: string;
+  clothingMotifs?: string;
   /** Author context for this entry — not legacy `notes` (that maps to presentationNotes). */
-  authorNotes: string | null;
+  authorNotes?: string;
   /** Presentation-state gender overlay — distinct from entity-level gender. */
-  gender: string | null;
+  gender?: string;
   /** Presentation-state presentation overlay — distinct from entity-level presentation. */
-  presentation: string | null;
+  presentation?: string;
 }
 
 export interface AppearanceGalleryState {
@@ -112,6 +117,16 @@ function trimText(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeOverlayText(obj: Record<string, unknown>, key: string): string | undefined {
+  if (!(key in obj) || obj[key] === null || typeof obj[key] !== 'string') return undefined;
+  return obj[key] as string;
+}
+
+function normalizeOverlayList(obj: Record<string, unknown>, key: string): string[] | undefined {
+  if (!(key in obj) || obj[key] === null || !Array.isArray(obj[key])) return undefined;
+  return normalizeStringArray(obj[key]);
 }
 
 function normalizeStringArray(raw: unknown): string[] {
@@ -148,13 +163,13 @@ export function emptyGalleryEntryOverlays(): Pick<
   | 'presentation'
 > {
   return {
-    distinguishingFeatures: [],
-    voice: null,
-    presence: null,
-    clothingMotifs: null,
-    authorNotes: null,
-    gender: null,
-    presentation: null,
+    distinguishingFeatures: undefined,
+    voice: undefined,
+    presence: undefined,
+    clothingMotifs: undefined,
+    authorNotes: undefined,
+    gender: undefined,
+    presentation: undefined,
   };
 }
 
@@ -167,22 +182,26 @@ function normalizeGalleryEntry(raw: unknown): AppearanceGalleryEntry | null {
   return {
     id,
     label,
-    imageUrl: normalizeImageUrl(obj.imageUrl),
+    imageUrl: 'imageUrl' in obj && obj.imageUrl !== null ? normalizeImageUrl(obj.imageUrl) : undefined,
     imageCredit: normalizeImageCredit(obj.imageCredit),
-    tags: normalizeStringArray(obj.tags),
+    tags: normalizeOverlayList(obj, 'tags'),
     presentationType: normalizePresentationType(obj.presentationType),
     isPrimary: obj.isPrimary === true ? true : undefined,
     timelinePin: trimText(obj.timelinePin),
-    presentationNotes:
-      trimText(obj.presentationNotes) ?? trimText(obj.notes),
+    presentationNotes: 'presentationNotes' in obj
+      ? normalizeOverlayText(obj, 'presentationNotes')
+      : normalizeOverlayText(obj, 'notes'),
+    atAGlance: normalizeOverlayText(obj, 'atAGlance'),
+    build: normalizeOverlayText(obj, 'build'),
     ...emptyGalleryEntryOverlays(),
-    distinguishingFeatures: normalizeStringArray(obj.distinguishingFeatures),
-    voice: trimText(obj.voice),
-    presence: trimText(obj.presence),
-    clothingMotifs: trimText(obj.clothingMotifs),
-    authorNotes: trimText(obj.authorNotes),
-    gender: trimText(obj.gender),
-    presentation: trimText(obj.presentation),
+    distinguishingFeatures: normalizeOverlayList(obj, 'distinguishingFeatures'),
+    visibleInjuries: normalizeOverlayList(obj, 'visibleInjuries'),
+    voice: normalizeOverlayText(obj, 'voice'),
+    presence: normalizeOverlayText(obj, 'presence'),
+    clothingMotifs: normalizeOverlayText(obj, 'clothingMotifs'),
+    authorNotes: normalizeOverlayText(obj, 'authorNotes'),
+    gender: normalizeOverlayText(obj, 'gender'),
+    presentation: normalizeOverlayText(obj, 'presentation'),
   };
 }
 
@@ -283,7 +302,7 @@ export function synthesizeLegacyGalleryEntry(
     presentationType: 'default',
     isPrimary: true,
     timelinePin: null,
-    presentationNotes: null,
+    presentationNotes: undefined,
     ...emptyGalleryEntryOverlays(),
   };
 }

@@ -135,6 +135,32 @@ export function EntityAppearanceEditor({
   const showCharacterIdentity = surfaceProfileKey === 'character';
 
   useEffect(() => {
+    if (surfaceProfileKey !== 'character') return;
+    const appearance = {
+      ...parseCharacterMetadata(metadata).appearance,
+      portraitUrl: draft.portraitUrl,
+      portraitCredit: draft.portraitCredit,
+      summary: draft.summary,
+      appearanceTags: draft.tags,
+      gender: draft.gender,
+      presentation: draft.presentation,
+      gallery: draft.gallery,
+      ...appearanceDetailsToMetadataPatch(draft.details),
+    };
+    window.dispatchEvent(new CustomEvent('esiana:character-appearance-draft', {
+      detail: { pageId, appearance },
+    }));
+  }, [draft, metadata, pageId, surfaceProfileKey]);
+
+  useEffect(() => () => {
+    if (surfaceProfileKey === 'character') {
+      window.dispatchEvent(new CustomEvent('esiana:character-appearance-draft', {
+        detail: { pageId, appearance: null },
+      }));
+    }
+  }, [pageId, surfaceProfileKey]);
+
+  useEffect(() => {
     if (!focusField) return;
     const el =
       document.getElementById(focusField) ??
@@ -258,12 +284,6 @@ export function EntityAppearanceEditor({
             }
             onPersist={(patch) => void persistAppearance(patch)}
           />
-        ) : draft.portraitUrl?.trim() ? (
-          <img
-            src={draft.portraitUrl}
-            alt=""
-            className="max-h-48 w-auto rounded-lg border border-border/40 object-cover shadow-sm"
-          />
         ) : null}
 
         {showDetails ? (
@@ -296,12 +316,12 @@ export function EntityAppearanceEditor({
             imageUrl: draft.portraitUrl ?? '',
             imageCredit: draft.portraitCredit,
             tags: draft.tags,
-            presentationNotes: draft.summary,
+            presentationNotes: draft.summary ?? undefined,
             distinguishingFeatures: draft.details.distinguishingFeatures,
-            voice: draft.details.voice,
-            clothingMotifs: draft.details.clothingMotifs,
-            gender: draft.gender,
-            presentation: draft.presentation,
+            voice: draft.details.voice ?? undefined,
+            clothingMotifs: draft.details.clothingMotifs ?? undefined,
+            gender: draft.gender ?? undefined,
+            presentation: draft.presentation ?? undefined,
           }}
           defaultPortrait={{
             imageUrl: draft.portraitUrl ?? '',
@@ -309,13 +329,13 @@ export function EntityAppearanceEditor({
             onChange: ({ imageUrl, imageCredit }) =>
               setDraft((prev) => ({
                 ...prev,
-                portraitUrl: imageUrl.trim() || null,
+                portraitUrl: (imageUrl ?? '').trim() || null,
                 portraitCredit: imageCredit,
               })),
             onPersist: (patch) => void persistDraft({
               ...draftRef.current,
               ...(patch?.imageUrl !== undefined
-                ? { portraitUrl: patch.imageUrl.trim() || null }
+                ? { portraitUrl: (patch.imageUrl ?? '').trim() || null }
                 : {}),
               ...(patch?.imageCredit !== undefined
                 ? { portraitCredit: patch.imageCredit }

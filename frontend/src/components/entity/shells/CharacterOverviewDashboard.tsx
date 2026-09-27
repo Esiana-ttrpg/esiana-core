@@ -112,24 +112,21 @@ export function CharacterOverviewDashboard({
     />
   ) : (
     <EntityFactRowList>
-      <EntityFactRow label="Ancestry" fieldId="character-field-ancestryId">
+      {displayValues.ancestryOrigin ? <EntityFactRow label="Ancestry" fieldId="character-field-ancestryId">
         <EntityFactReadValue value={displayValues.ancestryOrigin} />
-      </EntityFactRow>
-      <EntityFactRow label="Home" fieldId="character-field-currentLocationId">
+      </EntityFactRow> : null}
+      {displayValues.homeLocation ? <EntityFactRow label="Home" fieldId="character-field-currentLocationId">
         <EntityFactReadValue value={displayValues.homeLocation} />
-      </EntityFactRow>
-      <EntityFactRow label="Families" fieldId="character-field-familyId">
+      </EntityFactRow> : null}
+      {displayValues.families ? <EntityFactRow label="Families" fieldId="character-field-familyId">
         {familiesReadControl}
-      </EntityFactRow>
-      <EntityFactRow label="Affiliations" fieldId="character-field-primaryAffiliationId">
+      </EntityFactRow> : null}
+      {displayValues.affiliations ? <EntityFactRow label="Affiliations" fieldId="character-field-primaryAffiliationId">
         <EntityFactReadValue value={displayValues.affiliations} />
-      </EntityFactRow>
-      <EntityFactRow label="Gender" fieldId="character-field-appearance.gender">
-        <EntityFactReadValue value={displayValues.gender} />
-      </EntityFactRow>
-      <EntityFactRow label="Tags" fieldId="character-field-tags">
+      </EntityFactRow> : null}
+      {displayValues.tags ? <EntityFactRow label="Tags" fieldId="character-field-tags">
         {tagsReadControl}
-      </EntityFactRow>
+      </EntityFactRow> : null}
     </EntityFactRowList>
   );
 
