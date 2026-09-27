@@ -182,7 +182,7 @@ function normalizeGalleryEntry(raw: unknown): AppearanceGalleryEntry | null {
   return {
     id,
     label,
-    imageUrl: 'imageUrl' in obj && obj.imageUrl !== null ? normalizeImageUrl(obj.imageUrl) : undefined,
+    imageUrl: typeof obj.imageUrl === 'string' ? normalizeImageUrl(obj.imageUrl) : undefined,
     imageCredit: normalizeImageCredit(obj.imageCredit),
     tags: normalizeOverlayList(obj, 'tags'),
     presentationType: normalizePresentationType(obj.presentationType),

@@ -802,6 +802,7 @@ export function WikiPage() {
 
   const [characterAppearanceDraft, setCharacterAppearanceDraft] = useState<Record<string, unknown> | null>(null);
   useEffect(() => {
+    setCharacterAppearanceDraft(null);
     const handleDraft = (event: Event) => {
       const detail = (event as CustomEvent<{ pageId: string; appearance: Record<string, unknown> | null }>).detail;
       if (detail.pageId === pageId) setCharacterAppearanceDraft(detail.appearance);

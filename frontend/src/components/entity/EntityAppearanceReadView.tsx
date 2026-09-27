@@ -94,6 +94,24 @@ export function EntityAppearanceReadView({
   const hasGender = Boolean(presentation.gender?.trim());
   const hasTags = presentation.tags.length > 0;
   const hasSupporting = hasPresentation || hasGender || hasTags;
+  const differenceFields = [
+    { label: 'At a glance', field: presentation.fields.atAGlance },
+    { label: 'Build', field: presentation.fields.build },
+    { label: 'Voice', field: presentation.fields.voice },
+    { label: 'Presence', field: presentation.fields.presence },
+    { label: 'Clothing motifs', field: presentation.fields.clothingMotifs },
+    { label: 'Distinguishing features', field: presentation.fields.distinguishingFeatures },
+    { label: 'Visible injuries', field: presentation.fields.visibleInjuries },
+    { label: 'Description', field: presentation.fields.description },
+    { label: 'Tags', field: presentation.fields.tags },
+    { label: 'Gender', field: presentation.fields.gender },
+    { label: 'Presentation', field: presentation.fields.presentation },
+  ].flatMap(({ label, field }) => {
+    if (field.source === 'default') return [];
+    const rawValue = field.value;
+    const value = Array.isArray(rawValue) ? rawValue.join(' · ') : rawValue;
+    return [{ label, value: value || 'Intentionally blank' }];
+  });
 
   return (
     <div className="space-y-6">
@@ -140,9 +158,21 @@ export function EntityAppearanceReadView({
         </EntityPageSection>
       ) : null}
 
-      {!presentation.isBaseline || presentation.fields.authorNotes.value ? (
+      {differenceFields.length > 0 || presentation.fields.authorNotes.value ? (
         <EntityPageSection id="appearance-supporting" title="Additional details" wikiFacts>
-          {!presentation.isBaseline ? <details className="border-t border-border/25 py-2"><summary className="cursor-pointer text-sm text-muted">How this appearance differs</summary></details> : null}
+          {differenceFields.length > 0 ? (
+            <details className="border-t border-border/25 py-2">
+              <summary className="cursor-pointer text-sm text-muted">How this appearance differs</summary>
+              <dl className="mt-3 grid gap-2 text-sm">
+                {differenceFields.map((field) => (
+                  <div key={field.label} className="grid gap-1 sm:grid-cols-[10rem_1fr]">
+                    <dt className="text-muted">{field.label}</dt>
+                    <dd className="text-foreground">{field.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          ) : null}
           {presentation.fields.authorNotes.value ? <details className="border-t border-border/25 py-2"><summary className="cursor-pointer text-sm text-muted">Author notes</summary><p className="mt-2 whitespace-pre-line text-sm">{presentation.fields.authorNotes.value}</p></details> : null}
         </EntityPageSection>
       ) : null}

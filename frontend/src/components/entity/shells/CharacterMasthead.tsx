@@ -54,10 +54,10 @@ export function CharacterMasthead({
         {visibilityControl ? <div className="shrink-0 self-start">{visibilityControl}</div> : null}
       </div>
       {lightboxOpen && portrait ? (
-        <dialog ref={dialogRef} className="m-auto max-h-none max-w-none border-0 bg-transparent p-4 backdrop:bg-black/80" aria-label="Full-size portrait" onCancel={(event) => { event.preventDefault(); setLightboxOpen(false); }} onClose={() => { setLightboxOpen(false); expandRef.current?.focus(); }}>
-          <div className="fixed inset-0 flex items-center justify-center p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) setLightboxOpen(false); }}>
+        <dialog ref={dialogRef} className="m-auto max-h-none max-w-none border-0 bg-transparent p-4 backdrop:bg-black/80" aria-label="Full-size portrait" onCancel={(event) => { event.preventDefault(); dialogRef.current?.close(); }} onClose={() => { setLightboxOpen(false); expandRef.current?.focus(); }}>
+          <div className="fixed inset-0 flex items-center justify-center p-4" onMouseDown={(event) => { if (event.currentTarget === event.target) dialogRef.current?.close(); }}>
             <img src={portrait} alt="" className="max-h-full max-w-full object-contain" />
-            <button type="button" autoFocus className="absolute right-4 top-4 rounded-md bg-surface p-2 text-foreground" onClick={() => setLightboxOpen(false)} aria-label="Close full-size portrait"><X className="size-5" aria-hidden /></button>
+            <button type="button" autoFocus className="absolute right-4 top-4 rounded-md bg-surface p-2 text-foreground" onClick={() => dialogRef.current?.close()} aria-label="Close full-size portrait"><X className="size-5" aria-hidden /></button>
           </div>
         </dialog>
       ) : null}
