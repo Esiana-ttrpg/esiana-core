@@ -47,6 +47,7 @@ export type CharacterLineageSection =
   | 'relationships'
   | 'timeline'
   | 'dynastic'
+  | 'masthead'
   | 'identityOverview';
 
 interface CharacterLineageEditorProps {
@@ -96,6 +97,7 @@ export function CharacterLineageEditor({
   const showTimeline = section === 'all' || section === 'timeline';
   const showDynastic = section === 'all' || section === 'dynastic';
   const showIdentityOverview = section === 'identityOverview';
+  const showMasthead = section === 'masthead';
 
   useEffect(() => {
     if (!focusField || focusField !== 'familyId') return;
@@ -189,6 +191,19 @@ export function CharacterLineageEditor({
           onChange={(nextId) => void persist({ familyId: nextId })}
           inline
         />
+      ) : null}
+
+      {showMasthead ? (
+        <div className="grid gap-2">
+          <div id="character-field-familyId" className="grid gap-1 sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-center">
+            <span className={META_FIELD_LABEL_CLASS}>Primary family</span>
+            <FamilyPickerEditor familyPages={familyPages} value={draft.familyId} onChange={(nextId) => void persist({ familyId: nextId })} inline />
+          </div>
+          <div id="character-field-age" className="grid gap-2 sm:grid-cols-2">
+            <ChronologyDateFields label="Birth" value={draft.birthDate} onChange={(next) => void persist({ birthDate: next })} />
+            <ChronologyDateFields label="Death" value={draft.deathDate} onChange={(next) => void persist({ deathDate: next })} />
+          </div>
+        </div>
       ) : null}
 
       {showRelationships ? (
