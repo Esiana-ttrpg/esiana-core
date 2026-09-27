@@ -4,15 +4,17 @@ import jwt from 'jsonwebtoken';
 import { WebSocket, WebSocketServer } from 'ws';
 import { env } from '../config/env.js';
 import { normalizeCampaignMemberRole } from './acl.js';
-import { canReceiveCampaignEvent, type CampaignEventSubscriber } from './campaignEventVisibility.js';
+import { canReceiveCampaignEvent, canReceiveWikiVisibility, type CampaignEventSubscriber } from './campaignEventVisibility.js';
 import { campaignEventEnvelope } from './campaignEventEnvelope.js';
 import { registerCampaignRealtimeConnection } from './campaignEventStreams.js';
-import { subscribeToDomainEvent, type DomainEvent } from './domainEvents/index.js';
+import { subscribeToDomainEvent } from './domainEvents/index.js';
 import { prisma } from './prisma.js';
 
 const PATH_PATTERN = /^\/api\/campaigns\/([^/]+)\/ws\/?$/;
 const HEARTBEAT_INTERVAL_MS = 25_000;
 const SESSION_TYPES = new Set(['presence.join', 'presence.update', 'cursor.move', 'editing.typing']);
+const SESSION_MESSAGE_BUDGET = 30;
+const SESSION_MESSAGE_BUDGET_WINDOW_MS = 10_000;
 
 type Actor = { id: string; displayName: string | null };
 type Connection = {
@@ -20,6 +22,7 @@ type Connection = {
   sessionId: string;
   subscriber: CampaignEventSubscriber;
   actor: Actor;
+  messageBudget: { remaining: number; resetsAt: number };
 };
 
 type SessionMessage = {
@@ -52,7 +55,10 @@ async function acceptUpgrade(
 ): Promise<void> {
   const url = new URL(request.url ?? '/', 'http://localhost');
   const match = PATH_PATTERN.exec(url.pathname);
-  if (!match) return;
+  if (!match) {
+    rejectUpgrade(socket, 404, 'Not Found');
+    return;
+  }
 
   try {
     if (!originAllowed(request.headers.origin)) {
@@ -116,7 +122,7 @@ async function authenticate(request: IncomingMessage, campaignHandle: string): P
 }
 
 function startConnection(socket: WebSocket, subscriber: CampaignEventSubscriber, actor: Actor): void {
-  const connection: Connection = { socket, subscriber, actor, sessionId: `ses_${randomUUID()}` };
+  const connection: Connection = { socket, subscriber, actor, sessionId: `ses_${randomUUID()}`, messageBudget: { remaining: SESSION_MESSAGE_BUDGET, resetsAt: Date.now() + SESSION_MESSAGE_BUDGET_WINDOW_MS } };
   const bucket = connections.get(subscriber.campaignId) ?? new Set<Connection>();
   bucket.add(connection);
   connections.set(subscriber.campaignId, bucket);
@@ -165,6 +171,9 @@ function startConnection(socket: WebSocket, subscriber: CampaignEventSubscriber,
 }
 
 async function handleSessionMessage(sender: Connection, raw: string): Promise<void> {
+  if (!consumeSessionMessageBudget(sender.messageBudget)) {
+    return closeProtocol(sender.socket, 'Session message budget exceeded');
+  }
   let message: SessionMessage;
   try {
     message = JSON.parse(raw) as SessionMessage;
@@ -177,6 +186,10 @@ async function handleSessionMessage(sender: Connection, raw: string): Promise<vo
 
 async function broadcastSession(sender: Connection, message: SessionMessage): Promise<void> {
   const recipients = connections.get(sender.subscriber.campaignId) ?? [];
+  const resourceVisibility = message.resource
+    ? await resolveSessionResourceVisibility(sender.subscriber.campaignId, message.resource)
+    : null;
+  if (message.resource && resourceVisibility == null) return;
   const envelope = {
     version: 1,
     type: message.type,
@@ -189,18 +202,24 @@ async function broadcastSession(sender: Connection, message: SessionMessage): Pr
   };
   await Promise.all([...recipients].map(async (recipient) => {
     if (recipient.socket.readyState !== WebSocket.OPEN) return;
-    if (message.resource && !(await canReceiveSessionResource(recipient.subscriber, message.resource))) return;
+    if (resourceVisibility != null && !canReceiveWikiVisibility(recipient.subscriber, resourceVisibility)) return;
     send(recipient.socket, envelope);
   }));
 }
 
-function canReceiveSessionResource(subscriber: CampaignEventSubscriber, resource: SessionMessage['resource']): Promise<boolean> {
-  const event: DomainEvent = {
-    id: 'session_visibility_check', version: 1, type: 'session.resource',
-    campaignId: subscriber.campaignId, resourceType: resource!.type, resourceId: resource!.id,
-    occurredAt: new Date().toISOString(), payload: {}, source: 'core',
-  };
-  return canReceiveCampaignEvent(subscriber, event);
+async function resolveSessionResourceVisibility(campaignId: string, resource: NonNullable<SessionMessage['resource']>): Promise<string | null> {
+  const page = await prisma.wikiPage.findFirst({ where: { id: resource.id, campaignId }, select: { visibility: true } });
+  return page?.visibility ?? null;
+}
+
+export function consumeSessionMessageBudget(budget: { remaining: number; resetsAt: number }, now = Date.now()): boolean {
+  if (now >= budget.resetsAt) {
+    budget.remaining = SESSION_MESSAGE_BUDGET;
+    budget.resetsAt = now + SESSION_MESSAGE_BUDGET_WINDOW_MS;
+  }
+  if (budget.remaining <= 0) return false;
+  budget.remaining -= 1;
+  return true;
 }
 
 export function validSessionMessage(value: unknown): value is SessionMessage {

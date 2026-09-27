@@ -2423,7 +2423,7 @@ model WebhookEndpoint {
   id String @id @default(cuid())
   campaignId String
   name String
-  url String
+  urlEnc String
   secretEnc String
   enabled Boolean @default(true)
   subscribedEvents Json

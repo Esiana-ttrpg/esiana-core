@@ -24,14 +24,27 @@ export function signWebhookPayload(secret: string, timestamp: number, body: stri
 }
 
 export async function deliverWebhook(deliveryId: string): Promise<void> {
+  const claimed = await prisma.webhookDelivery.updateMany({
+    where: {
+      id: deliveryId,
+      status: { in: ['PENDING', 'RETRYING'] },
+      OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }],
+    },
+    data: { status: 'IN_FLIGHT' },
+  });
+  if (claimed.count !== 1) return;
   const delivery = await prisma.webhookDelivery.findUnique({ where: { id: deliveryId }, include: { endpoint: true } });
-  if (!delivery || !delivery.endpoint.enabled || delivery.endpoint.suspendedAt) return;
+  if (!delivery) return;
+  if (!delivery.endpoint.enabled || delivery.endpoint.suspendedAt) {
+    await prisma.webhookDelivery.updateMany({ where: { id: deliveryId, status: 'IN_FLIGHT' }, data: { status: 'PENDING' } });
+    return;
+  }
   const body = JSON.stringify(delivery.payload);
   const timestamp = Math.floor(Date.now() / 1000);
   let status: number | null = null;
   let diagnostic: string | null = null;
   try {
-    const url = new URL(delivery.endpoint.url);
+    const url = new URL(decryptSecretOrDevStore(delivery.endpoint.urlEnc));
     const response = await fetchAuthenticatedRemote(url, {
       name: 'X-Esiana-Signature', value: signWebhookPayload(decryptSecretOrDevStore(delivery.endpoint.secretEnc), timestamp, body),
     }, {

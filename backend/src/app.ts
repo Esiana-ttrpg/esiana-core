@@ -47,6 +47,7 @@ import { bootstrapWebhookDispatcher } from './lib/webhooks/dispatcher.js';
 import { startWebhookDeliverySweep } from './lib/webhooks/delivery.js';
 import { bootstrapDiscordDispatcher } from './lib/discord/dispatcher.js';
 import { startDiscordDeliverySweep } from './lib/discord/delivery.js';
+import { migrateWebhookUrlsAtRest } from './lib/webhooks/migrateWebhookUrls.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -103,6 +104,7 @@ export async function createApp(): Promise<Express> {
   validateAuthEnvContract({ enabledOidcProviderCount: enabledOidcCount });
   bootstrapStorageRegistry();
   bootstrapGlobalTimeHooks();
+  await migrateWebhookUrlsAtRest();
   bootstrapWebhookDispatcher();
   startWebhookDeliverySweep();
   bootstrapDiscordDispatcher();
