@@ -174,7 +174,7 @@ export function EntityAppearanceEditor({
   }, [focusField]);
 
   const persistDraft = useCallback(
-    async (nextDraft: AppearanceDraft) => {
+    async (nextDraft: AppearanceDraft, propagateFailure = false) => {
       const synced = nextDraft;
       setDraft((prev) => {
         if (JSON.stringify(prev) === JSON.stringify(synced)) return prev;
@@ -217,6 +217,7 @@ export function EntityAppearanceEditor({
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to save appearance';
         draftRegistry?.setBlockSaveState(draftBlockId, 'failed', message);
+        if (propagateFailure) throw err;
       }
     },
     [
@@ -261,7 +262,7 @@ export function EntityAppearanceEditor({
   const flushDraft = useBlockDraftFlush(
     useCallback(async () => {
       if (!dirty) return;
-      await persistDraft(draft);
+      await persistDraft(draft, true);
     }, [dirty, draft, persistDraft]),
   );
   useRegisterBlockDraft(draftBlockId, dirty, flushDraft);
