@@ -103,7 +103,7 @@ function serializeStoredTab(row: any, canEdit: boolean): CharacterPageDescriptor
     ? plugin.definition as Record<string, any>
     : null;
   return {
-    id: row.id,
+    id: origin === 'CORE' && row.coreKey ? `core:${row.coreKey}` : row.id,
     key:
       origin === 'CORE'
         ? row.coreKey
@@ -357,11 +357,13 @@ async function loadStoredTab(req: CampaignScopedRequest, res: Response, requireE
     res.status(403).json({ error: 'Forbidden: cannot edit this character' });
     return null;
   }
+  const requestedId = String(req.params.tabId);
+  const requestedCoreKey = requestedId.startsWith('core:') ? requestedId.slice('core:'.length) : null;
   const row = await characterDb.characterPageTab.findFirst({
     where: {
-      id: String(req.params.tabId),
       campaignId: req.campaign!.campaignId,
       characterPageId: access.page.id,
+      ...(requestedCoreKey ? { coreKey: requestedCoreKey } : { id: requestedId }),
     },
     include: { pluginState: true },
   });

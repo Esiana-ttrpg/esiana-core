@@ -85,7 +85,10 @@ export function EntityFieldManager({ campaignHandle, entityPageId, pages, onClos
     setMoving(true);
     setError(null);
     try {
-      await Promise.all(normalized.map((field) => updateEntityField(campaignHandle, entityPageId, field.id, { displayOrder: field.displayOrder })));
+      await Promise.all(normalized
+        .filter((field) => field.capabilities.writable)
+        .map((field) => updateEntityField(campaignHandle, entityPageId, field.id, { displayOrder: field.displayOrder })));
+      await reloadFields();
     } catch (reason) {
       try { await reloadFields(); } catch { /* retain the persistence error below */ }
       setError(reason instanceof Error ? reason.message : 'Unable to reorder fields; the server order was reloaded');
@@ -119,7 +122,7 @@ export function EntityFieldManager({ campaignHandle, entityPageId, pages, onClos
             <div key={field.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
               <div className="min-w-40 flex-1"><input className="w-full bg-transparent text-sm font-medium text-foreground" defaultValue={field.label} disabled={!field.capabilities.deletable} onBlur={(event) => { const next = event.target.value.trim(); if (next && next !== field.label) void change(field, { label: next }); }} /><p className="text-xs text-muted">{characterResourceSourceLabel(field)} · {field.type.toLowerCase()}</p></div>
               <select className="rounded border border-border bg-background px-1.5 py-1 text-xs text-foreground" value={field.pageId ?? ''} disabled={!field.capabilities.deletable} onChange={(event) => void change(field, { pageId: event.target.value || null })}><option value="">Overview</option>{pages.filter((page) => page.coreKey !== 'overview' && !page.id.startsWith('virtual:')).map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select>
-              {field.capabilities.deletable ? <><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === 0} onClick={() => void move(index, -1)} aria-label={`Move ${field.label} earlier`}><ArrowUp className="size-4" /></button><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === ordered.length - 1} onClick={() => void move(index, 1)} aria-label={`Move ${field.label} later`}><ArrowDown className="size-4" /></button><button type="button" className="rounded p-1 text-muted hover:text-destructive" aria-label={`Delete ${field.label}`} onClick={() => { if (!window.confirm(`Delete “${field.label}”?`)) return; void deleteCustomEntityField(campaignHandle, entityPageId, field.id).then(() => setFields((current) => current.filter((candidate) => candidate.id !== field.id))); }}><Trash2 className="size-4" /></button></> : null}
+              {field.capabilities.deletable ? <><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === 0} onClick={() => void move(index, -1)} aria-label={`Move ${field.label} earlier`}><ArrowUp className="size-4" /></button><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === ordered.length - 1} onClick={() => void move(index, 1)} aria-label={`Move ${field.label} later`}><ArrowDown className="size-4" /></button><button type="button" className="rounded p-1 text-muted hover:text-destructive" aria-label={`Delete ${field.label}`} onClick={() => { if (!window.confirm(`Delete “${field.label}”?`)) return; void deleteCustomEntityField(campaignHandle, entityPageId, field.id).then(() => { setFields((current) => current.filter((candidate) => candidate.id !== field.id)); setError(null); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : `Unable to delete ${field.label}`)); }}><Trash2 className="size-4" /></button></> : null}
             </div>
           ))}
           {ordered.length === 0 ? <p className="py-6 text-center text-sm text-muted">No custom fields yet.</p> : null}
