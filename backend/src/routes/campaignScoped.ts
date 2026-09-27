@@ -868,6 +868,19 @@ campaignScopedRouter.get(
 );
 
 campaignScopedRouter.get('/wiki/:pageId', getWikiPage);
+// Entity-neutral contract. Character-prefixed routes below remain compatibility
+// aliases for existing clients and plugins.
+campaignScopedRouter.get('/wiki/:pageId/entity-pages', listCharacterPages);
+campaignScopedRouter.get('/wiki/:pageId/entity-fields', listCharacterFields);
+campaignScopedRouter.post('/wiki/:pageId/entity-fields', createCustomCharacterField);
+campaignScopedRouter.put('/wiki/:pageId/entity-fields/:fieldId', updateCharacterField);
+campaignScopedRouter.delete('/wiki/:pageId/entity-fields/:fieldId', deleteCustomCharacterField);
+campaignScopedRouter.post('/wiki/:pageId/entity-pages', createCustomCharacterPage);
+campaignScopedRouter.patch('/wiki/:pageId/entity-pages/order', reorderCharacterPages);
+campaignScopedRouter.patch('/wiki/:pageId/entity-pages/:tabId', updateCharacterPage);
+campaignScopedRouter.delete('/wiki/:pageId/entity-pages/:tabId', deleteCustomCharacterPage);
+campaignScopedRouter.post('/wiki/:pageId/entity-pages/:tabId/duplicate', duplicateCharacterPageToCustom);
+campaignScopedRouter.put('/wiki/:pageId/entity-pages/:tabId/blocks', updateCharacterPageBlocks);
 campaignScopedRouter.get('/wiki/:pageId/character-pages', listCharacterPages);
 campaignScopedRouter.get('/wiki/:pageId/character-fields', listCharacterFields);
 campaignScopedRouter.post('/wiki/:pageId/character-fields', createCustomCharacterField);

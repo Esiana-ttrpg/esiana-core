@@ -3,7 +3,6 @@ import { Prisma } from '@prisma/client';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { prisma } from '../lib/prisma.js';
 import { canViewWikiPage } from '../lib/wikiTree.js';
-import { isCharacterWikiPage } from '../lib/memberIdentity.js';
 import { canEditPage, type PageOwnerType } from '../../../shared/campaignPolicy/pageOwnership.js';
 import { canManageNotebooksFromActor, hasElevatedNarrativeView } from '../lib/acl.js';
 import type { CampaignMemberRole } from '../types/domain.js';
@@ -11,18 +10,18 @@ import { validateWikiBlocksAssetReferences } from '../lib/assetReferenceValidati
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import { listEnabledCampaignCharacterPageDefinitions } from '../lib/campaignPlugins.js';
 import {
-  CHARACTER_CORE_PAGE_KEYS,
-  type CharacterCorePageKey,
+  ENTITY_SHELL_CORE_PAGES,
+  ENTITY_CATEGORY_TO_SHELL,
   type CharacterPageDescriptor,
   type PluginPageRemovalMode,
 } from '../../../shared/characterPages.js';
 import {
   CORE_CHARACTER_PAGE_ORDER,
-  CORE_CHARACTER_PAGE_TITLES,
   normalizeCharacterPageBlocks,
   normalizeCharacterPageTitle,
 } from '../lib/characterPages.js';
 import { characterResourceProvenance, isUserDeletableCharacterResource } from '../lib/characterResourceProvenance.js';
+import { resolveCanonicalEntityCategory } from '../../../shared/resolveCanonicalEntityCategory.js';
 
 const characterDb = prisma as typeof prisma & {
   characterPageTab: any;
@@ -31,13 +30,18 @@ const characterDb = prisma as typeof prisma & {
 
 const VALID_VISIBILITY = new Set(['Public', 'Party', 'DM_Only']);
 const MAX_PLUGIN_DATA_BYTES = 256 * 1024;
+function entityCorePage(shell: string, key: string) {
+  return ENTITY_SHELL_CORE_PAGES[shell]?.find((page) => page.key === key);
+}
 
 export function canReadCharacterPageTab(
-  row: { hidden: boolean; visibility: string | null },
-  access: { canEdit: boolean },
+  row: { hidden: boolean; visibility: string | null; coreKey?: string | null },
+  access: { canEdit: boolean; canViewDmOnly: boolean; shell: string },
   role: CampaignMemberRole | null,
 ): boolean {
-  return (access.canEdit || !row.hidden)
+  const coreDefinition = row.coreKey ? entityCorePage(access.shell, row.coreKey) : undefined;
+  return (!coreDefinition?.dmOnly || access.canViewDmOnly)
+    && (access.canEdit || !row.hidden)
     && (row.visibility == null || canViewWikiPage(row.visibility, role));
 }
 
@@ -58,8 +62,18 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
       ownerPartyId: true,
     },
   });
-  if (!page || !isCharacterWikiPage(page)) {
-    res.status(404).json({ error: 'Character not found' });
+  if (!page) {
+    res.status(404).json({ error: 'Entity not found' });
+    return null;
+  }
+  const flatPages = await prisma.wikiPage.findMany({
+    where: { campaignId: ctx.campaignId, deletedAt: null },
+    select: { id: true, title: true, parentId: true, templateType: true, metadata: true, workspace: true },
+  });
+  const entityCategory = resolveCanonicalEntityCategory(page, flatPages);
+  const shell = entityCategory ? ENTITY_CATEGORY_TO_SHELL[entityCategory] : undefined;
+  if (!shell || !ENTITY_SHELL_CORE_PAGES[shell]) {
+    res.status(404).json({ error: 'Managed entity not found' });
     return null;
   }
   if (!canViewWikiPage(page.visibility, ctx.role)) {
@@ -71,7 +85,14 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
     ownerUserId: page.ownerUserId,
     ownerPartyId: page.ownerPartyId,
   });
-  return { page, canEdit, canManagePlugins: canManageNotebooksFromActor(ctx.actor) };
+  return {
+    page,
+    shell,
+    canEdit,
+    canViewDmOnly: hasElevatedNarrativeView(ctx.actor),
+    canManagePlugins: canManageNotebooksFromActor(ctx.actor),
+    isCharacter: shell === 'character',
+  };
 }
 
 function serializeStoredTab(row: any, canEdit: boolean): CharacterPageDescriptor {
@@ -82,7 +103,7 @@ function serializeStoredTab(row: any, canEdit: boolean): CharacterPageDescriptor
     ? plugin.definition as Record<string, any>
     : null;
   return {
-    id: row.id,
+    id: origin === 'CORE' && row.coreKey ? `core:${row.coreKey}` : row.id,
     key:
       origin === 'CORE'
         ? row.coreKey
@@ -132,19 +153,21 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
     orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
   });
   const byCoreKey = new Map(rows.filter((row: any) => row.coreKey).map((row: any) => [row.coreKey, row]));
-  const core = CHARACTER_CORE_PAGE_KEYS.map((coreKey) => {
+  const coreDefinitions = ENTITY_SHELL_CORE_PAGES[access.shell]!;
+  const core = coreDefinitions.map(({ key: coreKey, title, dmOnly }, coreIndex) => {
     const stored = byCoreKey.get(coreKey);
     if (stored) return serializeStoredTab(stored, access.canEdit);
     return {
       id: `core:${coreKey}`,
       key: coreKey,
-      title: CORE_CHARACTER_PAGE_TITLES[coreKey],
+      title,
       origin: 'CORE' as const,
       renderMode: 'CORE' as const,
-      displayOrder: CORE_CHARACTER_PAGE_ORDER.get(coreKey) ?? 0,
+      displayOrder: CORE_CHARACTER_PAGE_ORDER.get(coreKey as any) ?? coreIndex * 10,
       hidden: false,
       visibility: null,
       coreKey,
+      ...(dmOnly ? { dmOnly: true } : {}),
       capabilities: {
         canEdit: access.canEdit,
         canRename: false,
@@ -159,6 +182,7 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
   const elevated = hasElevatedNarrativeView(ctx.actor);
   const storedNonCore: CharacterPageDescriptor[] = rows
     .filter((row: any) => row.origin !== 'CORE')
+    .filter((row: any) => access.isCharacter || row.origin !== 'PLUGIN')
     .filter((row: any) => row.pluginState?.providerState !== 'UNAVAILABLE')
     .map((row: any) => serializeStoredTab(row, access.canEdit));
   const states = await characterDb.pluginCharacterPageState.findMany({
@@ -171,7 +195,7 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
     ...storedNonCore.map((page) => `${page.pluginId ?? ''}:${page.sourceKey ?? ''}`),
     ...states.map((state: any) => `${state.pluginId}:${state.sourceKey}`),
   ]);
-  const definitions = await listEnabledCampaignCharacterPageDefinitions(ctx.campaignId);
+  const definitions = access.isCharacter ? await listEnabledCampaignCharacterPageDefinitions(ctx.campaignId) : [];
   const virtualPluginPages: CharacterPageDescriptor[] = definitions
     .filter(() => access.canEdit)
     .filter(({ pluginId, definition }) => !materializedKeys.has(`${pluginId}:${definition.key}`))
@@ -202,7 +226,7 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
       },
     }));
   const pages = [...core, ...storedNonCore, ...virtualPluginPages]
-    .filter((page) => elevated || (page.coreKey !== 'discovery' && page.coreKey !== 'continuity'))
+    .filter((page) => elevated || !coreDefinitions.find((corePage) => corePage.key === page.coreKey)?.dmOnly)
     .filter((page) => access.canEdit || !page.hidden)
     .filter((page) => page.visibility == null || canViewWikiPage(page.visibility, ctx.role))
     .sort((a, b) => a.displayOrder - b.displayOrder || a.title.localeCompare(b.title));
@@ -212,6 +236,10 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
 export async function materializePluginCharacterPage(req: CampaignScopedRequest, res: Response): Promise<void> {
   const access = await loadCharacterPageAccess(req, res);
   if (!access) return;
+  if (!access.isCharacter) {
+    res.status(404).json({ error: 'Character not found' });
+    return;
+  }
   if (!access.canEdit) {
     res.status(403).json({ error: 'Forbidden: cannot edit this character' });
     return;
@@ -329,16 +357,26 @@ async function loadStoredTab(req: CampaignScopedRequest, res: Response, requireE
     res.status(403).json({ error: 'Forbidden: cannot edit this character' });
     return null;
   }
+  const requestedId = String(req.params.tabId);
+  const requestedCoreKey = requestedId.startsWith('core:') ? requestedId.slice('core:'.length) : null;
   const row = await characterDb.characterPageTab.findFirst({
     where: {
-      id: String(req.params.tabId),
       campaignId: req.campaign!.campaignId,
       characterPageId: access.page.id,
+      ...(requestedCoreKey ? { coreKey: requestedCoreKey } : { id: requestedId }),
     },
     include: { pluginState: true },
   });
   if (!row) {
     res.status(404).json({ error: 'Character page not found' });
+    return null;
+  }
+  if (row.coreKey && !entityCorePage(access.shell, row.coreKey)) {
+    res.status(404).json({ error: 'Entity page not found' });
+    return null;
+  }
+  if (row.origin === 'PLUGIN' && !access.isCharacter) {
+    res.status(404).json({ error: 'Entity page not found' });
     return null;
   }
   if (!requireEdit && !canReadCharacterPageTab(row, access, req.campaign!.role)) {
@@ -358,8 +396,9 @@ export async function updateCharacterPage(req: CampaignScopedRequest, res: Respo
       return;
     }
     const coreKey = requestedId.slice(5);
-    if (!CHARACTER_CORE_PAGE_KEYS.includes(coreKey as CharacterCorePageKey) || coreKey === 'overview') {
-      res.status(400).json({ error: 'Invalid core character page' });
+    const definition = entityCorePage(access.shell, coreKey);
+    if (!definition || coreKey === 'overview') {
+      res.status(400).json({ error: 'Invalid core entity page' });
       return;
     }
     if (typeof req.body?.hidden !== 'boolean') {
@@ -374,8 +413,8 @@ export async function updateCharacterPage(req: CampaignScopedRequest, res: Respo
         origin: 'CORE',
         renderMode: 'CORE',
         coreKey,
-        title: CORE_CHARACTER_PAGE_TITLES[coreKey as CharacterCorePageKey],
-        displayOrder: CORE_CHARACTER_PAGE_ORDER.get(coreKey) ?? 0,
+        title: definition.title,
+        displayOrder: ENTITY_SHELL_CORE_PAGES[access.shell]!.findIndex((page) => page.key === coreKey) * 10,
         hidden: req.body.hidden,
       },
       update: { hidden: req.body.hidden },
@@ -433,9 +472,13 @@ export async function reorderCharacterPages(req: CampaignScopedRequest, res: Res
     res.status(access.canEdit ? 400 : 403).json({ error: access.canEdit ? 'keys must be an array' : 'Forbidden' });
     return;
   }
-  const keys = req.body.keys.filter((key: unknown): key is string => typeof key === 'string');
+  const keys: string[] = req.body.keys.filter((key: unknown): key is string => typeof key === 'string');
   if (keys[0] !== 'overview' || new Set(keys).size !== keys.length) {
     res.status(400).json({ error: 'Overview must remain first and keys must be unique' });
+    return;
+  }
+  if (keys.some((key) => !key.includes(':') && !entityCorePage(access.shell, key))) {
+    res.status(400).json({ error: 'Page order contains a core page from another entity shell' });
     return;
   }
   await prisma.$transaction(async (tx) => {
@@ -443,8 +486,9 @@ export async function reorderCharacterPages(req: CampaignScopedRequest, res: Res
     for (let index = 0; index < keys.length; index += 1) {
       const key = keys[index]!;
       const displayOrder = index * 10;
-      if ((CHARACTER_CORE_PAGE_KEYS as readonly string[]).includes(key)) {
-        const coreKey = key as CharacterCorePageKey;
+      const coreDefinition = entityCorePage(access.shell, key);
+      if (coreDefinition) {
+        const coreKey = key;
         await db.characterPageTab.upsert({
           where: { characterPageId_coreKey: { characterPageId: access.page.id, coreKey } },
           create: {
@@ -453,7 +497,7 @@ export async function reorderCharacterPages(req: CampaignScopedRequest, res: Res
             origin: 'CORE',
             renderMode: 'CORE',
             coreKey,
-            title: CORE_CHARACTER_PAGE_TITLES[coreKey],
+            title: coreDefinition.title,
             displayOrder,
           },
           update: { displayOrder },
