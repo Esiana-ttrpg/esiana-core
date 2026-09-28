@@ -6,7 +6,23 @@ import { prisma } from '../prisma.js';
 
 const MAX_ATTEMPTS = 4;
 const SUSPEND_AFTER = 8;
+export const WEBHOOK_DELIVERY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 let sweepStarted = false;
+
+export function webhookDeliveryPruneWhere(now = new Date()): Prisma.WebhookDeliveryWhereInput {
+  return {
+    status: { in: ['SUCCEEDED', 'FAILED'] },
+    createdAt: { lt: new Date(now.getTime() - WEBHOOK_DELIVERY_RETENTION_MS) },
+  };
+}
+
+export async function pruneWebhookDeliveries(now = new Date()): Promise<number> {
+  const result = await prisma.webhookDelivery.deleteMany({
+    where: webhookDeliveryPruneWhere(now),
+  });
+  return result.count;
+}
 
 export function startWebhookDeliverySweep(): void {
   if (sweepStarted) return;
@@ -17,6 +33,14 @@ export function startWebhookDeliverySweep(): void {
   };
   void sweep();
   setInterval(() => void sweep(), 60_000).unref();
+  void pruneWebhookDeliveries().catch((error) => {
+    console.error('[webhooks] delivery retention prune failed', error);
+  });
+  setInterval(() => {
+    void pruneWebhookDeliveries().catch((error) => {
+      console.error('[webhooks] delivery retention prune failed', error);
+    });
+  }, PRUNE_INTERVAL_MS).unref();
 }
 
 export function signWebhookPayload(secret: string, timestamp: number, body: string): string {

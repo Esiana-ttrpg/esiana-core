@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import test from 'node:test';
 import { isWebhookEventEligible, validatesSubscriptions } from './catalog.js';
-import { signWebhookPayload } from './delivery.js';
+import { signWebhookPayload, webhookDeliveryPruneWhere } from './delivery.js';
 
 test('public catalog excludes session and unknown internal messages', () => {
   assert.equal(isWebhookEventEligible('wiki.page.updated'), true);
@@ -19,4 +19,12 @@ test('signature contract binds timestamp and exact request bytes', () => {
   const expected = createHmac('sha256', 'secret').update(`${timestamp}.${body}`).digest('hex');
   assert.equal(signWebhookPayload('secret', timestamp, body), `t=${timestamp},v1=${expected}`);
   assert.notEqual(signWebhookPayload('secret', timestamp, body), signWebhookPayload('secret', timestamp + 1, body));
+});
+
+test('delivery retention prunes only terminal rows older than 30 days', () => {
+  const now = new Date('2026-09-27T12:00:00.000Z');
+  assert.deepEqual(webhookDeliveryPruneWhere(now), {
+    status: { in: ['SUCCEEDED', 'FAILED'] },
+    createdAt: { lt: new Date('2026-08-28T12:00:00.000Z') },
+  });
 });
