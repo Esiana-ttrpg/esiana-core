@@ -86,6 +86,41 @@ test('campaign events retain their server-sent event contract', () => {
   });
 });
 
+test('Wiki and integration operations retain distinct paths and authorization', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  const wiki = spec.paths?.['/api/campaigns/{campaignHandle}/wiki/{pageId}/entity-fields']?.get as any;
+  assert.deepEqual(wiki?.parameters?.map((parameter: { name?: string }) => parameter.name), [
+    'campaignHandle',
+    'pageId',
+  ]);
+  assert.ok(wiki?.['x-esiana-authorization']?.requires?.includes('Resource-level visibility and ownership checks performed by the controller/service'));
+  assert.ok(!wiki?.['x-esiana-authorization']?.requires?.some((requirement: string) => requirement.includes('Campaign settings modification')));
+
+  for (const [pathKey, method, parameter] of [
+    ['/api/campaigns/{campaignHandle}/webhook-deliveries/{deliveryId}/redeliver', 'post', 'deliveryId'],
+    ['/api/campaigns/{campaignHandle}/webhooks/{webhookId}', 'patch', 'webhookId'],
+    ['/api/campaigns/{campaignHandle}/discord/{destinationId}/test', 'post', 'destinationId'],
+  ] as const) {
+    const operation = spec.paths?.[pathKey]?.[method] as any;
+    assert.ok(operation, `${method.toUpperCase()} ${pathKey} is missing`);
+    assert.ok(operation.parameters?.some((entry: { name?: string; in?: string }) => entry.name === parameter && entry.in === 'path'));
+    assert.ok(operation['x-esiana-authorization']?.requires?.some((requirement: string) => requirement.includes('Campaign settings modification')));
+    assert.deepEqual(operation.security, [{ cookieAuth: [] }, { bearerAuth: [] }]);
+  }
+});
+
+test('Discord and webhook creation document their 201 responses', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  for (const pathKey of [
+    '/api/campaigns/{campaignHandle}/discord',
+    '/api/campaigns/{campaignHandle}/webhooks',
+  ]) {
+    const responses = spec.paths?.[pathKey]?.post?.responses;
+    assert.ok(responses?.['201'], `POST ${pathKey} does not document 201`);
+    assert.equal(responses?.['200'], undefined);
+  }
+});
+
 test('only anonymous development fixture operations advertise anonymous access', () => {
   const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
   for (const [pathKey, method] of [

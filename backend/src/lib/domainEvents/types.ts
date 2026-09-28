@@ -23,6 +23,8 @@ export type CoreDomainEventType =
 export type DomainEventSource = 'core' | 'plugin';
 
 export interface DomainEvent<TPayload = Record<string, unknown>> {
+  id: string;
+  version: 1;
   type: string;
   campaignId?: string;
   actorId?: string;

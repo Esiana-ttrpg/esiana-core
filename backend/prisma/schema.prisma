@@ -556,6 +556,10 @@ model Campaign {
   ownershipTransfers   CampaignOwnershipTransfer[]
   pluginData           PluginData[]
   pluginSecrets        PluginSecret[]
+  webhookEndpoints     WebhookEndpoint[]
+  webhookDeliveries    WebhookDelivery[]
+  discordDestinations  DiscordDestination[]
+  discordDeliveries    DiscordDelivery[]
   narrativeStateSnapshots NarrativeStateSnapshot[]
   partyRegionVisits       PartyRegionVisit[]
   partyVisitSuggestions   PartyVisitSuggestion[]
@@ -2414,4 +2418,88 @@ model Tag {
 
   @@unique([campaignId, name])
   @@index([campaignId])
+}
+
+model WebhookEndpoint {
+  id String @id @default(cuid())
+  campaignId String
+  name String
+  urlEnc String
+  secretEnc String
+  enabled Boolean @default(true)
+  subscribedEvents Json
+  consecutiveFailures Int @default(0)
+  suspendedAt DateTime?
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+  @@index([campaignId])
+}
+
+model WebhookDelivery {
+  id String @id @default(cuid())
+  campaignId String
+  endpointId String
+  eventId String
+  eventType String
+  payload Json
+  status String @default("PENDING")
+  attemptCount Int @default(0)
+  responseStatus Int?
+  diagnostic String?
+  nextAttemptAt DateTime?
+  deliveredAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  @@index([campaignId, createdAt])
+  @@index([endpointId, createdAt])
+  @@index([status, nextAttemptAt])
+}
+
+model DiscordDestination {
+  id String @id @default(cuid())
+  campaignId String
+  name String
+  webhookUrlEnc String
+  enabled Boolean @default(true)
+  subscribedEvents Json
+  announcementOptions Json?
+  consecutiveFailures Int @default(0)
+  suspendedAt DateTime?
+  lastSucceededAt DateTime?
+  lastFailedAt DateTime?
+  lastError String?
+  createdById String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  deliveries DiscordDelivery[]
+  @@index([campaignId])
+}
+
+model DiscordDelivery {
+  id String @id @default(cuid())
+  campaignId String
+  destinationId String
+  eventId String
+  eventType String
+  payload Json
+  status String @default("PENDING")
+  attemptCount Int @default(0)
+  responseStatus Int?
+  diagnostic String?
+  nextAttemptAt DateTime?
+  deliveredAt DateTime?
+  isTest Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  destination DiscordDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  @@index([campaignId, createdAt])
+  @@index([destinationId, createdAt])
+  @@index([status, nextAttemptAt])
 }

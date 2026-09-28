@@ -43,6 +43,12 @@ import { pluginAssetsRouter } from './routes/pluginAssets.js';
 import { assetsRouter } from './routes/assets.js';
 import { authenticateApiOrSession } from './middleware/auth.js';
 import { getUploadByFilename } from './controllers/assetsController.js';
+import { bootstrapWebhookDispatcher } from './lib/webhooks/dispatcher.js';
+import { startWebhookDeliverySweep } from './lib/webhooks/delivery.js';
+import { bootstrapDiscordDispatcher } from './lib/discord/dispatcher.js';
+import { startDiscordDeliverySweep } from './lib/discord/delivery.js';
+import { migrateWebhookUrlsAtRest } from './lib/webhooks/migrateWebhookUrls.js';
+import { csrfProtection } from './middleware/csrfProtection.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -60,7 +66,10 @@ export async function createApp(): Promise<Express> {
     }),
   );
   app.use(express.json());
+  // Unsafe cookie-authenticated requests are origin-checked by the next middleware.
+  // codeql[js/missing-token-validation]
   app.use(cookieParser());
+  app.use(csrfProtection);
   app.use(apiUsageLogger);
 
   fs.mkdirSync(env.uploadsDir, { recursive: true });
@@ -99,6 +108,11 @@ export async function createApp(): Promise<Express> {
   validateAuthEnvContract({ enabledOidcProviderCount: enabledOidcCount });
   bootstrapStorageRegistry();
   bootstrapGlobalTimeHooks();
+  await migrateWebhookUrlsAtRest();
+  bootstrapWebhookDispatcher();
+  startWebhookDeliverySweep();
+  bootstrapDiscordDispatcher();
+  startDiscordDeliverySweep();
   setPluginHostReloader(reloadPluginHost);
   await reconcileStaleSystemPluginsFromDisk();
   await syncGlobalSystemPluginsFromDisk();

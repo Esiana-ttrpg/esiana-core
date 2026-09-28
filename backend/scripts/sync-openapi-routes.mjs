@@ -185,7 +185,15 @@ function securityFor(route) {
 }
 
 function genericOperation(route, canonicalPath) {
-  const success = route.method === 'post' && /(?:\/async|\/restore)$/.test(route.path) ? '202' : '200';
+  const createsResource = route.method === 'post' && new Set([
+    '/api/campaigns/{campaignHandle}/discord',
+    '/api/campaigns/{campaignHandle}/webhooks',
+  ]).has(route.path);
+  const success = route.method === 'post' && /(?:\/async|\/restore)$/.test(route.path)
+    ? '202'
+    : createsResource
+      ? '201'
+      : '200';
   const operation = {
     tags: [tagFor(route.path)],
     summary: summaryFor(route.method, route.path),

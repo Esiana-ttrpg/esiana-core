@@ -12,10 +12,12 @@ test('dispatchDomainEvent creates the canonical envelope and matches patterns', 
   clearDomainEventListenersForTests();
   const received: string[] = [];
   let occurredAt = '';
+  let eventId = '';
 
   subscribeToDomainEvent(CoreDomainEvents.WIKI_UPDATED, (event) => {
     received.push(event.type);
     occurredAt = event.occurredAt;
+    eventId = event.id;
   });
   subscribeToDomainEvent('wiki.*', (event) => {
     received.push(`prefix:${event.type}`);
@@ -34,6 +36,7 @@ test('dispatchDomainEvent creates the canonical envelope and matches patterns', 
   assert.ok(received.includes(CoreDomainEvents.WIKI_UPDATED));
   assert.ok(received.some((entry) => entry.startsWith('prefix:')));
   assert.ok(Number.isFinite(Date.parse(occurredAt)));
+  assert.match(eventId, /^evt_/);
   clearDomainEventListenersForTests();
 });
 

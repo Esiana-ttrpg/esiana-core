@@ -7,6 +7,10 @@
     "dev": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsx watch src/index.ts",
     "test:assets": "node --import tsx --test --test-concurrency=1 src/routes/assets.http.test.ts src/lib/assetAccess.test.ts",
     "test:wiki-updated-at": "node --import tsx --test --test-concurrency=1 src/routes/wikiPageUpdatedAt.http.test.ts",
+    "test:csrf": "node --import tsx --test --test-concurrency=1 src/middleware/csrfProtection.test.ts",
+    "test:realtime": "node --import tsx --test --test-concurrency=1 src/lib/domainEvents/domainEvents.test.ts src/lib/campaignEventStreams.test.ts src/controllers/campaignEventsController.test.ts src/lib/campaignEventVisibility.test.ts src/lib/campaignWebSocketServer.test.ts",
+    "test:webhooks": "node --import tsx --test --test-concurrency=1 src/lib/webhooks/webhooks.test.ts src/lib/ssrfGuard.test.ts src/lib/networkFetch.test.ts",
+    "test:discord": "node --import tsx --test --test-concurrency=1 src/lib/discord/discord.test.ts src/lib/webhooks/webhooks.test.ts src/lib/ssrfGuard.test.ts src/lib/networkFetch.test.ts",
     "build": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsc && node scripts/copy-openapi.mjs",
     "start": "node dist/backend/src/index.js",
     "db:generate": "prisma generate",
@@ -46,6 +50,7 @@
     "swagger-ui-express": "^5.0.1",
     "tar": "^7.5.22",
     "undici": "^7.16.0",
+    "ws": "^8.22.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
@@ -59,6 +64,7 @@
     "@types/node": "^22.15.21",
     "@types/nodemailer": "^8.0.0",
     "@types/swagger-ui-express": "^4.1.8",
+    "@types/ws": "^8.18.1",
     "prisma": "^6.8.2",
     "tsx": "^4.23.12",
     "typescript": "^5.8.3"
