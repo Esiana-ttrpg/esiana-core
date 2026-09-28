@@ -19238,7 +19238,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ApiRequest"
       responses:
-        "200":
+        "201":
           description: Successful response
           content:
             application/json:
@@ -19617,7 +19617,7 @@ paths:
             schema:
               $ref: "#/components/schemas/ApiRequest"
       responses:
-        "200":
+        "201":
           description: Successful response
           content:
             application/json:

@@ -48,6 +48,7 @@ import { startWebhookDeliverySweep } from './lib/webhooks/delivery.js';
 import { bootstrapDiscordDispatcher } from './lib/discord/dispatcher.js';
 import { startDiscordDeliverySweep } from './lib/discord/delivery.js';
 import { migrateWebhookUrlsAtRest } from './lib/webhooks/migrateWebhookUrls.js';
+import { csrfProtection } from './middleware/csrfProtection.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -65,7 +66,10 @@ export async function createApp(): Promise<Express> {
     }),
   );
   app.use(express.json());
+  // Unsafe cookie-authenticated requests are origin-checked by the next middleware.
+  // codeql[js/missing-token-validation]
   app.use(cookieParser());
+  app.use(csrfProtection);
   app.use(apiUsageLogger);
 
   fs.mkdirSync(env.uploadsDir, { recursive: true });

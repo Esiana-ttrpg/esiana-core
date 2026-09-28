@@ -109,6 +109,18 @@ test('Wiki and integration operations retain distinct paths and authorization', 
   }
 });
 
+test('Discord and webhook creation document their 201 responses', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  for (const pathKey of [
+    '/api/campaigns/{campaignHandle}/discord',
+    '/api/campaigns/{campaignHandle}/webhooks',
+  ]) {
+    const responses = spec.paths?.[pathKey]?.post?.responses;
+    assert.ok(responses?.['201'], `POST ${pathKey} does not document 201`);
+    assert.equal(responses?.['200'], undefined);
+  }
+});
+
 test('only anonymous development fixture operations advertise anonymous access', () => {
   const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
   for (const [pathKey, method] of [
