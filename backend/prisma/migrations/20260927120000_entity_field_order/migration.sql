@@ -1,0 +1,1 @@
+ALTER TABLE "CharacterField" ADD COLUMN "displayOrder" INTEGER NOT NULL DEFAULT 0;

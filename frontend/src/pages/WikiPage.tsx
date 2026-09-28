@@ -81,6 +81,7 @@ import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVi
 import { CharacterCanvasPage } from '@/components/entity/CharacterCanvasPage';
 import { PluginCharacterPageHost } from '@/components/entity/PluginCharacterPageHost';
 import { CharacterPageManager } from '@/components/entity/CharacterPageManager';
+import { EntityCustomFieldsPanel } from '@/components/entity/EntityCustomFieldsPanel';
 import { QuestPageShellView } from '@/components/entity/shells/QuestPageShellView';
 import { LocationPageShellView } from '@/components/entity/shells/LocationPageShellView';
 import { OrganizationPageShellView } from '@/components/entity/shells/OrganizationPageShellView';
@@ -379,6 +380,7 @@ export function WikiPage() {
       ),
     [entitySurfaceProfile.key, entitySurfaceProfile.appearanceMode],
   );
+  const managesEntityPages = entityPageShell.key !== 'default';
 
   const wikiComposition: WorkspaceCompositionId = useMemo(
     () => (isEntityWorkspacePage(entitySurfaceProfile.key) ? 'entity' : 'codex'),
@@ -470,12 +472,12 @@ export function WikiPage() {
   );
 
   useEffect(() => {
-    if (entityPageShell.key !== 'character' || !pageId || !campaignHandle || !pageData) {
+    if (!managesEntityPages || !pageId || !campaignHandle || !pageData) {
       setCharacterPages([]);
       return;
     }
     let cancelled = false;
-    void fetchCharacterPages(campaignHandle, pageId)
+    void fetchCharacterPages(campaignHandle, pageId, entityPageShell.key)
       .then((result) => {
         if (!cancelled) setCharacterPages(result.pages);
       })
@@ -485,7 +487,7 @@ export function WikiPage() {
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle, entityPageShell.key, pageData, pageId]);
+  }, [campaignHandle, entityPageShell.key, managesEntityPages, pageData, pageId]);
 
   const activeCharacterPage = useMemo(
     () => characterPages.find((page) => page.key === pageSubview) ?? null,
@@ -535,18 +537,18 @@ export function WikiPage() {
 
   useEffect(() => {
     if (
-      entityPageShell.key === 'character' &&
+      managesEntityPages &&
       pageSubview === 'biography'
     ) {
       setPageSubview('overview');
       return;
     }
     const isCharacterExtension =
-      entityPageShell.key === 'character' && characterPages.some((page) => page.key === pageSubview);
+      managesEntityPages && characterPages.some((page) => page.key === pageSubview);
     if (!isCharacterExtension && !entityPageShell.isValidSubview(pageSubview, isDMUser)) {
       setPageSubview('overview');
     }
-  }, [pageSubview, entityPageShell, isDMUser, characterPages]);
+  }, [pageSubview, entityPageShell, isDMUser, characterPages, managesEntityPages]);
 
   const canDeleteWikiPage =
     isDMUser &&
@@ -1445,7 +1447,7 @@ export function WikiPage() {
 
   const wikiPageRendererSlot = useMemo(() => {
     if (!pageData) return null;
-    if (entityPageShell.key === 'character' && activeCharacterPage?.renderMode === 'CANVAS') {
+    if (managesEntityPages && activeCharacterPage?.renderMode === 'CANVAS') {
       return (
         <CharacterCanvasPage
           campaignHandle={campaignHandle}
@@ -1470,7 +1472,7 @@ export function WikiPage() {
         />
       );
     }
-    return (
+    const renderer = (
       <WikiPageRendererSlot
         blocks={displayBlocks}
         templateType={templateType}
@@ -1540,6 +1542,8 @@ export function WikiPage() {
         confirmWorkshopLeave={confirmWorkshopLeave}
       />
     );
+    if (!managesEntityPages || activeCharacterPage?.renderMode === 'PLUGIN') return renderer;
+    return <>{renderer}<EntityCustomFieldsPanel campaignHandle={campaignHandle} entityPageId={pageId} activePageId={activeCharacterPage?.coreKey === 'overview' ? null : activeCharacterPage?.id ?? null} canEdit={pageCanEdit} /></>;
   }, [
     pageData,
     activeCharacterPage,
@@ -2046,18 +2050,18 @@ export function WikiPage() {
             ) : undefined}
             showSectionSubviews={showSectionSubviews}
             subviews={
-              entityPageShell.key === 'character'
+              managesEntityPages
                 ? characterSubviewDefs
                 : entityPageShell.subviews
             }
             activeSubview={pageSubview}
             onSubviewChange={
-              entityPageShell.key === 'character'
+              managesEntityPages
                 ? handleCharacterSubviewChange
                 : setPageSubview
             }
             onAddSubview={
-              entityPageShell.key === 'character' && pageCanEdit
+              managesEntityPages && pageCanEdit
                 ? () => {
                     const title = window.prompt('Page name');
                     if (!title?.trim()) return;
@@ -2071,7 +2075,7 @@ export function WikiPage() {
                 : undefined
             }
             onManageSubviews={
-              entityPageShell.key === 'character' && pageCanEdit
+              managesEntityPages && pageCanEdit
                 ? () => setCharacterPageManagerOpen(true)
                 : undefined
             }
@@ -2125,7 +2129,7 @@ export function WikiPage() {
           />
         ) : null}
       </WikiWorkspaceShell>
-      {characterPageManagerOpen && entityPageShell.key === 'character' ? (
+      {characterPageManagerOpen && managesEntityPages ? (
         <CharacterPageManager
           campaignHandle={campaignHandle}
           characterPageId={pageId}

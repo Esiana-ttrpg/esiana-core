@@ -49,6 +49,7 @@ export interface CharacterFieldDescriptor {
   value: unknown;
   origin: CharacterFieldOrigin;
   pageId: string | null;
+  displayOrder: number;
   pluginId?: string;
   apiSourceId?: string;
   apiSourceName?: string;
@@ -79,7 +80,7 @@ export interface CharacterPageDescriptor {
   displayOrder: number;
   hidden: boolean;
   visibility: string | null;
-  coreKey?: CharacterCorePageKey;
+  coreKey?: string;
   pluginId?: string;
   apiSourceId?: string;
   apiSourceName?: string;
@@ -119,3 +120,55 @@ export interface PluginCharacterPagePermissions {
 }
 
 export type PluginPageRemovalMode = 'RETAIN_DATA' | 'CONVERT_TO_CUSTOM' | 'DELETE_DATA';
+
+/**
+ * Entity-neutral names for the shell page/field contract.  The character
+ * names above remain exported for plugin and API source compatibility.
+ */
+export type EntityPageDescriptor = CharacterPageDescriptor;
+export type EntityFieldDescriptor = CharacterFieldDescriptor;
+export type EntityFieldType = CharacterFieldType;
+export type EntityFieldValidation = CharacterFieldValidation;
+export type EntityPageDisplayMode = CharacterPageDisplayMode;
+
+export const ENTITY_SHELL_CORE_PAGES: Record<string, ReadonlyArray<{ key: string; title: string; dmOnly?: boolean }>> = {
+  character: CHARACTER_CORE_PAGE_KEYS.map((key) => ({
+    key,
+    title: key.charAt(0).toUpperCase() + key.slice(1),
+    dmOnly: key === 'discovery' || key === 'continuity',
+  })),
+  location: [
+    ['overview', 'Overview'], ['people', 'People'], ['places', 'Places'], ['organizations', 'Organizations'],
+    ['events', 'Events'], ['connections', 'Connections'], ['timeline', 'Timeline'], ['lore', 'Lore'],
+  ].map(([key, title]) => ({ key, title })),
+  organization: [
+    ['overview', 'Overview'], ['lore', 'Lore'], ['structure', 'Structure'], ['presence', 'Presence'],
+    ['relations', 'Relations'], ['people', 'People'], ['continuity', 'Continuity'],
+  ].map(([key, title]) => ({ key, title, dmOnly: key === 'continuity' })),
+  bestiary: [
+    ['overview', 'Overview'], ['lore', 'Lore'], ['encounters', 'Encounters'], ['combat', 'Combat'],
+    ['appearance', 'Appearance'], ['relationships', 'Related'], ['discovery', 'Discovery'], ['continuity', 'Continuity'],
+  ].map(([key, title]) => ({ key, title, dmOnly: key === 'discovery' || key === 'continuity' })),
+  ancestry: [
+    ['overview', 'Overview'], ['lineages', 'Lineages'], ['societies', 'Societies'], ['presence', 'Presence'],
+    ['relations', 'Relations'], ['characters', 'Characters'],
+  ].map(([key, title]) => ({ key, title })),
+  family: [
+    ['overview', 'Overview'], ['lore', 'Lore'], ['lineage', 'Lineage'], ['relationships', 'Relationships'],
+    ['timeline', 'Timeline'], ['discovery', 'Discovery'], ['continuity', 'Continuity'],
+  ].map(([key, title]) => ({ key, title, dmOnly: key === 'discovery' || key === 'continuity' })),
+  quest: [
+    ['overview', 'Overview'], ['lore', 'Lore'], ['continuity', 'Continuity'],
+  ].map(([key, title]) => ({ key, title, dmOnly: key === 'continuity' })),
+};
+
+/** Canonical entityCategory metadata values supported by managed page shells. */
+export const ENTITY_CATEGORY_TO_SHELL: Readonly<Record<string, string>> = {
+  characters: 'character',
+  locations: 'location',
+  organizations: 'organization',
+  bestiary: 'bestiary',
+  ancestries: 'ancestry',
+  families: 'family',
+  quests: 'quest',
+};

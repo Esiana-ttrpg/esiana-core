@@ -13,6 +13,8 @@ import type {
   CharacterFieldValidation,
   PluginCharacterFieldDefinition,
 } from '../../../shared/characterPages.js';
+import { ENTITY_SHELL_CORE_PAGES } from '../../../shared/characterPages.js';
+import type { CampaignMemberRole } from '../types/domain.js';
 
 const fieldsDb = prisma as typeof prisma & { characterField: any; characterPageTab: any };
 const FIELD_TYPES = new Set<CharacterFieldType>(['STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'ENUM', 'JSON']);
@@ -20,6 +22,46 @@ const VALIDATION_KEYS = new Set(['required', 'min', 'max', 'maxLength', 'options
 const MAX_FIELD_LENGTH = 10_000;
 const MAX_ENUM_OPTIONS = 100;
 const MAX_ENUM_OPTION_LENGTH = 200;
+
+async function resolveFieldPageTab(
+  campaignId: string,
+  entityPageId: string,
+  shell: string,
+  canViewDmOnly: boolean,
+  access: { canEdit: boolean; canViewDmOnly: boolean; shell: string },
+  role: CampaignMemberRole | null,
+  requested: unknown,
+): Promise<string | null | undefined> {
+  if (requested == null) return null;
+  if (typeof requested !== 'string') return undefined;
+  const stored = await fieldsDb.characterPageTab.findFirst({
+    where: { id: requested, campaignId, characterPageId: entityPageId },
+    select: { id: true, coreKey: true, hidden: true, visibility: true },
+  });
+  const coreDefinitions = ENTITY_SHELL_CORE_PAGES[shell];
+  if (!coreDefinitions) return undefined;
+  if (stored) {
+    const definition = stored.coreKey ? coreDefinitions.find((candidate) => candidate.key === stored.coreKey) : undefined;
+    if (stored.coreKey && (!definition || (definition.dmOnly && !canViewDmOnly))) return undefined;
+    if (!canReadCharacterPageTab(stored, access, role)) return undefined;
+    return stored.id;
+  }
+  if (!requested.startsWith('core:')) return undefined;
+  const coreKey = requested.slice('core:'.length);
+  const definition = coreDefinitions.find((candidate) => candidate.key === coreKey);
+  if (!definition || (definition.dmOnly && !canViewDmOnly)) return undefined;
+  const existing = await fieldsDb.characterPageTab.findFirst({
+    where: { campaignId, characterPageId: entityPageId, coreKey },
+    select: { id: true, coreKey: true, hidden: true, visibility: true },
+  });
+  if (existing) return canReadCharacterPageTab(existing, access, role) ? existing.id : undefined;
+  const row = await fieldsDb.characterPageTab.create({ data: {
+    campaignId, characterPageId: entityPageId, origin: 'CORE', renderMode: 'CORE',
+    coreKey, title: definition.title, displayOrder: coreDefinitions.findIndex((candidate) => candidate.key === coreKey) * 10,
+    blocks: [],
+  }, select: { id: true } });
+  return row.id;
+}
 
 function parseValidation(raw: unknown): { validation: CharacterFieldValidation; error: string | null } {
   if (raw == null) return { validation: {}, error: null };
@@ -93,7 +135,8 @@ function descriptor(row: any, canEdit: boolean): CharacterFieldDescriptor {
     type: row.fieldType,
     value: row.value ?? null,
     origin: row.origin,
-    pageId: row.pageTabId,
+    pageId: row.pageTab?.coreKey ? `core:${row.pageTab.coreKey}` : row.pageTabId,
+    displayOrder: row.displayOrder ?? 0,
     ...(row.pluginId ? { pluginId: row.pluginId } : {}),
     ...(row.apiSourceId ? { apiSourceId: row.apiSourceId } : {}),
     ...(row.apiSourceName ? { apiSourceName: row.apiSourceName } : {}),
@@ -149,11 +192,11 @@ async function ensurePluginFields(campaignId: string, characterPageId: string): 
 export async function listCharacterFields(req: CampaignScopedRequest, res: Response): Promise<void> {
   const access = await loadCharacterPageAccess(req, res);
   if (!access) return;
-  await ensurePluginFields(req.campaign!.campaignId, access.page.id);
+  if (access.isCharacter) await ensurePluginFields(req.campaign!.campaignId, access.page.id);
   const rows = await fieldsDb.characterField.findMany({
     where: { campaignId: req.campaign!.campaignId, characterPageId: access.page.id },
     include: { pageTab: true },
-    orderBy: [{ updatedAt: 'desc' }, { createdAt: 'asc' }],
+    orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
   });
   const states = await (prisma as typeof prisma & { pluginCharacterPageState: any }).pluginCharacterPageState.findMany({
     where: { campaignId: req.campaign!.campaignId, characterPageId: access.page.id },
@@ -161,7 +204,7 @@ export async function listCharacterFields(req: CampaignScopedRequest, res: Respo
   });
   const available = new Set(states.filter((state: any) => state.providerState === 'AVAILABLE').map((state: any) => `${state.pluginId}:${state.sourceKey}`));
   const removed = new Set(states.filter((state: any) => state.providerState === 'REMOVED').map((state: any) => `${state.pluginId}:${state.sourceKey}`));
-  for (const entry of await listEnabledCampaignCharacterPageDefinitions(req.campaign!.campaignId)) {
+  for (const entry of access.isCharacter ? await listEnabledCampaignCharacterPageDefinitions(req.campaign!.campaignId) : []) {
     const key = `${entry.pluginId}:${entry.definition.key}`;
     if (!removed.has(key)) available.add(key);
   }
@@ -192,24 +235,32 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
   const problem = validateValue(fieldType, req.body?.value ?? null, validation);
   if (problem) { res.status(400).json({ error: problem }); return; }
   let pageTabId: string | null = null;
-  if (typeof req.body?.pageId === 'string') {
-    const tab = await fieldsDb.characterPageTab.findFirst({ where: {
-      id: req.body.pageId, campaignId: req.campaign!.campaignId, characterPageId: access.page.id,
-    }, select: { id: true } });
-    if (!tab) { res.status(400).json({ error: 'pageId is not a page of this character' }); return; }
-    pageTabId = tab.id;
+  if (req.body?.pageId != null) {
+    const resolved = await resolveFieldPageTab(
+      req.campaign!.campaignId, access.page.id, access.shell, access.canViewDmOnly,
+      access, req.campaign!.role, req.body.pageId,
+    );
+    if (resolved === undefined) { res.status(400).json({ error: 'pageId is not a page of this entity' }); return; }
+    pageTabId = resolved;
   }
   const id = randomUUID();
+  const last = await fieldsDb.characterField.findFirst({
+    where: { campaignId: req.campaign!.campaignId, characterPageId: access.page.id, pageTabId },
+    orderBy: { displayOrder: 'desc' }, select: { displayOrder: true },
+  });
   const provenance = characterResourceProvenance(req);
-  const row = await fieldsDb.characterField.create({ data: {
-    id, campaignId: req.campaign!.campaignId, characterPageId: access.page.id,
-    pageTabId,
-    fieldKey: id, origin: provenance.origin,
-    apiSourceId: provenance.apiSourceId, apiSourceName: provenance.apiSourceName,
-    label, fieldType,
-    value: toNullableInputJsonValue(req.body?.value ?? null), validation: toInputJsonValue(validation),
-    capabilities: toInputJsonValue({ readable: true, writable: true }),
-  }});
+  const row = await fieldsDb.characterField.create({
+    data: {
+      id, campaignId: req.campaign!.campaignId, characterPageId: access.page.id,
+      pageTabId,
+      fieldKey: id, origin: provenance.origin,
+      apiSourceId: provenance.apiSourceId, apiSourceName: provenance.apiSourceName,
+      label, fieldType, displayOrder: (last?.displayOrder ?? -10) + 10,
+      value: toNullableInputJsonValue(req.body?.value ?? null), validation: toInputJsonValue(validation),
+      capabilities: toInputJsonValue({ readable: true, writable: true }),
+    },
+    include: { pageTab: true },
+  });
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_CREATED, campaignId: req.campaign!.campaignId,
     actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
     payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin } });
@@ -220,13 +271,22 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   const access = await loadCharacterPageAccess(req, res);
   if (!access) return;
   if (!access.canEdit) { res.status(403).json({ error: 'Forbidden: cannot edit this character' }); return; }
-  const row = await fieldsDb.characterField.findFirst({ where: {
-    id: String(req.params.fieldId), campaignId: req.campaign!.campaignId, characterPageId: access.page.id,
-  }});
+  const row = await fieldsDb.characterField.findFirst({
+    where: { id: String(req.params.fieldId), campaignId: req.campaign!.campaignId, characterPageId: access.page.id },
+    include: { pageTab: true },
+  });
   if (!row) { res.status(404).json({ error: 'Character field not found' }); return; }
+  if (row.pageTab && !canReadCharacterPageTab(row.pageTab, access, req.campaign!.role)) {
+    res.status(403).json({ error: 'Forbidden: field page is not visible to your role' }); return;
+  }
   const capabilities = row.capabilities && typeof row.capabilities === 'object' ? row.capabilities : {};
   if (capabilities.writable === false) { res.status(403).json({ error: 'Field is read-only' }); return; }
   if (row.origin === 'PLUGIN') {
+    if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'label')
+      || Object.prototype.hasOwnProperty.call(req.body ?? {}, 'pageId')) {
+      res.status(400).json({ error: 'Provider-managed field labels and page placement cannot be changed' });
+      return;
+    }
     const states = await (prisma as typeof prisma & { pluginCharacterPageState: any }).pluginCharacterPageState.findMany({
       where: {
         campaignId: req.campaign!.campaignId,
@@ -245,9 +305,29 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   }
   const parsedStoredValidation = parseValidation(row.validation);
   if (parsedStoredValidation.error) { res.status(400).json({ error: 'Field has invalid stored validation rules' }); return; }
-  const problem = validateValue(row.fieldType, req.body?.value, parsedStoredValidation.validation);
+  const nextValue = Object.prototype.hasOwnProperty.call(req.body ?? {}, 'value') ? req.body.value : row.value;
+  const problem = validateValue(row.fieldType, nextValue, parsedStoredValidation.validation);
   if (problem) { res.status(400).json({ error: problem }); return; }
-  const updated = await fieldsDb.characterField.update({ where: { id: row.id }, data: { value: toNullableInputJsonValue(req.body.value) } });
+  let pageTabId = row.pageTabId;
+  if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'pageId')) {
+    if (req.body.pageId == null) pageTabId = null;
+    else {
+      const resolved = await resolveFieldPageTab(
+        req.campaign!.campaignId, access.page.id, access.shell, access.canViewDmOnly,
+        access, req.campaign!.role, req.body.pageId,
+      );
+      if (resolved === undefined) { res.status(400).json({ error: 'pageId is not a page of this entity' }); return; }
+      pageTabId = resolved;
+    }
+  }
+  const label = typeof req.body?.label === 'string' ? req.body.label.trim() : row.label;
+  if (!label || label.length > 100) { res.status(400).json({ error: 'label must be 1 to 100 characters' }); return; }
+  const displayOrder = Number.isInteger(req.body?.displayOrder) ? req.body.displayOrder : row.displayOrder;
+  const updated = await fieldsDb.characterField.update({
+    where: { id: row.id },
+    data: { value: toNullableInputJsonValue(nextValue), label, pageTabId, displayOrder },
+    include: { pageTab: true },
+  });
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_UPDATED, campaignId: req.campaign!.campaignId,
     actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
     payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin, updatedAt: updated.updatedAt.toISOString() } });
@@ -258,10 +338,14 @@ export async function deleteCustomCharacterField(req: CampaignScopedRequest, res
   const access = await loadCharacterPageAccess(req, res);
   if (!access) return;
   if (!access.canEdit) { res.status(403).json({ error: 'Forbidden: cannot edit this character' }); return; }
-  const row = await fieldsDb.characterField.findFirst({ where: {
-    id: String(req.params.fieldId), campaignId: req.campaign!.campaignId, characterPageId: access.page.id,
-  }});
+  const row = await fieldsDb.characterField.findFirst({
+    where: { id: String(req.params.fieldId), campaignId: req.campaign!.campaignId, characterPageId: access.page.id },
+    include: { pageTab: true },
+  });
   if (!row) { res.status(404).json({ error: 'Character field not found' }); return; }
+  if (row.pageTab && !canReadCharacterPageTab(row.pageTab, access, req.campaign!.role)) {
+    res.status(403).json({ error: 'Forbidden: field page is not visible to your role' }); return;
+  }
   if (!isUserDeletableCharacterResource(row.origin)) { res.status(400).json({ error: 'Provider-managed fields cannot be deleted here' }); return; }
   await fieldsDb.characterField.delete({ where: { id: row.id } });
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_DELETED, campaignId: req.campaign!.campaignId,
