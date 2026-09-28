@@ -19169,25 +19169,344 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-  /api/campaigns/{campaignHandle}/webhook-deliveries/{deliveryId}/redeliver:
-    post:
-      tags:
-        - Campaigns
-      summary: Create or run DeliveryId Redeliver
-      operationId: post_api_campaigns_campaignHandle_webhook_deliveries_deliveryId_redeliver
-  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-fields:
+  /api/campaigns/{campaignHandle}/discord:
     get:
       tags:
-        - Wiki
-      summary: Get PageId Entity Fields
-      operationId: get_api_campaigns_campaignHandle_wiki_pageId_entity_fields
+        - Campaigns
+      summary: Get CampaignHandle Discord
+      operationId: get_api_campaigns_campaignHandle_discord
       x-esiana-authorization:
         boundary: campaign
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Campaign settings modification privilege (campaign-scoped; not system administration)
-          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run CampaignHandle Discord
+      operationId: post_api_campaigns_campaignHandle_discord
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/{destinationId}:
+    delete:
+      tags:
+        - Campaigns
+      summary: Delete Discord DestinationId
+      operationId: delete_api_campaigns_campaignHandle_discord_destinationId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+    patch:
+      tags:
+        - Campaigns
+      summary: Update Discord DestinationId
+      operationId: patch_api_campaigns_campaignHandle_discord_destinationId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/{destinationId}/deliveries:
+    get:
+      tags:
+        - Campaigns
+      summary: Get DestinationId Deliveries
+      operationId: get_api_campaigns_campaignHandle_discord_destinationId_deliveries
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/{destinationId}/test:
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run DestinationId Test
+      operationId: post_api_campaigns_campaignHandle_discord_destinationId_test
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: destinationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/discord/catalog:
+    get:
+      tags:
+        - Campaigns
+      summary: Get Discord Catalog
+      operationId: get_api_campaigns_campaignHandle_discord_catalog
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/webhook-deliveries/{deliveryId}/redeliver:
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run DeliveryId Redeliver
+      operationId: post_api_campaigns_campaignHandle_webhook_deliveries_deliveryId_redeliver
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -19198,7 +19517,6 @@ paths:
           schema:
             type: string
         - name: deliveryId
-        - name: pageId
           in: path
           required: true
           schema:
@@ -19236,19 +19554,12 @@ paths:
         - Campaigns
       summary: Get CampaignHandle Webhooks
       operationId: get_api_campaigns_campaignHandle_webhooks
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-    post:
-      tags:
-        - Wiki
-      summary: Create or run PageId Entity Fields
-      operationId: post_api_campaigns_campaignHandle_wiki_pageId_entity_fields
       x-esiana-authorization:
         boundary: campaign
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Campaign settings modification privilege (campaign-scoped; not system administration)
-          - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -19294,7 +19605,6 @@ paths:
         - bearerAuth: []
       parameters:
         - name: campaignHandle
-        - name: pageId
           in: path
           required: true
           schema:
@@ -19332,20 +19642,12 @@ paths:
         - Campaigns
       summary: Delete Webhooks WebhookId
       operationId: delete_api_campaigns_campaignHandle_webhooks_webhookId
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-fields/{fieldId}:
-    delete:
-      tags:
-        - Wiki
-      summary: Delete Entity Fields FieldId
-      operationId: delete_api_campaigns_campaignHandle_wiki_pageId_entity_fields_fieldId
       x-esiana-authorization:
         boundary: campaign
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Campaign settings modification privilege (campaign-scoped; not system administration)
-          - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -19356,12 +19658,6 @@ paths:
           schema:
             type: string
         - name: webhookId
-        - name: pageId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: fieldId
           in: path
           required: true
           schema:
@@ -19391,19 +19687,12 @@ paths:
         - Campaigns
       summary: Update Webhooks WebhookId
       operationId: patch_api_campaigns_campaignHandle_webhooks_webhookId
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-    put:
-      tags:
-        - Wiki
-      summary: Replace Entity Fields FieldId
-      operationId: put_api_campaigns_campaignHandle_wiki_pageId_entity_fields_fieldId
       x-esiana-authorization:
         boundary: campaign
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Campaign settings modification privilege (campaign-scoped; not system administration)
-          - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -19414,12 +19703,6 @@ paths:
           schema:
             type: string
         - name: webhookId
-        - name: pageId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: fieldId
           in: path
           required: true
           schema:
@@ -19457,20 +19740,12 @@ paths:
         - Campaigns
       summary: Get WebhookId Deliveries
       operationId: get_api_campaigns_campaignHandle_webhooks_webhookId_deliveries
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-pages:
-    get:
-      tags:
-        - Wiki
-      summary: Get PageId Entity Pages
-      operationId: get_api_campaigns_campaignHandle_wiki_pageId_entity_pages
       x-esiana-authorization:
         boundary: campaign
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Campaign settings modification privilege (campaign-scoped; not system administration)
-          - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -19481,7 +19756,6 @@ paths:
           schema:
             type: string
         - name: webhookId
-        - name: pageId
           in: path
           required: true
           schema:
@@ -19512,19 +19786,12 @@ paths:
         - Campaigns
       summary: Create or run WebhookId Rotate Secret
       operationId: post_api_campaigns_campaignHandle_webhooks_webhookId_rotate_secret
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-    post:
-      tags:
-        - Wiki
-      summary: Create or run PageId Entity Pages
-      operationId: post_api_campaigns_campaignHandle_wiki_pageId_entity_pages
       x-esiana-authorization:
         boundary: campaign
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Campaign settings modification privilege (campaign-scoped; not system administration)
-          - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -19535,7 +19802,6 @@ paths:
           schema:
             type: string
         - name: webhookId
-        - name: pageId
           in: path
           required: true
           schema:
@@ -19573,20 +19839,12 @@ paths:
         - Campaigns
       summary: Create or run WebhookId Test
       operationId: post_api_campaigns_campaignHandle_webhooks_webhookId_test
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
-  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-pages/{tabId}:
-    delete:
-      tags:
-        - Wiki
-      summary: Delete Entity Pages TabId
-      operationId: delete_api_campaigns_campaignHandle_wiki_pageId_entity_pages_tabId
       x-esiana-authorization:
         boundary: campaign
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Campaign settings modification privilege (campaign-scoped; not system administration)
-          - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -19597,7 +19855,6 @@ paths:
           schema:
             type: string
         - name: webhookId
-        - name: pageId
           in: path
           required: true
           schema:
@@ -19646,6 +19903,360 @@ paths:
         - bearerAuth: []
       parameters:
         - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-fields:
+    get:
+      tags:
+        - Wiki
+      summary: Get PageId Entity Fields
+      operationId: get_api_campaigns_campaignHandle_wiki_pageId_entity_fields
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    post:
+      tags:
+        - Wiki
+      summary: Create or run PageId Entity Fields
+      operationId: post_api_campaigns_campaignHandle_wiki_pageId_entity_fields
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-fields/{fieldId}:
+    delete:
+      tags:
+        - Wiki
+      summary: Delete Entity Fields FieldId
+      operationId: delete_api_campaigns_campaignHandle_wiki_pageId_entity_fields_fieldId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    put:
+      tags:
+        - Wiki
+      summary: Replace Entity Fields FieldId
+      operationId: put_api_campaigns_campaignHandle_wiki_pageId_entity_fields_fieldId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-pages:
+    get:
+      tags:
+        - Wiki
+      summary: Get PageId Entity Pages
+      operationId: get_api_campaigns_campaignHandle_wiki_pageId_entity_pages
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+    post:
+      tags:
+        - Wiki
+      summary: Create or run PageId Entity Pages
+      operationId: post_api_campaigns_campaignHandle_wiki_pageId_entity_pages
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-pages/{tabId}:
+    delete:
+      tags:
+        - Wiki
+      summary: Delete Entity Pages TabId
+      operationId: delete_api_campaigns_campaignHandle_wiki_pageId_entity_pages_tabId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
         - name: tabId
           in: path
           required: true
@@ -19670,13 +20281,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
-  /api/campaigns/{campaignHandle}/discord:
-    get:
-      tags:
-        - Campaigns
-      summary: Get CampaignHandle Discord
-      operationId: get_api_campaigns_campaignHandle_discord
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
     patch:
       tags:
@@ -19688,7 +20292,6 @@ paths:
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
-          - Campaign settings modification privilege (campaign-scoped; not system administration)
           - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
@@ -19699,42 +20302,6 @@ paths:
           required: true
           schema:
             type: string
-      responses:
-        "200":
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
-    post:
-      tags:
-        - Campaigns
-      summary: Create or run CampaignHandle Discord
-      operationId: post_api_campaigns_campaignHandle_discord
-      x-esiana-authorization:
-        boundary: campaign
-        requires:
-          - Authenticated application user or API token
-          - Membership in the addressed campaign
-          - Campaign settings modification privilege (campaign-scoped; not system administration)
-      security:
-        - cookieAuth: []
-        - bearerAuth: []
-      parameters:
-        - name: campaignHandle
         - name: pageId
           in: path
           required: true
@@ -19771,13 +20338,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
-  /api/campaigns/{campaignHandle}/discord/{destinationId}:
-    delete:
-      tags:
-        - Campaigns
-      summary: Delete Discord DestinationId
-      operationId: delete_api_campaigns_campaignHandle_discord_destinationId
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-pages/{tabId}/blocks:
     put:
@@ -19790,7 +20350,6 @@ paths:
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
-          - Campaign settings modification privilege (campaign-scoped; not system administration)
           - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
@@ -19801,53 +20360,11 @@ paths:
           required: true
           schema:
             type: string
-        - name: destinationId
         - name: pageId
           in: path
           required: true
           schema:
             type: string
-      responses:
-        "200":
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
-    patch:
-      tags:
-        - Campaigns
-      summary: Update Discord DestinationId
-      operationId: patch_api_campaigns_campaignHandle_discord_destinationId
-      x-esiana-authorization:
-        boundary: campaign
-        requires:
-          - Authenticated application user or API token
-          - Membership in the addressed campaign
-          - Campaign settings modification privilege (campaign-scoped; not system administration)
-      security:
-        - cookieAuth: []
-        - bearerAuth: []
-      parameters:
-        - name: campaignHandle
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: destinationId
         - name: tabId
           in: path
           required: true
@@ -19879,13 +20396,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
-  /api/campaigns/{campaignHandle}/discord/{destinationId}/deliveries:
-    get:
-      tags:
-        - Campaigns
-      summary: Get DestinationId Deliveries
-      operationId: get_api_campaigns_campaignHandle_discord_destinationId_deliveries
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-pages/{tabId}/duplicate:
     post:
@@ -19898,7 +20408,6 @@ paths:
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
-          - Campaign settings modification privilege (campaign-scoped; not system administration)
           - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
@@ -19909,54 +20418,11 @@ paths:
           required: true
           schema:
             type: string
-        - name: destinationId
         - name: pageId
           in: path
           required: true
           schema:
             type: string
-      responses:
-        "200":
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-        "500":
-          $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
-  /api/campaigns/{campaignHandle}/discord/{destinationId}/test:
-    post:
-      tags:
-        - Campaigns
-      summary: Create or run DestinationId Test
-      operationId: post_api_campaigns_campaignHandle_discord_destinationId_test
-      x-esiana-authorization:
-        boundary: campaign
-        requires:
-          - Authenticated application user or API token
-          - Membership in the addressed campaign
-          - Campaign settings modification privilege (campaign-scoped; not system administration)
-      security:
-        - cookieAuth: []
-        - bearerAuth: []
-      parameters:
-        - name: campaignHandle
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: destinationId
         - name: tabId
           in: path
           required: true
@@ -19988,13 +20454,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
-  /api/campaigns/{campaignHandle}/discord/catalog:
-    get:
-      tags:
-        - Campaigns
-      summary: Get Discord Catalog
-      operationId: get_api_campaigns_campaignHandle_discord_catalog
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/{pageId}/entity-pages/order:
     patch:
@@ -20007,7 +20466,6 @@ paths:
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
-          - Campaign settings modification privilege (campaign-scoped; not system administration)
           - Resource-level visibility and ownership checks performed by the controller/service
       security:
         - cookieAuth: []
@@ -20049,7 +20507,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign settings modification privilege (campaign-scoped; not system administration)."
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
 components:
   securitySchemes:
