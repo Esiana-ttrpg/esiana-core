@@ -350,6 +350,7 @@ import {
 import { documentUpload, imageUpload, sidebarIconUpload, tagIconUpload, campaignWizardUpload } from '../lib/multer.js';
 import { enforceSystemUploadLimit, enforceWizardUploadLimits } from '../middleware/uploadLimit.js';
 import { campaignInviteEmailLimiter, campaignUrlImportLimiter, workshopDraftLimiter } from '../middleware/rateLimit.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 import {
   campaignScopeMiddleware,
   requireCampaignMember,
@@ -437,6 +438,9 @@ export const campaignScopedRouter = Router({ mergeParams: true });
 
 campaignScopedRouter.use(campaignScopeMiddleware);
 campaignScopedRouter.use(requireCampaignMembership);
+campaignScopedRouter.use(rateLimitPolicy('authenticated'));
+campaignScopedRouter.use(rateLimitPolicy('apiKey'));
+campaignScopedRouter.use(rateLimitPolicy('mutation'));
 
 campaignScopedRouter.get('/', getCampaign);
 campaignScopedRouter.get('/members', listCampaignMembers);
@@ -487,19 +491,19 @@ campaignScopedRouter.post('/webhooks', requireGamemasterSettings, createWebhook)
 campaignScopedRouter.patch('/webhooks/:webhookId', requireGamemasterSettings, updateWebhook);
 campaignScopedRouter.delete('/webhooks/:webhookId', requireGamemasterSettings, deleteWebhook);
 campaignScopedRouter.post('/webhooks/:webhookId/rotate-secret', requireGamemasterSettings, rotateWebhookSecret);
-campaignScopedRouter.post('/webhooks/:webhookId/test', requireGamemasterSettings, testWebhook);
+campaignScopedRouter.post('/webhooks/:webhookId/test', requireGamemasterSettings, rateLimitPolicy('expensive'), testWebhook);
 campaignScopedRouter.get('/webhooks/:webhookId/deliveries', requireGamemasterSettings, listWebhookDeliveries);
-campaignScopedRouter.post('/webhook-deliveries/:deliveryId/redeliver', requireGamemasterSettings, redeliverWebhook);
+campaignScopedRouter.post('/webhook-deliveries/:deliveryId/redeliver', requireGamemasterSettings, rateLimitPolicy('expensive'), redeliverWebhook);
 campaignScopedRouter.get('/discord/catalog', requireGamemasterSettings, getDiscordCatalog);
 campaignScopedRouter.get('/discord', requireGamemasterSettings, listDiscord);
 campaignScopedRouter.post('/discord', requireGamemasterSettings, createDiscord);
 campaignScopedRouter.patch('/discord/:destinationId', requireGamemasterSettings, updateDiscord);
 campaignScopedRouter.delete('/discord/:destinationId', requireGamemasterSettings, deleteDiscord);
-campaignScopedRouter.post('/discord/:destinationId/test', requireGamemasterSettings, testDiscord);
+campaignScopedRouter.post('/discord/:destinationId/test', requireGamemasterSettings, rateLimitPolicy('expensive'), testDiscord);
 campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemasterSettings, listDiscordDeliveries);
 
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
-campaignScopedRouter.get('/chronology/timeline', getChronologyTimelineBundle);
+campaignScopedRouter.get('/chronology/timeline', rateLimitPolicy('expensive'), getChronologyTimelineBundle);
 campaignScopedRouter.get('/chronology/overlay', getChronologyOverlayBundle);
 campaignScopedRouter.post(
   '/locations/:pageId/visits',
@@ -514,11 +518,13 @@ campaignScopedRouter.post('/rumors/spread', requireRumorModerate, postRumorSprea
 campaignScopedRouter.post(
   '/world-state/preview',
   requireChronologyManager,
+  rateLimitPolicy('expensive'),
   postWorldAdvancePreview,
 );
 campaignScopedRouter.post(
   '/world-state/apply',
   requireChronologyManager,
+  rateLimitPolicy('expensive'),
   postWorldAdvanceApply,
 );
 campaignScopedRouter.get(
@@ -589,12 +595,14 @@ campaignScopedRouter.patch(
 campaignScopedRouter.post(
   '/chronology/import-preview',
   requireCampaignMember,
+  rateLimitPolicy('expensive'),
   previewFantasyCalendarImport,
 );
 
 campaignScopedRouter.post(
   '/time-tracking/import-json',
   requireChronologyManager,
+  rateLimitPolicy('expensive'),
   importCalendarFromJson,
 );
 
@@ -857,6 +865,7 @@ campaignScopedRouter.patch(
 campaignScopedRouter.post(
   '/wiki/tags/:tagId/icon',
   requirePageEditAny,
+  rateLimitPolicy('expensive'),
   enforceSystemUploadLimit,
   tagIconUpload.single('file'),
   uploadWikiTagIcon,
@@ -1059,6 +1068,7 @@ campaignScopedRouter.get('/entity-graph/diagnostics', getEntityGraphDiagnostics)
 campaignScopedRouter.post(
   '/entity-graph/rebuild',
   requirePageEditAny,
+  rateLimitPolicy('expensive'),
   rebuildCampaignEntityGraph,
 );
 
@@ -1082,20 +1092,23 @@ campaignScopedRouter.get('/status', getCampaignStatus);
 campaignScopedRouter.get('/world-stats', getCampaignWorldStats);
 campaignScopedRouter.get('/capacity-hint', getCampaignCapacityHint);
 campaignScopedRouter.get('/files', getCampaignFiles);
-campaignScopedRouter.get('/backup', requireGamemasterSettings, downloadCampaignBackup);
+campaignScopedRouter.get('/backup', requireGamemasterSettings, rateLimitPolicy('expensive'), downloadCampaignBackup);
 campaignScopedRouter.post(
   '/backup/async',
   requireGamemasterSettings,
+  rateLimitPolicy('expensive'),
   startAsyncCampaignBackup,
 );
 campaignScopedRouter.get(
   '/backup/download/:assetId',
   requireGamemasterSettings,
+  rateLimitPolicy('expensive'),
   downloadCampaignExportAsset,
 );
 campaignScopedRouter.post(
   '/backup/restore',
   requireGamemasterSettings,
+  rateLimitPolicy('expensive'),
   campaignWizardUpload.fields([{ name: 'backupZipFile', maxCount: 1 }]),
   enforceWizardUploadLimits,
   restoreCampaignBackup,
@@ -1110,6 +1123,7 @@ campaignScopedRouter.patch(
 campaignScopedRouter.post(
   '/settings/sidebar/:sectionId/icon',
   requireGamemasterSettings,
+  rateLimitPolicy('expensive'),
   sidebarIconUpload.single('file'),
   uploadCampaignSidebarSectionIcon,
 );
@@ -1126,9 +1140,9 @@ campaignScopedRouter.patch(
   respondToJoinRequest,
 );
 
-campaignScopedRouter.get('/wiki/session-notes/compile', compileSessionNotes);
-campaignScopedRouter.get('/wiki/session-notes/combined', getCombinedSessionNotes);
-campaignScopedRouter.get('/wiki/session-notes/index', getSessionNotesIndex);
+campaignScopedRouter.get('/wiki/session-notes/compile', rateLimitPolicy('expensive'), compileSessionNotes);
+campaignScopedRouter.get('/wiki/session-notes/combined', rateLimitPolicy('expensive'), getCombinedSessionNotes);
+campaignScopedRouter.get('/wiki/session-notes/index', rateLimitPolicy('expensive'), getSessionNotesIndex);
 campaignScopedRouter.post(
   '/session-timeline/new',
   requireCampaignMember,
@@ -1187,16 +1201,18 @@ campaignScopedRouter.delete(
 );
 campaignScopedRouter.get(
   '/wiki/session-notes/:pageId/perspectives',
+  rateLimitPolicy('expensive'),
   getSessionNotePerspectives,
 );
 campaignScopedRouter.post('/notebooks', createNotebookArc);
 campaignScopedRouter.put('/notebooks/:notebookId', updateNotebookArc);
 campaignScopedRouter.delete('/notebooks/:notebookId', deleteNotebookArc);
 campaignScopedRouter.patch('/wiki-pages/assign-notebook', assignWikiPageNotebookArc);
-campaignScopedRouter.patch('/wiki-pages/bulk-move', bulkMoveWikiPages);
+campaignScopedRouter.patch('/wiki-pages/bulk-move', rateLimitPolicy('expensive'), bulkMoveWikiPages);
 campaignScopedRouter.post(
   '/wiki-pages/bulk-delete',
   requirePageEditAny,
+  rateLimitPolicy('expensive'),
   bulkDeleteSessionNotes,
 );
 campaignScopedRouter.put('/wiki-pages/:pageId', updateSessionNotePage);
@@ -1204,6 +1220,7 @@ campaignScopedRouter.delete('/wiki-pages/:pageId', deleteSessionNotePage);
 campaignScopedRouter.post(
   '/wiki-pages/upload',
   requireCampaignMember,
+  rateLimitPolicy('expensive'),
   documentUpload.single('document'),
   enforceSystemUploadLimit,
   uploadSessionNotePage,
@@ -1277,6 +1294,7 @@ campaignScopedRouter.post(
   '/uploads',
   requireCampaignMember,
   requireAssetsUpload,
+  rateLimitPolicy('expensive'),
   imageUpload.single('image'),
   enforceSystemUploadLimit,
   uploadCampaignImage,
@@ -1376,6 +1394,7 @@ campaignScopedRouter.post(
 campaignScopedRouter.post(
   '/presence/reveal',
   requireDiscoveryReveal,
+  rateLimitPolicy('expensive'),
   bulkRevealContentPresence,
 );
 campaignScopedRouter.post(
@@ -1447,6 +1466,7 @@ campaignScopedRouter.delete('/journal/series/:id', requireJournalPlannerAccess, 
 campaignScopedRouter.post(
   '/journal/series/:id/generate-next',
   requireJournalPlannerAccess,
+  rateLimitPolicy('expensive'),
   generateNextSeriesIssue,
 );
 campaignScopedRouter.post('/journal/publications', requirePageCreate, createJournalPublication);
@@ -1465,10 +1485,12 @@ campaignScopedRouter.put(
 campaignScopedRouter.post(
   '/journal/publications/:id/evaluate',
   requireJournalPlannerAccess,
+  rateLimitPolicy('expensive'),
   evaluateJournalPublication,
 );
 campaignScopedRouter.post(
   '/journal/publications/:id/release',
   requireJournalPlannerAccess,
+  rateLimitPolicy('expensive'),
   releaseJournalPublication,
 );

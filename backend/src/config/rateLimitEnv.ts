@@ -3,8 +3,68 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
 
+function parseBoolean(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined || value === '') return fallback;
+  if (value === 'true' || value === '1') return true;
+  if (value === 'false' || value === '0') return false;
+  return fallback;
+}
+
+const SUPPORTED_STORES = ['memory'] as const;
+export type RateLimitStoreKind = (typeof SUPPORTED_STORES)[number];
+
+function parseStore(value: string | undefined): RateLimitStoreKind {
+  const normalized = (value ?? 'memory').trim().toLowerCase() || 'memory';
+  if ((SUPPORTED_STORES as readonly string[]).includes(normalized)) {
+    return normalized as RateLimitStoreKind;
+  }
+  throw new Error(
+    `Unsupported rate-limit store "${normalized}". Only "memory" is supported in this release. ` +
+      `A distributed adapter can be added later by extending the store factory.`,
+  );
+}
+
 export function buildRateLimitEnv() {
   return {
+    enabled: parseBoolean(process.env.RATE_LIMIT_ENABLED, true),
+    store: parseStore(process.env.RATE_LIMIT_STORE),
+
+    // Named policies (window defaults are 60s unless noted)
+    authenticatedMax: parsePositiveInt(
+      process.env.RATE_LIMIT_AUTHENTICATED_MAX,
+      600,
+    ),
+    authenticatedWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_AUTHENTICATED_WINDOW_MS,
+      60_000,
+    ),
+    mutationMax: parsePositiveInt(process.env.RATE_LIMIT_MUTATION_MAX, 120),
+    mutationWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_MUTATION_WINDOW_MS,
+      60_000,
+    ),
+    expensiveMax: parsePositiveInt(process.env.RATE_LIMIT_EXPENSIVE_MAX, 20),
+    expensiveWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_EXPENSIVE_WINDOW_MS,
+      60_000,
+    ),
+    publicMax: parsePositiveInt(process.env.RATE_LIMIT_PUBLIC_MAX, 120),
+    publicWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_PUBLIC_WINDOW_MS,
+      60_000,
+    ),
+    adminMax: parsePositiveInt(process.env.RATE_LIMIT_ADMIN_MAX, 60),
+    adminWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_ADMIN_WINDOW_MS,
+      60_000,
+    ),
+    apiKeyMax: parsePositiveInt(process.env.RATE_LIMIT_API_KEY_MAX, 300),
+    apiKeyWindowMs: parsePositiveInt(
+      process.env.RATE_LIMIT_API_KEY_WINDOW_MS,
+      60_000,
+    ),
+
+    // Legacy / narrow credential guards
     loginMax: parsePositiveInt(process.env.RATE_LIMIT_LOGIN_MAX, 20),
     loginWindowMs: parsePositiveInt(
       process.env.RATE_LIMIT_LOGIN_WINDOW_MS,

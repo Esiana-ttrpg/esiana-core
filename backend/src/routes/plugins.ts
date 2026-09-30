@@ -18,12 +18,16 @@ import {
 } from '../controllers/frontendPluginsController.js';
 import { uninstallPlugin } from '../lib/plugins/pluginUninstall.js';
 import { clearPluginQuarantineState } from '../lib/pluginRuntime/pluginDiagnostics.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 
 export function createPluginsRouter(): Router {
   const router = Router();
 
   router.use(authenticateApiOrSession);
   router.use(requireAuthenticatedApiOrSession);
+  router.use(rateLimitPolicy('authenticated'));
+  router.use(rateLimitPolicy('apiKey'));
+  router.use(rateLimitPolicy('mutation'));
 
   router.get(
     '/frontend-runtime',
@@ -45,6 +49,7 @@ export function createPluginsRouter(): Router {
   router.post(
     '/sync',
     requireTokenScopes([API_TOKEN_SCOPES.PLUGINS_MANAGE]),
+    rateLimitPolicy('expensive'),
     async (_req, res) => {
       const count = await syncPluginCatalog();
       res.json({ synced: count });
@@ -54,6 +59,7 @@ export function createPluginsRouter(): Router {
   router.post(
     '/:name/install',
     requireTokenScopes([API_TOKEN_SCOPES.PLUGINS_MANAGE]),
+    rateLimitPolicy('expensive'),
     async (req, res) => {
       const name = String(req.params.name);
       const synced = await syncPluginCatalog();
@@ -108,6 +114,7 @@ export function createPluginsRouter(): Router {
   router.delete(
     '/:name',
     requireTokenScopes([API_TOKEN_SCOPES.PLUGINS_MANAGE]),
+    rateLimitPolicy('expensive'),
     async (req, res) => {
       const name = String(req.params.name);
       try {
