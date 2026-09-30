@@ -84,6 +84,7 @@ function CommandActionHost({
   useEffect(() => {
     if (dialog?.kind !== 'session-note') return;
     let cancelled = false;
+    setHasSessions(false);
     void fetchSessionNotesIndex(campaignHandle)
       .then((payload) => {
         if (!cancelled) setHasSessions(hasTimelineSessions(payload));

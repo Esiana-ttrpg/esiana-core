@@ -655,8 +655,40 @@ export function WikiPage() {
     setIsEditingPage(true);
   }, []);
 
+  const isHavenOverviewView =
+    pageData?.templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
+    searchParams.get('view') !== 'lore';
+  const isProjectOverviewView =
+    pageData?.templateType === DOWNTIME_PROJECT_TEMPLATE_TYPE &&
+    searchParams.get('view') !== 'lore';
+  const routeTreePageForActive = flatPages.find((entry) => entry.id === pageId);
+  const blocksFreeformRoute = Boolean(
+    routeTreePageForActive &&
+      shouldBlockFreeformRoute(
+        location.pathname,
+        campaignHandle,
+        routeTreePageForActive,
+      ),
+  );
+  const pageVisibleToViewer = isWikiVisibilityVisibleToViewer(
+    resolvedVisibility,
+    viewerContext,
+  );
+  const shouldPublishActivePage = Boolean(
+    pageId &&
+      pageData &&
+      pageFetchState === 'ready' &&
+      !blocksFreeformRoute &&
+      pageData.title !== 'Dashboard' &&
+      pageVisibleToViewer &&
+      !isTagsHub &&
+      !isSessionNotePage &&
+      !isHavenOverviewView &&
+      !isProjectOverviewView,
+  );
+
   useEffect(() => {
-    if (!pageId || !pageData) {
+    if (!shouldPublishActivePage || !pageId || !pageData) {
       clearActivePage();
       return;
     }
@@ -678,6 +710,7 @@ export function WikiPage() {
       clearActivePage();
     };
   }, [
+    shouldPublishActivePage,
     pageId,
     pageData,
     displayTitle,
@@ -689,6 +722,15 @@ export function WikiPage() {
     publishActivePage,
     clearActivePage,
     enterEditMode,
+    pageFetchState,
+    blocksFreeformRoute,
+    pageVisibleToViewer,
+    isTagsHub,
+    isSessionNotePage,
+    isHavenOverviewView,
+    isProjectOverviewView,
+    resolvedVisibility,
+    viewerContext,
   ]);
 
   const printableArticleRef = useRef<HTMLElement | null>(null);
@@ -1867,14 +1909,6 @@ export function WikiPage() {
       />
     );
   }
-
-  const isHavenOverviewView =
-    pageData?.templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
-    searchParams.get('view') !== 'lore';
-
-  const isProjectOverviewView =
-    pageData?.templateType === DOWNTIME_PROJECT_TEMPLATE_TYPE &&
-    searchParams.get('view') !== 'lore';
 
   if (!loading && pageId && pageData && isHavenOverviewView) {
     return (
