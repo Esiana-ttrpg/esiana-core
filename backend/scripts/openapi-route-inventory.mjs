@@ -65,7 +65,7 @@ export function extractRouterRoutes(source, routerName, filename = 'route.ts') {
 }
 
 export function inventoryCoreRoutes(backendRoot) {
-  const routes = [{ method: 'get', path: '/uploads/{filename}', source: 'src/app.ts', line: 49 }];
+  const routes = [{ method: 'get', path: '/uploads/{filename}', source: 'src/mountRouters.ts', line: 1 }];
   for (const [routerName, [mountPath, relativeFile]] of Object.entries(CORE_ROUTER_MOUNTS)) {
     const filename = path.join(backendRoot, relativeFile);
     const source = fs.readFileSync(filename, 'utf8');
@@ -83,25 +83,58 @@ export function inventoryCoreRoutes(backendRoot) {
   return routes.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
 }
 
+/**
+ * Static `/api/*` mounts from the app assembly.
+ * Mounts live in `src/mountRouters.ts` (called from `createApp`); keep scanning
+ * `app.ts` as well so a future inline mount cannot silently drift.
+ */
 export function inventoryStaticAppMounts(backendRoot) {
-  const filename = path.join(backendRoot, 'src/app.ts');
-  const source = fs.readFileSync(filename, 'utf8');
-  const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const mounts = [];
-  function visit(node) {
-    if (ts.isCallExpression(node)
-      && ts.isPropertyAccessExpression(node.expression)
-      && ts.isIdentifier(node.expression.expression)
-      && node.expression.expression.text === 'app'
-      && node.expression.name.text === 'use') {
-      const mountPath = literalText(node.arguments[0]);
-      if (mountPath?.startsWith('/api/') && node.arguments[1]) {
-        mounts.push({ path: mountPath, routerExpression: node.arguments[1].getText(sourceFile) });
+  for (const relativeFile of ['src/mountRouters.ts', 'src/app.ts']) {
+    const filename = path.join(backendRoot, relativeFile);
+    if (!fs.existsSync(filename)) continue;
+    const source = fs.readFileSync(filename, 'utf8');
+    const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+
+    function visit(node) {
+      // app.use('/api/...', router)
+      if (
+        ts.isCallExpression(node) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        ts.isIdentifier(node.expression.expression) &&
+        node.expression.expression.text === 'app' &&
+        node.expression.name.text === 'use'
+      ) {
+        const mountPath = literalText(node.arguments[0]);
+        if (mountPath?.startsWith('/api/') && node.arguments[1]) {
+          mounts.push({
+            path: mountPath,
+            routerExpression: node.arguments[1].getText(sourceFile),
+            source: relativeFile,
+          });
+        }
       }
+
+      // listRouterMounts entries: { path: '/api/...', router: ... }
+      if (
+        ts.isPropertyAssignment(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === 'path'
+      ) {
+        const mountPath = literalText(node.initializer);
+        if (mountPath?.startsWith('/api/')) {
+          mounts.push({
+            path: mountPath,
+            routerExpression: 'listRouterMounts',
+            source: relativeFile,
+          });
+        }
+      }
+
+      ts.forEachChild(node, visit);
     }
-    ts.forEachChild(node, visit);
+    visit(sourceFile);
   }
-  visit(sourceFile);
   return mounts;
 }
 

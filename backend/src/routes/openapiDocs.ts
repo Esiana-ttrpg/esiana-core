@@ -5,6 +5,7 @@ import { Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import yaml from 'yaml';
 import { env } from '../config/env.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,6 +39,7 @@ export function createOpenApiDocsRouter(
   specPath = resolveOpenApiSpecPath(),
 ): Router {
   const router = Router();
+  router.use(rateLimitPolicy('public'));
   const rawSpec = fs.readFileSync(specPath, 'utf8');
   const spec = yaml.parse(rawSpec) as Record<string, unknown>;
 

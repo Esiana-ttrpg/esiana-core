@@ -3,29 +3,15 @@ import express, { type Express } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { env } from './config/env.js';
-import { healthRouter } from './routes/health.js';
-import { authRouter } from './routes/auth.js';
-import { userRouter } from './routes/user.js';
-import { campaignsRouter } from './routes/campaigns.js';
-import { pluginConnectionsRouter } from './routes/pluginConnections.js';
-import { pluginConnectionFixturesRouter } from './routes/pluginConnectionFixtures.js';
-import { campaignScopedRouter } from './routes/campaignScoped.js';
-import { createPluginsRouter } from './routes/plugins.js';
-import { publicDirectoryRouter } from './routes/publicDirectory.js';
-import { recruitmentRouter } from './routes/recruitment.js';
-import { gameSystemsRouter } from './routes/gameSystems.js';
-import { campaignThemesRouter } from './routes/campaignThemes.js';
-import { publicSystemRouter } from './routes/publicSystem.js';
-import { usersPublicRouter } from './routes/usersPublic.js';
-import { mountPluginHost, syncGlobalSystemPluginsFromDisk, syncCampaignPluginDefinitionsFromDisk, syncPluginCatalog, reloadPluginHost, mountPublicPluginHost, reconcileStaleSystemPluginsFromDisk } from './plugins/pluginManager.js';
-import { adminRouter } from './routes/admin.js';
-import { sampleDataRouter } from './routes/sampleData.js';
-import { contentPacksRouter } from './routes/contentPacks.js';
-import { importProvidersRouter } from './routes/importProviders.js';
 import {
-  createOpenApiDocsRouter,
-  isOpenApiDocsEnabled,
-} from './routes/openapiDocs.js';
+  mountPluginHost,
+  syncGlobalSystemPluginsFromDisk,
+  syncCampaignPluginDefinitionsFromDisk,
+  syncPluginCatalog,
+  reloadPluginHost,
+  mountPublicPluginHost,
+  reconcileStaleSystemPluginsFromDisk,
+} from './plugins/pluginManager.js';
 import { getOrCreateSystemSettings } from './lib/systemSettings.js';
 import { validateAuthEnvContract } from './config/oidcEnv.js';
 import { syncEnvManagedIdentityProvider } from './lib/auth/oidcEnvSync.js';
@@ -39,24 +25,20 @@ import { installSystemLogCapture } from './lib/systemLogBuffer.js';
 import { isPluginEngineMismatchError } from './lib/plugins/pluginEngineMismatchError.js';
 import { startAssetRetentionSweep } from './lib/assetRetention.js';
 import { startNotificationSweep } from './lib/notifications/notificationScheduledJobs.js';
-import { pluginAssetsRouter } from './routes/pluginAssets.js';
-import { assetsRouter } from './routes/assets.js';
-import { authenticateApiOrSession } from './middleware/auth.js';
-import { getUploadByFilename } from './controllers/assetsController.js';
 import { bootstrapWebhookDispatcher } from './lib/webhooks/dispatcher.js';
 import { startWebhookDeliverySweep } from './lib/webhooks/delivery.js';
 import { bootstrapDiscordDispatcher } from './lib/discord/dispatcher.js';
 import { startDiscordDeliverySweep } from './lib/discord/delivery.js';
 import { migrateWebhookUrlsAtRest } from './lib/webhooks/migrateWebhookUrls.js';
 import { csrfProtection } from './middleware/csrfProtection.js';
+import { configureTrustProxy } from './lib/rateLimit/index.js';
+import { mountRouters } from './mountRouters.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
   const app = express();
 
-  if (env.trustProxy) {
-    app.set('trust proxy', 1);
-  }
+  configureTrustProxy(app);
 
   app.use(
     cors({
@@ -73,32 +55,7 @@ export async function createApp(): Promise<Express> {
   app.use(apiUsageLogger);
 
   fs.mkdirSync(env.uploadsDir, { recursive: true });
-  app.get('/uploads/:filename', authenticateApiOrSession, getUploadByFilename);
-
-  app.use('/api/health', healthRouter);
-  app.use('/api/public-directory', publicDirectoryRouter);
-  app.use('/api/recruitment', recruitmentRouter);
-  app.use('/api/game-systems', gameSystemsRouter);
-  app.use('/api/campaign-themes', campaignThemesRouter);
-  app.use('/api/public/system', publicSystemRouter);
-  app.use('/api/users', usersPublicRouter);
-  app.use('/api/auth', authRouter);
-  app.use('/api/user', userRouter);
-  app.use('/api/campaigns', campaignsRouter);
-  app.use('/api/plugin-connections', pluginConnectionsRouter);
-  app.use('/api/plugin-connection-fixtures', pluginConnectionFixturesRouter);
-  app.use('/api/campaigns/:campaignHandle', campaignScopedRouter);
-  app.use('/api/assets', assetsRouter);
-  app.use('/api/plugins', createPluginsRouter());
-  app.use('/api/plugin-assets', pluginAssetsRouter);
-  app.use('/api/admin', adminRouter);
-  app.use('/api/sample-data', sampleDataRouter);
-  app.use('/api/content-packs', contentPacksRouter);
-  app.use('/api/import-providers', importProvidersRouter);
-
-  if (isOpenApiDocsEnabled()) {
-    app.use('/api/docs', createOpenApiDocsRouter());
-  }
+  mountRouters(app);
 
   await getOrCreateSystemSettings();
   await syncEnvManagedIdentityProvider();

@@ -38,17 +38,26 @@ import {
   applyGlobalLimiter,
   applyToCampaignLimiter,
 } from '../middleware/rateLimit.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 
 export const campaignsRouter = Router();
 
-campaignsRouter.get('/public', listPublicCampaigns);
+campaignsRouter.get('/public', rateLimitPolicy('public'), listPublicCampaigns);
 
 campaignsRouter.use(authenticateApiOrSession, requireAuthenticatedApiOrSession);
+campaignsRouter.use(rateLimitPolicy('authenticated'));
+campaignsRouter.use(rateLimitPolicy('apiKey'));
+campaignsRouter.use(rateLimitPolicy('mutation'));
 
 campaignsRouter.get('/', listCampaigns);
-campaignsRouter.post('/fantasy-calendar/import-preview', previewFantasyCalendarImportForWizard);
+campaignsRouter.post(
+  '/fantasy-calendar/import-preview',
+  rateLimitPolicy('expensive'),
+  previewFantasyCalendarImportForWizard,
+);
 campaignsRouter.post(
   '/',
+  rateLimitPolicy('expensive'),
   campaignWizardUpload.fields([
     { name: 'coverImage', maxCount: 1 },
     { name: 'markdownZipFile', maxCount: 1 },
@@ -59,7 +68,11 @@ campaignsRouter.post(
   createCampaign,
 );
 campaignsRouter.patch('/:id', updateCampaign);
-campaignsRouter.post('/:id/duplicate', duplicateCampaignHandler);
+campaignsRouter.post(
+  '/:id/duplicate',
+  rateLimitPolicy('expensive'),
+  duplicateCampaignHandler,
+);
 campaignsRouter.post(
   '/:campaignId/apply',
   applyGlobalLimiter,
@@ -92,12 +105,31 @@ campaignsRouter.get(
   '/:campaignId/plugins/search',
   attachCampaignByIdParam,
   requireCampaignMembership,
+  rateLimitPolicy('expensive'),
   searchCampaignPlugins,
 );
 campaignsRouter.get('/:campaignId/source-providers', attachCampaignByIdParam, requireCampaignMembership, listCampaignSourceProviders);
-campaignsRouter.get('/:campaignId/sources/search', attachCampaignByIdParam, requireCampaignMembership, searchCampaignSources);
-campaignsRouter.post('/:campaignId/sources/resolve', attachCampaignByIdParam, requireCampaignMembership, resolveCampaignSource);
-campaignsRouter.post('/:campaignId/sources/open-target', attachCampaignByIdParam, requireCampaignMembership, resolveCampaignSourceOpenTarget);
+campaignsRouter.get(
+  '/:campaignId/sources/search',
+  attachCampaignByIdParam,
+  requireCampaignMembership,
+  rateLimitPolicy('expensive'),
+  searchCampaignSources,
+);
+campaignsRouter.post(
+  '/:campaignId/sources/resolve',
+  attachCampaignByIdParam,
+  requireCampaignMembership,
+  rateLimitPolicy('expensive'),
+  resolveCampaignSource,
+);
+campaignsRouter.post(
+  '/:campaignId/sources/open-target',
+  attachCampaignByIdParam,
+  requireCampaignMembership,
+  rateLimitPolicy('expensive'),
+  resolveCampaignSourceOpenTarget,
+);
 campaignsRouter.get(
   '/:campaignId/plugins',
   attachCampaignByIdParam,

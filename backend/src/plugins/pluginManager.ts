@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import express, { type Express, type IRouter, type RequestHandler, Router } from 'express';
 import { env } from '../config/env.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 import { prisma } from '../lib/prisma.js';
 import { clearImportProviderRegistry } from '../lib/plugins/importProviderRegistry.js';
 import { clearSearchCollectionRegistry } from '../lib/plugins/pluginSearchRegistry.js';
@@ -102,15 +103,28 @@ export function readManifestForRecord(record: {
 }
 
 export function mountPluginHost(app: Express): void {
-  app.use('/api/plugin-runtime', authenticateApiOrSession, (req, res, next) => {
-    currentPluginRouter(req, res, next);
-  });
+  // Rate limits are abuse-control only; auth still admits guests / sessions / API keys.
+  // Dynamic plugin routes inherit these host-level policies.
+  app.use(
+    '/api/plugin-runtime',
+    authenticateApiOrSession,
+    rateLimitPolicy('authenticated'),
+    rateLimitPolicy('apiKey'),
+    rateLimitPolicy('mutation'),
+    (req, res, next) => {
+      currentPluginRouter(req, res, next);
+    },
+  );
 }
 
 export function mountPublicPluginHost(app: Express): void {
-  app.use('/api/public/plugin-runtime', (req, res, next) => {
-    currentPublicPluginRouter(req, res, next);
-  });
+  app.use(
+    '/api/public/plugin-runtime',
+    rateLimitPolicy('public'),
+    (req, res, next) => {
+      currentPublicPluginRouter(req, res, next);
+    },
+  );
 }
 
 function rebuildPublicPluginRouter(): void {

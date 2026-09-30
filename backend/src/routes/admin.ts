@@ -20,6 +20,7 @@ import {
 import { connectAdminStatic, disconnectAdminConnection, getAdminConnection } from '../controllers/pluginConnectionsController.js';
 import { startAdminPluginOAuth } from '../controllers/pluginConnectionOAuthController.js';
 import { oidcStartLimiter } from '../middleware/rateLimit.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 import { installPluginFromLink } from '../controllers/pluginController.js';
 import { checkSystemVersion } from '../controllers/systemController.js';
 import {
@@ -60,237 +61,217 @@ import {
 
 export const adminRouter = Router();
 
+/** Shared admin gate + default rate policy. Preserves requireAuth → verifySystemAdmin order. */
+const adminGate = [requireAuth, verifySystemAdmin, rateLimitPolicy('admin')] as const;
+const adminExpensive = rateLimitPolicy('expensive');
+
 adminRouter.get(
   '/system/backup',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   downloadSystemBackup,
 );
 
 adminRouter.get(
   '/system/logs',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getSystemLogs,
 );
 
 adminRouter.get(
   '/system/storage-stats',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getSystemStorageStats,
 );
 
 adminRouter.post(
   '/system/prune-media',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   pruneUnusedMediaAssets,
 );
-adminRouter.get('/plugins/:pluginId/oauth-client', requireAuth, verifySystemAdmin, getAdminPluginOAuthClient);
-adminRouter.put('/plugins/:pluginId/oauth-client', requireAuth, verifySystemAdmin, putAdminPluginOAuthClient);
-adminRouter.get('/plugins/:pluginId/connection', requireAuth, verifySystemAdmin, getAdminConnection);
-adminRouter.post('/plugins/:pluginId/connection/static', requireAuth, verifySystemAdmin, connectAdminStatic);
-adminRouter.post('/plugins/:pluginId/connection/oauth/start', oidcStartLimiter, requireAuth, verifySystemAdmin, startAdminPluginOAuth);
-adminRouter.delete('/plugins/:pluginId/connection', requireAuth, verifySystemAdmin, disconnectAdminConnection);
+adminRouter.get('/plugins/:pluginId/oauth-client', ...adminGate, getAdminPluginOAuthClient);
+adminRouter.put('/plugins/:pluginId/oauth-client', ...adminGate, putAdminPluginOAuthClient);
+adminRouter.get('/plugins/:pluginId/connection', ...adminGate, getAdminConnection);
+adminRouter.post('/plugins/:pluginId/connection/static', ...adminGate, connectAdminStatic);
+adminRouter.post('/plugins/:pluginId/connection/oauth/start', oidcStartLimiter, ...adminGate, startAdminPluginOAuth);
+adminRouter.delete('/plugins/:pluginId/connection', ...adminGate, disconnectAdminConnection);
 
 adminRouter.get(
   '/system/check-version',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   checkSystemVersion,
 );
 
 adminRouter.get(
   '/users',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   listAdminUsers,
 );
 
 adminRouter.patch(
   '/users/:userId/role',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   patchAdminUserRole,
 );
 
 adminRouter.delete(
   '/users/:userId',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   deleteAdminUser,
 );
 
 adminRouter.get(
   '/campaigns',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   listAdminCampaigns,
 );
 
 adminRouter.get(
   '/campaigns/:campaignId/backup',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   downloadAdminCampaignBackup,
 );
 
 adminRouter.delete(
   '/campaigns/:campaignId',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   deleteAdminCampaign,
 );
 
 adminRouter.get(
   '/analytics/top-usage',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getTopApiUsage,
 );
 
 adminRouter.get(
   '/analytics/usage',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getAdminUsageAnalytics,
 );
 
 adminRouter.get(
   '/settings',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getAdminSettings,
 );
 
 adminRouter.patch(
   '/settings',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   patchAdminSettings,
 );
 
 adminRouter.get(
   '/storage/status',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getAdminStorageStatus,
 );
 
 adminRouter.get(
   '/storage/metrics',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getAdminStorageMetrics,
 );
 
 adminRouter.get(
   '/identity-providers',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   listAdminIdentityProviders,
 );
 
 adminRouter.put(
   '/identity-providers/:providerId',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   putAdminIdentityProvider,
 );
 
 adminRouter.delete(
   '/identity-providers/:providerId',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   deleteAdminIdentityProvider,
 );
 
 adminRouter.post(
   '/settings/smtp/test',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   sendAdminTestEmail,
 );
 
 adminRouter.get(
   '/plugins/registry',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   fetchAdminPluginRegistry,
 );
 
 adminRouter.post(
   '/plugins/install-from-registry',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   installAdminPluginFromRegistry,
 );
 
 adminRouter.post(
   '/plugins/reload-runtime',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   reloadAdminPluginRuntime,
 );
 
 adminRouter.get(
   '/plugins',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   listAdminPlugins,
 );
 
 adminRouter.post(
   '/plugins/:pluginId/config',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   saveAdminPluginConfig,
 );
 
 adminRouter.post(
   '/plugins/register-manifest',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   registerAdminPluginManifest,
 );
 
 adminRouter.post(
   '/plugins/install-from-link',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   installPluginFromLink,
 );
 
 adminRouter.get(
   '/sample-data',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   getAdminSampleDataStatus,
 );
 adminRouter.post(
   '/sample-data/generate-campaign',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
+  adminExpensive,
   postAdminGenerateSampleCampaign,
 );
 
-adminRouter.get('/tasks', requireAuth, verifySystemAdmin, listAdminTasks);
+adminRouter.get('/tasks', ...adminGate, listAdminTasks);
 adminRouter.get(
   '/tasks/history',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   listAdminTaskHistory,
 );
 adminRouter.post(
   '/tasks/:id/dismiss',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   dismissAdminTask,
 );
 adminRouter.post(
   '/tasks/:id/abort',
-  requireAuth,
-  verifySystemAdmin,
+  ...adminGate,
   abortAdminTask,
 );
