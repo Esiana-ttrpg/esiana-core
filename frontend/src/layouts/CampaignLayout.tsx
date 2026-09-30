@@ -31,6 +31,7 @@ import { AdventureWorkspaceProvider } from '@/contexts/AdventureWorkspaceContext
 import { WorkspaceContextStrip } from '@/components/layout/WorkspaceContextStrip';
 import { WorkspaceRail } from '@/components/layout/WorkspaceRail';
 import { useWorkspaceChrome } from '@/hooks/useWorkspaceChrome';
+import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
 
 function CampaignThemeBridge() {
   const { campaign } = useWiki();
@@ -155,6 +156,7 @@ function InviteJoinBridge() {
 
 function CampaignLayoutShell() {
   const { sidebarOpen, closeSidebar, sidebarCollapsed } = useCampaignNav();
+  const { campaign, campaignHandle } = useWiki();
   const [pageWidth, setPageWidth] = useState<MasterPageWidth>(() =>
     getMasterPageWidthPreference(),
   );
@@ -206,6 +208,10 @@ function CampaignLayoutShell() {
   const railVisible = workspaceChrome.rail != null;
 
   return (
+    <GlobalSearchProvider
+      campaignHandle={campaignHandle}
+      campaignId={campaign?.id ?? null}
+    >
     <div
       className="campaign-theme-shell flex min-h-screen flex-col"
       data-sidebar-collapsed={sidebarCollapsed ? 'true' : undefined}
@@ -253,6 +259,7 @@ function CampaignLayoutShell() {
       </div>
       <Footer />
     </div>
+    </GlobalSearchProvider>
   );
 }
 
