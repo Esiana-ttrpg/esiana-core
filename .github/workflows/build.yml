@@ -34,6 +34,9 @@ jobs:
         working-directory: backend
         run: node scripts/verify-dist-esm.mjs
 
+      - name: Validate nightly CI scripts
+        run: node --test scripts/ci/*.test.mjs
+
   test-sqlite:
     runs-on: ubuntu-latest
     steps:
