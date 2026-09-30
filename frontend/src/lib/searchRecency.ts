@@ -47,7 +47,11 @@ function readStore(): RecencyStore {
 }
 
 function writeStore(store: RecencyStore): void {
-  getStorage().setItem(STORAGE_KEY, JSON.stringify(store));
+  try {
+    getStorage().setItem(STORAGE_KEY, JSON.stringify(store));
+  } catch {
+    // storage unavailable or full; recency is best-effort
+  }
 }
 
 export function listRecentSearches(campaignId: string): string[] {

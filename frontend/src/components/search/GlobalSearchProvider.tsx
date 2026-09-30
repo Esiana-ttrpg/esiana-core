@@ -43,7 +43,12 @@ export function GlobalSearchProvider({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLElement | null>(null);
 
-  const openSearch = useCallback(() => setOpen(true), []);
+  const openSearch = useCallback(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      triggerRef.current = document.activeElement;
+    }
+    setOpen(true);
+  }, []);
   const closeSearch = useCallback(() => {
     setOpen(false);
     // Return focus to the trigger when closing.
@@ -58,7 +63,7 @@ export function GlobalSearchProvider({
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        setOpen(true);
+        openSearch();
         return;
       }
       if (
@@ -69,12 +74,12 @@ export function GlobalSearchProvider({
         !isEditableTarget(event.target)
       ) {
         event.preventDefault();
-        setOpen(true);
+        openSearch();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [openSearch]);
 
   const value = useMemo(
     () => ({ open, openSearch, closeSearch, triggerRef, registerTrigger }),

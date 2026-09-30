@@ -70,14 +70,19 @@ export function GlobalSearchOverlay({
   }, []);
 
   useEffect(() => {
-    setKeyboard((prev) =>
-      reduceGlobalSearchKeyboard(prev, {
+    const idx =
+      activeType == null
+        ? 0
+        : types.findIndex((t) => t.key === activeType) + 1;
+    setKeyboard((prev) => ({
+      ...reduceGlobalSearchKeyboard(prev, {
         type: 'reset',
         resultCount: results.length,
         tabCount: 1 + types.length,
       }).state,
-    );
-  }, [results.length, types.length, draft, activeType]);
+      activeTabIndex: Math.max(0, idx),
+    }));
+  }, [results.length, types, draft, activeType]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -109,6 +114,32 @@ export function GlobalSearchOverlay({
 
   function handleKeyDown(event: React.KeyboardEvent) {
     const key = event.key;
+
+    if (key === 'Tab') {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = [
+        ...panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+      return;
+    }
+
     if (
       key !== 'ArrowDown' &&
       key !== 'ArrowUp' &&
@@ -177,6 +208,7 @@ export function GlobalSearchOverlay({
         aria-modal="true"
         aria-label="Search this campaign"
         className="flex h-[min(85vh,52rem)] w-[min(96vw,64rem)] max-w-4xl flex-col overflow-hidden rounded-xl border border-border/40 bg-overlay-elevated shadow-2xl"
+        tabIndex={-1}
         onKeyDown={handleKeyDown}
       >
         <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
