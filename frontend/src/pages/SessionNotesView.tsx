@@ -34,6 +34,8 @@ import { CreateNewSessionDialog } from '@/components/session/CreateNewSessionDia
 import { SessionNotesAttendanceTab } from '@/components/session/SessionNotesAttendanceTab';
 import {
   parseSessionNotesView,
+  sessionNotesViewPanelId,
+  sessionNotesViewTabId,
   SessionNotesViewTabs,
 } from '@/components/session/SessionNotesViewTabs';
 import { CampaignMemberRoles } from '@/types/domain';
@@ -592,19 +594,36 @@ export function SessionNotesView() {
       />
 
       {activeView === 'attendance' ? (
-        <SessionNotesAttendanceTab campaignHandle={campaignHandle} />
+        <div
+          id={sessionNotesViewPanelId('attendance')}
+          role="tabpanel"
+          aria-labelledby={sessionNotesViewTabId('attendance')}
+        >
+          <SessionNotesAttendanceTab campaignHandle={campaignHandle} />
+        </div>
       ) : null}
 
       {activeView === 'recaps' ? (
-        <section className={`${SURFACE_SILENT_CLASS} p-8 text-center`}>
-          <p className="text-sm text-muted">
-            {t('campaign.timeline.sessionNotesRecapsComingSoon')}
-          </p>
-        </section>
+        <div
+          id={sessionNotesViewPanelId('recaps')}
+          role="tabpanel"
+          aria-labelledby={sessionNotesViewTabId('recaps')}
+        >
+          <section className={`${SURFACE_SILENT_CLASS} p-8 text-center`}>
+            <p className="text-sm text-muted">
+              {t('campaign.timeline.sessionNotesRecapsComingSoon')}
+            </p>
+          </section>
+        </div>
       ) : null}
 
       {showNotesContent ? (
-        <>
+        <div
+          id={sessionNotesViewPanelId('notes')}
+          role="tabpanel"
+          aria-labelledby={sessionNotesViewTabId('notes')}
+          className={`flex min-w-0 flex-col ${SECTION_GAP_CLASS}`}
+        >
       {isOrganizing && hasAnyNotes && !showSearchEmptyState && organizableNoteIds.length > 0 && (
         <div
           className={`${SURFACE_OPERATIONAL_CLASS} flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-surface/40 px-4 py-3`}
@@ -1124,7 +1143,7 @@ export function SessionNotesView() {
           </div>
         </div>
       )}
-        </>
+        </div>
       ) : null}
     </div>
   );

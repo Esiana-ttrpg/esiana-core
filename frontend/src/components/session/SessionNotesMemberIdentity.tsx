@@ -11,28 +11,22 @@ function roleFallbackLabel(role: string): string {
   return '';
 }
 
-function IdentityPortrait({
-  portraitUrl,
-  sizeClass = 'size-6',
-}: {
-  portraitUrl: string | null;
-  sizeClass?: string;
-}) {
+function IdentityPortrait({ portraitUrl }: { portraitUrl: string | null }) {
   if (portraitUrl) {
     return (
       <img
         src={portraitUrl}
         alt=""
-        className={`${sizeClass} shrink-0 rounded-full object-cover object-top`}
+        className="size-12 shrink-0 rounded-md object-cover object-top"
       />
     );
   }
   return (
     <span
-      className={`inline-flex ${sizeClass} shrink-0 items-center justify-center rounded-full bg-elevated/80 text-muted`}
+      className="inline-flex size-12 shrink-0 items-center justify-center rounded-md bg-elevated/80 text-muted"
       aria-hidden
     >
-      <User className="size-3.5" strokeWidth={1.5} />
+      <User className="size-5" strokeWidth={1.5} />
     </span>
   );
 }
@@ -44,6 +38,7 @@ interface SessionNotesMemberIdentityProps {
 
 /**
  * Compact two-row player / character identity cell.
+ * Character portrait is shown once, spanning both label rows as a 2×2 square.
  * Reusable later by the Session Notes Players rail.
  */
 export function SessionNotesMemberIdentity({
@@ -58,30 +53,27 @@ export function SessionNotesMemberIdentity({
       : null;
 
   return (
-    <div className="flex min-w-[7.5rem] flex-col gap-1 py-0.5">
-      <div className="flex items-center gap-2">
+    <div className="grid min-w-[7.5rem] grid-cols-[auto_minmax(0,1fr)] grid-rows-2 items-center gap-x-2 gap-y-0.5 py-0.5">
+      <div className="row-span-2 self-center">
         <IdentityPortrait portraitUrl={member.identityPortrait} />
-        <span className="truncate text-sm font-medium text-foreground">
-          {member.label}
-        </span>
       </div>
-      <div className="flex items-center gap-2">
-        <IdentityPortrait portraitUrl={member.identityPortrait} />
-        {characterLabel ? (
-          identityHref ? (
-            <Link
-              to={identityHref}
-              className="truncate text-sm text-foreground hover:text-primary"
-            >
-              {characterLabel}
-            </Link>
-          ) : (
-            <span className="truncate text-sm text-foreground">{characterLabel}</span>
-          )
+      <span className="truncate text-sm font-medium text-foreground">
+        {member.label}
+      </span>
+      {characterLabel ? (
+        identityHref ? (
+          <Link
+            to={identityHref}
+            className="truncate text-sm text-foreground hover:text-primary"
+          >
+            {characterLabel}
+          </Link>
         ) : (
-          <span className="truncate text-sm text-muted">—</span>
-        )}
-      </div>
+          <span className="truncate text-sm text-foreground">{characterLabel}</span>
+        )
+      ) : (
+        <span className="truncate text-sm text-muted">—</span>
+      )}
     </div>
   );
 }
