@@ -46,7 +46,7 @@
     "linkedom": "^0.18.13",
     "mammoth": "^1.12.1",
     "multer": "^2.2.0",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^10.0.9",
     "openid-client": "^6.8.5",
     "sharp": "^0.35.3",
     "swagger-ui-express": "^5.0.1",
