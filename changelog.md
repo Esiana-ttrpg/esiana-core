@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Package `engines.node` is `>=26.0.0` (was `>=22.10.0`), matching the only tested runtime (CI `setup-node` and Docker `node:26-alpine`).
+
 ## [1.4.3] - 2026-09-22
 
 ### Added

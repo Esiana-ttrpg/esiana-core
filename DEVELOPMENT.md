@@ -10,7 +10,7 @@ Extended install notes: [../docs/options/installation.md](../docs/options/instal
 
 ### Requirements
 
-- Node.js ≥ 20
+- Node.js ≥ 26
 - pnpm 9 (via Corepack — see `packageManager` in [package.json](./package.json))
 - PostgreSQL (default) or SQLite for solo dev
 
