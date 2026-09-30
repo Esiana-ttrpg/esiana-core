@@ -39,6 +39,24 @@ export const GLOBAL_SEARCH_WIKI_TYPE_KEYS: readonly string[] = Object.freeze([
   ...new Set(Object.values(GLOBAL_SEARCH_CODEX_TYPES).map((d) => d.key)),
 ]);
 
+/**
+ * Record / continuity types — narrative logs rather than named world entities.
+ * Used by ranking (type prior) and result shaping (mentions collapse).
+ */
+export const GLOBAL_SEARCH_RECORD_TYPE_KEYS: readonly string[] = Object.freeze([
+  'session-note',
+  'scene',
+  'journal',
+  'objective',
+  'page',
+]);
+
+const RECORD_TYPE_KEY_SET = new Set(GLOBAL_SEARCH_RECORD_TYPE_KEYS);
+
+export function isRecordSearchTypeKey(key: string): boolean {
+  return RECORD_TYPE_KEY_SET.has(key);
+}
+
 const LABEL_BY_KEY: ReadonlyMap<string, string> = new Map(
   Object.values(GLOBAL_SEARCH_CODEX_TYPES).map((d) => [d.key, d.label]),
 );

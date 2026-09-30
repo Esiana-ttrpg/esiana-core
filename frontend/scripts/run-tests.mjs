@@ -70,6 +70,7 @@ const result = spawnSync(
     'src/lib/highlightMatch.test.ts',
     'src/lib/searchRecency.test.ts',
     'src/components/search/GlobalSearchResultRow.test.tsx',
+    'src/components/search/GlobalSearchSections.test.tsx',
     'src/lib/characterHubGrouping.test.ts',
     'src/lib/characterHubRailWidthPreference.test.ts',
     'src/lib/codexHierarchy.test.ts',

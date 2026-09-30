@@ -45,6 +45,7 @@ import { GlobalSearchRecent } from './GlobalSearchRecent';
 import { GlobalSearchFilterChips } from './GlobalSearchFilterChips';
 import { GlobalSearchOperatorSuggestions } from './GlobalSearchOperatorSuggestions';
 import { CommandPaletteResults } from './CommandPaletteResults';
+import { GlobalSearchSections } from './GlobalSearchSections';
 import { useGlobalSearchQuery } from './useGlobalSearchQuery';
 
 interface GlobalSearchOverlayProps {
@@ -137,6 +138,12 @@ export function GlobalSearchOverlay({
 
   const results = data?.results ?? [];
   const types = data?.types ?? [];
+  const sections = data?.sections;
+  const showSections =
+    !isCommandMode &&
+    effective.effectiveType == null &&
+    Array.isArray(sections) &&
+    sections.length > 0;
   const queryTokens = useMemo(() => {
     const tokens = [
       ...effective.parsed.terms,
@@ -555,6 +562,26 @@ export function GlobalSearchOverlay({
             <p className="px-4 py-8 text-sm text-muted">{error}</p>
           ) : results.length === 0 ? (
             <p className="px-4 py-8 text-sm text-muted">No matching results.</p>
+          ) : showSections ? (
+            <GlobalSearchSections
+              sections={sections!}
+              results={results}
+              activeIndex={keyboard.activeIndex}
+              queryTokens={queryTokens}
+              queryText={effective.parsed.text}
+              onHover={(index) =>
+                setKeyboard((prev) => ({
+                  ...prev,
+                  activeIndex: index,
+                  focusTarget: 'results',
+                }))
+              }
+              onSelect={openResult}
+              onShowAllType={(typeKey) => {
+                setUiType(typeKey);
+                inputRef.current?.focus();
+              }}
+            />
           ) : (
             results.map((result, index) => (
               <GlobalSearchResultRow
@@ -562,6 +589,7 @@ export function GlobalSearchOverlay({
                 result={result}
                 active={index === keyboard.activeIndex}
                 queryTokens={queryTokens}
+                queryText={effective.parsed.text}
                 onHover={() =>
                   setKeyboard((prev) => ({
                     ...prev,

@@ -65,6 +65,11 @@ export interface SearchContext {
    */
   types: string[] | null;
   filters: SearchStructuredFilters;
+  /**
+   * When true, providers/service attach unstable diagnostic fields
+   * (`rank`, top-level `diagnostics`). Not a public contract.
+   */
+  explain?: boolean;
 }
 
 export function tokenizeSearchText(text: string): string[] {
