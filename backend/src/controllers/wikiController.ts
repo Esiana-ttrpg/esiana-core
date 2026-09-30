@@ -178,6 +178,7 @@ import {
   loadSessionHeaderContext,
   resolveSessionGroupContext,
 } from '../lib/sessionNotesCombined.js';
+import { buildSessionNotesAttendance } from '../lib/sessionNotesAttendance.js';
 import {
   getAggregatedReferencesForPages,
   getBrokenLinksForPage,
@@ -5165,6 +5166,76 @@ export async function getSessionNotePerspectives(
       };
     }),
   });
+}
+
+export async function getSessionNotesAttendance(
+  req: CampaignScopedRequest,
+  res: Response,
+): Promise<void> {
+  const ctx = req.campaign!;
+  const canManage = canManageNotebooks(ctx.actor);
+
+  const [timelineRows, authorPages, members] = await Promise.all([
+    (prisma as any).campaignSessionTimeline.findMany({
+      where: { campaignId: ctx.campaignId },
+      orderBy: [{ sequenceOrder: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        sequenceOrder: true,
+        wikiPage: {
+          select: {
+            id: true,
+            title: true,
+            metadata: true,
+            visibility: true,
+          },
+        },
+      },
+    }),
+    prisma.wikiPage.findMany({
+      where: {
+        campaignId: ctx.campaignId,
+        templateType: 'SESSION_NOTE',
+      },
+      select: {
+        id: true,
+        metadata: true,
+        blocks: true,
+        visibility: true,
+      },
+    }),
+    prisma.campaignMember.findMany({
+      where: { campaignId: ctx.campaignId },
+      include: {
+        user: { select: { id: true, email: true, displayName: true } },
+        identityPage: {
+          select: { id: true, title: true, visibility: true, metadata: true },
+        },
+      },
+      orderBy: [{ role: 'asc' }, { user: { email: 'asc' } }],
+    }),
+  ]);
+
+  const rosterMembers = (members as Array<{
+    userId: string;
+    role: string;
+    user: { id: string; email: string; displayName: string | null };
+    identityPage: {
+      id: string;
+      title: string;
+      visibility: string;
+      metadata: unknown;
+    } | null;
+  }>).filter((m) => rosterRolesForPerspectives(m.role));
+
+  res.json(
+    buildSessionNotesAttendance({
+      timelineRows,
+      authorPages,
+      members: rosterMembers,
+      canManage,
+    }),
+  );
 }
 
 export async function ensureSessionAuthorNote(

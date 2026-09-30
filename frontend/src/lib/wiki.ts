@@ -21,6 +21,7 @@ import type {
   WikiOutlink,
   WikiLinkIntegrityPayload,
   SessionNotesIndexPayload,
+  SessionNotesAttendancePayload,
   SessionNotePerspectivesPayload,
   CombinedSessionNotesPayload,
 } from '@/types/wiki';
@@ -703,6 +704,14 @@ export async function fetchSessionNotesIndex(
 ): Promise<SessionNotesIndexPayload> {
   return apiFetch<SessionNotesIndexPayload>(
     `/campaigns/${campaignHandle}/wiki/session-notes/index`,
+  );
+}
+
+export async function fetchSessionNotesAttendance(
+  campaignHandle: string,
+): Promise<SessionNotesAttendancePayload> {
+  return apiFetch<SessionNotesAttendancePayload>(
+    `/campaigns/${campaignHandle}/wiki/session-notes/attendance`,
   );
 }
 
