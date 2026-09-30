@@ -621,14 +621,6 @@ paths:
       tags:
         - Wiki
       summary: Content-aware campaign search
-      description: |
-        Campaign global search over wiki pages (and viewer-aware plugin collections).
-        Candidate retrieval uses a derived `SearchIndexDocument` projection with
-        PostgreSQL `tsvector`/GIN inverted indexes (portable multi-token LIKE over
-        the same table on SQLite). Response shape, ranking, and authorization are
-        unchanged — membership is required; visibility and discovery remain
-        authoritative post-retrieval boundaries. Restricted content never appears
-        in results, excerpts, or type counts.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -691,7 +683,15 @@ paths:
           - Authenticated application user or API token
           - Membership in the addressed campaign
           - Resource-level visibility and ownership checks performed by the controller/service
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service. Restricted content never appears in results, excerpts, or type counts."
+      description: |
+        Candidate retrieval uses a derived SearchIndexDocument projection with
+        PostgreSQL tsvector/GIN inverted indexes (portable multi-token LIKE over
+        the same table on SQLite). Response shape and ranking are unchanged.
+
+        Authorization: Authenticated application user or API token; Membership in
+        the addressed campaign; Resource-level visibility and ownership checks
+        performed by the controller/service. Restricted content never appears in
+        results, excerpts, or type counts.
   /api/admin/plugins/{pluginId}/connection:
     get:
       tags:

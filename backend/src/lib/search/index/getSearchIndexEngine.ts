@@ -26,10 +26,20 @@ type Tx = Prisma.TransactionClient | typeof prisma;
 
 let engineOverride: SearchIndexEngine | null = null;
 
+/**
+ * Resolve whether the live database is SQLite.
+ * CI often sets only DATABASE_URL=file:… without DATABASE_PROVIDER=sqlite.
+ */
+export function isSqliteDatabase(): boolean {
+  const provider = process.env.DATABASE_PROVIDER ?? env.databaseProvider;
+  if (provider === 'sqlite') return true;
+  const url = process.env.DATABASE_URL ?? env.databaseUrl ?? '';
+  return url.startsWith('file:');
+}
+
 export function getSearchIndexEngine(): SearchIndexEngine {
   if (engineOverride) return engineOverride;
-  const provider = process.env.DATABASE_PROVIDER ?? env.databaseProvider;
-  return provider === 'sqlite' ? portableLikeEngine : postgresTsvectorEngine;
+  return isSqliteDatabase() ? portableLikeEngine : postgresTsvectorEngine;
 }
 
 /** Test helper — restore with null. */
