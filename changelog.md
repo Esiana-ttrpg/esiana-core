@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Scheduled nightly builds for `develop`: moving `nightly` Git tag, multi-arch images tagged `nightly` and `nightly-YYYYMMDD-<shortsha>` on GHCR and Docker Hub, skip when unchanged, and tag advance only after a successful publish.
+
 ### Changed
 
 - Package `engines.node` is `>=26.0.0` (was `>=22.10.0`), matching the only tested runtime (CI `setup-node` and Docker `node:26-alpine`).

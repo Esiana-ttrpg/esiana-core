@@ -191,6 +191,15 @@ Do not commit secrets (`.env`, credentials, local databases).
 
 ---
 
+## Nightly builds
+
+[`.github/workflows/nightly.yml`](./.github/workflows/nightly.yml) runs on a daily schedule against `develop`, and can also be started with `workflow_dispatch`.
+
+- Change detection compares `develop` HEAD to the moving Git tag `nightly`. If they already match, the workflow exits successfully without building or publishing.
+- When `develop` has advanced (or `workflow_dispatch` is started with `force: true`), the pipeline validates, builds, and publishes multi-arch images tagged `nightly` and `nightly-YYYYMMDD-<shortsha>` to GHCR and Docker Hub.
+- The `nightly` Git tag is force-updated to the built commit **only after** every required build and publish step succeeds. A failed run leaves the existing tag untouched so the same commit remains eligible on the next run.
+- Nightly automation is unrelated to semver release tags (`vX.Y.Z`), does not create GitHub Releases, and does not move `:latest`.
+
 ## Maintainer release
 
 Release authority and tagging rules: [GOVERNANCE.md](./GOVERNANCE.md).

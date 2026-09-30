@@ -1,0 +1,444 @@
+name: Nightly
+
+on:
+  schedule:
+    # Daily 08:17 UTC — offset from top-of-hour to reduce shared-runner contention.
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Build even if `nightly` already points at develop HEAD
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.resolve.outputs.should_build }}
+      reason: ${{ steps.resolve.outputs.reason }}
+      sha: ${{ steps.resolve.outputs.sha }}
+      short_sha: ${{ steps.resolve.outputs.short_sha }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: develop
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch nightly tag (if present)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git -c http.extraheader="AUTHORIZATION: bearer ${GH_TOKEN}" \
+            fetch origin 'refs/tags/nightly:refs/tags/nightly' --force 2>/dev/null || true
+
+      - name: Resolve nightly build decision
+        id: resolve
+        env:
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force == true }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA="$(git rev-parse HEAD)"
+          NIGHTLY_SHA="$(git rev-parse 'nightly^{commit}' 2>/dev/null || true)"
+          export HEAD_SHA NIGHTLY_SHA
+          echo "HEAD_SHA=${HEAD_SHA}"
+          echo "NIGHTLY_SHA=${NIGHTLY_SHA:-<absent>}"
+          echo "FORCE=${FORCE}"
+          node scripts/ci/resolve-nightly-build.mjs
+
+      - name: Summarize decision
+        run: |
+          set -euo pipefail
+          {
+            echo "## Nightly detect-changes"
+            echo ""
+            echo "- **should_build:** \`${{ steps.resolve.outputs.should_build }}\`"
+            echo "- **reason:** ${{ steps.resolve.outputs.reason }}"
+            echo "- **sha:** \`${{ steps.resolve.outputs.sha }}\`"
+            echo "- **version:** \`${{ steps.resolve.outputs.version || 'n/a' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/reject-npm-lockfile
+
+      - uses: ./.github/actions/setup-pnpm
+
+      - name: Generate Prisma client
+        run: pnpm --filter backend db:generate
+
+      - name: Build workspaces
+        run: pnpm build
+
+      - name: Validate i18n locale keys
+        working-directory: frontend
+        run: node scripts/validate-i18n-keys.mjs
+
+      - name: Verify compiled backend shared modules are ESM
+        working-directory: backend
+        run: node scripts/verify-dist-esm.mjs
+
+  test-sqlite:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/reject-npm-lockfile
+
+      - uses: ./.github/actions/setup-pnpm
+
+      - name: Validate dual-engine portability
+        working-directory: backend
+        run: node prisma/scripts/validate-dual-engine-portability.mjs
+
+      - name: Verify outbound fetch boundary
+        working-directory: backend
+        run: node scripts/check-fetch-boundary.mjs
+
+      - name: Prepare SQLite test database
+        working-directory: backend
+        run: |
+          echo 'DATABASE_URL="file:./ci-test.db"' > .env
+          DATABASE_URL=file:./ci-test.db node prisma/scripts/deploy-sqlite-migrations.mjs --reset
+          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
+          pnpm exec prisma generate
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          DATABASE_URL: file:./ci-test.db
+        run: pnpm test
+
+  test-postgres:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: esiana
+          POSTGRES_PASSWORD: esiana_ci
+          POSTGRES_DB: esiana
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U esiana -d esiana"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
+
+      - uses: ./.github/actions/reject-npm-lockfile
+
+      - uses: ./.github/actions/setup-pnpm
+
+      - name: Validate baseline migration portability
+        working-directory: backend
+        run: |
+          node prisma/scripts/validate-dual-engine-portability.mjs
+          node prisma/scripts/validate-baseline-fk-order.mjs
+          node prisma/scripts/validate-postgres-identifier-length.mjs
+
+      - name: Verify outbound fetch boundary
+        working-directory: backend
+        run: node scripts/check-fetch-boundary.mjs
+
+      - name: Prepare Postgres test database
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://esiana:esiana_ci@localhost:5432/esiana
+        run: |
+          pnpm exec prisma generate
+          pnpm exec prisma migrate deploy
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql://esiana:esiana_ci@localhost:5432/esiana
+        run: pnpm test
+
+  docker-build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_PASSWORD: ci-docker-build
+      JWT_SECRET: ci-docker-build-secret-not-for-production
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
+
+      - name: Validate compose config
+        run: docker compose config --quiet
+
+      - name: Reject UTF-8 BOM in Docker packaging files
+        run: |
+          for f in docker/*.sh docker/esiana.Dockerfile; do
+            if [ "$(head -c 3 "$f" | od -An -tx1 | tr -d ' \n')" = "efbbbf" ]; then
+              echo "UTF-8 BOM detected in $f" >&2
+              exit 1
+            fi
+          done
+
+      - name: Assert Postgres health-gated startup
+        run: |
+          docker compose config | grep -c 'condition: service_healthy' | grep -q '^1$'
+
+  # Node/pnpm under QEMU user-mode emulation for linux/arm64 hits SIGILL (exit 132)
+  # during install. Build each architecture on a native runner, push by digest, then
+  # merge into one multi-arch manifest.
+  build-image:
+    needs: [detect-changes, build, test-sqlite, test-postgres, docker-build]
+    if: needs.detect-changes.outputs.should_build == 'true'
+    permissions:
+      contents: read
+      packages: write
+      actions: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            artifact_slug: linux-amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            artifact_slug: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
+
+      - name: Rewrite package.json version for nightly image
+        env:
+          NIGHTLY_VERSION: ${{ needs.detect-changes.outputs.version }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            if (p.name !== "esiana") throw new Error("expected root package name esiana");
+            p.version = process.env.NIGHTLY_VERSION;
+            fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n");
+            console.log("package.json version ->", p.version);
+          '
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build and push image digest (${{ matrix.platform }})
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/esiana.Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          outputs: type=image,name=ghcr.io/esiana-ttrpg/esiana,push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            ESIANA_PRODUCT_VERSION=${{ needs.detect-changes.outputs.version }}
+          cache-from: type=gha,scope=esiana-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=esiana-${{ matrix.platform }}
+          provenance: true
+          labels: |
+            org.opencontainers.image.version=${{ needs.detect-changes.outputs.version }}
+            org.opencontainers.image.revision=${{ needs.detect-changes.outputs.sha }}
+            org.opencontainers.image.source=https://github.com/Esiana-ttrpg/esiana-core
+            org.opencontainers.image.description=Self-hosted narrative infrastructure for long-form TTRPG campaigns (nightly)
+
+      - name: Export digest
+        run: |
+          mkdir -p "${{ runner.temp }}/digests"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Verify image on native platform
+        run: |
+          set -euo pipefail
+          digest="${{ steps.build.outputs.digest }}"
+          IMAGE="ghcr.io/esiana-ttrpg/esiana@${digest}"
+          arch=$(docker run --rm --entrypoint uname "$IMAGE" -m)
+          case "${{ matrix.platform }}" in
+            linux/amd64)
+              test "$arch" = "x86_64" || { echo "expected x86_64, got: $arch"; exit 1; }
+              ;;
+            linux/arm64)
+              test "$arch" = "aarch64" || { echo "expected aarch64, got: $arch"; exit 1; }
+              docker run --rm --entrypoint /bin/sh "$IMAGE" -c 'test -x /entrypoint.sh'
+              ;;
+            *)
+              echo "unknown platform: ${{ matrix.platform }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.artifact_slug }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-images:
+    needs: [detect-changes, build-image]
+    if: needs.detect-changes.outputs.should_build == 'true'
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Create and push multi-arch manifest (GHCR + Docker Hub)
+        env:
+          VERSION: ${{ needs.detect-changes.outputs.version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          DIGEST_FILES=(/tmp/digests/*)
+          if [ "${#DIGEST_FILES[@]}" -ne 2 ]; then
+            echo "Expected 2 digest artifacts (linux/amd64 + linux/arm64), found ${#DIGEST_FILES[@]}:" >&2
+            ls -la /tmp/digests >&2
+            exit 1
+          fi
+          TAGS=(
+            "ghcr.io/esiana-ttrpg/esiana:nightly"
+            "ghcr.io/esiana-ttrpg/esiana:${VERSION}"
+            "docker.io/esiana/esiana:nightly"
+            "docker.io/esiana/esiana:${VERSION}"
+          )
+          ARGS=()
+          for t in "${TAGS[@]}"; do
+            ARGS+=(-t "$t")
+          done
+          for f in "${DIGEST_FILES[@]}"; do
+            digest="$(basename "$f")"
+            ARGS+=("ghcr.io/esiana-ttrpg/esiana@sha256:${digest}")
+          done
+          docker buildx imagetools create "${ARGS[@]}"
+
+      - name: Verify multi-arch manifests
+        env:
+          VERSION: ${{ needs.detect-changes.outputs.version }}
+        run: |
+          set -euo pipefail
+          for ref in \
+            "ghcr.io/esiana-ttrpg/esiana:nightly" \
+            "ghcr.io/esiana-ttrpg/esiana:${VERSION}" \
+            "docker.io/esiana/esiana:nightly" \
+            "docker.io/esiana/esiana:${VERSION}"; do
+            inspect=$(docker buildx imagetools inspect "$ref")
+            echo "$inspect"
+            echo "$inspect" | grep -q 'linux/amd64'
+            echo "$inspect" | grep -q 'linux/arm64'
+          done
+
+      - name: Verify tagged amd64 manifest resolves (GHCR)
+        env:
+          VERSION: ${{ needs.detect-changes.outputs.version }}
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/esiana-ttrpg/esiana:${VERSION}"
+          amd=$(docker run --rm --entrypoint uname "$IMAGE" -m)
+          test "$amd" = "x86_64" || { echo "amd64 runtime got: $amd"; exit 1; }
+
+  update-nightly-tag:
+    needs:
+      - detect-changes
+      - build
+      - test-sqlite
+      - test-postgres
+      - docker-build
+      - build-image
+      - publish-images
+    if: needs.detect-changes.outputs.should_build == 'true'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.detect-changes.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Force-update moving nightly tag
+        env:
+          SHA: ${{ needs.detect-changes.outputs.sha }}
+          VERSION: ${{ needs.detect-changes.outputs.version }}
+        run: |
+          set -euo pipefail
+          HEAD="$(git rev-parse HEAD)"
+          if [ "$HEAD" != "$SHA" ]; then
+            echo "Checkout HEAD ($HEAD) does not match detected sha ($SHA)" >&2
+            exit 1
+          fi
+          PREV="$(git rev-parse 'nightly^{commit}' 2>/dev/null || echo '<absent>')"
+          git tag -f nightly "$SHA"
+          git push --force origin refs/tags/nightly
+          {
+            echo "## Nightly tag updated"
+            echo ""
+            echo "- **previous:** \`${PREV}\`"
+            echo "- **new:** \`${SHA}\`"
+            echo "- **version:** \`${VERSION}\`"
+            echo "- **images:**"
+            echo "  - \`ghcr.io/esiana-ttrpg/esiana:nightly\`"
+            echo "  - \`ghcr.io/esiana-ttrpg/esiana:${VERSION}\`"
+            echo "  - \`docker.io/esiana/esiana:nightly\`"
+            echo "  - \`docker.io/esiana/esiana:${VERSION}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
