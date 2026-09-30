@@ -10,6 +10,7 @@ import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from '
 import { fetchCampaign } from '@/lib/campaigns';
 import { CampaignMemberRoles } from '@/types/domain';
 import { useWiki } from '@/contexts/WikiContext';
+import { useActivePage } from '@/contexts/ActivePageContext';
 import {
   buildWikiNavBreadcrumbs,
   buildWikiPageLookup,
@@ -259,6 +260,7 @@ export function WikiPage() {
     players,
     can: wikiCan,
   } = useWiki();
+  const { publish: publishActivePage, clear: clearActivePage } = useActivePage();
   const campaignHandle = readCampaignHandle(params) || wikiCampaignSlug;
   const pageId = useMemo(
     () =>
@@ -648,6 +650,88 @@ export function WikiPage() {
     () => getPageDisplayTitle(resolvedTitle, pageData?.metadata),
     [resolvedTitle, pageData?.metadata],
   );
+
+  const enterEditMode = useCallback(() => {
+    setIsEditingPage(true);
+  }, []);
+
+  const isHavenOverviewView =
+    pageData?.templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
+    searchParams.get('view') !== 'lore';
+  const isProjectOverviewView =
+    pageData?.templateType === DOWNTIME_PROJECT_TEMPLATE_TYPE &&
+    searchParams.get('view') !== 'lore';
+  const routeTreePageForActive = flatPages.find((entry) => entry.id === pageId);
+  const blocksFreeformRoute = Boolean(
+    routeTreePageForActive &&
+      shouldBlockFreeformRoute(
+        location.pathname,
+        campaignHandle,
+        routeTreePageForActive,
+      ),
+  );
+  const pageVisibleToViewer = isWikiVisibilityVisibleToViewer(
+    resolvedVisibility,
+    viewerContext,
+  );
+  const shouldPublishActivePage = Boolean(
+    pageId &&
+      pageData &&
+      pageFetchState === 'ready' &&
+      !blocksFreeformRoute &&
+      pageData.title !== 'Dashboard' &&
+      pageVisibleToViewer &&
+      !isTagsHub &&
+      !isSessionNotePage &&
+      !isHavenOverviewView &&
+      !isProjectOverviewView,
+  );
+
+  useEffect(() => {
+    if (!shouldPublishActivePage || !pageId || !pageData) {
+      clearActivePage();
+      return;
+    }
+    const page = flatPages.find((entry) => entry.id === pageId);
+    const href = page
+      ? resolveCanonicalPagePath(campaignHandle, page, flatPages)
+      : location.pathname;
+    publishActivePage(
+      {
+        pageId,
+        title: displayTitle,
+        href,
+        canEdit: pageCanEdit,
+        isEditing: isEditingPage,
+      },
+      enterEditMode,
+    );
+    return () => {
+      clearActivePage();
+    };
+  }, [
+    shouldPublishActivePage,
+    pageId,
+    pageData,
+    displayTitle,
+    pageCanEdit,
+    isEditingPage,
+    campaignHandle,
+    flatPages,
+    location.pathname,
+    publishActivePage,
+    clearActivePage,
+    enterEditMode,
+    pageFetchState,
+    blocksFreeformRoute,
+    pageVisibleToViewer,
+    isTagsHub,
+    isSessionNotePage,
+    isHavenOverviewView,
+    isProjectOverviewView,
+    resolvedVisibility,
+    viewerContext,
+  ]);
 
   const printableArticleRef = useRef<HTMLElement | null>(null);
 
@@ -1825,14 +1909,6 @@ export function WikiPage() {
       />
     );
   }
-
-  const isHavenOverviewView =
-    pageData?.templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE &&
-    searchParams.get('view') !== 'lore';
-
-  const isProjectOverviewView =
-    pageData?.templateType === DOWNTIME_PROJECT_TEMPLATE_TYPE &&
-    searchParams.get('view') !== 'lore';
 
   if (!loading && pageId && pageData && isHavenOverviewView) {
     return (

@@ -33,6 +33,8 @@ export interface CampaignWorkspaceRoute {
   systemCategoryKey?: string;
   indexResolver: WorkspaceIndexResolver;
   hasEntityRoutes?: boolean;
+  /** How Core surfaces create entries of this type. Omitted = not creatable via CreatePageModal. */
+  createVia?: 'create-page-modal';
 }
 
 const WORKSPACE_TO_SEGMENT: Record<CampaignWorkspaceType, string> = {
@@ -98,6 +100,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'characters',
     indexResolver: { type: 'wikiTitle', title: 'Characters' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.BESTIARY,
@@ -107,6 +110,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'bestiary',
     indexResolver: { type: 'wikiTitle', title: 'Bestiary' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.ANCESTRIES,
@@ -116,6 +120,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'ancestries',
     indexResolver: { type: 'wikiTitle', title: 'Ancestries' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.ORGANIZATIONS,
@@ -125,6 +130,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'organizations',
     indexResolver: { type: 'wikiTitle', title: 'Organizations' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.LOCATIONS,
@@ -134,6 +140,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'locations',
     indexResolver: { type: 'wikiTitle', title: 'Locations' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.OBJECTS,
@@ -143,6 +150,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'objects',
     indexResolver: { type: 'wikiTitle', title: 'Objects' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.FAMILIES,
@@ -152,6 +160,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'families',
     indexResolver: { type: 'wikiTitle', title: 'Families' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.RULES_RESOURCES,
@@ -161,6 +170,7 @@ export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
     sidebarId: 'rules-resources',
     indexResolver: { type: 'wikiTitle', title: 'Rules/Resources' },
     hasEntityRoutes: true,
+    createVia: 'create-page-modal',
   },
   {
     workspace: CampaignWorkspace.ADVENTURES,
@@ -268,6 +278,36 @@ export function workspaceToSegment(
   workspace: CampaignWorkspaceType,
 ): string | null {
   return WORKSPACE_TO_SEGMENT[workspace] ?? null;
+}
+
+export type CreatableCodexPageType = {
+  /** Required — every createVia route must declare workspace. */
+  workspace: CampaignWorkspaceType;
+  /** Same segment as CampaignWorkspaceRoute / workspaceToSegment(workspace). */
+  segment: NonNullable<ReturnType<typeof workspaceToSegment>>;
+  /** Category folder title from indexResolver wikiTitle. */
+  categoryTitle: string;
+};
+
+/**
+ * Core codex types creatable via CreatePageModal.
+ * Derived from CAMPAIGN_WORKSPACE_ROUTES with createVia: 'create-page-modal'.
+ */
+export function listCreatableCodexPageTypes(): readonly CreatableCodexPageType[] {
+  const result: CreatableCodexPageType[] = [];
+  for (const route of CAMPAIGN_WORKSPACE_ROUTES) {
+    if (route.createVia !== 'create-page-modal') continue;
+    if (!route.workspace) continue;
+    if (route.indexResolver.type !== 'wikiTitle') continue;
+    const segment = workspaceToSegment(route.workspace);
+    if (!segment) continue;
+    result.push({
+      workspace: route.workspace,
+      segment,
+      categoryTitle: route.indexResolver.title,
+    });
+  }
+  return result;
 }
 
 export function segmentToWorkspace(

@@ -4,6 +4,7 @@
 
 ### Added
 
+- **Command palette** — type `>` in campaign search (or Ctrl/Cmd+Shift+P) to run permission-aware Core commands: create all CreatePageModal codex types (characters, bestiary, ancestries, organizations, locations, objects, families, rules/resources) derived from workspace route `createVia`, plus session notes; jump to Sessions, Timeline, Developments, and Settings; advance campaign time; and edit or copy a link to the current page.
 - Scheduled nightly builds for `develop`: moving `nightly` Git tag, multi-arch images tagged `nightly` and `nightly-YYYYMMDD-<shortsha>` on GHCR and Docker Hub, skip when unchanged, and tag advance only after a successful publish.
 
 ### Changed

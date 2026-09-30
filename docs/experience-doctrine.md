@@ -248,7 +248,7 @@ Match layout to campaign state — not a ban on cards.
 
 **Rule:** Reading mode — zero persistent operational chrome except navigation.
 
-Command palette / slash commands are not in core doctrine; plugins may extend.
+Command palette is a Core surface entered with `>` inside campaign Search (Search-first by default; Ctrl/Cmd+Shift+P also opens commands). Plugin commands are deferred until the Core contract is proven.
 
 ---
 
