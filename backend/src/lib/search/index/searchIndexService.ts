@@ -10,6 +10,13 @@ import {
 } from './buildWikiSearchIndexDocument.js';
 import { getSearchIndexEngine } from './getSearchIndexEngine.js';
 
+// Lazy import avoids a cycle with wikiPageSearchProvider → searchIndexService.
+function invalidateFuzzyNameCache(campaignId?: string): void {
+  void import('../wikiPageSearchProvider.js')
+    .then((m) => m.invalidateFuzzyNameRowCache(campaignId || undefined))
+    .catch(() => undefined);
+}
+
 type Tx = Prisma.TransactionClient | typeof prisma;
 
 const PAGE_SELECT = {
@@ -154,6 +161,7 @@ async function upsertBuiltWikiPageDocument(
   });
 
   await getSearchIndexEngine().afterUpsert(tx as never, row.id);
+  invalidateFuzzyNameCache(campaignId);
 }
 
 /**
@@ -189,6 +197,8 @@ export async function deleteDocumentsForPages(
       sourceId: { in: unique },
     },
   });
+  // Deletes do not carry campaignId — drop the whole name-row cache.
+  invalidateFuzzyNameCache();
 }
 
 /**
@@ -230,6 +240,7 @@ export async function rebuildSearchIndexForCampaign(
   });
 
   ensureDone.add(campaignId);
+  invalidateFuzzyNameCache(campaignId);
   return indexed;
 }
 

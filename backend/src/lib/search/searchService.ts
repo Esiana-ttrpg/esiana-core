@@ -1,14 +1,17 @@
 import {
   GLOBAL_SEARCH_MIN_QUERY_LENGTH,
   type GlobalSearchResponse,
-  type GlobalSearchResult,
 } from '../../../../shared/globalSearch.js';
 import type { SearchContext } from './searchContext.js';
 import {
   listSearchProviders,
   registerSearchProvider,
 } from './searchProviderRegistry.js';
-import { compareRankedResults } from './searchRanking.js';
+import {
+  compareRankedResults,
+  stripInternalSearchMetadata,
+  type InternalSearchResult,
+} from './searchRanking.js';
 import { wikiPageSearchProvider } from './wikiPageSearchProvider.js';
 import { pluginSearchProvider } from './pluginSearchProvider.js';
 import {
@@ -59,14 +62,14 @@ export async function searchCampaign(
   const providers = listSearchProviders();
   const chunks = await Promise.all(providers.map((provider) => provider.search(ctx)));
 
-  const allAuthorized: GlobalSearchResult[] = [];
+  const allAuthorized: InternalSearchResult[] = [];
   const diagnostics: Record<string, unknown> = {};
   let hitCandidateCeiling = false;
 
   for (let i = 0; i < providers.length; i++) {
     const provider = providers[i]!;
     const chunk = chunks[i]!;
-    allAuthorized.push(...chunk.results);
+    allAuthorized.push(...(chunk.results as InternalSearchResult[]));
     if (chunk.hitCandidateCeiling) hitCandidateCeiling = true;
     if (chunk.diagnostics) {
       diagnostics[provider.id] = chunk.diagnostics;
@@ -93,7 +96,7 @@ export async function searchCampaign(
 
   const response: GlobalSearchResponse = {
     query: ctx.query.raw,
-    results: shaped.results,
+    results: stripInternalSearchMetadata(shaped.results),
     types,
     ...(shaped.sections && shaped.sections.length > 0
       ? { sections: shaped.sections }

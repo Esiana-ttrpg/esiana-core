@@ -1,5 +1,6 @@
 import type { GlobalSearchResult } from '../../../../shared/globalSearch.js';
 import type { SearchContext } from './searchContext.js';
+import type { InternalSearchResult } from './searchRanking.js';
 
 /**
  * A searchable-content contributor for campaign global search.
@@ -11,7 +12,8 @@ import type { SearchContext } from './searchContext.js';
  * authoritative post-retrieval boundary.
  */
 export interface SearchProviderResult {
-  results: GlobalSearchResult[];
+  /** May include server-only fields (exactName); stripped before HTTP response. */
+  results: InternalSearchResult[] | GlobalSearchResult[];
   /** Unstable diagnostic payload (fuzzy ran/skipped, timings, …). */
   diagnostics?: Record<string, unknown>;
   /** True when the provider stopped at SEARCH_CANDIDATE_CEILING. */

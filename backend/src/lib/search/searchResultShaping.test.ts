@@ -1,17 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { GlobalSearchResult } from '../../../../shared/globalSearch.js';
 import {
   dedupeByEntityId,
   selectBestMatches,
   shapeSearchResults,
 } from './searchResultShaping.js';
-import { TIER } from './searchRanking.js';
+import { TIER, type InternalSearchResult } from './searchRanking.js';
 
 function result(
-  partial: Partial<GlobalSearchResult> &
-    Pick<GlobalSearchResult, 'id' | 'entityId' | 'title' | 'type' | 'matchedOn' | 'score'>,
-): GlobalSearchResult {
+  partial: Partial<InternalSearchResult> &
+    Pick<
+      InternalSearchResult,
+      'id' | 'entityId' | 'title' | 'type' | 'matchedOn' | 'score'
+    >,
+): InternalSearchResult {
   return {
     campaignId: 'c1',
     href: '/',
@@ -51,6 +53,7 @@ test('Yuna + 40 session notes: best + mentions totalCount 40 with limit 20', () 
     type: { key: 'character', label: 'Character' },
     matchedOn: 'title',
     score: TIER.exactTitle + 40_000,
+    exactName: true,
   });
   const notes = Array.from({ length: 40 }, (_, i) =>
     result({
@@ -88,6 +91,7 @@ test('exact-tier ties all land in best', () => {
     type: { key: 'character', label: 'Character' },
     matchedOn: 'title',
     score: TIER.exactTitle + 10_000,
+    exactName: true,
   });
   const note = result({
     id: 'session-note:yuna',
@@ -96,6 +100,7 @@ test('exact-tier ties all land in best', () => {
     type: { key: 'session-note', label: 'Session Note' },
     matchedOn: 'title',
     score: TIER.exactTitle + 10_000,
+    exactName: true,
   });
   const best = selectBestMatches([character, note]);
   assert.equal(best.length, 2);
@@ -153,6 +158,7 @@ test('no sections under a type filter', () => {
         type: { key: 'character', label: 'Character' },
         matchedOn: 'title',
         score: TIER.exactTitle,
+        exactName: true,
       }),
     ],
     limit: 20,
@@ -172,6 +178,7 @@ test('approximate flag when ceiling hit', () => {
         type: { key: 'character', label: 'Character' },
         matchedOn: 'title',
         score: TIER.exactTitle,
+        exactName: true,
       }),
       result({
         id: 'session-note:1',

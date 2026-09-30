@@ -1,4 +1,7 @@
-import type { GlobalSearchMatchedOn } from '../../../../shared/globalSearch.js';
+import type {
+  GlobalSearchMatchedOn,
+  GlobalSearchResult,
+} from '../../../../shared/globalSearch.js';
 import { isRecordSearchTypeKey } from '../../../../shared/globalSearchTypes.js';
 
 export type SearchMatchFieldKind =
@@ -37,6 +40,11 @@ export interface RankedMatch {
   matchedOn: GlobalSearchMatchedOn;
   /** The field that produced the best non-title match (for excerpts). */
   matchField: SearchDocumentField | null;
+  /**
+   * True when the winning tier is exactTitle or exactAlias.
+   * Server-only — carried on internal results for shaping, then stripped.
+   */
+  exactName: boolean;
   /**
    * Internal ranking breakdown. Shape is intentionally unstable — only
    * surfaced under explain=1 as a free-form diagnostic object.
@@ -382,6 +390,7 @@ export function rankSearchDocument(
     score: bestScore,
     matchedOn,
     matchField,
+    exactName: bestTier === 'exactTitle' || bestTier === 'exactAlias',
     explain: {
       tier: bestTier,
       base: TIER[bestTier],
@@ -422,10 +431,27 @@ export function isContentMatch(matchedOn: GlobalSearchMatchedOn): boolean {
   );
 }
 
-/** True when score sits in the exact-title or exact-alias tier band. */
-export function isExactNameTier(score: number): boolean {
-  // Allow within-tier signals (up to ~65k) below exactTitle / exactAlias bases.
-  if (score >= TIER.exactTitle) return true;
-  if (score >= TIER.exactAlias && score < TIER.titleContains) return true;
-  return false;
+/**
+ * Internal result shape used between providers and shaping.
+ * `exactName` is derived from the ranking tier (not inferred from score bands)
+ * and must be stripped before the HTTP response is built.
+ */
+export type InternalSearchResult = GlobalSearchResult & {
+  exactName?: boolean;
+};
+
+export function isExactNameResult(
+  result: Pick<InternalSearchResult, 'exactName'>,
+): boolean {
+  return result.exactName === true;
+}
+
+/** Strip server-only ranking metadata from results destined for the client. */
+export function stripInternalSearchMetadata(
+  results: InternalSearchResult[],
+): GlobalSearchResult[] {
+  for (const r of results) {
+    delete r.exactName;
+  }
+  return results;
 }

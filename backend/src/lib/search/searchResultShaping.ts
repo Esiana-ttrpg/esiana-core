@@ -10,16 +10,17 @@ import {
 import {
   compareRankedResults,
   isContentMatch,
-  isExactNameTier,
+  isExactNameResult,
   isNameMatch,
   TIER_WIDTH,
+  type InternalSearchResult,
 } from './searchRanking.js';
 
 const BEST_CAP = 3;
 const GROUP_VISIBLE_CAP = 3;
 
 export interface ShapeSearchResultsInput {
-  results: GlobalSearchResult[];
+  results: InternalSearchResult[];
   limit: number;
   /** When non-null, skip section shaping and return a flat sliced list. */
   types: string[] | null;
@@ -28,13 +29,15 @@ export interface ShapeSearchResultsInput {
 }
 
 export interface ShapeSearchResultsOutput {
-  results: GlobalSearchResult[];
+  results: InternalSearchResult[];
   sections?: GlobalSearchSection[];
 }
 
 /** Keep the highest-scoring result per entityId. */
-export function dedupeByEntityId(results: GlobalSearchResult[]): GlobalSearchResult[] {
-  const best = new Map<string, GlobalSearchResult>();
+export function dedupeByEntityId(
+  results: InternalSearchResult[],
+): InternalSearchResult[] {
+  const best = new Map<string, InternalSearchResult>();
   for (const r of results) {
     const existing = best.get(r.entityId);
     if (!existing || r.score > existing.score) {
@@ -68,15 +71,17 @@ export { buildTypeCounts };
 
 /**
  * Select "best" name matches by confidence / dominance.
- * Exact-tier hits always qualify (cap BEST_CAP). Otherwise a leading name
- * hit qualifies when it dominates the next distinct-entity name hit by
- * TIER_WIDTH, or when it is the only name hit.
+ * Exact-tier hits (exactName from the ranker) always qualify (cap BEST_CAP).
+ * Otherwise a leading name hit qualifies when it dominates the next
+ * distinct-entity name hit by TIER_WIDTH, or when it is the only name hit.
  */
-export function selectBestMatches(sorted: GlobalSearchResult[]): GlobalSearchResult[] {
+export function selectBestMatches(
+  sorted: InternalSearchResult[],
+): InternalSearchResult[] {
   const nameHits = sorted.filter((r) => isNameMatch(r.matchedOn));
   if (nameHits.length === 0) return [];
 
-  const exact = nameHits.filter((r) => isExactNameTier(r.score));
+  const exact = nameHits.filter((r) => isExactNameResult(r));
   if (exact.length > 0) {
     return exact.slice(0, BEST_CAP);
   }
@@ -86,8 +91,6 @@ export function selectBestMatches(sorted: GlobalSearchResult[]): GlobalSearchRes
   if (!nextOther || top.score - nextOther.score >= TIER_WIDTH) {
     return [top];
   }
-  // Sole name hit after filtering duplicates of the same entity.
-  if (!nextOther) return [top];
   return [];
 }
 
@@ -105,7 +108,7 @@ interface GroupBucket {
   key: string;
   label: string;
   typeKey?: string;
-  items: GlobalSearchResult[];
+  items: InternalSearchResult[];
 }
 
 /**
@@ -148,7 +151,7 @@ export function shapeSearchResults(
     const mentionCandidates = remaining.filter(
       (r) => isContentMatch(r.matchedOn) && isRecordSearchTypeKey(r.type.key),
     );
-    const byType = new Map<string, GlobalSearchResult[]>();
+    const byType = new Map<string, InternalSearchResult[]>();
     for (const r of mentionCandidates) {
       const list = byType.get(r.type.key) ?? [];
       list.push(r);
@@ -178,7 +181,7 @@ export function shapeSearchResults(
   }
 
   // Type groups for everything else.
-  const byType = new Map<string, GlobalSearchResult[]>();
+  const byType = new Map<string, InternalSearchResult[]>();
   for (const r of remaining) {
     const list = byType.get(r.type.key) ?? [];
     list.push(r);
@@ -212,7 +215,7 @@ export function shapeSearchResults(
   }));
 
   // Phase (b): visible rows, fill best → mentions → type, cap per group and overall.
-  const visible: GlobalSearchResult[] = [];
+  const visible: InternalSearchResult[] = [];
   const sections: GlobalSearchSection[] = [];
   let remainingSlots = input.limit;
 

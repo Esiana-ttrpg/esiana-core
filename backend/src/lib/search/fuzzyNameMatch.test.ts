@@ -45,6 +45,13 @@ test('matchFuzzyName mixed short+long requires short to match strictly', () => {
   assert.equal(miss, null);
 });
 
+test('prefix/contains length delta beyond allowance is not a match', () => {
+  // token "besaid" (len 6, allowance 1) vs word "besaidxxxx" (len 10) — delta 4
+  assert.equal(matchFuzzyName(['besaid'], 'besaidxxxx', ''), null);
+  // Still matches near-length prefix
+  assert.ok(matchFuzzyName(['besaid'], 'besaids', ''));
+});
+
 test('collectFuzzyCandidates ranks and respects exclude + forward cap', () => {
   const rows = [
     { sourceId: '1', titleNorm: 'besaid', aliasText: '' },

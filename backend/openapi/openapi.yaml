@@ -655,9 +655,10 @@ paths:
             type: string
             enum: ["1", "true"]
           description: |
-            When set, attach diagnostic `rank` on each result and top-level
-            `diagnostics`. Shape is unstable and not a public contract
-            (x-diagnostic).
+            When set by an elevated campaign member (GM/Writer), attach
+            diagnostic `rank` on each result and top-level `diagnostics`.
+            Ignored for party viewers. Shape is unstable and not a public
+            contract (x-diagnostic).
       responses:
         "200":
           description: Ranked, permission-filtered search results

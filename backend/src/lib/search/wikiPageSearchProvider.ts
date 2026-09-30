@@ -19,7 +19,6 @@ import { canReadCharacterPageTab } from '../../controllers/characterPagesControl
 import { ENTITY_CATEGORY_TO_SHELL } from '../../../../shared/characterPages.js';
 import { resolveCanonicalEntityCategory } from '../../../../shared/resolveCanonicalEntityCategory.js';
 import { WikiVisibility } from '../../types/domain.js';
-import type { GlobalSearchResult } from '../../../../shared/globalSearch.js';
 import type { SearchContext } from './searchContext.js';
 import type { SearchProvider } from './searchProviderRegistry.js';
 import {
@@ -36,6 +35,7 @@ import {
 import {
   compareRankedResults,
   rankSearchDocument,
+  type InternalSearchResult,
   type SearchDocument,
   type SearchDocumentField,
 } from './searchRanking.js';
@@ -53,6 +53,7 @@ import { normalizeSearchTokens } from './index/normalizeSearchText.js';
 import {
   collectFuzzyCandidates,
   getFuzzyNameRowCap,
+  type FuzzyNameCandidate,
   type FuzzyPassStatus,
 } from './fuzzyNameMatch.js';
 
@@ -78,7 +79,7 @@ async function scoreWikiCandidates(
   options?: {
     fuzzyBySourceId?: Map<string, FuzzyMeta>;
   },
-): Promise<GlobalSearchResult[]> {
+): Promise<InternalSearchResult[]> {
   if (candidateIds.length === 0) return [];
 
   const isElevated = isElevatedWikiRole(ctx.role);
@@ -209,7 +210,7 @@ async function scoreWikiCandidates(
   const canViewDmOnly = hasElevatedNarrativeView(ctx.actor);
 
   const pageById = new Map(visiblePages.map((p) => [p.id, p]));
-  const results: GlobalSearchResult[] = [];
+  const results: InternalSearchResult[] = [];
 
   for (const candidateId of candidateIds) {
     const page = pageById.get(candidateId);
@@ -393,6 +394,7 @@ async function scoreWikiCandidates(
       href,
       matchedOn: ranked.matchedOn,
       score: ranked.score,
+      ...(ranked.exactName ? { exactName: true } : {}),
       ...(ctx.explain && ranked.explain ? { rank: ranked.explain } : {}),
     });
   }
@@ -401,6 +403,84 @@ async function scoreWikiCandidates(
 }
 
 const fuzzyCapWarned = new Set<string>();
+
+/** Process-local cache of campaign name rows for the fuzzy pass. */
+interface NameRowCacheEntry {
+  rows: FuzzyNameCandidate[];
+  overCap: boolean;
+  visibilityKey: string;
+  cap: number;
+  fetchedAt: number;
+}
+
+const NAME_ROW_CACHE_TTL_MS = 60_000;
+const nameRowCache = new Map<string, NameRowCacheEntry>();
+
+function visibilityCacheKey(visibilityIn: string[] | null): string {
+  return visibilityIn == null ? '*' : visibilityIn.slice().sort().join(',');
+}
+
+async function loadCachedNameRows(input: {
+  campaignId: string;
+  visibilityIn: string[] | null;
+  cap: number;
+}): Promise<{ rows: FuzzyNameCandidate[]; overCap: boolean; nameRows: number }> {
+  const visibilityKey = visibilityCacheKey(input.visibilityIn);
+  const cached = nameRowCache.get(input.campaignId);
+  const now = Date.now();
+  if (
+    cached &&
+    cached.visibilityKey === visibilityKey &&
+    cached.cap === input.cap &&
+    now - cached.fetchedAt < NAME_ROW_CACHE_TTL_MS
+  ) {
+    return {
+      rows: cached.overCap ? [] : cached.rows,
+      overCap: cached.overCap,
+      nameRows: cached.overCap ? input.cap + 1 : cached.rows.length,
+    };
+  }
+
+  const nameDocs = await prisma.searchIndexDocument.findMany({
+    where: {
+      campaignId: input.campaignId,
+      sourceKind: SEARCH_INDEX_SOURCE_KIND_WIKI_PAGE,
+      ...(input.visibilityIn
+        ? { visibility: { in: input.visibilityIn } }
+        : {}),
+    },
+    select: {
+      sourceId: true,
+      titleNorm: true,
+      aliasText: true,
+    },
+    // Fetch one past the cap so we can detect overflow without a separate count.
+    take: input.cap + 1,
+  });
+
+  const overCap = nameDocs.length > input.cap;
+  const rows = overCap
+    ? []
+    : nameDocs.map((d) => ({
+        sourceId: d.sourceId,
+        titleNorm: d.titleNorm,
+        aliasText: d.aliasText,
+      }));
+
+  nameRowCache.set(input.campaignId, {
+    rows,
+    overCap,
+    visibilityKey,
+    cap: input.cap,
+    fetchedAt: now,
+  });
+
+  return {
+    rows,
+    overCap,
+    nameRows: nameDocs.length,
+  };
+}
 
 export const wikiPageSearchProvider: SearchProvider = {
   id: 'wiki-pages',
@@ -424,7 +504,7 @@ export const wikiPageSearchProvider: SearchProvider = {
       ? null
       : [WikiVisibility.PUBLIC, WikiVisibility.PARTY];
 
-    const results: GlobalSearchResult[] = [];
+    const results: InternalSearchResult[] = [];
     const scoredIds = new Set<string>();
     let cursor: string | null = null;
     let scanned = 0;
@@ -493,24 +573,13 @@ export const wikiPageSearchProvider: SearchProvider = {
     if (fuzzyEligible) {
       const cap = getFuzzyNameRowCap();
       const fuzzyStart = performance.now();
-      const nameDocs = await prisma.searchIndexDocument.findMany({
-        where: {
-          campaignId: ctx.campaignId,
-          sourceKind: SEARCH_INDEX_SOURCE_KIND_WIKI_PAGE,
-          ...(visibilityIn
-            ? { visibility: { in: visibilityIn } }
-            : {}),
-        },
-        select: {
-          sourceId: true,
-          titleNorm: true,
-          aliasText: true,
-        },
-        // Fetch one past the cap so we can detect overflow without a separate count.
-        take: cap + 1,
+      const loaded = await loadCachedNameRows({
+        campaignId: ctx.campaignId,
+        visibilityIn,
+        cap,
       });
-      nameRows = nameDocs.length;
-      if (nameDocs.length > cap) {
+      nameRows = loaded.nameRows;
+      if (loaded.overCap) {
         fuzzyStatus = 'skipped-cap';
         fuzzyMs = Math.round(performance.now() - fuzzyStart);
         if (!fuzzyCapWarned.has(ctx.campaignId)) {
@@ -526,7 +595,7 @@ export const wikiPageSearchProvider: SearchProvider = {
           );
         }
       } else {
-        const fuzzyHits = collectFuzzyCandidates(tokens, nameDocs, {
+        const fuzzyHits = collectFuzzyCandidates(tokens, loaded.rows, {
           excludeIds: scoredIds,
         });
         if (fuzzyHits.length > 0) {
@@ -580,7 +649,17 @@ export const wikiPageSearchProvider: SearchProvider = {
   },
 };
 
-/** Test helper — clear the once-per-campaign fuzzy-cap warn memo. */
+/** Test helper — clear the once-per-campaign fuzzy-cap warn memo and name-row cache. */
 export function clearFuzzyCapWarnMemoForTests(): void {
   fuzzyCapWarned.clear();
+  nameRowCache.clear();
+}
+
+/** Invalidate cached name rows for a campaign after index rebuilds/upserts. */
+export function invalidateFuzzyNameRowCache(campaignId?: string): void {
+  if (campaignId) {
+    nameRowCache.delete(campaignId);
+    return;
+  }
+  nameRowCache.clear();
 }

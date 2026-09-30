@@ -28,7 +28,8 @@ export function fuzzyDistanceAllowance(tokenLength: number): number {
 
 /**
  * Optimal string alignment distance (restricted Damerau–Levenshtein).
- * Adjacent transposition costs 1; no substring/transpose of longer spans.
+ * Adjacent transposition costs 1. Uses three rolling rows instead of a full
+ * (m+1)×(n+1) matrix.
  */
 export function osaDistance(a: string, b: string): number {
   if (a === b) return 0;
@@ -37,21 +38,23 @@ export function osaDistance(a: string, b: string): number {
   if (m === 0) return n;
   if (n === 0) return m;
 
-  // Early exit when length delta already exceeds a generous bound.
-  const maxDist = Math.max(m, n);
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array.from({ length: n + 1 }, () => 0),
-  );
-  for (let i = 0; i <= m; i++) dp[i]![0] = i;
-  for (let j = 0; j <= n; j++) dp[0]![j] = j;
+  // Length delta is a lower bound on edit distance — callers should check
+  // allowance first, but keep a hard early exit here too.
+  if (Math.abs(m - n) > Math.max(m, n)) return Math.max(m, n);
+
+  let prevPrev = new Array<number>(n + 1);
+  let prev = new Array<number>(n + 1);
+  let curr = new Array<number>(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
 
   for (let i = 1; i <= m; i++) {
+    curr[0] = i;
     for (let j = 1; j <= n; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       let best = Math.min(
-        dp[i - 1]![j]! + 1, // deletion
-        dp[i]![j - 1]! + 1, // insertion
-        dp[i - 1]![j - 1]! + cost, // substitution
+        prev[j]! + 1, // deletion
+        curr[j - 1]! + 1, // insertion
+        prev[j - 1]! + cost, // substitution
       );
       if (
         i > 1 &&
@@ -59,12 +62,16 @@ export function osaDistance(a: string, b: string): number {
         a[i - 1] === b[j - 2] &&
         a[i - 2] === b[j - 1]
       ) {
-        best = Math.min(best, dp[i - 2]![j - 2]! + 1); // transposition
+        best = Math.min(best, prevPrev[j - 2]! + 1); // transposition
       }
-      dp[i]![j] = best;
+      curr[j] = best;
     }
+    const rotate = prevPrev;
+    prevPrev = prev;
+    prev = curr;
+    curr = rotate;
   }
-  return Math.min(dp[m]![n]!, maxDist);
+  return prev[n]!;
 }
 
 function similarityFromDistance(distance: number, tokenLen: number, wordLen: number): number {
@@ -76,6 +83,9 @@ function similarityFromDistance(distance: number, tokenLen: number, wordLen: num
  * Score one query token against a single name word.
  * Tokens under 4 chars must match as a strict substring/prefix of the word
  * (or the word as a substring of the token for very short names).
+ *
+ * Prefix / contains / OSA branches all respect the same edit-distance
+ * allowance; length differences above the allowance are immediate misses.
  */
 function tokenWordScore(token: string, word: string): number | null {
   if (!token || !word) return null;
@@ -84,13 +94,17 @@ function tokenWordScore(token: string, word: string): number | null {
     return null;
   }
   const allowance = fuzzyDistanceAllowance(token.length);
+  const lenDiff = Math.abs(word.length - token.length);
+  // Length delta is a lower bound on OSA distance — skip impossible pairs.
+  if (lenDiff > allowance) return null;
+
   // Prefer cheap exact / prefix / contains checks before edit distance.
   if (word === token) return 1;
   if (word.startsWith(token) || token.startsWith(word)) {
-    return similarityFromDistance(Math.abs(word.length - token.length), token.length, word.length);
+    return similarityFromDistance(lenDiff, token.length, word.length);
   }
   if (word.includes(token)) {
-    return similarityFromDistance(word.length - token.length, token.length, word.length);
+    return similarityFromDistance(lenDiff, token.length, word.length);
   }
   const dist = osaDistance(token, word);
   if (dist > allowance) return null;

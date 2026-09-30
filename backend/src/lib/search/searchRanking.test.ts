@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   compareRankedResults,
-  isExactNameTier,
   rankSearchDocument,
   TIER,
   type SearchDocument,
@@ -108,8 +107,8 @@ test('exact-title neutrality: character and session-note titled Yuna score equal
   )!;
   assert.equal(character.matchedOn, 'title');
   assert.equal(note.matchedOn, 'title');
-  assert.ok(isExactNameTier(character.score));
-  assert.ok(isExactNameTier(note.score));
+  assert.equal(character.exactName, true);
+  assert.equal(note.exactName, true);
   // Type prior must not apply on exact title.
   assert.equal((character.explain?.signals as Record<string, number>).typePrior, undefined);
   assert.equal((note.explain?.signals as Record<string, number>).typePrior, undefined);

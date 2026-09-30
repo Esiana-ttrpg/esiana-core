@@ -70,7 +70,9 @@ export async function searchCampaignContent(
   filters.hasDateFilter = filters.after != null || filters.before != null;
 
   const explainRaw = String(req.query.explain ?? '').toLowerCase();
-  const explain = explainRaw === '1' || explainRaw === 'true';
+  const explainRequested = explainRaw === '1' || explainRaw === 'true';
+  // Diagnostics are elevated-only — party viewers never receive rank/diagnostics.
+  const explain = explainRequested && isElevatedWikiRole(ctx.role);
 
   const result = await searchCampaign({
     campaignId: ctx.campaignId,

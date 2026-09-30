@@ -7,12 +7,12 @@ import test from 'node:test';
 import {
   compareRankedResults,
   rankSearchDocument,
+  TIER,
+  type InternalSearchResult,
   type SearchDocument,
 } from './searchRanking.js';
 import { matchFuzzyName } from './fuzzyNameMatch.js';
 import { shapeSearchResults } from './searchResultShaping.js';
-import type { GlobalSearchResult } from '../../../../shared/globalSearch.js';
-import { TIER } from './searchRanking.js';
 
 interface ScenarioDoc {
   id: string;
@@ -134,10 +134,10 @@ function campaign(): ScenarioDoc[] {
   ];
 }
 
-function rankAll(query: string): GlobalSearchResult[] {
+function rankAll(query: string): InternalSearchResult[] {
   const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
   const docs = campaign();
-  const out: GlobalSearchResult[] = [];
+  const out: InternalSearchResult[] = [];
 
   for (const entry of docs) {
     let ranked = rankSearchDocument(entry.doc, tokens, query, { now: NOW });
@@ -161,6 +161,7 @@ function rankAll(query: string): GlobalSearchResult[] {
       href: '/',
       matchedOn: ranked.matchedOn,
       score: ranked.score,
+      ...(ranked.exactName ? { exactName: true } : {}),
     });
   }
   out.sort(compareRankedResults);
