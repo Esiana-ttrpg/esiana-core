@@ -350,7 +350,7 @@ Recommended before or immediately after schema freeze. Raises the "first-class s
 
 ### Tier C — Significant platform work (post-1.0 unless explicitly prioritized)
 
-- Plugin search indexing (PluginData + plugin entity descriptors)
+- Plugin search indexing (PluginData + plugin entity descriptors) — deferred; Core documents the future contribution shape as `SearchIndexContribution` in `backend/src/lib/search/index/searchIndexContribution.ts`. No plugin host API is exposed yet.
 - Timeline/calendar write hooks
 - Wiki `[[link]]` resolution for plugin entity IDs
 - `registerEntityType` / plugin codex blocks

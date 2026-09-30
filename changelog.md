@@ -4,12 +4,17 @@
 
 ### Added
 
+- **Indexed Global Search (Pass 5)** — derived `SearchIndexDocument` projection with PostgreSQL `tsvector`/GIN candidate retrieval (portable multi-token LIKE over the same table on SQLite). Replaces the single-token `LIMIT 200` base-table LIKE prefilter. Write-path upserts, campaign rebuild on import/clone/restore, `pnpm bench:search`, and `backend/scripts/backfillSearchIndex.ts`. Authorization, ranking, and response shape are unchanged.
 - **Command palette** — type `>` in campaign search (or Ctrl/Cmd+Shift+P) to run permission-aware Core commands: create all CreatePageModal codex types (characters, bestiary, ancestries, organizations, locations, objects, families, rules/resources) derived from workspace route `createVia`, plus session notes; jump to Sessions, Timeline, Developments, and Settings; advance campaign time; and edit or copy a link to the current page.
 - Scheduled nightly builds for `develop`: moving `nightly` Git tag, multi-arch images tagged `nightly` and `nightly-YYYYMMDD-<shortsha>` on GHCR and Docker Hub, skip when unchanged, and tag advance only after a successful publish.
 
 ### Changed
 
 - Package `engines.node` is `>=26.0.0` (was `>=22.10.0`), matching the only tested runtime (CI `setup-node` and Docker `node:26-alpine`).
+
+### Database
+
+- Migration `20260930140000_search_index_document` — adds `SearchIndexDocument` (tiered searchable text + optional PostgreSQL `tsvector` columns with GIN indexes).
 
 ## [1.4.3] - 2026-09-22
 

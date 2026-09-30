@@ -481,6 +481,10 @@ export async function createWikiPageAlias(
         metadata: { alias: created.alias, aliasId: created.id },
       });
     }
+    {
+      const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+      await upsertWikiPageDocument(prisma, ctx.campaignId, pageId);
+    }
     res.status(201).json({ alias: created });
   } catch {
     res.status(409).json({ error: 'Alias already exists in this campaign' });
@@ -509,6 +513,8 @@ export async function deleteWikiPageAlias(
         data: { updatedAt: new Date() },
       }),
     ]);
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, ctx.campaignId, alias.pageId);
   }
 
   res.json({ ok: true });

@@ -122,6 +122,8 @@ export async function importContentPack(
     updateTask(taskId, { progress: 85, metaMerge: { phase: 'post-sync' } });
     const { rebuildWikiLinksForCampaign } = await import('../wikiLinkService.js');
     await rebuildWikiLinksForCampaign(campaignId);
+    const { rebuildSearchIndexForCampaign } = await import('../search/index/searchIndexService.js');
+    await rebuildSearchIndexForCampaign(campaignId);
     const { rebuildEntityRelationsForCampaign } = await import('../entityRelationSyncService.js');
     await rebuildEntityRelationsForCampaign(campaignId);
     const { rebuildNarrativeLifecycleForCampaign } = await import('../narrativeLifecycleService.js');

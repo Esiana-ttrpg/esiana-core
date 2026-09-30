@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { normalizeSchemaPrismaForSqlite } from './sqliteSchema.mjs';
 
 const backendRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const schemaPath = path.join(backendRoot, 'prisma', 'schema.prisma');
@@ -29,7 +30,7 @@ if (!schema.includes('provider = "postgresql"')) {
 }
 
 try {
-  fs.writeFileSync(schemaPath, schema.replace('provider = "postgresql"', 'provider = "sqlite"'));
+  fs.writeFileSync(schemaPath, normalizeSchemaPrismaForSqlite(schema));
   execSync('npx prisma generate', {
     cwd: backendRoot,
     stdio: 'inherit',

@@ -1,9 +1,10 @@
 /**
- * Portable LIKE pattern helpers for the bounded first-pass candidate stage.
+ * Portable LIKE pattern helpers for the derived-table candidate stage
+ * (SQLite portable-like engine). Over-select is allowed; under-select of
+ * advertised searchable content is not.
  *
- * Over-select is allowed; under-select of advertised searchable content is not.
- * Non-ASCII letters and JSON-escaped characters (`"`, `\`) are replaced with `_`
- * so SQLite's ASCII-only LOWER and JSON string escaping cannot cause misses.
+ * Indexed text is pre-normalized (ASCII-folded lowercase). Non-ASCII /
+ * JSON-escape chars in query tokens are still widened to `_` for safety.
  */
 
 /** Escape LIKE wildcards and then widen non-ASCII / JSON-escape chars to `_`. */
@@ -14,7 +15,6 @@ export function buildCandidateLikePattern(token: string): string {
       escaped += `\\${ch}`;
       continue;
     }
-    // ASCII printable letters/digits/common punctuation stay literal.
     const code = ch.codePointAt(0) ?? 0;
     const isAsciiLetterOrDigit =
       (code >= 0x30 && code <= 0x39) ||
@@ -25,17 +25,17 @@ export function buildCandidateLikePattern(token: string): string {
       escaped += ch;
       continue;
     }
-    // Non-ASCII, quotes, and other punctuation → single-char wildcard.
     escaped += '_';
   }
   return `%${escaped}%`;
 }
 
-/** Longest token wins for the SQL prefilter (all tokens verified in-app). */
-export function pickPrefilterToken(tokens: string[]): string | null {
-  if (tokens.length === 0) return null;
-  return [...tokens].sort((a, b) => b.length - a.length)[0] ?? null;
-}
+/** Batch size for one page of engine candidates. */
+export const SEARCH_CANDIDATE_BATCH = 100;
 
-/** Hard cap on candidate rows returned per provider. */
-export const SEARCH_CANDIDATE_LIMIT = 200;
+/**
+ * Hard ceiling on candidates scanned per search request.
+ * Prevents unbounded work on extremely broad queries while still far above
+ * the old LIMIT 200 single-token compromise.
+ */
+export const SEARCH_CANDIDATE_CEILING = 2000;
