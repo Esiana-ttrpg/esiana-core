@@ -1,6 +1,6 @@
 {
   "name": "esiana",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "description": "Self-hosted, multi-campaign TTRPG manager",
   "license": "AGPL-3.0-only",
@@ -20,6 +20,6 @@
     "profile-capacity": "pnpm --filter backend profile-capacity"
   },
   "engines": {
-    "node": ">=22.10.0"
+    "node": ">=26.0.0"
   }
 }

@@ -1,0 +1,12 @@
+import { apiFetch } from './api';
+export type DiscordDestination={id:string;name:string;enabled:boolean;subscribedEvents:string[];suspendedAt:string|null;consecutiveFailures:number;lastSucceededAt:string|null;lastFailedAt:string|null;lastError:string|null;connected:true};
+export type DiscordEvent={type:string;category:string;label:string};
+export type DiscordDelivery={id:string;eventType:string;status:string;responseStatus:number|null;diagnostic:string|null;isTest:boolean;createdAt:string};
+const base=(campaign:string)=>`/campaigns/${encodeURIComponent(campaign)}/discord`;
+export const fetchDiscord=(campaign:string)=>apiFetch<{destinations:DiscordDestination[]}>(base(campaign));
+export const fetchDiscordCatalog=(campaign:string)=>apiFetch<{events:DiscordEvent[]}>(`${base(campaign)}/catalog`);
+export const createDiscord=(campaign:string,input:object)=>apiFetch<{destination:DiscordDestination}>(base(campaign),{method:'POST',body:JSON.stringify(input)});
+export const patchDiscord=(campaign:string,id:string,input:object)=>apiFetch<{destination:DiscordDestination}>(`${base(campaign)}/${id}`,{method:'PATCH',body:JSON.stringify(input)});
+export const deleteDiscord=(campaign:string,id:string)=>apiFetch<void>(`${base(campaign)}/${id}`,{method:'DELETE'});
+export const testDiscord=(campaign:string,id:string)=>apiFetch(`${base(campaign)}/${id}/test`,{method:'POST'});
+export const fetchDiscordDeliveries=(campaign:string,id:string)=>apiFetch<{deliveries:DiscordDelivery[]}>(`${base(campaign)}/${id}/deliveries`);

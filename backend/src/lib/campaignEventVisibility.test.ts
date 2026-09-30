@@ -30,6 +30,8 @@ test('elevated roles receive restricted resource events', () => {
 
 test('unknown and plugin event projections fail closed', async () => {
   const baseEvent = {
+    id: 'evt_test',
+    version: 1 as const,
     campaignId: 'campaign-1',
     occurredAt: '2026-09-25T12:00:00.000Z',
     payload: {},

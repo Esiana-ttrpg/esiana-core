@@ -62,3 +62,5 @@ Repository admins may retain ruleset bypass for emergency hotfixes. Bypass is au
 Only maintainers may create release tags.
 
 A maintainer must complete the release checklist before publishing a release.
+
+The moving `nightly` tag is owned by the nightly workflow automation and is not a release tag.

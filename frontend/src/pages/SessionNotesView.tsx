@@ -11,7 +11,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useWiki } from '@/contexts/WikiContext';
 import { WikiPageDeleteDialog } from '@/components/wiki/WikiPageDeleteDialog';
@@ -31,6 +31,13 @@ import { campaignWikiPath, campaignNotePath } from '@/lib/campaignPaths';
 import { hasTimelineSessions } from '@/lib/sessionNotesIndex';
 import { CreateSessionNoteDialog } from '@/components/session/CreateSessionNoteDialog';
 import { CreateNewSessionDialog } from '@/components/session/CreateNewSessionDialog';
+import { SessionNotesAttendanceTab } from '@/components/session/SessionNotesAttendanceTab';
+import {
+  parseSessionNotesView,
+  sessionNotesViewPanelId,
+  sessionNotesViewTabId,
+  SessionNotesViewTabs,
+} from '@/components/session/SessionNotesViewTabs';
 import { CampaignMemberRoles } from '@/types/domain';
 import type {
   SessionNotesIndexPayload,
@@ -70,6 +77,8 @@ export function SessionNotesView() {
   const { t } = useTranslation();
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeView = parseSessionNotesView(searchParams.get('view'));
   const { campaign, flatPages } = useWiki();
   const [data, setData] = useState<SessionNotesIndexPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -444,20 +453,26 @@ export function SessionNotesView() {
     }
   }
 
-  if (loading) return <LoadingSpinner label={t('campaign.timeline.sessionNotesLoading')} />;
-  if (error) return <p className="text-sm text-red-300">{error}</p>;
-  if (!data) return null;
+  if (activeView === 'notes') {
+    if (loading) return <LoadingSpinner label={t('campaign.timeline.sessionNotesLoading')} />;
+    if (error) return <p className="text-sm text-red-300">{error}</p>;
+    if (!data) return null;
+  }
 
-  const hasAnyNotes =
-    data.notebooks.some((n) => n.pages.length > 0) || data.uncategorized.length > 0;
+  const hasAnyNotes = data
+    ? data.notebooks.some((n) => n.pages.length > 0) || data.uncategorized.length > 0
+    : false;
   const showSearchEmptyState =
     Boolean(filteredIndex?.isSearching) && filteredIndex?.totalMatches === 0;
+  const showNotesContent = activeView === 'notes' && data != null;
 
   return (
     <div className={`w-full min-w-0 flex flex-col ${SECTION_GAP_CLASS}`}>
       <WorkspaceHeader
         title={t('campaign.timeline.sessionNotesPageTitle')}
+        titleReplacement={<SessionNotesViewTabs />}
         actions={
+          showNotesContent ? (
           <CategoryIndexToolbar
             createLabel={t('campaign.timeline.sessionNotesCreateNewPage')}
             onCreate={openCreatePageDialog}
@@ -574,9 +589,41 @@ export function SessionNotesView() {
               ) : null
             }
           />
+          ) : null
         }
       />
 
+      {activeView === 'attendance' ? (
+        <div
+          id={sessionNotesViewPanelId('attendance')}
+          role="tabpanel"
+          aria-labelledby={sessionNotesViewTabId('attendance')}
+        >
+          <SessionNotesAttendanceTab campaignHandle={campaignHandle} />
+        </div>
+      ) : null}
+
+      {activeView === 'recaps' ? (
+        <div
+          id={sessionNotesViewPanelId('recaps')}
+          role="tabpanel"
+          aria-labelledby={sessionNotesViewTabId('recaps')}
+        >
+          <section className={`${SURFACE_SILENT_CLASS} p-8 text-center`}>
+            <p className="text-sm text-muted">
+              {t('campaign.timeline.sessionNotesRecapsComingSoon')}
+            </p>
+          </section>
+        </div>
+      ) : null}
+
+      {showNotesContent ? (
+        <div
+          id={sessionNotesViewPanelId('notes')}
+          role="tabpanel"
+          aria-labelledby={sessionNotesViewTabId('notes')}
+          className={`flex min-w-0 flex-col ${SECTION_GAP_CLASS}`}
+        >
       {isOrganizing && hasAnyNotes && !showSearchEmptyState && organizableNoteIds.length > 0 && (
         <div
           className={`${SURFACE_OPERATIONAL_CLASS} flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/40 bg-surface/40 px-4 py-3`}
@@ -1096,6 +1143,8 @@ export function SessionNotesView() {
           </div>
         </div>
       )}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { dispatchPluginDomainEvent } from './pluginDomainEvents';
 export const CAMPAIGN_DOMAIN_EVENT = 'esiana:campaign-domain-event';
 
 export interface CampaignDomainEvent {
+  id: string;
+  version: 1;
   type: string;
   campaignId?: string;
   actorId?: string;

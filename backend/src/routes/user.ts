@@ -46,6 +46,7 @@ import {
   apiTokenMintLimiter,
   authPasswordChangeLimiter,
 } from '../middleware/rateLimit.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 import {
   addPasswordAuth,
   listLinkedAccounts,
@@ -56,6 +57,8 @@ import {
 export const userRouter = Router();
 
 userRouter.use(requireAuth);
+userRouter.use(rateLimitPolicy('authenticated'));
+userRouter.use(rateLimitPolicy('mutation'));
 
 userRouter.get('/hub', getUserHub);
 userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
@@ -69,6 +72,7 @@ userRouter.get('/profile', getUserProfile);
 userRouter.put('/profile', updateUserProfile);
 userRouter.post(
   '/profile/avatar',
+  rateLimitPolicy('expensive'),
   imageUpload.single('avatar'),
   enforceSystemUploadLimit,
   uploadUserAvatar,

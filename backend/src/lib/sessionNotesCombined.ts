@@ -68,7 +68,7 @@ export interface CombinedSessionNotesResult {
   references: CombinedSessionReferences;
 }
 
-function extractSessionNoteMarkdown(blocks: unknown): string {
+export function extractSessionNoteMarkdown(blocks: unknown): string {
   const rawBlocks: unknown[] = Array.isArray(blocks) ? blocks : [];
   const textBlock =
     rawBlocks.find(
@@ -97,7 +97,7 @@ function isDmMemberRole(role: string): boolean {
   );
 }
 
-function pageMatchesSessionGroup(
+export function pageMatchesSessionGroup(
   metadata: unknown,
   sessionGroupId: string,
   timelinePointId: string | null,
@@ -109,7 +109,7 @@ function pageMatchesSessionGroup(
   return false;
 }
 
-function canViewPageVisibility(
+export function canViewPageVisibility(
   visibility: string,
   canManage: boolean,
 ): boolean {

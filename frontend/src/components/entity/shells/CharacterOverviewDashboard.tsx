@@ -1,5 +1,4 @@
 import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
-import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
 import { EntityBiographyWidget } from '@/components/wiki/widgets/EntityBiographyWidget';
 import { WikiPageTagsInput } from '@/components/wiki/WikiPageTagsInput';
 import { buildCharacterOverviewDisplayValues } from '@/lib/characterOverviewDisplay';
@@ -71,20 +70,6 @@ export function CharacterOverviewDashboard({
     ],
   );
 
-  const familiesReadControl = <EntityFactReadValue value={displayValues.families} />;
-  const familiesEditControl = (
-    <CharacterLineageEditor
-      campaignHandle={campaignHandle}
-      pageId={pageId}
-      blockId={`entity-lineage-overview:${pageId}`}
-      metadata={pageMetadata}
-      flatPages={flatPages}
-      onSaved={onMetadataSaved}
-      section="identityOverview"
-      bare
-    />
-  );
-
   const tagsReadControl = <EntityFactReadValue value={displayValues.tags} />;
   const tagsEditControl = (
     <WikiPageTagsInput
@@ -97,30 +82,20 @@ export function CharacterOverviewDashboard({
 
   const identityFacts = canEdit ? (
     <CharacterIdentityEditor
-      blockId={`entity-identity-overview:${pageId}`}
+      blockId={`entity-overview-context:${pageId}`}
       campaignHandle={campaignHandle}
       pageId={pageId}
       metadata={pageMetadata}
       flatPages={flatPages}
       onSaved={onMetadataSaved}
       focusField={inspectorFocusField}
-      section="identityOverview"
+      section="overviewContext"
       bare
       identitySheetLayout
-      familiesControl={familiesEditControl}
       tagsControl={tagsEditControl}
     />
   ) : (
     <EntityFactRowList>
-      {displayValues.ancestryOrigin ? <EntityFactRow label="Ancestry" fieldId="character-field-ancestryId">
-        <EntityFactReadValue value={displayValues.ancestryOrigin} />
-      </EntityFactRow> : null}
-      {displayValues.homeLocation ? <EntityFactRow label="Home" fieldId="character-field-currentLocationId">
-        <EntityFactReadValue value={displayValues.homeLocation} />
-      </EntityFactRow> : null}
-      {displayValues.families ? <EntityFactRow label="Families" fieldId="character-field-familyId">
-        {familiesReadControl}
-      </EntityFactRow> : null}
       {displayValues.affiliations ? <EntityFactRow label="Affiliations" fieldId="character-field-primaryAffiliationId">
         <EntityFactReadValue value={displayValues.affiliations} />
       </EntityFactRow> : null}
@@ -132,7 +107,7 @@ export function CharacterOverviewDashboard({
 
   return (
     <div className="space-y-6">
-      <EntityPageSection id="character-identity" title="Identity" wikiFacts>
+      <EntityPageSection id="character-context" title="World context" wikiFacts>
         <EntityWikiInfobox className="max-w-md">{identityFacts}</EntityWikiInfobox>
       </EntityPageSection>
 

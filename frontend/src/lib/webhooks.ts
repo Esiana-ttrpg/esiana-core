@@ -1,0 +1,14 @@
+import { apiFetch } from './api';
+export type WebhookEndpoint = { id:string; name:string; url:string; enabled:boolean; subscribedEvents:string[]; suspendedAt:string|null; consecutiveFailures:number; createdAt:string };
+export type WebhookCatalogEvent = { type:string; category:string; label:string };
+export type WebhookDelivery = { id:string; endpointId:string; eventType:string; status:string; attemptCount:number; responseStatus:number|null; diagnostic:string|null; createdAt:string };
+const base = (campaign:string) => `/campaigns/${encodeURIComponent(campaign)}/webhooks`;
+export const fetchWebhookCatalog = (campaign:string) => apiFetch<{version:number;events:WebhookCatalogEvent[]}>(`${base(campaign)}/catalog`);
+export const fetchWebhooks = (campaign:string) => apiFetch<{endpoints:WebhookEndpoint[]}>(base(campaign));
+export const createWebhook = (campaign:string, input:object) => apiFetch<{endpoint:WebhookEndpoint;secret:string}>(base(campaign), {method:'POST',body:JSON.stringify(input)});
+export const patchWebhook = (campaign:string,id:string,input:object) => apiFetch<{endpoint:WebhookEndpoint}>(`${base(campaign)}/${id}`,{method:'PATCH',body:JSON.stringify(input)});
+export const deleteWebhook = (campaign:string,id:string) => apiFetch<void>(`${base(campaign)}/${id}`,{method:'DELETE'});
+export const testWebhook = (campaign:string,id:string) => apiFetch(`${base(campaign)}/${id}/test`,{method:'POST'});
+export const rotateWebhook = (campaign:string,id:string) => apiFetch<{secret:string}>(`${base(campaign)}/${id}/rotate-secret`,{method:'POST'});
+export const fetchWebhookDeliveries = (campaign:string,id:string) => apiFetch<{deliveries:WebhookDelivery[]}>(`${base(campaign)}/${id}/deliveries`);
+export const redeliverWebhook = (campaign:string,id:string) => apiFetch(`${base(campaign).replace(/\/webhooks$/, '/webhook-deliveries')}/${id}/redeliver`,{method:'POST'});

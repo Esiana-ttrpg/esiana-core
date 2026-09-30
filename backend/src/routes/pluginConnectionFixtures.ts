@@ -1,8 +1,10 @@
 import express, { Router } from 'express';
 import { env } from '../config/env.js';
 import { createHash } from 'node:crypto';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 
 export const pluginConnectionFixturesRouter = Router();
+pluginConnectionFixturesRouter.use(rateLimitPolicy('public'));
 pluginConnectionFixturesRouter.use((_req, res, next) => {
   if (env.nodeEnv === 'production' || !env.enablePluginConnectionFixtures) { res.status(404).end(); return; }
   next();

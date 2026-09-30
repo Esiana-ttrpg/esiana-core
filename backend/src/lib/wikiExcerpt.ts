@@ -1,6 +1,6 @@
 const DEFAULT_MAX_LENGTH = 200;
 
-function stripMarkdownToPlain(text: string): string {
+export function stripMarkdownToPlain(text: string): string {
   return text
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
@@ -17,10 +17,18 @@ function stripMarkdownToPlain(text: string): string {
 
 function getBlockVisibility(block: Record<string, unknown>): string | null {
   const visibility = block.visibility;
-  return typeof visibility === 'string' ? visibility : null;
+  if (typeof visibility === 'string' && visibility.trim()) return visibility;
+  if (block.isPrivate === true) return 'DM_Only';
+  return null;
 }
 
-function collectMarkdownFromBlocks(
+const SEARCHABLE_TEXT_BLOCK_TYPES = new Set(['text-tiptap', 'text-biography']);
+
+/**
+ * Collect markdown from visible prose blocks for search / excerpts.
+ * Skips DM_Only / private blocks unless `includeDmOnlyBlocks` is true.
+ */
+export function collectMarkdownFromBlocks(
   blocks: unknown,
   includeDmOnlyBlocks: boolean,
 ): string[] {
@@ -30,7 +38,12 @@ function collectMarkdownFromBlocks(
   for (const raw of blocks) {
     if (!raw || typeof raw !== 'object') continue;
     const block = raw as Record<string, unknown>;
-    if (block.type !== 'text-tiptap') continue;
+    if (
+      typeof block.type !== 'string' ||
+      !SEARCHABLE_TEXT_BLOCK_TYPES.has(block.type)
+    ) {
+      continue;
+    }
 
     const visibility = getBlockVisibility(block);
     if (!includeDmOnlyBlocks && visibility === 'DM_Only') continue;

@@ -24,6 +24,7 @@ import {
   oidcCallbackLimiter,
   oidcStartLimiter,
 } from '../middleware/rateLimit.js';
+import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 import { isPasswordAuthEnabled } from '../lib/auth/passwordAuth.js';
 import {
   createPasswordResetToken,
@@ -44,6 +45,8 @@ import { isLocalLoginEnabled } from '../config/oidcEnv.js';
 import type { NextFunction, Response } from 'express';
 
 export const authRouter = Router();
+
+authRouter.use(rateLimitPolicy('public'));
 
 function requireAuthForLinkMode(
   req: AuthenticatedRequest,

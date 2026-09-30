@@ -57,6 +57,7 @@ export type CharacterIdentitySection =
   | 'participation'
   | 'appearance'
   | 'hero'
+  | 'overviewContext'
   | 'identityOverview';
 
 interface CharacterIdentityEditorProps {
@@ -129,6 +130,7 @@ export function CharacterIdentityEditor({
   const showParticipation = section === 'all' || section === 'participation';
   const showAppearance = section === 'all' || section === 'appearance';
   const showHero = section === 'hero';
+  const showOverviewContext = section === 'overviewContext';
   const showIdentityOverview = section === 'identityOverview';
 
   useEffect(() => {
@@ -253,6 +255,25 @@ export function CharacterIdentityEditor({
       { label: 'Role / type', id: 'character-field-profession', control: roleInput },
       { label: 'Pronouns', id: 'character-field-pronouns', control: pronounsInput },
       { label: 'Status', id: 'character-field-status', control: statusInput },
+      {
+        label: 'Ancestry', id: 'character-field-ancestryId',
+        control: <div className="grid gap-1 sm:grid-cols-2">
+          <IdentityPagePicker flatPages={rootAncestryPages} value={draft.ancestryId} placeholder="Add ancestry" onChange={(nextId) => {
+            const patch: Partial<CharacterIdentityFields> = { ancestryId: nextId };
+            if (nextId && draft.lineageId && parseAncestryMetadata(flatPages.find((p) => p.id === draft.lineageId)?.metadata).parentAncestryId !== nextId) patch.lineageId = null;
+            void persist(patch);
+          }} />
+          <IdentityPagePicker flatPages={lineageAncestryPages} value={draft.lineageId} placeholder="Add lineage" onChange={(nextId) => {
+            if (!nextId) return void persist({ lineageId: null });
+            const meta = parseAncestryMetadata(flatPages.find((p) => p.id === nextId)?.metadata);
+            void persist({ lineageId: nextId, ancestryId: meta.parentAncestryId ?? draft.ancestryId });
+          }} />
+        </div>,
+      },
+      {
+        label: 'Home', id: 'character-field-currentLocationId',
+        control: <IdentityPagePicker flatPages={locationPages} value={draft.currentLocationId} placeholder="Add home" onChange={(nextId) => void persist({ currentLocationId: nextId })} />,
+      },
     ];
     return (
       <div className="relative space-y-0">
@@ -271,6 +292,21 @@ export function CharacterIdentityEditor({
             {error}
           </p>
         ) : null}
+      </div>
+    );
+  }
+
+  if (identitySheetLayout && showOverviewContext) {
+    return (
+      <div className="relative">
+        {saving ? <Loader2 className="absolute right-0 top-0 size-3.5 animate-spin text-muted" /> : null}
+        <EntityFactRowList>
+          <EntityFactRow fieldId="character-field-primaryAffiliationId" label="Affiliations">
+            <IdentityPagePicker flatPages={orgPages} value={draft.primaryAffiliationId} placeholder="Add primary affiliation" onChange={(nextId) => void persist({ primaryAffiliationId: nextId })} />
+          </EntityFactRow>
+          <EntityFactRow fieldId="character-field-tags" label="Tags">{tagsControl}</EntityFactRow>
+        </EntityFactRowList>
+        {error ? <p className="mt-2 text-xs text-red-400" role="alert">{error}</p> : null}
       </div>
     );
   }

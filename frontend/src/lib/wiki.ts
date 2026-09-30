@@ -21,6 +21,7 @@ import type {
   WikiOutlink,
   WikiLinkIntegrityPayload,
   SessionNotesIndexPayload,
+  SessionNotesAttendancePayload,
   SessionNotePerspectivesPayload,
   CombinedSessionNotesPayload,
 } from '@/types/wiki';
@@ -40,11 +41,23 @@ export interface CharacterPagesPayload {
 export async function fetchCharacterPages(
   campaignHandle: string,
   characterPageId: string,
+  shell = 'character',
 ): Promise<CharacterPagesPayload> {
   return apiFetch<CharacterPagesPayload>(
-    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages`,
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/entity-pages?shell=${encodeURIComponent(shell)}`,
   );
 }
+
+export const fetchEntityPages = fetchCharacterPages;
+export const fetchEntityFields = fetchCharacterFields;
+export const createCustomEntityField = createCustomCharacterField;
+export const deleteCustomEntityField = deleteCustomCharacterField;
+export const createCustomEntityPage = createCustomCharacterPage;
+export const patchEntityPage = patchCharacterPage;
+export const reorderEntityPages = reorderCharacterPages;
+export const deleteCustomEntityPage = deleteCustomCharacterPage;
+export const duplicateEntityPageToCustom = duplicateCharacterPageToCustom;
+export const saveEntityPageBlocks = saveCharacterPageBlocks;
 
 export async function fetchCharacterFields(
   campaignHandle: string,
@@ -65,6 +78,19 @@ export async function updateCharacterField(
   const result = await apiFetch<{ field: CharacterFieldDescriptor }>(
     `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields/${fieldId}`,
     { method: 'PUT', body: JSON.stringify({ value }) },
+  );
+  return result.field;
+}
+
+export async function updateEntityField(
+  campaignHandle: string,
+  entityPageId: string,
+  fieldId: string,
+  patch: { value?: unknown; label?: string; pageId?: string | null; displayOrder?: number },
+): Promise<CharacterFieldDescriptor> {
+  const result = await apiFetch<{ field: CharacterFieldDescriptor }>(
+    `/campaigns/${campaignHandle}/wiki/${entityPageId}/entity-fields/${fieldId}`,
+    { method: 'PUT', body: JSON.stringify(patch) },
   );
   return result.field;
 }
@@ -678,6 +704,14 @@ export async function fetchSessionNotesIndex(
 ): Promise<SessionNotesIndexPayload> {
   return apiFetch<SessionNotesIndexPayload>(
     `/campaigns/${campaignHandle}/wiki/session-notes/index`,
+  );
+}
+
+export async function fetchSessionNotesAttendance(
+  campaignHandle: string,
+): Promise<SessionNotesAttendancePayload> {
+  return apiFetch<SessionNotesAttendancePayload>(
+    `/campaigns/${campaignHandle}/wiki/session-notes/attendance`,
   );
 }
 

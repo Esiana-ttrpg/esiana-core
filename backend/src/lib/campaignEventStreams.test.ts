@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { Response } from 'express';
 import {
   registerCampaignEventStream,
+  registerCampaignRealtimeConnection,
   revokeCampaignEventStreams,
 } from './campaignEventStreams.js';
 
@@ -21,4 +22,12 @@ test('membership revocation immediately ends every matching active stream', () =
   unregister();
 
   assert.equal(ended, 1);
+});
+
+test('membership revocation closes SSE and WebSocket transports together', () => {
+  let closed = 0;
+  const unregister = registerCampaignRealtimeConnection('campaign-2', 'user-2', () => { closed += 1; });
+  revokeCampaignEventStreams('campaign-2', 'user-2');
+  unregister();
+  assert.equal(closed, 1);
 });
