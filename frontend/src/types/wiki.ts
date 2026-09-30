@@ -359,6 +359,35 @@ export interface SessionNotesIndexPayload {
   uncategorized: SessionNotesNotebookPage[];
 }
 
+export interface SessionNotesAttendanceCell {
+  pageId: string | null;
+  hasNotes: boolean;
+}
+
+export interface SessionNotesAttendanceMember {
+  userId: string;
+  role: string;
+  playerContext: string;
+  label: string;
+  displayName: string | null;
+  identityPageId: string | null;
+  identityPortrait: string | null;
+}
+
+export interface SessionNotesAttendanceSession {
+  timelinePointId: string;
+  pageId: string;
+  title: string;
+  sequenceOrder: number;
+  cells: Record<string, SessionNotesAttendanceCell>;
+}
+
+export interface SessionNotesAttendancePayload {
+  members: SessionNotesAttendanceMember[];
+  sessions: SessionNotesAttendanceSession[];
+  currentTimelinePointId: string | null;
+}
+
 export interface InfoboxField {
   key: string;
   value: string;
