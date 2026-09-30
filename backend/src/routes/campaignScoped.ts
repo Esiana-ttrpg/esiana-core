@@ -65,6 +65,7 @@ import {
   listWikiPageAliases,
   mergeUnresolvedWikilinks,
 } from '../controllers/wikiLoreGraphController.js';
+import { searchCampaignContent } from '../controllers/globalSearchController.js';
 import {
   getEntityGraph,
   getEntityGraphProjection,
@@ -873,6 +874,11 @@ campaignScopedRouter.post(
 );
 
 campaignScopedRouter.get('/wiki/link-index', getWikiLinkIndex);
+campaignScopedRouter.get(
+  '/search',
+  rateLimitPolicy('expensive'),
+  searchCampaignContent,
+);
 campaignScopedRouter.get('/wiki/mention-targets', getMentionTargets);
 campaignScopedRouter.get('/wiki/unresolved-wikilinks', getUnresolvedWikilinks);
 campaignScopedRouter.post(

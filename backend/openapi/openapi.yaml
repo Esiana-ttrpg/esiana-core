@@ -616,6 +616,74 @@ paths:
           - Membership in the addressed campaign
           - Resource-level visibility and ownership checks performed by the controller/service
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/campaigns/{campaignHandle}/search:
+    get:
+      tags:
+        - Wiki
+      summary: Content-aware campaign search
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 256
+          description: Free-text query (queries under 2 characters return empty)
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional comma-separated type keys (e.g. character,location)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Ranked, permission-filtered search results
+          content:
+            application/json:
+              example:
+                query: Besaid
+                results:
+                  - id: character:pg_yuna
+                    entityId: pg_yuna
+                    campaignId: camp_01
+                    type:
+                      key: character
+                      label: Character
+                    title: Yuna
+                    subtitle: Summoner
+                    excerpt:
+                      text: "…raised on the island of Besaid…"
+                      field: Body
+                    href: /campaigns/demo/characters/yuna
+                    matchedOn: body
+                    score: 100050
+                    fallbackIcon: user
+                types:
+                  - key: character
+                    label: Character
+                    count: 1
+        "400":
+          description: Query too long
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Resource-level visibility and ownership checks performed by the controller/service
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service. Restricted content never appears in results, excerpts, or type counts."
   /api/admin/plugins/{pluginId}/connection:
     get:
       tags:

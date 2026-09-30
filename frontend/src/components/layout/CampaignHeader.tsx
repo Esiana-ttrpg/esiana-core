@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { Home, PanelLeft, Search } from 'lucide-react';
-import { useState } from 'react';
 import { useCampaignNav } from '@/contexts/CampaignNavContext';
 import { useWiki } from '@/contexts/WikiContext';
 import { useCampaignHeaderStatus } from '@/hooks/useCampaignHeaderStatus';
@@ -8,6 +7,7 @@ import { CampaignSearch } from '@/components/campaign/CampaignSearch';
 import { CampaignIdentityLink } from '@/components/layout/CampaignIdentityLink';
 import { CampaignHeaderIntegrations } from '@/components/layout/CampaignHeaderIntegrations';
 import { HeaderAccountNav } from '@/components/layout/HeaderAccountNav';
+import { useGlobalSearchOptional } from '@/components/search/GlobalSearchProvider';
 
 const headerControlClass =
   'inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-[rgb(var(--color-focal-rgb)/0.06)]';
@@ -66,7 +66,7 @@ export function CampaignHeader() {
   const campaignNav = useCampaignNav();
   const { campaign, campaignHandle, loading } = useWiki();
   const { subtitle } = useCampaignHeaderStatus(campaignHandle);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const search = useGlobalSearchOptional();
 
   const campaignName = loading ? null : (campaign?.name ?? 'Campaign');
 
@@ -100,10 +100,11 @@ export function CampaignHeader() {
 
         <button
           type="button"
-          onClick={() => setMobileSearchOpen((open) => !open)}
+          onClick={() => search?.openSearch()}
           className={headerControlClass}
-          aria-label={mobileSearchOpen ? 'Close campaign search' : 'Open campaign search'}
-          aria-expanded={mobileSearchOpen}
+          aria-label="Open campaign search"
+          aria-haspopup="dialog"
+          aria-expanded={search?.open ?? false}
         >
           <Search className="size-4" strokeWidth={1.5} />
         </button>
@@ -135,18 +136,6 @@ export function CampaignHeader() {
 
         <div className="justify-self-end">{accountNav}</div>
       </div>
-
-      {mobileSearchOpen ? (
-        <div className="border-t border-[rgb(var(--color-border-warm-rgb)/0.08)] px-3 py-1.5 sm:hidden">
-          <CampaignSearch
-            campaignHandle={campaignHandle}
-            alignControlsToAvatar
-            inputId="campaign-header-search-mobile"
-            autoFocus
-            onClose={() => setMobileSearchOpen(false)}
-          />
-        </div>
-      ) : null}
     </header>
   );
 }
