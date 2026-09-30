@@ -184,6 +184,17 @@ function scanTokens(raw: string): ScannedToken[] {
         }
         // Empty value (autocomplete in progress) — drop silently.
         if (!opValue) continue;
+        // `-type:character` is not a negated filter; treat as excluded free text.
+        if (excluded) {
+          tokens.push({
+            kind: 'term',
+            value: `${opName}:${opValue}`.toLowerCase(),
+            excluded: true,
+            start,
+            end: i,
+          });
+          continue;
+        }
         tokens.push({
           kind: 'operator',
           value: opName,

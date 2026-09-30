@@ -227,6 +227,7 @@ export function GlobalSearchOverlay({
     }
 
     // Operator suggestions take priority for Up/Down/Enter/Escape.
+    // Do not intercept Enter/Escape while an IME composition is active.
     if (
       suggest.open &&
       (key === 'ArrowDown' ||
@@ -234,6 +235,12 @@ export function GlobalSearchOverlay({
         key === 'Enter' ||
         key === 'Escape')
     ) {
+      if (
+        (key === 'Enter' || key === 'Escape') &&
+        event.nativeEvent.isComposing
+      ) {
+        return;
+      }
       event.preventDefault();
       const { state, effect } = reduceSuggestionKeyboard(suggest, {
         type: key as 'ArrowDown' | 'ArrowUp' | 'Enter' | 'Escape',

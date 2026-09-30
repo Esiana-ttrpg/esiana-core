@@ -692,15 +692,16 @@ test('global search: content match, ranking, custom fields, visibility, images',
     );
   }
 
-  // Exclusions remove otherwise matching authorized results
+  // Exclusions remove otherwise matching authorized results.
+  // Use -village (unique to Besaid location body); Yuna's bio also contains "island".
   {
     const res = await searchCampaign(
-      await makeCtx({ ...participantBase, query: 'Besaid -island' }),
+      await makeCtx({ ...participantBase, query: 'Besaid -village' }),
     );
     assert.equal(
       res.results.some((r) => r.entityId === besaidId),
       false,
-      'location body contains island',
+      'location body contains village',
     );
     assert.ok(res.results.some((r) => r.entityId === yunaId));
   }

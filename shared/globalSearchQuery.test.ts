@@ -183,4 +183,11 @@ describe('parseGlobalSearchQuery', () => {
     const next = setTypeFilterInQuery('Besaid -Sin type:location', 'character');
     assert.equal(next, 'Besaid -Sin type:character');
   });
+
+  it('treats excluded operators as free-text exclusions, not filters', () => {
+    const parsed = parseGlobalSearchQuery('Besaid -type:character');
+    assert.equal(parsed.filters.types, undefined);
+    assert.deepEqual(parsed.excludedTerms, ['type:character']);
+    assert.deepEqual(parsed.terms, ['besaid']);
+  });
 });
