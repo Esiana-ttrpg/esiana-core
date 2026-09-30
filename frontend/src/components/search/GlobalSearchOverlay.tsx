@@ -13,9 +13,28 @@ import {
   reduceGlobalSearchKeyboard,
   type GlobalSearchKeyboardState,
 } from '@/lib/globalSearchKeyboard';
+import {
+  applyChipRemoval,
+  applyTabSelection,
+  deriveEffectiveSearchState,
+} from '@/lib/globalSearchQueryState';
+import {
+  applyOperatorSuggestion,
+  buildOperatorSuggestions,
+  detectOperatorContext,
+  reduceSuggestionKeyboard,
+  type OperatorSuggestState,
+  type OperatorSuggestion,
+} from '@/lib/globalSearchOperatorSuggest';
+import {
+  fetchCampaignMembersForIdentity,
+  type CampaignMemberIdentity,
+} from '@/lib/campaignMemberIdentity';
 import { GlobalSearchResultRow } from './GlobalSearchResultRow';
 import { GlobalSearchTypeTabs } from './GlobalSearchTypeTabs';
 import { GlobalSearchRecent } from './GlobalSearchRecent';
+import { GlobalSearchFilterChips } from './GlobalSearchFilterChips';
+import { GlobalSearchOperatorSuggestions } from './GlobalSearchOperatorSuggestions';
 import { useGlobalSearchQuery } from './useGlobalSearchQuery';
 
 interface GlobalSearchOverlayProps {
@@ -33,7 +52,9 @@ export function GlobalSearchOverlay({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [draft, setDraft] = useState('');
-  const [activeType, setActiveType] = useState<string | null>(null);
+  const [uiType, setUiType] = useState<string | null>(null);
+  const [caret, setCaret] = useState(0);
+  const [members, setMembers] = useState<CampaignMemberIdentity[]>([]);
   const [recent, setRecent] = useState<string[]>(() =>
     campaignId ? listRecentSearches(campaignId) : [],
   );
@@ -44,36 +65,78 @@ export function GlobalSearchOverlay({
     tabCount: 1,
     focusTarget: 'input',
   });
+  const [suggest, setSuggest] = useState<OperatorSuggestState>({
+    open: false,
+    activeIndex: 0,
+    suggestions: [],
+    context: null,
+  });
 
   useBodyScrollLock(true);
 
+  const effective = useMemo(
+    () => deriveEffectiveSearchState(draft, uiType),
+    [draft, uiType],
+  );
+
   const { data, loading, error } = useGlobalSearchQuery(
     campaignHandle,
-    draft,
-    activeType,
+    effective.requestParams.q,
+    effective.requestParams.type,
   );
 
   const results = data?.results ?? [];
   const types = data?.types ?? [];
-  const queryTokens = useMemo(
-    () =>
-      draft
-        .trim()
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((t) => t.length > 0),
-    [draft],
-  );
+  const queryTokens = useMemo(() => {
+    const tokens = [
+      ...effective.parsed.terms,
+      ...effective.parsed.phrases.flatMap((p) => p.split(/\s+/)),
+    ];
+    return [...new Set(tokens.filter(Boolean))];
+  }, [effective.parsed]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    void fetchCampaignMembersForIdentity(campaignHandle)
+      .then((list) => {
+        if (!cancelled) setMembers(list);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignHandle]);
+
+  useEffect(() => {
+    const ctx = detectOperatorContext(draft, caret);
+    if (!ctx) {
+      setSuggest((prev) =>
+        prev.open
+          ? { open: false, activeIndex: 0, suggestions: [], context: null }
+          : prev,
+      );
+      return;
+    }
+    const suggestions = buildOperatorSuggestions(ctx, { members });
+    setSuggest({
+      open: suggestions.length > 0,
+      activeIndex: 0,
+      suggestions,
+      context: ctx,
+    });
+  }, [draft, caret, members]);
+
+  useEffect(() => {
     const idx =
-      activeType == null
+      effective.effectiveType == null
         ? 0
-        : types.findIndex((t) => t.key === activeType) + 1;
+        : types.findIndex((t) => t.key === effective.effectiveType) + 1;
     setKeyboard((prev) => ({
       ...reduceGlobalSearchKeyboard(prev, {
         type: 'reset',
@@ -82,7 +145,7 @@ export function GlobalSearchOverlay({
       }).state,
       activeTabIndex: Math.max(0, idx),
     }));
-  }, [results.length, types, draft, activeType]);
+  }, [results.length, types, draft, effective.effectiveType]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -100,6 +163,29 @@ export function GlobalSearchOverlay({
       return;
     }
     setRecent(listRecentSearches(campaignId));
+  }
+
+  function syncCaret() {
+    const el = inputRef.current;
+    if (el) setCaret(el.selectionStart ?? el.value.length);
+  }
+
+  function acceptSuggestion(suggestion: OperatorSuggestion) {
+    if (!suggest.context) return;
+    const { draft: next, caret: nextCaret } = applyOperatorSuggestion(
+      draft,
+      suggest.context,
+      suggestion,
+    );
+    setDraft(next);
+    setSuggest({ open: false, activeIndex: 0, suggestions: [], context: null });
+    queueMicrotask(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(nextCaret, nextCaret);
+      setCaret(nextCaret);
+    });
   }
 
   function openResult(index: number) {
@@ -137,6 +223,33 @@ export function GlobalSearchOverlay({
         event.preventDefault();
         first.focus();
       }
+      return;
+    }
+
+    // Operator suggestions take priority for Up/Down/Enter/Escape.
+    // Do not intercept Enter/Escape while an IME composition is active.
+    if (
+      suggest.open &&
+      (key === 'ArrowDown' ||
+        key === 'ArrowUp' ||
+        key === 'Enter' ||
+        key === 'Escape')
+    ) {
+      if (
+        (key === 'Enter' || key === 'Escape') &&
+        event.nativeEvent.isComposing
+      ) {
+        return;
+      }
+      event.preventDefault();
+      const { state, effect } = reduceSuggestionKeyboard(suggest, {
+        type: key as 'ArrowDown' | 'ArrowUp' | 'Enter' | 'Escape',
+      });
+      setSuggest(state);
+      if (effect.type === 'accept') {
+        acceptSuggestion(effect.suggestion);
+      }
+      // Escape closes suggestions only; a subsequent Escape closes the overlay.
       return;
     }
 
@@ -186,7 +299,9 @@ export function GlobalSearchOverlay({
     if (effect.type === 'selectTab') {
       const tabKey =
         effect.index === 0 ? null : (types[effect.index - 1]?.key ?? null);
-      setActiveType(tabKey);
+      const next = applyTabSelection(draft, tabKey);
+      setDraft(next.draft);
+      setUiType(next.uiType);
       setKeyboard((prev) => ({
         ...prev,
         activeTabIndex: effect.index,
@@ -211,7 +326,7 @@ export function GlobalSearchOverlay({
         tabIndex={-1}
         onKeyDown={handleKeyDown}
       >
-        <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
+        <div className="relative flex items-center gap-3 border-b border-border/40 px-4 py-3">
           <Search className="size-5 shrink-0 text-muted" aria-hidden />
           <input
             ref={inputRef}
@@ -219,8 +334,12 @@ export function GlobalSearchOverlay({
             value={draft}
             onChange={(event) => {
               setDraft(event.target.value);
+              setCaret(event.target.selectionStart ?? event.target.value.length);
               setKeyboard((prev) => ({ ...prev, focusTarget: 'input' }));
             }}
+            onSelect={syncCaret}
+            onKeyUp={syncCaret}
+            onClick={syncCaret}
             onFocus={() =>
               setKeyboard((prev) => ({ ...prev, focusTarget: 'input' }))
             }
@@ -243,24 +362,47 @@ export function GlobalSearchOverlay({
           >
             <X className="size-4" />
           </button>
+          {suggest.open ? (
+            <GlobalSearchOperatorSuggestions
+              suggestions={suggest.suggestions}
+              activeIndex={suggest.activeIndex}
+              onHover={(index) =>
+                setSuggest((prev) => ({ ...prev, activeIndex: index }))
+              }
+              onSelect={acceptSuggestion}
+            />
+          ) : null}
         </div>
 
         {showResults ? (
           <GlobalSearchTypeTabs
             types={types}
-            activeType={activeType}
+            activeType={effective.effectiveType}
             activeTabIndex={keyboard.activeTabIndex}
             onFocusTabs={() =>
               setKeyboard((prev) => ({ ...prev, focusTarget: 'tabs' }))
             }
             onChange={(typeKey, tabIndex) => {
-              setActiveType(typeKey);
+              const next = applyTabSelection(draft, typeKey);
+              setDraft(next.draft);
+              setUiType(next.uiType);
               setKeyboard((prev) => ({
                 ...prev,
                 activeTabIndex: tabIndex,
                 focusTarget: 'tabs',
                 activeIndex: 0,
               }));
+            }}
+          />
+        ) : null}
+
+        {showResults ? (
+          <GlobalSearchFilterChips
+            chips={effective.chips}
+            onRemove={(chip) => {
+              const next = applyChipRemoval(draft, chip, uiType);
+              setDraft(next.draft);
+              setUiType(next.uiType);
             }}
           />
         ) : null}
@@ -275,6 +417,7 @@ export function GlobalSearchOverlay({
               items={recent}
               onSelect={(query) => {
                 setDraft(query);
+                setUiType(null);
                 inputRef.current?.focus();
               }}
               onRemove={(query) => {
