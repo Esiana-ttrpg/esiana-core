@@ -1,4 +1,4 @@
-import type { CampaignLedger, CampaignLedgerEntry, DowntimeProject, FantasyCalendar, Prisma, WikiPage } from '@prisma/client';
+import type { CampaignLedger, CampaignLedgerEntry, DowntimeProject, FantasyCalendar, Prisma, WikiPage } from './prismaClient.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import { prisma } from './prisma.js';

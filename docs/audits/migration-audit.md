@@ -20,7 +20,7 @@
 |--------|---------|
 | [`list-missing-migration-tables.mjs`](../backend/prisma/scripts/list-missing-migration-tables.mjs) | Tables referenced in migrations but absent from current schema introspection baseline |
 | [`check-migration-state.ts`](../backend/prisma/scripts/check-migration-state.ts) | Applied migration inspection |
-| [`reconcile-migration-checksums.mjs`](../backend/prisma/scripts/reconcile-migration-checksums.mjs) | Fix `_prisma_migrations.checksum` after intentional SQL edits |
+| [`reconcile-migration-checksums.ts`](../backend/prisma/scripts/reconcile-migration-checksums.ts) | Fix `_prisma_migrations.checksum` after intentional SQL edits |
 
 Run before freeze:
 

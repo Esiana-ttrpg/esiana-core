@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { DOWNTIME_HAVEN_TEMPLATE_TYPE, parseDowntimeHavenFields } from './havenMetadata.js';
 import { DOWNTIME_PROJECT_TEMPLATE_TYPE, parseDowntimeProjectFields } from './projectMetadata.js';

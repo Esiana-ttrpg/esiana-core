@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from './prismaClient.js';
 
 /** Cast structured app types to Prisma JSON columns without per-call assertions. */
 export function toInputJsonValue(value: unknown): Prisma.InputJsonValue {

@@ -1,4 +1,4 @@
-import type { FantasyCalendar } from '@prisma/client';
+import type { FantasyCalendar } from './prismaClient.js';
 import type { CalendarMonthRecurrence } from '../../../shared/scheduledEffectMetadata.js';
 import {
   advanceCalendarByMonths,

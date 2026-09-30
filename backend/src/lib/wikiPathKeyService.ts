@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import type { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import {
   generatePathKeyFromTitle,

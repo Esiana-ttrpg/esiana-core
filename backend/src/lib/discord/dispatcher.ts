@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../prismaClient.js';
 import { canReceiveCampaignEvent } from '../campaignEventVisibility.js';
 import { subscribeToDomainEvent, type DomainEvent } from '../domainEvents/index.js';
 import { prisma } from '../prisma.js';

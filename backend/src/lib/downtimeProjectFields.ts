@@ -1,4 +1,4 @@
-import type { DowntimeProject, Prisma } from '@prisma/client';
+import type { DowntimeProject, Prisma } from './prismaClient.js';
 import {
   computeProgressPercent,
   parseDowntimeProjectFields,

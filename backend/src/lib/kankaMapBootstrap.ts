@@ -1,5 +1,5 @@
 import type JSZip from 'jszip';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { displayToNormalizedPoint, pointGeometry } from '../../../shared/mapPresence.js';
 import type { KankaMapPlan } from '../../../shared/virtualNarrativeEntry.js';
 import { normalizeKankaImagePath, resolveKankaZipImageEntry, zipEntryKey } from './kankaAssetResolver.js';

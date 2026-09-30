@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import type { ChronologyDateParts } from '../../../shared/chronologyTypes.js';
 import {
   EDGE_TAXONOMY_VERSION,

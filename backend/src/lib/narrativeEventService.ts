@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import type { TemporalAuthority, WriteProvenance } from './temporalProvenance.js';
 
@@ -46,7 +46,7 @@ export async function appendNarrativeEvent(
       actorUserId: input.actorUserId ?? null,
       pageId: input.pageId ?? null,
       targetPageId: input.targetPageId ?? null,
-      metadata: (metadata ?? undefined) as import('@prisma/client').Prisma.InputJsonValue | undefined,
+      metadata: (metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       ...(input.createdAt ? { createdAt: input.createdAt } : {}),
     },
   });

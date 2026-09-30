@@ -1,4 +1,4 @@
-import type { IdentityProvider } from '@prisma/client';
+import type { IdentityProvider } from '../prismaClient.js';
 import { getOidcEnvConfig } from '../../config/oidcEnv.js';
 import { extractGroupsFromClaims } from './oidcGroupSync.js';
 

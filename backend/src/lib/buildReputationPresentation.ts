@@ -1,4 +1,4 @@
-import type { FantasyCalendar } from '@prisma/client';
+import type { FantasyCalendar } from './prismaClient.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { buildCalendarStates } from './timeTracking.js';
 import { buildWikiPageHref } from './wikiLinkService.js';

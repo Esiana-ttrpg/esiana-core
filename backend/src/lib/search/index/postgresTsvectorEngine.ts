@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../prismaClient.js';
 import { prisma } from '../../prisma.js';
 import {
   decodeCursor,

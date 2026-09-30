@@ -1,4 +1,4 @@
-import type { CampaignLedgerSuggestion, DowntimeProject, Prisma, WikiPage } from '@prisma/client';
+import type { CampaignLedgerSuggestion, DowntimeProject, Prisma, WikiPage } from './prismaClient.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { prisma } from './prisma.js';
 import { toNullableInputJsonValue } from './inputJsonValue.js';

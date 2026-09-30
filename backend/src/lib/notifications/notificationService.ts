@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../prismaClient.js';
 import { prisma } from '../prisma.js';
 import { getOrCreateSystemSettings, DEFAULT_GLOBAL_TITLE } from '../systemSettings.js';
 import {

@@ -1,4 +1,4 @@
-import type { CampaignPluginSetting, SystemPlugin } from '@prisma/client';
+import type { CampaignPluginSetting, SystemPlugin } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import {
   buildDefaultConfigFromTemplate,
