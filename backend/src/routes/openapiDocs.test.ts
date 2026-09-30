@@ -179,7 +179,7 @@ test('every statically mounted core API operation is in OpenAPI', () => {
   assert.deepEqual(comparison.stale, []);
 });
 
-test('the route inventory includes every static API router mounted by app.ts', () => {
+test('the route inventory includes every static API router mounted by the app', () => {
   const backendRoot = path.resolve(__dirname, '../..');
   const inventoried = new Set(Object.values(CORE_ROUTER_MOUNTS).map(([mountPath]) => mountPath));
   const mounted = inventoryStaticAppMounts(backendRoot)
