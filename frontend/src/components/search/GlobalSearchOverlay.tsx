@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, Terminal, X } from 'lucide-react';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
+import { useWiki } from '@/contexts/WikiContext';
+import { useActivePageOptional } from '@/contexts/ActivePageContext';
+import {
+  filterCommands,
+  parseOverlayMode,
+  resolveCommandContext,
+  resolveCommands,
+} from '@/lib/commands';
+import type { Command, CommandAction, CreatePageCategoryTitle } from '@/lib/commands/types';
 import {
   clearRecentSearches,
   listRecentSearches,
@@ -35,25 +44,33 @@ import { GlobalSearchTypeTabs } from './GlobalSearchTypeTabs';
 import { GlobalSearchRecent } from './GlobalSearchRecent';
 import { GlobalSearchFilterChips } from './GlobalSearchFilterChips';
 import { GlobalSearchOperatorSuggestions } from './GlobalSearchOperatorSuggestions';
+import { CommandPaletteResults } from './CommandPaletteResults';
 import { useGlobalSearchQuery } from './useGlobalSearchQuery';
 
 interface GlobalSearchOverlayProps {
   campaignHandle: string;
   campaignId: string | null;
+  initialDraft?: string;
   onClose: () => void;
+  onExecuteCommand: (action: CommandAction) => void;
 }
 
 export function GlobalSearchOverlay({
   campaignHandle,
   campaignId,
+  initialDraft = '',
   onClose,
+  onExecuteCommand,
 }: GlobalSearchOverlayProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { can, resolvePageId } = useWiki();
+  const activePage = useActivePageOptional();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(initialDraft);
   const [uiType, setUiType] = useState<string | null>(null);
-  const [caret, setCaret] = useState(0);
+  const [caret, setCaret] = useState(initialDraft.length);
   const [members, setMembers] = useState<CampaignMemberIdentity[]>([]);
   const [recent, setRecent] = useState<string[]>(() =>
     campaignId ? listRecentSearches(campaignId) : [],
@@ -74,15 +91,48 @@ export function GlobalSearchOverlay({
 
   useBodyScrollLock(true);
 
+  const overlayMode = useMemo(() => parseOverlayMode(draft), [draft]);
+  const isCommandMode = overlayMode.mode === 'command';
+
+  const commandContext = useMemo(
+    () =>
+      resolveCommandContext({
+        campaignHandle,
+        campaignId,
+        pathname: location.pathname,
+        can,
+        resolveCategoryPageId: (categoryTitle: CreatePageCategoryTitle) =>
+          resolvePageId(categoryTitle),
+        activePage: activePage?.snapshot ?? null,
+      }),
+    [
+      campaignHandle,
+      campaignId,
+      location.pathname,
+      can,
+      resolvePageId,
+      activePage?.snapshot,
+    ],
+  );
+
+  const filteredCommands = useMemo(() => {
+    if (!isCommandMode) return [] as Command[];
+    const query = overlayMode.mode === 'command' ? overlayMode.query : '';
+    return filterCommands(resolveCommands(commandContext), query);
+  }, [isCommandMode, overlayMode, commandContext]);
+
   const effective = useMemo(
     () => deriveEffectiveSearchState(draft, uiType),
     [draft, uiType],
   );
 
+  const searchQuery = isCommandMode ? '' : effective.requestParams.q;
+  const searchType = isCommandMode ? null : effective.requestParams.type;
+
   const { data, loading, error } = useGlobalSearchQuery(
     campaignHandle,
-    effective.requestParams.q,
-    effective.requestParams.type,
+    searchQuery,
+    searchType,
   );
 
   const results = data?.results ?? [];
@@ -97,9 +147,17 @@ export function GlobalSearchOverlay({
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+    if (initialDraft) {
+      const el = inputRef.current;
+      if (el) {
+        const len = initialDraft.length;
+        el.setSelectionRange(len, len);
+      }
+    }
+  }, [initialDraft]);
 
   useEffect(() => {
+    if (isCommandMode) return;
     let cancelled = false;
     void fetchCampaignMembersForIdentity(campaignHandle)
       .then((list) => {
@@ -111,9 +169,13 @@ export function GlobalSearchOverlay({
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle]);
+  }, [campaignHandle, isCommandMode]);
 
   useEffect(() => {
+    if (isCommandMode) {
+      setSuggest({ open: false, activeIndex: 0, suggestions: [], context: null });
+      return;
+    }
     const ctx = detectOperatorContext(draft, caret);
     if (!ctx) {
       setSuggest((prev) =>
@@ -130,9 +192,20 @@ export function GlobalSearchOverlay({
       suggestions,
       context: ctx,
     });
-  }, [draft, caret, members]);
+  }, [draft, caret, members, isCommandMode]);
 
   useEffect(() => {
+    if (isCommandMode) {
+      setKeyboard((prev) => ({
+        ...reduceGlobalSearchKeyboard(prev, {
+          type: 'reset',
+          resultCount: filteredCommands.length,
+          tabCount: 1,
+        }).state,
+        activeTabIndex: 0,
+      }));
+      return;
+    }
     const idx =
       effective.effectiveType == null
         ? 0
@@ -145,7 +218,14 @@ export function GlobalSearchOverlay({
       }).state,
       activeTabIndex: Math.max(0, idx),
     }));
-  }, [results.length, types, draft, effective.effectiveType]);
+  }, [
+    isCommandMode,
+    filteredCommands.length,
+    results.length,
+    types,
+    draft,
+    effective.effectiveType,
+  ]);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -198,6 +278,12 @@ export function GlobalSearchOverlay({
     onClose();
   }
 
+  function executeCommandAt(index: number) {
+    const command = filteredCommands[index];
+    if (!command) return;
+    onExecuteCommand(command.action);
+  }
+
   function handleKeyDown(event: React.KeyboardEvent) {
     const key = event.key;
 
@@ -226,9 +312,8 @@ export function GlobalSearchOverlay({
       return;
     }
 
-    // Operator suggestions take priority for Up/Down/Enter/Escape.
-    // Do not intercept Enter/Escape while an IME composition is active.
     if (
+      !isCommandMode &&
       suggest.open &&
       (key === 'ArrowDown' ||
         key === 'ArrowUp' ||
@@ -249,7 +334,6 @@ export function GlobalSearchOverlay({
       if (effect.type === 'accept') {
         acceptSuggestion(effect.suggestion);
       }
-      // Escape closes suggestions only; a subsequent Escape closes the overlay.
       return;
     }
 
@@ -266,10 +350,9 @@ export function GlobalSearchOverlay({
       return;
     }
 
-    // Left/Right only when tabs are focused — don't steal caret movement in the input.
     if (
       (key === 'ArrowLeft' || key === 'ArrowRight') &&
-      keyboard.focusTarget !== 'tabs'
+      (isCommandMode || keyboard.focusTarget !== 'tabs')
     ) {
       return;
     }
@@ -293,10 +376,14 @@ export function GlobalSearchOverlay({
       return;
     }
     if (effect.type === 'open') {
-      openResult(effect.index);
+      if (isCommandMode) {
+        executeCommandAt(effect.index);
+      } else {
+        openResult(effect.index);
+      }
       return;
     }
-    if (effect.type === 'selectTab') {
+    if (effect.type === 'selectTab' && !isCommandMode) {
       const tabKey =
         effect.index === 0 ? null : (types[effect.index - 1]?.key ?? null);
       const next = applyTabSelection(draft, tabKey);
@@ -310,7 +397,8 @@ export function GlobalSearchOverlay({
     }
   }
 
-  const showResults = draft.trim().length >= 2;
+  const showResults = !isCommandMode && draft.trim().length >= 2;
+  const ModeIcon = isCommandMode ? Terminal : Search;
 
   return createPortal(
     <div
@@ -321,13 +409,13 @@ export function GlobalSearchOverlay({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Search this campaign"
+        aria-label={isCommandMode ? 'Command palette' : 'Search this campaign'}
         className="flex h-[min(85vh,52rem)] w-[min(96vw,64rem)] max-w-4xl flex-col overflow-hidden rounded-xl border border-border/40 bg-overlay-elevated shadow-2xl"
         tabIndex={-1}
         onKeyDown={handleKeyDown}
       >
         <div className="relative flex items-center gap-3 border-b border-border/40 px-4 py-3">
-          <Search className="size-5 shrink-0 text-muted" aria-hidden />
+          <ModeIcon className="size-5 shrink-0 text-muted" aria-hidden />
           <input
             ref={inputRef}
             type="search"
@@ -343,14 +431,23 @@ export function GlobalSearchOverlay({
             onFocus={() =>
               setKeyboard((prev) => ({ ...prev, focusTarget: 'input' }))
             }
-            placeholder="Search this campaign…"
+            placeholder={
+              isCommandMode ? 'Type a command…' : 'Search this campaign…'
+            }
             className="min-w-0 flex-1 bg-transparent text-lg text-foreground placeholder:text-muted focus:outline-none"
             autoComplete="off"
             aria-autocomplete="list"
-            aria-controls="global-search-results"
+            aria-controls={
+              isCommandMode ? 'command-palette-results' : 'global-search-results'
+            }
             role="combobox"
-            aria-expanded={showResults}
+            aria-expanded={isCommandMode || showResults}
           />
+          {isCommandMode ? (
+            <span className="hidden shrink-0 rounded border border-border/50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted sm:inline">
+              Commands
+            </span>
+          ) : null}
           <kbd className="hidden shrink-0 rounded border border-border/50 px-1.5 py-0.5 text-[10px] text-muted sm:inline">
             ESC
           </kbd>
@@ -358,11 +455,11 @@ export function GlobalSearchOverlay({
             type="button"
             onClick={onClose}
             className="rounded p-1 text-muted hover:bg-elevated hover:text-foreground sm:hidden"
-            aria-label="Close search"
+            aria-label={isCommandMode ? 'Close commands' : 'Close search'}
           >
             <X className="size-4" />
           </button>
-          {suggest.open ? (
+          {!isCommandMode && suggest.open ? (
             <GlobalSearchOperatorSuggestions
               suggestions={suggest.suggestions}
               activeIndex={suggest.activeIndex}
@@ -408,11 +505,27 @@ export function GlobalSearchOverlay({
         ) : null}
 
         <div
-          id="global-search-results"
+          id={isCommandMode ? 'command-palette-results' : 'global-search-results'}
           role="listbox"
           className="min-h-0 flex-1 overflow-y-auto"
         >
-          {!showResults ? (
+          {isCommandMode ? (
+            <CommandPaletteResults
+              commands={filteredCommands}
+              activeIndex={keyboard.activeIndex}
+              showGroupHeaders={
+                overlayMode.mode === 'command' && overlayMode.query.length === 0
+              }
+              onHover={(index) =>
+                setKeyboard((prev) => ({
+                  ...prev,
+                  activeIndex: index,
+                  focusTarget: 'results',
+                }))
+              }
+              onSelect={executeCommandAt}
+            />
+          ) : !showResults ? (
             <GlobalSearchRecent
               items={recent}
               onSelect={(query) => {
@@ -429,6 +542,11 @@ export function GlobalSearchOverlay({
                 if (!campaignId) return;
                 clearRecentSearches(campaignId);
                 refreshRecent();
+              }}
+              onEnterCommands={() => {
+                setDraft('>');
+                setUiType(null);
+                inputRef.current?.focus();
               }}
             />
           ) : loading && results.length === 0 ? (

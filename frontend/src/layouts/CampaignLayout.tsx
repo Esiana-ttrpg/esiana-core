@@ -31,6 +31,7 @@ import { AdventureWorkspaceProvider } from '@/contexts/AdventureWorkspaceContext
 import { WorkspaceContextStrip } from '@/components/layout/WorkspaceContextStrip';
 import { WorkspaceRail } from '@/components/layout/WorkspaceRail';
 import { useWorkspaceChrome } from '@/hooks/useWorkspaceChrome';
+import { ActivePageProvider } from '@/contexts/ActivePageContext';
 import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
 
 function CampaignThemeBridge() {
@@ -208,6 +209,7 @@ function CampaignLayoutShell() {
   const railVisible = workspaceChrome.rail != null;
 
   return (
+    <ActivePageProvider>
     <GlobalSearchProvider
       campaignHandle={campaignHandle}
       campaignId={campaign?.id ?? null}
@@ -260,6 +262,7 @@ function CampaignLayoutShell() {
       <Footer />
     </div>
     </GlobalSearchProvider>
+    </ActivePageProvider>
   );
 }
 

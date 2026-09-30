@@ -10,6 +10,7 @@ import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from '
 import { fetchCampaign } from '@/lib/campaigns';
 import { CampaignMemberRoles } from '@/types/domain';
 import { useWiki } from '@/contexts/WikiContext';
+import { useActivePage } from '@/contexts/ActivePageContext';
 import {
   buildWikiNavBreadcrumbs,
   buildWikiPageLookup,
@@ -259,6 +260,7 @@ export function WikiPage() {
     players,
     can: wikiCan,
   } = useWiki();
+  const { publish: publishActivePage, clear: clearActivePage } = useActivePage();
   const campaignHandle = readCampaignHandle(params) || wikiCampaignSlug;
   const pageId = useMemo(
     () =>
@@ -648,6 +650,46 @@ export function WikiPage() {
     () => getPageDisplayTitle(resolvedTitle, pageData?.metadata),
     [resolvedTitle, pageData?.metadata],
   );
+
+  const enterEditMode = useCallback(() => {
+    setIsEditingPage(true);
+  }, []);
+
+  useEffect(() => {
+    if (!pageId || !pageData) {
+      clearActivePage();
+      return;
+    }
+    const page = flatPages.find((entry) => entry.id === pageId);
+    const href = page
+      ? resolveCanonicalPagePath(campaignHandle, page, flatPages)
+      : location.pathname;
+    publishActivePage(
+      {
+        pageId,
+        title: displayTitle,
+        href,
+        canEdit: pageCanEdit,
+        isEditing: isEditingPage,
+      },
+      enterEditMode,
+    );
+    return () => {
+      clearActivePage();
+    };
+  }, [
+    pageId,
+    pageData,
+    displayTitle,
+    pageCanEdit,
+    isEditingPage,
+    campaignHandle,
+    flatPages,
+    location.pathname,
+    publishActivePage,
+    clearActivePage,
+    enterEditMode,
+  ]);
 
   const printableArticleRef = useRef<HTMLElement | null>(null);
 
