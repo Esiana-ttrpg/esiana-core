@@ -428,6 +428,8 @@ export async function executeOrphanDelete(
       where: { id: pageId },
       data: { deletedAt: new Date() },
     });
+    const { deleteDocumentsForPages } = await import('./search/index/searchIndexService.js');
+    await deleteDocumentsForPages(tx, [pageId]);
   });
 
   if (actorId) {
@@ -507,6 +509,8 @@ export async function executeRecursiveDelete(
       await clearEntityRelationsForWikiPage(tx, campaignId, id);
       await clearQuestLifecycle(campaignId, id, tx);
     }
+    const { deleteDocumentsForPages } = await import('./search/index/searchIndexService.js');
+    await deleteDocumentsForPages(tx, allIds);
     await tx.wikiPage.deleteMany({
       where: { campaignId, id: { in: allIds } },
     });

@@ -588,6 +588,7 @@ model Campaign {
   journalSeries              JournalSeries[]
   journalPublications        JournalPublication[]
   journalReleaseReceipts     JournalReleaseReceipt[]
+  searchIndexDocuments       SearchIndexDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2502,4 +2503,52 @@ model DiscordDelivery {
   @@index([campaignId, createdAt])
   @@index([destinationId, createdAt])
   @@index([status, nextAttemptAt])
+}
+
+/// Derived search projection for Global Search candidate retrieval.
+/// Wiki content remains canonical; this table is never a source of truth.
+/// partyVector / elevatedVector are PostgreSQL-only (Unsupported); SQLite
+/// stores them as TEXT via the deploy normalizer and ignores them at query time.
+/// partyVector indexes party-visible text only; elevatedVector indexes the full
+/// document (party + elevated) so elevated queries can @@ against one column.
+model SearchIndexDocument {
+  id              String   @id @default(cuid())
+  campaignId      String
+  /// 'wiki-page' now; 'plugin:<pluginId>:<collection>' later
+  sourceKind      String
+  /// WikiPage.id (or plugin document id)
+  sourceId        String
+  /// SearchProvider id, e.g. 'wiki-pages'
+  providerId      String
+  /// GlobalSearch type key (character, location, …)
+  typeKey         String
+  /// WikiPage.visibility snapshot (early prefilter, not authz)
+  visibility      String
+  /// Display title (unnormalized)
+  title           String
+  /// Normalized title for matching
+  titleNorm       String
+  aliasText       String   @default("")
+  /// Party-visible metadata fields (normalized)
+  metadataText    String   @default("")
+  /// Party-visible character fields (normalized)
+  customFieldText String   @default("")
+  /// Non-DM-only blocks, stripped + normalized
+  bodyText        String   @default("")
+  /// DM-only blocks + gmNotes/privateAgenda + gated custom fields
+  elevatedText    String   @default("")
+  sourceUpdatedAt DateTime
+  indexedAt       DateTime @default(now())
+  /// Party-tier tsvector (title/alias/metadata/custom/body)
+  partyVector     Unsupported("tsvector")?
+  /// Full-document tsvector (party tiers + elevatedText) for elevated viewers
+  elevatedVector  Unsupported("tsvector")?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceKind, sourceId])
+  @@index([campaignId, typeKey])
+  @@index([campaignId, visibility])
+  @@index([partyVector], type: Gin)
+  @@index([elevatedVector], type: Gin)
 }

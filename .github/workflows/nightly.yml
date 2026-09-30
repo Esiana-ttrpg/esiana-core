@@ -122,14 +122,16 @@ jobs:
         working-directory: backend
         run: |
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
-          DATABASE_URL=file:./ci-test.db node prisma/scripts/deploy-sqlite-migrations.mjs --reset
-          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
+          echo 'DATABASE_PROVIDER=sqlite' >> .env
+          DATABASE_URL=file:./ci-test.db DATABASE_PROVIDER=sqlite node prisma/scripts/deploy-sqlite-migrations.mjs --reset
+          node -e "import{normalizeSchemaPrismaForSqlite}from'./prisma/scripts/sqliteSchema.mjs';import fs from'node:fs';const p='prisma/schema.prisma';fs.writeFileSync(p,normalizeSchemaPrismaForSqlite(fs.readFileSync(p,'utf8')))"
           pnpm exec prisma generate
 
       - name: Run backend tests
         working-directory: backend
         env:
           DATABASE_URL: file:./ci-test.db
+          DATABASE_PROVIDER: sqlite
         run: pnpm test
 
   test-postgres:

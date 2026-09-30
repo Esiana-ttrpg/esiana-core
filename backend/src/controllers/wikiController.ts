@@ -1586,6 +1586,8 @@ export async function updateWikiPage(
         ...(nextPathKey !== undefined ? { pathKey: nextPathKey } : {}),
       },
     });
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, ctx.campaignId, page.id);
   }
 
   if (
@@ -2191,6 +2193,11 @@ export async function updateWikiPageVisibility(
     select: { visibility: true },
   });
 
+  {
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, ctx.campaignId, page.id);
+  }
+
   if (req.user?.id) {
     logWikiPageActivity({
       campaignId: ctx.campaignId,
@@ -2315,6 +2322,10 @@ export async function updateWikiPageMetadata(
       select: { metadata: true },
     });
     await clearQuestLifecycle(ctx.campaignId, page.id);
+    {
+      const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+      await upsertWikiPageDocument(prisma, ctx.campaignId, page.id);
+    }
     const parsed = parseQuestMetadata(updatedPage.metadata);
     res.json({
       metadata: mergeQuestMetadata(
@@ -3086,6 +3097,11 @@ export async function updateWikiPageMetadata(
     data: { metadata: updatedMetadata as any },
     select: { metadata: true, parentId: true },
   });
+
+  {
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, ctx.campaignId, page.id);
+  }
 
   const campaignEpoch = (
     await prisma.campaign.findUnique({
@@ -4567,6 +4583,9 @@ export async function updateSessionNotePage(
       actorUserId: (req as AuthenticatedRequest).user?.id,
       emitEvents: true,
     });
+  } else if (title !== undefined) {
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, ctx.campaignId, page.id);
   }
 
   if (

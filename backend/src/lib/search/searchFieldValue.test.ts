@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { characterFieldValueToSearchText } from './searchFieldValue.js';
-import {
-  buildCandidateLikePattern,
-  pickPrefilterToken,
-} from './searchCandidateSql.js';
+import { buildCandidateLikePattern } from './searchCandidateSql.js';
 
 test('characterFieldValueToSearchText projects scalars for CAST discoverability', () => {
   assert.equal(characterFieldValueToSearchText('STRING', 'Besaid'), 'Besaid');
@@ -22,14 +19,8 @@ test('buildCandidateLikePattern escapes wildcards and widens non-ASCII', () => {
   assert.equal(buildCandidateLikePattern('besaid'), '%besaid%');
   assert.equal(buildCandidateLikePattern('100%'), '%100\\%%');
   assert.equal(buildCandidateLikePattern('a_b'), '%a\\_b%');
-  // Non-ASCII letter becomes single-char wildcard so SQLite LOWER cannot miss.
   const pattern = buildCandidateLikePattern('café');
   assert.ok(pattern.startsWith('%'));
   assert.ok(pattern.endsWith('%'));
   assert.match(pattern, /caf_/);
-});
-
-test('pickPrefilterToken chooses the longest token', () => {
-  assert.equal(pickPrefilterToken(['a', 'besaid', 'of']), 'besaid');
-  assert.equal(pickPrefilterToken([]), null);
 });

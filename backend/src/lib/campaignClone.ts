@@ -551,6 +551,8 @@ export async function duplicateCampaign(
   });
 
   await rebuildWikiLinksForCampaign(created.id);
+  const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');
+  await rebuildSearchIndexForCampaign(created.id);
   const { rebuildEntityRelationsForCampaign } = await import('./entityRelationSyncService.js');
   await rebuildEntityRelationsForCampaign(created.id);
   const { rebuildNarrativeLifecycleForCampaign } = await import('./narrativeLifecycleService.js');

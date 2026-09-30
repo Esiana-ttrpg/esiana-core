@@ -470,6 +470,13 @@ test('global search: content match, ranking, custom fields, visibility, images',
     },
   });
 
+  // Materialize the derived search index (Pass 5). Direct prisma creates
+  // bypass write-path upserts; rebuild matches import/clone behavior.
+  const { rebuildSearchIndexForCampaign, clearSearchIndexEnsureMemoForTests } =
+    await import('./index/searchIndexService.js');
+  clearSearchIndexEnsureMemoForTests();
+  await rebuildSearchIndexForCampaign(campaignId);
+
   const participantBase = {
     campaignId,
     campaignHandle: handle,

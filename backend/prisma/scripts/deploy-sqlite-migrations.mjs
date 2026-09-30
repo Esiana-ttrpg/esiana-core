@@ -2,12 +2,17 @@
 /**
  * Apply Prisma migrations to SQLite with Postgres-normalized SQL patched for runtime.
  * Baseline migration uses TIMESTAMP(3) + JSONB for Postgres deploy; Prisma SQLite
- * client requires DATETIME + TEXT column declarations.
+ * client requires DATETIME + TEXT column declarations. SearchIndexDocument uses
+ * tsvector + GIN on Postgres; those become TEXT / no-op on SQLite.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  normalizeMigrationSqlForSqlite,
+  normalizeSchemaPrismaForSqlite,
+} from './sqliteSchema.mjs';
 
 const backendRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const prismaRoot = path.join(backendRoot, 'prisma');
@@ -15,9 +20,7 @@ const migrationsRoot = path.join(prismaRoot, 'migrations');
 const schemaPath = path.join(prismaRoot, 'schema.prisma');
 const lockPath = path.join(migrationsRoot, 'migration_lock.toml');
 
-export function normalizeMigrationSqlForSqlite(sql) {
-  return sql.replaceAll('TIMESTAMP(3)', 'DATETIME').replaceAll('JSONB', 'TEXT');
-}
+export { normalizeMigrationSqlForSqlite, normalizeSchemaPrismaForSqlite };
 
 function writeNormalizedMigrations(outDir) {
   fs.mkdirSync(outDir, { recursive: true });
@@ -66,7 +69,6 @@ const stagingRoot = path.join(backendRoot, '.sqlite-migrations-staging');
 const migrationsBackup = path.join(backendRoot, '.sqlite-migrations-backup');
 
 const schema = fs.readFileSync(schemaPath, 'utf8');
-const lock = fs.readFileSync(lockPath, 'utf8');
 
 try {
   if (reset && fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
@@ -74,7 +76,7 @@ try {
 
   writeNormalizedMigrations(stagingRoot);
 
-  fs.writeFileSync(schemaPath, schema.replace('provider = "postgresql"', 'provider = "sqlite"'));
+  fs.writeFileSync(schemaPath, normalizeSchemaPrismaForSqlite(schema));
   swapDir(stagingRoot, migrationsRoot, migrationsBackup);
 
   execSync('npx prisma migrate deploy', {

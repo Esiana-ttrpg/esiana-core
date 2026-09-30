@@ -276,6 +276,9 @@ export async function syncWikiPageSubstrate(
 
   const { syncEntityRelationsForWikiPage } = await import('./entityRelationSyncService.js');
   await syncEntityRelationsForWikiPage(tx, input.campaignId, input.sourcePageId);
+
+  const { upsertWikiPageDocument } = await import('./search/index/searchIndexService.js');
+  await upsertWikiPageDocument(tx, input.campaignId, input.sourcePageId);
 }
 
 async function recalcInboundStatsForTargets(
