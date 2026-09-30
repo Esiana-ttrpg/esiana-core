@@ -69,6 +69,9 @@ export async function searchCampaignContent(
   }
   filters.hasDateFilter = filters.after != null || filters.before != null;
 
+  const explainRaw = String(req.query.explain ?? '').toLowerCase();
+  const explain = explainRaw === '1' || explainRaw === 'true';
+
   const result = await searchCampaign({
     campaignId: ctx.campaignId,
     campaignHandle: ctx.campaignHandle ?? '',
@@ -79,6 +82,7 @@ export async function searchCampaignContent(
     limit,
     types,
     filters,
+    explain,
   });
 
   res.json(result);

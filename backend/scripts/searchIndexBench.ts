@@ -283,6 +283,72 @@ async function main(): Promise<void> {
     );
   }
 
+  // Fuzzy name phase: introduce a one-edit typo of the title needle.
+  {
+    const typo =
+      titleToken.length >= 4
+        ? `${titleToken.slice(0, 2)}${titleToken[3]}${titleToken[2]}${titleToken.slice(4)}`
+        : `${titleToken}x`;
+    const samples: number[] = [];
+    let lastIds: string[] = [];
+    let lastDiagnostics: Record<string, unknown> | undefined;
+    for (let i = 0; i < 7; i += 1) {
+      samples.push(
+        await timeMs(async () => {
+          const res = await searchCampaign({
+            campaignId,
+            campaignHandle: handle,
+            role: CampaignMemberRoles.GAMEMASTER,
+            actor,
+            isElevated: true,
+            query: buildSearchQueryParts(typo),
+            limit: 20,
+            types: null,
+            filters: emptyStructuredFilters(),
+            explain: true,
+          });
+          lastIds = res.results.map((r) => r.entityId);
+          lastDiagnostics = res.diagnostics;
+        }),
+      );
+    }
+    samples.sort((a, b) => a - b);
+    const warmed = samples.slice(2);
+    warmed.sort((a, b) => a - b);
+
+    // Brute-force fuzzy recall against titleNorm/aliasText via collectFuzzyCandidates.
+    const { collectFuzzyCandidates } = await import(
+      '../src/lib/search/fuzzyNameMatch.js'
+    );
+    const { normalizeSearchTokens: normTok } = await import(
+      '../src/lib/search/index/normalizeSearchText.js'
+    );
+    const nameDocs = await prisma.searchIndexDocument.findMany({
+      where: { campaignId },
+      select: { sourceId: true, titleNorm: true, aliasText: true },
+    });
+    const bruteFuzzy = collectFuzzyCandidates(normTok([typo]), nameDocs, {
+      forwardCap: 10_000,
+    });
+    const foundNeedle = lastIds.includes(needleTitleId);
+    const bruteHasNeedle = bruteFuzzy.some((h) => h.sourceId === needleTitleId);
+
+    console.log(
+      JSON.stringify({
+        case: 'fuzzy-typo',
+        query: typo,
+        p50Ms: Number(percentile(warmed, 50).toFixed(2)),
+        p95Ms: Number(percentile(warmed, 95).toFixed(2)),
+        resultIncludesNeedle: foundNeedle,
+        bruteForceFuzzyHasNeedle: bruteHasNeedle,
+        bruteForceFuzzyCount: bruteFuzzy.length,
+        nameRows: nameDocs.length,
+        fuzzyStatus: lastDiagnostics?.fuzzy ?? null,
+        fuzzyMs: lastDiagnostics?.fuzzyMs ?? null,
+      }),
+    );
+  }
+
   await prisma.campaign.delete({ where: { id: campaignId } });
   await prisma.user.delete({ where: { id: gmId } });
   console.log('Done.');

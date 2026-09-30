@@ -648,13 +648,23 @@ paths:
             minimum: 1
             maximum: 50
             default: 20
+        - name: explain
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["1", "true"]
+          description: |
+            When set, attach diagnostic `rank` on each result and top-level
+            `diagnostics`. Shape is unstable and not a public contract
+            (x-diagnostic).
       responses:
         "200":
           description: Ranked, permission-filtered search results
           content:
             application/json:
               example:
-                query: Besaid
+                query: Yuna
                 results:
                   - id: character:pg_yuna
                     entityId: pg_yuna
@@ -664,17 +674,43 @@ paths:
                       label: Character
                     title: Yuna
                     subtitle: Summoner
-                    excerpt:
-                      text: "…raised on the island of Besaid…"
-                      field: Body
                     href: /campaigns/demo/characters/yuna
-                    matchedOn: body
-                    score: 100050
+                    matchedOn: title
+                    score: 1040000
                     fallbackIcon: user
+                  - id: session-note:sn_01
+                    entityId: sn_01
+                    campaignId: camp_01
+                    type:
+                      key: session-note
+                      label: Session Note
+                    title: Session 12
+                    excerpt:
+                      text: "…Yuna arrived in Besaid…"
+                      field: Body
+                    href: /campaigns/demo/sessions/session-12
+                    matchedOn: body
+                    score: 100200
+                    fallbackIcon: notebook-pen
                 types:
+                  - key: session-note
+                    label: Session Note
+                    count: 40
                   - key: character
                     label: Character
                     count: 1
+                sections:
+                  - kind: best
+                    key: best
+                    label: Best match
+                    resultIds: [character:pg_yuna]
+                    totalCount: 1
+                  - kind: mentions
+                    key: mentions:session-note
+                    label: Mentioned in 40 session notes
+                    typeKey: session-note
+                    resultIds: [session-note:sn_01]
+                    totalCount: 40
         "400":
           description: Query too long
       x-esiana-authorization:
@@ -686,7 +722,10 @@ paths:
       description: |
         Candidate retrieval uses a derived SearchIndexDocument projection with
         PostgreSQL tsvector/GIN inverted indexes (portable multi-token LIKE over
-        the same table on SQLite). Response shape and ranking are unchanged.
+        the same table on SQLite). Pass 6 adds within-tier ranking signals,
+        portable fuzzy name matching, and server-shaped result sections on the
+        unfiltered (All) view. Optional `explain=1` returns diagnostic fields
+        whose shape is not a stable public contract.
 
         Authorization: Authenticated application user or API token; Membership in
         the addressed campaign; Resource-level visibility and ownership checks

@@ -33,22 +33,22 @@ export const pluginSearchProvider: SearchProvider = {
   // Unknown / dynamic type keys — always run unless types filter is set and
   // contains no plugin: keys (handled per-collection below).
 
-  async search(ctx: SearchContext): Promise<GlobalSearchResult[]> {
+  async search(ctx: SearchContext) {
     // Plugins have no attribution contract — skip when from: is active.
     if (ctx.filters.authorUserIds != null || ctx.filters.authorsUnresolved) {
-      return [];
+      return { results: [] };
     }
     // Date filters only have session-note semantics in Pass 2.
     if (ctx.filters.hasDateFilter) {
-      return [];
+      return { results: [] };
     }
 
     const collections = listViewerAwareSearchCollections();
-    if (collections.length === 0) return [];
+    if (collections.length === 0) return { results: [] };
 
     const viewerUserId =
       ctx.actor.kind === 'member' ? ctx.actor.userId : null;
-    if (!viewerUserId) return [];
+    if (!viewerUserId) return { results: [] };
 
     const results: GlobalSearchResult[] = [];
 
@@ -110,6 +110,6 @@ export const pluginSearchProvider: SearchProvider = {
       }
     }
 
-    return results;
+    return { results };
   },
 };

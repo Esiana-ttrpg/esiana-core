@@ -10,6 +10,14 @@ import type { SearchContext } from './searchContext.js';
  * content the provider advertises as searchable. Authorization remains an
  * authoritative post-retrieval boundary.
  */
+export interface SearchProviderResult {
+  results: GlobalSearchResult[];
+  /** Unstable diagnostic payload (fuzzy ran/skipped, timings, …). */
+  diagnostics?: Record<string, unknown>;
+  /** True when the provider stopped at SEARCH_CANDIDATE_CEILING. */
+  hitCandidateCeiling?: boolean;
+}
+
 export interface SearchProvider {
   id: string;
   /**
@@ -17,7 +25,7 @@ export interface SearchProvider {
    * Empty / undefined means "owns all / unknown" — always run.
    */
   typeKeys?: readonly string[];
-  search: (ctx: SearchContext) => Promise<GlobalSearchResult[]>;
+  search: (ctx: SearchContext) => Promise<SearchProviderResult>;
 }
 
 const providers = new Map<string, SearchProvider>();

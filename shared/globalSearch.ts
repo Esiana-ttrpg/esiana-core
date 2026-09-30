@@ -5,7 +5,9 @@ export type GlobalSearchMatchedOn =
   | 'alias'
   | 'metadata'
   | 'custom_field'
-  | 'body';
+  | 'body'
+  | 'title_fuzzy'
+  | 'alias_fuzzy';
 
 export interface GlobalSearchTypeInfo {
   key: string;
@@ -40,16 +42,42 @@ export interface GlobalSearchResult {
   href: string;
   matchedOn: GlobalSearchMatchedOn;
   score: number;
+  /**
+   * Diagnostic ranking breakdown. Present only when `explain=1`.
+   * Shape is intentionally unstable — do not treat as a public API contract.
+   */
+  rank?: Record<string, unknown>;
 }
 
 export interface GlobalSearchTypeCount extends GlobalSearchTypeInfo {
   count: number;
 }
 
+export interface GlobalSearchSection {
+  kind: 'best' | 'mentions' | 'type';
+  key: string;
+  label: string;
+  /** Canonical type key for tab jumps (`mentions` / `type` sections). */
+  typeKey?: string;
+  /** Visible result ids in this section (subset of `results`). */
+  resultIds: string[];
+  /** Size of the full authorized group before the visible-row limit. */
+  totalCount: number;
+  /** True when retrieval hit the candidate ceiling and totalCount is a lower bound. */
+  approximate?: boolean;
+}
+
 export interface GlobalSearchResponse {
   query: string;
   results: GlobalSearchResult[];
   types: GlobalSearchTypeCount[];
+  /** Present on the unfiltered (All) view after Pass 6 shaping. */
+  sections?: GlobalSearchSection[];
+  /**
+   * Diagnostic payload (fuzzy ran/skipped, timings). Present only when
+   * `explain=1`. Shape is intentionally unstable.
+   */
+  diagnostics?: Record<string, unknown>;
 }
 
 /** Minimum query length before the search service hits the database. */
