@@ -12,12 +12,18 @@ import {
 type Tx = Prisma.TransactionClient | typeof prisma;
 
 const ENGINE_ID = 'portable-like' as const;
-const CURSOR_VERSION = 1;
+const CURSOR_VERSION = 4;
 
+/**
+ * Opaque cursor for the portable LIKE engine.
+ *
+ * SQLite DateTime text formats from Prisma are not reliable for keyset
+ * comparison (julianday/ISO string mismatches), so this adapter pages with a
+ * stable OFFSET encoded in the opaque cursor. Ordering remains
+ * titleHit DESC, sourceUpdatedAt DESC, id DESC for each page.
+ */
 interface PortableCursor {
-  titleHit: number;
-  updatedAtMs: number;
-  id: string;
+  offset: number;
   [key: string]: unknown;
 }
 
@@ -64,11 +70,15 @@ export const portableLikeEngine: SearchIndexEngine = {
         ? Prisma.empty
         : Prisma.sql`AND d."typeKey" IN (${Prisma.join(input.typeKeys)})`;
 
-    const cursor = decodeCursor<PortableCursor>(
+    const decoded = decodeCursor<PortableCursor>(
       ENGINE_ID,
       CURSOR_VERSION,
       input.cursor,
     );
+    const offset =
+      decoded && Number.isFinite(decoded.offset) && decoded.offset >= 0
+        ? Math.floor(decoded.offset)
+        : 0;
 
     const titleTokenClauses = input.tokens.map((tok) => {
       const pattern = buildCandidateLikePattern(tok);
@@ -78,48 +88,29 @@ export const portableLikeEngine: SearchIndexEngine = {
       CASE WHEN ${Prisma.join(titleTokenClauses, ' AND ')} THEN 1 ELSE 0 END
     )`;
 
-    const cursorClause = cursor
-      ? Prisma.sql`AND (
-          (${titleHitExpr}) < ${cursor.titleHit}
-          OR (
-            (${titleHitExpr}) = ${cursor.titleHit}
-            AND d."sourceUpdatedAt" < ${new Date(cursor.updatedAtMs)}
-          )
-          OR (
-            (${titleHitExpr}) = ${cursor.titleHit}
-            AND d."sourceUpdatedAt" = ${new Date(cursor.updatedAtMs)}
-            AND d."id" < ${cursor.id}
-          )
-        )`
-      : Prisma.empty;
-
     const matchClause = Prisma.join(tokenClauses, ' AND ');
 
     const rows = await prisma.$queryRaw<
       Array<{
         sourceId: string;
-        id: string;
         titleHit: number;
-        sourceUpdatedAt: Date;
       }>
     >(Prisma.sql`
       SELECT
         d."sourceId" AS "sourceId",
-        d."id" AS id,
-        ${titleHitExpr} AS "titleHit",
-        d."sourceUpdatedAt" AS "sourceUpdatedAt"
+        ${titleHitExpr} AS "titleHit"
       FROM "SearchIndexDocument" d
       WHERE d."campaignId" = ${input.campaignId}
         AND d."sourceKind" = 'wiki-page'
         ${visibilityClause}
         ${typeClause}
         AND (${matchClause})
-        ${cursorClause}
       ORDER BY
         "titleHit" DESC,
         d."sourceUpdatedAt" DESC,
         d."id" DESC
       LIMIT ${input.batchSize}
+      OFFSET ${offset}
     `);
 
     const candidates = rows.map((r) => ({
@@ -129,15 +120,8 @@ export const portableLikeEngine: SearchIndexEngine = {
 
     let nextCursor: string | null = null;
     if (rows.length === input.batchSize) {
-      const last = rows[rows.length - 1]!;
-      const updatedAt =
-        last.sourceUpdatedAt instanceof Date
-          ? last.sourceUpdatedAt
-          : new Date(last.sourceUpdatedAt);
       nextCursor = encodeCursor(ENGINE_ID, CURSOR_VERSION, {
-        titleHit: Number(last.titleHit),
-        updatedAtMs: updatedAt.getTime(),
-        id: last.id,
+        offset: offset + rows.length,
       } satisfies PortableCursor);
     }
 

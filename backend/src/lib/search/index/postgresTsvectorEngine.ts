@@ -22,14 +22,14 @@ interface PostgresCursor {
 
 /**
  * Escape a normalized token for to_tsquery('simple', …) prefix matching.
- * Tokens are already normalized (letters/digits/hyphen/apostrophe only).
+ * Preserves Unicode letters/digits; allows apostrophes and hyphens.
  */
 export function buildSimplePrefixTsQuery(tokens: string[]): string {
   const parts: string[] = [];
   for (const tok of tokens) {
     if (!tok) continue;
-    // Strip anything that could break tsquery syntax; keep alphanumerics.
-    const safe = tok.replace(/[^a-z0-9'-]/gi, '');
+    // Strip tsquery metacharacters; keep letters (any script), digits, ' and -.
+    const safe = tok.replace(/[^\p{L}\p{N}'-]/gu, '');
     if (!safe) continue;
     // Quote to handle hyphens/apostrophes safely, then append prefix operator.
     const quoted = `'${safe.replace(/'/g, "''")}'`;
@@ -42,6 +42,9 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
   id: ENGINE_ID,
 
   async afterUpsert(tx: Tx, docId: string): Promise<void> {
+    // partyVector = party-visible tiers only.
+    // elevatedVector = full document (party + elevated) so elevated viewers can
+    // AND across tiers with a single @@ query against elevatedVector alone.
     await tx.$executeRaw(Prisma.sql`
       UPDATE "SearchIndexDocument"
       SET
@@ -50,7 +53,12 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
           || setweight(to_tsvector('simple', coalesce("metadataText", '')), 'C')
           || setweight(to_tsvector('simple', coalesce("customFieldText", '')), 'C')
           || setweight(to_tsvector('simple', coalesce("bodyText", '')), 'D'),
-        "elevatedVector" = setweight(to_tsvector('simple', coalesce("elevatedText", '')), 'D')
+        "elevatedVector" = setweight(to_tsvector('simple', coalesce("titleNorm", '')), 'A')
+          || setweight(to_tsvector('simple', coalesce("aliasText", '')), 'B')
+          || setweight(to_tsvector('simple', coalesce("metadataText", '')), 'C')
+          || setweight(to_tsvector('simple', coalesce("customFieldText", '')), 'C')
+          || setweight(to_tsvector('simple', coalesce("bodyText", '')), 'D')
+          || setweight(to_tsvector('simple', coalesce("elevatedText", '')), 'D')
       WHERE "id" = ${docId}
     `);
   },
@@ -75,13 +83,10 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
         ? Prisma.empty
         : Prisma.sql`AND d."typeKey" IN (${Prisma.join(input.typeKeys)})`;
 
-    // Elevated viewers search the concatenated party+elevated vector so
-    // multi-token queries can span tiers (AND across the combined document).
+    // Elevated viewers query elevatedVector alone (populated with the full
+    // document). Party viewers query partyVector only.
     const matchClause = input.isElevated
-      ? Prisma.sql`(
-          coalesce(d."partyVector", ''::tsvector)
-          || coalesce(d."elevatedVector", ''::tsvector)
-        ) @@ to_tsquery('simple', ${tsQuery})`
+      ? Prisma.sql`d."elevatedVector" @@ to_tsquery('simple', ${tsQuery})`
       : Prisma.sql`d."partyVector" @@ to_tsquery('simple', ${tsQuery})`;
 
     const titleHitExpr = Prisma.sql`(
@@ -92,7 +97,7 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
 
     const rankExpr = input.isElevated
       ? Prisma.sql`ts_rank_cd(
-          coalesce(d."partyVector", ''::tsvector) || coalesce(d."elevatedVector", ''::tsvector),
+          coalesce(d."elevatedVector", ''::tsvector),
           to_tsquery('simple', ${tsQuery})
         )`
       : Prisma.sql`ts_rank_cd(

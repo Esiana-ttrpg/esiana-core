@@ -2509,6 +2509,8 @@ model DiscordDelivery {
 /// Wiki content remains canonical; this table is never a source of truth.
 /// partyVector / elevatedVector are PostgreSQL-only (Unsupported); SQLite
 /// stores them as TEXT via the deploy normalizer and ignores them at query time.
+/// partyVector indexes party-visible text only; elevatedVector indexes the full
+/// document (party + elevated) so elevated queries can @@ against one column.
 model SearchIndexDocument {
   id              String   @id @default(cuid())
   campaignId      String
@@ -2537,7 +2539,9 @@ model SearchIndexDocument {
   elevatedText    String   @default("")
   sourceUpdatedAt DateTime
   indexedAt       DateTime @default(now())
+  /// Party-tier tsvector (title/alias/metadata/custom/body)
   partyVector     Unsupported("tsvector")?
+  /// Full-document tsvector (party tiers + elevatedText) for elevated viewers
   elevatedVector  Unsupported("tsvector")?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)

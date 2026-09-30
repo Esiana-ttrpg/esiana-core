@@ -4,6 +4,7 @@ import { WikiVisibility } from '../../../types/domain.js';
 import {
   buildWikiSearchIndexDocument,
   SEARCH_INDEX_SOURCE_KIND_WIKI_PAGE,
+  type BuiltWikiSearchIndexDocument,
   type WikiSearchIndexFlatPage,
   type WikiSearchIndexPageInput,
 } from './buildWikiSearchIndexDocument.js';
@@ -103,30 +104,18 @@ async function loadFlatPagesForCategory(
 }
 
 /**
- * Upsert the derived search document for a live wiki page.
- * Soft-deleted pages are removed from the index instead.
+ * Idempotent upsert of a built wiki-page search document + engine afterUpsert.
  */
-export async function upsertWikiPageDocument(
+async function upsertBuiltWikiPageDocument(
   tx: Tx,
   campaignId: string,
-  pageId: string,
-  flatPages?: WikiSearchIndexFlatPage[],
+  doc: BuiltWikiSearchIndexDocument,
 ): Promise<void> {
-  const page = await loadPageForIndex(tx, campaignId, pageId);
-  if (!page) {
-    await deleteDocumentsForPages(tx, [pageId]);
-    return;
-  }
-
-  const flats = flatPages ?? (await loadFlatPagesForCategory(tx, campaignId, page));
-
-  const doc = buildWikiSearchIndexDocument(page, flats);
-
   const row = await tx.searchIndexDocument.upsert({
     where: {
       sourceKind_sourceId: {
         sourceKind: SEARCH_INDEX_SOURCE_KIND_WIKI_PAGE,
-        sourceId: pageId,
+        sourceId: doc.sourceId,
       },
     },
     create: {
@@ -167,6 +156,27 @@ export async function upsertWikiPageDocument(
   await getSearchIndexEngine().afterUpsert(tx as never, row.id);
 }
 
+/**
+ * Upsert the derived search document for a live wiki page.
+ * Soft-deleted pages are removed from the index instead.
+ */
+export async function upsertWikiPageDocument(
+  tx: Tx,
+  campaignId: string,
+  pageId: string,
+  flatPages?: WikiSearchIndexFlatPage[],
+): Promise<void> {
+  const page = await loadPageForIndex(tx, campaignId, pageId);
+  if (!page) {
+    await deleteDocumentsForPages(tx, [pageId]);
+    return;
+  }
+
+  const flats = flatPages ?? (await loadFlatPagesForCategory(tx, campaignId, page));
+  const doc = buildWikiSearchIndexDocument(page, flats);
+  await upsertBuiltWikiPageDocument(tx, campaignId, doc);
+}
+
 export async function deleteDocumentsForPages(
   tx: Tx,
   pageIds: string[],
@@ -182,18 +192,19 @@ export async function deleteDocumentsForPages(
 }
 
 /**
- * Delete all search docs for a campaign and re-project every live wiki page.
+ * Re-project every live wiki page into the search index (idempotent upserts),
+ * then remove wiki-page documents whose sources are gone. Unrelated sourceKinds
+ * (e.g. future plugin docs) are preserved.
  */
 export async function rebuildSearchIndexForCampaign(
   campaignId: string,
 ): Promise<number> {
-  await prisma.searchIndexDocument.deleteMany({ where: { campaignId } });
-
   const pages = await prisma.wikiPage.findMany({
     where: { campaignId, deletedAt: null },
     select: PAGE_SELECT,
   });
   const flatPages = pages.map(toFlat);
+  const livePageIds = new Set(pages.map((p) => p.id));
 
   let indexed = 0;
   for (let i = 0; i < pages.length; i += REBUILD_BATCH) {
@@ -203,30 +214,20 @@ export async function rebuildSearchIndexForCampaign(
         page as WikiSearchIndexPageInput,
         flatPages,
       );
-      const row = await prisma.searchIndexDocument.create({
-        data: {
-          campaignId,
-          sourceKind: doc.sourceKind,
-          sourceId: doc.sourceId,
-          providerId: doc.providerId,
-          typeKey: doc.typeKey,
-          visibility: doc.visibility,
-          title: doc.title,
-          titleNorm: doc.titleNorm,
-          aliasText: doc.aliasText,
-          metadataText: doc.metadataText,
-          customFieldText: doc.customFieldText,
-          bodyText: doc.bodyText,
-          elevatedText: doc.elevatedText,
-          sourceUpdatedAt: doc.sourceUpdatedAt,
-          indexedAt: new Date(),
-        },
-        select: { id: true },
-      });
-      await getSearchIndexEngine().afterUpsert(prisma as never, row.id);
+      await upsertBuiltWikiPageDocument(prisma, campaignId, doc);
       indexed += 1;
     }
   }
+
+  await prisma.searchIndexDocument.deleteMany({
+    where: {
+      campaignId,
+      sourceKind: SEARCH_INDEX_SOURCE_KIND_WIKI_PAGE,
+      ...(livePageIds.size > 0
+        ? { sourceId: { notIn: [...livePageIds] } }
+        : {}),
+    },
+  });
 
   ensureDone.add(campaignId);
   return indexed;

@@ -1,5 +1,7 @@
 -- Derived search projection for Global Search candidate retrieval.
 -- partyVector / elevatedVector are PostgreSQL tsvector columns with GIN indexes.
+-- partyVector = party-visible text; elevatedVector = full document (party +
+-- elevated) so elevated viewers can match with a single @@ against elevatedVector.
 -- SQLite deploy normalizer maps tsvector → TEXT and drops GIN indexes.
 -- Foreign key is inline (SQLite cannot ALTER TABLE ADD CONSTRAINT).
 

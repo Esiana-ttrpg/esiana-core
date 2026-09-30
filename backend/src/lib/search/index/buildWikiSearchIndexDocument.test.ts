@@ -86,3 +86,37 @@ test('buildWikiSearchIndexDocument quest gmNotes go to elevatedText', () => {
   assert.doesNotMatch(doc.metadataText, /verglas/);
   assert.match(doc.elevatedText, /verglas/);
 });
+
+test('buildWikiSearchIndexDocument puts hidden-tab and DM-only fields in elevatedText', () => {
+  const page = basePage({
+    characterFields: [
+      {
+        label: 'Trait',
+        fieldType: 'STRING',
+        value: 'party visible trait',
+        capabilities: {},
+        pageTab: { hidden: false, visibility: 'Party', coreKey: null },
+      },
+      {
+        label: 'Hidden note',
+        fieldType: 'STRING',
+        value: 'shadowed tab secret',
+        capabilities: {},
+        pageTab: { hidden: true, visibility: 'Party', coreKey: null },
+      },
+      {
+        label: 'DM field',
+        fieldType: 'STRING',
+        value: 'dm only field value',
+        capabilities: {},
+        pageTab: { hidden: false, visibility: 'DM_Only', coreKey: null },
+      },
+    ],
+  });
+  const doc = buildWikiSearchIndexDocument(page, [page]);
+  assert.match(doc.customFieldText, /party visible trait/);
+  assert.doesNotMatch(doc.customFieldText, /shadowed tab secret/);
+  assert.doesNotMatch(doc.customFieldText, /dm only field/);
+  assert.match(doc.elevatedText, /shadowed tab secret/);
+  assert.match(doc.elevatedText, /dm only field/);
+});

@@ -34,4 +34,5 @@ test('buildSimplePrefixTsQuery ANDs prefix terms and escapes quotes', () => {
   assert.equal(buildSimplePrefixTsQuery(["o'brien"]), "'o''brien':*");
   assert.equal(buildSimplePrefixTsQuery(['']), '');
   assert.equal(buildSimplePrefixTsQuery(['well-known']), "'well-known':*");
+  assert.equal(buildSimplePrefixTsQuery(['ベサイド', 'yūna']), "'ベサイド':* & 'yūna':*");
 });

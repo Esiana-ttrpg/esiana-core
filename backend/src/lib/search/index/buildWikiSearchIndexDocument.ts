@@ -189,23 +189,22 @@ function collectBodyTexts(blocks: unknown, includeDmOnly: boolean): string[] {
 function collectCharacterFieldTexts(
   page: WikiSearchIndexPageInput,
   flatPages: WikiSearchIndexFlatPage[],
-  partyReadable: boolean,
-): string[] {
+): { party: string[]; elevated: string[] } {
   const entityCategory = resolveCanonicalEntityCategory(page, flatPages);
   const shell = entityCategory
     ? ENTITY_CATEGORY_TO_SHELL[entityCategory]
     : undefined;
-  if (!shell) return [];
+  if (!shell) return { party: [], elevated: [] };
 
-  const texts: string[] = [];
-  const tabAccess = {
-    canEdit: !partyReadable,
-    canViewDmOnly: !partyReadable,
+  const party: string[] = [];
+  const elevated: string[] = [];
+  // Classify once against a non-elevated viewer: party-readable → party tier;
+  // all other readable fields → elevated tier (over-select safe for GMs).
+  const partyTabAccess = {
+    canEdit: false,
+    canViewDmOnly: false,
     shell,
   };
-  const role = partyReadable
-    ? CampaignMemberRoles.PARTICIPANT
-    : CampaignMemberRoles.GAMEMASTER;
 
   for (const field of page.characterFields) {
     const capabilities =
@@ -216,20 +215,21 @@ function collectCharacterFieldTexts(
         : {};
     if (capabilities.readable === false) continue;
 
-    const tabReadable =
-      !field.pageTab ||
-      canReadCharacterPageTab(field.pageTab, tabAccess, role);
-
-    // Party tier: only fields readable to a non-elevated viewer.
-    // Elevated tier: fields that require elevated access.
-    if (partyReadable && !tabReadable) continue;
-    if (!partyReadable && tabReadable) continue;
-
     const text = characterFieldValueToSearchText(field.fieldType, field.value);
     if (!text) continue;
-    texts.push(text);
+
+    const partyReadable =
+      !field.pageTab ||
+      canReadCharacterPageTab(
+        field.pageTab,
+        partyTabAccess,
+        CampaignMemberRoles.PARTICIPANT,
+      );
+
+    if (partyReadable) party.push(text);
+    else elevated.push(text);
   }
-  return texts;
+  return { party, elevated };
 }
 
 /**
@@ -264,8 +264,7 @@ export function buildWikiSearchIndexDocument(
   const partyBodySet = new Set(partyBody);
   const elevatedOnlyBody = elevatedBodyAll.filter((t) => !partyBodySet.has(t));
 
-  const partyCustom = collectCharacterFieldTexts(page, flatPages, true);
-  const elevatedCustom = collectCharacterFieldTexts(page, flatPages, false);
+  const partyCustom = collectCharacterFieldTexts(page, flatPages);
 
   const aliasText = joinNormalized(page.aliases.map((a) => a.alias));
 
@@ -279,12 +278,12 @@ export function buildWikiSearchIndexDocument(
     titleNorm: normalizeSearchText(page.title),
     aliasText,
     metadataText: joinNormalized(fieldTexts(partyMeta.fields)),
-    customFieldText: joinNormalized(partyCustom),
+    customFieldText: joinNormalized(partyCustom.party),
     bodyText: joinNormalized(partyBody),
     elevatedText: joinNormalized([
       ...elevatedOnlyMeta,
       ...elevatedOnlyBody,
-      ...elevatedCustom,
+      ...partyCustom.elevated,
     ]),
     sourceUpdatedAt: page.updatedAt,
   };
