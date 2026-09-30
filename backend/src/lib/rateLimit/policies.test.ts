@@ -9,9 +9,20 @@ import {
   configureTrustProxy,
   createRateLimitStore,
   rateLimitPolicy,
+  rateLimitStoreKey,
+  resetRateLimitStoresForTests,
   resolveRateLimitActor,
 } from './index.js';
+import { resetRateLimitPolicyCacheForTests } from './policies.js';
 import { buildRateLimitEnv } from '../../config/rateLimitEnv.js';
+
+test.beforeEach(() => {
+  // Isolate override budgets between tests. Default production handlers held by
+  // routers keep their own store references; clearing the registry only affects
+  // subsequent rateLimitPolicy() constructions in this file.
+  resetRateLimitPolicyCacheForTests();
+  resetRateLimitStoresForTests();
+});
 
 function stubAuth(opts: {
   userId?: string;
@@ -352,12 +363,123 @@ test('X-Forwarded-For ignored without trust proxy; honored with trust proxy=1', 
   );
 });
 
-test('createRateLimitStore returns a MemoryStore', () => {
-  const store = createRateLimitStore('authenticated');
+test('createRateLimitStore returns distinct MemoryStores for different budget keys', () => {
+  const store = createRateLimitStore(rateLimitStoreKey('authenticated', 'account'));
   assert.ok(store instanceof MemoryStore);
-  const store2 = createRateLimitStore('expensive');
+  const store2 = createRateLimitStore(rateLimitStoreKey('expensive', 'account'));
   assert.ok(store2 instanceof MemoryStore);
   assert.notEqual(store, store2);
+});
+
+test('same (policy, scope) reuses one store; construction does not mint a new budget', () => {
+  resetRateLimitStoresForTests();
+  const key = rateLimitStoreKey('expensive', 'account');
+  const a = createRateLimitStore(key);
+  const b = createRateLimitStore(key);
+  assert.equal(a, b);
+
+  const lim1 = rateLimitPolicy('expensive');
+  const lim2 = rateLimitPolicy('expensive');
+  assert.equal(lim1, lim2, 'default handlers are cached per policy+scope');
+});
+
+test('cross-router expensive instances share one allowance (aggregate exhaustion)', async () => {
+  // Production pattern: call rateLimitPolicy once (or get the cached instance)
+  // and mount the same middleware on multiple routes/routers.
+  const expensive = rateLimitPolicy('expensive', { max: 3, windowMs: 60_000 });
+  assert.equal(
+    rateLimitPolicy('expensive', { max: 3, windowMs: 60_000 }),
+    expensive,
+    'same policy+scope+limits must return the cached handler',
+  );
+
+  const app = express();
+  app.use(stubAuth({ userId: 'shared-expensive' }));
+  app.get('/backup', expensive, (_req, res) => res.json({ ok: true }));
+  app.post('/uploads', expensive, (_req, res) => res.json({ ok: true }));
+
+  assert.equal((await listen(app, 'GET', '/backup')).status, 200);
+  assert.equal((await listen(app, 'POST', '/uploads')).status, 200);
+  assert.equal((await listen(app, 'GET', '/backup')).status, 200);
+  const blocked = await listen(app, 'POST', '/uploads');
+  assert.equal(blocked.status, 429);
+  assert.equal(blocked.json.policy, 'expensive');
+});
+
+test('scope override keeps a separate budget from default account scope', async () => {
+  const account = rateLimitPolicy('expensive', { max: 1, windowMs: 60_000 });
+  const ipScoped = rateLimitPolicy('expensive', {
+    scope: 'ip',
+    max: 1,
+    windowMs: 60_000,
+  });
+
+  const accountApp = miniApp([stubAuth({ userId: 'scope-a' }), account]);
+  const ipApp = miniApp([ipScoped], { trustProxy: true });
+
+  assert.equal((await listen(accountApp, 'GET', '/')).status, 200);
+  assert.equal((await listen(accountApp, 'GET', '/')).status, 429);
+  // IP-scoped expensive is independent of the account-scoped budget
+  assert.equal(
+    (await listen(ipApp, 'GET', '/', { 'X-Forwarded-For': '203.0.113.90' }))
+      .status,
+    200,
+  );
+});
+
+test('plugin asset page load does not consume expensive budget', async () => {
+  // Realistic multi-asset plugin UI load: many GETs under the authenticated
+  // baseline only. If expensive (max 5) were wrongly stacked, this would 429.
+  const authenticated = rateLimitPolicy('authenticated', {
+    max: 100,
+    windowMs: 60_000,
+  });
+  const expensive = rateLimitPolicy('expensive', { max: 5, windowMs: 60_000 });
+
+  const assetsApp = express();
+  assetsApp.use(stubAuth({ userId: 'plugin-assets-user' }));
+  assetsApp.use(authenticated);
+  // Intentionally no expensive — mirrors pluginAssetsRouter
+  assetsApp.get('/api/plugin-assets/:pluginId/*assetPath', (_req, res) => {
+    res.type('application/javascript').send('export default {}');
+  });
+
+  const assetPaths = [
+    '/api/plugin-assets/calendar/main.js',
+    '/api/plugin-assets/calendar/chunk-1.js',
+    '/api/plugin-assets/calendar/chunk-2.js',
+    '/api/plugin-assets/calendar/styles.css',
+    '/api/plugin-assets/calendar/icon.svg',
+    '/api/plugin-assets/calendar/locale-en.js',
+    '/api/plugin-assets/calendar/locale-fr.js',
+    '/api/plugin-assets/calendar/worker.js',
+    '/api/plugin-assets/calendar/fonts/display.woff2',
+    '/api/plugin-assets/calendar/data/manifest.json',
+  ];
+
+  for (const path of assetPaths) {
+    const res = await listen(assetsApp, 'GET', path);
+    assert.equal(res.status, 200, `asset ${path} must not be rate-limited`);
+  }
+
+  // Contrast: stacking expensive would block after 5 assets
+  const wrongApp = express();
+  wrongApp.use(stubAuth({ userId: 'plugin-assets-user-b' }));
+  wrongApp.use(authenticated);
+  wrongApp.use(expensive);
+  wrongApp.get('/api/plugin-assets/:pluginId/*assetPath', (_req, res) => {
+    res.send('ok');
+  });
+  for (let i = 0; i < 5; i++) {
+    assert.equal(
+      (await listen(wrongApp, 'GET', `/api/plugin-assets/x/a${i}.js`)).status,
+      200,
+    );
+  }
+  assert.equal(
+    (await listen(wrongApp, 'GET', '/api/plugin-assets/x/overflow.js')).status,
+    429,
+  );
 });
 
 test('RATE_LIMIT_STORE=redis fails validation', () => {

@@ -6,7 +6,10 @@ import type { NextFunction, Request, Response } from 'express';
 import { env } from '../../config/env.js';
 import { resolveRateLimitActor } from './actor.js';
 import { createRateLimitHandler } from './response.js';
-import { createRateLimitStore } from './store.js';
+import {
+  createRateLimitStore,
+  rateLimitStoreKey,
+} from './store.js';
 
 /**
  * Named rate-limit policies.
@@ -16,6 +19,11 @@ import { createRateLimitStore } from './store.js';
  * `mutation`. For API-token requests, the effective ceiling is the per-key
  * (`apiKey`) limit while all of a user's keys together remain bounded by the
  * account-wide (`authenticated` / `mutation` / `expensive` / `admin`) limit.
+ *
+ * Budgets are process-global per effective `(policy, scope)`. Multiple
+ * middleware placements for the same policy/scope reuse one cached handler
+ * (express-rate-limit forbids sharing a MemoryStore across distinct limiter
+ * instances — caching the handler is how we share the allowance safely).
  */
 export type RateLimitPolicyName =
   | 'authenticated'
@@ -119,19 +127,20 @@ function keyForScope(
 }
 
 /**
- * Create a named rate-limit policy middleware.
- * Attaches a `rateLimitPolicy` marker for coverage audits.
+ * Cached handlers keyed by effective budget identity.
+ * express-rate-limit requires one MemoryStore per limiter instance; we share
+ * budgets by returning the same handler rather than reusing stores.
  */
-export function rateLimitPolicy(
-  name: RateLimitPolicyName,
-  options: RateLimitPolicyOptions = {},
-): RateLimitPolicyHandler {
-  const def = policyDefinitions()[name];
-  const scope = options.scope ?? def.scope;
-  const max = options.max ?? def.max;
-  const windowMs = options.windowMs ?? def.windowMs;
-  const mutationsOnly = def.mutationsOnly === true;
+const handlersByBudgetKey = new Map<string, RateLimitPolicyHandler>();
 
+function buildLimiter(
+  name: string,
+  scope: RateLimitScope,
+  max: number,
+  windowMs: number,
+  mutationsOnly: boolean,
+  storeKey: string,
+): RateLimitPolicyHandler {
   if (!env.rateLimit.enabled) {
     const passthrough = ((_req: Request, res: Response, next: NextFunction) => {
       recordPolicy(res, name);
@@ -147,7 +156,11 @@ export function rateLimitPolicy(
     max,
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    store: createRateLimitStore(`${name}:${scope}`),
+    // One store per cached handler (store key matches budget key).
+    store: createRateLimitStore(storeKey),
+    // Disable the unshared-store check: we intentionally own the store via
+    // createRateLimitStore and never attach it to a second rateLimit() call.
+    validate: { unsharedStore: false },
     handler: createRateLimitHandler({ policy: name, scope }),
     keyGenerator: (req) => keyForScope(req, scope, name),
     skip: (req) => {
@@ -165,30 +178,72 @@ export function rateLimitPolicy(
     },
   }) as RateLimitPolicyHandler;
 
-  // Wrap so skipped (and allowed) requests still record the policy for observability.
   const original = limiter.bind(limiter);
   const wrapped = ((req: Request, res: Response, next: NextFunction) => {
     recordPolicy(res, name);
     return original(req, res, next);
   }) as RateLimitPolicyHandler;
 
-  // Preserve express-rate-limit helpers (resetKey, etc.) and coverage markers.
   Object.assign(wrapped, limiter);
   wrapped.rateLimitPolicy = name;
   wrapped.rateLimitScope = scope;
-
   return wrapped;
+}
+
+/**
+ * Create a named rate-limit policy middleware.
+ * Attaches a `rateLimitPolicy` marker for coverage audits.
+ *
+ * Instances for a given effective `(name, scope[, max, windowMs])` are cached
+ * so middleware construction does not create independent budgets.
+ */
+export function rateLimitPolicy(
+  name: RateLimitPolicyName,
+  options: RateLimitPolicyOptions = {},
+): RateLimitPolicyHandler {
+  const def = policyDefinitions()[name];
+  const scope = options.scope ?? def.scope;
+  const hasOverride =
+    options.max !== undefined || options.windowMs !== undefined;
+  const max = options.max ?? def.max;
+  const windowMs = options.windowMs ?? def.windowMs;
+  const mutationsOnly = def.mutationsOnly === true;
+
+  const storeKey = rateLimitStoreKey(
+    name,
+    scope,
+    hasOverride ? { max, windowMs } : undefined,
+  );
+
+  const cached = handlersByBudgetKey.get(storeKey);
+  if (cached) return cached;
+
+  const handler = buildLimiter(
+    name,
+    scope,
+    max,
+    windowMs,
+    mutationsOnly,
+    storeKey,
+  );
+  handlersByBudgetKey.set(storeKey, handler);
+  return handler;
 }
 
 /**
  * Shared factory for legacy / narrow credential limiters in middleware/rateLimit.ts.
  * Attaches a `rateLimitPolicy` marker so the coverage audit can name them.
+ * Each legacy name is unique and constructed once at module load.
  */
 export function createMarkedLimiter(
   policyName: string,
   scope: string,
   options: Partial<Options>,
 ): RateLimitPolicyHandler {
+  const storeKey = rateLimitStoreKey(policyName, scope);
+  const cached = handlersByBudgetKey.get(storeKey);
+  if (cached) return cached;
+
   if (!env.rateLimit.enabled) {
     const passthrough = ((_req: Request, res: Response, next: NextFunction) => {
       recordPolicy(res, policyName);
@@ -196,13 +251,15 @@ export function createMarkedLimiter(
     }) as RateLimitPolicyHandler;
     passthrough.rateLimitPolicy = policyName;
     passthrough.rateLimitScope = scope as RateLimitScope;
+    handlersByBudgetKey.set(storeKey, passthrough);
     return passthrough;
   }
 
   const limiter = rateLimit({
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    store: createRateLimitStore(policyName),
+    store: createRateLimitStore(storeKey),
+    validate: { unsharedStore: false },
     handler: createRateLimitHandler({ policy: policyName, scope }),
     ...options,
   }) as RateLimitPolicyHandler;
@@ -216,5 +273,11 @@ export function createMarkedLimiter(
   Object.assign(wrapped, limiter);
   wrapped.rateLimitPolicy = policyName;
   wrapped.rateLimitScope = scope as RateLimitScope;
+  handlersByBudgetKey.set(storeKey, wrapped);
   return wrapped;
+}
+
+/** Test helper: clear cached handlers (pair with resetRateLimitStoresForTests). */
+export function resetRateLimitPolicyCacheForTests(): void {
+  handlersByBudgetKey.clear();
 }

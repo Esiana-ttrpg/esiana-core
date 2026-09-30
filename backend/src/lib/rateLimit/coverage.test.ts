@@ -25,6 +25,7 @@ test('CodeQL-flagged operations include expected policies', () => {
     method: string;
     pathIncludes: string;
     expect: string[];
+    forbid?: string[];
   }> = [
     { method: 'GET', pathIncludes: '/api/auth/providers', expect: ['public'] },
     { method: 'POST', pathIncludes: '/api/auth/logout', expect: ['public'] },
@@ -51,7 +52,8 @@ test('CodeQL-flagged operations include expected policies', () => {
     {
       method: 'GET',
       pathIncludes: '/api/plugin-assets',
-      expect: ['authenticated', 'expensive'],
+      expect: ['authenticated'],
+      forbid: ['expensive'],
     },
     {
       method: 'POST',
@@ -115,6 +117,12 @@ test('CodeQL-flagged operations include expected policies', () => {
       assert.ok(
         entry!.policies.includes(policy),
         `${c.method} ${entry!.path} should include policy "${policy}"; got [${entry!.policies.join(', ')}]`,
+      );
+    }
+    for (const policy of c.forbid ?? []) {
+      assert.ok(
+        !entry!.policies.includes(policy),
+        `${c.method} ${entry!.path} must not include policy "${policy}"; got [${entry!.policies.join(', ')}]`,
       );
     }
   }

@@ -78,6 +78,12 @@ effective ceiling is the per-key limit while all of a user's keys together
 remain bounded by the account-wide limit. Generating additional API keys or
 operating across multiple campaigns does not multiply the account allowance.
 
+Named policies are process-global per effective `(policy, scope)`: constructing
+`rateLimitPolicy('expensive')` on many routes reuses one cached middleware and
+one allowance. Scope overrides (e.g. `{ scope: 'ip' }`) remain separate budgets.
+Plugin static asset delivery uses the authenticated baseline only — it must not
+consume the low-volume `expensive` budget.
+
 ### Storage
 
 `RATE_LIMIT_STORE=memory` is the only supported value (in-process
