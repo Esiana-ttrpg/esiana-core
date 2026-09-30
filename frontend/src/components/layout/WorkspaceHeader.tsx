@@ -13,6 +13,8 @@ export interface WorkspaceHeaderProps {
   breadcrumbs?: ReactNode;
   eyebrow?: string;
   title: ReactNode;
+  /** When set, renders in place of the visible title; `title` stays as an sr-only h1. */
+  titleReplacement?: ReactNode;
   subtitle?: string;
   actions?: ReactNode;
   beforeActions?: ReactNode;
@@ -25,6 +27,7 @@ export function WorkspaceHeader({
   breadcrumbs,
   eyebrow,
   title,
+  titleReplacement,
   subtitle,
   actions,
   beforeActions,
@@ -43,7 +46,14 @@ export function WorkspaceHeader({
           {eyebrow ? (
             <p className={`${TYPE_META_CLASS} mb-0.5 text-xs text-muted`}>{eyebrow}</p>
           ) : null}
-          <h1 className={titleClass}>{title}</h1>
+          {titleReplacement ? (
+            <>
+              <h1 className="sr-only">{title}</h1>
+              <div className="min-w-0">{titleReplacement}</div>
+            </>
+          ) : (
+            <h1 className={titleClass}>{title}</h1>
+          )}
           {subtitle ? (
             <p className={`${TYPE_META_CLASS} mt-0.5 text-sm text-focal-muted`}>{subtitle}</p>
           ) : null}

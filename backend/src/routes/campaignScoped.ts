@@ -24,6 +24,7 @@ import {
   deleteSessionNotePage,
   getWikiPageDeletePreview,
   getSessionNotesIndex,
+  getSessionNotesAttendance,
   getSessionNotePerspectives,
   getCombinedSessionNotes,
   ensureSessionAuthorNote,
@@ -1139,10 +1140,10 @@ campaignScopedRouter.patch(
   requireCampaignOwner,
   respondToJoinRequest,
 );
-
 campaignScopedRouter.get('/wiki/session-notes/compile', rateLimitPolicy('expensive'), compileSessionNotes);
 campaignScopedRouter.get('/wiki/session-notes/combined', rateLimitPolicy('expensive'), getCombinedSessionNotes);
 campaignScopedRouter.get('/wiki/session-notes/index', rateLimitPolicy('expensive'), getSessionNotesIndex);
+campaignScopedRouter.get('/wiki/session-notes/attendance', rateLimitPolicy('expensive'), getSessionNotesAttendance);
 campaignScopedRouter.post(
   '/session-timeline/new',
   requireCampaignMember,
