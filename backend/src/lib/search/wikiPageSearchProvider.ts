@@ -52,6 +52,9 @@ import {
   type SearchDocumentField,
 } from './searchRanking.js';
 import { buildSearchExcerpt } from './searchExcerpt.js';
+import { matchesStructuredText } from './searchStructuredMatch.js';
+import { matchesDateFilter } from './searchDateSemantics.js';
+import { matchesAuthorFilter } from './searchAttribution.js';
 
 function pushTextField(
   fields: SearchDocumentField[],
@@ -193,6 +196,10 @@ export const wikiPageSearchProvider: SearchProvider = {
     if (!providerOwnsRequestedTypes(WIKI_SEARCH_TYPE_KEYS, ctx.types)) {
       return [];
     }
+    // Unresolved from: names are observationally equivalent to a miss.
+    if (ctx.filters.authorsUnresolved) {
+      return [];
+    }
 
     const candidateIds = await findCandidatePageIds(ctx);
     if (candidateIds.length === 0) return [];
@@ -219,6 +226,10 @@ export const wikiPageSearchProvider: SearchProvider = {
         pathKey: true,
         featuredImageId: true,
         mapAssetId: true,
+        createdAt: true,
+        createdByUserId: true,
+        ownerType: true,
+        ownerUserId: true,
         aliases: { select: { alias: true } },
         characterFields: {
           select: {
@@ -236,6 +247,18 @@ export const wikiPageSearchProvider: SearchProvider = {
           },
         },
         stats: { select: { inboundLinkCount: true } },
+        sessionTimelinePoint: {
+          select: {
+            authorId: true,
+            createdAt: true,
+            schedule: {
+              select: {
+                plannedStartAt: true,
+                publishedAt: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -327,6 +350,35 @@ export const wikiPageSearchProvider: SearchProvider = {
         ctx.types.length === 0 ||
         ctx.types.includes(typeInfo.key);
 
+      const attributionSource = {
+        createdByUserId: page.createdByUserId,
+        ownerType: page.ownerType,
+        ownerUserId: page.ownerUserId,
+        metadata: page.metadata,
+        timelineAuthorId: page.sessionTimelinePoint?.authorId ?? null,
+      };
+      if (
+        !matchesAuthorFilter(typeInfo.key, attributionSource, ctx.filters.authorUserIds)
+      ) {
+        continue;
+      }
+
+      const dateSource = {
+        pageCreatedAt: page.createdAt,
+        timelineCreatedAt: page.sessionTimelinePoint?.createdAt ?? null,
+        plannedStartAt: page.sessionTimelinePoint?.schedule?.plannedStartAt ?? null,
+        publishedAt: page.sessionTimelinePoint?.schedule?.publishedAt ?? null,
+      };
+      if (
+        !matchesDateFilter(typeInfo.key, dateSource, {
+          after: ctx.filters.after,
+          before: ctx.filters.before,
+          hasDateFilter: ctx.filters.hasDateFilter,
+        })
+      ) {
+        continue;
+      }
+
       const fields: SearchDocumentField[] = [];
 
       for (const alias of page.aliases) {
@@ -396,6 +448,15 @@ export const wikiPageSearchProvider: SearchProvider = {
         fields,
         inboundLinkCount: page.stats?.inboundLinkCount ?? 0,
       };
+
+      if (
+        !matchesStructuredText(doc, {
+          phrases: ctx.query.phrases,
+          excludedTerms: ctx.query.excludedTerms,
+        })
+      ) {
+        continue;
+      }
 
       const ranked = rankSearchDocument(doc, ctx.query.tokens, ctx.query.text);
       if (!ranked) continue;

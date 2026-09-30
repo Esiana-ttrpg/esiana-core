@@ -11,15 +11,16 @@ import {
 } from './searchProviderRegistry.js';
 import { compareRankedResults } from './searchRanking.js';
 import { wikiPageSearchProvider } from './wikiPageSearchProvider.js';
+import { pluginSearchProvider } from './pluginSearchProvider.js';
 
 let providersRegistered = false;
 
 function ensureCoreProvidersRegistered(): void {
   if (providersRegistered) return;
   registerSearchProvider(wikiPageSearchProvider);
-  // Plugin collections intentionally deferred: the existing plugin search host
-  // API is viewer-unaware (no role/actor), so we cannot verify per-viewer
-  // visibility for this endpoint without expanding the plugin host contract.
+  // Only collections that implement searchForViewer participate. Legacy
+  // viewer-unaware search() is never adapted into Global Search.
+  registerSearchProvider(pluginSearchProvider);
   providersRegistered = true;
 }
 
