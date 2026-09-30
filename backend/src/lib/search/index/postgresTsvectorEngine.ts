@@ -11,11 +11,13 @@ import {
 type Tx = Prisma.TransactionClient | typeof prisma;
 
 const ENGINE_ID = 'postgres-tsvector' as const;
-const CURSOR_VERSION = 1;
+/** v2: keyset on (titleHit, sourceUpdatedAt, id) — float ts_rank is not stable for ties. */
+const CURSOR_VERSION = 2;
 
 interface PostgresCursor {
   titleHit: number;
-  rank: number;
+  /** Epoch ms of sourceUpdatedAt */
+  updatedAtMs: number;
   id: string;
   [key: string]: unknown;
 }
@@ -95,33 +97,25 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
       THEN 1 ELSE 0 END
     )`;
 
-    const rankExpr = input.isElevated
-      ? Prisma.sql`ts_rank_cd(
-          coalesce(d."elevatedVector", ''::tsvector),
-          to_tsquery('simple', ${tsQuery})
-        )`
-      : Prisma.sql`ts_rank_cd(
-          coalesce(d."partyVector", ''::tsvector),
-          to_tsquery('simple', ${tsQuery})
-        )`;
-
     const cursor = decodeCursor<PostgresCursor>(
       ENGINE_ID,
       CURSOR_VERSION,
       input.cursor,
     );
 
-    // Materialize rank in a subquery so keyset compares the sorted value.
+    // Keyset on titleHit + sourceUpdatedAt + id (same tie-break as portable).
+    // Do not keyset on ts_rank: equal ranks + float round-trip make the next
+    // page empty when many docs share the same match weight.
     const cursorClause = cursor
       ? Prisma.sql`AND (
           ranked."titleHit" < ${cursor.titleHit}
           OR (
             ranked."titleHit" = ${cursor.titleHit}
-            AND ranked."rank" < ${cursor.rank}
+            AND ranked."updatedAtMs" < ${cursor.updatedAtMs}
           )
           OR (
             ranked."titleHit" = ${cursor.titleHit}
-            AND ranked."rank" = ${cursor.rank}
+            AND ranked."updatedAtMs" = ${cursor.updatedAtMs}
             AND ranked."id" < ${cursor.id}
           )
         )`
@@ -132,7 +126,7 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
         sourceId: string;
         id: string;
         titleHit: number;
-        rank: number;
+        updatedAtMs: number | bigint | string;
       }>
     >(Prisma.sql`
       SELECT * FROM (
@@ -140,7 +134,7 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
           d."sourceId" AS "sourceId",
           d."id" AS id,
           ${titleHitExpr} AS "titleHit",
-          ${rankExpr} AS "rank"
+          (EXTRACT(EPOCH FROM d."sourceUpdatedAt") * 1000)::bigint AS "updatedAtMs"
         FROM "SearchIndexDocument" d
         WHERE d."campaignId" = ${input.campaignId}
           AND d."sourceKind" = 'wiki-page'
@@ -152,7 +146,7 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
         ${cursorClause}
       ORDER BY
         ranked."titleHit" DESC,
-        ranked."rank" DESC,
+        ranked."updatedAtMs" DESC,
         ranked."id" DESC
       LIMIT ${input.batchSize}
     `);
@@ -167,7 +161,7 @@ export const postgresTsvectorEngine: SearchIndexEngine = {
       const last = rows[rows.length - 1]!;
       nextCursor = encodeCursor(ENGINE_ID, CURSOR_VERSION, {
         titleHit: Number(last.titleHit),
-        rank: Number(last.rank),
+        updatedAtMs: Number(last.updatedAtMs),
         id: last.id,
       } satisfies PostgresCursor);
     }
