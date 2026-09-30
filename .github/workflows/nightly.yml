@@ -12,8 +12,7 @@ on:
         default: false
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 concurrency:
   group: nightly
@@ -33,11 +32,15 @@ jobs:
         with:
           ref: develop
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Fetch nightly tag (if present)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git fetch origin 'refs/tags/nightly:refs/tags/nightly' --force 2>/dev/null || true
+          git -c http.extraheader="AUTHORIZATION: bearer ${GH_TOKEN}" \
+            fetch origin 'refs/tags/nightly:refs/tags/nightly' --force 2>/dev/null || true
 
       - name: Resolve nightly build decision
         id: resolve
@@ -73,6 +76,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/reject-npm-lockfile
 
@@ -100,6 +104,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/reject-npm-lockfile
 
@@ -149,6 +154,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/reject-npm-lockfile
 
@@ -190,6 +196,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
 
       - name: Validate compose config
         run: docker compose config --quiet
@@ -213,6 +220,10 @@ jobs:
   build-image:
     needs: [detect-changes, build, test-sqlite, test-postgres, docker-build]
     if: needs.detect-changes.outputs.should_build == 'true'
+    permissions:
+      contents: read
+      packages: write
+      actions: write
     strategy:
       fail-fast: false
       matrix:
@@ -228,6 +239,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.detect-changes.outputs.sha }}
+          persist-credentials: false
 
       - name: Rewrite package.json version for nightly image
         env:
@@ -307,6 +319,10 @@ jobs:
   publish-images:
     needs: [detect-changes, build-image]
     if: needs.detect-changes.outputs.should_build == 'true'
+    permissions:
+      contents: read
+      packages: write
+      actions: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
@@ -391,6 +407,8 @@ jobs:
       - build-image
       - publish-images
     if: needs.detect-changes.outputs.should_build == 'true'
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

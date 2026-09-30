@@ -216,4 +216,31 @@ test('nightly.yml structural gating and isolation from semver releases', () => {
   assert.doesNotMatch(yaml, /refs\/tags\/v/);
   assert.doesNotMatch(yaml, /:latest\b/);
   assert.doesNotMatch(yaml, /softprops\/action-gh-release/);
+
+  // Least-privilege permissions: read-only default, elevated only where needed.
+  const topPermissions = yaml.match(/^permissions:\r?\n([\s\S]*?)\r?\n\r?\nconcurrency:/m);
+  assert.ok(topPermissions, 'expected top-level permissions block');
+  assert.match(topPermissions[1], /contents:\s*read/);
+  assert.doesNotMatch(topPermissions[1], /packages:/);
+  assert.doesNotMatch(topPermissions[1], /write/);
+
+  const buildImageBlock = jobBlocks.find((b) => /^  build-image:/.test(b));
+  assert.ok(buildImageBlock, 'build-image job missing');
+  assert.match(buildImageBlock, /permissions:[\s\S]*packages:\s*write/);
+  assert.doesNotMatch(buildImageBlock, /contents:\s*write/);
+
+  const publishBlock = jobBlocks.find((b) => /^  publish-images:/.test(b));
+  assert.ok(publishBlock, 'publish-images job missing');
+  assert.match(publishBlock, /permissions:[\s\S]*packages:\s*write/);
+  assert.doesNotMatch(publishBlock, /contents:\s*write/);
+
+  assert.match(updateBlock, /permissions:[\s\S]*contents:\s*write/);
+  assert.doesNotMatch(updateBlock, /packages:\s*write/);
+
+  // Jobs running repo code must not persist checkout credentials on disk.
+  for (const name of ['build', 'test-sqlite', 'test-postgres', 'docker-build', 'build-image']) {
+    const block = jobBlocks.find((b) => new RegExp(`^  ${name}:`).test(b));
+    assert.ok(block, `${name} job missing`);
+    assert.match(block, /persist-credentials:\s*false/, `${name} must not persist credentials`);
+  }
 });
