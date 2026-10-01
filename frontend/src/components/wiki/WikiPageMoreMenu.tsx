@@ -4,9 +4,12 @@ import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { PluginPageActions } from '@/components/plugins/PluginPageActions';
 import {
   listPageActions,
+  meetsPluginRequires,
   type PluginPageTarget,
 } from '@/lib/pluginContributions';
 import { usePluginRuntime } from '@/plugins/PluginRuntimeProvider';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOptionalWiki } from '@/contexts/WikiContext';
 
 function menuItemClass(danger = false): string {
   return `flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs transition-colors ${
@@ -41,11 +44,18 @@ export function WikiPageMoreMenu({
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const [open, setOpen] = useState(false);
   const { plugins } = usePluginRuntime();
+  const { isAuthenticated } = useAuth();
+  const wiki = useOptionalWiki();
 
   const hasPluginActions = useMemo(() => {
     if (!pageTarget) return false;
-    return listPageActions(pageTarget).length > 0;
-  }, [pageTarget, plugins]);
+    return listPageActions(pageTarget).some((action) =>
+      meetsPluginRequires(action.requires, {
+        isAuthenticated,
+        campaignRole: wiki?.campaign?.role,
+      }),
+    );
+  }, [pageTarget, plugins, isAuthenticated, wiki?.campaign?.role]);
 
   if (isTagsHub) return null;
   if (!isDMUser && !hasPluginActions) return null;

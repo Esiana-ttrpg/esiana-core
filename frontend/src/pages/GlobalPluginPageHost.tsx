@@ -29,7 +29,7 @@ export function GlobalPluginPageHost() {
   );
   const page = useMemo(
     () => (pluginId && pageId ? getPluginPage(pluginId, pageId) : undefined),
-    [pageId, pluginId],
+    [pageId, pluginId, plugins],
   );
 
   const navigation = useMemo(() => {
@@ -70,7 +70,12 @@ export function GlobalPluginPageHost() {
         if (cancelled) return;
         cleanup = typeof result === 'function' ? result : undefined;
       } catch (error) {
-        console.error(`[plugins] Global page render failed for "${pluginId}/${pageId}"`, error);
+        console.error(
+          '[plugins] Global page render failed for "%s/%s"',
+          pluginId,
+          pageId,
+          error,
+        );
         root.textContent = 'Plugin page failed to render.';
       }
     })();

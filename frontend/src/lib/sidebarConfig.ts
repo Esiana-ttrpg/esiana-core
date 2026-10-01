@@ -916,16 +916,22 @@ export function updateSidebarSectionIcon(
 
   if (!isSidebarFixedSection(sectionId as SidebarSectionId)) return config;
 
-  const fixedSectionIcons = { ...(config.fixedSectionIcons ?? {}) };
+  // Narrow for Partial<Record<SidebarSectionId, …>> indexing (sectionId is string for plugin ids).
+  const fixedId: SidebarSectionId = sectionId as SidebarSectionId;
+  const fixedSectionIcons: Partial<Record<SidebarSectionId, string>> = {
+    ...(config.fixedSectionIcons ?? {}),
+  };
   if (!nextIcon) {
-    delete fixedSectionIcons[sectionId];
+    delete fixedSectionIcons[fixedId];
   } else {
-    fixedSectionIcons[sectionId] = nextIcon;
+    fixedSectionIcons[fixedId] = nextIcon;
   }
 
   const hasFixedIcons = Object.keys(fixedSectionIcons).length > 0;
-  const nextFixedUrls = { ...(config.fixedSectionIconAssetUrls ?? {}) };
-  delete nextFixedUrls[sectionId];
+  const nextFixedUrls: Partial<Record<SidebarSectionId, string | null>> = {
+    ...(config.fixedSectionIconAssetUrls ?? {}),
+  };
+  delete nextFixedUrls[fixedId];
 
   return {
     ...config,

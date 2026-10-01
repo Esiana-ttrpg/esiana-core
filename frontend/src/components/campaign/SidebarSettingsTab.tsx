@@ -458,6 +458,7 @@ export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) 
     if (!drag) return;
     if (drag.bucket === bucket && drag.index === index) return;
     const nextConfig = moveSidebarItem(config, drag, { bucket, index });
+    if (nextConfig === config) return;
     setDrag({ bucket, index });
     setConfig(nextConfig);
   }

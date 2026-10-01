@@ -561,6 +561,7 @@ export function parseSidebarConfigPayload(body: unknown): SidebarConfig | null {
     ...(hasNewFormat
       ? { playOrder: parsed.playOrder, toolsOrder: parsed.toolsOrder }
       : { gameManagementOrder: parsed.gameManagementOrder }),
+    ...(parsed.pluginsOrder !== undefined ? { pluginsOrder: parsed.pluginsOrder } : {}),
     fixedSectionIcons: parsed.fixedSectionIcons,
     fixedSectionVisibility: parsed.fixedSectionVisibility,
   });
@@ -570,9 +571,19 @@ export function parseSidebarConfigPayload(body: unknown): SidebarConfig | null {
     ...normalized.worldLoreOrder,
     ...normalized.playOrder,
     ...normalized.toolsOrder,
+    ...(normalized.pluginsOrder ?? []),
   ];
 
   for (const item of allItems) {
+    if (isPluginOrderId(item.id)) {
+      if (seen.has(item.id)) return null;
+      seen.add(item.id);
+      if (item.icon !== undefined) {
+        const iconParsed = parseTagIconValue(item.icon);
+        if (!iconParsed.ok) return null;
+      }
+      continue;
+    }
     if (!ALL_CUSTOMIZABLE_IDS.includes(item.id)) return null;
     if (seen.has(item.id)) return null;
     seen.add(item.id);

@@ -41,7 +41,7 @@ export { PluginRuntimeContext };
 /** Bootstraps globally installed+enabled frontend plugins (no campaign jail). */
 export function GlobalPluginRuntimeProvider({ children }: { children: ReactNode }) {
   const [plugins, setPlugins] = useState<FrontendPluginDescriptor[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
