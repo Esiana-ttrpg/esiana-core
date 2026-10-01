@@ -7,6 +7,10 @@ import { WikiPageMoreMenu } from '@/components/wiki/WikiPageMoreMenu';
 import type { PageExportContext } from '@/lib/pageExport';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { campaignWorkshopPath } from '@/lib/campaignPaths';
+import type { PluginPageTarget } from '@/lib/pluginContributions';
+import { listPageActions, meetsPluginRequires } from '@/lib/pluginContributions';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOptionalWiki } from '@/contexts/WikiContext';
 
 function toolbarButtonClass(active: boolean): string {
   return `inline-flex h-8 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-all ${
@@ -41,6 +45,7 @@ interface WikiPageRuntimeToolbarProps {
   onDeletePage: () => void;
   getExportContext?: () => PageExportContext;
   allowCanvasTools?: boolean;
+  pageTarget?: PluginPageTarget;
 }
 
 export function WikiPageRuntimeToolbar({
@@ -68,12 +73,24 @@ export function WikiPageRuntimeToolbar({
   onDeletePage,
   getExportContext,
   allowCanvasTools = true,
+  pageTarget,
 }: WikiPageRuntimeToolbarProps) {
   const navigate = useNavigate();
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const draftRegistry = usePageBlockDraftRegistry();
+  const { isAuthenticated } = useAuth();
+  const wiki = useOptionalWiki();
   const hasUnsavedWork =
     isLayoutDirty || (draftRegistry?.hasSemanticDirty ?? false);
+  const hasPluginActions = Boolean(
+    pageTarget &&
+      listPageActions(pageTarget).some((action) =>
+        meetsPluginRequires(action.requires, {
+          isAuthenticated,
+          campaignRole: wiki?.campaign?.role,
+        }),
+      ),
+  );
 
   const handleOpenWorkshop = () => {
     if (!pageId) return;
@@ -129,14 +146,16 @@ export function WikiPageRuntimeToolbar({
           </button>
         ) : null}
 
-        {isDMUser && !isTagsHub ? (
+        {(isDMUser || hasPluginActions) && !isTagsHub ? (
           <WikiPageMoreMenu
+            isDMUser={isDMUser}
             isTagsHub={isTagsHub}
             isPinned={isPinned}
             canDeleteWikiPage={canDeleteWikiPage}
             onTogglePin={onTogglePin}
             onOpenPageSettings={onOpenPageSettings}
             onDeletePage={onDeletePage}
+            pageTarget={pageTarget}
           />
         ) : null}
       </div>

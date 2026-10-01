@@ -20,7 +20,7 @@ export class PluginErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error(`[plugins] UI slot crashed for "${this.props.pluginId}"`, error, info);
+    console.error('[plugins] UI slot crashed for "%s"', this.props.pluginId, error, info);
   }
 
   render(): ReactNode {

@@ -1,4 +1,4 @@
-import type { CampaignWorldEventSuggestion, Prisma, WikiPage } from '@prisma/client';
+import type { CampaignWorldEventSuggestion, Prisma, WikiPage } from './prismaClient.js';
 import type { GlobalTimeAdvanceContext } from '../../../shared/globalTimeHooks.js';
 import {
   formatMomentumStateLabel,

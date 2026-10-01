@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../prismaClient.js';
 import { decryptSecretOrDevStore } from '../crypto/secretBox.js';
 import { fetchAuthenticatedRemote } from '../networkFetch.js';
 import { prisma } from '../prisma.js';

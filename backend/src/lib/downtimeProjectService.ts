@@ -1,4 +1,4 @@
-import type { DowntimeProject, Prisma } from '@prisma/client';
+import type { DowntimeProject, Prisma } from './prismaClient.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { WikiVisibility } from '../types/domain.js';
 import { prisma } from './prisma.js';

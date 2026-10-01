@@ -1,5 +1,6 @@
 import type { PluginApiClient } from './pluginApiClient';
 import type { PluginSlotContext, PluginSlotRenderer } from '@/plugins/slots/types';
+import type { PluginRegistrationScope } from '@/lib/pluginContributions';
 
 export interface PluginPageNavigation {
   location: {
@@ -14,6 +15,7 @@ export interface PluginPageDefinition {
   id: string;
   pluginId: string;
   title: string;
+  scope: PluginRegistrationScope;
   render?: PluginPageRenderer;
 }
 
@@ -27,10 +29,18 @@ const pluginPages = new Map<string, PluginPageDefinition>();
 
 export function registerPluginPage(
   pluginId: string,
-  definition: { id: string; title: string; render?: PluginPageRenderer },
+  definition: {
+    id: string;
+    title: string;
+    render?: PluginPageRenderer;
+    scope?: PluginRegistrationScope;
+  },
 ): void {
   pluginPages.set(`${pluginId}:${definition.id}`, {
-    ...definition,
+    id: definition.id,
+    title: definition.title,
+    render: definition.render,
+    scope: definition.scope ?? 'campaign',
     pluginId,
   });
 }
@@ -52,14 +62,17 @@ export function clearPluginPageRegistry(): void {
 }
 
 export function createPluginPageNavigation(input: {
-  campaignHandle: string;
+  /** When omitted, builds a global plugin page prefix. */
+  campaignHandle?: string;
   pluginId: string;
   pageId: string;
   pathname: string;
   search: string;
   navigate: (nextPath: string, replace?: boolean) => void;
 }): PluginPageNavigation {
-  const prefix = `/campaigns/${encodeURIComponent(input.campaignHandle)}/plugin/${encodeURIComponent(input.pluginId)}/${encodeURIComponent(input.pageId)}`;
+  const prefix = input.campaignHandle
+    ? `/campaigns/${encodeURIComponent(input.campaignHandle)}/plugin/${encodeURIComponent(input.pluginId)}/${encodeURIComponent(input.pageId)}`
+    : `/plugins/${encodeURIComponent(input.pluginId)}/${encodeURIComponent(input.pageId)}`;
   const remainder = input.pathname.startsWith(prefix)
     ? input.pathname.slice(prefix.length).replace(/^\//, '')
     : '';

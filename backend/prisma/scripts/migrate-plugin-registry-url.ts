@@ -3,15 +3,15 @@
  * Safe to run multiple times (only updates known legacy placeholder URLs).
  *
  * Usage (from repo root):
- *   npm run db:migrate-registry-url
+ *   pnpm run db:migrate-registry-url
  */
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/lib/createPrismaClient.js';
 import {
   DEFAULT_PLUGIN_REGISTRY_URL,
   LEGACY_PLUGIN_REGISTRY_URLS,
 } from '../../src/lib/pluginManifest.js';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 async function main() {
   const result = await prisma.systemSetting.updateMany({

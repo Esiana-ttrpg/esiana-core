@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Prisma, type FantasyCalendar } from '@prisma/client';
+import { Prisma, type FantasyCalendar } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import { env } from '../config/env.js';

@@ -264,6 +264,10 @@ export async function createCustomCharacterField(req: CampaignScopedRequest, res
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_CREATED, campaignId: req.campaign!.campaignId,
     actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
     payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin } });
+  {
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, req.campaign!.campaignId, access.page.id);
+  }
   res.status(201).json({ field: descriptor(row, true) });
 }
 
@@ -331,6 +335,10 @@ export async function updateCharacterField(req: CampaignScopedRequest, res: Resp
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_UPDATED, campaignId: req.campaign!.campaignId,
     actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
     payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin, updatedAt: updated.updatedAt.toISOString() } });
+  {
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, req.campaign!.campaignId, access.page.id);
+  }
   res.json({ field: descriptor(updated, true) });
 }
 
@@ -351,5 +359,9 @@ export async function deleteCustomCharacterField(req: CampaignScopedRequest, res
   dispatchDomainEvent({ type: CoreDomainEvents.CHARACTER_FIELD_DELETED, campaignId: req.campaign!.campaignId,
     actorId: req.user?.id, resourceType: 'character_field', resourceId: access.page.id,
     payload: { fieldId: row.id, fieldKey: row.fieldKey, origin: row.origin } });
+  {
+    const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');
+    await upsertWikiPageDocument(prisma, req.campaign!.campaignId, access.page.id);
+  }
   res.status(204).end();
 }

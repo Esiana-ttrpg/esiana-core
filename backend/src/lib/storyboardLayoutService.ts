@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { STORYBOARD_LAYOUT_METADATA_KEY } from './adventureConstants.js';
 import {
   emptyStoryboardView,

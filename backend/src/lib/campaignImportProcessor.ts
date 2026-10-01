@@ -1043,6 +1043,8 @@ export async function processCampaignImportZip(
 
     const { rebuildWikiLinksForCampaign } = await import('./wikiLinkService.js');
     const linkEdgeCount = await rebuildWikiLinksForCampaign(campaignId);
+    const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');
+    await rebuildSearchIndexForCampaign(campaignId);
     const { rebuildEntityRelationsForCampaign } = await import('./entityRelationSyncService.js');
     await rebuildEntityRelationsForCampaign(campaignId);
     const { rebuildNarrativeLifecycleForCampaign } = await import('./narrativeLifecycleService.js');

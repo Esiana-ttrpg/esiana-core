@@ -1,5 +1,5 @@
 import * as client from 'openid-client';
-import type { IdentityProvider } from '@prisma/client';
+import type { IdentityProvider } from '../prismaClient.js';
 import { env } from '../../config/env.js';
 import { decryptSecretOrDevStore } from '../crypto/secretBox.js';
 import { resolveIssuerUrl } from './providerTemplates.js';

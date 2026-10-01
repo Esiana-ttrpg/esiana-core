@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
 import { generateHandle, makeUniqueHandle, isValidHandle } from './handleUtils.js';
@@ -551,6 +551,8 @@ export async function duplicateCampaign(
   });
 
   await rebuildWikiLinksForCampaign(created.id);
+  const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');
+  await rebuildSearchIndexForCampaign(created.id);
   const { rebuildEntityRelationsForCampaign } = await import('./entityRelationSyncService.js');
   await rebuildEntityRelationsForCampaign(created.id);
   const { rebuildNarrativeLifecycleForCampaign } = await import('./narrativeLifecycleService.js');

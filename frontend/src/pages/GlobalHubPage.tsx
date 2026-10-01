@@ -45,6 +45,8 @@ import { HubSectionHeader } from '@/components/hub/HubSectionHeader';
 
 import { HubShelfHorizon } from '@/components/hub/HubShelfHorizon';
 
+import { HubPluginsSection } from '@/components/hub/HubPluginsSection';
+
 import { rankCampaignsForContinue } from '@/lib/hubPrioritization';
 
 
@@ -349,6 +351,10 @@ export function GlobalHubPage() {
               <HubRecentlyEdited items={hubData!.recentEdits} />
 
             ) : null}
+
+
+
+            <HubPluginsSection />
 
 
 

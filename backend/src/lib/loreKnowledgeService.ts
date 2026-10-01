@@ -6,7 +6,7 @@ import type {
   LoreInterpretationAccount,
   LoreInterpretationGroup,
   Prisma,
-} from '@prisma/client';
+} from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { assertScopedMutationCount } from './scopedMutation.js';
 import {

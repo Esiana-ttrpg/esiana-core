@@ -1,4 +1,4 @@
-import type { PluginConnection } from '@prisma/client';
+import type { PluginConnection } from '../prismaClient.js';
 import type { Request } from 'express';
 import { prisma } from '../prisma.js';
 import { decryptSecretOrDevStore, encryptSecretOrDevStore } from '../crypto/secretBox.js';
@@ -7,7 +7,7 @@ import { isCampaignPluginEnabled } from '../campaignPlugins.js';
 import { getConnectionProvider } from './connectionProviderRegistry.js';
 import { requirePluginConnectionInvocation } from './pluginConnectionInvocation.js';
 
-type Credential = { accessToken?: string; refreshToken?: string; apiKey?: string; token?: string };
+type Credential = { accessToken?: string; refreshToken?: string; apiKey?: string; token?: string; username?: string; password?: string };
 const refreshes = new Map<string, Promise<PluginConnection>>();
 class OAuthRefreshError extends Error { constructor(message: string, readonly reconnectRequired: boolean) { super(message); } }
 export const isTerminalOAuthRefreshFailure = (status: number, code: unknown) => status === 400 && code === 'invalid_grant';
@@ -62,11 +62,23 @@ export async function getPluginConnection(pluginId: string) { const row = await 
 
 export async function putStaticConnection(input: { pluginId: string; value: string; accountLabel?: string }): Promise<RedactedPluginConnection> {
   const provider = getConnectionProvider(input.pluginId);
-  if (!provider || provider.auth.type === 'oauth2') throw new Error('Provider does not accept a static credential');
+  if (!provider || provider.auth.type === 'oauth2' || provider.auth.type === 'basic') throw new Error('Provider does not accept a static credential');
   const value = input.value.trim(); if (!value || value.length > 8192) throw new Error('Credential must be between 1 and 8192 characters');
   const credential: Credential = provider.auth.type === 'apiKey' ? { apiKey: value } : { token: value };
   const encrypted = encryptSecretOrDevStore(JSON.stringify(credential));
   const row = await prisma.pluginConnection.upsert({ where: { pluginId: input.pluginId }, create: { pluginId: input.pluginId, authType: provider.auth.type, status: 'connected', credentialEnc: encrypted, credentialVersion: 1, accountLabel: input.accountLabel?.trim().slice(0, 160) || null }, update: { authType: provider.auth.type, status: 'connected', credentialEnc: encrypted, credentialVersion: { increment: 1 }, accountLabel: input.accountLabel?.trim().slice(0, 160) || null, expiresAt: null, lastError: null } });
+  return redactConnection(row);
+}
+
+export async function putBasicConnection(input: { pluginId: string; username: string; password: string }): Promise<RedactedPluginConnection> {
+  const provider = getConnectionProvider(input.pluginId);
+  if (!provider || provider.auth.type !== 'basic') throw new Error('Provider does not accept username/password credentials');
+  const username = input.username.trim();
+  if (!username || username.length > 512) throw new Error('Username must be between 1 and 512 characters');
+  if (username.includes(':')) throw new Error('Username cannot contain a colon');
+  if (!input.password || input.password.length > 8192) throw new Error('Password must be between 1 and 8192 characters');
+  const credentialEnc = encryptSecretOrDevStore(JSON.stringify({ username, password: input.password }));
+  const row = await prisma.pluginConnection.upsert({ where: { pluginId: input.pluginId }, create: { pluginId: input.pluginId, authType: 'basic', status: 'connected', credentialEnc, credentialVersion: 1, accountLabel: username }, update: { authType: 'basic', status: 'connected', credentialEnc, credentialVersion: { increment: 1 }, accountLabel: username, expiresAt: null, lastError: null } });
   return redactConnection(row);
 }
 
@@ -98,7 +110,7 @@ export function createConnectionsApi(input: { pluginId: string; campaignId?: str
       if (!row?.credentialEnc || row.status !== 'connected') throw new Error('No connected credential is available');
       const provider = getConnectionProvider(input.pluginId); if (!provider) throw new Error('Connection provider is not registered');
       if (provider.auth.type === 'oauth2' && row.expiresAt && row.expiresAt <= new Date()) row = await refreshOAuth(row, campaignId, input.outboundOrigins);
-      const send = async (activeRow: PluginConnection) => { if (!await isCampaignPluginEnabled(campaignId, input.pluginId)) throw new Error('Plugin is not enabled for this campaign'); const credential = JSON.parse(decryptSecretOrDevStore(activeRow.credentialEnc!)) as Credential; const injected = provider.auth.type === 'apiKey' ? { name: provider.auth.headerName, value: `${provider.auth.prefix ?? ''}${credential.apiKey ?? ''}` } : { name: 'Authorization', value: `Bearer ${provider.auth.type === 'oauth2' ? credential.accessToken ?? '' : credential.token ?? ''}` }; return fetchAuthenticatedRemote(new URL(url), injected, { ...options, allowedOrigins: provider.resourceOrigins }); };
+      const send = async (activeRow: PluginConnection) => { if (!await isCampaignPluginEnabled(campaignId, input.pluginId)) throw new Error('Plugin is not enabled for this campaign'); const credential = JSON.parse(decryptSecretOrDevStore(activeRow.credentialEnc!)) as Credential; const injected = provider.auth.type === 'apiKey' ? { name: provider.auth.headerName, value: `${provider.auth.prefix ?? ''}${credential.apiKey ?? ''}` } : provider.auth.type === 'basic' ? { name: 'Authorization', value: `Basic ${Buffer.from(`${credential.username ?? ''}:${credential.password ?? ''}`).toString('base64')}` } : { name: 'Authorization', value: `Bearer ${provider.auth.type === 'oauth2' ? credential.accessToken ?? '' : credential.token ?? ''}` }; return fetchAuthenticatedRemote(new URL(url), injected, { ...options, allowedOrigins: provider.resourceOrigins }); };
       let response = await send(row); if (response.status === 401 && provider.auth.type === 'oauth2') { row = await refreshOAuth(row, campaignId, input.outboundOrigins); response = await send(row); } return response;
     },
   };

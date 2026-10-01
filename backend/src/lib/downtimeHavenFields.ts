@@ -1,4 +1,4 @@
-import type { DowntimeHaven, Prisma } from '@prisma/client';
+import type { DowntimeHaven, Prisma } from './prismaClient.js';
 import { parseDowntimeHavenFields, type DowntimeHavenFields } from './havenMetadata.js';
 
 export function rowToFields(row: DowntimeHaven): DowntimeHavenFields {

@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { getConnectionProvider } from '../lib/plugins/connectionProviderRegistry.js';
-import { disconnectPluginConnection, getPluginConnection, putStaticConnection, revokePluginConnectionBestEffort } from '../lib/plugins/pluginConnectionsService.js';
+import { disconnectPluginConnection, getPluginConnection, putBasicConnection, putStaticConnection, revokePluginConnectionBestEffort } from '../lib/plugins/pluginConnectionsService.js';
 import { getPluginManifest } from '../plugins/pluginManager.js';
 
 function providerFor(req: AuthenticatedRequest, res: Response) {
@@ -15,7 +15,13 @@ export async function getAdminConnection(req: AuthenticatedRequest, res: Respons
 }
 export async function connectAdminStatic(req: AuthenticatedRequest, res: Response): Promise<void> {
   const provider = providerFor(req, res); if (!provider) return;
-  const body = req.body as { credential?: unknown; accountLabel?: unknown };
+  const body = req.body as { credential?: unknown; accountLabel?: unknown; username?: unknown; password?: unknown };
+  if (provider.auth.type === 'basic') {
+    if (typeof body.username !== 'string' || typeof body.password !== 'string') { res.status(400).json({ error: 'username and password are required' }); return; }
+    try { res.status(201).json({ connection: await putBasicConnection({ pluginId: provider.id, username: body.username, password: body.password }) }); }
+    catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to connect' }); }
+    return;
+  }
   if (typeof body.credential !== 'string') { res.status(400).json({ error: 'credential is required' }); return; }
   try { res.status(201).json({ connection: await putStaticConnection({ pluginId: provider.id, value: body.credential, accountLabel: typeof body.accountLabel === 'string' ? body.accountLabel : undefined }) }); }
   catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to connect' }); }

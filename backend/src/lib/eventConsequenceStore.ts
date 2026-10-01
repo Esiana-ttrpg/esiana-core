@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import {
   dedupeEventConsequencesById,
   EVENT_LORE_AUTO_GENERATED_METADATA_KEY,

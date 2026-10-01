@@ -1,17 +1,23 @@
 import {
   GLOBAL_SEARCH_MIN_QUERY_LENGTH,
   type GlobalSearchResponse,
-  type GlobalSearchResult,
-  type GlobalSearchTypeCount,
 } from '../../../../shared/globalSearch.js';
 import type { SearchContext } from './searchContext.js';
 import {
   listSearchProviders,
   registerSearchProvider,
 } from './searchProviderRegistry.js';
-import { compareRankedResults } from './searchRanking.js';
+import {
+  compareRankedResults,
+  stripInternalSearchMetadata,
+  type InternalSearchResult,
+} from './searchRanking.js';
 import { wikiPageSearchProvider } from './wikiPageSearchProvider.js';
 import { pluginSearchProvider } from './pluginSearchProvider.js';
+import {
+  buildTypeCounts,
+  shapeSearchResults,
+} from './searchResultShaping.js';
 
 let providersRegistered = false;
 
@@ -27,26 +33,6 @@ function ensureCoreProvidersRegistered(): void {
 /** Test helper — allow re-registration after clearSearchProviders(). */
 export function resetSearchProviderBootstrapForTests(): void {
   providersRegistered = false;
-}
-
-function buildTypeCounts(results: GlobalSearchResult[]): GlobalSearchTypeCount[] {
-  const byKey = new Map<string, GlobalSearchTypeCount>();
-  for (const result of results) {
-    const existing = byKey.get(result.type.key);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      byKey.set(result.type.key, {
-        key: result.type.key,
-        label: result.type.label,
-        count: 1,
-      });
-    }
-  }
-  return [...byKey.values()].sort((a, b) => {
-    if (b.count !== a.count) return b.count - a.count;
-    return a.label.localeCompare(b.label);
-  });
 }
 
 /**
@@ -75,21 +61,51 @@ export async function searchCampaign(
 
   const providers = listSearchProviders();
   const chunks = await Promise.all(providers.map((provider) => provider.search(ctx)));
-  const allAuthorized = chunks.flat();
+
+  const allAuthorized: InternalSearchResult[] = [];
+  const diagnostics: Record<string, unknown> = {};
+  let hitCandidateCeiling = false;
+
+  for (let i = 0; i < providers.length; i++) {
+    const provider = providers[i]!;
+    const chunk = chunks[i]!;
+    allAuthorized.push(...(chunk.results as InternalSearchResult[]));
+    if (chunk.hitCandidateCeiling) hitCandidateCeiling = true;
+    if (chunk.diagnostics) {
+      diagnostics[provider.id] = chunk.diagnostics;
+      // Flatten wiki fuzzy status to the top level for quick explain reads.
+      if (provider.id === 'wiki-pages') {
+        Object.assign(diagnostics, chunk.diagnostics);
+      }
+    }
+  }
+
   allAuthorized.sort(compareRankedResults);
 
   // Type counts are derived only from authorized hits — never from pre-auth
   // candidates — so restricted content cannot leak through tab metadata.
+  // Counts use the full authorized set before shaping/slicing.
   const types = buildTypeCounts(allAuthorized);
 
-  const filtered =
-    ctx.types == null || ctx.types.length === 0
-      ? allAuthorized
-      : allAuthorized.filter((r) => ctx.types!.includes(r.type.key));
+  const shaped = shapeSearchResults({
+    results: allAuthorized,
+    limit: ctx.limit,
+    types: ctx.types,
+    hitCandidateCeiling,
+  });
 
-  return {
+  const response: GlobalSearchResponse = {
     query: ctx.query.raw,
-    results: filtered.slice(0, ctx.limit),
+    results: stripInternalSearchMetadata(shaped.results),
     types,
+    ...(shaped.sections && shaped.sections.length > 0
+      ? { sections: shaped.sections }
+      : {}),
   };
+
+  if (ctx.explain) {
+    response.diagnostics = diagnostics;
+  }
+
+  return response;
 }

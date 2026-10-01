@@ -9,6 +9,7 @@ export {
   campaignPath,
   campaignWorkspaceEntityPath,
   campaignWorkspaceIndexPath,
+  listCreatableCodexPageTypes,
   resolveCanonicalPagePath,
   resolveWorkspaceForPage,
   resolveWorkspaceIndexPathForFolderTitle,
@@ -18,6 +19,7 @@ export {
   segmentToWorkspace,
   workspaceToSegment,
   type CampaignWorkspaceRoute,
+  type CreatableCodexPageType,
   type WorkspaceKind,
 } from '@shared/campaignWorkspaceRoutes';
 

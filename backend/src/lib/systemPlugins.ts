@@ -1,4 +1,4 @@
-import type { Prisma, SystemPlugin } from '@prisma/client';
+import type { Prisma, SystemPlugin } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import {
   buildDefaultConfigFromTemplate,

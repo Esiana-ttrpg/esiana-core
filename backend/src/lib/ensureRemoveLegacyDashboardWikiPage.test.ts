@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { ensureRemoveLegacyDashboardWikiPage } from './ensureRemoveLegacyDashboardWikiPage.js';
 
 type WikiRow = {

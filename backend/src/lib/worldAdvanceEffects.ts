@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import type { WorldAdvanceEffect } from '../../../shared/worldAdvance.js';
 import type { ConsequenceEffect } from '../../../shared/narrativeConsequence.js';
 import {

@@ -1,4 +1,4 @@
-import type { IdentityProvider } from '@prisma/client';
+import type { IdentityProvider } from '../prismaClient.js';
 import { UserRoles, type UserRoleLiteral } from '../../types/domain.js';
 import { getOidcEnvConfig } from '../../config/oidcEnv.js';
 import { prisma } from '../prisma.js';

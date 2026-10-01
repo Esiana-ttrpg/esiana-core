@@ -2,7 +2,7 @@
  * Layer 3 — persist derived map flow / weather overlays as MapSceneObjects.
  */
 
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import {
   DerivationStatus,
   FlowKind,

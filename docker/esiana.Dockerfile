@@ -29,14 +29,20 @@ RUN set -eux; \
   mkdir -p "${DEPLOY}/node_modules/.bin"; \
   cp -a node_modules/prisma "${DEPLOY}/node_modules/"; \
   cp -a node_modules/.bin/prisma "${DEPLOY}/node_modules/.bin/prisma"; \
+  # Retain CLI engine artifacts until migrate deploy is proven unused without them.
   if [ -d node_modules/@prisma/engines ]; then \
     mkdir -p "${DEPLOY}/node_modules/@prisma"; \
     cp -a node_modules/@prisma/engines "${DEPLOY}/node_modules/@prisma/"; \
   fi; \
+  # prisma.config.ts is required for Prisma ORM v7 CLI (migrate deploy).
+  if [ ! -f "${DEPLOY}/prisma.config.ts" ] && [ -f backend/prisma.config.ts ]; then \
+    cp -a backend/prisma.config.ts "${DEPLOY}/prisma.config.ts"; \
+  fi; \
   cd "${DEPLOY}"; \
   node_modules/.bin/prisma generate; \
   node_modules/.bin/prisma --version; \
-  node --input-type=module -e "import('@prisma/client').then((m) => { if (!m.PrismaClient) process.exit(1); })"; \
+  node --input-type=module -e "import('./dist/backend/src/lib/prismaClient.js').then((m) => { if (!m.PrismaClient) process.exit(1); })"; \
+  node --input-type=module -e "import('./dist/backend/src/lib/createPrismaClient.js').then((m) => { if (typeof m.createPrismaClient !== 'function') process.exit(1); })"; \
   node --input-type=module -e "import('./dist/backend/src/lib/tagIconSvg.js')"
 
 FROM node:26-alpine AS runtime

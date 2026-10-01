@@ -25,7 +25,7 @@ import {
 } from '../../../shared/narrativeSnapshots.js';
 import { buildCampaignQuestStatusFacets } from '../lib/narrativeLifecycleService.js';
 import { buildCalendarStates } from '../lib/timeTracking.js';
-import type { FantasyCalendar } from '@prisma/client';
+import type { FantasyCalendar } from '../lib/prismaClient.js';
 
 type SnapshotKindLabel = 'visit' | 'milestone' | 'manual';
 

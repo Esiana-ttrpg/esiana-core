@@ -13,6 +13,7 @@ import { WikiPageRuntimeToolbar } from '@/components/wiki/WikiPageRuntimeToolbar
 import { EntitySubviewNav } from '@/components/entity/shells/EntitySubviewNav';
 import type { WikiPageBlock } from '@/types/wiki';
 import { Plus } from 'lucide-react';
+import { resolvePluginPageTarget } from '@/lib/pluginContributions';
 
 interface WikiBreadcrumb {
   id: string;
@@ -93,6 +94,7 @@ export function WikiPageEditorHeader({
   ...toolbarProps
 }: WikiPageEditorHeaderProps) {
   const entityKind = resolveEntityKindLabel(profileKey, templateType);
+  const pageTarget = resolvePluginPageTarget(profileKey);
   const showTitleEditor =
     editablePageTitle &&
     toolbarProps.isEditingPage &&
@@ -147,6 +149,7 @@ export function WikiPageEditorHeader({
           confirmWorkshopLeave={confirmWorkshopLeave}
           isDMUser={isDMUser}
           isTagsHub={isTagsHub}
+          pageTarget={pageTarget}
           {...toolbarProps}
         />
       </div>

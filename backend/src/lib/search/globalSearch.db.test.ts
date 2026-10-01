@@ -32,6 +32,7 @@ async function makeCtx(input: {
   query: string;
   types?: string[] | null;
   limit?: number;
+  explain?: boolean;
 }): Promise<SearchContext> {
   const actor = buildCampaignActor({
     kind: 'member',
@@ -73,6 +74,7 @@ async function makeCtx(input: {
     limit: input.limit ?? 20,
     types,
     filters,
+    explain: input.explain,
   };
 }
 
@@ -469,6 +471,13 @@ test('global search: content match, ranking, custom fields, visibility, images',
       blocks: [],
     },
   });
+
+  // Materialize the derived search index (Pass 5). Direct prisma creates
+  // bypass write-path upserts; rebuild matches import/clone behavior.
+  const { rebuildSearchIndexForCampaign, clearSearchIndexEnsureMemoForTests } =
+    await import('./index/searchIndexService.js');
+  clearSearchIndexEnsureMemoForTests();
+  await rebuildSearchIndexForCampaign(campaignId);
 
   const participantBase = {
     campaignId,
@@ -935,5 +944,180 @@ test('global search: plugin searchForViewer adapter', async (t) => {
       }),
     );
     assert.ok(res.results.every((r) => r.type.key === `plugin:${pluginId}:relics`));
+  }
+});
+
+test('global search Pass 6: sections, fuzzy name, and cap diagnostics', async (t) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    t.skip('Database is not reachable');
+    return;
+  }
+
+  const stamp = randomUUID().slice(0, 8);
+  const gmId = `p6-gm-${stamp}`;
+  const campaignId = `p6-campaign-${stamp}`;
+  const handle = `p6-${stamp}`;
+  const yunaId = `p6-yuna-${stamp}`;
+  const besaidId = `p6-besaid-${stamp}`;
+  const noteIds = Array.from({ length: 8 }, (_, i) => `p6-note-${i}-${stamp}`);
+
+  clearSearchProviders();
+  setSearchProvidersForTests([wikiPageSearchProvider]);
+  resetSearchProviderBootstrapForTests();
+
+  t.after(async () => {
+    clearSearchProviders();
+    resetSearchProviderBootstrapForTests();
+    const { clearSearchIndexEnsureMemoForTests } = await import(
+      './index/searchIndexService.js'
+    );
+    const { clearFuzzyCapWarnMemoForTests } = await import(
+      './wikiPageSearchProvider.js'
+    );
+    clearSearchIndexEnsureMemoForTests();
+    clearFuzzyCapWarnMemoForTests();
+    await prisma.searchIndexDocument.deleteMany({ where: { campaignId } }).catch(() => undefined);
+    await prisma.wikiPage.deleteMany({ where: { campaignId } }).catch(() => undefined);
+    await prisma.campaignMember.deleteMany({ where: { campaignId } }).catch(() => undefined);
+    await prisma.campaign.deleteMany({ where: { id: campaignId } }).catch(() => undefined);
+    await prisma.user.deleteMany({ where: { id: gmId } }).catch(() => undefined);
+    delete process.env.SEARCH_FUZZY_NAME_ROW_CAP;
+  });
+
+  await prisma.user.create({
+    data: { id: gmId, email: `${gmId}@example.test`, displayName: 'P6 GM' },
+  });
+  await prisma.campaign.create({
+    data: {
+      id: campaignId,
+      name: `Pass6 ${stamp}`,
+      handle,
+      campaignOwnerUserId: gmId,
+      members: {
+        create: [{ userId: gmId, role: CampaignMemberRoles.GAMEMASTER }],
+      },
+    },
+  });
+
+  await prisma.wikiPage.create({
+    data: {
+      id: yunaId,
+      campaignId,
+      title: 'Yuna',
+      visibility: WikiVisibility.PARTY,
+      templateType: 'DEFAULT',
+      workspace: 'CHARACTERS',
+      pathKey: `yuna-${stamp}`,
+      createdByUserId: gmId,
+      metadata: { entityCategory: 'characters', profession: 'Summoner' },
+      blocks: [
+        {
+          id: 'bio',
+          type: 'text-tiptap',
+          visibility: 'Party',
+          content: { markdown: 'A summoner from Besaid.' },
+        },
+      ],
+    },
+  });
+
+  await prisma.wikiPage.create({
+    data: {
+      id: besaidId,
+      campaignId,
+      title: 'Besaid Village',
+      visibility: WikiVisibility.PARTY,
+      templateType: 'DEFAULT',
+      workspace: 'LOCATIONS',
+      pathKey: `besaid-${stamp}`,
+      createdByUserId: gmId,
+      metadata: { entityCategory: 'locations' },
+      blocks: [],
+    },
+  });
+
+  for (let i = 0; i < noteIds.length; i++) {
+    await prisma.wikiPage.create({
+      data: {
+        id: noteIds[i]!,
+        campaignId,
+        title: `Session ${i} ${stamp}`,
+        visibility: WikiVisibility.PARTY,
+        templateType: 'SESSION_NOTE',
+        workspace: 'SESSIONS',
+        pathKey: `session-${i}-${stamp}`,
+        createdByUserId: gmId,
+        metadata: { entityCategory: 'sessions' },
+        blocks: [
+          {
+            id: 'body',
+            type: 'text-tiptap',
+            visibility: 'Party',
+            content: { markdown: `The party traveled with Yuna on day ${i}.` },
+          },
+        ],
+      },
+    });
+  }
+
+  const { rebuildSearchIndexForCampaign, clearSearchIndexEnsureMemoForTests } =
+    await import('./index/searchIndexService.js');
+  clearSearchIndexEnsureMemoForTests();
+  await rebuildSearchIndexForCampaign(campaignId);
+
+  const base = {
+    campaignId,
+    campaignHandle: handle,
+    ownerUserId: gmId,
+    userId: gmId,
+    role: CampaignMemberRoles.GAMEMASTER,
+  };
+
+  // Sections: exact character + session-note mentions
+  {
+    const res = await searchCampaign(
+      await makeCtx({ ...base, query: 'Yuna', limit: 20 }),
+    );
+    assert.ok(res.sections);
+    const best = res.sections!.find((s) => s.kind === 'best');
+    const mentions = res.sections!.find((s) => s.kind === 'mentions');
+    assert.ok(best);
+    assert.ok(best!.resultIds.some((id) => id.includes(yunaId)));
+    assert.ok(mentions);
+    assert.equal(mentions!.totalCount, noteIds.length);
+    assert.ok(mentions!.resultIds.length <= 3);
+    assert.ok(mentions!.totalCount > mentions!.resultIds.length);
+  }
+
+  // Fuzzy: Besiad finds Besaid Village
+  {
+    const res = await searchCampaign(
+      await makeCtx({ ...base, query: 'Besiad', limit: 20, explain: true }),
+    );
+    assert.ok(
+      res.results.some((r) => r.entityId === besaidId),
+      'expected Besaid Village via fuzzy',
+    );
+    const fuzzyHit = res.results.find((r) => r.entityId === besaidId);
+    assert.ok(
+      fuzzyHit!.matchedOn === 'title_fuzzy' || fuzzyHit!.matchedOn === 'title',
+    );
+    assert.equal(res.diagnostics?.fuzzy, 'ran');
+  }
+
+  // Cap skip diagnostics
+  {
+    process.env.SEARCH_FUZZY_NAME_ROW_CAP = '1';
+    const { clearFuzzyCapWarnMemoForTests } = await import(
+      './wikiPageSearchProvider.js'
+    );
+    clearFuzzyCapWarnMemoForTests();
+    const res = await searchCampaign(
+      await makeCtx({ ...base, query: 'Besiad', limit: 20, explain: true }),
+    );
+    assert.equal(res.diagnostics?.fuzzy, 'skipped-cap');
+    delete process.env.SEARCH_FUZZY_NAME_ROW_CAP;
   }
 });

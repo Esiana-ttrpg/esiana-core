@@ -49,7 +49,9 @@ jobs:
         run: |
           set -euo pipefail
           HEAD_SHA="$(git rev-parse HEAD)"
-          NIGHTLY_SHA="$(git rev-parse 'nightly^{commit}' 2>/dev/null || true)"
+          # --verify is required: without it, unresolved refs are echoed to stdout
+          # (e.g. "nightly^{commit}") even when rev-parse exits non-zero.
+          NIGHTLY_SHA="$(git rev-parse --verify 'nightly^{commit}' 2>/dev/null || true)"
           export HEAD_SHA NIGHTLY_SHA
           echo "HEAD_SHA=${HEAD_SHA}"
           echo "NIGHTLY_SHA=${NIGHTLY_SHA:-<absent>}"
@@ -122,14 +124,16 @@ jobs:
         working-directory: backend
         run: |
           echo 'DATABASE_URL="file:./ci-test.db"' > .env
-          DATABASE_URL=file:./ci-test.db node prisma/scripts/deploy-sqlite-migrations.mjs --reset
-          sed -i 's/provider = "postgresql"/provider = "sqlite"/' prisma/schema.prisma
+          echo 'DATABASE_PROVIDER=sqlite' >> .env
+          DATABASE_URL=file:./ci-test.db DATABASE_PROVIDER=sqlite node prisma/scripts/deploy-sqlite-migrations.mjs --reset
+          node -e "import{normalizeSchemaPrismaForSqlite}from'./prisma/scripts/sqliteSchema.mjs';import fs from'node:fs';const p='prisma/schema.prisma';fs.writeFileSync(p,normalizeSchemaPrismaForSqlite(fs.readFileSync(p,'utf8')))"
           pnpm exec prisma generate
 
       - name: Run backend tests
         working-directory: backend
         env:
           DATABASE_URL: file:./ci-test.db
+          DATABASE_PROVIDER: sqlite
         run: pnpm test
 
   test-postgres:
@@ -427,7 +431,7 @@ jobs:
             echo "Checkout HEAD ($HEAD) does not match detected sha ($SHA)" >&2
             exit 1
           fi
-          PREV="$(git rev-parse 'nightly^{commit}' 2>/dev/null || echo '<absent>')"
+          PREV="$(git rev-parse --verify 'nightly^{commit}' 2>/dev/null || echo '<absent>')"
           git tag -f nightly "$SHA"
           git push --force origin refs/tags/nightly
           {

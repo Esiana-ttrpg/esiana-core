@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 
 export type ChronologyEventVisibility = 'PUBLIC' | 'PARTY' | 'DM_ONLY';
 

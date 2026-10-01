@@ -2,6 +2,8 @@
 
 Committed defaults target **PostgreSQL** (`schema.prisma` `provider = "postgresql"`, baseline migration SQL uses `TIMESTAMP(3)` and `JSONB`). SQLite is supported for solo local dev via a deploy-time type patch — see below.
 
+Prisma ORM **v7**: connection URL lives in [`../prisma.config.ts`](../prisma.config.ts). Runtime clients are built via `createPrismaClient()` (driver adapters). Import types from `src/lib/prismaClient.ts`, not `@prisma/client`.
+
 Full setup paths: [../DEVELOPMENT.md](../DEVELOPMENT.md) · [../../DEVELOPMENT.md](../../DEVELOPMENT.md#database-postgresql-vs-sqlite).
 
 ---
@@ -40,7 +42,17 @@ pnpm run db:generate
 pnpm run db:migrate:deploy:sqlite
 ```
 
-**Do not** use `db:push` or plain `db:migrate:deploy` on SQLite. Committed migration SQL is Postgres-normalized; Prisma's SQLite client cannot read/write columns declared as `TIMESTAMP(3)` or `JSONB`. The [`deploy-sqlite-migrations.mjs`](./scripts/deploy-sqlite-migrations.mjs) script rewrites those types to `DATETIME` and `TEXT` in a staging copy, runs `migrate deploy`, and restores committed files.
+**Do not** use `db:push` or plain `db:migrate:deploy` on SQLite. Committed migration SQL is Postgres-normalized; Prisma's SQLite client cannot read/write columns declared as `TIMESTAMP(3)` or `JSONB`. The [`deploy-sqlite-migrations.mjs`](./scripts/deploy-sqlite-migrations.mjs) script rewrites those types (and `tsvector`) to `DATETIME`/`TEXT`, drops `USING GIN` indexes, runs `migrate deploy`, and restores committed files. Schema normalization (provider swap, `Unsupported("tsvector")?` → `String?`, strip `, type: Gin`) lives in [`sqliteSchema.mjs`](./scripts/sqliteSchema.mjs).
+
+### Engine-specific escape hatch: `Unsupported("tsvector")`
+
+Global Search stores inverted-index columns as Prisma `Unsupported("tsvector")?` with `@@index(..., type: Gin)`. This is the sanctioned Postgres-only escape hatch for Pass 5 FTS:
+
+- Canonical migrations declare `tsvector` + GIN for PostgreSQL.
+- SQLite deploy/generate paths neutralize those declarations via `sqliteSchema.mjs` (columns become unused TEXT; GIN indexes are dropped).
+- Query adapters select by `DATABASE_PROVIDER`: PostgreSQL uses `to_tsvector`/`to_tsquery`; SQLite uses portable multi-token `LIKE` over the same derived text columns.
+
+Do not introduce additional vendor-specific types without extending the SQLite normalizer and dual-engine CI path.
 
 | Command | Effect |
 |---------|--------|

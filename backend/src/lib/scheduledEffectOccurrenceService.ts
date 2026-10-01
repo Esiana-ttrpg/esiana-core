@@ -1,4 +1,4 @@
-import type { FantasyCalendar, Prisma } from '@prisma/client';
+import type { FantasyCalendar, Prisma } from './prismaClient.js';
 import {
   normalizeScheduledEffectKind,
   normalizeScheduledEffectOccurrenceStatus,

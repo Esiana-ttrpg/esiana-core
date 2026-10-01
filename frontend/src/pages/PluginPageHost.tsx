@@ -76,7 +76,7 @@ export function PluginPageHost() {
         if (cancelled) return;
         cleanup = typeof result === 'function' ? result : undefined;
       } catch (error) {
-        console.error(`[plugins] Page render failed for "${pluginId}/${pageId}"`, error);
+        console.error('[plugins] Page render failed for "%s/%s"', pluginId, pageId, error);
         root.textContent = 'Plugin page failed to render.';
       }
     })();
@@ -102,6 +102,16 @@ export function PluginPageHost() {
         code={404}
         title="Plugin page not found"
         description="This plugin page is unavailable or not registered."
+      />
+    );
+  }
+
+  if (page.scope === 'global') {
+    return (
+      <MascotErrorPanel
+        code={404}
+        title="Plugin page not found"
+        description="This page is only available outside a campaign."
       />
     );
   }

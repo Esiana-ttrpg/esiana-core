@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { PluginCapabilities, PluginScopes } from './pluginManifest.js';
 import { readManifestForRecord } from '../plugins/pluginManager.js';

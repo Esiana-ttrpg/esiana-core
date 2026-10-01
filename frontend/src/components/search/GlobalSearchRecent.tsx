@@ -5,6 +5,7 @@ interface GlobalSearchRecentProps {
   onSelect: (query: string) => void;
   onRemove: (query: string) => void;
   onClear: () => void;
+  onEnterCommands?: () => void;
 }
 
 export function GlobalSearchRecent({
@@ -12,6 +13,7 @@ export function GlobalSearchRecent({
   onSelect,
   onRemove,
   onClear,
+  onEnterCommands,
 }: GlobalSearchRecentProps) {
   if (items.length === 0) {
     return (
@@ -21,6 +23,16 @@ export function GlobalSearchRecent({
         <p className="mt-1 max-w-sm text-sm text-muted">
           Find characters, places, session notes, and more by title or content.
         </p>
+        {onEnterCommands ? (
+          <button
+            type="button"
+            onClick={onEnterCommands}
+            className="mt-4 text-sm text-muted underline-offset-2 hover:text-foreground hover:underline"
+          >
+            Type <kbd className="rounded border border-border/50 px-1">{'>'}</kbd> for
+            commands
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -61,6 +73,18 @@ export function GlobalSearchRecent({
           </li>
         ))}
       </ul>
+      {onEnterCommands ? (
+        <p className="mt-3 px-1 text-xs text-muted">
+          <button
+            type="button"
+            onClick={onEnterCommands}
+            className="hover:text-foreground"
+          >
+            Type <kbd className="rounded border border-border/50 px-1">{'>'}</kbd> for
+            commands
+          </button>
+        </p>
+      ) : null}
     </div>
   );
 }

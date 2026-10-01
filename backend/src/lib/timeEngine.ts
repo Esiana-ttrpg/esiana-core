@@ -1,4 +1,4 @@
-import type { FantasyCalendar } from '@prisma/client';
+import type { FantasyCalendar } from './prismaClient.js';
 import { normalizeClimateAspect, type ClimateAspect } from './climateAspect.js';
 
 const MINUTES_PER_HOUR = 60;

@@ -1,13 +1,25 @@
 import type { GlobalSearchResult } from '../../../../shared/globalSearch.js';
 import type { SearchContext } from './searchContext.js';
+import type { InternalSearchResult } from './searchRanking.js';
 
 /**
  * A searchable-content contributor for campaign global search.
  *
  * Providers MUST authorize every candidate before returning it. The candidate
- * retrieval stage MAY over-select but MUST NOT under-select content the
- * provider advertises as searchable.
+ * retrieval stage uses the derived SearchIndexDocument projection (PostgreSQL
+ * tsvector / portable LIKE) and MAY over-select, but MUST NOT under-select
+ * content the provider advertises as searchable. Authorization remains an
+ * authoritative post-retrieval boundary.
  */
+export interface SearchProviderResult {
+  /** May include server-only fields (exactName); stripped before HTTP response. */
+  results: InternalSearchResult[] | GlobalSearchResult[];
+  /** Unstable diagnostic payload (fuzzy ran/skipped, timings, …). */
+  diagnostics?: Record<string, unknown>;
+  /** True when the provider stopped at SEARCH_CANDIDATE_CEILING. */
+  hitCandidateCeiling?: boolean;
+}
+
 export interface SearchProvider {
   id: string;
   /**
@@ -15,7 +27,7 @@ export interface SearchProvider {
    * Empty / undefined means "owns all / unknown" — always run.
    */
   typeKeys?: readonly string[];
-  search: (ctx: SearchContext) => Promise<GlobalSearchResult[]>;
+  search: (ctx: SearchContext) => Promise<SearchProviderResult>;
 }
 
 const providers = new Map<string, SearchProvider>();

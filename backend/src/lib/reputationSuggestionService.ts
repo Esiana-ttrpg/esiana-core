@@ -4,7 +4,7 @@ import type {
   DowntimeProject,
   Prisma,
   WikiPage,
-} from '@prisma/client';
+} from './prismaClient.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import { prisma } from './prisma.js';

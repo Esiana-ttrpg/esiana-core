@@ -6,6 +6,10 @@ interface GlobalSearchResultRowProps {
   result: GlobalSearchResult;
   active: boolean;
   queryTokens: string[];
+  /** Hide the type label (redundant inside a type/mentions section). */
+  hideTypeLabel?: boolean;
+  /** Free-text query used for the fuzzy “Similar to …” hint. */
+  queryText?: string;
   onSelect: () => void;
   onHover: () => void;
 }
@@ -38,15 +42,22 @@ function HighlightedText({
   );
 }
 
+function isFuzzyMatch(matchedOn: GlobalSearchResult['matchedOn']): boolean {
+  return matchedOn === 'title_fuzzy' || matchedOn === 'alias_fuzzy';
+}
+
 export function GlobalSearchResultRow({
   result,
   active,
   queryTokens,
+  hideTypeLabel = false,
+  queryText,
   onSelect,
   onHover,
 }: GlobalSearchResultRowProps) {
   const FallbackIcon = catalogLucideIcon(result.fallbackIcon ?? 'file-text');
   const imageUrl = result.image?.thumbUrl ?? result.image?.url;
+  const showFuzzyHint = isFuzzyMatch(result.matchedOn) && Boolean(queryText?.trim());
 
   return (
     <button
@@ -81,13 +92,21 @@ export function GlobalSearchResultRow({
             tokens={queryTokens}
             className="truncate text-base font-medium text-foreground"
           />
-          <span className="shrink-0 text-[11px] uppercase tracking-wide text-muted">
-            {result.type.label}
-          </span>
+          {!hideTypeLabel ? (
+            <span className="shrink-0 text-[11px] uppercase tracking-wide text-muted">
+              {result.type.label}
+            </span>
+          ) : null}
         </div>
 
         {result.subtitle ? (
           <p className="mt-0.5 truncate text-sm text-muted">{result.subtitle}</p>
+        ) : null}
+
+        {showFuzzyHint ? (
+          <p className="mt-0.5 truncate text-sm text-muted">
+            Similar to &ldquo;{queryText!.trim()}&rdquo;
+          </p>
         ) : null}
 
         {result.excerpt ? (

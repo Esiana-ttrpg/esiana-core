@@ -87,13 +87,16 @@ flowchart LR
 |---------|--------|-------------|------------------|
 | **Campaign Home widgets** | Yes | `registerDashboardWidget` + `renderSettings`; persisted per-instance `widget.config` | Core `DashboardGrid` also renders plugin widgets (`plugin:pluginId:widgetId`) when placed in layout. |
 | **Dashboard grid widgets** | Yes | `registerDashboardWidget` consumed by `DashboardGrid` | Plugin widgets join draggable grid with core widgets. |
-| **Homepage (Global Hub)** | No | `GlobalHubPage` has no plugin slots | Product "homepage" = **Campaign Home** (`/campaigns/:handle/dashboard`), not the account hub. |
-| **Sidebar navigation** | Yes | `registerSidebarItem({ section, pageId })` in IA buckets | Footer `sidebar` slot still available for lightweight chrome. |
-| **Custom campaign pages / routes** | Partial | `/campaigns/:handle/plugin/:pluginId/:pageId/*` + `registerPage` | Core owns routing; plugins use `navigation.push({ subpath })` for in-page history. |
+| **Homepage (Global Hub)** | Yes | Explicit opt-in `registerAppHomeCard` + `app-home` slot; conditional Plugins section | Install/enable alone does not create cards. Plugin owns card content; Core owns section/layout. Global scope only. |
+| **Header plugin pages** | Yes | `registerHeaderPage` → Puzzle icon before Notifications (global + campaign) | Pages only (label/icon/`pageId`). Independent of sidebar. Context-filtered. Icon absent when empty. |
+| **Sidebar navigation** | Yes | `registerSidebarItem` → first-class nav destinations under default `PLUGINS` bucket | Settings can move plugin entries into PLAY/WORLD/TOOLS. Placement config retained on campaign disable; pruned on uninstall. Empty PLUGINS omitted. |
+| **Custom campaign pages / routes** | Yes | `/campaigns/:handle/plugin/:pluginId/:pageId/*` + `registerPage` | Core owns routing; plugins use `navigation.push({ subpath })` for in-page history. |
+| **Global plugin pages** | Yes | `/plugins/:pluginId/:pageId/*` for `scope: 'global'\|'both'` | Campaign context injected by Core for campaign pages — plugins must not parse campaign from URLs. |
+| **Page sections / actions** | Yes | `registerPageSection` / `registerPageAction` with targets (`character.detail`, etc.) | Bottom unlabeled host; invisible when empty. Campaign-scoped; requires install + campaign enablement. |
 | **Wiki editor extensions** | Partial | `editor` slot on `WikiPage.tsx` | Zero community usage today. |
-| **Map overlays** | Partial | `map:overlay`, `map:toolbar`, `map:token-context` declared | Slots exist; no community implementations. |
+| **Map overlays** | Partial | `map:overlay`, `map:toolbar`, `map:token-context` declared |Slots exist; no community implementations. |
 | **Campaign plugin settings** | Yes | `campaign-plugin-settings` slot | Used by wiki-opds-feed, player-journal. |
-| **Header** | Yes | `header` slot in `HeaderAccountNav.tsx` | example-plugin only. |
+| **Header (free-form)** | Yes | `header` slot in `HeaderAccountNav.tsx` | Legacy free-form mount; separate from Puzzle page menu. |
 
 ### Declared UI slots
 
@@ -101,7 +104,7 @@ From `backend/src/lib/pluginManifest.ts` (`PluginUiSlots`):
 
 | Slot id | Host surface |
 |---------|--------------|
-| `header` | App header (campaign shell) |
+| `header` | App header free-form strip (campaign shell) |
 | `sidebar` | Campaign sidebar **footer** |
 | `editor` | Wiki page editor extensions |
 | `dashboard` | Campaign Home widgets |
@@ -109,6 +112,19 @@ From `backend/src/lib/pluginManifest.ts` (`PluginUiSlots`):
 | `map:toolbar` | Map viewer toolbar |
 | `map:token-context` | Pin context menus (reserved) |
 | `campaign-plugin-settings` | Campaign Settings → Campaign Plugins configure panel |
+| `app-home` | Global App Home plugin cards (opt-in) |
+| `page-extensions` | Bottom page section mounts on supported Core pages |
+
+### Activation model
+
+Registration describes where a plugin **may** contribute. Rendering requires:
+
+1. Plugin installed globally (and system-enabled)
+2. Registration scope matches the surface (`global` vs `campaign`)
+3. Campaign-scoped contributions also require per-campaign enablement
+4. Context + Core-evaluated `requires` hints (`authenticated` | `campaignAdmin`)
+
+Global install alone must not push campaign UI into every campaign. `registerPage` defines a destination; `registerHeaderPage` / `registerSidebarItem` independently expose it.
 
 ---
 
@@ -350,7 +366,7 @@ Recommended before or immediately after schema freeze. Raises the "first-class s
 
 ### Tier C — Significant platform work (post-1.0 unless explicitly prioritized)
 
-- Plugin search indexing (PluginData + plugin entity descriptors)
+- Plugin search indexing (PluginData + plugin entity descriptors) — deferred; Core documents the future contribution shape as `SearchIndexContribution` in `backend/src/lib/search/index/searchIndexContribution.ts`. No plugin host API is exposed yet.
 - Timeline/calendar write hooks
 - Wiki `[[link]]` resolution for plugin entity IDs
 - `registerEntityType` / plugin codex blocks

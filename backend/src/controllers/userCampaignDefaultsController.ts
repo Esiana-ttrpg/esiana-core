@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { sanitizeDefaultPitch } from '../lib/userDisplay.js';

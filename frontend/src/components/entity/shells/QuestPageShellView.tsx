@@ -77,6 +77,9 @@ export function QuestPageShellView({
         />
       }
       immatureTabPlaceholders={IMMATURE_PLACEHOLDERS}
+      pageTarget="quest.detail"
+      pageId={pageId}
+      surfaceKey="quest"
     />
   );
 }
