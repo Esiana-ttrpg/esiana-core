@@ -23,6 +23,7 @@ export const PLUGIN_PERMISSIONS = [
   'plugin:assets',
   'campaign:import',
   'source:provider',
+  'campaign:sync-content',
 ] as const;
 
 export type PluginPermission = (typeof PLUGIN_PERMISSIONS)[number];
