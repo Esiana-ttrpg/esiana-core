@@ -48,7 +48,7 @@
     "jsonwebtoken": "^9.0.2",
     "jszip": "^3.10.2",
     "linkedom": "^0.18.13",
-    "mammoth": "^1.12.1",
+    "mammoth": "^1.13.0",
     "multer": "^2.4.0",
     "nodemailer": "^10.0.9",
     "openid-client": "^6.8.5",
