@@ -20,3 +20,8 @@ test('providers have no per-user or per-campaign ownership modes', () => {
 test('resource origins must be explicitly declared by the manifest', () => {
   assert.throws(() => registerConnectionProvider('example', { id: 'example', displayName: 'Example', resourceOrigins: ['https://other.example.com'], auth: { type: 'bearer' } }, ['https://api.example.com']), /subset/);
 });
+
+test('supports core-owned HTTP Basic credentials', () => {
+  registerConnectionProvider('library', { id: 'library', displayName: 'Library', resourceOrigins: ['https://library.example.com'], auth: { type: 'basic' } }, ['https://library.example.com']);
+  assert.equal(getConnectionProvider('library')?.auth.type, 'basic');
+});

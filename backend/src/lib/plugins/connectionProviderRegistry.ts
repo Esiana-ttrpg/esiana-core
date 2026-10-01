@@ -14,7 +14,8 @@ export interface ApiKeyConnectionDefinition {
 }
 
 export interface BearerConnectionDefinition { type: 'bearer' }
-export type ConnectionAuthDefinition = OAuth2ConnectionDefinition | ApiKeyConnectionDefinition | BearerConnectionDefinition;
+export interface BasicConnectionDefinition { type: 'basic' }
+export type ConnectionAuthDefinition = OAuth2ConnectionDefinition | ApiKeyConnectionDefinition | BearerConnectionDefinition | BasicConnectionDefinition;
 
 export interface ConnectionProviderDefinition {
   id: string;
