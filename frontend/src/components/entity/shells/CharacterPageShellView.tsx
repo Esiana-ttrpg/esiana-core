@@ -88,6 +88,9 @@ export function CharacterPageShellView({
         />
       }
       immatureTabPlaceholders={IMMATURE_PLACEHOLDERS}
+      pageTarget="character.detail"
+      pageId={pageId}
+      surfaceKey="character"
     />
   );
 }

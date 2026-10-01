@@ -26,6 +26,7 @@ export interface SidebarConfigHeaders {
   world: string;
   timeline: string;
   tools: string;
+  plugins: string;
 }
 
 export interface SidebarConfig {
@@ -33,6 +34,8 @@ export interface SidebarConfig {
   worldLoreOrder: SidebarOrderItem[];
   playOrder: SidebarOrderItem[];
   toolsOrder: SidebarOrderItem[];
+  /** Plugin nav destinations (default bucket); items may be moved into other buckets. */
+  pluginsOrder: SidebarOrderItem[];
   /** Icons for non-bucket fixed nav sections */
   fixedSectionIcons?: Partial<Record<SidebarSectionId, string>>;
   /** Visibility for fixed nav sections (visualAtlas defaults off) */
@@ -68,13 +71,14 @@ export type SidebarSectionId =
   | 'creativeDrift'
   | 'progression';
 
-export type SidebarBucketKey = 'worldLore' | 'play' | 'tools';
+export type SidebarBucketKey = 'worldLore' | 'play' | 'tools' | 'plugins';
 
 export const DEFAULT_SIDEBAR_HEADERS: SidebarConfigHeaders = {
   play: 'PLAY',
   world: 'WORLD',
   timeline: 'TIMELINE',
   tools: 'TOOLS',
+  plugins: 'PLUGINS',
 };
 
 export const TIME_TRACKING_LABEL =
@@ -247,6 +251,7 @@ const CUSTOMIZABLE_ID_SET = new Set<string>(SIDEBAR_CUSTOMIZABLE_IDS);
 function bucketOrderKey(bucket: SidebarBucketKey): keyof SidebarConfig {
   if (bucket === 'worldLore') return 'worldLoreOrder';
   if (bucket === 'play') return 'playOrder';
+  if (bucket === 'plugins') return 'pluginsOrder';
   return 'toolsOrder';
 }
 
@@ -292,6 +297,7 @@ export function getDefaultSidebarConfig(): SidebarConfig {
     toolsOrder: SIDEBAR_TOOLS_BUCKET_IDS.map((id) =>
       createDefaultSidebarOrderItem(id),
     ),
+    pluginsOrder: [],
   };
 }
 
@@ -367,6 +373,10 @@ function normalizeHeaders(raw: unknown): SidebarConfigHeaders {
       typeof headers.tools === 'string' && headers.tools.trim()
         ? headers.tools.trim()
         : DEFAULT_SIDEBAR_HEADERS.tools,
+    plugins:
+      typeof headers.plugins === 'string' && headers.plugins.trim()
+        ? headers.plugins.trim()
+        : DEFAULT_SIDEBAR_HEADERS.plugins,
   };
 }
 
@@ -439,10 +449,31 @@ function stripEnrichmentFields(config: SidebarConfig): SidebarConfig {
     worldLoreOrder: config.worldLoreOrder.map(({ iconAssetUrl: _a, ...item }) => item),
     playOrder: config.playOrder.map(({ iconAssetUrl: _a, ...item }) => item),
     toolsOrder: config.toolsOrder.map(({ iconAssetUrl: _a, ...item }) => item),
+    pluginsOrder: (config.pluginsOrder ?? []).map(({ iconAssetUrl: _a, ...item }) => item),
     ...(config.fixedSectionIcons ? { fixedSectionIcons: config.fixedSectionIcons } : {}),
     ...(config.fixedSectionVisibility
       ? { fixedSectionVisibility: config.fixedSectionVisibility }
       : {}),
+  };
+}
+
+function isPluginOrderId(id: string): boolean {
+  return id.startsWith('plugin:') && id.split(':').length >= 3;
+}
+
+function normalizePluginOrderItem(item: SidebarOrderItem): SidebarOrderItem {
+  const customLabel =
+    typeof item.customLabel === 'string' && item.customLabel.trim()
+      ? item.customLabel.trim()
+      : undefined;
+  const icon =
+    typeof item.icon === 'string' && item.icon.trim() ? item.icon.trim() : undefined;
+  return {
+    id: item.id,
+    label: item.label.trim() || item.id,
+    enabled: item.enabled,
+    ...(customLabel ? { customLabel } : {}),
+    ...(icon ? { icon } : {}),
   };
 }
 
@@ -451,6 +482,12 @@ function normalizeBucketItems(saved: SidebarOrderItem[]): SidebarOrderItem[] {
   const merged: SidebarOrderItem[] = [];
 
   for (const item of saved) {
+    if (isPluginOrderId(item.id)) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      merged.push(normalizePluginOrderItem(item));
+      continue;
+    }
     const migratedId = migrateSidebarItemId(item.id);
     if (!migratedId || seen.has(migratedId)) continue;
     seen.add(migratedId);
@@ -561,6 +598,7 @@ export function normalizeSidebarConfig(raw: unknown): SidebarConfig {
     worldLoreOrder?: unknown;
     playOrder?: unknown;
     toolsOrder?: unknown;
+    pluginsOrder?: unknown;
     gameManagementOrder?: unknown;
     sidebarOrder?: unknown;
     fixedSectionIcons?: unknown;
@@ -603,11 +641,17 @@ export function normalizeSidebarConfig(raw: unknown): SidebarConfig {
   let worldLoreOrder = normalizeBucketItems(worldSaved);
   let playOrder = normalizeBucketItems(playSaved);
   let toolsOrder = normalizeBucketItems(toolsSaved);
+  let pluginsOrder = normalizeBucketItems(
+    Array.isArray(parsed.pluginsOrder)
+      ? parsed.pluginsOrder.filter(isSidebarOrderItem)
+      : [],
+  );
 
   const globallySeen = new Set<string>([
     ...worldLoreOrder.map((item) => item.id),
     ...playOrder.map((item) => item.id),
     ...toolsOrder.map((item) => item.id),
+    ...pluginsOrder.map((item) => item.id),
   ]);
 
   worldLoreOrder = mergeMissingIntoBucket(
@@ -667,6 +711,7 @@ export function normalizeSidebarConfig(raw: unknown): SidebarConfig {
     worldLoreOrder,
     playOrder,
     toolsOrder,
+    pluginsOrder,
     ...(fixedSectionIcons && Object.keys(fixedSectionIcons).length > 0
       ? { fixedSectionIcons }
       : {}),
@@ -696,16 +741,24 @@ export function moveSidebarItem(
   const world = [...config.worldLoreOrder];
   const play = [...config.playOrder];
   const tools = [...config.toolsOrder];
+  const plugins = [...(config.pluginsOrder ?? [])];
 
   const buckets: Record<SidebarBucketKey, SidebarOrderItem[]> = {
     worldLore: world,
     play,
     tools,
+    plugins,
   };
 
   const fromArr = buckets[from.bucket];
   const [item] = fromArr.splice(from.index, 1);
   if (!item) return config;
+
+  // Non-plugin core items cannot enter the plugins bucket.
+  if (!isPluginOrderId(item.id) && to.bucket === 'plugins') {
+    fromArr.splice(from.index, 0, item);
+    return config;
+  }
 
   buckets[to.bucket].splice(to.index, 0, item);
 
@@ -714,6 +767,7 @@ export function moveSidebarItem(
     worldLoreOrder: buckets.worldLore,
     playOrder: buckets.play,
     toolsOrder: buckets.tools,
+    pluginsOrder: buckets.plugins,
   };
 }
 
@@ -771,6 +825,9 @@ export function updateSidebarHeaders(
   if (patch.tools !== undefined) {
     next.tools = patch.tools.trim() || DEFAULT_SIDEBAR_HEADERS.tools;
   }
+  if (patch.plugins !== undefined) {
+    next.plugins = patch.plugins.trim() || DEFAULT_SIDEBAR_HEADERS.plugins;
+  }
   return { ...config, headers: next };
 }
 
@@ -780,7 +837,7 @@ export function isSidebarFixedSection(sectionId: SidebarSectionId): boolean {
 
 export function findSidebarBucketItem(
   config: SidebarConfig,
-  sectionId: SidebarSectionId,
+  sectionId: string,
 ): { bucket: SidebarBucketKey; item: SidebarOrderItem } | null {
   const worldIndex = config.worldLoreOrder.findIndex((row) => row.id === sectionId);
   if (worldIndex >= 0) {
@@ -793,6 +850,10 @@ export function findSidebarBucketItem(
   const toolsIndex = config.toolsOrder.findIndex((row) => row.id === sectionId);
   if (toolsIndex >= 0) {
     return { bucket: 'tools', item: config.toolsOrder[toolsIndex]! };
+  }
+  const pluginsIndex = (config.pluginsOrder ?? []).findIndex((row) => row.id === sectionId);
+  if (pluginsIndex >= 0) {
+    return { bucket: 'plugins', item: config.pluginsOrder[pluginsIndex]! };
   }
   return null;
 }
@@ -826,10 +887,12 @@ export function getSidebarSectionIcon(
 
 export function updateSidebarSectionIcon(
   config: SidebarConfig,
-  sectionId: SidebarSectionId,
+  sectionId: string,
   icon: string | null,
 ): SidebarConfig {
-  const defaultValue = defaultSidebarIconValue(sectionId);
+  const defaultValue = isPluginOrderId(sectionId)
+    ? undefined
+    : defaultSidebarIconValue(sectionId as SidebarSectionId);
   const nextIcon =
     icon && icon.trim() && icon.trim() !== defaultValue ? icon.trim() : undefined;
   const bucketItem = findSidebarBucketItem(config, sectionId);
@@ -851,7 +914,7 @@ export function updateSidebarSectionIcon(
     };
   }
 
-  if (!isSidebarFixedSection(sectionId)) return config;
+  if (!isSidebarFixedSection(sectionId as SidebarSectionId)) return config;
 
   const fixedSectionIcons = { ...(config.fixedSectionIcons ?? {}) };
   if (!nextIcon) {
@@ -875,6 +938,61 @@ export function updateSidebarSectionIcon(
 
 export function stripSidebarConfigEnrichment(config: SidebarConfig): SidebarConfig {
   return stripEnrichmentFields(config);
+}
+
+/**
+ * Merge live plugin sidebar registrations into campaign sidebar config.
+ * Retains placement for disabled plugins already in config; appends new ones to pluginsOrder.
+ * Does not prune unavailable entries (campaign disable retains placement).
+ */
+export function mergePluginSidebarRegistrations(
+  config: SidebarConfig,
+  registrations: Array<{ pluginId: string; id: string; label: string; icon?: string }>,
+): SidebarConfig {
+  const next = {
+    ...config,
+    pluginsOrder: [...(config.pluginsOrder ?? [])],
+  };
+  const seen = new Set<string>([
+    ...next.worldLoreOrder.map((i) => i.id),
+    ...next.playOrder.map((i) => i.id),
+    ...next.toolsOrder.map((i) => i.id),
+    ...next.pluginsOrder.map((i) => i.id),
+  ]);
+
+  for (const reg of registrations) {
+    const orderId = `plugin:${reg.pluginId}:${reg.id}`;
+    if (seen.has(orderId)) continue;
+    seen.add(orderId);
+    next.pluginsOrder.push({
+      id: orderId,
+      label: reg.label,
+      enabled: true,
+      ...(reg.icon ? { icon: reg.icon.startsWith('lucide:') ? reg.icon : `lucide:${reg.icon}` } : {}),
+    });
+  }
+
+  return next;
+}
+
+/** Remove all sidebar entries for a plugin (global uninstall). */
+export function prunePluginFromSidebarConfig(
+  config: SidebarConfig,
+  pluginId: string,
+): SidebarConfig {
+  const prefix = `plugin:${pluginId}:`;
+  const filter = (items: SidebarOrderItem[]) => items.filter((item) => !item.id.startsWith(prefix));
+  return {
+    ...config,
+    worldLoreOrder: filter(config.worldLoreOrder),
+    playOrder: filter(config.playOrder),
+    toolsOrder: filter(config.toolsOrder),
+    pluginsOrder: filter(config.pluginsOrder ?? []),
+  };
+}
+
+export function isPluginSidebarConfigId(id: string): boolean {
+  return isPluginOrderId(id);
 }
 
 export { defaultSidebarLucideName, defaultSidebarIconValue };

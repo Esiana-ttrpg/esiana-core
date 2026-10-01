@@ -7,6 +7,11 @@ import path from 'node:path';
 import { rm } from 'node:fs/promises';
 import { deleteAllPluginSecrets } from './pluginSecretsService.js';
 import { deletePluginAssets } from './pluginAssetsService.js';
+import {
+  normalizeSidebarConfig,
+  prunePluginFromSidebarConfig,
+} from '../sidebarConfig.js';
+import { toInputJsonValue } from '../inputJsonValue.js';
 
 export async function uninstallPlugin(pluginId: string): Promise<void> {
   const record = await prisma.installedPlugin.findUnique({ where: { name: pluginId } });
@@ -39,6 +44,19 @@ export async function uninstallPlugin(pluginId: string): Promise<void> {
   // Credentials and pending grants are never retained after provider code is removed.
   await prisma.pluginConnectionAuthState.deleteMany({ where: { pluginId } });
   await prisma.pluginConnection.deleteMany({ where: { pluginId } });
+
+  // Prune plugin sidebar placement from all campaigns.
+  const campaigns = await prisma.campaign.findMany({
+    select: { id: true, sidebarConfig: true },
+  });
+  for (const campaign of campaigns) {
+    const normalized = normalizeSidebarConfig(campaign.sidebarConfig);
+    const pruned = prunePluginFromSidebarConfig(normalized, pluginId);
+    await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: { sidebarConfig: toInputJsonValue(pruned) },
+    });
+  }
 
   await prisma.systemPlugin.deleteMany({ where: { id: pluginId } });
 

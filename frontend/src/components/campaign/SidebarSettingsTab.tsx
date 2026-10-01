@@ -10,6 +10,7 @@ import {
 import {
   moveSidebarItem,
   normalizeSidebarConfig,
+  mergePluginSidebarRegistrations,
   SIDEBAR_SECTION_META,
   SIDEBAR_TOOLS_FIXED_IDS,
   SIDEBAR_TOP_FIXED_IDS,
@@ -32,6 +33,8 @@ import {
   SidebarSectionIconEditor,
 } from '@/components/campaign/SidebarSectionIconEditor';
 import { useWiki } from '@/contexts/WikiContext';
+import { listPluginSidebarItems } from '@/lib/pluginNavigation';
+import { usePluginRuntime } from '@/plugins/PluginRuntimeProvider';
 
 interface SidebarSettingsTabProps {
   campaignHandle: string;
@@ -115,9 +118,9 @@ interface SidebarBucketEditorProps {
   onDragEnd: () => void;
   onToggle: (bucket: SidebarBucketKey, id: string) => void;
   onCustomLabelChange: (bucket: SidebarBucketKey, id: string, value: string) => void;
-  onLucidePick: (sectionId: SidebarSectionId, lucideName: string) => void;
-  onIconUpload: (sectionId: SidebarSectionId, file: File) => void;
-  onIconReset: (sectionId: SidebarSectionId) => void;
+  onLucidePick: (sectionId: string, lucideName: string) => void;
+  onIconUpload: (sectionId: string, file: File) => void;
+  onIconReset: (sectionId: string) => void;
 }
 
 function SidebarBucketEditor({
@@ -291,6 +294,7 @@ function FixedNavIconSection({
 
 export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) {
   const { refresh } = useWiki();
+  const { plugins } = usePluginRuntime();
   const [config, setConfig] = useState<SidebarConfig>(() =>
     normalizeSidebarConfig(null),
   );
@@ -345,7 +349,18 @@ export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) 
       try {
         const campaign = await fetchCampaign(campaignHandle);
         if (cancelled) return;
-        setConfig(normalizeSidebarConfig(campaign.sidebarConfig));
+        const normalized = normalizeSidebarConfig(campaign.sidebarConfig);
+        setConfig(
+          mergePluginSidebarRegistrations(
+            normalized,
+            listPluginSidebarItems().map((item) => ({
+              pluginId: item.pluginId,
+              id: item.id,
+              label: item.label,
+              icon: item.icon,
+            })),
+          ),
+        );
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -362,7 +377,7 @@ export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) 
       cancelled = true;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [campaignHandle]);
+  }, [campaignHandle, plugins]);
 
   function applyConfig(nextConfig: SidebarConfig, debounced = true) {
     setConfig(nextConfig);
@@ -373,15 +388,15 @@ export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) 
     }
   }
 
-  function handleIconLucidePick(sectionId: SidebarSectionId, lucideName: string) {
+  function handleIconLucidePick(sectionId: string, lucideName: string) {
     applyConfig(updateSidebarSectionIcon(config, sectionId, `lucide:${lucideName}`));
   }
 
-  function handleIconReset(sectionId: SidebarSectionId) {
+  function handleIconReset(sectionId: string) {
     applyConfig(updateSidebarSectionIcon(config, sectionId, null));
   }
 
-  async function handleIconUpload(sectionId: SidebarSectionId, file: File) {
+  async function handleIconUpload(sectionId: string, file: File) {
     setIconBusy(true);
     setError(null);
     try {
@@ -429,6 +444,10 @@ export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) 
 
   function handleToolsHeaderChange(value: string) {
     applyConfig(updateSidebarHeaders(config, { tools: value }));
+  }
+
+  function handlePluginsHeaderChange(value: string) {
+    applyConfig(updateSidebarHeaders(config, { plugins: value }));
   }
 
   function handleDragStart(bucket: SidebarBucketKey, index: number) {
@@ -532,6 +551,26 @@ export function SidebarSettingsTab({ campaignHandle }: SidebarSettingsTabProps) 
             Fixed links: {TIME_TRACKING_WIKI_TITLES.join(', ')} (order not customizable).
           </p>
         </section>
+
+        <SidebarBucketEditor
+          bucket="plugins"
+          headerValue={config.headers.plugins ?? 'PLUGINS'}
+          headerPlaceholder="PLUGINS"
+          rows={config.pluginsOrder ?? []}
+          config={config}
+          drag={drag}
+          iconBusy={iconBusy || saving}
+          onHeaderChange={handlePluginsHeaderChange}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onDragEnd={handleDragEnd}
+          onToggle={handleToggle}
+          onCustomLabelChange={handleCustomLabelChange}
+          onLucidePick={handleIconLucidePick}
+          onIconUpload={handleIconUpload}
+          onIconReset={handleIconReset}
+        />
 
         <SidebarBucketEditor
           bucket="tools"

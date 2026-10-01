@@ -1,11 +1,12 @@
 import {
+  createContext,
+  useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
-import { useWiki } from '@/contexts/WikiContext';
-import { fetchCampaignFrontendPlugins } from '@/lib/frontendPlugins';
+import { fetchGlobalFrontendPlugins } from '@/lib/frontendPlugins';
 import {
   applyCspMetaTag,
   buildCspMetaContent,
@@ -16,24 +17,34 @@ import {
   resetFrontendPluginLoader,
 } from '@/plugins/pluginRegistry';
 import type { FrontendPluginDescriptor } from '@/plugins/slots';
-import { PluginRuntimeContext } from './GlobalPluginRuntimeProvider';
 
-export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
-  const { campaign } = useWiki();
+interface PluginRuntimeContextValue {
+  plugins: FrontendPluginDescriptor[];
+  loading: boolean;
+  error: string | null;
+  mode: 'global' | 'campaign' | 'idle';
+}
+
+const PluginRuntimeContext = createContext<PluginRuntimeContextValue>({
+  plugins: [],
+  loading: false,
+  error: null,
+  mode: 'idle',
+});
+
+export function usePluginRuntime(): PluginRuntimeContextValue {
+  return useContext(PluginRuntimeContext);
+}
+
+export { PluginRuntimeContext };
+
+/** Bootstraps globally installed+enabled frontend plugins (no campaign jail). */
+export function GlobalPluginRuntimeProvider({ children }: { children: ReactNode }) {
   const [plugins, setPlugins] = useState<FrontendPluginDescriptor[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const campaignKey = campaign?.id ?? campaign?.handle ?? null;
-
   useEffect(() => {
-    if (!campaignKey) {
-      resetFrontendPluginLoader();
-      setPlugins([]);
-      setError(null);
-      return;
-    }
-
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -41,12 +52,9 @@ export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         resetFrontendPluginLoader();
-        const descriptors = await fetchCampaignFrontendPlugins(campaignKey);
+        const descriptors = await fetchGlobalFrontendPlugins();
         if (cancelled) return;
-        await bootstrapFrontendPlugins(descriptors, {
-          campaignId: campaign?.id,
-          campaignHandle: campaign?.handle,
-        });
+        await bootstrapFrontendPlugins(descriptors, {});
         if (cancelled) return;
         const cspExtensions = mergePluginCspExtensions(descriptors, {
           isDev: import.meta.env.DEV,
@@ -68,32 +76,16 @@ export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       resetFrontendPluginLoader();
     };
-  }, [campaign?.id, campaign?.handle, campaignKey]);
+  }, []);
 
   const value = useMemo(
-    () => ({
-      plugins,
-      loading,
-      error,
-      mode: (campaignKey ? 'campaign' : 'idle') as 'campaign' | 'idle',
-    }),
-    [plugins, loading, error, campaignKey],
+    () => ({ plugins, loading, error, mode: 'global' as const }),
+    [plugins, loading, error],
   );
 
   return (
     <PluginRuntimeContext.Provider value={value}>
-      {plugins.some((plugin) => plugin.runtimeStatus === 'quarantined') ? (
-        <div
-          className="border-b border-amber-900/40 bg-amber-950/30 px-4 py-2 text-center text-xs text-amber-200"
-          role="status"
-        >
-          One or more campaign plugins are temporarily unavailable (hook quarantine). Check Admin →
-          Plugins for details.
-        </div>
-      ) : null}
       {children}
     </PluginRuntimeContext.Provider>
   );
 }
-
-export { usePluginRuntime } from './GlobalPluginRuntimeProvider';

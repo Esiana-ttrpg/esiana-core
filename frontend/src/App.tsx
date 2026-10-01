@@ -5,6 +5,7 @@ import { BrandingProvider } from '@/contexts/BrandingContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CampaignLayout } from '@/layouts/CampaignLayout';
 import { GlobalHubPage } from '@/pages/GlobalHubPage';
+import { GlobalPluginPageHost } from '@/pages/GlobalPluginPageHost';
 import { PluginPageHost } from '@/pages/PluginPageHost';
 import { WikiPage } from '@/pages/WikiPage';
 import { WorldMaintenancePage } from '@/pages/WorldMaintenancePage';
@@ -79,6 +80,7 @@ export default function App() {
         <Routes>
           <Route element={<AppLayout />} errorElement={<RouteErrorPage />}>
             <Route index element={<GlobalHubPage />} />
+            <Route path="plugins/:pluginId/:pageId/*" element={<GlobalPluginPageHost />} />
             <Route path="guides/:guideSlug" element={<PlatformGuidePage />} />
             <Route path="recruitment" element={<RecruitmentDirectoryPage />} />
             <Route path="recruitment/:campaignHandle" element={<RecruitmentLobbyPage />} />

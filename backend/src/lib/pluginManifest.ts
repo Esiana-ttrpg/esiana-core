@@ -62,6 +62,8 @@ export const PluginUiSlots = {
   MAP_TOOLBAR: 'map:toolbar',
   MAP_TOKEN_CONTEXT: 'map:token-context',
   CAMPAIGN_PLUGIN_SETTINGS: 'campaign-plugin-settings',
+  APP_HOME: 'app-home',
+  PAGE_EXTENSIONS: 'page-extensions',
 } as const;
 
 export type PluginUiSlotId = (typeof PluginUiSlots)[keyof typeof PluginUiSlots];

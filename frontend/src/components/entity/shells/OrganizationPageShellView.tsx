@@ -6,6 +6,7 @@ import { OrganizationRelationsTab } from './OrganizationRelationsTab';
 import { OrganizationPeopleTab } from './OrganizationPeopleTab';
 import { ImmatureTabPlaceholder } from './ImmatureTabPlaceholder';
 import type { EntityPageShellViewProps } from '@/lib/entityPageShells/types';
+import { PluginPageExtensionsHost } from '@/components/plugins/PluginPageExtensionsHost';
 import type { OrganizationIdentityProjection } from '@/lib/organizationIdentityProjection';
 import type { WikiPageBlock } from '@/types/wiki';
 
@@ -156,6 +157,12 @@ export function OrganizationPageShellView({
         focusField={pageSubview === 'overview' ? inspectorFocusField : null}
       />
       {renderTabContent()}
+      <PluginPageExtensionsHost
+        target="organization.detail"
+        pageId={pageId}
+        surfaceKey="organization"
+        className="mt-6"
+      />
     </div>
   );
 }

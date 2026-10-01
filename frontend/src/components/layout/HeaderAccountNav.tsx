@@ -9,6 +9,7 @@ import { UserAvatar } from '@/components/ui/UserAvatar';
 import { CreateCampaignWizardHost } from '@/components/hub/CreateCampaignWizardHost';
 import { PluginSlotHost } from '@/plugins/slots';
 import { AccountMenu } from '@/components/layout/account-nav/AccountMenu';
+import { PluginPagesMenu } from '@/components/layout/PluginPagesMenu';
 
 interface HeaderAccountNavProps {
   showAdminLink?: boolean;
@@ -69,6 +70,7 @@ export function HeaderAccountNav({
           <>
             {isAuthenticated ? (
               <>
+                <PluginPagesMenu alignControlsToAvatar={alignControlsToAvatar} />
                 <NotificationBell alignControlsToAvatar={alignControlsToAvatar} />
                 <div className="relative" ref={profileMenuRef}>
                   <button

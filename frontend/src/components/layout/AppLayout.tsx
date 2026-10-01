@@ -10,6 +10,7 @@ import {
   pageWidthContainerClasses,
   type MasterPageWidth,
 } from '@/lib/pageWidthPreference';
+import { GlobalPluginRuntimeProvider } from '@/plugins/GlobalPluginRuntimeProvider';
 
 export function AppLayout() {
   const [pageWidth, setPageWidth] = useState<MasterPageWidth>(() =>
@@ -65,22 +66,24 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      {activeBannerText ? (
-        <div
-          role="status"
-          className="w-full border-b border-primary/60 bg-primary px-4 py-2 text-center text-sm font-semibold tracking-wide text-background"
+    <GlobalPluginRuntimeProvider>
+      <div className="flex min-h-screen flex-col bg-background text-foreground">
+        {activeBannerText ? (
+          <div
+            role="status"
+            className="w-full border-b border-primary/60 bg-primary px-4 py-2 text-center text-sm font-semibold tracking-wide text-background"
+          >
+            {activeBannerText}
+          </div>
+        ) : null}
+        <AppHeader />
+        <main
+          className={`flex-1 bg-background py-8 ${pageWidthContainerClasses(pageWidth)}`}
         >
-          {activeBannerText}
-        </div>
-      ) : null}
-      <AppHeader />
-      <main
-        className={`flex-1 bg-background py-8 ${pageWidthContainerClasses(pageWidth)}`}
-      >
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
+    </GlobalPluginRuntimeProvider>
   );
 }

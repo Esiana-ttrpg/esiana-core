@@ -2,13 +2,14 @@
 import type { PluginApiClient } from '@/lib/pluginApiClient';
 import type { PluginDomainEventDetail } from '@/lib/pluginDomainEvents';
 import type { PluginPageRenderer } from '@/lib/pluginPages';
-import type {
-  DashboardWidgetConfig,
-  DashboardWidgetSettingsRenderer,
-  LayoutWidget,
-} from '@/lib/pluginPresentation';
+import type { LayoutWidget } from '@/lib/pluginPresentation';
 import type { PluginSidebarSection } from '@/lib/pluginNavigation';
 import type { PluginCharacterPageRenderer } from '@/lib/pluginCharacterPages';
+import type {
+  PluginPageTarget,
+  PluginRegistrationScope,
+  PluginRequires,
+} from '@/lib/pluginContributions';
 
 export const PluginUiSlots = {
   HEADER: 'header',
@@ -19,6 +20,8 @@ export const PluginUiSlots = {
   MAP_TOOLBAR: 'map:toolbar',
   MAP_TOKEN_CONTEXT: 'map:token-context',
   CAMPAIGN_PLUGIN_SETTINGS: 'campaign-plugin-settings',
+  APP_HOME: 'app-home',
+  PAGE_EXTENSIONS: 'page-extensions',
 } as const;
 
 export type PluginUiSlotId = (typeof PluginUiSlots)[keyof typeof PluginUiSlots];
@@ -45,6 +48,12 @@ export interface PluginSlotContext {
     title: string;
     pinType: string;
   };
+  /** Current Core page extension target when mounted as a page section. */
+  pageTarget?: PluginPageTarget;
+  /** Wiki / entity page id when available. */
+  pageId?: string;
+  /** Entity surface key (e.g. character, location) when available. */
+  surfaceKey?: string;
 }
 
 export type PluginSlotContextBase = Omit<PluginSlotContext, 'pluginId' | 'api'>;
@@ -92,6 +101,7 @@ export interface PluginUiRegistry {
     id: string;
     title: string;
     render?: PluginPageRenderer;
+    scope?: PluginRegistrationScope;
   }): void;
   registerCharacterPageRenderer(definition: {
     key: string;
@@ -104,8 +114,37 @@ export interface PluginUiRegistry {
     id: string;
     label: string;
     icon?: string;
-    section: PluginSidebarSection;
+    /** @deprecated Placement is Core/Settings-owned; remapped to plugins. */
+    section?: PluginSidebarSection;
     pageId: string;
+  }): void;
+  registerAppHomeCard(definition: {
+    id: string;
+    render: PluginSlotRenderer;
+    requires?: PluginRequires;
+  }): void;
+  registerHeaderPage(definition: {
+    id: string;
+    label: string;
+    icon?: string;
+    pageId: string;
+    scope: PluginRegistrationScope;
+    requires?: PluginRequires;
+  }): void;
+  registerPageSection(definition: {
+    id: string;
+    target: PluginPageTarget;
+    render: PluginSlotRenderer;
+    requires?: PluginRequires;
+  }): void;
+  registerPageAction(definition: {
+    id: string;
+    target: PluginPageTarget;
+    label: string;
+    icon?: string;
+    pageId?: string;
+    href?: string;
+    requires?: PluginRequires;
   }): void;
   subscribeToDomainEvent(
     pattern: string,
