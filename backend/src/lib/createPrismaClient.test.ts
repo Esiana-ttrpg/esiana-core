@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 import { resolveDatabaseProvider } from './createPrismaClient.js';
+import {
+  extractPostgresSchema,
+  getPrismaDir,
+  resolveDatasourceUrl,
+  resolveSqliteDatabaseUrl,
+} from './databaseUrl.js';
 
 describe('resolveDatabaseProvider', () => {
   it('uses explicit DATABASE_PROVIDER when set', () => {
@@ -56,5 +63,41 @@ describe('resolveDatabaseProvider', () => {
       () => resolveDatabaseProvider({ DATABASE_PROVIDER: 'mysql' }),
       /must be "postgresql" or "sqlite"/,
     );
+  });
+});
+
+describe('resolveSqliteDatabaseUrl', () => {
+  it('resolves relative file URLs against backend/prisma', () => {
+    const resolved = resolveSqliteDatabaseUrl('file:./dev.db');
+    assert.equal(resolved, `file:${path.join(getPrismaDir(), 'dev.db')}`);
+  });
+
+  it('leaves absolute file URLs absolute', () => {
+    const abs = path.join(getPrismaDir(), 'abs.db');
+    const resolved = resolveSqliteDatabaseUrl(`file:${abs}`);
+    assert.equal(resolved, `file:${path.normalize(abs)}`);
+  });
+
+  it('is used by resolveDatasourceUrl for file URLs only', () => {
+    assert.equal(resolveDatasourceUrl(undefined), undefined);
+    assert.equal(
+      resolveDatasourceUrl('postgresql://localhost/esiana?schema=app'),
+      'postgresql://localhost/esiana?schema=app',
+    );
+    assert.equal(
+      resolveDatasourceUrl('file:./dev.db'),
+      resolveSqliteDatabaseUrl('file:./dev.db'),
+    );
+  });
+});
+
+describe('extractPostgresSchema', () => {
+  it('reads schema query param and defaults to public', () => {
+    assert.equal(
+      extractPostgresSchema('postgresql://localhost/esiana?schema=campaign'),
+      'campaign',
+    );
+    assert.equal(extractPostgresSchema('postgresql://localhost/esiana'), 'public');
+    assert.equal(extractPostgresSchema('not-a-url'), 'public');
   });
 });

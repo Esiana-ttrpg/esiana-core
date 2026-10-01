@@ -3,6 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import { PrismaPg } from '@prisma/adapter-pg';
 import dotenv from 'dotenv';
+import {
+  extractPostgresSchema,
+  resolveSqliteDatabaseUrl,
+} from './databaseUrl.js';
 import { PrismaClient, type Prisma } from './prismaClient.js';
 
 const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -50,17 +54,25 @@ export function resolveDatabaseProvider(
 
 function createAdapter(provider: DatabaseProvider, databaseUrl: string) {
   if (provider === 'sqlite') {
-    return new PrismaBetterSqlite3({ url: databaseUrl || 'file:./dev.db' });
+    const url = resolveSqliteDatabaseUrl(databaseUrl || 'file:./dev.db');
+    return new PrismaBetterSqlite3(
+      { url },
+      { timestampFormat: 'unixepoch-ms' },
+    );
   }
 
   const connectionString =
     databaseUrl || 'postgresql://esiana:esiana@localhost:5432/esiana';
+  const schema = extractPostgresSchema(connectionString);
 
-  return new PrismaPg({
-    connectionString,
-    // Align with Prisma ORM v6 default connection timeout (pg default is 0).
-    connectionTimeoutMillis: 5000,
-  });
+  return new PrismaPg(
+    {
+      connectionString,
+      // Align with Prisma ORM v6 default connection timeout (pg default is 0).
+      connectionTimeoutMillis: 5000,
+    },
+    { schema },
+  );
 }
 
 /**
