@@ -46,7 +46,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.7.0",
     "jsonwebtoken": "^9.0.2",
-    "jszip": "^3.10.1",
+    "jszip": "^3.10.2",
     "linkedom": "^0.18.13",
     "mammoth": "^1.12.1",
     "multer": "^2.4.0",
