@@ -53,7 +53,7 @@
     "nodemailer": "^10.0.9",
     "openid-client": "^6.8.5",
     "pg": "^8.16.3",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "swagger-ui-express": "^5.0.1",
     "tar": "^7.5.22",
     "undici": "^7.16.0",
