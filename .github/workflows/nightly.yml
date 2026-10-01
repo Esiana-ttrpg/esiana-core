@@ -49,7 +49,9 @@ jobs:
         run: |
           set -euo pipefail
           HEAD_SHA="$(git rev-parse HEAD)"
-          NIGHTLY_SHA="$(git rev-parse 'nightly^{commit}' 2>/dev/null || true)"
+          # --verify is required: without it, unresolved refs are echoed to stdout
+          # (e.g. "nightly^{commit}") even when rev-parse exits non-zero.
+          NIGHTLY_SHA="$(git rev-parse --verify 'nightly^{commit}' 2>/dev/null || true)"
           export HEAD_SHA NIGHTLY_SHA
           echo "HEAD_SHA=${HEAD_SHA}"
           echo "NIGHTLY_SHA=${NIGHTLY_SHA:-<absent>}"
@@ -429,7 +431,7 @@ jobs:
             echo "Checkout HEAD ($HEAD) does not match detected sha ($SHA)" >&2
             exit 1
           fi
-          PREV="$(git rev-parse 'nightly^{commit}' 2>/dev/null || echo '<absent>')"
+          PREV="$(git rev-parse --verify 'nightly^{commit}' 2>/dev/null || echo '<absent>')"
           git tag -f nightly "$SHA"
           git push --force origin refs/tags/nightly
           {

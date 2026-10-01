@@ -179,6 +179,13 @@ test('nightly.yml structural gating and isolation from semver releases', () => {
   assert.match(yaml, /\bworkflow_dispatch\s*:/);
   assert.match(yaml, /inputs:\s*\n\s+force:/);
 
+  // Unresolved refs must use --verify so git does not echo the literal peelspec.
+  assert.match(yaml, /git rev-parse --verify ['"]nightly\^\{commit\}['"]/);
+  assert.doesNotMatch(
+    yaml,
+    /git rev-parse (?!--verify )['"]nightly\^\{commit\}['"]/,
+  );
+
   // Every job except detect-changes must gate on should_build.
   const jobBlocks = yaml.split(/\n(?=  [a-z0-9-]+:)/);
   const gatedJobs = [];
