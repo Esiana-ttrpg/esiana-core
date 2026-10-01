@@ -786,7 +786,7 @@ paths:
     post:
       tags:
         - Administration
-      summary: Connect or reconnect an API key or bearer token
+      summary: Connect or reconnect static or username/password credentials
       security:
         - cookieAuth: []
       parameters:
@@ -800,18 +800,30 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - credential
-              properties:
-                credential:
-                  type: string
-                  minLength: 1
-                  maxLength: 8192
-                  writeOnly: true
-                accountLabel:
-                  type: string
-                  maxLength: 160
+              oneOf:
+                - type: object
+                  required: [credential]
+                  properties:
+                    credential:
+                      type: string
+                      minLength: 1
+                      maxLength: 8192
+                      writeOnly: true
+                    accountLabel:
+                      type: string
+                      maxLength: 160
+                - type: object
+                  required: [username, password]
+                  properties:
+                    username:
+                      type: string
+                      minLength: 1
+                      maxLength: 512
+                    password:
+                      type: string
+                      minLength: 1
+                      maxLength: 8192
+                      writeOnly: true
       responses:
         "201":
           description: Redacted connected record
