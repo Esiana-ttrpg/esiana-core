@@ -13,7 +13,7 @@ import {
   type SidebarConfig,
 } from '../sidebarConfig.js';
 import { toInputJsonValue } from '../inputJsonValue.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../prismaClient.js';
 
 function sidebarConfigSnapshot(config: SidebarConfig): string {
   return JSON.stringify(config);
