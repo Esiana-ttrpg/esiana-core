@@ -26,6 +26,7 @@ import {
   listPluginSecretKeys,
   setPluginSecret,
 } from './pluginSecretsService.js';
+import { ContentSyncService } from './contentSyncService.js';
 
 function assertPermission(
   pluginId: string,
@@ -114,6 +115,7 @@ export interface PluginHostServiceBundle {
   config: PluginConfigApi;
   secrets: PluginSecretsApi;
   events: PluginEventsApi;
+  contentSync: ContentSyncService;
 }
 
 export function createPluginHostServices(input: {
@@ -133,6 +135,14 @@ export function createPluginHostServices(input: {
     resolveCampaignId(jailedCampaignId, requested);
 
   return {
+    contentSync: new Proxy({} as ContentSyncService, {
+      get(_target, property) {
+        assertPermission(pluginId, permissions, 'campaign:sync-content');
+        const service = new ContentSyncService(campaignIdFor());
+        const value = service[property as keyof ContentSyncService];
+        return typeof value === 'function' ? value.bind(service) : value;
+      },
+    }),
     data,
     calendar: {
       async getCurrentDate() {

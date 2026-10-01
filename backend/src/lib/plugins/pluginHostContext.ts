@@ -85,8 +85,9 @@ import {
   uploadPluginAsset,
 } from './pluginAssetsService.js';
 import { mountPluginPlatformRoutes } from './pluginPlatformRoutes.js';
-import { requirePluginCampaignJail } from './pluginCampaignJail.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireCampaignPluginEnabled, requirePluginCampaignJail } from './pluginCampaignJail.js';
+import { requireAuthenticatedApiOrSession } from '../../middleware/auth.js';
+import type { ContentSyncService } from './contentSyncService.js';
 import { registerSourceProvider as registerSourceProviderEntry, type SourceProviderDefinition } from './sourceProviderRegistry.js';
 import { registerConnectionProvider as registerConnectionProviderEntry, type ConnectionProviderDefinition } from './connectionProviderRegistry.js';
 import { createConnectionsApi, type PluginConnectionsApi } from './pluginConnectionsService.js';
@@ -140,6 +141,7 @@ export interface PluginHostContext {
   config: PluginConfigApi;
   secrets: PluginSecretsApi;
   events: PluginEventsApi;
+  contentSync: ContentSyncService;
   registerDataInterceptor(definition: DataInterceptorDefinition): void;
   onDomainEvent(pattern: string, listener: DomainEventListener): () => void;
   /** Alias for onDomainEvent. */
@@ -443,8 +445,9 @@ export function attachPluginPlatformRoutes(
   outboundOrigins: string[] = [],
 ): void {
   const platformRouter = Router({ mergeParams: true });
-  platformRouter.use(requireAuth);
+  platformRouter.use(requireAuthenticatedApiOrSession);
   platformRouter.use(requirePluginCampaignJail);
+  platformRouter.use(requireCampaignPluginEnabled(pluginId));
   mountPluginPlatformRoutes(platformRouter, (campaignId) =>
     createPluginHostContext(pluginId, manifestPermissions, pluginRoot, {
       jailedCampaignId: campaignId,
