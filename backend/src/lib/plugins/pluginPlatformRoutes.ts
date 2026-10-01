@@ -111,11 +111,11 @@ export function mountPluginPlatformRoutes(
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
-      const resource = await context.contentSync.update(String(req.params.collection), String(req.params.id), req.body);
+      const resource = await context.contentSync.update(String(req.params.collection), String(req.params.id), req.body, (req as AuthenticatedRequest).user?.id);
       res.json({ resource });
     } catch (error) { sendContentSyncError(res, error); }
   });
-  router.get('/campaign/calendar', async (req, res) => {
+  router.get('/campaign/calendar', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
@@ -126,7 +126,7 @@ export function mountPluginPlatformRoutes(
     }
   });
 
-  router.get('/campaign/timeline/recent', async (req, res) => {
+  router.get('/campaign/timeline/recent', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
@@ -140,7 +140,7 @@ export function mountPluginPlatformRoutes(
     }
   });
 
-  router.get('/campaign/party', async (req, res) => {
+  router.get('/campaign/party', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
@@ -151,7 +151,7 @@ export function mountPluginPlatformRoutes(
     }
   });
 
-  router.get('/campaign/world', async (req, res) => {
+  router.get('/campaign/world', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
@@ -162,7 +162,7 @@ export function mountPluginPlatformRoutes(
     }
   });
 
-  router.get('/campaign/lore/characters', async (req, res) => {
+  router.get('/campaign/lore/characters', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
@@ -173,7 +173,7 @@ export function mountPluginPlatformRoutes(
     }
   });
 
-  router.get('/campaign/lore/organizations', async (req, res) => {
+  router.get('/campaign/lore/organizations', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
@@ -184,7 +184,7 @@ export function mountPluginPlatformRoutes(
     }
   });
 
-  router.get('/campaign/lore/locations', async (req, res) => {
+  router.get('/campaign/lore/locations', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
@@ -195,7 +195,7 @@ export function mountPluginPlatformRoutes(
     }
   });
 
-  router.get('/campaign/maps', async (req, res) => {
+  router.get('/campaign/maps', readScope, async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;

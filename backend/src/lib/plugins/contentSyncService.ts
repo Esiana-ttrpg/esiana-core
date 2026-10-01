@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma } from '../prismaClient.js';
 import { prisma } from '../prisma.js';
 import { CoreDomainEvents, dispatchDomainEvent, toWikiPageEventDto } from '../domainEvents/index.js';
+import { prismaJsonPath } from '../prismaJsonPath.js';
 import type {
   ContentSyncCollectionDescriptor,
   ContentSyncListResult,
@@ -61,6 +62,30 @@ export class ContentSyncError extends Error {
   constructor(public readonly code: 'NOT_FOUND' | 'CONFLICT' | 'INVALID', message: string, public readonly current?: ContentSyncResource) { super(message); }
 }
 
+type ContentSyncCursor = { updatedAt: string; id: string };
+
+function parseCursor(raw: string | undefined): ContentSyncCursor | null {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as Partial<ContentSyncCursor>;
+    if (typeof value.updatedAt !== 'string' || Number.isNaN(new Date(value.updatedAt).getTime()) || typeof value.id !== 'string' || !value.id) throw new Error();
+    return { updatedAt: value.updatedAt, id: value.id };
+  } catch {
+    throw new ContentSyncError('INVALID', 'cursor is invalid');
+  }
+}
+
+function encodeCursor(row: { updatedAt: Date; id: string }): string {
+  return Buffer.from(JSON.stringify({ updatedAt: row.updatedAt.toISOString(), id: row.id }), 'utf8').toString('base64url');
+}
+
+function parseEpochMinute(value: unknown): bigint {
+  if ((typeof value === 'number' && Number.isInteger(value)) || (typeof value === 'string' && /^-?\d+$/.test(value))) {
+    try { return BigInt(value); } catch { /* handled below */ }
+  }
+  throw new ContentSyncError('INVALID', 'targetEpochMinute must be an integer');
+}
+
 function markdownFromBlocks(raw: unknown): string {
   if (!Array.isArray(raw)) return '';
   return raw.filter((b): b is Record<string, unknown> => Boolean(b && typeof b === 'object'))
@@ -118,20 +143,27 @@ export class ContentSyncService {
     const limit = Math.min(200, Math.max(1, options.limit ?? 100));
     const modified = options.modifiedSince ? new Date(options.modifiedSince) : null;
     if (modified && Number.isNaN(modified.getTime())) throw new ContentSyncError('INVALID', 'modifiedSince must be an ISO timestamp');
+    const cursor = parseCursor(options.cursor);
+    const cursorFilter = cursor ? { OR: [{ updatedAt: { gt: new Date(cursor.updatedAt) } }, { updatedAt: new Date(cursor.updatedAt), id: { gt: cursor.id } }] } : {};
+    let rows: any[];
     let resources: ContentSyncResource[];
     if (descriptor.resourceKind === 'wiki-page') {
-      const rows = await prisma.wikiPage.findMany({ where: { campaignId: this.campaignId, ...(modified ? { updatedAt: { gt: modified } } : {}) }, include: { featuredImage: { select: { url: true, displayUrl: true } } }, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }] });
-      resources = rows.filter((row) => wikiCollection(row) === collection).map((row) => wikiResource(row, collection));
+      const collectionFilter = collection === 'session-notes'
+        ? { templateType: 'SESSION_NOTE' }
+        : collection === 'quests'
+          ? { templateType: 'QUEST' }
+          : { templateType: { notIn: ['SESSION_NOTE', 'QUEST'] }, metadata: { path: prismaJsonPath('entityCategory'), equals: collection } };
+      rows = await prisma.wikiPage.findMany({ where: { campaignId: this.campaignId, ...collectionFilter, ...(modified ? { updatedAt: { gt: modified } } : {}), ...cursorFilter }, include: { featuredImage: { select: { url: true, displayUrl: true } } }, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }], take: limit + 1 });
+      resources = rows.slice(0, limit).map((row) => wikiResource(row, collection));
     } else if (descriptor.resourceKind === 'journal-publication') {
-      const rows = await prisma.journalPublication.findMany({ where: { campaignId: this.campaignId, ...(modified ? { updatedAt: { gt: modified } } : {}) }, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }] });
-      resources = rows.map(journalResource);
+      rows = await prisma.journalPublication.findMany({ where: { campaignId: this.campaignId, ...(modified ? { updatedAt: { gt: modified } } : {}), ...cursorFilter }, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }], take: limit + 1 });
+      resources = rows.slice(0, limit).map(journalResource);
     } else {
-      const rows = await prisma.calendarEvent.findMany({ where: { calendar: { campaignId: this.campaignId }, ...(modified ? { updatedAt: { gt: modified } } : {}) }, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }] });
-      resources = rows.map(eventResource);
+      rows = await prisma.calendarEvent.findMany({ where: { calendar: { campaignId: this.campaignId }, ...(modified ? { updatedAt: { gt: modified } } : {}), ...cursorFilter }, orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }], take: limit + 1 });
+      resources = rows.slice(0, limit).map(eventResource);
     }
-    const start = options.cursor ? Math.max(0, Number.parseInt(options.cursor, 10) || 0) : 0;
-    const page = resources.slice(start, start + limit);
-    return { resources: page, nextCursor: start + limit < resources.length ? String(start + limit) : null };
+    const last = rows.length > limit ? rows[limit - 1] : null;
+    return { resources, nextCursor: last ? encodeCursor(last) : null };
   }
 
   async get(collection: string, id: string): Promise<ContentSyncResource | null> {
@@ -154,9 +186,10 @@ export class ContentSyncService {
       const row = await prisma.journalPublication.create({ data: { campaignId: this.campaignId, title: name, summary: typeof fields.summary === 'string' ? fields.summary : null, type: typeof fields.publicationType === 'string' ? fields.publicationType : 'notice', contentMarkdown: typeof fields.body === 'string' ? fields.body : '', createdByUserId: actorUserId ?? null } }); return journalResource(row);
     }
     if (collection === 'timeline-events') {
+      const targetEpochMinute = fields.targetEpochMinute == null ? null : parseEpochMinute(fields.targetEpochMinute);
       const calendarId = typeof fields.calendarId === 'string' ? fields.calendarId : (await prisma.fantasyCalendar.findFirst({ where: { campaignId: this.campaignId, isMasterTime: true }, select: { id: true } }))?.id;
       if (!calendarId || !await prisma.fantasyCalendar.findFirst({ where: { id: calendarId, campaignId: this.campaignId } })) throw new ContentSyncError('INVALID', 'A campaign calendar is required');
-      const row = await prisma.calendarEvent.create({ data: { calendarId, title: name, description: typeof fields.body === 'string' ? fields.body : null, duration: typeof fields.duration === 'number' ? Math.max(1, Math.floor(fields.duration)) : 1, targetEpochMinute: fields.targetEpochMinute != null ? BigInt(String(fields.targetEpochMinute)) : null } }); return eventResource(row);
+      const row = await prisma.calendarEvent.create({ data: { calendarId, title: name, description: typeof fields.body === 'string' ? fields.body : null, duration: typeof fields.duration === 'number' ? Math.max(1, Math.floor(fields.duration)) : 1, targetEpochMinute } }); return eventResource(row);
     }
     const descriptor = CONTENT_SYNC_COLLECTIONS.find((item) => item.key === collection && item.available && item.resourceKind === 'wiki-page');
     if (!descriptor) throw new ContentSyncError('INVALID', 'Unsupported collection');
@@ -167,21 +200,27 @@ export class ContentSyncService {
     return wikiResource(row, collection);
   }
 
-  async update(collection: string, id: string, mutation: ContentSyncMutation): Promise<ContentSyncResource> {
+  async update(collection: string, id: string, mutation: ContentSyncMutation, actorUserId?: string): Promise<ContentSyncResource> {
     const current = await this.get(collection, id);
     if (!current) throw new ContentSyncError('NOT_FOUND', 'Resource not found');
     if (!mutation.baseRevision || mutation.baseRevision !== current.revision) throw new ContentSyncError('CONFLICT', 'Resource changed since the supplied base revision', current);
     const f = mutation.fields;
+    const baseRevision = new Date(mutation.baseRevision);
+    let count = 0;
     if (collection === 'journal') {
-      await prisma.journalPublication.update({ where: { id }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { contentMarkdown: f.body } : {}), ...(typeof f.summary === 'string' || f.summary === null ? { summary: f.summary } : {}), ...(typeof f.publicationType === 'string' ? { type: f.publicationType } : {}) } });
+      ({ count } = await prisma.journalPublication.updateMany({ where: { id, campaignId: this.campaignId, updatedAt: baseRevision }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { contentMarkdown: f.body } : {}), ...(typeof f.summary === 'string' || f.summary === null ? { summary: f.summary } : {}), ...(typeof f.publicationType === 'string' ? { type: f.publicationType } : {}) } }));
     } else if (collection === 'timeline-events') {
-      await prisma.calendarEvent.update({ where: { id }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { description: f.body } : {}), ...(typeof f.categoryId === 'string' || f.categoryId === null ? { categoryId: f.categoryId } : {}), ...(f.targetEpochMinute !== undefined ? { targetEpochMinute: f.targetEpochMinute === null ? null : BigInt(String(f.targetEpochMinute)) } : {}), ...(typeof f.duration === 'number' ? { duration: Math.max(1, Math.floor(f.duration)) } : {}) } });
+      if (f.categoryId !== undefined && f.categoryId !== null && (typeof f.categoryId !== 'string' || !await prisma.calendarEventCategory.findFirst({ where: { id: f.categoryId, campaignId: this.campaignId }, select: { id: true } }))) throw new ContentSyncError('INVALID', 'categoryId must belong to this campaign');
+      const targetEpochMinute = f.targetEpochMinute === undefined ? undefined : f.targetEpochMinute === null ? null : parseEpochMinute(f.targetEpochMinute);
+      ({ count } = await prisma.calendarEvent.updateMany({ where: { id, calendar: { campaignId: this.campaignId }, updatedAt: baseRevision }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { description: f.body } : {}), ...(typeof f.categoryId === 'string' || f.categoryId === null ? { categoryId: f.categoryId } : {}), ...(targetEpochMinute !== undefined ? { targetEpochMinute } : {}), ...(typeof f.duration === 'number' ? { duration: Math.max(1, Math.floor(f.duration)) } : {}) } }));
     } else {
       const page = await prisma.wikiPage.findFirstOrThrow({ where: { id, campaignId: this.campaignId } });
       const nextMeta = { ...(page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {}), ...(f.metadata && typeof f.metadata === 'object' && !Array.isArray(f.metadata) ? f.metadata as Record<string, unknown> : {}), ...(collection === 'quests' && f.questStatus !== undefined ? { questStatus: f.questStatus } : {}) };
-      const updated = await prisma.wikiPage.update({ where: { id }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { blocks: bodyBlock(f.body) as unknown as Prisma.InputJsonValue } : {}), metadata: nextMeta as Prisma.InputJsonValue } });
-      await projectWikiMutation(updated, 'update');
+      ({ count } = await prisma.wikiPage.updateMany({ where: { id, campaignId: this.campaignId, updatedAt: baseRevision }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { blocks: bodyBlock(f.body) as unknown as Prisma.InputJsonValue } : {}), metadata: nextMeta as Prisma.InputJsonValue } }));
     }
-    return (await this.get(collection, id))!;
+    const updated = await this.get(collection, id);
+    if (count === 0) throw new ContentSyncError('CONFLICT', 'Resource changed since the supplied base revision', updated ?? undefined);
+    if (collection !== 'journal' && collection !== 'timeline-events') await projectWikiMutation(await prisma.wikiPage.findFirstOrThrow({ where: { id, campaignId: this.campaignId } }), 'update', actorUserId);
+    return updated!;
   }
 }
