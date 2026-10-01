@@ -7,16 +7,73 @@
 - **Search ranking and grouping (Pass 6)** — within-tier ranking signals (title specificity, type prior on non-exact name tiers, recency, occurrence density), portable fuzzy name matching (OSA edit distance over `titleNorm`/`aliasText`), entity dedupe, and server-shaped result sections (best match, collapsed mentions, capped type groups). Optional `explain=1` diagnostics. Ranking regressions are covered by golden scenarios separate from Pass 5 retrieval.
 - **Indexed Global Search (Pass 5)** — derived `SearchIndexDocument` projection with PostgreSQL `tsvector`/GIN candidate retrieval (portable multi-token LIKE over the same table on SQLite). Replaces the single-token `LIMIT 200` base-table LIKE prefilter. Write-path upserts, campaign rebuild on import/clone/restore, `pnpm bench:search`, and `backend/scripts/backfillSearchIndex.ts`. Authorization, ranking, and response shape are unchanged.
 - **Command palette** — type `>` in campaign search (or Ctrl/Cmd+Shift+P) to run permission-aware Core commands: create all CreatePageModal codex types (characters, bestiary, ancestries, organizations, locations, objects, families, rules/resources) derived from workspace route `createVia`, plus session notes; jump to Sessions, Timeline, Developments, and Settings; advance campaign time; and edit or copy a link to the current page.
-- Scheduled nightly builds for `develop`: moving `nightly` Git tag, multi-arch images tagged `nightly` and `nightly-YYYYMMDD-<shortsha>` on GHCR and Docker Hub, skip when unchanged, and tag advance only after a successful publish.
 
 ### Changed
 
-- Package `engines.node` is `>=26.0.0` (was `>=22.10.0`), matching the only tested runtime (CI `setup-node` and Docker `node:26-alpine`).
 - Prisma ORM upgraded to **7.10.0** (`prisma` + `@prisma/client` locked together). Driver adapters (`@prisma/adapter-pg` / `@prisma/adapter-better-sqlite3`), `prisma.config.ts`, and `createPrismaClient()` are required; Dependabot ignores major bumps for both Prisma packages.
 
 ### Database
 
 - Migration `20260930140000_search_index_document` — adds `SearchIndexDocument` (tiered searchable text + optional PostgreSQL `tsvector` columns with GIN indexes).
+
+## [1.6.0] - 2026-09-30
+
+### Added
+
+- **Campaign search** — Search wiki content by title, aliases, metadata, custom fields, and body text with ranked, highlighted results; open with the search button or Ctrl/Cmd+K, keyboard navigation, and recent searches. Query syntax supports quoted phrases, `-excluded` terms, and `type:`, `in:`, `from:`, `after:`, `before:` filters with value suggestions and removable filter chips. Results respect wiki visibility and may include eligible plugin content.
+- **Outgoing webhooks** — Campaign-scoped webhook endpoints under Campaign Settings → Integrations with a versioned public event catalog, per-endpoint subscriptions, encrypted signing secrets (one-time display, rotation), timestamped HMAC-SHA256 signatures, HTTPS-only SSRF-safe delivery, bounded restart-safe retries, automatic suspension after repeated failures, delivery history, test deliveries, and manual redelivery.
+- **Discord integration** — First-party Discord destinations (multiple per campaign) with encrypted webhook URLs, an explicit Discord event catalog, typed embed formatting, Discord rate-limit handling, health state, delivery history, and test messages.
+- **Campaign WebSockets** — `GET /api/campaigns/{campaignHandle}/ws` alongside the existing SSE stream, sharing authorization, visibility filtering, redaction, and membership-revocation handling. Separate realtime session protocol for presence, cursor, and typing messages that never enters external event subscriptions.
+- **Session Notes attendance** — Notes / Attendance / Recaps tabs; Attendance shows which members have notes per session, respects session visibility, and marks the latest visible session as Current. Recaps is marked coming soon.
+- **Entity pages and custom fields** — Page management (create, duplicate, reorder, rename, hide, remove tabs) extended from characters to locations, organizations, bestiary, ancestries, families, and quests via entity-neutral API routes. Custom fields can be created, renamed, reordered, moved between pages, and deleted, with persisted ordering and core/plugin/API/custom provenance protections.
+- **Character masthead identity** — Restored editable identity and lineage details (ancestry, home, primary family, birth and death dates), affiliation and tags under World context, and temporal status in the character masthead.
+- **Request rate limiting** — Named policies (`authenticated`, `mutation`, `expensive`, `public`, `admin`, `api-key`) applied across the API with `Retry-After` on limited responses. Configured via `RATE_LIMIT_*` environment variables (see `backend/.env.example`); only the in-memory store is supported. Limits do not change authentication or authorization.
+- Scheduled nightly builds for `develop`: moving `nightly` Git tag, multi-arch images tagged `nightly` and `nightly-YYYYMMDD-<shortsha>` on GHCR and Docker Hub, skip when unchanged, and tag advance only after a successful publish.
+
+### Changed
+
+- Package `engines.node` is `>=26.0.0` (was `>=22.10.0`), matching the only tested runtime (CI `setup-node` and Docker `node:26-alpine`).
+- OpenAPI specification synchronized with the new search, webhook, Discord, WebSocket, entity-page, and rate-limit routes.
+
+### Fixed
+
+- Search filters: author and date filters follow consistent matching rules; unresolved author names return no results; `type:` in the query takes precedence over the selected search tab.
+- Search dialog focus trap.
+
+### Database
+
+- Migration `20260927120000_entity_field_order` — adds `CharacterField.displayOrder`.
+- Migration `20260927180000_campaign_webhooks` — adds `WebhookEndpoint` and `WebhookDelivery`.
+- Migration `20260927190000_campaign_discord` — adds `DiscordDestination` and `DiscordDelivery`.
+- Migration `20260927200000_encrypt_webhook_urls` — renames `WebhookEndpoint.url` to `urlEnc`; application startup completes the data migration using the configured secret-box key.
+
+Apply migrations before enabling webhook or Discord integrations.
+
+## [1.5.0] - 2026-09-26
+
+### Added
+
+- **Campaign event stream (SSE)** — Authenticated, campaign-member-scoped `GET /api/campaigns/{campaignHandle}/events` with a canonical versioned event envelope for wiki pages, campaign time, timeline events, developments, and characters; the wiki tree refreshes live on changes and events are re-dispatched to browser consumers and plugins.
+- **Character pages, fields, and appearance** — Core, custom, and plugin-provided character tabs (reorder, rename, hide, duplicate, manage); representation-independent `CharacterField` persistence and APIs with typed plugin field declarations; masthead with identity, appearance, title, and visibility; appearance selection in the URL, inheritance indicators, and revert controls. Pages, fields, and plugin page data are included in backup/export and restore.
+- **API provenance** — `API` origin alongside `CORE`/`CUSTOM`/`PLUGIN` for pages and fields created through API tokens, with source identification and a warning when deleting API-created pages.
+- **Source references and provider search** — Versioned `SourceReference` codec, source-provider registry with campaign authorization and permission gating, `/source` command and toolbar picker, citation rendering and popover, and plugin capability for searchable sources.
+- **Plugin connections** — Campaign- and user-owned encrypted connection records; OAuth 2 authorization-code + PKCE, API-key, and static bearer connections; backend-only authenticated fetch restricted to declared origins with SSRF checks; admin OAuth client configuration.
+- **Developments page** — Pending developments as primary focus, compact World Development status, Apply / Edit / Dismiss actions, direct Advance Time, and sparse-campaign guidance.
+
+### Fixed
+
+- SSE events are filtered per subscriber by wiki, chronology, and role visibility; streams close on membership or permission changes; heartbeats revalidate membership.
+- `WikiPage.updatedAt` is no longer backdated by temporal-import metadata; alias changes touch the parent page.
+- Plugin registry default resolves to `https://github.com/Esiana-ttrpg/community-plugins/registry.json`; branchless GitHub URLs follow the default branch.
+- Campaign snapshot prompts to set current campaign time when the world date is unset.
+- New and Duplicate Campaign wizards keep header, step navigation, and actions reachable on constrained-height viewports.
+
+### Database
+
+- Migration `20260924120000_plugin_connections` — adds `PluginOAuthClient`, `PluginConnection`, and `PluginConnectionAuthState`.
+- Migration `20260925120000_character_page_tabs` — adds `CharacterPageTab` and `PluginCharacterPageState`.
+- Migration `20260925160000_character_fields` — adds `CharacterField`.
+- Migration `20260926120000_api_character_provenance` — adds `apiSourceId` / `apiSourceName` to `CharacterPageTab` and `CharacterField`.
 
 ## [1.4.3] - 2026-09-22
 
