@@ -1,6 +1,7 @@
 import { apiFetch } from '@/lib/api';
 import type {
   ApiTokenDurationDays,
+  ApiTokenScope,
   CreateUserApiTokenResult,
   UserApiTokenSummary,
 } from '@/types/apiToken';
@@ -53,6 +54,7 @@ export async function fetchUserApiTokens(): Promise<UserApiTokenSummary[]> {
 export async function createUserApiToken(input: {
   name: string;
   durationDays: ApiTokenDurationDays;
+  scopes: ApiTokenScope[];
 }): Promise<CreateUserApiTokenResult> {
   return apiFetch<CreateUserApiTokenResult>('/user/tokens', {
     method: 'POST',
