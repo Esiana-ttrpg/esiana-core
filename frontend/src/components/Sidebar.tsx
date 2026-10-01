@@ -42,7 +42,10 @@ import {
   SIDEBAR_TOP_FIXED_IDS,
   SIDEBAR_UTILITY_STUB_IDS,
   TIME_TRACKING_WIKI_TITLES,
+  getSidebarItemDisplayLabel,
   isFixedSectionVisible,
+  isPluginSidebarConfigId,
+  mergePluginSidebarRegistrations,
   type SidebarConfig,
   type SidebarOrderItem,
   type SidebarSectionId,
@@ -61,8 +64,10 @@ import {
   isPluginPageActive,
   listPluginSidebarItems,
   pluginPagePath,
-  type PluginSidebarSection,
+  resolvePluginSidebarIcon,
 } from '@/lib/pluginNavigation';
+import { parsePluginSidebarOrderId } from '@/lib/pluginContributions';
+import { usePluginRuntime } from '@/plugins/PluginRuntimeProvider';
 import { META_SECTION_LABEL_CLASS, SIDEBAR_ATMOSPHERE_CLASS, SIDEBAR_NAV_ITEM_CLASS, SIDEBAR_NAV_PRIMARY_CLASS } from '@/lib/surfaceLayout';
 
 function NavItem({
@@ -373,6 +378,19 @@ export function Sidebar({
     sidebarConfig,
   } = useWiki();
   const location = useLocation();
+  const { plugins } = usePluginRuntime();
+
+  const navConfig = mergePluginSidebarRegistrations(
+    sidebarConfig,
+    listPluginSidebarItems().map((item) => ({
+      pluginId: item.pluginId,
+      id: item.id,
+      label: item.label,
+      icon: item.icon,
+    })),
+  );
+  // Depend on plugins so merge refreshes after bootstrap
+  void plugins;
 
   const canManageTemplates =
     campaign?.role === 'GAMEMASTER' || campaign?.role === 'WRITER';
@@ -672,43 +690,72 @@ export function Sidebar({
     return renderWikiModule(item);
   }
 
-  function renderPluginSidebarItems(section: PluginSidebarSection): ReactNode {
-    return listPluginSidebarItems(section).map((item) => {
-      const to = pluginPagePath(campaignHandle, item.pluginId, item.pageId);
-      const active = isPluginPageActive(location.pathname, item.pluginId, item.pageId);
-      return (
-        <NavLink
-          key={`plugin-${item.pluginId}-${item.id}`}
-          to={to}
-          onClick={onNavigate}
-          title={collapsed ? item.label : undefined}
-          className={() =>
-            [
-              SIDEBAR_NAV_ITEM_CLASS,
-              collapsed
-                ? 'sidebar-nav-item--collapsed flex min-h-11 items-center justify-center rounded-md p-2'
-                : 'flex min-h-11 items-center gap-2 rounded-md px-2 py-2 text-sm',
-              active ? 'sidebar-nav-item--active' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')
-          }
-        >
-          {!collapsed ? item.label : item.label.slice(0, 1)}
-        </NavLink>
-      );
-    });
+  function renderPluginNavItem(item: SidebarOrderItem): ReactNode {
+    if (!item.enabled || !isPluginSidebarConfigId(item.id)) return null;
+    const parsed = parsePluginSidebarOrderId(item.id);
+    if (!parsed) return null;
+    // Only show when the plugin currently has a live sidebar registration
+    // (campaign disable removes runtime regs but retains config placement).
+    const live = listPluginSidebarItems().find(
+      (reg) => reg.pluginId === parsed.pluginId && reg.id === parsed.itemId,
+    );
+    if (!live) return null;
+
+    const to = pluginPagePath(campaignHandle, parsed.pluginId, live.pageId);
+    const active = isPluginPageActive(location.pathname, parsed.pluginId, live.pageId);
+    const label = getSidebarItemDisplayLabel(item);
+    const Icon = resolvePluginSidebarIcon(item.icon ?? live.icon);
+
+    return (
+      <NavLink
+        key={item.id}
+        to={to}
+        onClick={onNavigate}
+        title={collapsed ? label : undefined}
+        className={() =>
+          [
+            SIDEBAR_NAV_ITEM_CLASS,
+            collapsed
+              ? 'sidebar-nav-item--collapsed flex min-h-11 items-center justify-center rounded-md p-2'
+              : 'flex min-h-11 items-center gap-2 rounded-md px-2 py-2 text-sm',
+            active ? 'sidebar-nav-item--active' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')
+        }
+      >
+        {collapsed ? (
+          Icon ? <Icon className="size-4" aria-hidden /> : label.slice(0, 1)
+        ) : (
+          <>
+            {Icon ? <Icon className="size-4 shrink-0 text-muted" aria-hidden /> : null}
+            <span className="truncate">{label}</span>
+          </>
+        )}
+      </NavLink>
+    );
+  }
+
+  function renderBucketItemWithPlugins(
+    item: SidebarOrderItem,
+    renderCore: (item: SidebarOrderItem) => ReactNode,
+  ): ReactNode {
+    if (isPluginSidebarConfigId(item.id)) {
+      return renderPluginNavItem(item);
+    }
+    return renderCore(item);
   }
 
   function renderPlaySection() {
     return (
       <>
         <ZoneHeading
-          title={translateSidebarZoneHeader('play', sidebarConfig.headers.play)}
+          title={translateSidebarZoneHeader('play', navConfig.headers.play)}
           collapsed={collapsed}
         />
-        {sidebarConfig.playOrder.map((item) => renderPlayBucketItem(item))}
-        {renderPluginSidebarItems('play')}
+        {navConfig.playOrder.map((item) =>
+          renderBucketItemWithPlugins(item, renderPlayBucketItem),
+        )}
       </>
     );
   }
@@ -717,11 +764,12 @@ export function Sidebar({
     return (
       <>
         <ZoneHeading
-          title={translateSidebarZoneHeader('world', sidebarConfig.headers.world)}
+          title={translateSidebarZoneHeader('world', navConfig.headers.world)}
           collapsed={collapsed}
         />
-        {sidebarConfig.worldLoreOrder.map((item) => renderWorldBucketItem(item))}
-        {renderPluginSidebarItems('world')}
+        {navConfig.worldLoreOrder.map((item) =>
+          renderBucketItemWithPlugins(item, renderWorldBucketItem),
+        )}
       </>
     );
   }
@@ -730,11 +778,26 @@ export function Sidebar({
     return (
       <>
         <ZoneHeading
-          title={translateSidebarZoneHeader('timeline', sidebarConfig.headers.timeline)}
+          title={translateSidebarZoneHeader('timeline', navConfig.headers.timeline)}
           collapsed={collapsed}
         />
         {renderTimelineLinks()}
-        {renderPluginSidebarItems('timeline')}
+      </>
+    );
+  }
+
+  function renderPluginsSection() {
+    const visible = (navConfig.pluginsOrder ?? [])
+      .map((item) => renderPluginNavItem(item))
+      .filter(Boolean);
+    if (visible.length === 0) return null;
+    return (
+      <>
+        <ZoneHeading
+          title={translateSidebarZoneHeader('plugins', navConfig.headers.plugins)}
+          collapsed={collapsed}
+        />
+        {visible}
       </>
     );
   }
@@ -743,11 +806,12 @@ export function Sidebar({
     return (
       <>
         <ZoneHeading
-          title={translateSidebarZoneHeader('tools', sidebarConfig.headers.tools)}
+          title={translateSidebarZoneHeader('tools', navConfig.headers.tools)}
           collapsed={collapsed}
         />
-        {sidebarConfig.toolsOrder.map((item) => renderToolsBucketItem(item))}
-        {renderPluginSidebarItems('tools')}
+        {navConfig.toolsOrder.map((item) =>
+          renderBucketItemWithPlugins(item, renderToolsBucketItem),
+        )}
         {SIDEBAR_TOOLS_FIXED_IDS.map((id) => renderFixedSection(id))}
         {SIDEBAR_UTILITY_STUB_IDS.map((id) => renderFixedSection(id))}
       </>
@@ -793,10 +857,10 @@ export function Sidebar({
         ) : (
           <div className={SIDEBAR_NAV_PRIMARY_CLASS}>
             {SIDEBAR_TOP_FIXED_IDS.map((id) => renderFixedSection(id))}
-            {renderPluginSidebarItems('campaign')}
             {renderPlaySection()}
             {renderWorldSection()}
             {renderTimelineSection()}
+            {renderPluginsSection()}
             {renderToolsSection()}
           </div>
         )}

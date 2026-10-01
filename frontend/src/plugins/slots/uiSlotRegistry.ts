@@ -4,10 +4,13 @@ import {
 } from '@/lib/pluginPresentation';
 import { registerPluginPage } from '@/lib/pluginPages';
 import { registerPluginCharacterPageRenderer } from '@/lib/pluginCharacterPages';
+import { registerPluginSidebarItem } from '@/lib/pluginNavigation';
 import {
-  registerPluginSidebarItem,
-  type PluginSidebarSection,
-} from '@/lib/pluginNavigation';
+  registerAppHomeCard,
+  registerHeaderPage,
+  registerPageAction,
+  registerPageSection,
+} from '@/lib/pluginContributions';
 import {
   subscribeToPluginDomainEvent,
   type PluginDomainEventDetail,
@@ -18,6 +21,7 @@ import type {
   PluginUiSlotId,
   PluginSlotRenderer,
 } from './types.js';
+import { PluginUiSlots } from './types.js';
 
 const slotRegistry = new Map<PluginUiSlotId, PluginSlotRegistration[]>();
 const domainEventUnsubs = new Map<string, Array<() => void>>();
@@ -46,6 +50,18 @@ export function clearUiSlotRegistry(): void {
   domainEventUnsubs.clear();
 }
 
+function assertSlotAllowed(
+  pluginId: string,
+  allowedSlots: PluginUiSlotId[],
+  slot: PluginUiSlotId,
+): void {
+  if (allowedSlots.length > 0 && !allowedSlots.includes(slot)) {
+    throw new Error(
+      `Plugin "${pluginId}" cannot register undeclared slot "${slot}"`,
+    );
+  }
+}
+
 export function createPluginUiRegistry(
   pluginId: string,
   allowedSlots: PluginUiSlotId[] = [],
@@ -54,11 +70,7 @@ export function createPluginUiRegistry(
 ): PluginUiRegistry {
   return {
     registerSlot(slot: string, definition) {
-      if (allowedSlots.length > 0 && !allowedSlots.includes(slot as PluginUiSlotId)) {
-        throw new Error(
-          `Plugin "${pluginId}" cannot register undeclared slot "${slot}"`,
-        );
-      }
+      assertSlotAllowed(pluginId, allowedSlots, slot as PluginUiSlotId);
       registerUiSlot(
         pluginId,
         slot as PluginUiSlotId,
@@ -80,11 +92,28 @@ export function createPluginUiRegistry(
       registerPluginCharacterPageRenderer(pluginId, definition);
     },
     registerSidebarItem(definition) {
-      registerPluginSidebarItem(pluginId, definition);
+      registerPluginSidebarItem(pluginId, {
+        ...definition,
+        section: 'plugins',
+      });
+    },
+    registerAppHomeCard(definition) {
+      assertSlotAllowed(pluginId, allowedSlots, PluginUiSlots.APP_HOME);
+      registerAppHomeCard(pluginId, definition);
+    },
+    registerHeaderPage(definition) {
+      registerHeaderPage(pluginId, definition);
+    },
+    registerPageSection(definition) {
+      assertSlotAllowed(pluginId, allowedSlots, PluginUiSlots.PAGE_EXTENSIONS);
+      registerPageSection(pluginId, definition);
+    },
+    registerPageAction(definition) {
+      registerPageAction(pluginId, definition);
     },
     subscribeToDomainEvent(pattern: string, handler: (detail: PluginDomainEventDetail) => void) {
       if (!campaignHandle) {
-        console.warn(`[plugins] "${pluginId}" domain event subscription requires campaignHandle`);
+        console.warn('[plugins] "%s" domain event subscription requires campaignHandle', pluginId);
         return () => undefined;
       }
       const unsub = subscribeToPluginDomainEvent(campaignHandle, pattern, handler);
@@ -95,5 +124,3 @@ export function createPluginUiRegistry(
     },
   };
 }
-
-export type { PluginSidebarSection };

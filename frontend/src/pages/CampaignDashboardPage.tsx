@@ -20,6 +20,7 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { LinkYourCharacterCard } from '@/components/dashboard/LinkYourCharacterCard';
 import { PluginSlotHost, PluginUiSlots } from '@/plugins/slots';
 import { useDeclaredPluginSlot } from '@/plugins/useDeclaredPluginSlot';
+import { PluginPageExtensionsHost } from '@/components/plugins/PluginPageExtensionsHost';
 import {
   campaignDashboardNavigationReducer,
   createCampaignDashboardNavigationState,
@@ -287,6 +288,7 @@ function CampaignDashboardContent({
         onConfigChange={handleConfigChange}
         onLayoutSavingChange={setLayoutSaving}
       />
+      <PluginPageExtensionsHost target="campaign.dashboard" className="mt-2" />
     </div>
   );
 }

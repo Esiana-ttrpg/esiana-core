@@ -11,6 +11,7 @@ const ZONE_HEADER_KEYS = {
   world: 'navigation.sidebar.zoneWorld',
   timeline: 'navigation.sidebar.zoneTimeline',
   tools: 'navigation.sidebar.zoneTools',
+  plugins: 'navigation.sidebar.zonePlugins',
 } as const;
 
 const TIMELINE_TITLE_KEYS: Record<string, string> = {
@@ -28,6 +29,7 @@ export function translateSidebarSectionLabel(sectionId: SidebarSectionId): strin
 export function translateSidebarItemLabel(item: SidebarOrderItem): string {
   const custom = item.customLabel?.trim();
   if (custom) return custom;
+  if (item.id.startsWith('plugin:')) return item.label;
   return translateSidebarSectionLabel(item.id as SidebarSectionId);
 }
 

@@ -12,6 +12,7 @@ import { fetchCampaignMaps } from '@/lib/maps';
 import { mapDisplayTitle } from '@/types/maps';
 import { useWiki } from '@/contexts/WikiContext';
 import type { EntityPageShellViewProps } from '@/lib/entityPageShells/types';
+import { PluginPageExtensionsHost } from '@/components/plugins/PluginPageExtensionsHost';
 
 export function LocationPageShellView({
   campaignHandle,
@@ -165,6 +166,12 @@ export function LocationPageShellView({
         showIdentityEditor={pageSubview === 'overview'}
       />
       {renderTabContent()}
+      <PluginPageExtensionsHost
+        target="location.detail"
+        pageId={pageId}
+        surfaceKey="location"
+        className="mt-6"
+      />
     </div>
   );
 }

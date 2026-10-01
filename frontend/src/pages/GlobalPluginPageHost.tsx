@@ -1,11 +1,9 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useRef } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MascotErrorPanel } from '@/components/errors/MascotErrorPanel';
-import { getPluginPage } from '@/lib/pluginPages';
-import { createPluginPageNavigation } from '@/lib/pluginPages';
+import { createPluginPageNavigation, getPluginPage } from '@/lib/pluginPages';
 import {
   createBasePluginSlotContext,
   enrichPluginSlotContext,
@@ -13,16 +11,15 @@ import {
 import { usePluginRuntime } from '@/plugins/PluginRuntimeProvider';
 import { PluginErrorBoundary } from '@/plugins/slots/PluginErrorBoundary';
 
-export function PluginPageHost() {
-  const { campaignHandle = '', pluginId = '', pageId = '', '*': splat } = useParams<{
-    campaignHandle: string;
+/** Hosts globally scoped plugin pages at `/plugins/:pluginId/:pageId/*`. */
+export function GlobalPluginPageHost() {
+  const { pluginId = '', pageId = '', '*': splat } = useParams<{
     pluginId: string;
     pageId: string;
     '*': string;
   }>();
   const location = useLocation();
   const navigate = useNavigate();
-  const { campaign } = useWiki();
   const { plugins, loading } = usePluginRuntime();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -32,13 +29,12 @@ export function PluginPageHost() {
   );
   const page = useMemo(
     () => (pluginId && pageId ? getPluginPage(pluginId, pageId) : undefined),
-    [pageId, pluginId],
+    [pageId, pluginId, plugins],
   );
 
   const navigation = useMemo(() => {
-    if (!campaignHandle || !pluginId || !pageId) return null;
+    if (!pluginId || !pageId) return null;
     return createPluginPageNavigation({
-      campaignHandle,
       pluginId,
       pageId,
       pathname: location.pathname,
@@ -48,20 +44,18 @@ export function PluginPageHost() {
         else navigate(nextPath);
       },
     });
-  }, [campaignHandle, location.pathname, location.search, navigate, pageId, pluginId]);
+  }, [location.pathname, location.search, navigate, pageId, pluginId]);
 
   const slotContext = useMemo(() => {
     if (!descriptor) return null;
     return enrichPluginSlotContext(
       createBasePluginSlotContext({
-        campaignId: campaign?.id,
-        campaignHandle,
         config: descriptor.config,
         isEnabled: true,
       }),
       pluginId,
     );
-  }, [campaign?.id, campaignHandle, descriptor, pluginId]);
+  }, [descriptor, pluginId]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -76,7 +70,12 @@ export function PluginPageHost() {
         if (cancelled) return;
         cleanup = typeof result === 'function' ? result : undefined;
       } catch (error) {
-        console.error('[plugins] Page render failed for "%s/%s"', pluginId, pageId, error);
+        console.error(
+          '[plugins] Global page render failed for "%s/%s"',
+          pluginId,
+          pageId,
+          error,
+        );
         root.textContent = 'Plugin page failed to render.';
       }
     })();
@@ -88,30 +87,23 @@ export function PluginPageHost() {
     };
   }, [navigation, page, pageId, pluginId, slotContext, splat, location.pathname, location.search]);
 
-  if (!campaignHandle || !pluginId || !pageId) {
-    return <Navigate to="../dashboard" replace />;
+  if (!pluginId || !pageId) {
+    return <Navigate to="/" replace />;
   }
 
   if (loading) {
     return <LoadingSpinner label="Loading plugin page…" />;
   }
 
-  if (!descriptor || !page?.render) {
-    return (
-      <MascotErrorPanel
-        code={404}
-        title="Plugin page not found"
-        description="This plugin page is unavailable or not registered."
-      />
-    );
-  }
+  const scopeOk =
+    page?.scope === 'global' || page?.scope === 'both' || page?.scope === undefined;
 
-  if (page.scope === 'global') {
+  if (!descriptor || !page?.render || !scopeOk) {
     return (
       <MascotErrorPanel
         code={404}
         title="Plugin page not found"
-        description="This page is only available outside a campaign."
+        description="This global plugin page is unavailable or not registered."
       />
     );
   }

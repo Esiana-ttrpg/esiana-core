@@ -13,6 +13,7 @@ import { clearPluginPresentationRegistry } from '@/lib/pluginPresentation';
 import { clearPluginNavigationRegistry } from '@/lib/pluginNavigation';
 import { clearPluginPageRegistry } from '@/lib/pluginPages';
 import { clearPluginCharacterPageRenderers } from '@/lib/pluginCharacterPages';
+import { clearPluginContributionRegistries } from '@/lib/pluginContributions';
 
 const loadedModules = new Map<string, PluginFrontendModule>();
 
@@ -78,7 +79,7 @@ export async function loadFrontendPlugin(
       URL.revokeObjectURL(blobUrl);
     }
   } catch (error) {
-    console.error(`[plugins] Failed to load frontend module "${pluginId}"`, error);
+    console.error('[plugins] Failed to load frontend module "%s"', pluginId, error);
     return null;
   }
 }
@@ -110,6 +111,7 @@ export async function bootstrapFrontendPlugins(
   clearPluginNavigationRegistry();
   clearPluginPageRegistry();
   clearPluginCharacterPageRenderers();
+  clearPluginContributionRegistries();
 
   for (const descriptor of descriptors) {
     const mod = await loadFrontendPlugin(
@@ -154,4 +156,5 @@ export function resetFrontendPluginLoader(): void {
   clearPluginNavigationRegistry();
   clearPluginPageRegistry();
   clearPluginCharacterPageRenderers();
+  clearPluginContributionRegistries();
 }

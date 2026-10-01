@@ -1,6 +1,4 @@
 import {
-  createContext,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -18,18 +16,7 @@ import {
   resetFrontendPluginLoader,
 } from '@/plugins/pluginRegistry';
 import type { FrontendPluginDescriptor } from '@/plugins/slots';
-
-interface PluginRuntimeContextValue {
-  plugins: FrontendPluginDescriptor[];
-  loading: boolean;
-  error: string | null;
-}
-
-const PluginRuntimeContext = createContext<PluginRuntimeContextValue>({
-  plugins: [],
-  loading: false,
-  error: null,
-});
+import { PluginRuntimeContext } from './GlobalPluginRuntimeProvider';
 
 export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
   const { campaign } = useWiki();
@@ -84,8 +71,13 @@ export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
   }, [campaign?.id, campaign?.handle, campaignKey]);
 
   const value = useMemo(
-    () => ({ plugins, loading, error }),
-    [plugins, loading, error],
+    () => ({
+      plugins,
+      loading,
+      error,
+      mode: (campaignKey ? 'campaign' : 'idle') as 'campaign' | 'idle',
+    }),
+    [plugins, loading, error, campaignKey],
   );
 
   return (
@@ -104,6 +96,4 @@ export function PluginRuntimeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function usePluginRuntime(): PluginRuntimeContextValue {
-  return useContext(PluginRuntimeContext);
-}
+export { usePluginRuntime } from './GlobalPluginRuntimeProvider';
