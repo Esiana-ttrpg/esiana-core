@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { CampaignMomentum, Prisma } from '@prisma/client';
+import type { CampaignMomentum, Prisma } from './prismaClient.js';
 import {
   CAMPAIGN_MOMENTUM_SEMANTICS_VERSION,
   createDefaultCampaignMomentumState,

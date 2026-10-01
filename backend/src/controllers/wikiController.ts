@@ -23,7 +23,7 @@ import { buildWikiTree, canViewWikiPage } from '../lib/wikiTree.js';
 import { isHubPageVisible } from '../lib/hubVisibility.js';
 import { normalizeSidebarConfig, isSidebarConfigBlank } from '../lib/sidebarConfig.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../lib/prismaClient.js';
 import { enrichSidebarConfigWithIconUrls } from '../lib/sidebarIconEnrich.js';
 import { PLAYER_SESSION_NOTES_TITLE } from '../lib/seedWiki.js';
 import { ensureQuickAccessCategoryTitle } from '../lib/ensureQuickAccessCategoryTitle.js';

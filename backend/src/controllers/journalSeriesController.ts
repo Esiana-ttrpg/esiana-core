@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../lib/prismaClient.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { prisma } from '../lib/prisma.js';
 import { asReleaseNode } from '../lib/journalReleaseService.js';

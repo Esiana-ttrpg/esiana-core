@@ -35,3 +35,5 @@ shared/**/*.d.ts.map
 !shared/**/*.test.js
 
 # Prisma (migration_lock.toml at migrations root is tracked)
+backend/src/generated/
+

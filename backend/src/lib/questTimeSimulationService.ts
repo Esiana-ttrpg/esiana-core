@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import type { GlobalTimeAdvanceContext } from '../../../shared/globalTimeHooks.js';
 import {
   NarrativeLifecycleStates,

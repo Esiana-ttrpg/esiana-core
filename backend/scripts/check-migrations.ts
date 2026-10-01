@@ -1,8 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/lib/createPrismaClient.js';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
-function colNames(rows) {
+function colNames(rows: Array<{ name: string }>) {
   return rows.map((c) => c.name);
 }
 
@@ -12,7 +12,7 @@ try {
   const eventCols = colNames(await prisma.$queryRawUnsafe(`PRAGMA table_info(CalendarEvent)`));
 
   const tables = (
-    await prisma.$queryRawUnsafe(
+    await prisma.$queryRawUnsafe<{ name: string }[]>(
       `SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`,
     )
   ).map((t) => t.name);
@@ -20,7 +20,10 @@ try {
   console.log('User has appearanceProfile:', userCols.includes('appearanceProfile'));
   console.log('User has allowCampaignSystemOverride:', userCols.includes('allowCampaignSystemOverride'));
   console.log('Campaign has appearanceProfile:', campaignCols.includes('appearanceProfile'));
-  console.log('Campaign has allowPlayerChronologyManagement:', campaignCols.includes('allowPlayerChronologyManagement'));
+  console.log(
+    'Campaign has allowPlayerChronologyManagement:',
+    campaignCols.includes('allowPlayerChronologyManagement'),
+  );
   console.log('Has _WikiPageToTag:', tables.includes('_WikiPageToTag'));
   console.log('Has _TagToWikiPage:', tables.includes('_TagToWikiPage'));
   console.log('Has TagAssignment:', tables.includes('TagAssignment'));

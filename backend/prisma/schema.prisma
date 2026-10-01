@@ -4,13 +4,14 @@
 // SQLite-diff portable (TEXT columns). Enforce literals in shared/ and domain.ts.
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 // Switch provider to "sqlite" for local SQLite dev (Prisma requires a literal here).
+// Connection URL lives in prisma.config.ts (Prisma ORM v7).
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { PluginConnection } from '@prisma/client';
+import type { PluginConnection } from '../prismaClient.js';
 import { isTerminalOAuthRefreshFailure, redactConnection } from './pluginConnectionsService.js';
 
 test('redacted connection metadata never includes encrypted or raw credentials', () => {

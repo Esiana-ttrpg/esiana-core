@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { WikiVisibility } from '../types/domain.js';
 import {
   WORKSHOP_DRAFTS_ROOT_TITLE,

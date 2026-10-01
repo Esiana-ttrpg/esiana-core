@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
-import type { Asset, Prisma } from '@prisma/client';
+import type { Asset, Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import {
   assetReferenceUrl,

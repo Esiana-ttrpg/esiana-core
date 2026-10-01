@@ -1,4 +1,4 @@
-import type { SystemSetting } from '@prisma/client';
+import type { SystemSetting } from './prismaClient.js';
 import {
   sanitizeAppearanceProfile,
   serializeAppearanceProfileForApi,

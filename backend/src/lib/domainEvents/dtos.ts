@@ -1,4 +1,4 @@
-import type { WikiPage } from '@prisma/client';
+import type { WikiPage } from '../prismaClient.js';
 
 export interface WikiPageEventDto {
   id: string;

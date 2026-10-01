@@ -1,4 +1,4 @@
-import type { FantasyCalendar } from '@prisma/client';
+import type { FantasyCalendar } from './prismaClient.js';
 import type { TimeAdvanceUnit } from '../../../shared/timeAdvanceUnits.js';
 import { normalizeClimateAspect } from './climateAspect.js';
 import { parseAdvanceAmountAndUnit } from './computeTimeAdvance.js';

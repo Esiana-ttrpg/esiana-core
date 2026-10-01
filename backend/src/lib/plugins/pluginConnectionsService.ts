@@ -1,4 +1,4 @@
-import type { PluginConnection } from '@prisma/client';
+import type { PluginConnection } from '../prismaClient.js';
 import type { Request } from 'express';
 import { prisma } from '../prisma.js';
 import { decryptSecretOrDevStore, encryptSecretOrDevStore } from '../crypto/secretBox.js';

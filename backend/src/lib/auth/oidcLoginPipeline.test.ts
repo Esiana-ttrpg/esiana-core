@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { IdentityProvider } from '@prisma/client';
+import type { IdentityProvider } from '../prismaClient.js';
 import {
   resetOidcEnvConfigCache,
   loadOidcEnvConfig,

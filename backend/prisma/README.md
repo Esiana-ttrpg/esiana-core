@@ -2,6 +2,8 @@
 
 Committed defaults target **PostgreSQL** (`schema.prisma` `provider = "postgresql"`, baseline migration SQL uses `TIMESTAMP(3)` and `JSONB`). SQLite is supported for solo local dev via a deploy-time type patch — see below.
 
+Prisma ORM **v7**: connection URL lives in [`../prisma.config.ts`](../prisma.config.ts). Runtime clients are built via `createPrismaClient()` (driver adapters). Import types from `src/lib/prismaClient.ts`, not `@prisma/client`.
+
 Full setup paths: [../DEVELOPMENT.md](../DEVELOPMENT.md) · [../../DEVELOPMENT.md](../../DEVELOPMENT.md#database-postgresql-vs-sqlite).
 
 ---

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { LoreClaim, Prisma, RumorCirculation } from '@prisma/client';
+import type { LoreClaim, Prisma, RumorCirculation } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { resolveRegionScope } from './regionSnapshotService.js';

@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from './prismaClient.js';
 import { prisma } from './prisma.js';
 
 type Millis = number;

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { CampaignReputation, Prisma } from '@prisma/client';
+import type { CampaignReputation, Prisma } from './prismaClient.js';
 import type { GlobalTimeAdvanceContext } from '../../../shared/globalTimeHooks.js';
 import {
   CAMPAIGN_REPUTATION_SEMANTICS_VERSION,

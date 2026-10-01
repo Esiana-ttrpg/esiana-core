@@ -1,4 +1,4 @@
-import type { WikiPage } from '@prisma/client';
+import type { WikiPage } from './prismaClient.js';
 import type { WikiTreeNode } from '../types/api.js';
 import { isWorkshopInfrastructurePage } from './workshopDraftService.js';
 import { compareWikiTitles } from './wikiSort.js';

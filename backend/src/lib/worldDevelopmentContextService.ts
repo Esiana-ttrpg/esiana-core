@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import type { GlobalTimeAdvanceContext } from '../../../shared/globalTimeHooks.js';
 import type { FactionActivityLevel } from '../../../shared/worldDevelopmentMetadata.js';
 import type { ProjectedFactionState, WorldDevelopmentContext } from '../../../shared/developmentProvider.js';

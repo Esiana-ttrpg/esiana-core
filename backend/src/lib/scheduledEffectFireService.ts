@@ -1,4 +1,4 @@
-import type { CampaignScheduledEffect, FantasyCalendar, Prisma } from '@prisma/client';
+import type { CampaignScheduledEffect, FantasyCalendar, Prisma } from './prismaClient.js';
 import type { GlobalTimeAdvanceContext } from '../../../shared/globalTimeHooks.js';
 import {
   buildScheduledEffectSuggestionKey,

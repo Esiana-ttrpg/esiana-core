@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
 import {
   CampaignMemberRoles,

@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { EVENT_LORE_AUTO_GENERATED_METADATA_KEY } from '../../../shared/eventConsequence.js';
 import { buildEventLoreBlocks } from './pageTemplates.js';
 

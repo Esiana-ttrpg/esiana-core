@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from './prismaClient.js';
 import { parseObjectiveMetadata } from '../../../shared/objectiveMetadata.js';
 import { parseSceneMetadata } from '../../../shared/sceneMetadata.js';
 import { touchQuestTimelinesForIds } from './touchQuestTimeline.js';
