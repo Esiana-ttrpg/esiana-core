@@ -58,7 +58,9 @@ function PageSectionMount({
         cleanup = typeof result === 'function' ? result : undefined;
       } catch (error) {
         console.error(
-          `[plugins] Page section failed for "${section.pluginId}:${section.id}"`,
+          '[plugins] Page section failed for "%s:%s"',
+          section.pluginId,
+          section.id,
           error,
         );
         host.textContent = 'Plugin section failed to render.';

@@ -113,7 +113,7 @@ export function createPluginUiRegistry(
     },
     subscribeToDomainEvent(pattern: string, handler: (detail: PluginDomainEventDetail) => void) {
       if (!campaignHandle) {
-        console.warn(`[plugins] "${pluginId}" domain event subscription requires campaignHandle`);
+        console.warn('[plugins] "%s" domain event subscription requires campaignHandle', pluginId);
         return () => undefined;
       }
       const unsub = subscribeToPluginDomainEvent(campaignHandle, pattern, handler);

@@ -79,7 +79,7 @@ export async function loadFrontendPlugin(
       URL.revokeObjectURL(blobUrl);
     }
   } catch (error) {
-    console.error(`[plugins] Failed to load frontend module "${pluginId}"`, error);
+    console.error('[plugins] Failed to load frontend module "%s"', pluginId, error);
     return null;
   }
 }

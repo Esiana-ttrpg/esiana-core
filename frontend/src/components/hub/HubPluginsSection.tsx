@@ -39,7 +39,7 @@ function AppHomeCardMount({ card }: { card: PluginAppHomeCardDefinition }) {
         if (cancelled) return;
         cleanup = typeof result === 'function' ? result : undefined;
       } catch (error) {
-        console.error(`[plugins] App Home card failed for "${card.pluginId}"`, error);
+        console.error('[plugins] App Home card failed for "%s"', card.pluginId, error);
         host.textContent = 'Plugin card failed to render.';
       }
     })();

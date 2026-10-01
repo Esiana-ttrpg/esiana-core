@@ -35,7 +35,7 @@ function VanillaSlotMount({
         if (cancelled) return;
         cleanup = typeof result === 'function' ? result : undefined;
       } catch (error) {
-        console.error(`[plugins] Slot render failed for "${pluginId}"`, error);
+        console.error('[plugins] Slot render failed for "%s"', pluginId, error);
         host.textContent = 'Plugin failed to render.';
       }
     })();
