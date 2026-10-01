@@ -10,6 +10,7 @@
 
 ### Changed
 
+- TipTap packages upgraded to **3.31.4** (aligned direct deps; transitive `@tiptap/core` included).
 - Prisma ORM upgraded to **7.10.0** (`prisma` + `@prisma/client` locked together). Driver adapters (`@prisma/adapter-pg` / `@prisma/adapter-better-sqlite3`), `prisma.config.ts`, and `createPrismaClient()` are required; Dependabot ignores major bumps for both Prisma packages.
 
 ### Database
