@@ -2,20 +2,35 @@
 
 ## Unreleased
 
+## [1.7.0] - 2026-10-01
+
 ### Added
 
 - **Search ranking and grouping (Pass 6)** — within-tier ranking signals (title specificity, type prior on non-exact name tiers, recency, occurrence density), portable fuzzy name matching (OSA edit distance over `titleNorm`/`aliasText`), entity dedupe, and server-shaped result sections (best match, collapsed mentions, capped type groups). Optional `explain=1` diagnostics. Ranking regressions are covered by golden scenarios separate from Pass 5 retrieval.
 - **Indexed Global Search (Pass 5)** — derived `SearchIndexDocument` projection with PostgreSQL `tsvector`/GIN candidate retrieval (portable multi-token LIKE over the same table on SQLite). Replaces the single-token `LIMIT 200` base-table LIKE prefilter. Write-path upserts, campaign rebuild on import/clone/restore, `pnpm bench:search`, and `backend/scripts/backfillSearchIndex.ts`. Authorization, ranking, and response shape are unchanged.
 - **Command palette** — type `>` in campaign search (or Ctrl/Cmd+Shift+P) to run permission-aware Core commands: create all CreatePageModal codex types (characters, bestiary, ancestries, organizations, locations, objects, families, rules/resources) derived from workspace route `createVia`, plus session notes; jump to Sessions, Timeline, Developments, and Settings; advance campaign time; and edit or copy a link to the current page.
+- **Scoped API tokens** — Developer API keys can be created with full account access (legacy empty scopes) or selected permissions for campaigns and plugins; active keys show their scope set in Settings.
+- **Plugin content sync** — Plugins can browse and synchronize supported campaign collections (wiki pages and related kinds): list/get/create/update with pagination, modification-time filters, and revision conflict checks. Deletes are not supported.
+- **Plugin navigation surfaces** — Plugins can register App Home cards, header (Puzzle) pages, and campaign sidebar items against a single `registerPage` destination in global or campaign context; uninstall removes related sidebar entries.
+- **HTTP Basic plugin connections** — Connection providers may use username/password Basic auth; credentials are encrypted at rest and never exposed to plugins. Admin UI shows separate username and password fields.
 
 ### Changed
 
 - TipTap packages upgraded to **3.31.4** (aligned direct deps; transitive `@tiptap/core` included).
-- Prisma ORM upgraded to **7.10.0** (`prisma` + `@prisma/client` locked together). Driver adapters (`@prisma/adapter-pg` / `@prisma/adapter-better-sqlite3`), `prisma.config.ts`, and `createPrismaClient()` are required; Dependabot ignores major bumps for both Prisma packages.
+- Prisma ORM upgraded to **7.10.0** (`prisma` + `@prisma/client` locked together). Driver adapters (`@prisma/adapter-pg` / `@prisma/adapter-better-sqlite3`), `prisma.config.ts`, and `createPrismaClient()` are required; Dependabot ignores major bumps for both Prisma packages. Docker images retain `prisma.config.ts` and verify the generated client via `createPrismaClient`.
+- OpenAPI specification synchronized with search index, plugin content sync, Basic connections, and related routes.
+- Dependency updates including security-group bumps (`dompurify`, `openid-client`, `jszip`, and others).
+
+### Fixed
+
+- Plugin install from GitHub Raw manifests accepts `text/plain` only from `raw.githubusercontent.com` (other hosts still require JSON MIME types).
+- Nightly workflow no longer treats missing or unresolved version tags as valid when deciding whether to build or advance the moving `nightly` tag.
 
 ### Database
 
 - Migration `20260930140000_search_index_document` — adds `SearchIndexDocument` (tiered searchable text + optional PostgreSQL `tsvector` columns with GIN indexes).
+
+Apply migrations (and optionally run `backend/scripts/backfillSearchIndex.ts` for existing campaigns) before relying on indexed search.
 
 ## [1.6.0] - 2026-09-30
 
