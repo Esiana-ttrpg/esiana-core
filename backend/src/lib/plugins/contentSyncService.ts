@@ -215,7 +215,14 @@ export class ContentSyncService {
       ({ count } = await prisma.calendarEvent.updateMany({ where: { id, calendar: { campaignId: this.campaignId }, updatedAt: baseRevision }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { description: f.body } : {}), ...(typeof f.categoryId === 'string' || f.categoryId === null ? { categoryId: f.categoryId } : {}), ...(targetEpochMinute !== undefined ? { targetEpochMinute } : {}), ...(typeof f.duration === 'number' ? { duration: Math.max(1, Math.floor(f.duration)) } : {}) } }));
     } else {
       const page = await prisma.wikiPage.findFirstOrThrow({ where: { id, campaignId: this.campaignId } });
-      const nextMeta = { ...(page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {}), ...(f.metadata && typeof f.metadata === 'object' && !Array.isArray(f.metadata) ? f.metadata as Record<string, unknown> : {}), ...(collection === 'quests' && f.questStatus !== undefined ? { questStatus: f.questStatus } : {}) };
+      const currentMeta = page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {};
+      const suppliedMeta = f.metadata && typeof f.metadata === 'object' && !Array.isArray(f.metadata) ? f.metadata as Record<string, unknown> : {};
+      const nextMeta = {
+        ...currentMeta,
+        ...suppliedMeta,
+        ...(collection !== 'session-notes' && collection !== 'quests' ? { entityCategory: currentMeta.entityCategory } : {}),
+        ...(collection === 'quests' && f.questStatus !== undefined ? { questStatus: f.questStatus } : {}),
+      };
       ({ count } = await prisma.wikiPage.updateMany({ where: { id, campaignId: this.campaignId, updatedAt: baseRevision }, data: { ...(typeof f.name === 'string' ? { title: f.name } : {}), ...(typeof f.body === 'string' ? { blocks: bodyBlock(f.body) as unknown as Prisma.InputJsonValue } : {}), metadata: nextMeta as Prisma.InputJsonValue } }));
     }
     const updated = await this.get(collection, id);
