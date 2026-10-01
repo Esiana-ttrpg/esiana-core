@@ -7,13 +7,25 @@ import {
   fetchUserApiTokens,
   revokeUserApiToken,
 } from '@/lib/user';
-import type { ApiTokenDurationDays, UserApiTokenSummary } from '@/types/apiToken';
+import type { ApiTokenDurationDays, ApiTokenScope, UserApiTokenSummary } from '@/types/apiToken';
 import { controlClasses } from '@/components/ui/formStyles';
+import {
+  API_TOKEN_SCOPE_OPTIONS,
+  type ApiTokenAccessMode,
+  buildCreateApiTokenScopes,
+  canSubmitApiTokenPermissions,
+  formatApiTokenScopesLabel,
+} from '@/lib/apiTokenDisplay';
 
 const DURATION_OPTIONS: Array<{ value: ApiTokenDurationDays; label: string }> = [
   { value: 30, label: '30 days' },
   { value: 90, label: '90 days' },
   { value: 365, label: '365 days' },
+];
+
+const ACCESS_MODE_OPTIONS: Array<{ value: ApiTokenAccessMode; label: string }> = [
+  { value: 'scoped', label: 'Scoped' },
+  { value: 'full', label: 'Full access' },
 ];
 
 function formatExpiry(iso: string): string {
@@ -26,6 +38,14 @@ function formatExpiry(iso: string): string {
   });
 }
 
+function chipClass(selected: boolean): string {
+  return `cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+    selected
+      ? 'border-primary/60 bg-primary/15 text-primary'
+      : 'border-border bg-background text-muted hover:border-border'
+  }`;
+}
+
 export function DeveloperApiKeysSection() {
   const [tokens, setTokens] = useState<UserApiTokenSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +53,8 @@ export function DeveloperApiKeysSection() {
 
   const [tokenName, setTokenName] = useState('');
   const [durationDays, setDurationDays] = useState<ApiTokenDurationDays>(90);
+  const [accessMode, setAccessMode] = useState<ApiTokenAccessMode>('scoped');
+  const [selectedScopes, setSelectedScopes] = useState<ApiTokenScope[]>([]);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [mintedSecret, setMintedSecret] = useState<string | null>(null);
@@ -57,19 +79,35 @@ export function DeveloperApiKeysSection() {
     void loadTokens();
   }, [loadTokens]);
 
+  function toggleScope(scope: ApiTokenScope) {
+    setSelectedScopes((prev) =>
+      prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope],
+    );
+  }
+
   async function handleCreateToken(event: FormEvent) {
     event.preventDefault();
     setCreateError(null);
     setMintedSecret(null);
+
+    const scopes = buildCreateApiTokenScopes(accessMode, selectedScopes);
+    if (scopes === null) {
+      setCreateError('Select at least one permission, or choose Full access.');
+      return;
+    }
+
     setCreating(true);
 
     try {
       const result = await createUserApiToken({
         name: tokenName.trim(),
         durationDays,
+        scopes,
       });
       setMintedSecret(result.secret);
       setTokenName('');
+      setAccessMode('scoped');
+      setSelectedScopes([]);
       await loadTokens();
     } catch (err) {
       setCreateError(
@@ -95,6 +133,10 @@ export function DeveloperApiKeysSection() {
       setRevokingId(null);
     }
   }
+
+  const canSubmit =
+    Boolean(tokenName.trim()) &&
+    canSubmitApiTokenPermissions(accessMode, selectedScopes);
 
   return (
     <section className="rounded-xl border border-border bg-surface/80 p-6">
@@ -129,11 +171,7 @@ export function DeveloperApiKeysSection() {
             {DURATION_OPTIONS.map((option) => (
               <label
                 key={option.value}
-                className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  durationDays === option.value
-                    ? 'border-primary/60 bg-primary/15 text-primary'
-                    : 'border-border bg-background text-muted hover:border-border'
-                }`}
+                className={chipClass(durationDays === option.value)}
               >
                 <input
                   type="radio"
@@ -149,11 +187,61 @@ export function DeveloperApiKeysSection() {
           </div>
         </fieldset>
 
+        <fieldset>
+          <legend className="mb-2 text-xs font-medium text-muted">Permissions</legend>
+          <div className="flex flex-wrap gap-2">
+            {ACCESS_MODE_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className={chipClass(accessMode === option.value)}
+              >
+                <input
+                  type="radio"
+                  name="token-access-mode"
+                  value={option.value}
+                  checked={accessMode === option.value}
+                  onChange={() => setAccessMode(option.value)}
+                  className="sr-only"
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+
+          {accessMode === 'scoped' ? (
+            <>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {API_TOKEN_SCOPE_OPTIONS.map((option) => {
+                  const selected = selectedScopes.includes(option.scope);
+                  return (
+                    <button
+                      key={option.scope}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => toggleScope(option.scope)}
+                      className={chipClass(selected)}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-xs text-muted">
+                Only the selected permissions apply to this key.
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-xs text-muted">
+              Grants all account API permissions for this key.
+            </p>
+          )}
+        </fieldset>
+
         {createError && <p className="text-sm text-red-300">{createError}</p>}
 
         <button
           type="submit"
-          disabled={creating || !tokenName.trim()}
+          disabled={creating || !canSubmit}
           className="w-full rounded-lg border border-primary/50 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 disabled:opacity-50"
         >
           {creating ? 'Generating…' : 'Generate API Key'}
@@ -200,7 +288,8 @@ export function DeveloperApiKeysSection() {
                   <p className="text-xs text-muted">
                     Expires {formatExpiry(token.expiresAt)}
                     {token.expired ? ' · expired' : ''}
-                    {token.isLegacy ? ' · full access (legacy — rotate to scoped token)' : ''}
+                    {' · '}
+                    {formatApiTokenScopesLabel(token.scopes)}
                   </p>
                 </div>
                 <button
