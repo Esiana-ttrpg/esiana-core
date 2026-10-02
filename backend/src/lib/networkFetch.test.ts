@@ -5,6 +5,8 @@ import {
   createPinnedLookup,
   fetchAssetRemoteBuffer,
   fetchPluginRemoteText,
+  summarizeErrorCauseChain,
+  unreachableUrlError,
 } from './networkFetch.js';
 
 test('pinned lookup returns the validated address instead of resolving the hostname again', async () => {
@@ -72,3 +74,48 @@ test('fetchAssetRemoteBuffer rejects HTTP when allowHttp is false', async () => 
   assert.equal(fetchCalled, false);
 });
 
+test('summarizeErrorCauseChain includes nested errno codes', () => {
+  const root = new Error('fetch failed');
+  const nested = new Error('getaddrinfo ENOTFOUND github.com') as NodeJS.ErrnoException;
+  nested.code = 'ENOTFOUND';
+  root.cause = nested;
+
+  assert.equal(
+    summarizeErrorCauseChain(root),
+    'fetch failed ← ENOTFOUND getaddrinfo ENOTFOUND github.com',
+  );
+});
+
+test('unreachableUrlError logs origin only and redacts URLs in cause text', () => {
+  const errorCalls: unknown[][] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    errorCalls.push(args);
+  };
+
+  try {
+    const webhookToken = 'discord-webhook-token-abc123';
+    const root = new Error('fetch failed');
+    const nested = new Error(
+      `connect ECONNREFUSED https://discord.com/api/webhooks/123/${webhookToken}`,
+    ) as NodeJS.ErrnoException;
+    nested.code = 'ECONNREFUSED';
+    root.cause = nested;
+
+    const mapped = unreachableUrlError(
+      root,
+      `https://discord.com/api/webhooks/123/${webhookToken}?wait=true`,
+    );
+
+    assert.ok(mapped instanceof NetworkFetchError);
+    assert.equal(mapped.message, 'Unable to reach URL: fetch failed');
+    assert.equal(errorCalls.length, 1);
+    assert.equal(errorCalls[0][0], '[networkFetch] Unable to reach URL');
+    assert.equal(errorCalls[0][1], 'https://discord.com');
+    assert.match(String(errorCalls[0][2]), /ECONNREFUSED/);
+    assert.match(String(errorCalls[0][2]), /\[redacted URL\]/);
+    assert.doesNotMatch(JSON.stringify(errorCalls[0]), new RegExp(webhookToken));
+  } finally {
+    console.error = originalError;
+  }
+});

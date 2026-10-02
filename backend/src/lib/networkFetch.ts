@@ -165,7 +165,7 @@ export async function fetchAuthenticatedRemote(
     }
     return { status: response.status, contentType: response.headers.get('content-type'), body: Buffer.concat(chunks) };
   } catch (error) {
-    throw toNetworkFetchError(error, controller, timeoutSeconds);
+    throw toNetworkFetchError(error, controller, timeoutSeconds, { url });
   } finally {
     clearTimeout(timeout);
     options.signal?.removeEventListener('abort', onAbort);
@@ -216,10 +216,84 @@ function mapPolicyError(error: unknown): NetworkFetchError {
   return new NetworkFetchError('Remote fetch failed');
 }
 
+/** Origin only — path/query/hash may carry webhook tokens or other secrets. */
+function urlForLog(url: URL | string | undefined): string | undefined {
+  if (url == null) return undefined;
+  if (typeof url === 'string') {
+    try {
+      return urlForLog(new URL(url));
+    } catch {
+      return '[unparseable URL]';
+    }
+  }
+  return url.origin;
+}
+
+/** Strip credential-bearing substrings that undici/Node may embed in error text. */
+export function sanitizeNetworkFetchLogText(text: string): string {
+  return text
+    .replace(/https?:\/\/\S+/gi, '[redacted URL]')
+    .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')
+    .replace(/\bbasic\s+[A-Za-z0-9+/=_-]+/gi, 'basic [redacted]')
+    .slice(0, 500);
+}
+
+function causePart(value: unknown): string {
+  if (value instanceof Error) {
+    const code =
+      'code' in value && typeof (value as NodeJS.ErrnoException).code === 'string'
+        ? (value as NodeJS.ErrnoException).code
+        : undefined;
+    const text = code ? `${code} ${value.message}` : value.message;
+    return text.trim() || value.name;
+  }
+  if (value && typeof value === 'object' && 'code' in value) {
+    const code = (value as { code?: unknown }).code;
+    const message = 'message' in value ? String((value as { message?: unknown }).message ?? '') : '';
+    if (typeof code === 'string') {
+      return message ? `${code} ${message}` : code;
+    }
+  }
+  return String(value);
+}
+
+/** Walk Error.cause (and undici nested codes) for diagnostics; safe for logs. */
+export function summarizeErrorCauseChain(error: unknown, maxDepth = 5): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current != null && depth < maxDepth; depth++) {
+    parts.push(causePart(current));
+    if (current instanceof Error && 'cause' in current && current.cause != null) {
+      current = current.cause;
+      continue;
+    }
+    break;
+  }
+  return parts.join(' ← ');
+}
+
+/** Remap a transport failure, log URL + cause chain, keep a stable public message. */
+export function unreachableUrlError(
+  error: unknown,
+  url?: URL | string,
+): NetworkFetchError {
+  const summary = sanitizeNetworkFetchLogText(summarizeErrorCauseChain(error));
+  console.error(
+    '[networkFetch] Unable to reach URL',
+    urlForLog(url) ?? '(unknown)',
+    summary,
+  );
+  if (error instanceof Error) {
+    return new NetworkFetchError(`Unable to reach URL: ${error.message}`);
+  }
+  return new NetworkFetchError('Unable to reach URL');
+}
+
 function toNetworkFetchError(
   error: unknown,
   controller: AbortController,
   timeoutSeconds: number,
+  context?: { url?: URL | string },
 ): NetworkFetchError {
   if (error instanceof NetworkFetchError) {
     return error;
@@ -236,10 +310,7 @@ function toNetworkFetchError(
       `Request aborted (timeout or cancellation after ${timeoutSeconds}s)`,
     );
   }
-  if (error instanceof Error) {
-    return new NetworkFetchError(`Unable to reach URL: ${error.message}`);
-  }
-  return new NetworkFetchError('Unable to reach URL');
+  return unreachableUrlError(error, context?.url);
 }
 
 async function readResponseBody(
@@ -247,6 +318,7 @@ async function readResponseBody(
   controller: AbortController,
   maxBytes: number,
   timeoutSeconds: number,
+  url?: URL,
 ): Promise<FetchBodyResult> {
   if (!response.ok) {
     throw new NetworkFetchError(`URL returned HTTP ${response.status}`);
@@ -275,7 +347,7 @@ async function readResponseBody(
     }
   } catch (error) {
     if (error instanceof NetworkFetchError) throw error;
-    throw toNetworkFetchError(error, controller, timeoutSeconds);
+    throw toNetworkFetchError(error, controller, timeoutSeconds, { url });
   }
 
   return { buffer: Buffer.concat(chunks), contentType };
@@ -332,9 +404,10 @@ async function fetchRemoteBody(
           controller,
           options.maxBytes,
           options.timeoutSeconds,
+          url,
         ); } finally { await pinned.dispatcher.close().catch(() => {}); }
       } catch (error) {
-        throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+        throw toNetworkFetchError(error, controller, options.timeoutSeconds, { url });
       } finally {
         clearTimeout(timeout);
       }
@@ -365,9 +438,10 @@ async function fetchRemoteBody(
         controller,
         options.maxBytes,
         options.timeoutSeconds,
+        url,
       ); } finally { await pinned.dispatcher.close().catch(() => {}); }
     } catch (error) {
-      throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+      throw toNetworkFetchError(error, controller, options.timeoutSeconds, { url });
     } finally {
       clearTimeout(timeout);
     }
@@ -467,7 +541,7 @@ export async function fetchPluginRemoteStream(
       out.destroy();
       await fs.promises.rm(destinationPath, { force: true }).catch(() => {});
       if (error instanceof NetworkFetchError) throw error;
-      throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+      throw toNetworkFetchError(error, controller, options.timeoutSeconds, { url });
     } finally {
       clearTimeout(timeout);
       void reader?.cancel().catch(() => {});
