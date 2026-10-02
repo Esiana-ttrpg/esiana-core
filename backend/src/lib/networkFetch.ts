@@ -216,17 +216,26 @@ function mapPolicyError(error: unknown): NetworkFetchError {
   return new NetworkFetchError('Remote fetch failed');
 }
 
-/** Origin + path only — omit query/hash so credential-bearing URLs stay out of logs. */
+/** Origin only — path/query/hash may carry webhook tokens or other secrets. */
 function urlForLog(url: URL | string | undefined): string | undefined {
   if (url == null) return undefined;
   if (typeof url === 'string') {
     try {
       return urlForLog(new URL(url));
     } catch {
-      return url;
+      return '[unparseable URL]';
     }
   }
-  return `${url.origin}${url.pathname}`;
+  return url.origin;
+}
+
+/** Strip credential-bearing substrings that undici/Node may embed in error text. */
+export function sanitizeNetworkFetchLogText(text: string): string {
+  return text
+    .replace(/https?:\/\/\S+/gi, '[redacted URL]')
+    .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')
+    .replace(/\bbasic\s+[A-Za-z0-9+/=_-]+/gi, 'basic [redacted]')
+    .slice(0, 500);
 }
 
 function causePart(value: unknown): string {
@@ -268,8 +277,12 @@ export function unreachableUrlError(
   error: unknown,
   url?: URL | string,
 ): NetworkFetchError {
-  const summary = summarizeErrorCauseChain(error);
-  console.error('[networkFetch] Unable to reach URL', urlForLog(url) ?? '(unknown)', summary);
+  const summary = sanitizeNetworkFetchLogText(summarizeErrorCauseChain(error));
+  console.error(
+    '[networkFetch] Unable to reach URL',
+    urlForLog(url) ?? '(unknown)',
+    summary,
+  );
   if (error instanceof Error) {
     return new NetworkFetchError(`Unable to reach URL: ${error.message}`);
   }

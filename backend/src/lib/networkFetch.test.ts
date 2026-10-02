@@ -86,7 +86,7 @@ test('summarizeErrorCauseChain includes nested errno codes', () => {
   );
 });
 
-test('unreachableUrlError keeps public message and logs URL without query', () => {
+test('unreachableUrlError logs origin only and redacts URLs in cause text', () => {
   const errorCalls: unknown[][] = [];
   const originalError = console.error;
   console.error = (...args: unknown[]) => {
@@ -94,22 +94,27 @@ test('unreachableUrlError keeps public message and logs URL without query', () =
   };
 
   try {
+    const webhookToken = 'discord-webhook-token-abc123';
     const root = new Error('fetch failed');
-    const nested = new Error('connect ECONNREFUSED 127.0.0.1:443') as NodeJS.ErrnoException;
+    const nested = new Error(
+      `connect ECONNREFUSED https://discord.com/api/webhooks/123/${webhookToken}`,
+    ) as NodeJS.ErrnoException;
     nested.code = 'ECONNREFUSED';
     root.cause = nested;
 
     const mapped = unreachableUrlError(
       root,
-      'https://github.com/org/repo/archive/abc.tar.gz?token=secret',
+      `https://discord.com/api/webhooks/123/${webhookToken}?wait=true`,
     );
 
     assert.ok(mapped instanceof NetworkFetchError);
     assert.equal(mapped.message, 'Unable to reach URL: fetch failed');
     assert.equal(errorCalls.length, 1);
     assert.equal(errorCalls[0][0], '[networkFetch] Unable to reach URL');
-    assert.equal(errorCalls[0][1], 'https://github.com/org/repo/archive/abc.tar.gz');
+    assert.equal(errorCalls[0][1], 'https://discord.com');
     assert.match(String(errorCalls[0][2]), /ECONNREFUSED/);
+    assert.match(String(errorCalls[0][2]), /\[redacted URL\]/);
+    assert.doesNotMatch(JSON.stringify(errorCalls[0]), new RegExp(webhookToken));
   } finally {
     console.error = originalError;
   }
