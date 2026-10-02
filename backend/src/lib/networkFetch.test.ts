@@ -5,6 +5,8 @@ import {
   createPinnedLookup,
   fetchAssetRemoteBuffer,
   fetchPluginRemoteText,
+  summarizeErrorCauseChain,
+  unreachableUrlError,
 } from './networkFetch.js';
 
 test('pinned lookup returns the validated address instead of resolving the hostname again', async () => {
@@ -72,3 +74,43 @@ test('fetchAssetRemoteBuffer rejects HTTP when allowHttp is false', async () => 
   assert.equal(fetchCalled, false);
 });
 
+test('summarizeErrorCauseChain includes nested errno codes', () => {
+  const root = new Error('fetch failed');
+  const nested = new Error('getaddrinfo ENOTFOUND github.com') as NodeJS.ErrnoException;
+  nested.code = 'ENOTFOUND';
+  root.cause = nested;
+
+  assert.equal(
+    summarizeErrorCauseChain(root),
+    'fetch failed ← ENOTFOUND getaddrinfo ENOTFOUND github.com',
+  );
+});
+
+test('unreachableUrlError keeps public message and logs URL without query', () => {
+  const errorCalls: unknown[][] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => {
+    errorCalls.push(args);
+  };
+
+  try {
+    const root = new Error('fetch failed');
+    const nested = new Error('connect ECONNREFUSED 127.0.0.1:443') as NodeJS.ErrnoException;
+    nested.code = 'ECONNREFUSED';
+    root.cause = nested;
+
+    const mapped = unreachableUrlError(
+      root,
+      'https://github.com/org/repo/archive/abc.tar.gz?token=secret',
+    );
+
+    assert.ok(mapped instanceof NetworkFetchError);
+    assert.equal(mapped.message, 'Unable to reach URL: fetch failed');
+    assert.equal(errorCalls.length, 1);
+    assert.equal(errorCalls[0][0], '[networkFetch] Unable to reach URL');
+    assert.equal(errorCalls[0][1], 'https://github.com/org/repo/archive/abc.tar.gz');
+    assert.match(String(errorCalls[0][2]), /ECONNREFUSED/);
+  } finally {
+    console.error = originalError;
+  }
+});
