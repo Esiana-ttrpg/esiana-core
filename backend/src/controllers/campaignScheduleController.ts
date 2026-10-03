@@ -2,9 +2,9 @@ import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import {
-  disableScheduling,
   findCanonicalUpcomingSession,
   ScheduleConflictError,
+  ScheduleValidationError,
   scheduleUpcomingSession,
   serializeScheduleRow,
   skipSession,
@@ -91,10 +91,6 @@ export async function patchCampaignSchedule(
 
   const body = req.body as Record<string, unknown>;
 
-  if (body.schedulingEnabled === false) {
-    await disableScheduling(campaignId);
-  }
-
   try {
     const { campaign, ensuredUpcoming } = await updateCampaignRecurrence(
       campaignId,
@@ -148,7 +144,8 @@ export async function patchCampaignSchedule(
         : null,
     });
   } catch (err) {
-    res.status(400).json({
+    const status = err instanceof ScheduleValidationError ? 400 : 400;
+    res.status(status).json({
       error: err instanceof Error ? err.message : 'Failed to update schedule',
     });
   }
@@ -257,10 +254,13 @@ export async function postSkipUpcomingSession(
   }
 
   const body = req.body as Record<string, unknown>;
-  const timelinePointId =
-    typeof body.timelinePointId === 'string'
-      ? body.timelinePointId
-      : String(req.params.timelinePointId ?? '');
+  const pathTimelinePointId =
+    typeof req.params.timelinePointId === 'string' && req.params.timelinePointId.trim()
+      ? req.params.timelinePointId.trim()
+      : '';
+  const bodyTimelinePointId =
+    typeof body.timelinePointId === 'string' ? body.timelinePointId.trim() : '';
+  const timelinePointId = pathTimelinePointId || bodyTimelinePointId || '';
 
   if (!timelinePointId) {
     res.status(400).json({ error: 'timelinePointId is required' });

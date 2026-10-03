@@ -143,27 +143,6 @@ export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabP
     }
   }
 
-  async function handleAutoScheduleToggle(next: boolean) {
-    if (isOneShot) return;
-    setAutoScheduleUpcomingSession(next);
-    setSaving(true);
-    setError(null);
-    try {
-      const result = await patchCampaignSchedule(campaignHandle, {
-        autoScheduleUpcomingSession: next,
-        schedulingEnabled: schedulingEnabled || next,
-      });
-      setUpcoming(result.upcoming);
-      setAutoScheduleUpcomingSession(result.schedule.autoScheduleUpcomingSession);
-      setSchedulingEnabled(result.schedule.schedulingEnabled);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update automatic scheduling.');
-      setAutoScheduleUpcomingSession(!next);
-    } finally {
-      setSaving(false);
-    }
-  }
-
   const sectionTabs = [
     { id: 'sessionSchedule' as const, label: 'Session schedule', icon: Calendar },
     { id: 'sessionProgress' as const, label: 'Session progress', icon: Clock },
@@ -305,15 +284,15 @@ export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabP
                   <input
                     type="checkbox"
                     checked={autoScheduleUpcomingSession}
-                    onChange={(e) => void handleAutoScheduleToggle(e.target.checked)}
-                    disabled={saving}
+                    onChange={(e) => setAutoScheduleUpcomingSession(e.target.checked)}
                     className="mt-1"
                   />
                   <span>
                     Automatically schedule the next session
                     <span className="mt-0.5 block text-xs text-muted">
                       Creates the next session from your campaign&apos;s cadence after the current
-                      session passes.
+                      session passes. Saved with cadence below — turning this on will create an
+                      upcoming session if none exists.
                     </span>
                   </span>
                 </label>

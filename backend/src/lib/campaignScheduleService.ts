@@ -12,10 +12,39 @@ import {
 import {
   computeNextCadenceOccurrence,
   isOneShotCampaignFormat,
+  parseScheduleTime,
+  parseWeekday,
 } from '../../../shared/campaignScheduleCadence.js';
 import { WikiVisibility } from '../types/domain.js';
 
 const SKIP_REASON_MAX = 200;
+
+export class ScheduleValidationError extends Error {
+  readonly code = 'SCHEDULE_VALIDATION';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'ScheduleValidationError';
+  }
+}
+
+function assertValidCadenceFields(input: {
+  scheduleDay?: string | null;
+  scheduleTime?: string | null;
+}): void {
+  if (input.scheduleDay !== undefined && input.scheduleDay !== null) {
+    const trimmed = input.scheduleDay.trim();
+    if (trimmed && parseWeekday(trimmed) === null) {
+      throw new ScheduleValidationError('scheduleDay must be a valid weekday name');
+    }
+  }
+  if (input.scheduleTime !== undefined && input.scheduleTime !== null) {
+    const trimmed = input.scheduleTime.trim();
+    if (trimmed && parseScheduleTime(trimmed) === null) {
+      throw new ScheduleValidationError('scheduleTime must be a valid time (e.g. 6:00 PM)');
+    }
+  }
+}
 
 export type CampaignScheduleFields = {
   id: string;
@@ -179,6 +208,45 @@ async function createCadenceTimelineSession(params: {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    // Serialize per-campaign session creation (row lock on Postgres; write lock in SQLite tx).
+    await tx.campaign.update({
+      where: { id: params.campaignId },
+      data: { updatedAt: new Date() },
+    });
+
+    const now = new Date();
+    const existingUpcoming = await tx.campaignSessionSchedule.findFirst({
+      where: {
+        status: SessionScheduleStatus.PUBLISHED,
+        plannedStartAt: { gte: now },
+        timelinePoint: { campaignId: params.campaignId },
+      },
+      orderBy: { plannedStartAt: 'asc' },
+      include: {
+        timelinePoint: {
+          select: {
+            sequenceOrder: true,
+            wikiPage: { select: { title: true } },
+          },
+        },
+      },
+    });
+    if (existingUpcoming) {
+      return {
+        timelinePointId: existingUpcoming.timelinePointId,
+        status: existingUpcoming.status,
+        plannedStartAt: existingUpcoming.plannedStartAt,
+        plannedEndAt: existingUpcoming.plannedEndAt,
+        timezone: existingUpcoming.timezone,
+        origin: existingUpcoming.origin,
+        skipReason: existingUpcoming.skipReason,
+        plannedWorldEpochMinute: existingUpcoming.plannedWorldEpochMinute,
+        publishedAt: existingUpcoming.publishedAt,
+        sessionTitle: existingUpcoming.timelinePoint.wikiPage.title,
+        sequenceOrder: existingUpcoming.timelinePoint.sequenceOrder,
+      };
+    }
+
     const existingCount = await tx.campaignSessionTimeline.count({
       where: { campaignId: params.campaignId },
     });
@@ -246,7 +314,7 @@ async function createCadenceTimelineSession(params: {
       },
     });
 
-    const now = new Date();
+    const publishedAt = new Date();
     const schedule = await tx.campaignSessionSchedule.create({
       data: {
         timelinePointId: timelinePoint.id,
@@ -254,7 +322,7 @@ async function createCadenceTimelineSession(params: {
         plannedStartAt: params.plannedStartAt,
         timezone: params.timezone,
         origin: SessionScheduleOrigin.CADENCE,
-        publishedAt: now,
+        publishedAt,
         plannedWorldEpochMinute: params.plannedWorldEpochMinute ?? null,
       },
     });
@@ -298,6 +366,11 @@ export async function updateCampaignRecurrence(
   if (!previous) {
     throw new Error('Campaign not found');
   }
+
+  assertValidCadenceFields({
+    scheduleDay: input.scheduleDay,
+    scheduleTime: input.scheduleTime,
+  });
 
   const data: Record<string, unknown> = {};
   if (input.scheduleFrequency !== undefined) {
@@ -394,6 +467,10 @@ export async function scheduleUpcomingSession(
   }
 
   if (input.applyRecurrenceChange) {
+    assertValidCadenceFields({
+      scheduleDay: input.scheduleDay,
+      scheduleTime: input.scheduleTime,
+    });
     await updateCampaignRecurrence(input.campaignId, {
       scheduleFrequency: input.scheduleFrequency,
       scheduleDay: input.scheduleDay,
@@ -402,6 +479,10 @@ export async function scheduleUpcomingSession(
       schedulingEnabled: true,
     });
   } else if (!campaign.schedulingEnabled && input.scheduleFrequency) {
+    assertValidCadenceFields({
+      scheduleDay: input.scheduleDay,
+      scheduleTime: input.scheduleTime,
+    });
     await updateCampaignRecurrence(input.campaignId, {
       schedulingEnabled: true,
       scheduleFrequency: input.scheduleFrequency,
@@ -491,26 +572,12 @@ export async function ensureUpcomingSession(
     scheduleFrequency: campaign.scheduleFrequency,
     scheduleDay: campaign.scheduleDay,
     scheduleTime: campaign.scheduleTime,
+    scheduleTimezone: campaign.scheduleTimezone,
     after,
   });
   if (!next) return null;
 
-  // Re-check for race: another CADENCE may have been created
-  const again = await findCanonicalUpcomingSession(campaignId);
-  if (again) return again;
-
-  const futureCadence = await prisma.campaignSessionSchedule.findFirst({
-    where: {
-      status: SessionScheduleStatus.PUBLISHED,
-      plannedStartAt: { gte: after },
-      origin: SessionScheduleOrigin.CADENCE,
-      timelinePoint: { campaignId },
-    },
-  });
-  if (futureCadence) {
-    return findCanonicalUpcomingSession(campaignId);
-  }
-
+  // createCadenceTimelineSession re-checks under a campaign row lock
   return createCadenceTimelineSession({
     campaignId,
     authorId,

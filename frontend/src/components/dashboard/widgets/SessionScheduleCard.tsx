@@ -104,6 +104,10 @@ export function SessionScheduleCard({
       }
     : null);
 
+  /** Only fetched upcoming may drive edit/skip (never synthesized dashboard fallback). */
+  const editableUpcoming =
+    upcoming && upcoming.status !== 'SKIPPED' ? upcoming : null;
+
   const isSkipped = effectiveNext?.status === 'SKIPPED';
 
   const hasRecurringSchedule = Boolean(schedule.day && schedule.time);
@@ -208,7 +212,7 @@ export function SessionScheduleCard({
           </Link>
         ) : null}
 
-        {effectiveNext && canManageCampaign && !customizeMode && !isSkipped ? (
+        {editableUpcoming && canManageCampaign && !customizeMode ? (
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
@@ -257,16 +261,16 @@ export function SessionScheduleCard({
       <ScheduleSessionModal
         open={scheduleModalOpen}
         campaignHandle={campaignHandle}
-        upcoming={effectiveNext && !isSkipped ? effectiveNext : null}
+        upcoming={editableUpcoming}
         onClose={() => setScheduleModalOpen(false)}
         onSaved={handleScheduleSaved}
       />
 
-      {effectiveNext && !isSkipped ? (
+      {editableUpcoming ? (
         <SkipSessionModal
           open={skipModalOpen}
           campaignHandle={campaignHandle}
-          upcoming={effectiveNext}
+          upcoming={editableUpcoming}
           autoScheduleDefault={autoSchedule}
           isOneShot={isOneShot}
           onClose={() => setSkipModalOpen(false)}

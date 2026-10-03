@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchCampaign } from '@/lib/campaigns';
 import { readCampaignHandle } from '@/lib/campaignPaths';
@@ -13,6 +13,7 @@ import { ScheduleSessionModal } from '@/components/session/ScheduleSessionModal'
 import { SkipSessionModal } from '@/components/session/SkipSessionModal';
 import { PlannedWorldTimePrompt } from '@/components/session/PlannedWorldTimePrompt';
 import { fetchCampaignSchedule } from '@/lib/campaignSchedule';
+import { fetchSessionSchedule } from '@/lib/notifications';
 import { CampaignMemberRoles } from '@/types/domain';
 import type { CampaignDetail } from '@/types/campaign';
 import type { WikiPageLayoutPayload } from '@/types/wiki';
@@ -84,49 +85,43 @@ export function SessionTimelineNotePage() {
     };
   }, [campaignHandle, timelinePointId]);
 
-  useEffect(() => {
+  const reloadSchedule = useCallback(async () => {
     if (!campaignHandle || !timelinePointId) return;
-    let cancelled = false;
-    void fetchCampaignSchedule(campaignHandle)
-      .then(async (payload) => {
-        if (cancelled) return;
-        setAutoSchedule(payload.schedule.autoScheduleUpcomingSession);
-        setIsOneShot(payload.schedule.isOneShot);
-        if (payload.upcoming?.timelinePointId === timelinePointId) {
-          setUpcoming(payload.upcoming);
-          setSessionScheduleStatus(payload.upcoming.status);
-          setSkipReason(payload.upcoming.skipReason ?? null);
-          setPlannedWorldEpochMinute(payload.upcoming.plannedWorldEpochMinute ?? null);
-        } else {
-          setUpcoming(
-            payload.upcoming?.timelinePointId === timelinePointId ? payload.upcoming : null,
-          );
-          // Load this session's schedule for skip/planned world display
-          const { fetchSessionSchedule } = await import('@/lib/notifications');
-          const detail = await fetchSessionSchedule(campaignHandle, timelinePointId);
-          if (cancelled) return;
-          setSessionScheduleStatus(detail.schedule?.status ?? null);
-          setSkipReason(detail.schedule?.skipReason ?? null);
-          setPlannedWorldEpochMinute(detail.schedule?.plannedWorldEpochMinute ?? null);
-          if (detail.schedule?.status === 'PUBLISHED' && detail.schedule.plannedStartAt) {
-            const start = new Date(detail.schedule.plannedStartAt);
-            if (start >= new Date()) {
-              setUpcoming({
-                ...detail.schedule,
-                sessionTitle: detail.sessionTitle,
-                sequenceOrder: detail.sequenceOrder,
-              });
-            }
-          }
+    try {
+      const payload = await fetchCampaignSchedule(campaignHandle);
+      setAutoSchedule(payload.schedule.autoScheduleUpcomingSession);
+      setIsOneShot(payload.schedule.isOneShot);
+      if (payload.upcoming?.timelinePointId === timelinePointId) {
+        setUpcoming(payload.upcoming);
+        setSessionScheduleStatus(payload.upcoming.status);
+        setSkipReason(payload.upcoming.skipReason ?? null);
+        setPlannedWorldEpochMinute(payload.upcoming.plannedWorldEpochMinute ?? null);
+        return;
+      }
+
+      setUpcoming(null);
+      const detail = await fetchSessionSchedule(campaignHandle, timelinePointId);
+      setSessionScheduleStatus(detail.schedule?.status ?? null);
+      setSkipReason(detail.schedule?.skipReason ?? null);
+      setPlannedWorldEpochMinute(detail.schedule?.plannedWorldEpochMinute ?? null);
+      if (detail.schedule?.status === 'PUBLISHED' && detail.schedule.plannedStartAt) {
+        const start = new Date(detail.schedule.plannedStartAt);
+        if (start >= new Date()) {
+          setUpcoming({
+            ...detail.schedule,
+            sessionTitle: detail.sessionTitle,
+            sequenceOrder: detail.sequenceOrder,
+          });
         }
-      })
-      .catch(() => {
-        /* ignore */
-      });
-    return () => {
-      cancelled = true;
-    };
+      }
+    } catch {
+      /* ignore schedule load failures */
+    }
   }, [campaignHandle, timelinePointId]);
+
+  useEffect(() => {
+    void reloadSchedule();
+  }, [reloadSchedule]);
 
   const loading = authorLoading || (combinedLoading && !combined);
   const isSkipped = sessionScheduleStatus === 'SKIPPED';
@@ -211,6 +206,7 @@ export function SessionTimelineNotePage() {
         upcoming={upcoming}
         onClose={() => setScheduleModalOpen(false)}
         onSaved={() => {
+          void reloadSchedule();
           void refetchCombined();
         }}
       />
@@ -224,7 +220,7 @@ export function SessionTimelineNotePage() {
           isOneShot={isOneShot}
           onClose={() => setSkipModalOpen(false)}
           onSkipped={() => {
-            setSessionScheduleStatus('SKIPPED');
+            void reloadSchedule();
             void refetchCombined();
           }}
         />

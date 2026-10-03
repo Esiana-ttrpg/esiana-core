@@ -7,14 +7,20 @@ import {
   fetchCampaignSchedule,
   postScheduleUpcoming,
 } from '@/lib/campaignSchedule';
+import { fetchTimeTracking } from '@/lib/timeTrackingApi';
 import {
-  fetchTimeTracking,
-  masterCalendarFromBundle,
-} from '@/lib/timeTrackingApi';
-import { calendarEpochMinuteForDate } from '@/lib/timeEngine';
+  calendarEpochMinuteForDate,
+  convertEpochToCalendarState,
+} from '@/lib/timeEngine';
 import { resolveMasterCalendarLike } from '@/lib/chronologyCalendar';
 import type { ChronologyDateParts } from '@/lib/entityRelationTypes';
 import type { UpcomingSessionSummary } from '@/types/notifications';
+import {
+  datetimeLocalValueToIso,
+  isoToDatetimeLocalValue,
+  timeLabelFromDatetimeLocal,
+  weekdayNameFromDatetimeLocal,
+} from '@shared/campaignScheduleCadence';
 
 const FREQUENCY_OPTIONS = [
   { id: 'Weekly', label: 'Weekly' },
@@ -31,31 +37,6 @@ export interface ScheduleSessionModalProps {
   upcoming?: UpcomingSessionSummary | null;
   onClose: () => void;
   onSaved: () => void;
-}
-
-function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function localInputToIso(value: string): string {
-  const date = new Date(value);
-  return date.toISOString();
-}
-
-function weekdayNameFromDate(isoLocal: string): string {
-  const date = new Date(isoLocal);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(undefined, { weekday: 'long' });
-}
-
-function formatTimeLabel(isoLocal: string): string {
-  const date = new Date(isoLocal);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
 export function ScheduleSessionModal({
@@ -97,25 +78,33 @@ export function ScheduleSessionModal({
         if (cancelled) return;
 
         const target = upcoming ?? canonical;
-        setDateTime(toLocalInput(target?.plannedStartAt ?? null));
-        setTimezone(
+        const resolvedTz =
           target?.timezone ||
-            schedule.timezone ||
-            Intl.DateTimeFormat().resolvedOptions().timeZone ||
-            'UTC',
-        );
+          schedule.timezone ||
+          Intl.DateTimeFormat().resolvedOptions().timeZone ||
+          'UTC';
+        setTimezone(resolvedTz);
+        setDateTime(isoToDatetimeLocalValue(target?.plannedStartAt ?? null, resolvedTz));
         setFrequency(schedule.frequency?.trim() || 'Weekly');
         setCurrentEpochMinute(timeBundle?.currentEpochMinute ?? null);
 
         if (target?.plannedWorldEpochMinute) {
           setWorldTimeMode('planned');
-          const master = timeBundle ? masterCalendarFromBundle(timeBundle) : null;
-          if (master?.state) {
-            setWorldDate({
-              year: master.state.year,
-              month: master.state.monthIndex,
-              day: master.state.day,
-            });
+          const calendarLike = timeBundle ? resolveMasterCalendarLike(timeBundle) : null;
+          if (calendarLike) {
+            try {
+              const state = convertEpochToCalendarState(
+                BigInt(target.plannedWorldEpochMinute),
+                calendarLike,
+              );
+              setWorldDate({
+                year: state.year,
+                month: state.monthIndex,
+                day: state.day,
+              });
+            } catch {
+              setWorldDate(null);
+            }
           } else {
             setWorldDate(null);
           }
@@ -159,26 +148,34 @@ export function ScheduleSessionModal({
       let plannedWorldEpochMinute: string | null | undefined;
       if (worldTimeMode === 'continue') {
         plannedWorldEpochMinute = null;
-      } else if (worldDate?.year != null && worldDate.month != null && worldDate.day != null) {
+      } else {
+        if (worldDate?.year == null || worldDate.month == null || worldDate.day == null) {
+          setError('Choose a world start date, or continue from current campaign time.');
+          setSaving(false);
+          return;
+        }
         const bundle = await fetchTimeTracking(campaignHandle);
         const calendarLike = resolveMasterCalendarLike(bundle);
-        if (calendarLike) {
-          plannedWorldEpochMinute = calendarEpochMinuteForDate(
-            calendarLike,
-            worldDate.year,
-            worldDate.month,
-            worldDate.day,
-          ).toString();
+        if (!calendarLike) {
+          setError('No master campaign calendar is available to set a world start date.');
+          setSaving(false);
+          return;
         }
+        plannedWorldEpochMinute = calendarEpochMinuteForDate(
+          calendarLike,
+          worldDate.year,
+          worldDate.month,
+          worldDate.day,
+        ).toString();
       }
 
-      const day = weekdayNameFromDate(dateTime);
-      const time = formatTimeLabel(dateTime);
+      const day = weekdayNameFromDatetimeLocal(dateTime, timezone);
+      const time = timeLabelFromDatetimeLocal(dateTime, timezone);
       const applyRecurrence =
         applyRecurrenceChange || (!isEditing && Boolean(frequency));
 
       await postScheduleUpcoming(campaignHandle, {
-        plannedStartAt: localInputToIso(dateTime),
+        plannedStartAt: datetimeLocalValueToIso(dateTime, timezone),
         timezone,
         applyRecurrenceChange: applyRecurrence,
         scheduleFrequency: frequency || null,

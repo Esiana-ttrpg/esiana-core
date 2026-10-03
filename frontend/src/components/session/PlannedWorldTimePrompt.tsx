@@ -74,15 +74,12 @@ export function PlannedWorldTimePrompt({
     setBusy(true);
     setError(null);
     try {
-      // Advance in day-sized chunks when possible for cleaner UX.
-      const days = deltaMinutes / 1440n;
-      const rem = deltaMinutes % 1440n;
-      if (days > 0n) {
-        await advanceCampaignTime(campaignHandle, Number(days), 'days');
+      const amount = Number(deltaMinutes);
+      if (!Number.isFinite(amount) || amount <= 0 || !Number.isSafeInteger(amount)) {
+        setError('Planned start is too far ahead to apply in one step.');
+        return;
       }
-      if (rem > 0n) {
-        await advanceCampaignTime(campaignHandle, Number(rem), 'minutes');
-      }
+      await advanceCampaignTime(campaignHandle, amount, 'minutes');
       setMessage('Campaign time advanced to the planned world start.');
       setDismissed(true);
     } catch (err) {

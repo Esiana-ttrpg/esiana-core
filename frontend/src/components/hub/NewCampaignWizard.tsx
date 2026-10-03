@@ -150,6 +150,10 @@ export function NewCampaignWizard({
   const [step, setStep] = useState(0);
   const [maxReachedIndex, setMaxReachedIndex] = useState(0);
   const [createdCampaign, setCreatedCampaign] = useState<CampaignSummary | null>(null);
+  const [scheduleWarning, setScheduleWarning] = useState<Extract<
+    import('@/components/hub/newCampaignWizard/seedCampaignFoundation').WizardScheduleOutcome,
+    { ok: false }
+  > | null>(null);
   const [payload, setPayload] = useState<NewCampaignWizardPayload>(() => createInitialPayload());
   const [coverDragOver, setCoverDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -333,6 +337,7 @@ export function NewCampaignWizard({
     setStep(0);
     setMaxReachedIndex(0);
     setCreatedCampaign(null);
+    setScheduleWarning(null);
     setError(null);
     setTitleTouched(false);
     setKankaSkippedSummary([]);
@@ -631,12 +636,13 @@ export function NewCampaignWizard({
       if (payload.imports.campaignSource === 'blank') {
         await seedCampaignFoundationBestEffort(campaign.handle, payload.foundation);
       }
-      await applyWizardScheduleBestEffort(
+      const scheduleOutcome = await applyWizardScheduleBestEffort(
         campaign.id,
         campaign.handle,
         payload.schedule,
         payload.schedulingSkipped,
       );
+      setScheduleWarning(scheduleOutcome.ok ? null : scheduleOutcome);
 
       setCreatedCampaign(campaign);
       setMaxReachedIndex(steps.length - 1);
@@ -704,7 +710,11 @@ export function NewCampaignWizard({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {createdCampaign ? (
-            <WizardCreatedPanel campaign={createdCampaign} onDone={handleCreatedDone} />
+            <WizardCreatedPanel
+              campaign={createdCampaign}
+              onDone={handleCreatedDone}
+              scheduleWarning={scheduleWarning}
+            />
           ) : (
             <>
           {error && (

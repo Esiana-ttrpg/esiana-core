@@ -5368,25 +5368,28 @@ export async function ensureSessionAuthorNote(
     return;
   }
 
-  // Adding a session note counts as checking in (unless the occurrence was skipped).
+  // Check-in on note access: create ATTENDING only when no RSVP exists yet.
+  // Never overwrite ABSENT / LATE / MAYBE on subsequent opens.
   const schedule = await prisma.campaignSessionSchedule.findUnique({
     where: { timelinePointId },
     select: { status: true },
   });
   if (schedule?.status !== SessionScheduleStatus.SKIPPED) {
-    await prisma.sessionAttendance.upsert({
+    const existingAttendance = await prisma.sessionAttendance.findUnique({
       where: {
         timelinePointId_userId: { timelinePointId, userId },
       },
-      create: {
-        timelinePointId,
-        userId,
-        status: SessionAttendanceStatus.ATTENDING,
-      },
-      update: {
-        status: SessionAttendanceStatus.ATTENDING,
-      },
+      select: { userId: true },
     });
+    if (!existingAttendance) {
+      await prisma.sessionAttendance.create({
+        data: {
+          timelinePointId,
+          userId,
+          status: SessionAttendanceStatus.ATTENDING,
+        },
+      });
+    }
   }
 
   if (result.kind === 'existing') {
