@@ -1,19 +1,15 @@
 {
-  "navigation.account.switchCampaign": "Switch Campaign",
-  "navigation.account.recent": "Recent",
-  "navigation.account.yourCampaigns": "Your Campaigns",
-  "navigation.account.current": "Current",
   "navigation.account.lastOpened": "Last opened {{when}}",
-  "navigation.account.createCampaign": "Create Campaign",
+  "navigation.account.viewAllCampaigns": "View all campaigns",
+  "navigation.account.createCampaign": "Create",
   "navigation.account.profile": "Profile",
-  "navigation.account.characters": "Characters",
-  "navigation.account.schedule": "Schedule",
+  "navigation.account.characters": "Character Portfolio",
+  "navigation.account.schedule": "Session Calendar",
   "navigation.account.settings": "Settings",
   "navigation.account.administration": "Administration",
   "navigation.account.logOut": "Log out",
   "navigation.account.signIn": "Sign in",
   "navigation.account.loadingCampaigns": "Loading campaigns…",
   "navigation.account.loadError": "Failed to load campaigns.",
-  "navigation.account.noCampaigns": "No campaigns found.",
-  "navigation.account.back": "Back"
+  "navigation.account.noCampaigns": "No campaigns found."
 }
