@@ -6,6 +6,7 @@ import {
   loadCampaignWikiPathKeyRows,
 } from '../wikiPathKeyService.js';
 import { canViewWikiPage } from '../wikiTree.js';
+import { normalizeCampaignMemberRole } from '../acl.js';
 import {
   buildAdventureSnapshot,
   portfolioCharacterInclude,
@@ -361,6 +362,8 @@ export async function transformCampaignToPortfolio(input: {
     throw Object.assign(new Error('Not a member of this campaign'), { status: 403 });
   }
 
+  const memberRole = normalizeCampaignMemberRole(membership.role);
+
   const page = await prisma.wikiPage.findFirst({
     where: {
       id: input.campaignCharacterPageId,
@@ -376,7 +379,7 @@ export async function transformCampaignToPortfolio(input: {
       campaign: { select: { id: true, name: true, handle: true } },
     },
   });
-  if (!page || !canViewWikiPage(page.visibility, membership.role)) {
+  if (!page || !canViewWikiPage(page.visibility, memberRole)) {
     throw Object.assign(new Error('Character page not found'), { status: 404 });
   }
 
