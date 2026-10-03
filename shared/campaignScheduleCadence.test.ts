@@ -5,7 +5,12 @@ import {
   datetimeLocalValueToIsoStrict,
   isOneShotCampaignFormat,
   inferCadenceDays,
+  isSameCadenceOccurrence,
+  mergeProjectedWithPersisted,
   parseWeekday,
+  projectCadenceOccurrencesInRange,
+  buildProjectedOccurrenceId,
+  CADENCE_OCCURRENCE_MATCH_TOLERANCE_MS,
 } from './campaignScheduleCadence.js';
 
 test('inferCadenceDays recognizes biweekly and monthly', () => {
@@ -143,4 +148,63 @@ test('datetimeLocalValueToIsoStrict accepts valid wall time', () => {
     'America/Los_Angeles',
   );
   assert.equal(result, '2026-10-04T01:00:00.000Z');
+});
+
+test('projectCadenceOccurrencesInRange returns weekly slots in month only', () => {
+  const rangeStart = new Date('2026-10-01T00:00:00.000Z');
+  const rangeEnd = new Date('2026-10-31T23:59:59.999Z');
+  const slots = projectCadenceOccurrencesInRange({
+    scheduleFrequency: 'Weekly',
+    scheduleDay: 'Saturday',
+    scheduleTime: '6:00 PM',
+    scheduleTimezone: 'UTC',
+    rangeStart,
+    rangeEnd,
+  });
+  assert.ok(slots.length >= 4);
+  for (const slot of slots) {
+    assert.ok(slot.getTime() >= rangeStart.getTime());
+    assert.ok(slot.getTime() <= rangeEnd.getTime());
+    assert.equal(slot.getUTCDay(), 6);
+  }
+  // May is outside October — no May slots.
+  assert.ok(slots.every((s) => s.toISOString().startsWith('2026-10')));
+});
+
+test('mergeProjectedWithPersisted keeps same-day manual at different time', () => {
+  const projected = [
+    new Date('2026-10-17T18:00:00.000Z'), // cadence Saturday 6pm
+    new Date('2026-10-24T18:00:00.000Z'),
+  ];
+  // Manual session earlier same day as first slot — different occurrence.
+  const persisted = [{ plannedStartAt: new Date('2026-10-17T14:00:00.000Z') }];
+  const remaining = mergeProjectedWithPersisted({ projected, persisted });
+  assert.equal(remaining.length, 2);
+  assert.equal(remaining[0]!.toISOString(), '2026-10-17T18:00:00.000Z');
+});
+
+test('mergeProjectedWithPersisted suppresses matching skipped occurrence', () => {
+  const projected = [
+    new Date('2026-10-17T18:00:00.000Z'),
+    new Date('2026-10-24T18:00:00.000Z'),
+  ];
+  const persisted = [{ plannedStartAt: new Date('2026-10-17T18:05:00.000Z') }]; // within 15m
+  const remaining = mergeProjectedWithPersisted({ projected, persisted });
+  assert.equal(remaining.length, 1);
+  assert.equal(remaining[0]!.toISOString(), '2026-10-24T18:00:00.000Z');
+  assert.ok(
+    isSameCadenceOccurrence(
+      new Date('2026-10-17T18:00:00.000Z'),
+      new Date('2026-10-17T18:05:00.000Z'),
+      CADENCE_OCCURRENCE_MATCH_TOLERANCE_MS,
+    ),
+  );
+});
+
+test('buildProjectedOccurrenceId is deterministic', () => {
+  const id = buildProjectedOccurrenceId(
+    'camp_1',
+    new Date('2026-10-24T18:00:00.000Z'),
+  );
+  assert.equal(id, 'projected:camp_1:2026-10-24T18:00:00.000Z');
 });

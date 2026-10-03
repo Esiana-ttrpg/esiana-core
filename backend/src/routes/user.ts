@@ -40,6 +40,10 @@ import {
   dismissHubAttention,
   restoreHubAttention,
 } from '../controllers/userHubAttentionController.js';
+import {
+  getUserSchedule,
+  patchUserSchedulePreferencesHandler,
+} from '../controllers/userScheduleController.js';
 import { imageUpload } from '../lib/multer.js';
 import { enforceSystemUploadLimit } from '../middleware/uploadLimit.js';
 import {
@@ -61,6 +65,8 @@ userRouter.use(rateLimitPolicy('authenticated'));
 userRouter.use(rateLimitPolicy('mutation'));
 
 userRouter.get('/hub', getUserHub);
+userRouter.get('/schedule', getUserSchedule);
+userRouter.patch('/schedule/preferences', patchUserSchedulePreferencesHandler);
 userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
 userRouter.get('/activity', getOwnerUserActivity);
 userRouter.put('/campaigns/:campaignId/pin', pinCampaign);

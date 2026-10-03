@@ -32,6 +32,7 @@ import { WorldAdvanceBatchPage } from '@/pages/WorldAdvanceBatchPage';
 import { ChronologyPage } from '@/pages/ChronologyPage';
 import { UserSettings } from '@/pages/UserSettings';
 import { YourCampaignsPage } from '@/pages/YourCampaignsPage';
+import { SchedulePage } from '@/pages/SchedulePage';
 import { CampaignDefaultEditorPage } from '@/pages/settings/CampaignDefaultEditorPage';
 import { PublicUserProfilePage } from '@/pages/PublicUserProfilePage';
 import { RecentChangesPage } from '@/pages/RecentChangesPage';
@@ -90,6 +91,7 @@ export default function App() {
               element={<CampaignDefaultEditorPage />}
             />
             <Route path="campaigns" element={<YourCampaignsPage />} />
+            <Route path="schedule" element={<SchedulePage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="users/:id" element={<PublicUserProfilePage />} />

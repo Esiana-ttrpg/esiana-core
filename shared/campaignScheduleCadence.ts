@@ -308,6 +308,97 @@ export function computeNextCadenceOccurrence(params: {
   return candidate;
 }
 
+/**
+ * Match projected cadence slots to persisted occurrences by planned start time,
+ * not by calendar day. A manual session at a different time on the same day must
+ * not suppress the projected cadence slot.
+ */
+export const CADENCE_OCCURRENCE_MATCH_TOLERANCE_MS = 15 * 60 * 1000;
+
+export function isSameCadenceOccurrence(
+  a: Date,
+  b: Date,
+  toleranceMs: number = CADENCE_OCCURRENCE_MATCH_TOLERANCE_MS,
+): boolean {
+  return Math.abs(a.getTime() - b.getTime()) <= toleranceMs;
+}
+
+/**
+ * Project cadence occurrence instants that fall within [rangeStart, rangeEnd] (inclusive).
+ * Does not create or mutate session rows — display-only forecast.
+ */
+export function projectCadenceOccurrencesInRange(params: {
+  scheduleFrequency: string | null;
+  scheduleDay: string | null;
+  scheduleTime: string | null;
+  scheduleTimezone?: string | null;
+  rangeStart: Date;
+  rangeEnd: Date;
+  /** Optional anchor so biweekly/monthly stay on the same grid as materialized history. */
+  previousPlannedStartAt?: Date | null;
+}): Date[] {
+  if (params.rangeEnd.getTime() < params.rangeStart.getTime()) return [];
+
+  const results: Date[] = [];
+  let cursor = new Date(params.rangeStart.getTime() - 1);
+  let previous = params.previousPlannedStartAt ?? null;
+
+  for (let i = 0; i < 400; i += 1) {
+    const next = computeNextCadenceOccurrence({
+      scheduleFrequency: params.scheduleFrequency,
+      scheduleDay: params.scheduleDay,
+      scheduleTime: params.scheduleTime,
+      scheduleTimezone: params.scheduleTimezone,
+      after: cursor,
+      previousPlannedStartAt: previous,
+    });
+    if (!next) break;
+    if (next.getTime() > params.rangeEnd.getTime()) break;
+    if (next.getTime() >= params.rangeStart.getTime()) {
+      results.push(next);
+    }
+    previous = next;
+    cursor = next;
+  }
+
+  return results;
+}
+
+export type PersistedOccurrenceRef = {
+  plannedStartAt: Date;
+};
+
+/**
+ * Drop projected slots that match a persisted occurrence within the cadence tolerance.
+ * Persisted rows always win; projection never invents a parallel slot for the same occurrence.
+ */
+export function mergeProjectedWithPersisted(params: {
+  projected: Date[];
+  persisted: PersistedOccurrenceRef[];
+  toleranceMs?: number;
+}): Date[] {
+  const tolerance = params.toleranceMs ?? CADENCE_OCCURRENCE_MATCH_TOLERANCE_MS;
+  return params.projected.filter(
+    (slot) =>
+      !params.persisted.some(
+        (row) =>
+          row.plannedStartAt &&
+          isSameCadenceOccurrence(slot, row.plannedStartAt, tolerance),
+      ),
+  );
+}
+
+export function buildProjectedOccurrenceId(
+  campaignId: string,
+  plannedStartAt: Date | string,
+): string {
+  const iso =
+    typeof plannedStartAt === 'string'
+      ? plannedStartAt
+      : plannedStartAt.toISOString();
+  return `projected:${campaignId}:${iso}`;
+}
+
 /** Format datetime-local value from an ISO instant in a target IANA zone. */
 export function isoToDatetimeLocalValue(
   iso: string | null | undefined,
