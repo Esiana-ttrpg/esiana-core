@@ -17,6 +17,7 @@ import {
   ProfileWritingTab,
 } from '@/components/profile/ProfileCreatorStats';
 import { ProfileActivityTab } from '@/components/profile/ProfileActivityTab';
+import { ProfileCharactersShowcase } from '@/components/portfolio/ProfileCharactersShowcase';
 import { ResponsiveSectionNav } from '@/components/settings/ResponsiveSectionNav';
 import { PageContainer, PagePanel } from '@/components/layout/PageContainer';
 import { PageShell, SHOWCASE_MAX_WIDTH_CLASS } from '@/components/layout/PageShell';
@@ -189,6 +190,13 @@ export function PublicUserProfilePage() {
             <ProfileCreatorStatsOverview
               attribution={attribution}
               displayName={profile.displayName ?? profile.username}
+              isSelf={isSelf}
+            />
+
+            <ProfileCharactersShowcase
+              ownerUserId={profile.id}
+              ownerLabel={profile.displayName ?? profile.label ?? profile.username}
+              characters={profile.showcasedCharacters ?? []}
               isSelf={isSelf}
             />
 

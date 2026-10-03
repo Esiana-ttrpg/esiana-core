@@ -101,6 +101,7 @@ import {
   updateWikiPageMetadata,
   transformWikiPage,
 } from '../controllers/wikiController.js';
+import { addWikiCharacterToPortfolio } from '../controllers/portfolioCampaignController.js';
 import {
   getAdventureHubBySystemKey,
   getAdventureHubIndex,
@@ -1310,6 +1311,12 @@ campaignScopedRouter.delete(
   '/wiki/:pageId',
   requirePageEditAny,
   deleteWikiPage,
+);
+
+campaignScopedRouter.post(
+  '/wiki/:pageId/add-to-portfolio',
+  requireNonObserverMember,
+  addWikiCharacterToPortfolio,
 );
 
 campaignScopedRouter.patch('/wiki/:pageId/pin', togglePinnedPageShortcut);

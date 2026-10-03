@@ -100,6 +100,8 @@ model User {
   journalPublicationsCreated  JournalPublication[] @relation("JournalPublicationCreatedBy")
   journalPublicationsReleased JournalPublication[] @relation("JournalPublicationReleasedBy")
   journalSeriesCreated        JournalSeries[]      @relation("JournalSeriesCreatedBy")
+  userAssets                  UserAsset[]
+  portfolioCharacters         PortfolioCharacter[]
 
   lastLogin DateTime?
   createdAt DateTime @default(now())
@@ -550,6 +552,7 @@ model Campaign {
   characterPageTabs  CharacterPageTab[]
   pluginCharacterPageStates PluginCharacterPageState[]
   characterFields CharacterField[]
+  portfolioCharacterAdventures PortfolioCharacterAdventure[]
   notebookArcs       NoteBookArc[]
   assets             Asset[]
   mapLayers               MapLayer[]
@@ -1491,6 +1494,7 @@ model WikiPage {
   characterPageTabs CharacterPageTab[] @relation("CharacterPageTabs")
   pluginCharacterPageStates PluginCharacterPageState[] @relation("PluginCharacterPageStates")
   characterFields CharacterField[] @relation("CharacterFields")
+  portfolioAdventures PortfolioCharacterAdventure[] @relation("PortfolioAdventureCampaignPage")
 
   deletedAt DateTime?
 
@@ -2571,4 +2575,124 @@ model SearchIndexDocument {
   @@index([campaignId, visibility])
   @@index([partyVector], type: Gin)
   @@index([elevatedVector], type: Gin)
+}
+
+// ---------------------------------------------------------------------------
+// Character Portfolio (user-owned; not campaign-scoped)
+// ---------------------------------------------------------------------------
+
+/// User-owned media for portfolio portraits and galleries (separate from campaign Asset).
+model UserAsset {
+  id           String  @id @default(cuid())
+  userId       String
+  url          String
+  type         String  @default("image")
+  displayUrl   String?
+  thumbnailUrl String?
+  width        Int?
+  height       Int?
+  displayName  String?
+  imageCredit  Json?
+
+  user   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media  PortfolioCharacterMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// Player-owned character identity across stories (not a campaign wiki page).
+model PortfolioCharacter {
+  id           String  @id @default(cuid())
+  userId       String
+  name         String
+  /// Long-form biography (markdown/plain).
+  biography    String  @default("")
+  /// System-agnostic Core identity/physical-appearance JSON (no campaign page IDs).
+  metadata     Json    @default("{}")
+  /// Soft presentation: short epithet for editorial hero.
+  tagline      String?
+  /// Soft presentation: class/role free text (not a rules engine).
+  roleLabel    String?
+  /// Soft presentation: level free text (e.g. "7" or "Level 7").
+  levelLabel   String?
+  favoritedAt  DateTime?
+  archivedAt   DateTime?
+  /// Explicit showcase membership — public exposure requires true.
+  isShowcased  Boolean @default(false)
+  /// Order among showcased characters; meaningful only when isShowcased.
+  showcaseOrder Int?
+  /// Convenience pointer to PORTRAIT media row (optional).
+  portraitMediaId String? @unique
+
+  user          User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portraitMedia PortfolioCharacterMedia?    @relation("CharacterPortrait", fields: [portraitMediaId], references: [id], onDelete: SetNull)
+  media         PortfolioCharacterMedia[]   @relation("CharacterMedia")
+  adventures    PortfolioCharacterAdventure[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isShowcased, showcaseOrder])
+  @@index([userId, archivedAt])
+}
+
+/// First-class gallery/portrait association for a portfolio character.
+model PortfolioCharacterMedia {
+  id                   String  @id @default(cuid())
+  portfolioCharacterId String
+  userAssetId          String
+  /// PORTRAIT | GALLERY
+  kind                 String
+  caption              String?
+  sortOrder            Int     @default(0)
+  /// Reserved for Moments: when this media "happened".
+  occurredAt           DateTime?
+  /// Reserved for Moments: optional adventure link.
+  adventureId          String?
+
+  character PortfolioCharacter           @relation("CharacterMedia", fields: [portfolioCharacterId], references: [id], onDelete: Cascade)
+  userAsset UserAsset                    @relation(fields: [userAssetId], references: [id], onDelete: Cascade)
+  adventure PortfolioCharacterAdventure? @relation(fields: [adventureId], references: [id], onDelete: SetNull)
+  portraitFor PortfolioCharacter?        @relation("CharacterPortrait")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioCharacterId, kind, sortOrder])
+  @@index([userAssetId])
+  @@index([adventureId])
+}
+
+/// Provenance + historical record of a portfolio character's campaign incarnation.
+model PortfolioCharacterAdventure {
+  id                       String  @id @default(cuid())
+  portfolioCharacterId     String
+  /// Nullable when the campaign is deleted (DETACHED); snapshot remains.
+  campaignId               String?
+  /// Nullable if the campaign wiki page was deleted (DETACHED).
+  campaignCharacterPageId  String?
+  /// TO_CAMPAIGN | FROM_CAMPAIGN
+  direction                String
+  /// CURRENT | PAST | DETACHED
+  status                   String
+  /// Stable snapshot: campaignTitle, roleLabel, levelStart/End, dates, sessionCount, etc.
+  snapshot                 Json    @default("{}")
+  linkedAt                 DateTime @default(now())
+  unlinkedAt               DateTime?
+
+  character       PortfolioCharacter         @relation(fields: [portfolioCharacterId], references: [id], onDelete: Cascade)
+  campaign        Campaign?                  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignPage    WikiPage?                  @relation("PortfolioAdventureCampaignPage", fields: [campaignCharacterPageId], references: [id], onDelete: SetNull)
+  mediaMoments    PortfolioCharacterMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioCharacterId, status])
+  @@index([campaignId])
+  @@index([campaignCharacterPageId])
 }

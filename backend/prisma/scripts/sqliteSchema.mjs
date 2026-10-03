@@ -19,6 +19,8 @@ export function normalizeSchemaPrismaForSqlite(schema) {
  * - JSONB → TEXT
  * - tsvector → TEXT
  * - drop CREATE INDEX … USING GIN statements
+ * - drop ALTER TABLE … ADD CONSTRAINT (SQLite cannot add FKs after create;
+ *   dual-engine migrations must declare FKs inline in CREATE TABLE)
  */
 export function normalizeMigrationSqlForSqlite(sql) {
   return sql
@@ -27,6 +29,10 @@ export function normalizeMigrationSqlForSqlite(sql) {
     .replaceAll('tsvector', 'TEXT')
     .replace(
       /^\s*CREATE\s+(?:UNIQUE\s+)?INDEX\b[^;]*\bUSING\s+GIN\b[^;]*;\s*$/gim,
+      '',
+    )
+    .replace(
+      /^\s*ALTER\s+TABLE\s+"[^"]+"\s+ADD\s+CONSTRAINT\b[^;]*;\s*$/gim,
       '',
     );
 }

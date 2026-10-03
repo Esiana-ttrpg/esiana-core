@@ -516,7 +516,7 @@ export async function uploadUserAvatar(
   }
 
   try {
-    const diskPath = path.join(env.uploadsDir, file.filename);
+    const diskPath = path.join(env.uploadsDir, path.basename(file.filename));
     await assertImageFile(
       diskPath,
       file.mimetype,

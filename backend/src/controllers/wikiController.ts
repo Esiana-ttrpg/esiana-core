@@ -4845,12 +4845,15 @@ export async function deleteWikiPage(
   const actorId = req.user?.id;
 
   try {
+    const { detachAdventuresForDeletedPage } = await import('../lib/portfolio/transform.js');
+
     if (parsed.mode === 'orphan') {
       const result = await executeOrphanDelete(ctx.campaignId, pageId, actorId);
       if (!result) {
         res.status(404).json({ error: 'Page not found' });
         return;
       }
+      await detachAdventuresForDeletedPage([pageId]);
       dispatchDomainEvent({
         type: CoreDomainEvents.WIKI_DELETED,
         campaignId: ctx.campaignId,
@@ -4880,6 +4883,7 @@ export async function deleteWikiPage(
       res.status(404).json({ error: 'Page not found' });
       return;
     }
+    await detachAdventuresForDeletedPage(result.deletedPageIds);
     dispatchDomainEvent({
       type: CoreDomainEvents.WIKI_DELETED,
       campaignId: ctx.campaignId,

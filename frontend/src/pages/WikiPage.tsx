@@ -76,6 +76,7 @@ import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageSh
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { CharacterMasthead } from '@/components/entity/shells/CharacterMasthead';
+import { AddToPortfolioButton } from '@/components/portfolio/AddToPortfolioButton';
 import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
 import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
 import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVisibilityBadge';
@@ -2115,12 +2116,24 @@ export function WikiPage() {
                   </div>
                 ) : undefined}
                 visibilityControl={
-                  <NarrativeVisibilityBadge
-                    pageVisibility={pageVisibility}
-                    discovery={pageCodexDiagnostics.discovery}
-                    isEditingPage={isEditingPage}
-                    onVisibilityChange={handleVisibilityChange}
-                  />
+                  <div className="flex flex-col items-end gap-2">
+                    <NarrativeVisibilityBadge
+                      pageVisibility={pageVisibility}
+                      discovery={pageCodexDiagnostics.discovery}
+                      isEditingPage={isEditingPage}
+                      onVisibilityChange={handleVisibilityChange}
+                    />
+                    {pageId ? (
+                      <AddToPortfolioButton
+                        pageId={pageId}
+                        characterName={
+                          characterIdentityProjection?.displayName ??
+                          pageData?.title ??
+                          'Character'
+                        }
+                      />
+                    ) : null}
+                  </div>
                 }
               />
             ) : undefined}
