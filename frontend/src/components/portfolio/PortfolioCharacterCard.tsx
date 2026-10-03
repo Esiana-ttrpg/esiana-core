@@ -105,7 +105,7 @@ export function PortfolioCharacterCard({ character, onAction }: Props) {
       <div className="absolute right-2 top-2">
         <details className="relative">
           <summary
-            className="flex size-8 cursor-pointer list-none items-center justify-center rounded-md text-muted opacity-0 transition-opacity hover:bg-elevated hover:text-foreground group-hover:opacity-100 [&::-webkit-details-marker]:hidden"
+            className="flex size-8 cursor-pointer list-none items-center justify-center rounded-md text-muted opacity-100 transition-opacity hover:bg-elevated hover:text-foreground focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 [&::-webkit-details-marker]:hidden"
             aria-label="Character actions"
           >
             <MoreHorizontal className="size-4" />

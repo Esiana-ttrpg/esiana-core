@@ -167,8 +167,26 @@ export function PortfolioCharacterPage() {
 
   async function onUpload(kind: 'PORTRAIT' | 'GALLERY', file: File) {
     if (!character) return;
-    const updated = await uploadPortfolioMedia(character.id, file, kind);
-    setCharacter(updated);
+    setError(null);
+    try {
+      const updated = await uploadPortfolioMedia(character.id, file, kind);
+      setCharacter(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed.');
+    }
+  }
+
+  async function runCharacterAction(
+    action: () => Promise<PortfolioCharacter>,
+    fallback: string,
+  ) {
+    setError(null);
+    try {
+      const updated = await action();
+      setCharacter(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : fallback);
+    }
   }
 
   if (!authLoading && !isAuthenticated) return <Navigate to="/" replace />;
@@ -204,7 +222,10 @@ export function PortfolioCharacterPage() {
               type="button"
               className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-elevated"
               onClick={() =>
-                void setPortfolioFavorite(character.id, !character.isFavorite).then(setCharacter)
+                void runCharacterAction(
+                  () => setPortfolioFavorite(character.id, !character.isFavorite),
+                  'Failed to update favorite.',
+                )
               }
             >
               <Star
@@ -216,8 +237,9 @@ export function PortfolioCharacterPage() {
               type="button"
               className="rounded-md border border-border px-2.5 py-1.5 text-sm hover:bg-elevated"
               onClick={() =>
-                void setPortfolioShowcased(character.id, !character.isShowcased).then(
-                  setCharacter,
+                void runCharacterAction(
+                  () => setPortfolioShowcased(character.id, !character.isShowcased),
+                  'Failed to update showcase.',
                 )
               }
             >
@@ -494,7 +516,10 @@ export function PortfolioCharacterPage() {
                       type="button"
                       className="text-sm text-muted hover:text-foreground"
                       onClick={() =>
-                        void endPortfolioAdventure(currentAdventure.id).then(setCharacter)
+                        void runCharacterAction(
+                          () => endPortfolioAdventure(currentAdventure.id),
+                          'Failed to mark adventure as past.',
+                        )
                       }
                     >
                       Mark as past
@@ -645,7 +670,10 @@ export function PortfolioCharacterPage() {
                         type="button"
                         className="shrink-0 hover:text-destructive"
                         onClick={() =>
-                          void deletePortfolioMedia(character.id, m.id).then(setCharacter)
+                          void runCharacterAction(
+                            () => deletePortfolioMedia(character.id, m.id),
+                            'Failed to remove media.',
+                          )
                         }
                       >
                         Remove

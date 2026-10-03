@@ -7,6 +7,7 @@ import {
   resolvePortraitUrl,
   serializePortfolioCharacter,
   toPortfolioMetadata,
+  userAssetApiUrl,
 } from '../lib/portfolio/serialize.js';
 import {
   markAdventurePast,
@@ -25,7 +26,10 @@ import { env } from '../config/env.js';
 import path from 'node:path';
 import fs from 'node:fs';
 import { assertImageFile, UploadValidationError } from '../lib/uploadValidation.js';
-import { deleteUploadedFile } from '../lib/assetFiles.js';
+import {
+  deleteAssetRecordFiles,
+  deleteUploadedFile,
+} from '../lib/assetFiles.js';
 import { streamFileWithCache, contentTypeForFilename } from '../lib/assetStreamHeaders.js';
 
 function statusFromError(err: unknown): number {
@@ -358,6 +362,16 @@ export async function reorderShowcasePortfolioCharacters(
     select: { id: true },
   });
   const showcasedSet = new Set(showcased.map((r) => r.id));
+  const uniqueOrdered = new Set(orderedIds);
+  if (
+    orderedIds.length !== showcasedSet.size ||
+    uniqueOrdered.size !== orderedIds.length
+  ) {
+    res.status(400).json({
+      error: 'orderedIds must contain each showcased character exactly once',
+    });
+    return;
+  }
   for (const id of orderedIds) {
     if (!showcasedSet.has(id)) {
       res.status(400).json({ error: 'All orderedIds must be showcased characters you own' });
@@ -525,8 +539,15 @@ export async function uploadPortfolioMedia(
 ): Promise<void> {
   const userId = req.user!.id;
   const characterId = String(req.params.id);
+  const file = req.file as Express.Multer.File | undefined;
+  if (!file) {
+    res.status(400).json({ error: 'Image file is required' });
+    return;
+  }
+
   const kindRaw = String(req.body?.kind ?? 'GALLERY');
   if (!isPortfolioMediaKind(kindRaw)) {
+    deleteUploadedFile(file.filename);
     res.status(400).json({ error: 'kind must be PORTRAIT or GALLERY' });
     return;
   }
@@ -536,18 +557,13 @@ export async function uploadPortfolioMedia(
     select: { id: true },
   });
   if (!character) {
+    deleteUploadedFile(file.filename);
     res.status(404).json({ error: 'Character not found' });
     return;
   }
 
-  const file = req.file as Express.Multer.File | undefined;
-  if (!file) {
-    res.status(400).json({ error: 'Image file is required' });
-    return;
-  }
-
   try {
-    const diskPath = path.join(env.uploadsDir, file.filename);
+    const diskPath = path.join(env.uploadsDir, path.basename(file.filename));
     await assertImageFile(diskPath, file.mimetype, path.extname(file.originalname));
   } catch (err) {
     deleteUploadedFile(file.filename);
@@ -608,7 +624,7 @@ export async function deletePortfolioMedia(
       portfolioCharacterId: characterId,
       character: { userId },
     },
-    select: { id: true },
+    select: { id: true, userAssetId: true },
   });
   if (!media) {
     res.status(404).json({ error: 'Media not found' });
@@ -620,6 +636,20 @@ export async function deletePortfolioMedia(
     data: { portraitMediaId: null },
   });
   await prisma.portfolioCharacterMedia.delete({ where: { id: mediaId } });
+
+  const remainingRefs = await prisma.portfolioCharacterMedia.count({
+    where: { userAssetId: media.userAssetId },
+  });
+  if (remainingRefs === 0) {
+    const asset = await prisma.userAsset.findUnique({
+      where: { id: media.userAssetId },
+      select: { id: true, url: true, displayUrl: true, thumbnailUrl: true },
+    });
+    if (asset) {
+      await prisma.userAsset.delete({ where: { id: asset.id } });
+      deleteAssetRecordFiles(asset);
+    }
+  }
 
   const refreshed = await loadOwnedCharacter(userId, characterId);
   res.json({ character: serializePortfolioCharacter(refreshed!) });
@@ -687,7 +717,8 @@ export async function listShowcasedPublicProjections(
                 }
                 return snap;
               })(),
-              campaignLinkable: linkableIds.has(current.campaignId),
+              campaignLinkable:
+                current.campaignId != null && linkableIds.has(current.campaignId),
             }
           : null,
       });
@@ -714,17 +745,8 @@ export async function getPublicPortfolioCharacter(
   }
 
   const isOwner = viewerUserId === profileUserId;
-  if (!row.isShowcased && !isOwner) {
+  if ((!row.isShowcased || row.archivedAt != null) && !isOwner) {
     res.status(404).json({ error: 'Character not found' });
-    return;
-  }
-
-  if (isOwner && !row.isShowcased) {
-    // Owner may view management payload.
-    res.json({
-      character: serializePortfolioCharacter(row),
-      public: false,
-    });
     return;
   }
 
@@ -732,46 +754,48 @@ export async function getPublicPortfolioCharacter(
   const linkableIds = new Set(linkable.map((c) => c.id));
   const current = (row.adventures ?? []).find((a) => a.status === 'CURRENT') ?? null;
 
-  const projection = buildPublicPortfolioProjection({
-    id: row.id,
-    userId: row.userId,
-    name: row.name,
-    tagline: row.tagline,
-    roleLabel: row.roleLabel,
-    levelLabel: row.levelLabel,
-    biography: row.biography,
-    isShowcased: row.isShowcased,
-    metadata: row.metadata,
-    portraitUrl: resolvePortraitUrl(row),
-    currentAdventure: current
-      ? {
-          snapshot: {
-            campaignTitle: current.campaign?.name ?? '',
-            campaignHandle: current.campaign?.handle ?? null,
-            roleLabel: null,
-            levelStart: null,
-            levelEnd: null,
-            startedAt: null,
-            endedAt: null,
-            sessionCount: null,
-            oneShot: false,
-            visibilityHint: null,
-          },
-          campaignLinkable: linkableIds.has(current.campaignId),
-        }
-      : null,
-  });
+  const projection = buildPublicPortfolioProjection(
+    {
+      id: row.id,
+      userId: row.userId,
+      name: row.name,
+      tagline: row.tagline,
+      roleLabel: row.roleLabel,
+      levelLabel: row.levelLabel,
+      biography: row.biography,
+      isShowcased: row.isShowcased,
+      metadata: row.metadata,
+      portraitUrl: resolvePortraitUrl(row),
+      currentAdventure: current
+        ? {
+            snapshot: (() => {
+              const snap = parseAdventureSnapshot(current.snapshot);
+              if (!snap.campaignTitle && current.campaign) {
+                snap.campaignTitle = current.campaign.name;
+                snap.campaignHandle = current.campaign.handle;
+              }
+              return snap;
+            })(),
+            campaignLinkable:
+              current.campaignId != null && linkableIds.has(current.campaignId),
+          }
+        : null,
+    },
+    { requireShowcased: row.isShowcased },
+  );
 
-  // Richer public editorial payload (still allowlisted — no full metadata dump).
   const publicAdventures = (row.adventures ?? []).map((a) => {
-    const linkableCampaign = linkableIds.has(a.campaignId);
+    const detached = a.campaignId == null || a.status === 'DETACHED';
+    const linkableCampaign = a.campaignId != null && linkableIds.has(a.campaignId);
     const snap =
       a.snapshot && typeof a.snapshot === 'object' && !Array.isArray(a.snapshot)
         ? (a.snapshot as Record<string, unknown>)
         : {};
+    const status =
+      a.status === 'CURRENT' ? 'CURRENT' : detached ? 'DETACHED' : 'PAST';
     return {
       id: a.id,
-      status: a.status === 'CURRENT' ? 'CURRENT' : 'PAST',
+      status,
       campaignTitle: linkableCampaign
         ? a.campaign?.name ?? (typeof snap.campaignTitle === 'string' ? snap.campaignTitle : null)
         : null,
@@ -785,20 +809,35 @@ export async function getPublicPortfolioCharacter(
       oneShot: snap.oneShot === true,
       genericLabel: linkableCampaign
         ? null
-        : a.status === 'CURRENT'
+        : status === 'CURRENT'
           ? 'Currently adventuring'
           : 'Past adventure',
     };
   });
 
-  const publicMedia = (row.media ?? []).map((m) => ({
-    id: m.id,
-    kind: m.kind,
-    caption: m.caption,
-    sortOrder: m.sortOrder,
-    url: m.userAsset.url,
-    thumbnailUrl: m.userAsset.thumbnailUrl ?? m.userAsset.url,
-  }));
+  const publicMedia = (row.media ?? []).map((m) => {
+    const apiUrl = userAssetApiUrl(m.userAsset.id);
+    return {
+      id: m.id,
+      kind: m.kind,
+      caption: m.caption,
+      sortOrder: m.sortOrder,
+      url: apiUrl,
+      thumbnailUrl: apiUrl,
+    };
+  });
+
+  if (isOwner && !row.isShowcased) {
+    const serialized = serializePortfolioCharacter(row);
+    res.json({
+      character: projection ? { ...serialized, ...projection } : serialized,
+      biography: row.biography,
+      adventures: publicAdventures,
+      media: publicMedia,
+      public: false,
+    });
+    return;
+  }
 
   res.json({
     character: projection,
@@ -823,11 +862,11 @@ export async function getUserAssetFile(req: Request, res: Response): Promise<voi
 
   const viewerId = (req as AuthenticatedRequest).user?.id ?? null;
   if (viewerId !== asset.userId) {
-    // Allow if referenced by a showcased character of this user.
+    // Allow if referenced by a showcased, non-archived character of this user.
     const referenced = await prisma.portfolioCharacterMedia.findFirst({
       where: {
         userAssetId: assetId,
-        character: { userId: asset.userId, isShowcased: true },
+        character: { userId: asset.userId, isShowcased: true, archivedAt: null },
       },
       select: { id: true },
     });

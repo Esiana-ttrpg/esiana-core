@@ -19,7 +19,7 @@ export interface PortfolioAdventure {
   id: string;
   status: string;
   direction: string;
-  campaignId: string;
+  campaignId: string | null;
   campaignCharacterPageId: string | null;
   snapshot: PortfolioAdventureSnapshot;
   linkedAt: string;
@@ -78,30 +78,48 @@ export interface PortfolioListResponse {
 
 export type { PublicPortfolioCharacterProjection };
 
-export interface PublicPortfolioCharacterPage {
+type PublicAdventure = {
+  id: string;
+  status: string;
+  campaignTitle: string | null;
+  campaignHandle: string | null;
+  roleLabel: string | null;
+  levelStart: string | null;
+  levelEnd: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  sessionCount: number | null;
+  oneShot: boolean;
+  genericLabel: string | null;
+};
+
+type PublicMedia = {
+  id: string;
+  kind: string;
+  caption: string | null;
+  sortOrder: number;
+  url: string;
+  thumbnailUrl: string;
+};
+
+/** Public showcase payload. */
+export type PublicPortfolioCharacterPagePublic = {
+  public: true;
   character: PublicPortfolioCharacterProjection;
   biography: string;
-  adventures: Array<{
-    id: string;
-    status: string;
-    campaignTitle: string | null;
-    campaignHandle: string | null;
-    roleLabel: string | null;
-    levelStart: string | null;
-    levelEnd: string | null;
-    startedAt: string | null;
-    endedAt: string | null;
-    sessionCount: number | null;
-    oneShot: boolean;
-    genericLabel: string | null;
-  }>;
-  media: Array<{
-    id: string;
-    kind: string;
-    caption: string | null;
-    sortOrder: number;
-    url: string;
-    thumbnailUrl: string;
-  }>;
-  public: boolean;
-}
+  adventures: PublicAdventure[];
+  media: PublicMedia[];
+};
+
+/** Owner-only management payload when the character is not showcased. */
+export type PublicPortfolioCharacterPageOwnerOnly = {
+  public: false;
+  character: PortfolioCharacter;
+  biography: string;
+  adventures: PublicAdventure[];
+  media: PublicMedia[];
+};
+
+export type PublicPortfolioCharacterPage =
+  | PublicPortfolioCharacterPagePublic
+  | PublicPortfolioCharacterPageOwnerOnly;

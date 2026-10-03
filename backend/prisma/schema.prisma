@@ -2671,7 +2671,8 @@ model PortfolioCharacterMedia {
 model PortfolioCharacterAdventure {
   id                       String  @id @default(cuid())
   portfolioCharacterId     String
-  campaignId               String
+  /// Nullable when the campaign is deleted (DETACHED); snapshot remains.
+  campaignId               String?
   /// Nullable if the campaign wiki page was deleted (DETACHED).
   campaignCharacterPageId  String?
   /// TO_CAMPAIGN | FROM_CAMPAIGN
@@ -2684,7 +2685,7 @@ model PortfolioCharacterAdventure {
   unlinkedAt               DateTime?
 
   character       PortfolioCharacter         @relation(fields: [portfolioCharacterId], references: [id], onDelete: Cascade)
-  campaign        Campaign                   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign        Campaign?                  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   campaignPage    WikiPage?                  @relation("PortfolioAdventureCampaignPage", fields: [campaignCharacterPageId], references: [id], onDelete: SetNull)
   mediaMoments    PortfolioCharacterMedia[]
 

@@ -5,6 +5,7 @@ import {
   assignPathKeyForNewPage,
   loadCampaignWikiPathKeyRows,
 } from '../wikiPathKeyService.js';
+import { canViewWikiPage } from '../wikiTree.js';
 import {
   buildAdventureSnapshot,
   portfolioCharacterInclude,
@@ -74,7 +75,103 @@ function extractBiographyFromBlocks(blocks: unknown): string {
   return '';
 }
 
-/** Clone a portfolio character into a campaign wiki character + CURRENT adventure. */
+function readImportedFromPortfolioCharacterId(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>).importedFromPortfolioCharacterId;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+/** Find a campaign Character page previously imported from this portfolio character. */
+async function findPortfolioImportPage(
+  campaignId: string,
+  portfolioCharacterId: string,
+): Promise<{ id: string } | null> {
+  try {
+    const matched = await prisma.wikiPage.findFirst({
+      where: {
+        campaignId,
+        deletedAt: null,
+        metadata: {
+          path: ['importedFromPortfolioCharacterId'],
+          equals: portfolioCharacterId,
+        },
+      },
+      select: { id: true },
+    });
+    if (matched) return matched;
+  } catch {
+    // Engines without JSON path filters fall through to a scoped scan.
+  }
+
+  const candidates = await prisma.wikiPage.findMany({
+    where: {
+      campaignId,
+      deletedAt: null,
+      workspace: CampaignWorkspace.CHARACTERS,
+    },
+    select: { id: true, metadata: true },
+  });
+  for (const row of candidates) {
+    if (readImportedFromPortfolioCharacterId(row.metadata) === portfolioCharacterId) {
+      return { id: row.id };
+    }
+  }
+  return null;
+}
+
+/**
+ * Ensure TO_CAMPAIGN adventure provenance exists for an imported campaign Character page.
+ * Does not create or delete wiki pages — provenance only.
+ */
+async function ensureImportAdventureProvenance(input: {
+  portfolioCharacterId: string;
+  campaignId: string;
+  campaignCharacterPageId: string;
+  snapshot: ReturnType<typeof buildAdventureSnapshot>;
+}): Promise<string> {
+  const existing = await prisma.portfolioCharacterAdventure.findFirst({
+    where: {
+      portfolioCharacterId: input.portfolioCharacterId,
+      campaignId: input.campaignId,
+      campaignCharacterPageId: input.campaignCharacterPageId,
+    },
+    select: { id: true, status: true },
+  });
+  if (existing) {
+    if (existing.status !== 'CURRENT') {
+      await prisma.portfolioCharacterAdventure.update({
+        where: { id: existing.id },
+        data: {
+          status: 'CURRENT',
+          direction: 'TO_CAMPAIGN',
+          unlinkedAt: null,
+          snapshot: input.snapshot as object,
+        },
+      });
+    }
+    return existing.id;
+  }
+
+  const created = await prisma.portfolioCharacterAdventure.create({
+    data: {
+      portfolioCharacterId: input.portfolioCharacterId,
+      campaignId: input.campaignId,
+      campaignCharacterPageId: input.campaignCharacterPageId,
+      direction: 'TO_CAMPAIGN',
+      status: 'CURRENT',
+      snapshot: input.snapshot as object,
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+/**
+ * Import one portfolio character into a campaign as a new Character WikiPage.
+ * The source PortfolioCharacter is unchanged; the campaign page is independently owned.
+ * PortfolioCharacterAdventure records provenance for this import only — it is not
+ * campaign cloning, and provenance failure must not roll back a successful page import.
+ */
 export async function transformPortfolioToCampaign(input: {
   userId: string;
   portfolioCharacterId: string;
@@ -108,54 +205,11 @@ export async function transformPortfolioToCampaign(input: {
     throw Object.assign(new Error('Campaign not found'), { status: 404 });
   }
 
-  const parentId = await findCharactersCategoryParent(input.campaignId);
   const identity = parseCharacterMetadata(
     (character.metadata && typeof character.metadata === 'object'
       ? character.metadata
       : {}) as Record<string, unknown>,
   );
-
-  const metadata: Record<string, unknown> = {
-    entityCategory: 'characters',
-    profession: character.roleLabel ?? identity.profession,
-    title: identity.title,
-    ancestry: identity.ancestry,
-    status: identity.status,
-    knownFor: identity.knownFor,
-    activeArc: identity.activeArc,
-    motivation: identity.motivation,
-    appearance: identity.appearance,
-  };
-
-  const existingRows = await loadCampaignWikiPathKeyRows(input.campaignId);
-  const pathRouting = await assignPathKeyForNewPage(
-    input.campaignId,
-    {
-      id: 'pending',
-      title: character.name,
-      parentId,
-      templateType: 'DEFAULT',
-      metadata,
-    },
-    existingRows,
-  );
-
-  const page = await prisma.wikiPage.create({
-    data: {
-      campaignId: input.campaignId,
-      title: character.name,
-      parentId,
-      visibility: WikiVisibility.PARTY,
-      metadata: metadata as object,
-      blocks: biographyBlocks(character.biography) as object,
-      workspace: pathRouting.workspace,
-      pathKey: pathRouting.pathKey,
-      ownerType: 'USER',
-      ownerUserId: input.userId,
-      createdByUserId: input.userId,
-    },
-    select: { id: true },
-  });
 
   const snapshot = buildAdventureSnapshot({
     campaignTitle: campaign.name,
@@ -166,16 +220,117 @@ export async function transformPortfolioToCampaign(input: {
     startedAt: new Date().toISOString(),
   });
 
-  const adventure = await prisma.portfolioCharacterAdventure.create({
-    data: {
+  // Idempotent recovery at the character-import boundary (not campaign-wide).
+  const existingAdventure = await prisma.portfolioCharacterAdventure.findFirst({
+    where: {
       portfolioCharacterId: character.id,
       campaignId: campaign.id,
-      campaignCharacterPageId: page.id,
       direction: 'TO_CAMPAIGN',
       status: 'CURRENT',
-      snapshot: snapshot as object,
+      campaignCharacterPageId: { not: null },
     },
+    select: { id: true, campaignCharacterPageId: true },
   });
+  if (existingAdventure?.campaignCharacterPageId) {
+    const pageStillExists = await prisma.wikiPage.findFirst({
+      where: {
+        id: existingAdventure.campaignCharacterPageId,
+        campaignId: campaign.id,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    if (pageStillExists) {
+      const refreshed = await prisma.portfolioCharacter.findUniqueOrThrow({
+        where: { id: character.id },
+        include: portfolioCharacterInclude,
+      });
+      return {
+        portfolioCharacter: serializePortfolioCharacter(refreshed),
+        campaignCharacterPageId: pageStillExists.id,
+        adventureId: existingAdventure.id,
+      };
+    }
+  }
+
+  let pageId: string | null = null;
+  const priorImport = await findPortfolioImportPage(campaign.id, character.id);
+  if (priorImport) {
+    pageId = priorImport.id;
+  } else {
+    const parentId = await findCharactersCategoryParent(input.campaignId);
+
+    const metadata: Record<string, unknown> = {
+      entityCategory: 'characters',
+      profession: character.roleLabel ?? identity.profession,
+      title: identity.title,
+      ancestry: identity.ancestry,
+      status: identity.status,
+      knownFor: identity.knownFor,
+      activeArc: identity.activeArc,
+      motivation: identity.motivation,
+      appearance: identity.appearance,
+      // Durable marker for per-character import recovery / idempotency.
+      importedFromPortfolioCharacterId: character.id,
+    };
+
+    const existingRows = await loadCampaignWikiPathKeyRows(input.campaignId);
+    const pathRouting = await assignPathKeyForNewPage(
+      input.campaignId,
+      {
+        id: 'pending',
+        title: character.name,
+        parentId,
+        templateType: 'DEFAULT',
+        metadata,
+      },
+      existingRows,
+    );
+
+    // Character import commits independently of provenance.
+    const page = await prisma.wikiPage.create({
+      data: {
+        campaignId: input.campaignId,
+        title: character.name,
+        parentId,
+        visibility: WikiVisibility.PARTY,
+        metadata: metadata as object,
+        blocks: biographyBlocks(character.biography) as object,
+        workspace: pathRouting.workspace,
+        pathKey: pathRouting.pathKey,
+        ownerType: 'USER',
+        ownerUserId: input.userId,
+        createdByUserId: input.userId,
+      },
+      select: { id: true },
+    });
+    pageId = page.id;
+  }
+
+  let adventureId: string;
+  try {
+    adventureId = await ensureImportAdventureProvenance({
+      portfolioCharacterId: character.id,
+      campaignId: campaign.id,
+      campaignCharacterPageId: pageId,
+      snapshot,
+    });
+  } catch (err) {
+    // Page import already succeeded — do not roll it back. A retry of this same
+    // character import will attach provenance to the existing page.
+    throw Object.assign(
+      new Error(
+        err instanceof Error
+          ? `Character imported but adventure provenance failed: ${err.message}`
+          : 'Character imported but adventure provenance failed',
+      ),
+      {
+        status: 500,
+        campaignCharacterPageId: pageId,
+        cause: err,
+      },
+    );
+  }
 
   const refreshed = await prisma.portfolioCharacter.findUniqueOrThrow({
     where: { id: character.id },
@@ -184,8 +339,8 @@ export async function transformPortfolioToCampaign(input: {
 
   return {
     portfolioCharacter: serializePortfolioCharacter(refreshed),
-    campaignCharacterPageId: page.id,
-    adventureId: adventure.id,
+    campaignCharacterPageId: pageId,
+    adventureId,
   };
 }
 
@@ -200,7 +355,7 @@ export async function transformCampaignToPortfolio(input: {
 }> {
   const membership = await prisma.campaignMember.findFirst({
     where: { campaignId: input.campaignId, userId: input.userId },
-    select: { userId: true },
+    select: { userId: true, role: true },
   });
   if (!membership) {
     throw Object.assign(new Error('Not a member of this campaign'), { status: 403 });
@@ -217,10 +372,11 @@ export async function transformCampaignToPortfolio(input: {
       title: true,
       metadata: true,
       blocks: true,
+      visibility: true,
       campaign: { select: { id: true, name: true, handle: true } },
     },
   });
-  if (!page) {
+  if (!page || !canViewWikiPage(page.visibility, membership.role)) {
     throw Object.assign(new Error('Character page not found'), { status: 404 });
   }
 
@@ -239,18 +395,6 @@ export async function transformCampaignToPortfolio(input: {
     extractBiographyFromBlocks(page.blocks) ||
     (typeof meta.description === 'string' ? meta.description : '');
 
-  const character = await prisma.portfolioCharacter.create({
-    data: {
-      userId: input.userId,
-      name: page.title,
-      biography,
-      metadata: portfolioMeta as object,
-      tagline: normalizeNullableText(identity.knownFor) ?? normalizeNullableText(identity.title),
-      roleLabel: normalizeNullableText(identity.profession),
-      levelLabel: null,
-    },
-  });
-
   const snapshot = buildAdventureSnapshot({
     campaignTitle: page.campaign.name,
     campaignHandle: page.campaign.handle,
@@ -258,25 +402,41 @@ export async function transformCampaignToPortfolio(input: {
     startedAt: new Date().toISOString(),
   });
 
-  const adventure = await prisma.portfolioCharacterAdventure.create({
-    data: {
-      portfolioCharacterId: character.id,
-      campaignId: page.campaign.id,
-      campaignCharacterPageId: page.id,
-      direction: 'FROM_CAMPAIGN',
-      status: 'CURRENT',
-      snapshot: snapshot as object,
-    },
+  const { characterId, adventureId } = await prisma.$transaction(async (tx) => {
+    const character = await tx.portfolioCharacter.create({
+      data: {
+        userId: input.userId,
+        name: page.title,
+        biography,
+        metadata: portfolioMeta as object,
+        tagline: normalizeNullableText(identity.knownFor) ?? normalizeNullableText(identity.title),
+        roleLabel: normalizeNullableText(identity.profession),
+        levelLabel: null,
+      },
+    });
+
+    const adventure = await tx.portfolioCharacterAdventure.create({
+      data: {
+        portfolioCharacterId: character.id,
+        campaignId: page.campaign.id,
+        campaignCharacterPageId: page.id,
+        direction: 'FROM_CAMPAIGN',
+        status: 'CURRENT',
+        snapshot: snapshot as object,
+      },
+    });
+
+    return { characterId: character.id, adventureId: adventure.id };
   });
 
   const refreshed = await prisma.portfolioCharacter.findUniqueOrThrow({
-    where: { id: character.id },
+    where: { id: characterId },
     include: portfolioCharacterInclude,
   });
 
   return {
     portfolioCharacter: serializePortfolioCharacter(refreshed),
-    adventureId: adventure.id,
+    adventureId,
   };
 }
 
@@ -339,10 +499,15 @@ function parseSnapshotWithEnd(
   };
 }
 
-/** When a campaign wiki character page is deleted, detach portfolio adventures. */
-export async function detachAdventuresForDeletedPage(pageId: string): Promise<void> {
+/** When campaign wiki character page(s) are deleted, detach portfolio adventures. */
+export async function detachAdventuresForDeletedPage(
+  pageIds: string | string[],
+): Promise<void> {
+  const ids = Array.isArray(pageIds) ? pageIds : [pageIds];
+  if (ids.length === 0) return;
+
   const rows = await prisma.portfolioCharacterAdventure.findMany({
-    where: { campaignCharacterPageId: pageId },
+    where: { campaignCharacterPageId: { in: ids } },
     select: { id: true, status: true, snapshot: true },
   });
   if (rows.length === 0) return;
@@ -354,7 +519,7 @@ export async function detachAdventuresForDeletedPage(pageId: string): Promise<vo
         where: { id: row.id },
         data: {
           campaignCharacterPageId: null,
-          status: row.status === 'CURRENT' ? 'DETACHED' : 'DETACHED',
+          status: 'DETACHED',
           unlinkedAt: row.status === 'CURRENT' ? now : undefined,
           snapshot: {
             ...((row.snapshot && typeof row.snapshot === 'object'

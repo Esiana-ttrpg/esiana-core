@@ -1,4 +1,7 @@
 -- Character Portfolio: user-owned characters, media, and campaign adventure provenance.
+-- Foreign keys are inline (SQLite cannot ALTER TABLE ADD CONSTRAINT).
+-- portraitMediaId is a convenience pointer without a DB FK: PortfolioCharacterMedia
+-- already references PortfolioCharacter, and SQLite cannot add the reverse constraint later.
 
 CREATE TABLE "UserAsset" (
     "id" TEXT NOT NULL,
@@ -14,7 +17,8 @@ CREATE TABLE "UserAsset" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "UserAsset_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "UserAsset_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "UserAsset_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE "PortfolioCharacter" (
@@ -34,13 +38,14 @@ CREATE TABLE "PortfolioCharacter" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "PortfolioCharacter_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "PortfolioCharacter_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "PortfolioCharacter_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE "PortfolioCharacterAdventure" (
     "id" TEXT NOT NULL,
     "portfolioCharacterId" TEXT NOT NULL,
-    "campaignId" TEXT NOT NULL,
+    "campaignId" TEXT,
     "campaignCharacterPageId" TEXT,
     "direction" TEXT NOT NULL,
     "status" TEXT NOT NULL,
@@ -50,7 +55,10 @@ CREATE TABLE "PortfolioCharacterAdventure" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "PortfolioCharacterAdventure_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "PortfolioCharacterAdventure_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "PortfolioCharacterAdventure_portfolioCharacterId_fkey" FOREIGN KEY ("portfolioCharacterId") REFERENCES "PortfolioCharacter" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "PortfolioCharacterAdventure_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "PortfolioCharacterAdventure_campaignCharacterPageId_fkey" FOREIGN KEY ("campaignCharacterPageId") REFERENCES "WikiPage" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE TABLE "PortfolioCharacterMedia" (
@@ -65,7 +73,10 @@ CREATE TABLE "PortfolioCharacterMedia" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "PortfolioCharacterMedia_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "PortfolioCharacterMedia_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "PortfolioCharacterMedia_portfolioCharacterId_fkey" FOREIGN KEY ("portfolioCharacterId") REFERENCES "PortfolioCharacter" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "PortfolioCharacterMedia_userAssetId_fkey" FOREIGN KEY ("userAssetId") REFERENCES "UserAsset" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "PortfolioCharacterMedia_adventureId_fkey" FOREIGN KEY ("adventureId") REFERENCES "PortfolioCharacterAdventure" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX "PortfolioCharacter_portraitMediaId_key" ON "PortfolioCharacter"("portraitMediaId");
@@ -80,17 +91,3 @@ CREATE INDEX "PortfolioCharacterMedia_adventureId_idx" ON "PortfolioCharacterMed
 CREATE INDEX "PortfolioCharacterAdventure_portfolioCharacterId_status_idx" ON "PortfolioCharacterAdventure"("portfolioCharacterId", "status");
 CREATE INDEX "PortfolioCharacterAdventure_campaignId_idx" ON "PortfolioCharacterAdventure"("campaignId");
 CREATE INDEX "PortfolioCharacterAdventure_campaignCharacterPageId_idx" ON "PortfolioCharacterAdventure"("campaignCharacterPageId");
-
-ALTER TABLE "UserAsset" ADD CONSTRAINT "UserAsset_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "PortfolioCharacter" ADD CONSTRAINT "PortfolioCharacter_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE "PortfolioCharacterAdventure" ADD CONSTRAINT "PortfolioCharacterAdventure_portfolioCharacterId_fkey" FOREIGN KEY ("portfolioCharacterId") REFERENCES "PortfolioCharacter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "PortfolioCharacterAdventure" ADD CONSTRAINT "PortfolioCharacterAdventure_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "PortfolioCharacterAdventure" ADD CONSTRAINT "PortfolioCharacterAdventure_campaignCharacterPageId_fkey" FOREIGN KEY ("campaignCharacterPageId") REFERENCES "WikiPage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE "PortfolioCharacterMedia" ADD CONSTRAINT "PortfolioCharacterMedia_portfolioCharacterId_fkey" FOREIGN KEY ("portfolioCharacterId") REFERENCES "PortfolioCharacter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "PortfolioCharacterMedia" ADD CONSTRAINT "PortfolioCharacterMedia_userAssetId_fkey" FOREIGN KEY ("userAssetId") REFERENCES "UserAsset"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "PortfolioCharacterMedia" ADD CONSTRAINT "PortfolioCharacterMedia_adventureId_fkey" FOREIGN KEY ("adventureId") REFERENCES "PortfolioCharacterAdventure"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE "PortfolioCharacter" ADD CONSTRAINT "PortfolioCharacter_portraitMediaId_fkey" FOREIGN KEY ("portraitMediaId") REFERENCES "PortfolioCharacterMedia"("id") ON DELETE SET NULL ON UPDATE CASCADE;

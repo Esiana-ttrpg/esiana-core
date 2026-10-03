@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PageContainer } from '@/components/layout/PageContainer';
@@ -51,6 +51,10 @@ export function PublicPortfolioCharacterPage() {
         </Link>
       </PageContainer>
     );
+  }
+
+  if (!data.public) {
+    return <Navigate to={`/characters/${characterId}`} replace />;
   }
 
   const c = data.character;

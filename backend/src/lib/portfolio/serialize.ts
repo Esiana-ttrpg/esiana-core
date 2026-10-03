@@ -39,7 +39,7 @@ export type AdventureRowLike = {
   id: string;
   status: string;
   direction: string;
-  campaignId: string;
+  campaignId: string | null;
   campaignCharacterPageId: string | null;
   snapshot: unknown;
   linkedAt: Date;
@@ -84,10 +84,17 @@ export type PortfolioCharacterRow = {
   portraitMedia?: MediaRowLike | null;
 };
 
+/** Authorized media URL — never expose raw storage paths from serializers. */
+export function userAssetApiUrl(assetId: string): string {
+  return `/api/users/assets/${assetId}`;
+}
+
 export function resolvePortraitUrl(row: PortfolioCharacterRow): string | null {
-  if (row.portraitMedia?.userAsset?.url) return row.portraitMedia.userAsset.url;
+  if (row.portraitMedia?.userAsset?.id) {
+    return userAssetApiUrl(row.portraitMedia.userAsset.id);
+  }
   const portrait = (row.media ?? []).find((m) => m.kind === 'PORTRAIT');
-  if (portrait?.userAsset?.url) return portrait.userAsset.url;
+  if (portrait?.userAsset?.id) return userAssetApiUrl(portrait.userAsset.id);
   const meta = row.metadata;
   if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
     const appearance = (meta as Record<string, unknown>).appearance;
@@ -105,9 +112,10 @@ export function serializeAdventure(row: AdventureRowLike) {
     snapshot.campaignTitle = row.campaign.name;
     snapshot.campaignHandle = row.campaign.handle;
   }
+  const status = row.campaignId == null ? 'DETACHED' : row.status;
   return {
     id: row.id,
-    status: row.status,
+    status,
     direction: row.direction,
     campaignId: row.campaignId,
     campaignCharacterPageId: row.campaignCharacterPageId,
@@ -118,6 +126,7 @@ export function serializeAdventure(row: AdventureRowLike) {
 }
 
 export function serializeMedia(row: MediaRowLike) {
+  const apiUrl = userAssetApiUrl(row.userAsset.id);
   return {
     id: row.id,
     kind: row.kind,
@@ -125,9 +134,9 @@ export function serializeMedia(row: MediaRowLike) {
     sortOrder: row.sortOrder,
     occurredAt: row.occurredAt?.toISOString() ?? null,
     adventureId: row.adventureId,
-    url: row.userAsset.url,
-    displayUrl: row.userAsset.displayUrl ?? row.userAsset.url,
-    thumbnailUrl: row.userAsset.thumbnailUrl ?? row.userAsset.url,
+    url: apiUrl,
+    displayUrl: apiUrl,
+    thumbnailUrl: apiUrl,
     assetId: row.userAsset.id,
     displayName: row.userAsset.displayName,
   };

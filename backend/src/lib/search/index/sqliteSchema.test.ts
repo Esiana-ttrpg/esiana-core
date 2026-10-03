@@ -51,3 +51,19 @@ CREATE INDEX "SearchIndexDocument_campaignId_typeKey_idx" ON "SearchIndexDocumen
   assert.match(out, /SearchIndexDocument_campaignId_typeKey_idx/);
   assert.doesNotMatch(out, /SearchIndexDocument_partyVector_idx/);
 });
+
+test('normalizeMigrationSqlForSqlite drops ALTER TABLE ADD CONSTRAINT', () => {
+  const sql = `
+CREATE TABLE "UserAsset" (
+  "id" TEXT NOT NULL,
+  CONSTRAINT "UserAsset_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "UserAsset_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+ALTER TABLE "UserAsset" ADD CONSTRAINT "UserAsset_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE INDEX "UserAsset_userId_idx" ON "UserAsset"("userId");
+`;
+  const out = normalizeMigrationSqlForSqlite(sql);
+  assert.doesNotMatch(out, /ALTER\s+TABLE/i);
+  assert.match(out, /UserAsset_userId_fkey/);
+  assert.match(out, /UserAsset_userId_idx/);
+});
