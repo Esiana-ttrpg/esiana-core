@@ -196,6 +196,38 @@ describe('aggregateSessionNotes', () => {
     );
   });
 
+  it('drops topics with fewer than two assigned authors after primary pick', () => {
+    const result = aggregateSessionNotes({
+      rosterCount: 3,
+      knownEntities: [
+        { pageId: 'varro', title: 'Captain Varro', aliases: [] },
+      ],
+      notes: [
+        {
+          noteId: 'n1',
+          authorId: 'a',
+          markdown: 'We entered combat.',
+        },
+        {
+          noteId: 'n2',
+          authorId: 'b',
+          markdown: 'Captain Varro was scary.',
+        },
+        {
+          noteId: 'n3',
+          authorId: 'c',
+          markdown: 'The battle with Captain Varro was brutal.',
+        },
+      ],
+    });
+
+    const labels = result.topics.map((t) => t.label);
+    assert.ok(!labels.includes('Combat'));
+    assert.ok(labels.includes('Captain Varro'));
+    assert.equal(result.otherPassages.length, 1);
+    assert.equal(result.otherPassages[0]?.authorId, 'a');
+  });
+
   it('assigns each paragraph to exactly one primary topic', () => {
     const result = aggregateSessionNotes({
       rosterCount: 2,

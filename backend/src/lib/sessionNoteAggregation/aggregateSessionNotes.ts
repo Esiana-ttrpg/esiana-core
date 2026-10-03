@@ -269,15 +269,9 @@ export function aggregateSessionNotes(
     }
   }
 
-  const survivingTopicIds = new Set<string>();
-  for (const [topicId, authors] of authorsByTopic) {
-    if (authors.size >= 2) survivingTopicIds.add(topicId);
-  }
-
   // Group matches by paragraph for primary assignment
   const matchesByParagraph = new Map<string, TopicCandidateMatch[]>();
   for (const match of allCandidateMatches) {
-    if (!survivingTopicIds.has(match.topicId)) continue;
     const key = paragraphKey({
       noteId: match.noteId,
       start: match.paragraphStart,
@@ -332,7 +326,29 @@ export function aggregateSessionNotes(
     }
   }
 
-  const topics: AggregateTopic[] = [...passagesByTopic.entries()]
+  const assignedAuthorsByTopic = new Map<string, Set<string>>();
+  const survivingPassagesByTopic = new Map<string, AggregatePassage[]>();
+
+  for (const [topicId, passages] of passagesByTopic) {
+    const assignedAuthors = new Set(passages.map((p) => p.authorId));
+    if (assignedAuthors.size < 2) {
+      for (const passage of passages) {
+        assignedParagraphs.delete(
+          paragraphKey({
+            noteId: passage.noteId,
+            start: passage.start,
+            end: passage.end,
+            authorId: passage.authorId,
+          }),
+        );
+      }
+      continue;
+    }
+    assignedAuthorsByTopic.set(topicId, assignedAuthors);
+    survivingPassagesByTopic.set(topicId, passages);
+  }
+
+  const topics: AggregateTopic[] = [...survivingPassagesByTopic.entries()]
     .map(([topicId, passages]) => {
       const meta = metaByTopic.get(topicId)!;
       return {
@@ -344,8 +360,8 @@ export function aggregateSessionNotes(
       };
     })
     .sort((a, b) => {
-      const authorsA = authorsByTopic.get(a.id)?.size ?? 0;
-      const authorsB = authorsByTopic.get(b.id)?.size ?? 0;
+      const authorsA = assignedAuthorsByTopic.get(a.id)?.size ?? 0;
+      const authorsB = assignedAuthorsByTopic.get(b.id)?.size ?? 0;
       if (authorsB !== authorsA) return authorsB - authorsA;
       const occA = firstOccurrenceByTopic.get(a.id) ?? Number.MAX_SAFE_INTEGER;
       const occB = firstOccurrenceByTopic.get(b.id) ?? Number.MAX_SAFE_INTEGER;

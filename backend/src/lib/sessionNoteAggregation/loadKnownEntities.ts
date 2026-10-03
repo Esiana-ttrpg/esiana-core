@@ -1,6 +1,9 @@
 import { prisma } from '../prisma.js';
-import { canViewWikiPage } from '../wikiTree.js';
 import { normalizeCampaignMemberRole } from '../acl.js';
+import {
+  CampaignMemberRoles,
+  WikiVisibility,
+} from '../../types/domain.js';
 import type { AggregateKnownEntity } from './types.js';
 
 const LINKABLE_TEMPLATE_TYPES = [
@@ -18,6 +21,28 @@ const LINKABLE_TEMPLATE_TYPES = [
 
 const MAX_ENTITY_PAGES = 400;
 
+function isManagerRole(role: ReturnType<typeof normalizeCampaignMemberRole>): boolean {
+  return (
+    role === CampaignMemberRoles.GAMEMASTER ||
+    role === CampaignMemberRoles.WRITER
+  );
+}
+
+function visibilityWhereForRole(
+  role: ReturnType<typeof normalizeCampaignMemberRole>,
+): { visibility?: { in: string[] } } {
+  if (isManagerRole(role)) return {};
+  if (
+    role === CampaignMemberRoles.PARTICIPANT ||
+    role === CampaignMemberRoles.OBSERVER
+  ) {
+    return {
+      visibility: { in: [WikiVisibility.PUBLIC, WikiVisibility.PARTY] },
+    };
+  }
+  return { visibility: { in: [WikiVisibility.PUBLIC] } };
+}
+
 /**
  * Viewer-scoped entity dictionary for session-note aggregation matching.
  * Excludes session notes; titles + aliases only.
@@ -32,6 +57,7 @@ export async function loadKnownEntitiesForAggregation(input: {
       campaignId: input.campaignId,
       deletedAt: null,
       templateType: { in: [...LINKABLE_TEMPLATE_TYPES] },
+      ...visibilityWhereForRole(role),
     },
     select: {
       id: true,
@@ -40,19 +66,15 @@ export async function loadKnownEntitiesForAggregation(input: {
       templateType: true,
     },
     orderBy: { title: 'asc' },
-    take: MAX_ENTITY_PAGES + 50,
+    take: MAX_ENTITY_PAGES,
   });
 
-  const visible = pages
-    .filter((page) => canViewWikiPage(page.visibility, role))
-    .slice(0, MAX_ENTITY_PAGES);
-
-  if (visible.length === 0) return [];
+  if (pages.length === 0) return [];
 
   const aliases = await prisma.wikiPageAlias.findMany({
     where: {
       campaignId: input.campaignId,
-      pageId: { in: visible.map((p) => p.id) },
+      pageId: { in: pages.map((p) => p.id) },
     },
     select: { pageId: true, alias: true },
   });
@@ -64,7 +86,7 @@ export async function loadKnownEntitiesForAggregation(input: {
     aliasesByPage.set(row.pageId, list);
   }
 
-  return visible.map((page) => ({
+  return pages.map((page) => ({
     pageId: page.id,
     title: page.title,
     aliases: aliasesByPage.get(page.id) ?? [],

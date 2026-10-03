@@ -15,6 +15,7 @@ import {
   ensureSessionAuthorNote,
   updateSessionNotePage,
 } from '@/lib/wiki';
+import { getSessionNoteMarkdown } from '@/utils/sessionNote';
 import { CampaignMemberRoles } from '@/types/domain';
 import type {
   AggregatePassage,
@@ -307,8 +308,25 @@ export function SessionAggregateNotesView({
         timelinePointId,
       );
       const pageId = ensured.page.id;
-      const existingCol = columnsByPageId.get(pageId);
-      const existing = existingCol?.markdown?.trim() ?? '';
+      const blocks = ensured.page.blocks;
+      if (!Array.isArray(blocks)) {
+        window.alert('Unable to read your session note. Please try again.');
+        return;
+      }
+      const body =
+        blocks.find((block) => block.id === 'session-note-body') ??
+        blocks.find((block) => block.type === 'text-tiptap');
+      if (!body) {
+        window.alert('Unable to read your session note. Please try again.');
+        return;
+      }
+      const markdown = (body.content as { markdown?: unknown } | undefined)
+        ?.markdown;
+      if (typeof markdown !== 'string') {
+        window.alert('Unable to read your session note. Please try again.');
+        return;
+      }
+      const existing = getSessionNoteMarkdown(blocks).trim();
       const next = existing
         ? `${existing}\n\n${addDraft.trim()}`
         : addDraft.trim();
