@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { CalendarDays } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,20 +32,26 @@ export function SchedulePage() {
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [vacationOpen, setVacationOpen] = useState(false);
+  const loadRequestIdRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++loadRequestIdRef.current;
     setLoading(true);
     setLoadError(null);
     try {
       const range = monthGridRange(year, monthIndex);
       const data = await fetchUserSchedule(range);
+      if (requestId !== loadRequestIdRef.current) return;
       setPreferences(data.preferences);
       setEntries(data.entries);
       setUpcoming(data.upcoming);
     } catch (err) {
+      if (requestId !== loadRequestIdRef.current) return;
       setLoadError(err instanceof Error ? err.message : 'Failed to load schedule.');
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [year, monthIndex]);
 

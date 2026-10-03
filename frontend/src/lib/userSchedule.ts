@@ -6,14 +6,18 @@ import type {
 
 export const AUTO_RSVP_DAY_OPTIONS = [1, 3, 7, 14] as const;
 
-/** Inclusive month-grid range including leading/trailing days shown in a Sun–Sat calendar. */
+/** Inclusive month-grid range including leading/trailing days shown in a Sun–Sat calendar.
+ * Extends one local day past either end so backend UTC date parsing of YYYY-MM-DD
+ * still covers the visible grid cells near timezone boundaries.
+ */
 export function monthGridRange(year: number, monthIndex: number): { from: string; to: string } {
   const first = new Date(year, monthIndex, 1);
   const last = new Date(year, monthIndex + 1, 0);
   const startPad = first.getDay();
   const endPad = 6 - last.getDay();
-  const fromDate = new Date(year, monthIndex, 1 - startPad);
-  const toDate = new Date(year, monthIndex + 1, endPad);
+  // One extra day before/after the Sunday–Saturday grid for UTC parse padding.
+  const fromDate = new Date(year, monthIndex, 1 - startPad - 1);
+  const toDate = new Date(year, monthIndex + 1, endPad + 1);
   const iso = (d: Date) => {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');

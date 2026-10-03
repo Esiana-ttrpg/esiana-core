@@ -22,6 +22,9 @@ function parseRangeDate(raw: unknown, label: string): Date | null {
   return date;
 }
 
+/** Reject calendar queries that ask for more than ~two months of projection work. */
+const MAX_SCHEDULE_RANGE_MS = 62 * 24 * 60 * 60 * 1000;
+
 export async function getUserSchedule(
   req: AuthenticatedRequest,
   res: Response,
@@ -34,6 +37,10 @@ export async function getUserSchedule(
   }
   if (from.getTime() > to.getTime()) {
     res.status(400).json({ error: 'from must be on or before to.' });
+    return;
+  }
+  if (to.getTime() - from.getTime() > MAX_SCHEDULE_RANGE_MS) {
+    res.status(400).json({ error: 'from/to range must not exceed 62 days.' });
     return;
   }
 

@@ -99,7 +99,16 @@ export function parseVacationDateInput(raw: unknown): Date | null {
   if (!Number.isFinite(year) || month < 1 || month > 12 || day < 1 || day > 31) {
     return null;
   }
-  return new Date(Date.UTC(year, month - 1, day));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  // Reject Date.UTC normalization of impossible calendar dates (e.g. Feb 30 → Mar 2).
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return date;
 }
 
 export function toVacationDateIso(date: Date | null | undefined): string | null {
@@ -802,7 +811,10 @@ export async function runAutoRsvpSweep(now: Date = new Date()): Promise<number> 
     const windowEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
     const memberships = await prisma.campaignMember.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        campaign: { archivedAt: null },
+      },
       select: { campaignId: true },
     });
     const campaignIds = memberships.map((m) => m.campaignId);
@@ -812,7 +824,10 @@ export async function runAutoRsvpSweep(now: Date = new Date()): Promise<number> 
       where: {
         status: SessionScheduleStatus.PUBLISHED,
         plannedStartAt: { gte: now, lte: windowEnd },
-        timelinePoint: { campaignId: { in: campaignIds } },
+        timelinePoint: {
+          campaignId: { in: campaignIds },
+          campaign: { archivedAt: null },
+        },
       },
       select: {
         timelinePointId: true,
@@ -842,14 +857,21 @@ export async function runAutoRsvpSweep(now: Date = new Date()): Promise<number> 
       });
       if (existing) continue;
 
-      await prisma.sessionAttendance.create({
-        data: {
-          timelinePointId: schedule.timelinePointId,
-          userId: user.id,
-          status: SessionAttendanceStatus.ATTENDING,
-        },
-      });
-      applied += 1;
+      try {
+        await prisma.sessionAttendance.create({
+          data: {
+            timelinePointId: schedule.timelinePointId,
+            userId: user.id,
+            status: SessionAttendanceStatus.ATTENDING,
+          },
+        });
+        applied += 1;
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        // Concurrent manual RSVP won the unique constraint — treat as already applied.
+        if (code === 'P2002') continue;
+        throw err;
+      }
     }
   }
 

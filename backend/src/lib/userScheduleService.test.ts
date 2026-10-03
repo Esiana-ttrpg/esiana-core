@@ -158,3 +158,10 @@ test('vacation date helpers are day-level inclusive', () => {
     false,
   );
 });
+
+test('parseVacationDateInput rejects impossible calendar dates', () => {
+  assert.equal(parseVacationDateInput('2026-02-30'), null);
+  assert.equal(parseVacationDateInput('2026-04-31'), null);
+  assert.equal(parseVacationDateInput('2026-13-01'), null);
+  assert.ok(parseVacationDateInput('2026-02-28'));
+});

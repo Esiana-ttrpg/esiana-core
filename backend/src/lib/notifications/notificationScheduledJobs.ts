@@ -106,10 +106,22 @@ async function runNotificationSweepOnce(): Promise<void> {
     );
     const ensured = await runEnsureUpcomingSessionsSweep();
     updateBackgroundTask(task.id, { progress: 70 });
-    const { runAutoRsvpSweep } = await import('../userScheduleService.js');
-    const autoRsvps = await runAutoRsvpSweep();
-    updateBackgroundTask(task.id, { progress: 85 });
+
+    let autoRsvps = 0;
+    let autoRsvpError: unknown = null;
+    try {
+      const { runAutoRsvpSweep } = await import('../userScheduleService.js');
+      autoRsvps = await runAutoRsvpSweep();
+      updateBackgroundTask(task.id, { progress: 85 });
+    } catch (error) {
+      autoRsvpError = error;
+    }
+
     const expiredTransfers = await expireStaleOwnershipTransfers({ notify: true });
+    if (autoRsvpError) {
+      throw autoRsvpError;
+    }
+
     updateBackgroundTask(task.id, {
       status: 'COMPLETED',
       progress: 100,
