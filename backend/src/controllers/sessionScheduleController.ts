@@ -17,6 +17,7 @@ import {
   campaignNotePath,
 } from '../lib/notifications/deepLinks.js';
 import { resolveUserDisplayName } from '../lib/userDisplay.js';
+import { isDateInVacationRange } from '../lib/userScheduleService.js';
 
 const RSVP_DEBOUNCE_MS = 5 * 60 * 1000;
 const rsvpDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -449,11 +450,20 @@ export async function listSessionAttendance(
     return;
   }
 
-  const [attendance, members] = await Promise.all([
+  const [attendance, members, schedule] = await Promise.all([
     prisma.sessionAttendance.findMany({
       where: { timelinePointId },
       include: {
-        user: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            avatarUrl: true,
+            vacationStartDate: true,
+            vacationEndDate: true,
+          },
+        },
       },
     }),
     prisma.campaignMember.findMany({
@@ -461,14 +471,36 @@ export async function listSessionAttendance(
       select: {
         userId: true,
         role: true,
-        user: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            avatarUrl: true,
+            vacationStartDate: true,
+            vacationEndDate: true,
+          },
+        },
       },
     }),
+    prisma.campaignSessionSchedule.findUnique({
+      where: { timelinePointId },
+      select: { plannedStartAt: true },
+    }),
   ]);
+
+  const sessionStart = schedule?.plannedStartAt ?? null;
 
   const attendanceByUser = new Map(attendance.map((row) => [row.userId, row]));
   const roster = members.map((member) => {
     const row = attendanceByUser.get(member.userId);
+    const away =
+      sessionStart != null &&
+      isDateInVacationRange(
+        sessionStart,
+        member.user.vacationStartDate,
+        member.user.vacationEndDate,
+      );
     return {
       userId: member.userId,
       name: resolveUserDisplayName(member.user),
@@ -477,6 +509,7 @@ export async function listSessionAttendance(
       status: row?.status ?? null,
       note: row?.note ?? null,
       updatedAt: row?.updatedAt.toISOString() ?? null,
+      away,
     };
   });
 

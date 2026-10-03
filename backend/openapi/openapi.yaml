@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Esiana Core API
-  version: 1.5.0
+  version: 1.7.0
   description: |
     REST API for Esiana campaign narrative infrastructure.
 
@@ -653,7 +653,9 @@ paths:
           required: false
           schema:
             type: string
-            enum: ["1", "true"]
+            enum:
+              - "1"
+              - "true"
           description: |
             When set by an elevated campaign member (GM/Writer), attach
             diagnostic `rank` on each result and top-level `diagnostics`.
@@ -687,7 +689,7 @@ paths:
                       label: Session Note
                     title: Session 12
                     excerpt:
-                      text: "…Yuna arrived in Besaid…"
+                      text: …Yuna arrived in Besaid…
                       field: Body
                     href: /campaigns/demo/sessions/session-12
                     matchedOn: body
@@ -704,13 +706,15 @@ paths:
                   - kind: best
                     key: best
                     label: Best match
-                    resultIds: [character:pg_yuna]
+                    resultIds:
+                      - character:pg_yuna
                     totalCount: 1
                   - kind: mentions
                     key: mentions:session-note
                     label: Mentioned in 40 session notes
                     typeKey: session-note
-                    resultIds: [session-note:sn_01]
+                    resultIds:
+                      - session-note:sn_01
                     totalCount: 40
         "400":
           description: Query too long
@@ -719,7 +723,6 @@ paths:
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
-          - Resource-level visibility and ownership checks performed by the controller/service
       description: |
         Candidate retrieval uses a derived SearchIndexDocument projection with
         PostgreSQL tsvector/GIN inverted indexes (portable multi-token LIKE over
@@ -802,7 +805,8 @@ paths:
             schema:
               oneOf:
                 - type: object
-                  required: [credential]
+                  required:
+                    - credential
                   properties:
                     credential:
                       type: string
@@ -813,7 +817,9 @@ paths:
                       type: string
                       maxLength: 160
                 - type: object
-                  required: [username, password]
+                  required:
+                    - username
+                    - password
                   properties:
                     username:
                       type: string
@@ -10894,7 +10900,7 @@ paths:
     post:
       tags:
         - Campaigns
-      summary: Skip TimelinePointId Schedule
+      summary: Create or run Schedule Skip
       operationId: post_api_campaigns_campaignHandle_session_timeline_timelinePointId_schedule_skip
       x-esiana-authorization:
         boundary: campaign
@@ -10947,7 +10953,7 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get Campaign Schedule
+      summary: Get CampaignHandle Schedule
       operationId: get_api_campaigns_campaignHandle_schedule
       x-esiana-authorization:
         boundary: campaign
@@ -10986,7 +10992,7 @@ paths:
     patch:
       tags:
         - Campaigns
-      summary: Update Campaign Schedule
+      summary: Update CampaignHandle Schedule
       operationId: patch_api_campaigns_campaignHandle_schedule
       x-esiana-authorization:
         boundary: campaign
@@ -11034,7 +11040,7 @@ paths:
     post:
       tags:
         - Campaigns
-      summary: Schedule Upcoming Session
+      summary: Create or run Schedule Upcoming
       operationId: post_api_campaigns_campaignHandle_schedule_upcoming
       x-esiana-authorization:
         boundary: campaign
@@ -11082,7 +11088,7 @@ paths:
     post:
       tags:
         - Campaigns
-      summary: Skip Upcoming Session
+      summary: Create or run Upcoming Skip
       operationId: post_api_campaigns_campaignHandle_schedule_upcoming_skip
       x-esiana-authorization:
         boundary: campaign
@@ -20913,6 +20919,77 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/user/schedule:
+    get:
+      tags:
+        - User Account
+      summary: Get User Schedule
+      operationId: get_api_user_schedule
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session."
+  /api/user/schedule/preferences:
+    patch:
+      tags:
+        - User Account
+      summary: Update Schedule Preferences
+      operationId: patch_api_user_schedule_preferences
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session."
 components:
   securitySchemes:
     cookieAuth:
