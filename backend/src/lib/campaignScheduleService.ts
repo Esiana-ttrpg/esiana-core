@@ -568,12 +568,29 @@ export async function ensureUpcomingSession(
   if (!hasEnoughCadence(campaign)) return null;
 
   const after = new Date();
+  const previous = await prisma.campaignSessionSchedule.findFirst({
+    where: {
+      plannedStartAt: { lt: after },
+      timelinePoint: { campaignId },
+      status: {
+        in: [
+          SessionScheduleStatus.PUBLISHED,
+          SessionScheduleStatus.SKIPPED,
+          SessionScheduleStatus.COMPLETED,
+        ],
+      },
+    },
+    orderBy: { plannedStartAt: 'desc' },
+    select: { plannedStartAt: true },
+  });
+
   const next = computeNextCadenceOccurrence({
     scheduleFrequency: campaign.scheduleFrequency,
     scheduleDay: campaign.scheduleDay,
     scheduleTime: campaign.scheduleTime,
     scheduleTimezone: campaign.scheduleTimezone,
     after,
+    previousPlannedStartAt: previous?.plannedStartAt ?? null,
   });
   if (!next) return null;
 
@@ -663,40 +680,51 @@ export async function skipSession(input: SkipSessionInput): Promise<{
 
 /** Sweep campaigns that need an upcoming cadence session. */
 export async function runEnsureUpcomingSessionsSweep(): Promise<number> {
-  const campaigns = await prisma.campaign.findMany({
-    where: {
-      schedulingEnabled: true,
-      autoScheduleUpcomingSession: true,
-      archivedAt: null,
-    },
-    select: {
-      id: true,
-      campaignFormat: true,
-      campaignOwnerUserId: true,
-      members: {
-        where: { role: 'GAMEMASTER' },
-        select: { userId: true },
-        take: 1,
-        orderBy: { createdAt: 'asc' },
-      },
-    },
-    take: 200,
-  });
-
   let created = 0;
-  for (const campaign of campaigns) {
-    if (isOneShotCampaignFormat(campaign.campaignFormat)) continue;
-    const authorId =
-      campaign.members[0]?.userId ?? campaign.campaignOwnerUserId ?? null;
-    if (!authorId) continue;
-    try {
-      const before = await findCanonicalUpcomingSession(campaign.id);
-      const after = await ensureUpcomingSession(campaign.id, authorId);
-      if (!before && after) created += 1;
-    } catch {
-      // Continue sweep for other campaigns
+  let cursorId: string | null = null;
+  const batchSize = 200;
+
+  for (;;) {
+    const campaigns = await prisma.campaign.findMany({
+      where: {
+        schedulingEnabled: true,
+        autoScheduleUpcomingSession: true,
+        archivedAt: null,
+        ...(cursorId ? { id: { gt: cursorId } } : {}),
+      },
+      select: {
+        id: true,
+        campaignFormat: true,
+        campaignOwnerUserId: true,
+        members: {
+          where: { role: 'GAMEMASTER' },
+          select: { userId: true },
+          take: 1,
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+    });
+
+    for (const campaign of campaigns) {
+      if (isOneShotCampaignFormat(campaign.campaignFormat)) continue;
+      const authorId =
+        campaign.members[0]?.userId ?? campaign.campaignOwnerUserId ?? null;
+      if (!authorId) continue;
+      try {
+        const before = await findCanonicalUpcomingSession(campaign.id);
+        const after = await ensureUpcomingSession(campaign.id, authorId);
+        if (!before && after) created += 1;
+      } catch {
+        // Continue sweep for other campaigns
+      }
     }
+
+    if (campaigns.length < batchSize) break;
+    cursorId = campaigns[campaigns.length - 1]!.id;
   }
+
   return created;
 }
 

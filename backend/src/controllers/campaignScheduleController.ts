@@ -144,10 +144,11 @@ export async function patchCampaignSchedule(
         : null,
     });
   } catch (err) {
-    const status = err instanceof ScheduleValidationError ? 400 : 400;
-    res.status(status).json({
-      error: err instanceof Error ? err.message : 'Failed to update schedule',
-    });
+    if (err instanceof ScheduleValidationError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.status(500).json({ error: 'Failed to update schedule' });
   }
 }
 

@@ -191,6 +191,8 @@ function addDaysKeepingWallClock(date: Date, days: number, timeZone: string): Da
 
 /**
  * Next occurrence after `after` (exclusive), using wall-clock fields in scheduleTimezone.
+ * When `previousPlannedStartAt` is set (last completed/skipped session), biweekly/monthly
+ * intervals are measured from that occurrence so sweeps at arbitrary offsets stay on grid.
  */
 export function computeNextCadenceOccurrence(params: {
   scheduleFrequency: string | null;
@@ -198,12 +200,49 @@ export function computeNextCadenceOccurrence(params: {
   scheduleTime: string | null;
   scheduleTimezone?: string | null;
   after: Date;
+  previousPlannedStartAt?: Date | null;
 }): Date | null {
   const weekday = parseWeekday(params.scheduleDay);
   const parsedTime = parseScheduleTime(params.scheduleTime);
   if (weekday === null || !parsedTime) return null;
 
   const timeZone = resolveTimeZone(params.scheduleTimezone);
+  const cadenceDays = inferCadenceDays(params.scheduleFrequency);
+
+  // Prefer stepping from the previous occurrence when we have one (stable biweekly grid).
+  if (params.previousPlannedStartAt && !Number.isNaN(params.previousPlannedStartAt.getTime())) {
+    const prevParts = getZonedParts(params.previousPlannedStartAt, timeZone);
+    let stepped = zonedWallTimeToUtc({
+      year: prevParts.year,
+      month: prevParts.month,
+      day: prevParts.day,
+      hour: parsedTime.hour,
+      minute: parsedTime.minute,
+      timeZone,
+    });
+
+    if (isMonthlyCadence(params.scheduleFrequency)) {
+      const prevMonth = getZonedParts(params.previousPlannedStartAt, timeZone);
+      for (let i = 0; i < 60; i += 1) {
+        stepped = addDaysKeepingWallClock(stepped, 7, timeZone);
+        const parts = getZonedParts(stepped, timeZone);
+        const laterMonth =
+          parts.year > prevMonth.year ||
+          (parts.year === prevMonth.year && parts.month > prevMonth.month);
+        if (laterMonth && stepped.getTime() > params.after.getTime()) {
+          return stepped;
+        }
+      }
+      return null;
+    }
+
+    const stepDays = cadenceDays;
+    while (stepped.getTime() <= params.after.getTime()) {
+      stepped = addDaysKeepingWallClock(stepped, stepDays, timeZone);
+    }
+    return stepped;
+  }
+
   const afterParts = getZonedParts(params.after, timeZone);
   let year = afterParts.year;
   let month = afterParts.month;
@@ -239,10 +278,11 @@ export function computeNextCadenceOccurrence(params: {
     return candidate;
   }
 
-  const cadenceDays = inferCadenceDays(params.scheduleFrequency);
+  // Biweekly without a previous baseline: enforce cadenceDays from `after`.
   if (cadenceDays > 7) {
+    const baseline = params.after;
     const minMs = cadenceDays * 24 * 60 * 60 * 1000;
-    while (candidate.getTime() - params.after.getTime() < minMs) {
+    while (candidate.getTime() - baseline.getTime() < minMs) {
       candidate = addDaysKeepingWallClock(candidate, 7, timeZone);
     }
   }
@@ -268,21 +308,47 @@ export function datetimeLocalValueToIso(
   value: string,
   timeZone: string | null | undefined,
 ): string {
+  const result = datetimeLocalValueToIsoStrict(value, timeZone);
+  if (result) return result;
+  const fallback = new Date(value);
+  return fallback.toISOString();
+}
+
+/**
+ * Like datetimeLocalValueToIso, but returns null when the wall time does not exist
+ * in the timezone (e.g. DST spring-forward gap) or cannot be parsed.
+ */
+export function datetimeLocalValueToIsoStrict(
+  value: string,
+  timeZone: string | null | undefined,
+): string | null {
   const match = value.match(
     /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/,
   );
-  if (!match) {
-    const fallback = new Date(value);
-    return fallback.toISOString();
-  }
+  if (!match) return null;
+  const year = Number.parseInt(match[1]!, 10);
+  const month = Number.parseInt(match[2]!, 10);
+  const day = Number.parseInt(match[3]!, 10);
+  const hour = Number.parseInt(match[4]!, 10);
+  const minute = Number.parseInt(match[5]!, 10);
   const date = zonedWallTimeToUtc({
-    year: Number.parseInt(match[1]!, 10),
-    month: Number.parseInt(match[2]!, 10),
-    day: Number.parseInt(match[3]!, 10),
-    hour: Number.parseInt(match[4]!, 10),
-    minute: Number.parseInt(match[5]!, 10),
+    year,
+    month,
+    day,
+    hour,
+    minute,
     timeZone,
   });
+  const parts = getZonedParts(date, timeZone);
+  if (
+    parts.year !== year ||
+    parts.month !== month ||
+    parts.day !== day ||
+    parts.hour !== hour ||
+    parts.minute !== minute
+  ) {
+    return null;
+  }
   return date.toISOString();
 }
 

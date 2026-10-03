@@ -16,7 +16,7 @@ import { resolveMasterCalendarLike } from '@/lib/chronologyCalendar';
 import type { ChronologyDateParts } from '@/lib/entityRelationTypes';
 import type { UpcomingSessionSummary } from '@/types/notifications';
 import {
-  datetimeLocalValueToIso,
+  datetimeLocalValueToIsoStrict,
   isoToDatetimeLocalValue,
   timeLabelFromDatetimeLocal,
   weekdayNameFromDatetimeLocal,
@@ -169,13 +169,22 @@ export function ScheduleSessionModal({
         ).toString();
       }
 
+      const plannedStartAt = datetimeLocalValueToIsoStrict(dateTime, timezone);
+      if (!plannedStartAt) {
+        setError(
+          'That date and time does not exist in the selected timezone (for example, during a daylight-saving transition). Pick another time.',
+        );
+        setSaving(false);
+        return;
+      }
+
       const day = weekdayNameFromDatetimeLocal(dateTime, timezone);
       const time = timeLabelFromDatetimeLocal(dateTime, timezone);
       const applyRecurrence =
         applyRecurrenceChange || (!isEditing && Boolean(frequency));
 
       await postScheduleUpcoming(campaignHandle, {
-        plannedStartAt: datetimeLocalValueToIso(dateTime, timezone),
+        plannedStartAt,
         timezone,
         applyRecurrenceChange: applyRecurrence,
         scheduleFrequency: frequency || null,
