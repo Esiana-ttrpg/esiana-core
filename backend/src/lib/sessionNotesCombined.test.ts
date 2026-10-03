@@ -93,6 +93,12 @@ describe('sessionNotesCombined', () => {
     assert.ok(playerCol?.hasNotes);
     assert.deepEqual(built.referenceSourcePageIds, ['page-p1']);
     assert.equal(built.entitiesMentioned.length, 0);
+    assert.ok(built.aggregate);
+    assert.equal(built.aggregate.notesWithContent, 1);
+    assert.equal(built.aggregate.rosterCount, 2);
+    // Single author mentioning combat → otherPassages, not a topic
+    assert.equal(built.aggregate.topics.length, 0);
+    assert.ok(built.aggregate.otherPassages.length >= 1);
   });
 
   it('builds sort keys from fantasy epoch and createdAt', () => {

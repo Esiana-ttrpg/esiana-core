@@ -262,6 +262,35 @@ export interface SessionEntityMention {
   title: string;
 }
 
+export interface AggregateDetectedEntity {
+  start: number;
+  end: number;
+  pageId: string;
+}
+
+export interface AggregatePassage {
+  noteId: string;
+  authorId: string;
+  start: number;
+  end: number;
+  detectedEntities: AggregateDetectedEntity[];
+}
+
+export interface AggregateTopic {
+  id: string;
+  label: string;
+  kind: 'ENTITY' | 'CONCEPT';
+  entityRef?: string;
+  passages: AggregatePassage[];
+}
+
+export interface SessionNotesAggregate {
+  notesWithContent: number;
+  rosterCount: number;
+  topics: AggregateTopic[];
+  otherPassages: AggregatePassage[];
+}
+
 export interface CombinedSessionHeader {
   sessionGroupId: string;
   timelinePointId: string | null;
@@ -287,6 +316,7 @@ export interface CombinedSessionNotesPayload {
   entitiesMentioned: SessionEntityMention[];
   referenceSourcePageIds: string[];
   references: AggregatedReferencesPayload;
+  aggregate: SessionNotesAggregate;
 }
 
 export interface EnsureSessionAuthorNoteResult {

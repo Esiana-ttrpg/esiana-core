@@ -393,6 +393,11 @@ export function SessionNoteEditor({
                 campaignHandle={campaignHandle}
                 payload={combined}
                 canManage={isDMUser}
+                onRefresh={onCombinedRefresh}
+                onSelectAuthor={(userId) => {
+                  const member = roster.find((m) => m.id === userId);
+                  if (member) handleSelectMember(member);
+                }}
               />
             ) : (
               <p className="text-sm text-muted">Combined view unavailable.</p>

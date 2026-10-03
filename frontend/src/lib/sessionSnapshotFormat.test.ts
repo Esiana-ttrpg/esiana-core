@@ -23,6 +23,12 @@ const basePayload: CombinedSessionNotesPayload = {
   entitiesMentioned: [{ pageId: 'hero', title: 'Hero' }],
   referenceSourcePageIds: ['p1'],
   references: { backlinks: [], outlinks: [], brokenOutlinks: [] },
+  aggregate: {
+    notesWithContent: 2,
+    rosterCount: 3,
+    topics: [],
+    otherPassages: [],
+  },
   columns: [
     {
       userId: 'p2',

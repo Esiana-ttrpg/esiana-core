@@ -182,6 +182,7 @@ import {
   loadSessionHeaderContext,
   resolveSessionGroupContext,
 } from '../lib/sessionNotesCombined.js';
+import { loadKnownEntitiesForAggregation } from '../lib/sessionNoteAggregation/index.js';
 import { buildSessionNotesAttendance } from '../lib/sessionNotesAttendance.js';
 import {
   getAggregatedReferencesForPages,
@@ -5455,7 +5456,7 @@ export async function getCombinedSessionNotes(
   });
   const primaryCalendar = campaignRow?.fantasyCalendars[0] ?? null;
 
-  const [members, authorPages, sessionHeader] = await Promise.all([
+  const [members, authorPages, sessionHeader, knownEntities] = await Promise.all([
     loadSessionRosterMembers(ctx.campaignId),
     fetchAuthorPagesForSession(
       ctx.campaignId,
@@ -5467,6 +5468,10 @@ export async function getCombinedSessionNotes(
       groupCtx,
       primaryCalendar,
     ),
+    loadKnownEntitiesForAggregation({
+      campaignId: ctx.campaignId,
+      role: ctx.role,
+    }),
   ]);
 
   const rosterMembers = members
@@ -5475,7 +5480,9 @@ export async function getCombinedSessionNotes(
 
   const entityIdSet = new Set<string>();
   for (const page of authorPages) {
-    if (!canManage && page.visibility === WikiVisibility.DM_ONLY) continue;
+    // Party-visible corpus only: DM_Only never contributes wiki-link entity chips
+    // tied to aggregate (even for managers).
+    if (page.visibility === WikiVisibility.DM_ONLY) continue;
     const blocks = Array.isArray(page.blocks)
       ? (page.blocks as Array<Record<string, unknown>>)
       : [];
@@ -5496,6 +5503,11 @@ export async function getCombinedSessionNotes(
       : [];
 
   const pageTitlesById = new Map(titlePages.map((p) => [p.id, p.title] as const));
+  for (const entity of knownEntities) {
+    if (!pageTitlesById.has(entity.pageId)) {
+      pageTitlesById.set(entity.pageId, entity.title);
+    }
+  }
 
   const built = buildCombinedSessionNotes({
     session: sessionHeader,
@@ -5503,6 +5515,7 @@ export async function getCombinedSessionNotes(
     members: rosterMembers,
     authorPages,
     pageTitlesById,
+    knownEntities,
   });
 
   const blocksByPageId = new Map<string, Array<Record<string, unknown>>>();
