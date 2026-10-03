@@ -25,6 +25,7 @@ const result = spawnSync(
     'src/lib/campaignPaths.test.ts',
     'src/lib/campaignDashboardNavigationState.test.ts',
     'src/lib/sessionSnapshotFormat.test.ts',
+    'src/lib/sessionAggregateEnrichment.test.ts',
     'src/hooks/useIdentityDisplay.test.ts',
     'src/utils/sessionNoteConstants.test.ts',
     'src/lib/configSchemaParser.test.ts',

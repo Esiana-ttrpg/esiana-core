@@ -15,6 +15,13 @@ import type {
   WikiBrokenOutlinkRow,
   WikiOutlinkRow,
 } from './wikiLinkService.js';
+import {
+  aggregateSessionNotes,
+  toAggregateNotesFromColumns,
+  type AggregateKnownEntity,
+  type AggregatePassage,
+  type AggregateTopic,
+} from './sessionNoteAggregation/index.js';
 
 export interface SessionAuthorColumn {
   userId: string;
@@ -60,12 +67,20 @@ export interface CombinedSessionReferences {
   brokenOutlinks: WikiBrokenOutlinkRow[];
 }
 
+export interface CombinedSessionAggregate {
+  notesWithContent: number;
+  rosterCount: number;
+  topics: AggregateTopic[];
+  otherPassages: AggregatePassage[];
+}
+
 export interface CombinedSessionNotesResult {
   session: CombinedSessionHeader;
   columns: SessionAuthorColumn[];
   entitiesMentioned: SessionEntityMention[];
   referenceSourcePageIds: string[];
   references: CombinedSessionReferences;
+  aggregate: CombinedSessionAggregate;
 }
 
 export function extractSessionNoteMarkdown(blocks: unknown): string {
@@ -353,6 +368,7 @@ export function buildCombinedSessionNotes(params: {
     updatedAt: Date;
   }>;
   pageTitlesById: Map<string, string>;
+  knownEntities?: AggregateKnownEntity[];
 }): Omit<CombinedSessionNotesResult, 'references'> {
   const sessionFantasyEpoch = params.session.fantasyEpochMinute;
 
@@ -441,11 +457,27 @@ export function buildCombinedSessionNotes(params: {
   }
   entitiesMentioned.sort((a, b) => a.title.localeCompare(b.title));
 
+  const aggregateNotes = toAggregateNotesFromColumns(columns);
+  const aggregate = aggregateSessionNotes({
+    notes: aggregateNotes,
+    knownEntities: params.knownEntities ?? [],
+    rosterCount: params.members.length,
+  });
+
+  // Prefer entity topics from aggregate for entitiesMentioned when present
+  for (const topic of aggregate.topics) {
+    if (topic.kind !== 'ENTITY' || !topic.entityRef) continue;
+    if (entitiesMentioned.some((e) => e.pageId === topic.entityRef)) continue;
+    entitiesMentioned.push({ pageId: topic.entityRef, title: topic.label });
+  }
+  entitiesMentioned.sort((a, b) => a.title.localeCompare(b.title));
+
   return {
     session: params.session,
     columns,
     entitiesMentioned,
     referenceSourcePageIds,
+    aggregate,
   };
 }
 

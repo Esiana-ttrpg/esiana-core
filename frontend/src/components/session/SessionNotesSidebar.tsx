@@ -63,7 +63,11 @@ export function SessionNotesSidebar({
             <LayoutGrid className="size-4 shrink-0 text-primary" aria-hidden />
             All Players
           </span>
-          <span className="text-[11px] text-muted">Combined notes for this session</span>
+          <span className="text-[11px] text-muted">
+            {combined?.aggregate
+              ? `${combined.aggregate.notesWithContent} of ${combined.aggregate.rosterCount} players wrote notes`
+              : 'Combined notes for this session'}
+          </span>
         </button>
         {allViewHref && (
           <Link
