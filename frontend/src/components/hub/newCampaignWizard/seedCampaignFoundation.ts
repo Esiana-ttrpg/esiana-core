@@ -1,4 +1,5 @@
 import { updateCampaignSettings } from '@/lib/campaigns';
+import { postScheduleUpcoming } from '@/lib/campaignSchedule';
 import {
   buildCreateBlocks,
   buildCreateMetadata,
@@ -11,6 +12,7 @@ import {
   flattenWikiTree,
 } from '@/lib/wiki';
 import { resolveNarrativeThreadsRootId } from '@/lib/threadHubLayout';
+import { ENGLISH_WEEKDAY_NAMES } from '@shared/campaignScheduleCadence';
 import type { NewCampaignWizardPayload, ScheduleCadence } from './types';
 
 function resolveFolderId(
@@ -48,20 +50,115 @@ function scheduleFrequencyLabel(cadence: ScheduleCadence): string {
   }
 }
 
+function formatTimeFromInput(hhmm: string): string {
+  const [hRaw, mRaw] = hhmm.split(':');
+  let hour = Number.parseInt(hRaw ?? '', 10);
+  const minute = Number.parseInt(mRaw ?? '0', 10);
+  if (!Number.isFinite(hour)) return hhmm;
+  const meridiem = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  if (hour === 0) hour = 12;
+  return `${hour}:${String(minute).padStart(2, '0')} ${meridiem}`;
+}
+
+/** Fixed English weekday from calendar date (UTC noon avoids locale/TZ day shifts). */
+function weekdayFromIsoDate(isoDate: string): string {
+  const date = new Date(`${isoDate}T12:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return '';
+  return ENGLISH_WEEKDAY_NAMES[date.getUTCDay()] ?? '';
+}
+
+function isExactLocalDateTime(firstDate: string, timePart: string, local: Date): boolean {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const ymd = `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}`;
+  const hm = `${pad(local.getHours())}:${pad(local.getMinutes())}`;
+  return ymd === firstDate && hm === timePart;
+}
+
+export type WizardScheduleOutcome =
+  | { ok: true }
+  | {
+      ok: false;
+      reason: 'settings' | 'upcoming' | 'invalid_date';
+      message: string;
+      /** Payload needed to retry first-session creation after campaign exists. */
+      retry?: {
+        campaignId: string;
+        campaignHandle: string;
+        schedule: NonNullable<NewCampaignWizardPayload['schedule']>;
+      };
+    };
+
 export async function applyWizardScheduleBestEffort(
   campaignId: string,
+  campaignHandle: string,
   schedule: NewCampaignWizardPayload['schedule'],
   schedulingSkipped: boolean,
-): Promise<void> {
-  if (schedulingSkipped || !schedule?.enabled || !schedule.cadence) return;
+): Promise<WizardScheduleOutcome> {
+  if (schedulingSkipped || !schedule?.enabled || !schedule.cadence) {
+    return { ok: true };
+  }
+
+  const frequency = scheduleFrequencyLabel(schedule.cadence);
+  const firstDate = schedule.firstSessionDate?.trim() || '';
+  const firstTime = schedule.firstSessionTime?.trim() || '';
 
   try {
     await updateCampaignSettings(campaignId, {
-      scheduleFrequency: scheduleFrequencyLabel(schedule.cadence),
+      scheduleFrequency: frequency,
+      scheduleDay: firstDate ? weekdayFromIsoDate(firstDate) || null : null,
+      scheduleTime: firstTime ? formatTimeFromInput(firstTime) : null,
+      schedulingEnabled: true,
+      autoScheduleUpcomingSession: true,
     });
   } catch (error) {
     console.error('[new-campaign-wizard] schedule update failed (campaign still created)', error);
+    return {
+      ok: false,
+      reason: 'settings',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Could not save campaign schedule settings.',
+      retry: { campaignId, campaignHandle, schedule },
+    };
   }
+
+  if (!firstDate) return { ok: true };
+
+  const timePart = firstTime || '19:00';
+  const local = new Date(`${firstDate}T${timePart}:00`);
+  if (Number.isNaN(local.getTime()) || !isExactLocalDateTime(firstDate, timePart, local)) {
+    return {
+      ok: false,
+      reason: 'invalid_date',
+      message: 'That first session date/time is invalid. Choose another time.',
+      retry: { campaignId, campaignHandle, schedule },
+    };
+  }
+
+  try {
+    await postScheduleUpcoming(campaignHandle, {
+      plannedStartAt: local.toISOString(),
+      applyRecurrenceChange: true,
+      scheduleFrequency: frequency,
+      scheduleDay: weekdayFromIsoDate(firstDate) || null,
+      scheduleTime: formatTimeFromInput(timePart),
+    });
+  } catch (error) {
+    console.error('[new-campaign-wizard] first session schedule failed', error);
+    return {
+      ok: false,
+      reason: 'upcoming',
+      message:
+        error instanceof Error
+          ? error.message
+          : 'The first session note was not created.',
+      retry: { campaignId, campaignHandle, schedule },
+    };
+  }
+
+  return { ok: true };
 }
 
 export async function seedCampaignFoundationBestEffort(

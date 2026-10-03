@@ -421,6 +421,12 @@ import {
   listSessionAttendance,
 } from '../controllers/sessionScheduleController.js';
 import {
+  getCampaignSchedule,
+  patchCampaignSchedule,
+  postScheduleUpcoming,
+  postSkipUpcomingSession,
+} from '../controllers/campaignScheduleController.js';
+import {
   acceptOwnershipTransfer,
   cancelOwnershipTransfer,
   declineOwnershipTransfer,
@@ -1165,6 +1171,19 @@ campaignScopedRouter.post(
   ensureSessionAuthorNote,
 );
 campaignScopedRouter.get('/session-timeline/next-published', getNextPublishedSession);
+campaignScopedRouter.get('/schedule', getCampaignSchedule);
+campaignScopedRouter.patch('/schedule', requireNotesModerate, patchCampaignSchedule);
+campaignScopedRouter.post('/schedule/upcoming', requireNotesModerate, postScheduleUpcoming);
+campaignScopedRouter.post(
+  '/schedule/upcoming/skip',
+  requireNotesModerate,
+  postSkipUpcomingSession,
+);
+campaignScopedRouter.post(
+  '/session-timeline/:timelinePointId/schedule/skip',
+  requireNotesModerate,
+  postSkipUpcomingSession,
+);
 campaignScopedRouter.get(
   '/session-timeline/:timelinePointId/schedule',
   getSessionSchedule,

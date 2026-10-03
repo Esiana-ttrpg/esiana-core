@@ -1,11 +1,18 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Calendar, CalendarClock, Clock } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ResponsiveSectionNav } from '@/components/settings/ResponsiveSectionNav';
 import { SessionDatesSection } from '@/components/campaign/SessionDatesSection';
+import { ScheduleSessionModal } from '@/components/session/ScheduleSessionModal';
+import { SkipSessionModal } from '@/components/session/SkipSessionModal';
 import { fetchCampaign, updateCampaignSettings } from '@/lib/campaigns';
+import {
+  fetchCampaignSchedule,
+  patchCampaignSchedule,
+} from '@/lib/campaignSchedule';
 import { controlClasses } from '@/components/ui/formStyles';
 import { TimezoneSelect } from '@/components/ui/TimezoneSelect';
+import type { UpcomingSessionSummary } from '@/types/notifications';
 
 interface SchedulingSettingsTabProps {
   campaignHandle: string;
@@ -20,10 +27,19 @@ function SectionHeader({ title, description }: { title: string; description?: st
   );
 }
 
+function formatUpcomingLabel(upcoming: UpcomingSessionSummary): string {
+  if (!upcoming.plannedStartAt) return upcoming.sessionTitle;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: upcoming.timezone ?? undefined,
+  }).format(new Date(upcoming.plannedStartAt));
+}
+
 export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabProps) {
   const [activeSection, setActiveSection] = useState<
-    'cadence' | 'sessionProgress' | 'sessionDates'
-  >('cadence');
+    'sessionSchedule' | 'sessionProgress' | 'sessionDates'
+  >('sessionSchedule');
   const [campaignId, setCampaignId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,43 +50,50 @@ export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabP
   const [scheduleDay, setScheduleDay] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
   const [scheduleTimezone, setScheduleTimezone] = useState('');
+  const [schedulingEnabled, setSchedulingEnabled] = useState(false);
+  const [autoScheduleUpcomingSession, setAutoScheduleUpcomingSession] = useState(true);
+  const [isOneShot, setIsOneShot] = useState(false);
+  const [upcoming, setUpcoming] = useState<UpcomingSessionSummary | null>(null);
+
   const [currentSession, setCurrentSession] = useState(0);
   const [sessionDuration, setSessionDuration] = useState('');
   const [estimatedLength, setEstimatedLength] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [skipModalOpen, setSkipModalOpen] = useState(false);
 
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const campaign = await fetchCampaign(campaignHandle);
-        if (cancelled) return;
-        setCampaignId(campaign.id);
-        setScheduleFrequency(campaign.scheduleFrequency ?? '');
-        setScheduleDay(campaign.scheduleDay ?? '');
-        setScheduleTime(campaign.scheduleTime ?? '');
-        setScheduleTimezone(campaign.scheduleTimezone ?? '');
-        setCurrentSession(campaign.currentSession ?? 0);
-        setSessionDuration(campaign.sessionDuration ?? '');
-        setEstimatedLength(campaign.estimatedLength ?? '');
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load scheduling settings.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [campaign, schedulePayload] = await Promise.all([
+        fetchCampaign(campaignHandle),
+        fetchCampaignSchedule(campaignHandle),
+      ]);
+      setCampaignId(campaign.id);
+      setScheduleFrequency(schedulePayload.schedule.frequency ?? '');
+      setScheduleDay(schedulePayload.schedule.day ?? '');
+      setScheduleTime(schedulePayload.schedule.time ?? '');
+      setScheduleTimezone(schedulePayload.schedule.timezone ?? '');
+      setSchedulingEnabled(schedulePayload.schedule.schedulingEnabled);
+      setAutoScheduleUpcomingSession(schedulePayload.schedule.autoScheduleUpcomingSession);
+      setIsOneShot(schedulePayload.schedule.isOneShot);
+      setUpcoming(schedulePayload.upcoming);
+      setCurrentSession(campaign.currentSession ?? 0);
+      setSessionDuration(campaign.sessionDuration ?? '');
+      setEstimatedLength(campaign.estimatedLength ?? '');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load scheduling settings.');
+    } finally {
+      setLoading(false);
     }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
   }, [campaignHandle]);
 
-  async function handleSave(event: FormEvent) {
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  async function handleSaveProgress(event: FormEvent) {
     event.preventDefault();
     if (!campaignId) {
       setError('Campaign is still loading. Please try again.');
@@ -79,13 +102,8 @@ export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabP
     setSaving(true);
     setError(null);
     setSuccess(false);
-
     try {
       await updateCampaignSettings(campaignId, {
-        scheduleFrequency: scheduleFrequency.trim() || null,
-        scheduleDay: scheduleDay.trim() || null,
-        scheduleTime: scheduleTime.trim() || null,
-        scheduleTimezone: scheduleTimezone.trim() || null,
         currentSession: Number(currentSession) || 0,
         sessionDuration: sessionDuration.trim() || null,
         estimatedLength: estimatedLength.trim() || null,
@@ -93,14 +111,40 @@ export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabP
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save scheduling settings.');
+      setError(err instanceof Error ? err.message : 'Failed to save session progress.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSaveCadence(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setSuccess(false);
+    try {
+      const result = await patchCampaignSchedule(campaignHandle, {
+        scheduleFrequency: scheduleFrequency.trim() || null,
+        scheduleDay: scheduleDay.trim() || null,
+        scheduleTime: scheduleTime.trim() || null,
+        scheduleTimezone: scheduleTimezone.trim() || null,
+        schedulingEnabled,
+        autoScheduleUpcomingSession: isOneShot ? false : autoScheduleUpcomingSession,
+      });
+      setUpcoming(result.upcoming);
+      setSchedulingEnabled(result.schedule.schedulingEnabled);
+      setAutoScheduleUpcomingSession(result.schedule.autoScheduleUpcomingSession);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save schedule.');
     } finally {
       setSaving(false);
     }
   }
 
   const sectionTabs = [
-    { id: 'cadence' as const, label: 'Table cadence', icon: Calendar },
+    { id: 'sessionSchedule' as const, label: 'Session schedule', icon: Calendar },
     { id: 'sessionProgress' as const, label: 'Session progress', icon: Clock },
     { id: 'sessionDates' as const, label: 'Session dates', icon: CalendarClock },
   ];
@@ -117,7 +161,8 @@ export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabP
           <h2 className="text-lg font-semibold text-white">Scheduling</h2>
         </div>
         <p className="mb-5 text-sm text-muted">
-          Manage your table&apos;s recurring cadence, session progress, and per-session OOC dates.
+          Configure your table&apos;s recurring cadence and upcoming session. Dashboard and Session
+          Notes use this same schedule.
         </p>
 
         <ResponsiveSectionNav
@@ -136,126 +181,211 @@ export function SchedulingSettingsTab({ campaignHandle }: SchedulingSettingsTabP
             />
             <SessionDatesSection campaignHandle={campaignHandle} />
           </div>
-        ) : (
-          <form onSubmit={handleSave} className="mt-6 space-y-6">
-            {activeSection === 'cadence' ? (
-              <>
-                <SectionHeader
-                  title="When you play"
-                  description="Out-of-character schedule shown to applicants and party members."
+        ) : null}
+
+        {activeSection === 'sessionSchedule' ? (
+          <form onSubmit={handleSaveCadence} className="mt-6 space-y-6">
+            <SectionHeader
+              title="Session schedule"
+              description="Recurring cadence for this campaign."
+            />
+
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={schedulingEnabled}
+                onChange={(e) => setSchedulingEnabled(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-foreground">Scheduling enabled</span>
+                <span className="block text-xs text-muted">
+                  This campaign has a recurring table cadence.
+                </span>
+              </span>
+            </label>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs text-muted">Frequency</label>
+                <input
+                  type="text"
+                  value={scheduleFrequency}
+                  onChange={(e) => setScheduleFrequency(e.target.value)}
+                  placeholder="Weekly"
+                  className={controlClasses}
                 />
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Frequency</label>
-                    <input
-                      type="text"
-                      value={scheduleFrequency}
-                      onChange={(e) => setScheduleFrequency(e.target.value)}
-                      placeholder="Weekly"
-                      className={controlClasses}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Day</label>
-                    <input
-                      type="text"
-                      value={scheduleDay}
-                      onChange={(e) => setScheduleDay(e.target.value)}
-                      placeholder="Saturday"
-                      className={controlClasses}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Time</label>
-                    <input
-                      type="text"
-                      value={scheduleTime}
-                      onChange={(e) => setScheduleTime(e.target.value)}
-                      placeholder="7:00 PM"
-                      className={controlClasses}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted" htmlFor="campaign-schedule-timezone">
-                    Timezone
-                  </label>
-                  <TimezoneSelect
-                    id="campaign-schedule-timezone"
-                    value={scheduleTimezone}
-                    onChange={setScheduleTimezone}
-                    allowEmpty
-                    emptyLabel="Select timezone…"
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted">Day</label>
+                <input
+                  type="text"
+                  value={scheduleDay}
+                  onChange={(e) => setScheduleDay(e.target.value)}
+                  placeholder="Saturday"
+                  className={controlClasses}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted">Time</label>
+                <input
+                  type="text"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  placeholder="7:00 PM"
+                  className={controlClasses}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted" htmlFor="campaign-schedule-timezone">
+                Timezone
+              </label>
+              <TimezoneSelect
+                id="campaign-schedule-timezone"
+                value={scheduleTimezone}
+                onChange={setScheduleTimezone}
+                allowEmpty
+                emptyLabel="Select timezone…"
+              />
+            </div>
+
+            <div className="rounded-lg border border-border/80 bg-background/40 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">Next session</p>
+              {upcoming ? (
+                <p className="mt-1 text-sm text-foreground">{formatUpcomingLabel(upcoming)}</p>
+              ) : (
+                <p className="mt-1 text-sm text-muted">No session scheduled</p>
+              )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScheduleModalOpen(true)}
+                  className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+                >
+                  {upcoming ? 'Edit schedule' : 'Schedule next session'}
+                </button>
+                {upcoming ? (
+                  <button
+                    type="button"
+                    onClick={() => setSkipModalOpen(true)}
+                    className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface"
+                  >
+                    Skip session
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {!isOneShot ? (
+              <div className="rounded-lg border border-border/80 p-4">
+                <p className="text-sm font-semibold text-foreground">Automatic scheduling</p>
+                <label className="mt-2 flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={autoScheduleUpcomingSession}
+                    onChange={(e) => setAutoScheduleUpcomingSession(e.target.checked)}
+                    className="mt-1"
                   />
-                  <p className="mt-1 text-xs text-muted">
-                    Session times are authored in this timezone.
-                  </p>
-                </div>
-              </>
-            ) : null}
-
-            {activeSection === 'sessionProgress' ? (
-              <>
-                <SectionHeader
-                  title="Session progress"
-                  description="Optional context for ongoing campaigns."
-                />
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Current session #</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={currentSession}
-                      onChange={(e) => setCurrentSession(Number(e.target.value))}
-                      className={controlClasses}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Session duration</label>
-                    <input
-                      type="text"
-                      value={sessionDuration}
-                      onChange={(e) => setSessionDuration(e.target.value)}
-                      placeholder="3 hours"
-                      className={controlClasses}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted">Campaign Length</label>
-                    <input
-                      type="text"
-                      value={estimatedLength}
-                      onChange={(e) => setEstimatedLength(e.target.value)}
-                      placeholder="6 months"
-                      className={controlClasses}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : null}
-
-            {error ? (
-              <div className="rounded border border-red-700 bg-red-950/50 p-3 text-sm text-red-200">
-                {error}
+                  <span>
+                    Automatically schedule the next session
+                    <span className="mt-0.5 block text-xs text-muted">
+                      Creates the next session from your campaign&apos;s cadence after the current
+                      session passes. Saved with cadence below — turning this on will create an
+                      upcoming session if none exists.
+                    </span>
+                  </span>
+                </label>
               </div>
-            ) : null}
-            {success ? (
-              <div className="rounded border border-emerald-700 bg-emerald-950/50 p-3 text-sm text-emerald-200">
-                Scheduling settings saved.
-              </div>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted">
+                One-shot campaigns do not automatically schedule a follow-up session.
+              </p>
+            )}
+
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
+            {success ? <p className="text-sm text-success">Saved.</p> : null}
 
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-background hover:bg-primary/90 disabled:opacity-50"
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-60"
             >
-              {saving ? 'Saving…' : 'Save changes'}
+              {saving ? 'Saving…' : 'Save cadence'}
             </button>
           </form>
-        )}
+        ) : null}
+
+        {activeSection === 'sessionProgress' ? (
+          <form onSubmit={handleSaveProgress} className="mt-6 space-y-6">
+            <SectionHeader
+              title="Session progress"
+              description="Track how far into the campaign you are."
+            />
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs text-muted">Current session</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={currentSession}
+                  onChange={(e) => setCurrentSession(Number(e.target.value))}
+                  className={controlClasses}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted">Session duration</label>
+                <input
+                  type="text"
+                  value={sessionDuration}
+                  onChange={(e) => setSessionDuration(e.target.value)}
+                  placeholder="3 hours"
+                  className={controlClasses}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted">Estimated length</label>
+                <input
+                  type="text"
+                  value={estimatedLength}
+                  onChange={(e) => setEstimatedLength(e.target.value)}
+                  placeholder="12–20 sessions"
+                  className={controlClasses}
+                />
+              </div>
+            </div>
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
+            {success ? <p className="text-sm text-success">Saved.</p> : null}
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-60"
+            >
+              {saving ? 'Saving…' : 'Save progress'}
+            </button>
+          </form>
+        ) : null}
       </div>
+
+      <ScheduleSessionModal
+        open={scheduleModalOpen}
+        campaignHandle={campaignHandle}
+        upcoming={upcoming}
+        onClose={() => setScheduleModalOpen(false)}
+        onSaved={() => void reload()}
+      />
+
+      {upcoming ? (
+        <SkipSessionModal
+          open={skipModalOpen}
+          campaignHandle={campaignHandle}
+          upcoming={upcoming}
+          autoScheduleDefault={autoScheduleUpcomingSession}
+          isOneShot={isOneShot}
+          onClose={() => setSkipModalOpen(false)}
+          onSkipped={() => void reload()}
+        />
+      ) : null}
     </div>
   );
 }

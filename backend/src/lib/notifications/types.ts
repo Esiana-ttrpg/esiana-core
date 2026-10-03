@@ -134,7 +134,17 @@ export const SessionScheduleStatus = {
   PUBLISHED: 'PUBLISHED',
   CANCELLED: 'CANCELLED',
   COMPLETED: 'COMPLETED',
+  SKIPPED: 'SKIPPED',
 } as const;
+
+/** Whether cadence automation owns this scheduled occurrence. */
+export const SessionScheduleOrigin = {
+  MANUAL: 'MANUAL',
+  CADENCE: 'CADENCE',
+} as const;
+
+export type SessionScheduleOriginValue =
+  (typeof SessionScheduleOrigin)[keyof typeof SessionScheduleOrigin];
 
 export const SessionAttendanceStatus = {
   ATTENDING: 'ATTENDING',

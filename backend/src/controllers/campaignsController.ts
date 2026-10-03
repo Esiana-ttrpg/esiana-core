@@ -196,6 +196,8 @@ export function campaignSelect() {
     recruitmentPremise: true,
     recruitmentBeforeApplyNote: true,
     scheduleTimezone: true,
+    schedulingEnabled: true,
+    autoScheduleUpcomingSession: true,
     campaignFormat: true,
     experienceRequired: true,
     ageRestriction: true,
@@ -1343,6 +1345,12 @@ export async function updateCampaign(
       }),
       ...(body.scheduleTimezone !== undefined && {
         scheduleTimezone: sanitizeRecruitmentText(body.scheduleTimezone, 80),
+      }),
+      ...(body.schedulingEnabled !== undefined && {
+        schedulingEnabled: Boolean(body.schedulingEnabled),
+      }),
+      ...(body.autoScheduleUpcomingSession !== undefined && {
+        autoScheduleUpcomingSession: Boolean(body.autoScheduleUpcomingSession),
       }),
       ...(body.campaignFormat !== undefined && {
         campaignFormat: sanitizeRecruitmentText(body.campaignFormat),

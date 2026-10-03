@@ -197,6 +197,12 @@ export async function duplicateCampaign(
           scheduleTimezone: copy.scheduling.sessionCadence
             ? source.scheduleTimezone
             : undefined,
+          schedulingEnabled: copy.scheduling.sessionCadence
+            ? source.schedulingEnabled
+            : false,
+          autoScheduleUpcomingSession: copy.scheduling.sessionCadence
+            ? source.autoScheduleUpcomingSession
+            : true,
           currentSession: copy.scheduling.sessionCadence ? source.currentSession : 0,
           sessionDuration: copy.scheduling.sessionCadence
             ? source.sessionDuration
