@@ -45,6 +45,10 @@ export interface StartingLocationDraft {
 export interface ScheduleDraft {
   cadence?: ScheduleCadence;
   enabled: boolean;
+  /** ISO date yyyy-mm-dd */
+  firstSessionDate?: string;
+  /** HH:mm */
+  firstSessionTime?: string;
 }
 
 export interface NewCampaignWizardPayload {

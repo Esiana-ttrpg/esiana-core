@@ -100,12 +100,17 @@ async function runNotificationSweepOnce(): Promise<void> {
 
   try {
     const reminders = await runSessionReminderSweep();
-    updateBackgroundTask(task.id, { progress: 60 });
+    updateBackgroundTask(task.id, { progress: 50 });
+    const { runEnsureUpcomingSessionsSweep } = await import(
+      '../campaignScheduleService.js'
+    );
+    const ensured = await runEnsureUpcomingSessionsSweep();
+    updateBackgroundTask(task.id, { progress: 70 });
     const expiredTransfers = await expireStaleOwnershipTransfers({ notify: true });
     updateBackgroundTask(task.id, {
       status: 'COMPLETED',
       progress: 100,
-      metaMerge: { remindersSent: reminders, expiredTransfers },
+      metaMerge: { remindersSent: reminders, expiredTransfers, sessionsEnsured: ensured },
     });
   } catch (error) {
     updateBackgroundTask(task.id, {

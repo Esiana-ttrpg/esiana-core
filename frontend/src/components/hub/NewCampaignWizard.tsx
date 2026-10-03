@@ -633,6 +633,7 @@ export function NewCampaignWizard({
       }
       await applyWizardScheduleBestEffort(
         campaign.id,
+        campaign.handle,
         payload.schedule,
         payload.schedulingSkipped,
       );

@@ -489,6 +489,10 @@ model Campaign {
   scheduleTime      String?
   /// IANA timezone for public schedule display and applicant overlap hints.
   scheduleTimezone  String?
+  /// When true, this campaign has a recurring table cadence.
+  schedulingEnabled Boolean @default(false)
+  /// When true, create the next session from cadence after the upcoming one passes/skips.
+  autoScheduleUpcomingSession Boolean @default(true)
   currentSession    Int     @default(0)
   sessionDuration   String?
   estimatedLength   String?
@@ -1710,6 +1714,12 @@ model CampaignSessionSchedule {
   locationPageId  String?
   reminderSentAt  DateTime?
   publishedAt     DateTime?
+  /// MANUAL | CADENCE — whether automation owns this occurrence.
+  origin          String @default("MANUAL")
+  /// Optional brief reason when status is SKIPPED (max 200 chars enforced in app).
+  skipReason      String?
+  /// Optional planned in-world start (campaign epoch minutes). Distinct from OOC plannedStartAt.
+  plannedWorldEpochMinute BigInt?
 
   timelinePoint CampaignSessionTimeline @relation(fields: [timelinePointId], references: [id], onDelete: Cascade)
 
@@ -1718,6 +1728,7 @@ model CampaignSessionSchedule {
 
   @@index([status, plannedStartAt])
   @@index([plannedStartAt, reminderSentAt])
+  @@index([origin, status, plannedStartAt])
 }
 
 model SessionAttendance {

@@ -72,6 +72,26 @@ export interface SessionScheduleRecord {
   locationPageId: string | null;
   reminderSentAt: string | null;
   publishedAt: string | null;
+  origin?: 'MANUAL' | 'CADENCE' | string;
+  skipReason?: string | null;
+  plannedWorldEpochMinute?: string | null;
+}
+
+export type SessionScheduleOrigin = 'MANUAL' | 'CADENCE';
+
+export interface CampaignScheduleSummary {
+  frequency: string | null;
+  day: string | null;
+  time: string | null;
+  timezone: string | null;
+  schedulingEnabled: boolean;
+  autoScheduleUpcomingSession: boolean;
+  isOneShot: boolean;
+}
+
+export interface UpcomingSessionSummary extends SessionScheduleRecord {
+  sessionTitle: string;
+  sequenceOrder: number;
 }
 
 export type SessionAttendanceStatus = 'ATTENDING' | 'ABSENT' | 'LATE' | 'MAYBE';

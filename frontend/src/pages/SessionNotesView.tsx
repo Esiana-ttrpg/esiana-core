@@ -31,6 +31,7 @@ import { campaignWikiPath, campaignNotePath } from '@/lib/campaignPaths';
 import { hasTimelineSessions } from '@/lib/sessionNotesIndex';
 import { CreateSessionNoteDialog } from '@/components/session/CreateSessionNoteDialog';
 import { CreateNewSessionDialog } from '@/components/session/CreateNewSessionDialog';
+import { ScheduleSessionModal } from '@/components/session/ScheduleSessionModal';
 import { SessionNotesAttendanceTab } from '@/components/session/SessionNotesAttendanceTab';
 import {
   parseSessionNotesView,
@@ -118,6 +119,7 @@ export function SessionNotesView() {
   } | null>(null);
   const [showCreatePageDialog, setShowCreatePageDialog] = useState(false);
   const [showCreateSessionDialog, setShowCreateSessionDialog] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const createMenuRef = useRef<HTMLDivElement>(null);
 
   const canManageRole =
@@ -567,6 +569,19 @@ export function SessionNotesView() {
                           >
                             <span aria-hidden>📅</span>
                             {t('campaign.timeline.sessionNotesCreateNewSession')}
+                          </button>
+                        ) : null}
+                        {canManageRole ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsCreateMenuOpen(false);
+                              setShowScheduleModal(true);
+                            }}
+                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
+                          >
+                            <span aria-hidden>🗓️</span>
+                            Schedule next session
                           </button>
                         ) : null}
                         {canManage ? (
@@ -1111,6 +1126,14 @@ export function SessionNotesView() {
           indexData={data}
           onClose={() => setShowCreateSessionDialog(false)}
           onCreated={() => void load()}
+        />
+      ) : null}
+      {canManageRole ? (
+        <ScheduleSessionModal
+          open={showScheduleModal}
+          campaignHandle={campaignHandle}
+          onClose={() => setShowScheduleModal(false)}
+          onSaved={() => void load()}
         />
       ) : null}
       {isDeleteModalOpen && (

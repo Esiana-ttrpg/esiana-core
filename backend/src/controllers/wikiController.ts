@@ -26,6 +26,10 @@ import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import type { Prisma } from '../lib/prismaClient.js';
 import { enrichSidebarConfigWithIconUrls } from '../lib/sidebarIconEnrich.js';
 import { PLAYER_SESSION_NOTES_TITLE } from '../lib/seedWiki.js';
+import {
+  SessionAttendanceStatus,
+  SessionScheduleStatus,
+} from '../lib/notifications/types.js';
 import { ensureQuickAccessCategoryTitle } from '../lib/ensureQuickAccessCategoryTitle.js';
 import { ensureRemoveLegacyDashboardWikiPage } from '../lib/ensureRemoveLegacyDashboardWikiPage.js';
 import { normalizeEntityCategoryKey } from '../lib/entityCategoryKeys.js';
@@ -5363,6 +5367,28 @@ export async function ensureSessionAuthorNote(
     res.status(404).json({ error: 'Player Session Notes folder not found' });
     return;
   }
+
+  // Adding a session note counts as checking in (unless the occurrence was skipped).
+  const schedule = await prisma.campaignSessionSchedule.findUnique({
+    where: { timelinePointId },
+    select: { status: true },
+  });
+  if (schedule?.status !== SessionScheduleStatus.SKIPPED) {
+    await prisma.sessionAttendance.upsert({
+      where: {
+        timelinePointId_userId: { timelinePointId, userId },
+      },
+      create: {
+        timelinePointId,
+        userId,
+        status: SessionAttendanceStatus.ATTENDING,
+      },
+      update: {
+        status: SessionAttendanceStatus.ATTENDING,
+      },
+    });
+  }
+
   if (result.kind === 'existing') {
     res.json({
       created: false,

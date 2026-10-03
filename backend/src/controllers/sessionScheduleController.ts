@@ -33,6 +33,9 @@ function serializeSchedule(row: {
   locationPageId: string | null;
   reminderSentAt: Date | null;
   publishedAt: Date | null;
+  origin?: string;
+  skipReason?: string | null;
+  plannedWorldEpochMinute?: bigint | null;
 }) {
   return {
     timelinePointId: row.timelinePointId,
@@ -46,6 +49,12 @@ function serializeSchedule(row: {
     locationPageId: row.locationPageId,
     reminderSentAt: row.reminderSentAt?.toISOString() ?? null,
     publishedAt: row.publishedAt?.toISOString() ?? null,
+    origin: row.origin ?? 'MANUAL',
+    skipReason: row.skipReason ?? null,
+    plannedWorldEpochMinute:
+      row.plannedWorldEpochMinute != null
+        ? row.plannedWorldEpochMinute.toString()
+        : null,
   };
 }
 
