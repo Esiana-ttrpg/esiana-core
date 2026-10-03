@@ -12,12 +12,15 @@ import {
   userPublicFieldsSelect,
 } from '../lib/userProfileSerialize.js';
 import { CampaignDiscoverability } from '../../../shared/campaignPolicy/discoverability.js';
+import { listShowcasedPublicProjections } from './portfolioController.js';
+import type { AuthenticatedRequest } from '../middleware/auth.js';
 
 export async function getPublicUserProfile(
   req: Request,
   res: Response,
 ): Promise<void> {
   const userId = String(req.params.id);
+  const viewerUserId = (req as AuthenticatedRequest).user?.id ?? null;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -49,6 +52,8 @@ export async function getPublicUserProfile(
     orderBy: { campaign: { name: 'asc' } },
   });
 
+  const showcasedCharacters = await listShowcasedPublicProjections(userId, viewerUserId);
+
   res.json({
     profile: {
       id: user.id,
@@ -61,6 +66,7 @@ export async function getPublicUserProfile(
         createdAt: row.campaign.createdAt.toISOString(),
         isLookingForGroup: row.campaign.isLookingForGroup,
       })),
+      showcasedCharacters,
     },
   });
 }

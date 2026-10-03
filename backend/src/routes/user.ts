@@ -57,6 +57,24 @@ import {
   removePasswordAuth,
   unlinkIdentityProvider,
 } from '../controllers/userIdentityController.js';
+import {
+  addPortfolioCharacterToCampaign,
+  archivePortfolioCharacter,
+  bulkPortfolioCharacterActions,
+  createPortfolioCharacter,
+  deletePortfolioCharacter,
+  deletePortfolioMedia,
+  duplicatePortfolioCharacter,
+  endPortfolioAdventure,
+  exportPortfolioCharacter,
+  getPortfolioCharacter,
+  listPortfolioCharacters,
+  reorderShowcasePortfolioCharacters,
+  setShowcasePortfolioCharacter,
+  toggleFavoritePortfolioCharacter,
+  updatePortfolioCharacter,
+  uploadPortfolioMedia,
+} from '../controllers/portfolioController.js';
 
 export const userRouter = Router();
 
@@ -108,3 +126,30 @@ userRouter.get('/campaign-defaults', getUserCampaignDefaultsBundle);
 userRouter.patch('/campaign-defaults', patchUserCampaignDefaults);
 userRouter.get('/template-resources/:kind', getUserTemplateResource);
 userRouter.put('/template-resources/:kind', putUserTemplateResource);
+
+// Character Portfolio
+userRouter.get('/portfolio/characters', listPortfolioCharacters);
+userRouter.post('/portfolio/characters', createPortfolioCharacter);
+userRouter.post('/portfolio/characters/bulk', bulkPortfolioCharacterActions);
+userRouter.patch('/portfolio/showcase/reorder', reorderShowcasePortfolioCharacters);
+userRouter.get('/portfolio/characters/:id', getPortfolioCharacter);
+userRouter.patch('/portfolio/characters/:id', updatePortfolioCharacter);
+userRouter.delete('/portfolio/characters/:id', deletePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/duplicate', duplicatePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/favorite', toggleFavoritePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/archive', archivePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/showcase', setShowcasePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/add-to-campaign', addPortfolioCharacterToCampaign);
+userRouter.post('/portfolio/characters/:id/export', exportPortfolioCharacter);
+userRouter.post(
+  '/portfolio/characters/:id/media',
+  rateLimitPolicy('expensive'),
+  imageUpload.single('file'),
+  enforceSystemUploadLimit,
+  uploadPortfolioMedia,
+);
+userRouter.delete('/portfolio/characters/:id/media/:mediaId', deletePortfolioMedia);
+userRouter.post(
+  '/portfolio/adventures/:adventureId/end',
+  endPortfolioAdventure,
+);

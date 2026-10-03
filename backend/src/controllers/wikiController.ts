@@ -4845,6 +4845,10 @@ export async function deleteWikiPage(
   const actorId = req.user?.id;
 
   try {
+    // Detach portfolio adventures before wiki page rows disappear.
+    const { detachAdventuresForDeletedPage } = await import('../lib/portfolio/transform.js');
+    await detachAdventuresForDeletedPage(pageId);
+
     if (parsed.mode === 'orphan') {
       const result = await executeOrphanDelete(ctx.campaignId, pageId, actorId);
       if (!result) {

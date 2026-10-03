@@ -159,4 +159,5 @@ export interface PublicUserProfile {
   otherLink: string | null;
   gmStyleTags: string[];
   hostedCampaigns: PublicUserHostedCampaign[];
+  showcasedCharacters?: import('@shared/portfolioCharacter').PublicPortfolioCharacterProjection[];
 }

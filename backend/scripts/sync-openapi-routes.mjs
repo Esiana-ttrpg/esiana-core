@@ -31,6 +31,8 @@ const publicOperations = new Set([
   'GET /api/users/{id}/avatar',
   'GET /api/users/{id}/creator-attribution',
   'GET /api/users/{id}/public-profile',
+  'GET /api/users/{id}/characters/{characterId}',
+  'GET /api/users/assets/{assetId}',
 ]);
 
 // These development-only protocol endpoints are mounted without Esiana
@@ -55,6 +57,12 @@ const operationOverrides = new Map([
       },
     },
   }],
+  ['POST /api/campaigns/{campaignHandle}/wiki/{pageId}/add-to-portfolio', {
+    summary: 'Clone campaign character into portfolio',
+    description:
+      'Explicit clone/transform: creates an independent user-owned PortfolioCharacter from a campaign wiki character page, plus a PortfolioCharacterAdventure provenance row. Does not synchronize the two records afterward.\n\n'
+      + 'Authorization: Authenticated application user or API token; Membership in the addressed campaign; Non-observer campaign membership; Resource-level visibility and ownership checks performed by the controller/service.',
+  }],
 ]);
 
 const tagRules = [
@@ -62,8 +70,11 @@ const tagRules = [
   [/^\/api\/auth\//, 'Authentication'],
   [/^\/api\/(public-directory|recruitment)/, 'Recruitment'],
   [/^\/api\/(game-systems|campaign-themes|public\/system)/, 'System Catalog'],
+  [/^\/api\/users\/\{id\}\/characters\//, 'Public Profiles'],
+  [/^\/api\/users\/assets\//, 'Public Profiles'],
   [/^\/api\/users\//, 'Public Profiles'],
   [/^\/api\/user\/(notifications|notification-)/, 'Notifications'],
+  [/^\/api\/user\/portfolio\//, 'Character Portfolio'],
   [/^\/api\/user\//, 'User Account'],
   [/\/plugins(?:\/|$)/, 'Plugins'],
   [/\/backup(?:\/|$)/, 'Backup'],
@@ -74,6 +85,7 @@ const tagRules = [
   [/\/workshop\//, 'Workshop'],
   [/\/world-development|\/world-pressure|\/world-state|\/momentum|\/pacing\//, 'World State'],
   [/\/narrative-|\/entity-graph|\/rumors|\/interpretations|\/lore-claims/, 'Narrative Knowledge'],
+  [/\/wiki\/\{pageId\}\/add-to-portfolio$/, 'Character Portfolio'],
   [/\/wiki|\/workspace\//, 'Wiki'],
   [/^\/api\/campaigns/, 'Campaigns'],
   [/^\/api\/assets|^\/api\/plugin-assets/, 'Assets and Maps'],
@@ -237,7 +249,17 @@ function genericOperation(route, canonicalPath) {
   return operation;
 }
 
-spec.tags = [...new Set(tagRules.map(([, tag]) => tag))].map((name) => ({ name }));
+const existingTagMeta = new Map(
+  (Array.isArray(spec.tags) ? spec.tags : [])
+    .filter((tag) => tag && typeof tag === 'object' && typeof tag.name === 'string')
+    .map((tag) => [tag.name, tag]),
+);
+spec.tags = [...new Set(tagRules.map(([, tag]) => tag))].map((name) => {
+  const previous = existingTagMeta.get(name);
+  return previous && typeof previous.description === 'string' && previous.description.trim()
+    ? { name, description: previous.description }
+    : { name };
+});
 spec.paths ??= {};
 const legacyTags = { Auth: 'Authentication', Assets: 'Assets and Maps' };
 for (const pathItem of Object.values(spec.paths)) {

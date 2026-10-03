@@ -35,6 +35,10 @@ import { YourCampaignsPage } from '@/pages/YourCampaignsPage';
 import { SchedulePage } from '@/pages/SchedulePage';
 import { CampaignDefaultEditorPage } from '@/pages/settings/CampaignDefaultEditorPage';
 import { PublicUserProfilePage } from '@/pages/PublicUserProfilePage';
+import { CharacterPortfolioPage } from '@/pages/portfolio/CharacterPortfolioPage';
+import { PortfolioCharacterPage } from '@/pages/portfolio/PortfolioCharacterPage';
+import { ManagePortfolioPage } from '@/pages/portfolio/ManagePortfolioPage';
+import { PublicPortfolioCharacterPage } from '@/pages/portfolio/PublicPortfolioCharacterPage';
 import { RecentChangesPage } from '@/pages/RecentChangesPage';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { AdminGeneralSettingsPage } from '@/pages/AdminGeneralSettingsPage';
@@ -92,9 +96,16 @@ export default function App() {
             />
             <Route path="campaigns" element={<YourCampaignsPage />} />
             <Route path="schedule" element={<SchedulePage />} />
+            <Route path="characters" element={<CharacterPortfolioPage />} />
+            <Route path="characters/manage" element={<ManagePortfolioPage />} />
+            <Route path="characters/:id" element={<PortfolioCharacterPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="users/:id" element={<PublicUserProfilePage />} />
+            <Route
+              path="users/:id/characters/:characterId"
+              element={<PublicPortfolioCharacterPage />}
+            />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 

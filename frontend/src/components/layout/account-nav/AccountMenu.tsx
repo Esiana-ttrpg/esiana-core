@@ -72,6 +72,14 @@ export function AccountMenu({
         {t('navigation.account.profile')}
       </Link>
       <Link
+        to="/characters"
+        role="menuitem"
+        onClick={onClose}
+        className={menuItemClass}
+      >
+        {t('navigation.account.characters')}
+      </Link>
+      <Link
         to="/schedule"
         role="menuitem"
         onClick={onClose}
