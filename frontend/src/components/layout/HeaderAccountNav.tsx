@@ -96,8 +96,6 @@ export function HeaderAccountNav({
                       <AccountMenu
                         user={user}
                         showAdminLink={showAdminLink}
-                        activeCampaignId={campaignId}
-                        activeCampaignHandle={campaignHandle}
                         onClose={() => setProfileMenuOpen(false)}
                         onLogout={logout}
                         onCreateCampaign={() => setCreateWizardOpen(true)}
