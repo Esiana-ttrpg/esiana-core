@@ -95,6 +95,39 @@ test('biweekly from previous planned start stays on 14-day grid across sweep off
   assert.equal(following!.toISOString(), expectedFollowing);
 });
 
+test('previousPlannedStartAt aligns to configured weekday when they differ', () => {
+  // Previous session was Wednesday; cadence is now Saturday.
+  const previous = new Date('2026-10-07T18:00:00.000Z'); // Wednesday
+  const after = new Date('2026-10-08T00:00:00.000Z');
+
+  const next = computeNextCadenceOccurrence({
+    scheduleFrequency: 'Biweekly',
+    scheduleDay: 'Saturday',
+    scheduleTime: '6:00 PM',
+    scheduleTimezone: 'UTC',
+    after,
+    previousPlannedStartAt: previous,
+  });
+  assert.ok(next);
+  // Align Wed Oct 7 → Sat Oct 10, then return that slot (still after `after`).
+  assert.equal(next!.toISOString(), '2026-10-10T18:00:00.000Z');
+  assert.equal(next!.getUTCDay(), 6); // Saturday
+
+  const afterAligned = new Date('2026-10-11T00:00:00.000Z');
+  const following = computeNextCadenceOccurrence({
+    scheduleFrequency: 'Biweekly',
+    scheduleDay: 'Saturday',
+    scheduleTime: '6:00 PM',
+    scheduleTimezone: 'UTC',
+    after: afterAligned,
+    previousPlannedStartAt: previous,
+  });
+  assert.ok(following);
+  // Next biweekly step from aligned Saturday Oct 10 → Oct 24.
+  assert.equal(following!.toISOString(), '2026-10-24T18:00:00.000Z');
+  assert.equal(following!.getUTCDay(), 6);
+});
+
 test('datetimeLocalValueToIsoStrict rejects DST spring-forward gap', () => {
   // America/Los_Angeles springs forward 2026-03-08; 02:30 never exists.
   const result = datetimeLocalValueToIsoStrict(

@@ -684,8 +684,15 @@ export async function runEnsureUpcomingSessionsSweep(): Promise<number> {
   let cursorId: string | null = null;
   const batchSize = 200;
 
+  type SweepCampaignBatch = {
+    id: string;
+    campaignFormat: string | null;
+    campaignOwnerUserId: string | null;
+    members: Array<{ userId: string }>;
+  };
+
   for (;;) {
-    const campaigns = await prisma.campaign.findMany({
+    const campaigns: SweepCampaignBatch[] = await prisma.campaign.findMany({
       where: {
         schedulingEnabled: true,
         autoScheduleUpcomingSession: true,

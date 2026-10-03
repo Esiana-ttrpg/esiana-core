@@ -212,10 +212,28 @@ export function computeNextCadenceOccurrence(params: {
   // Prefer stepping from the previous occurrence when we have one (stable biweekly grid).
   if (params.previousPlannedStartAt && !Number.isNaN(params.previousPlannedStartAt.getTime())) {
     const prevParts = getZonedParts(params.previousPlannedStartAt, timeZone);
+    let year = prevParts.year;
+    let month = prevParts.month;
+    let day = prevParts.day;
+    // Align baseline to the configured weekday (settings may have changed since previous).
+    for (let i = 0; i < 7; i += 1) {
+      const probe = zonedWallTimeToUtc({
+        year,
+        month,
+        day,
+        hour: parsedTime.hour,
+        minute: parsedTime.minute,
+        timeZone,
+      });
+      if (getZonedParts(probe, timeZone).weekday === weekday) {
+        break;
+      }
+      ({ year, month, day } = addCalendarDays(year, month, day, 1));
+    }
     let stepped = zonedWallTimeToUtc({
-      year: prevParts.year,
-      month: prevParts.month,
-      day: prevParts.day,
+      year,
+      month,
+      day,
       hour: parsedTime.hour,
       minute: parsedTime.minute,
       timeZone,
