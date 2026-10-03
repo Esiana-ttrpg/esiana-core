@@ -1,8 +1,11 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import type { CampaignSummary } from '@/types/campaign';
 import { buildCampaignWorldPresentation } from '@/lib/buildCampaignWorldPresentation';
+import { accentGlowShadow } from '@/lib/hubAmbientTheme';
 import { campaignDashboardPath } from '@/lib/campaignPaths';
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { CampaignPinButton } from '@/components/hub/CampaignPinButton';
 import { HubRoleMomentumMeta } from '@/components/hub/HubMomentumBadge';
@@ -23,13 +26,22 @@ export function CampaignLibraryRow({ campaign, pinned, onPinToggle }: CampaignLi
   const href = campaignDashboardPath(campaign.handle);
   const nextSession = campaign.hubSignals?.nextSession;
   const party = campaign.hubSignals?.partyPreview ?? [];
+  const restingGlow = accentGlowShadow(presentation.accentColor, 0.08);
 
   return (
     <div
-      className={`group flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5 transition-colors hover:bg-elevated/40 ${
+      className={`group flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors hover:bg-elevated/40 ${
         featuredOnHearth ? 'hub-hearth' : ''
       }`}
-      style={{ borderLeftWidth: 3, borderLeftColor: presentation.accentColor }}
+      style={
+        {
+          ...presentation.cardStyle,
+          boxShadow: restingGlow,
+          borderColor: `rgba(${presentation.accentRgb}, 0.28)`,
+          borderLeftColor: presentation.accentColor,
+          background: `color-mix(in srgb, rgba(${presentation.accentRgb}, 0.05) 35%, var(--color-depth-3, var(--color-focal-elevated)))`,
+        } as CSSProperties
+      }
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -38,7 +50,7 @@ export function CampaignLibraryRow({ campaign, pinned, onPinToggle }: CampaignLi
               Hearth
             </span>
           ) : null}
-          <h3 className="truncate font-medium text-foreground">
+          <h3 className={`truncate ${TYPE_DISPLAY_CLASS} !text-sm !font-medium`}>
             {presentation.arcTitle ?? campaign.name}
           </h3>
           {presentation.arcTitle ? (

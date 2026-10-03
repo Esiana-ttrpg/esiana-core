@@ -1,4 +1,5 @@
-/* Hub ambient theming — scoped under .hub-ambient */
+/* Hub ambient theming — scoped under .hub-ambient
+   Theme owns environment; campaign accents are local; semantic status owns meaning. */
 
 .hub-ambient {
   --hub-accent: var(--color-primary);
@@ -8,6 +9,63 @@
   --hub-section-library: var(--color-primary);
   --hub-section-attention: var(--color-accent);
   --hub-section-recent: var(--color-primary-hover);
+  position: relative;
+}
+
+/* Theme-aware page wash — uses active accent/depth, not a fixed navy/violet palette */
+.hub-ambient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(
+      ellipse 85% 55% at 12% 0%,
+      var(--hub-accent-glow) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 70% 50% at 88% 8%,
+      var(--hub-atmosphere-glow, color-mix(in srgb, var(--color-depth-4, var(--color-focal-elevated)) 55%, transparent))
+        0%,
+      transparent 58%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-depth-2, var(--color-focal)) 35%, transparent) 0%,
+      transparent 42%
+    );
+}
+
+.hub-ambient > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Soft section surface — theme depth separation without nested dashboard cards */
+.hub-ambient .hub-section-surface {
+  position: relative;
+  border-radius: 0.75rem;
+  padding: 0.35rem 0.15rem 0.5rem;
+  background: color-mix(
+    in srgb,
+    var(--color-depth-2, var(--color-focal)) 28%,
+    transparent
+  );
+}
+
+.hub-ambient .hub-section-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--hub-accent) 4%, transparent) 0%,
+    transparent 55%
+  );
 }
 
 /* Page canopy — faint depth wash behind title area */
@@ -42,6 +100,10 @@
 }
 
 .hub-ambient .hub-page-title {
+  font-family: var(--font-display);
+  font-weight: var(--type-display-weight, 500);
+  letter-spacing: var(--type-display-tracking, -0.02em);
+  color: var(--color-display-foreground, var(--color-focal-foreground, var(--color-foreground)));
   text-shadow: none;
 }
 
@@ -89,6 +151,8 @@
 }
 
 .hub-ambient .hub-section-header__title {
+  font-family: var(--font-display);
+  color: var(--color-display-foreground, var(--color-focal-foreground, var(--color-foreground)));
   background: linear-gradient(
     90deg,
     var(--hub-section-accent, var(--hub-accent)) 0%,
@@ -98,6 +162,91 @@
   background-repeat: no-repeat;
   background-position: 0 100%;
   padding-bottom: 0.15rem;
+}
+
+/* Artwork-safe type — independent of page light/dark foreground */
+.hub-ambient .hub-art-surface .hub-art-fg,
+.hub-ambient .hub-art-fg {
+  color: var(--hub-art-fg, rgb(245 240 232)) !important;
+}
+
+.hub-ambient .hub-art-surface .hub-art-muted,
+.hub-ambient .hub-art-muted {
+  color: var(--hub-art-fg-muted, rgb(245 240 232 / 0.78)) !important;
+}
+
+/* Resume session control — one interaction; warning when action needed */
+.hub-ambient .hub-resume-title-slot {
+  min-height: calc(2 * 1.35em);
+}
+
+.hub-ambient .hub-resume-tagline-slot {
+  min-height: 1.25rem;
+}
+
+.hub-ambient .hub-resume-session__control--quiet {
+  color: var(--hub-art-fg-muted, rgb(245 240 232 / 0.78));
+}
+
+.hub-ambient .hub-resume-session__control--quiet:hover {
+  color: var(--hub-art-fg, rgb(245 240 232));
+}
+
+.hub-ambient .hub-resume-session__control--action {
+  color: var(--color-status-warning-fg);
+}
+
+.hub-ambient .hub-resume-session__control--action:hover {
+  filter: brightness(1.08);
+}
+
+.hub-ambient .hub-resume-session__action-hint {
+  font-weight: 600;
+}
+
+.hub-ambient .hub-resume-session__empty {
+  color: var(--hub-art-fg-muted, rgb(245 240 232 / 0.65));
+}
+
+/* Resume card — whole-card campaign link; restrained hover/focus */
+.hub-ambient .hub-resume-card {
+  border-left-width: 2px;
+  box-shadow:
+    0 4px 20px rgba(var(--card-accent-rgb, var(--hub-accent-rgb)), 0.08),
+    0 0 1px rgba(var(--card-accent-rgb, var(--hub-accent-rgb)), 0.2);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.hub-ambient .hub-resume-card__art {
+  transition: transform 0.35s ease;
+  transform-origin: center;
+}
+
+.hub-ambient .hub-resume-card:hover,
+.hub-ambient .hub-resume-card:focus-within {
+  border-color: rgba(var(--card-accent-rgb, var(--hub-accent-rgb)), 0.42);
+  box-shadow:
+    0 6px 28px rgba(var(--card-accent-rgb, var(--hub-accent-rgb)), 0.18),
+    0 0 1px rgba(var(--card-accent-rgb, var(--hub-accent-rgb)), 0.35);
+}
+
+.hub-ambient .hub-resume-card:hover .hub-resume-card__art,
+.hub-ambient .hub-resume-card:focus-within .hub-resume-card__art {
+  transform: scale(1.03);
+}
+
+.hub-ambient .hub-resume-card__link:focus-visible {
+  outline: none;
+}
+
+.hub-ambient .hub-resume-card:has(.hub-resume-card__link:focus-visible) {
+  border-color: rgba(var(--card-accent-rgb, var(--hub-accent-rgb)), 0.55);
+  box-shadow:
+    0 0 0 2px var(--focus-ring-color, rgba(var(--hub-accent-rgb), 0.55)),
+    0 6px 28px rgba(var(--card-accent-rgb, var(--hub-accent-rgb)), 0.18);
 }
 
 /* Search */
@@ -242,16 +391,37 @@
   --hub-chip-color: var(--hub-section-attention);
 }
 
+/* Attention severity — semantic status tokens */
+.hub-ambient .hub-chip--severity-elevated {
+  border-color: var(--color-status-secret-border);
+  background: var(--color-status-secret-bg);
+  color: var(--color-status-secret-fg);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-status-secret-fg) 18%, transparent);
+}
+
+.hub-ambient .hub-chip--severity-soft {
+  border-color: var(--color-status-warning-border);
+  background: var(--color-status-warning-bg);
+  color: var(--color-status-warning-fg);
+}
+
+.hub-ambient .hub-chip--severity-whisper {
+  border-color: var(--color-status-muted-border);
+  background: var(--color-status-muted-bg);
+  color: var(--color-status-muted-fg);
+}
+
+/* Legacy aliases kept for any residual class usage */
 .hub-ambient .hub-chip--attention-elevated {
-  border-color: rgba(var(--hub-section-attention-rgb, var(--hub-accent-rgb)), 0.4);
-  background: rgba(var(--hub-section-attention-rgb, var(--hub-accent-rgb)), 0.12);
-  box-shadow: 0 0 10px rgba(var(--hub-section-attention-rgb, var(--hub-accent-rgb)), 0.1);
+  border-color: var(--color-status-secret-border);
+  background: var(--color-status-secret-bg);
+  color: var(--color-status-secret-fg);
 }
 
 .hub-ambient .hub-chip--attention-whisper {
-  border-color: rgba(var(--hub-section-recent-rgb, var(--hub-accent-rgb)), 0.25);
-  background: rgba(var(--hub-section-recent-rgb, var(--hub-accent-rgb)), 0.06);
-  color: var(--color-text-muted, var(--color-muted));
+  border-color: var(--color-status-muted-border);
+  background: var(--color-status-muted-bg);
+  color: var(--color-status-muted-fg);
 }
 
 /* On the Hearth shelf marker */
@@ -301,7 +471,7 @@
   letter-spacing: 0.02em;
 }
 
-/* Pin button override */
+/* Pin / session sit above the stretched link */
 .hub-ambient .hub-pin-btn:hover {
   border-color: rgba(var(--hub-accent-rgb), 0.4) !important;
   color: var(--hub-accent) !important;
@@ -310,17 +480,6 @@
 .hub-ambient .hub-pin-btn--pinned {
   color: var(--hub-accent) !important;
   border-color: rgba(var(--hub-accent-rgb), 0.45) !important;
-}
-
-/* Resume rail card hover spill */
-.hub-ambient .hub-resume-card {
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.25s ease;
-}
-
-.hub-ambient .hub-resume-card:hover {
-  border-color: rgba(var(--hub-accent-rgb), 0.3);
 }
 
 /* Recently edited row */
@@ -337,6 +496,103 @@
   border-color: rgba(var(--hub-section-recent-rgb, var(--hub-accent-rgb)), 0.35);
   background: rgba(var(--hub-section-recent-rgb, var(--hub-accent-rgb)), 0.08);
   box-shadow: 0 0 12px rgba(var(--hub-section-recent-rgb, var(--hub-accent-rgb)), 0.08);
+}
+
+.hub-ambient .hub-recent-icon-well {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--hub-recent-icon-tint, var(--hub-section-recent)) 35%, transparent);
+  background: color-mix(in srgb, var(--hub-recent-icon-tint, var(--hub-section-recent)) 14%, var(--color-depth-1, transparent));
+  color: var(--hub-recent-icon-tint, var(--hub-section-recent));
+}
+
+/* Your Story So Far — one horizontal reflection strip */
+.hub-ambient .hub-story-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 0;
+  padding: 0.35rem 0.5rem 0.15rem;
+}
+
+@media (min-width: 640px) {
+  .hub-ambient .hub-story-strip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.hub-ambient .hub-story-strip__item {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.hub-ambient .hub-story-strip__rule {
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 1px;
+  background: color-mix(in srgb, var(--color-border) 70%, transparent);
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .hub-ambient .hub-story-strip__item:not(:first-child) .hub-story-strip__rule {
+    display: block;
+  }
+
+  .hub-ambient .hub-story-strip__item:not(:first-child) .hub-story-strip__metric {
+    padding-left: 1rem;
+  }
+}
+
+.hub-ambient .hub-story-strip__metric {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.hub-ambient .hub-story-strip__icon {
+  color: color-mix(in srgb, var(--hub-accent) 75%, var(--color-muted));
+  opacity: 0.85;
+}
+
+.hub-ambient .hub-story-strip__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.hub-ambient .hub-story-strip__value {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.4vw, 1.85rem);
+  font-weight: var(--type-display-weight, 500);
+  letter-spacing: var(--type-display-tracking, -0.02em);
+  line-height: 1.1;
+  color: var(--color-display-foreground, var(--color-foreground));
+}
+
+.hub-ambient .hub-story-strip__unit {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.hub-ambient .hub-story-strip__label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
 }
 
 /* Footer horizon */
@@ -394,7 +650,7 @@
 }
 
 /* Dual-tone page wash — trans identity atmospheric negative space */
-.hub-ambient.hub-ambient--dual-tone::before {
+.hub-ambient.hub-ambient--dual-tone::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -411,11 +667,6 @@
       rgba(var(--hub-accent-rgb), 0.025) 0%,
       transparent 50%
     );
-}
-
-.hub-ambient.hub-ambient--dual-tone > * {
-  position: relative;
-  z-index: 1;
 }
 
 .hub-ambient.hub-ambient--dual-tone .hub-section-header--recent .hub-section-header__icon {

@@ -31,11 +31,11 @@ import { FederatedAuthNotice } from '@/components/auth/FederatedAuthNotice';
 
 import { HubResumeHero } from '@/components/hub/HubResumeHero';
 
-import { HubAttentionQueue } from '@/components/hub/HubAttentionQueue';
-
 import { CampaignLibrary } from '@/components/hub/CampaignLibrary';
 
 import { HubRecentlyEdited } from '@/components/hub/HubRecentlyEdited';
+
+import { HubStorySoFar } from '@/components/hub/HubStorySoFar';
 
 import { HubAmbientShell } from '@/components/hub/HubAmbientShell';
 
@@ -53,7 +53,7 @@ import { rankCampaignsForContinue } from '@/lib/hubPrioritization';
 
 export function GlobalHubPage() {
   const { t } = useTranslation();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([]);
 
@@ -142,27 +142,19 @@ export function GlobalHubPage() {
 
 
   const resumeHero = useMemo(() => {
-
-    if (hubData?.resumeHero?.length) return hubData.resumeHero;
-
-    if (hubData?.continue?.length) return hubData.continue;
-
-    return rankCampaignsForContinue(campaigns, []).map((c) => ({
-
-      campaign: c.campaign,
-
-      score: c.score,
-
-      reason: c.reason,
-
-      ctaLabel: c.ctaLabel,
-
-      ctaHref: c.ctaHref,
-
-      unreadCount: c.unreadCount,
-
-    }));
-
+    const raw = hubData?.resumeHero?.length
+      ? hubData.resumeHero
+      : hubData?.continue?.length
+        ? hubData.continue
+        : rankCampaignsForContinue(campaigns, []).map((c) => ({
+            campaign: c.campaign,
+            score: c.score,
+            reason: c.reason,
+            ctaLabel: c.ctaLabel,
+            ctaHref: c.ctaHref,
+            unreadCount: c.unreadCount,
+          }));
+    return raw.slice(0, 3);
   }, [hubData, campaigns]);
 
 
@@ -236,8 +228,6 @@ export function GlobalHubPage() {
 
 
 
-  const showAttention = (hubData?.attentionQueue?.length ?? 0) > 0;
-
   const showRecent = (hubData?.recentEdits?.length ?? 0) > 0;
 
 
@@ -252,7 +242,7 @@ export function GlobalHubPage() {
 
           <div>
 
-            <h1 className="hub-page-title text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="hub-page-title text-3xl tracking-tight">
 
               {isAuthenticated ? t('home.pageTitleAuthenticated') : t('home.pageTitleGuest')}
 
@@ -314,23 +304,9 @@ export function GlobalHubPage() {
 
               onPinToggle={handlePinToggle}
 
+              onHubRefresh={() => void loadCampaigns()}
+
             />
-
-
-
-            {showAttention ? (
-
-              <HubAttentionQueue
-
-                items={hubData!.attentionQueue}
-
-                campaignCount={memberCount}
-
-                onDismiss={() => void loadCampaigns()}
-
-              />
-
-            ) : null}
 
 
 
@@ -344,7 +320,7 @@ export function GlobalHubPage() {
 
             />
 
-
+            {user?.id ? <HubStorySoFar userId={user.id} /> : null}
 
             {showRecent ? (
 

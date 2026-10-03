@@ -95,9 +95,7 @@ function buildContinueReason(input: {
   pendingActions: HubPendingAction[];
   lastActivityAt: string | null;
 }): string {
-  if (input.pendingActions.some((a) => a.type === 'RSVP')) {
-    return 'RSVP needed';
-  }
+  // RSVP is a dedicated Resume-card action; do not surface it as narrative reason/CTA.
   if (input.pendingActions.some((a) => a.type === 'JOIN_REQUEST')) {
     const count = input.pendingActions.filter((a) => a.type === 'JOIN_REQUEST').length;
     return count === 1 ? '1 join request pending' : `${count} join requests pending`;
@@ -120,10 +118,8 @@ function buildContinueCta(
   handle: string,
   role: CampaignMemberRole,
   nextSession: DashboardSessionSummary | null,
-  pendingActions: HubPendingAction[],
+  _pendingActions: HubPendingAction[],
 ): { label: string; href: string } {
-  const rsvp = pendingActions.find((a) => a.type === 'RSVP');
-  if (rsvp) return { label: 'RSVP Now', href: rsvp.href };
   if (nextSession) {
     return {
       label: isDmRole(role) ? 'Continue Prep' : 'Resume Session',
@@ -321,7 +317,7 @@ async function batchPendingRsvp(
 export function selectResumeHeroCandidates(
   ranked: HubContinueCandidate[],
   pinnedCampaignIds: string[],
-  max = 4,
+  max = 3,
 ): HubContinueCandidate[] {
   const byId = new Map(ranked.map((c) => [c.campaignId, c]));
   const selected: HubContinueCandidate[] = [];
@@ -447,7 +443,7 @@ export async function buildHubContinueRanking(input: {
   );
 
   const pinned = input.pinnedCampaignIds ?? [];
-  const resumeHero = selectResumeHeroCandidates(ranked, pinned, 4);
+  const resumeHero = selectResumeHeroCandidates(ranked, pinned, 3);
   const continueTop = resumeHero.slice(0, 3);
 
   const continueFeed: HubContinueEntityItem[] = [];

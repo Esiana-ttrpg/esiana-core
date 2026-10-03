@@ -18,8 +18,8 @@ export function HubSectionHeader({
 }: HubSectionHeaderProps) {
   const titleClass =
     size === 'lg'
-      ? 'hub-section-header__title text-lg font-semibold text-foreground'
-      : 'hub-section-header__title text-sm font-semibold text-foreground';
+      ? 'hub-section-header__title text-lg font-semibold'
+      : 'hub-section-header__title text-sm font-semibold';
 
   return (
     <div className={`hub-section-header hub-section-header--${variant}`}>

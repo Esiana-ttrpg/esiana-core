@@ -47,7 +47,7 @@ export function CampaignCard({
         style={
           coverUrl
             ? {
-                backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.65)), url(${coverUrl})`,
+                backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.12) 45%, transparent 100%), url(${coverUrl})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }
