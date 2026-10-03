@@ -33,6 +33,8 @@ export type HubRecentEditItem = {
   campaignName: string;
   campaignHandle: string;
   entityType: string;
+  /** Wiki template type when entityType is WIKI_PAGE; used for hub icon wells. */
+  templateType: string | null;
   entityId: string;
   title: string;
   href: string;
@@ -415,6 +417,7 @@ export async function batchRecentEditsForCampaigns(
           campaignName: ctx.name,
           campaignHandle: ctx.handle,
           entityType: 'WIKI_PAGE',
+          templateType: r.templateType ?? null,
           entityId: r.id,
           title: r.title,
           href: campaignWikiHref(ctx.handle, r),

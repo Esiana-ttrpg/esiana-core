@@ -106,7 +106,7 @@ export function CampaignLibrary({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="hub-section-surface space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <HubSectionHeader
           title="Your Campaigns"
@@ -185,7 +185,7 @@ export function CampaignLibrary({
         </ul>
       ) : (
         <div
-          className={`grid gap-3 transition-all duration-200 ${
+          className={`grid items-stretch gap-3 transition-all duration-200 ${
             resolvedDensity === 'cinematic'
               ? 'sm:grid-cols-2 lg:grid-cols-3'
               : 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'

@@ -3,6 +3,7 @@
 @plugin '@tailwindcss/typography';
 @import './styles/ambient-motion.css';
 @import './styles/hub-ambient.css';
+@import './styles/esiana-logo.css';
 @import './styles/page-print.css';
 
 /*
