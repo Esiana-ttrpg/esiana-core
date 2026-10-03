@@ -38,6 +38,7 @@ export function CampaignLibraryRow({ campaign, pinned, onPinToggle }: CampaignLi
           ...presentation.cardStyle,
           boxShadow: restingGlow,
           borderColor: `rgba(${presentation.accentRgb}, 0.28)`,
+          borderLeftColor: presentation.accentColor,
           background: `color-mix(in srgb, rgba(${presentation.accentRgb}, 0.05) 35%, var(--color-depth-3, var(--color-focal-elevated)))`,
         } as CSSProperties
       }
