@@ -7,27 +7,49 @@ import {
   registerEligibilityProvider,
   registerRationaleProvider,
   resolveCandidatesForCampaign,
+  stampAndValidateCandidate,
 } from './developmentRegistry.js';
-import type { DevelopmentProvider, WorldDevelopmentContext } from '../../../shared/developmentProvider.js';
+import {
+  buildNormalizedTrajectoryContext,
+  type DevelopmentProvider,
+  type ProjectedFactionState,
+  type WorldDevelopmentContext,
+} from '../../../shared/developmentProvider.js';
 import { createDefaultWorldDevelopmentSettings } from '../../../shared/worldDevelopmentMetadata.js';
 import { createDefaultPresentEra } from '../../../shared/factionMomentumMetadata.js';
 
-function baseContext(): WorldDevelopmentContext {
+function explicitFactionState(
+  overrides: Partial<ProjectedFactionState> = {},
+): ProjectedFactionState {
+  const era = createDefaultPresentEra();
+  const base = buildNormalizedTrajectoryContext({
+    subjectPageId: 'org-1',
+    subjectTitle: 'Test Faction',
+    region: null,
+    trajectory: {
+      eraId: 'era-1',
+      byEraId: null,
+      direction: 'Militarizing',
+      outcome: 'Starts a war',
+      momentumState: 'rising',
+      pressure: null,
+      gmNote: null,
+    },
+    resolvedForEraId: 'era-1',
+    eras: [{ ...era, id: 'era-1', name: 'Era I' }],
+    activityLevel: 'medium',
+    isExplicit: true,
+    bullets: [],
+  });
+  return { ...base, ...overrides };
+}
+
+function baseContext(
+  projectedFactionStates: ProjectedFactionState[] = [explicitFactionState()],
+): WorldDevelopmentContext {
   return {
     campaignId: 'camp-1',
-    projectedFactionStates: [
-      {
-        orgPageId: 'org-1',
-        orgTitle: 'Test Faction',
-        momentum: 'rising',
-        momentumLabel: 'Rising',
-        activityLevel: 'medium',
-        pressure: null,
-        region: null,
-        eraId: 'era-1',
-        bullets: [],
-      },
-    ],
+    projectedFactionStates,
     currentEra: createDefaultPresentEra(),
     settings: createDefaultWorldDevelopmentSettings(),
     advanceMagnitude: 'medium',
@@ -65,12 +87,16 @@ test('registry merges core and plugin candidates', async () => {
           narrative: 'Plugin candidate',
           rationale: [{ kind: 'trajectory', text: 'Plugin line' }],
           idempotencyKey: 'plugin-key-1',
-          primaryOrgPageId: ctx.projectedFactionStates[0]?.orgPageId ?? null,
+          primaryOrgPageId: ctx.projectedFactionStates[0]?.subjectPageId ?? null,
           eraId: 'era-1',
           momentumState: 'rising',
           trendDirection: 'growth',
           proposedAcceptTarget: 'calendar_event',
           suggestionKind: 'faction_pressure',
+          trajectoryRef: {
+            subjectPageId: 'org-1',
+            fromEraId: 'era-1',
+          },
         },
       ];
     },
@@ -87,9 +113,67 @@ test('registry merges core and plugin candidates', async () => {
   });
 
   assert.ok(withoutPlugin.every((c) => !c.definitionId.startsWith('demo-plugin:')));
-  assert.ok(withPlugin.some((c) => c.definitionId === 'demo-plugin:custom'));
+  const pluginRow = withPlugin.find((c) => c.definitionId === 'demo-plugin:custom');
+  assert.ok(pluginRow);
+  assert.equal(pluginRow!.providerId, 'demo-plugin');
+  assert.deepEqual(pluginRow!.trajectoryRef, { subjectPageId: 'org-1', fromEraId: 'era-1' });
 
   clearDevelopmentRegistry();
+});
+
+test('registry overwrites forged providerId and drops invalid trajectoryRef', () => {
+  const ctx = baseContext();
+  const stamped = stampAndValidateCandidate(
+    'trusted-plugin',
+    {
+      definitionId: 'trusted-plugin:x',
+      developmentType: 'faction_pressure',
+      title: 'X',
+      narrative: null,
+      rationale: [],
+      idempotencyKey: 'x-1',
+      primaryOrgPageId: 'org-1',
+      eraId: 'era-1',
+      momentumState: 'rising',
+      trendDirection: null,
+      proposedAcceptTarget: 'calendar_event',
+      suggestionKind: 'faction_pressure',
+      trajectoryRef: { subjectPageId: 'org-unknown', fromEraId: 'era-1' },
+      providerId: 'forged-other-provider',
+    } as never,
+    ctx,
+  );
+  assert.equal(stamped.providerId, 'trusted-plugin');
+  assert.equal(stamped.trajectoryRef, null);
+});
+
+test('registry keeps trajectoryRef only for explicit projected states', () => {
+  const fallback = explicitFactionState({
+    isExplicit: false,
+    direction: null,
+    outcome: null,
+  });
+  const ctx = baseContext([fallback]);
+  const stamped = stampAndValidateCandidate(
+    'core',
+    {
+      definitionId: 'faction_pressure',
+      developmentType: 'faction_pressure',
+      title: 'X',
+      narrative: null,
+      rationale: [],
+      idempotencyKey: 'x-2',
+      primaryOrgPageId: 'org-1',
+      eraId: 'era-1',
+      momentumState: 'rising',
+      trendDirection: null,
+      proposedAcceptTarget: 'calendar_event',
+      suggestionKind: 'faction_pressure',
+      trajectoryRef: { subjectPageId: 'org-1', fromEraId: 'era-1' },
+    },
+    ctx,
+  );
+  assert.equal(stamped.trajectoryRef, null);
 });
 
 test('eligibility provider filters candidates', async () => {
@@ -112,6 +196,7 @@ test('eligibility provider filters candidates', async () => {
         trendDirection: null,
         proposedAcceptTarget: 'calendar_event',
         suggestionKind: 'faction_pressure',
+        trajectoryRef: null,
       },
     ],
   });
@@ -149,6 +234,7 @@ test('rationale provider appends lines', async () => {
         trendDirection: null,
         proposedAcceptTarget: 'calendar_event',
         suggestionKind: 'faction_pressure',
+        trajectoryRef: null,
       },
     ],
   });
@@ -164,6 +250,7 @@ test('rationale provider appends lines', async () => {
 
   const row = results.find((c) => c.definitionId === 'ratio-plugin:event');
   assert.ok(row);
+  assert.equal(row!.providerId, 'ratio-plugin');
   assert.ok(row!.rationale.some((line) => line.text === 'Appended'));
   clearDevelopmentRegistry();
 });

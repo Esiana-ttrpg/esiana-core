@@ -224,6 +224,10 @@ export type DevelopmentPayload = {
   definitionId?: string | null;
   /** Human-readable outcome for history UI. */
   resultSummary?: string | null;
+  /** Registry-authoritative provider id (never trust provider-supplied identity). */
+  providerId?: string | null;
+  /** Validated explicit trajectory identity (subject + From era). */
+  trajectoryRef?: { subjectPageId: string; fromEraId: string } | null;
 };
 
 export type WorldDevelopmentExpiration = {
@@ -390,7 +394,20 @@ export function normalizeDevelopmentPayload(raw: unknown): DevelopmentPayload | 
       typeof obj.acceptedArtifactId === 'string' ? obj.acceptedArtifactId : null,
     definitionId: typeof obj.definitionId === 'string' ? obj.definitionId : null,
     resultSummary: typeof obj.resultSummary === 'string' ? obj.resultSummary.slice(0, 500) : null,
+    providerId: typeof obj.providerId === 'string' ? obj.providerId.trim() || null : null,
+    trajectoryRef: normalizeTrajectoryRef(obj.trajectoryRef),
   };
+}
+
+function normalizeTrajectoryRef(
+  raw: unknown,
+): { subjectPageId: string; fromEraId: string } | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+  const subjectPageId = typeof obj.subjectPageId === 'string' ? obj.subjectPageId.trim() : '';
+  const fromEraId = typeof obj.fromEraId === 'string' ? obj.fromEraId.trim() : '';
+  if (!subjectPageId || !fromEraId) return null;
+  return { subjectPageId, fromEraId };
 }
 
 export function serializeDevelopmentPayload(payload: DevelopmentPayload): Record<string, unknown> {

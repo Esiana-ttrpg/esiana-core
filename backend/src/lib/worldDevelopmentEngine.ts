@@ -154,6 +154,8 @@ async function createSuggestionFromCandidate(
     proposedAcceptTarget: candidate.proposedAcceptTarget,
     budgetAllocationRank: input.rank,
     definitionId: candidate.definitionId,
+    providerId: candidate.providerId,
+    trajectoryRef: candidate.trajectoryRef,
   };
 
   const expiresAt = computeSuggestionExpiresAt(input.settings.expiration.wallClockDays);

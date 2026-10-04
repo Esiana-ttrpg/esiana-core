@@ -1,7 +1,11 @@
 import type { Prisma } from './prismaClient.js';
 import type { GlobalTimeAdvanceContext } from '../../../shared/globalTimeHooks.js';
 import type { FactionActivityLevel } from '../../../shared/worldDevelopmentMetadata.js';
-import type { ProjectedFactionState, WorldDevelopmentContext } from '../../../shared/developmentProvider.js';
+import {
+  buildNormalizedTrajectoryContext,
+  type ProjectedFactionState,
+  type WorldDevelopmentContext,
+} from '../../../shared/developmentProvider.js';
 import {
   resolveFactionTrajectoryForEra,
   type FactionEraTrajectory,
@@ -11,7 +15,6 @@ import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { resolveWorldDevelopmentSettings } from './worldDevelopmentSettingsService.js';
 import { parseOrganizationMetadata } from './organizationMetadata.js';
 import { ensureCampaignMomentum, getCurrentCampaignEra, toCampaignMomentumPayload } from './campaignMomentumService.js';
-import { FACTION_MOMENTUM_STATE_LABELS } from '../../../shared/factionMomentumMetadata.js';
 import type { FactionPressureLine } from '../../../shared/worldPressureProjection.js';
 
 function normalizeActivityLevel(
@@ -26,18 +29,37 @@ function normalizeActivityLevel(
 export function projectedFactionStateFromLine(
   line: FactionPressureLine,
   activityLevel: FactionActivityLevel,
+  eras: { id: string; name: string }[] = [],
 ): ProjectedFactionState {
-  return {
-    orgPageId: line.orgPageId,
-    orgTitle: line.orgTitle,
-    momentum: line.momentumState ?? 'stable',
-    momentumLabel: line.momentumLabel,
-    activityLevel,
-    pressure: line.pressure,
+  const momentumState = line.momentumState ?? 'stable';
+  const eraId = line.currentEraId;
+  return buildNormalizedTrajectoryContext({
+    subjectPageId: line.orgPageId,
+    subjectTitle: line.orgTitle,
     region: null,
-    eraId: line.currentEraId,
+    trajectory: {
+      eraId,
+      byEraId: null,
+      direction: null,
+      outcome: null,
+      momentumState,
+      pressure: line.pressure,
+      gmNote: null,
+    },
+    resolvedForEraId: eraId,
+    eras: eras.map((era, index) => ({
+      id: era.id,
+      name: era.name,
+      sortOrder: index,
+      isCurrent: false,
+      epochStartMinute: null,
+      epochEndMinute: null,
+      narrativeNote: null,
+    })),
+    activityLevel,
+    isExplicit: false,
     bullets: line.bullets,
-  };
+  });
 }
 
 export async function buildProjectedFactionStates(
@@ -47,6 +69,7 @@ export async function buildProjectedFactionStates(
   const db = options?.tx ?? (await import('./prisma.js')).prisma;
   const momentumRow = await ensureCampaignMomentum(campaignId, options?.tx);
   const momentumPayload = toCampaignMomentumPayload(momentumRow);
+  const eras = momentumPayload.state.eras;
   const currentEra = getCurrentCampaignEra(momentumPayload.state);
 
   const orgPages = await db.wikiPage.findMany({
@@ -63,24 +86,37 @@ export async function buildProjectedFactionStates(
   for (const page of orgPages) {
     const org = parseOrganizationMetadata(page.metadata);
     if (org.organizationStatus !== 'ACTIVE') continue;
-    const trajectory = resolveFactionTrajectoryForEra({
+
+    const explicit = resolveFactionTrajectoryForEra({
       eraTrajectories: org.eraTrajectories,
       eraId: currentEra.id,
-      worldState: org.worldState,
-      eras: momentumPayload.state.eras,
+      worldState: null,
+      eras,
     });
+    const isExplicit = explicit != null;
+    const trajectory =
+      explicit ??
+      resolveFactionTrajectoryForEra({
+        eraTrajectories: org.eraTrajectories,
+        eraId: currentEra.id,
+        worldState: org.worldState,
+        eras,
+      });
     if (!trajectory?.momentumState) continue;
-    states.push({
-      orgPageId: page.id,
-      orgTitle: page.title,
-      momentum: trajectory.momentumState,
-      momentumLabel: FACTION_MOMENTUM_STATE_LABELS[trajectory.momentumState],
-      activityLevel: normalizeActivityLevel(trajectory.activityLevel),
-      pressure: trajectory.pressure,
-      region: org.region,
-      eraId: currentEra.id,
-      bullets: [],
-    });
+
+    states.push(
+      buildNormalizedTrajectoryContext({
+        subjectPageId: page.id,
+        subjectTitle: page.title,
+        region: org.region,
+        trajectory,
+        resolvedForEraId: currentEra.id,
+        eras,
+        activityLevel: normalizeActivityLevel(trajectory.activityLevel),
+        isExplicit,
+        bullets: [],
+      }),
+    );
   }
   return states;
 }
@@ -109,7 +145,7 @@ export async function buildWorldDevelopmentContext(
 
   const enrichedStates = projectedFactionStates.map((state) => ({
     ...state,
-    bullets: bulletByOrg.get(state.orgPageId) ?? state.bullets,
+    bullets: bulletByOrg.get(state.subjectPageId) ?? state.bullets,
   }));
 
   return {
@@ -123,3 +159,4 @@ export async function buildWorldDevelopmentContext(
     projection,
   };
 }
+

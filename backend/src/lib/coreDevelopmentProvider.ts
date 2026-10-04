@@ -1,8 +1,9 @@
 import type { DevelopmentDefinition } from '../../../shared/coreDevelopmentDefinitions.js';
 import { CORE_DEVELOPMENT_DEFINITIONS } from '../../../shared/coreDevelopmentDefinitions.js';
 import type {
-  DevelopmentCandidate,
   DevelopmentProvider,
+  ProjectedFactionState,
+  ProviderDevelopmentCandidate,
   WorldDevelopmentContext,
 } from '../../../shared/developmentProvider.js';
 import type { DevelopmentRationaleLine } from '../../../shared/worldDevelopmentMetadata.js';
@@ -11,7 +12,6 @@ import {
   MOMENTUM_TO_TREND_DIRECTION,
   type TrendDirection,
 } from '../../../shared/worldEventSuggestionMetadata.js';
-import type { ProjectedFactionState } from '../../../shared/developmentProvider.js';
 
 const ACTIVITY_WEIGHT: Record<string, number> = {
   dormant: 0,
@@ -35,12 +35,14 @@ function candidateIdempotencyKey(
 }
 
 function buildTrajectoryRationale(faction: ProjectedFactionState): DevelopmentRationaleLine[] {
-  const lines: DevelopmentRationaleLine[] = [
-    {
-      kind: 'trajectory',
-      text: `${faction.orgTitle} — ${faction.momentumLabel}`,
-    },
-  ];
+  const directionPart = faction.direction?.trim();
+  const label = directionPart
+    ? `${faction.subjectTitle} — ${directionPart}`
+    : `${faction.subjectTitle} — ${faction.momentumLabel}`;
+  const lines: DevelopmentRationaleLine[] = [{ kind: 'trajectory', text: label }];
+  if (faction.outcome?.trim()) {
+    lines.push({ kind: 'trajectory', text: `Toward: ${faction.outcome.trim()}` });
+  }
   if (faction.bullets[0]) {
     lines.push({ kind: 'pressure', text: faction.bullets[0] });
   }
@@ -48,7 +50,7 @@ function buildTrajectoryRationale(faction: ProjectedFactionState): DevelopmentRa
 }
 
 function titleForDefinition(def: DevelopmentDefinition, faction: ProjectedFactionState): string {
-  return `${faction.orgTitle} — ${def.label}`;
+  return `${faction.subjectTitle} — ${def.label}`;
 }
 
 function narrativeForDefinition(
@@ -56,7 +58,11 @@ function narrativeForDefinition(
   faction: ProjectedFactionState,
 ): string | null {
   if (faction.bullets[0]) return faction.bullets[0];
-  return `${def.label} may unfold as ${faction.orgTitle} continues on a ${faction.momentumLabel.toLowerCase()} trajectory.`;
+  if (faction.direction?.trim()) {
+    const toward = faction.outcome?.trim() ? ` toward ${faction.outcome.trim()}` : '';
+    return `${def.label} may unfold as ${faction.subjectTitle} continues ${faction.direction.trim()}${toward}.`;
+  }
+  return `${def.label} may unfold as ${faction.subjectTitle} continues on a ${faction.momentumLabel.toLowerCase()} trajectory.`;
 }
 
 function definitionsForMomentum(
@@ -71,9 +77,9 @@ function pickDefinitionForFaction(
   faction: ProjectedFactionState,
   usedDefinitionIds: Set<string>,
 ): DevelopmentDefinition | null {
-  const applicable = definitionsForMomentum(defs, faction.momentum);
+  const applicable = definitionsForMomentum(defs, faction.momentumState);
   for (const def of applicable) {
-    const key = `${def.id}:${faction.orgPageId}`;
+    const key = `${def.id}:${faction.subjectPageId}`;
     if (usedDefinitionIds.has(key)) continue;
     usedDefinitionIds.add(key);
     return def;
@@ -85,9 +91,9 @@ function buildCandidate(
   def: DevelopmentDefinition,
   faction: ProjectedFactionState,
   context: WorldDevelopmentContext,
-): DevelopmentCandidate {
+): ProviderDevelopmentCandidate {
   const trendDirection: TrendDirection | null =
-    MOMENTUM_TO_TREND_DIRECTION[faction.momentum] ?? null;
+    MOMENTUM_TO_TREND_DIRECTION[faction.momentumState] ?? null;
   return {
     definitionId: def.id,
     developmentType: def.developmentType,
@@ -97,25 +103,28 @@ function buildCandidate(
     idempotencyKey: candidateIdempotencyKey(
       context.nextEpochMinute,
       def.id,
-      faction.orgPageId,
+      faction.subjectPageId,
     ),
-    primaryOrgPageId: faction.orgPageId,
-    eraId: faction.eraId,
-    momentumState: faction.momentum,
+    primaryOrgPageId: faction.subjectPageId,
+    eraId: faction.resolvedForEraId,
+    momentumState: faction.momentumState,
     trendDirection,
     proposedAcceptTarget: def.acceptTarget,
     suggestionKind: 'faction_pressure',
+    trajectoryRef: faction.isExplicit
+      ? { subjectPageId: faction.subjectPageId, fromEraId: faction.fromEraId }
+      : null,
   };
 }
 
 function generateRegionalInstabilityCandidate(
   context: WorldDevelopmentContext,
-): DevelopmentCandidate | null {
+): ProviderDevelopmentCandidate | null {
   const def = CORE_DEVELOPMENT_DEFINITIONS.find((d) => d.id === 'regional_instability');
   if (!def || !context.projection) return null;
 
   const fragmenting = context.projectedFactionStates.filter(
-    (f) => f.momentum === 'fragmenting' || f.momentum === 'desperate',
+    (f) => f.momentumState === 'fragmenting' || f.momentumState === 'desperate',
   );
   if (fragmenting.length < 2) return null;
 
@@ -142,18 +151,19 @@ function generateRegionalInstabilityCandidate(
     trendDirection,
     proposedAcceptTarget: def.acceptTarget,
     suggestionKind: 'era_trend',
+    trajectoryRef: null,
   };
 }
 
 export const coreDevelopmentProvider: DevelopmentProvider = {
   id: 'core',
   developmentDefinitions: () => CORE_DEVELOPMENT_DEFINITIONS,
-  generateCandidates(context: WorldDevelopmentContext): DevelopmentCandidate[] {
-    const candidates: DevelopmentCandidate[] = [];
+  generateCandidates(context: WorldDevelopmentContext): ProviderDevelopmentCandidate[] {
+    const candidates: ProviderDevelopmentCandidate[] = [];
     const usedKeys = new Set<string>();
 
     const scored = [...context.projectedFactionStates]
-      .filter((f) => f.momentum !== 'stable' && f.momentum !== 'dormant')
+      .filter((f) => f.momentumState !== 'stable' && f.momentumState !== 'dormant')
       .sort((a, b) => scoreFaction(b) - scoreFaction(a));
 
     for (const faction of scored) {

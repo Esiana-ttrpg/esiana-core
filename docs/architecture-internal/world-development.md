@@ -12,13 +12,14 @@ World Development is **not** autonomous simulation. It is a **suggestion-first p
 
 ```text
 Faction trajectory (signals)
+    → NormalizedTrajectoryContext (explicit or worldState fallback)
     → Development registry (core + plugins)
-    → Candidate events (unified pool)
+    → Candidate events (unified pool; registry stamps providerId, validates trajectoryRef)
     → GM approve / reject (or auto-apply per mode)
     → Canon via acceptTarget (calendar event, rumor, quest, …)
 ```
 
-Core owns **signal generation** (`WorldDevelopmentContext.projectedFactionStates`). Providers own **candidate generation**. The GM sees one inbox — no distinction between core and plugin sources.
+Core owns **signal generation** (`WorldDevelopmentContext.projectedFactionStates`). Providers own **candidate generation**. The GM sees one inbox — no distinction between core and plugin sources. Payload provenance (`providerId`, `trajectoryRef`) is retained for history/debug/future Graph.
 
 Default mode is **Off** — no generation, no queues, no background activity.
 
@@ -98,11 +99,25 @@ Core registers [`CORE_DEVELOPMENT_DEFINITIONS`](../../shared/coreDevelopmentDefi
 - `acceptTarget` — canon primitive on approve
 - `tags[]` — reserved for future filtering (not UI today)
 
+### Provider context + provenance
+
+Providers receive `WorldDevelopmentContext.projectedFactionStates` as **`NormalizedTrajectoryContext`** (aliased as `ProjectedFactionState`): subject identity, From/By eras, `direction` / `outcome`, momentum/pressure, bullets, and `isExplicit`.
+
+- Normalized context does **not** imply an explicit trajectory — worldState fallback rows keep authorial fields null and `isExplicit: false`.
+- Deprecated aliases (`orgPageId`, `orgTitle`, `momentum`, `eraId`) mirror canonical fields for a temporary plugin compatibility window.
+
+Providers return `ProviderDevelopmentCandidate` (**no** `providerId`). The registry:
+
+1. Stamps/overwrites **`providerId`** from the registered provider (never trust provider-supplied identity).
+2. Validates **`trajectoryRef`** against explicit projected states (`subjectPageId` + `fromEraId`); otherwise forces `null`.
+
+Persisted `DevelopmentPayload` stores `providerId` + `trajectoryRef` for history/debug/future Graph. The Developments inbox does **not** surface provider vs core.
+
 Plugins register via `DevelopmentProvider` (`world-development:provider` permission, `developmentProvider` capability). See [phase-10-ecosystem.md](../plugins/phase-10-ecosystem.md).
 
 | Hook | Role |
 |------|------|
-| `DevelopmentProvider` | Definitions + `generateCandidates(context)` |
+| `DevelopmentProvider` | Definitions + `generateCandidates(context)` → `ProviderDevelopmentCandidate[]` |
 | `EligibilityProvider` | Campaign context filter — candidate *allowed* |
 | `RationaleProvider` | Append-only rationale lines |
 | `DevelopmentResolveProvider` | Optional custom approve → canon when standard `acceptTarget` is insufficient |
