@@ -41,6 +41,17 @@ function upsertTrajectory(
   return [...without, nextTrajectory];
 }
 
+function trajectoriesForPersistence(
+  trajectories: FactionEraTrajectory[],
+): FactionEraTrajectory[] {
+  return trajectories.map((trajectory) => ({
+    ...trajectory,
+    direction: trajectory.direction?.trim() || null,
+    gmNote: trajectory.gmNote?.trim() || null,
+    outcome: trajectory.outcome?.trim() || null,
+  }));
+}
+
 export function OrganizationEraTrajectoriesBlock({
   campaignHandle,
   draft,
@@ -72,7 +83,7 @@ export function OrganizationEraTrajectoriesBlock({
     setDraft((prev) => {
       const eraTrajectories = upsertTrajectory(prev.eraTrajectories, fromEraId, patch);
       if (persist) {
-        void onPersist({ eraTrajectories });
+        void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) });
       }
       return { ...prev, eraTrajectories };
     });
@@ -80,7 +91,7 @@ export function OrganizationEraTrajectoriesBlock({
 
   function persistCurrentTrajectories() {
     setDraft((prev) => {
-      void onPersist({ eraTrajectories: prev.eraTrajectories });
+      void onPersist({ eraTrajectories: trajectoriesForPersistence(prev.eraTrajectories) });
       return prev;
     });
   }
@@ -95,7 +106,7 @@ export function OrganizationEraTrajectoriesBlock({
         outcome: null,
         byEraId: null,
       });
-      void onPersist({ eraTrajectories });
+      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) });
       return { ...prev, eraTrajectories };
     });
   }
@@ -103,7 +114,7 @@ export function OrganizationEraTrajectoriesBlock({
   function removeTrajectory(eraId: string) {
     setDraft((prev) => {
       const eraTrajectories = prev.eraTrajectories.filter((t) => t.eraId !== eraId);
-      void onPersist({ eraTrajectories });
+      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) });
       return { ...prev, eraTrajectories };
     });
   }
@@ -162,7 +173,7 @@ export function OrganizationEraTrajectoriesBlock({
                       value={trajectory.direction ?? ''}
                       onChange={(e) =>
                         updateTrajectory(trajectory.eraId, {
-                          direction: e.target.value.trim() || null,
+                          direction: e.target.value,
                         })
                       }
                       onBlur={persistCurrentTrajectories}
@@ -210,7 +221,7 @@ export function OrganizationEraTrajectoriesBlock({
                           value={trajectory.gmNote ?? ''}
                           onChange={(e) =>
                             updateTrajectory(trajectory.eraId, {
-                              gmNote: e.target.value.trim() || null,
+                              gmNote: e.target.value,
                             })
                           }
                           onBlur={persistCurrentTrajectories}
@@ -241,7 +252,7 @@ export function OrganizationEraTrajectoriesBlock({
                       value={trajectory.outcome ?? ''}
                       onChange={(e) =>
                         updateTrajectory(trajectory.eraId, {
-                          outcome: e.target.value.trim() || null,
+                          outcome: e.target.value,
                         })
                       }
                       onBlur={persistCurrentTrajectories}

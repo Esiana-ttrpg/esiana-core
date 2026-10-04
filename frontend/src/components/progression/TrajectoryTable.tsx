@@ -310,11 +310,18 @@ function FragmentRow({
                     onPatch(
                       pageId,
                       trajectory.eraId,
-                      { gmNote: e.target.value.trim() || null },
+                      { gmNote: e.target.value },
                       false,
                     );
                   }}
-                  onBlur={() => onPersistPage(pageId)}
+                  onBlur={(e) => {
+                    onPatch(
+                      pageId,
+                      trajectory.eraId,
+                      { gmNote: e.target.value.trim() || null },
+                      true,
+                    );
+                  }}
                   className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
                 />
               </label>

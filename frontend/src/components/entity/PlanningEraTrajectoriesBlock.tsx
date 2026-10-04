@@ -40,6 +40,15 @@ function upsertTrajectory(
   return [...without, nextTrajectory];
 }
 
+function trajectoriesForPersistence(trajectories: EraTrajectory[]): EraTrajectory[] {
+  return trajectories.map((trajectory) => ({
+    ...trajectory,
+    direction: trajectory.direction?.trim() || null,
+    gmNote: trajectory.gmNote?.trim() || null,
+    outcome: trajectory.outcome?.trim() || null,
+  }));
+}
+
 /**
  * Lightweight trajectory editor for Characters / Locations — planning fields only.
  * Same underlying eraTrajectories objects as Progression › Trajectories.
@@ -71,7 +80,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
     setDraft((prev) => {
       const eraTrajectories = upsertTrajectory(prev.eraTrajectories, fromEraId, patch);
       if (persist) {
-        void onPersist({ eraTrajectories } as Partial<T>);
+        void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       }
       return { ...prev, eraTrajectories };
     });
@@ -79,7 +88,9 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
 
   function persistCurrentTrajectories() {
     setDraft((prev) => {
-      void onPersist({ eraTrajectories: prev.eraTrajectories } as Partial<T>);
+      void onPersist({
+        eraTrajectories: trajectoriesForPersistence(prev.eraTrajectories),
+      } as Partial<T>);
       return prev;
     });
   }
@@ -94,7 +105,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
         outcome: null,
         byEraId: null,
       });
-      void onPersist({ eraTrajectories } as Partial<T>);
+      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       return { ...prev, eraTrajectories };
     });
   }
@@ -102,7 +113,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
   function removeTrajectory(eraId: string) {
     setDraft((prev) => {
       const eraTrajectories = prev.eraTrajectories.filter((t) => t.eraId !== eraId);
-      void onPersist({ eraTrajectories } as Partial<T>);
+      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       return { ...prev, eraTrajectories };
     });
   }
@@ -159,7 +170,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       value={trajectory.direction ?? ''}
                       onChange={(e) =>
                         updateTrajectory(trajectory.eraId, {
-                          direction: e.target.value.trim() || null,
+                          direction: e.target.value,
                         })
                       }
                       onBlur={persistCurrentTrajectories}
@@ -171,7 +182,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       value={trajectory.gmNote ?? ''}
                       onChange={(e) =>
                         updateTrajectory(trajectory.eraId, {
-                          gmNote: e.target.value.trim() || null,
+                          gmNote: e.target.value,
                         })
                       }
                       onBlur={persistCurrentTrajectories}
@@ -200,7 +211,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       value={trajectory.outcome ?? ''}
                       onChange={(e) =>
                         updateTrajectory(trajectory.eraId, {
-                          outcome: e.target.value.trim() || null,
+                          outcome: e.target.value,
                         })
                       }
                       onBlur={persistCurrentTrajectories}

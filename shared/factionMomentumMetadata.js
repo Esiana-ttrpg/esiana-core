@@ -1,11 +1,11 @@
 "use strict";
-/**
- * Layer 1 — campaign era + faction trajectory contracts (browser-safe).
- * Advisory pressure layer; does not mutate canon (events, relations, territory).
- * @see docs/platform/faction-momentum.md
- */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_PRESENT_ERA_ID = exports.RISING_TENSION_MOMENTUM_STATES = exports.FACTION_MOMENTUM_STATE_LABELS = exports.FACTION_MOMENTUM_STATES = exports.CAMPAIGN_MOMENTUM_SEMANTICS_VERSION = void 0;
+exports.DEFAULT_PRESENT_ERA_ID = exports.DEFAULT_TRAJECTORY_MOMENTUM_STATE = exports.RISING_TENSION_MOMENTUM_STATES = exports.FACTION_MOMENTUM_STATE_LABELS = exports.FACTION_MOMENTUM_STATES = exports.CAMPAIGN_MOMENTUM_SEMANTICS_VERSION = void 0;
+exports.organizationWorldStateToMomentum = organizationWorldStateToMomentum;
+exports.resolveExplicitTrajectoryForEra = resolveExplicitTrajectoryForEra;
+exports.resolveFactionTrajectoryForEra = resolveFactionTrajectoryForEra;
+exports.createEraTrajectory = createEraTrajectory;
+exports.createFactionEraTrajectory = createFactionEraTrajectory;
 exports.createDefaultPresentEra = createDefaultPresentEra;
 exports.createDefaultCampaignMomentumState = createDefaultCampaignMomentumState;
 exports.normalizeCampaignEra = normalizeCampaignEra;
@@ -13,8 +13,11 @@ exports.parseCampaignMomentumState = parseCampaignMomentumState;
 exports.serializeCampaignMomentumState = serializeCampaignMomentumState;
 exports.getCurrentCampaignEra = getCurrentCampaignEra;
 exports.resolveCampaignEraAtEpoch = resolveCampaignEraAtEpoch;
+exports.normalizeEraTrajectory = normalizeEraTrajectory;
+exports.normalizeEraTrajectories = normalizeEraTrajectories;
 exports.normalizeFactionEraTrajectory = normalizeFactionEraTrajectory;
 exports.normalizeFactionEraTrajectories = normalizeFactionEraTrajectories;
+const worldDevelopmentMetadata_js_1 = require("./worldDevelopmentMetadata.js");
 exports.CAMPAIGN_MOMENTUM_SEMANTICS_VERSION = 'campaign-momentum-v1';
 exports.FACTION_MOMENTUM_STATES = [
     'rising',
@@ -45,6 +48,113 @@ exports.RISING_TENSION_MOMENTUM_STATES = [
     'resurgent',
     'declining',
 ];
+/** Legacy organization world-state labels → era trajectory momentum (advisory fallback). */
+const ORGANIZATION_WORLD_STATE_TO_MOMENTUM = {
+    rising: 'rising',
+    fragmented: 'fragmenting',
+    dormant: 'dormant',
+    expanding: 'expanding',
+    schismatic: 'fragmenting',
+    occupied: 'declining',
+    exiled: 'declining',
+    corrupt: 'desperate',
+    reforming: 'resurgent',
+    declining: 'declining',
+};
+function organizationWorldStateToMomentum(worldState) {
+    if (!worldState || typeof worldState !== 'string')
+        return null;
+    const key = worldState.trim().toLowerCase();
+    return ORGANIZATION_WORLD_STATE_TO_MOMENTUM[key] ?? null;
+}
+/**
+ * Engine default for new trajectories — least directional existing state.
+ * Not inferred from GM-authored `direction` text.
+ */
+exports.DEFAULT_TRAJECTORY_MOMENTUM_STATE = 'stable';
+function trajectoryAppliesToEra(trajectory, currentEra, eras) {
+    const fromEra = eras.find((era) => era.id === trajectory.eraId);
+    if (!fromEra) {
+        return trajectory.eraId === currentEra.id;
+    }
+    if (currentEra.sortOrder < fromEra.sortOrder)
+        return false;
+    if (trajectory.byEraId == null)
+        return true;
+    const byEra = eras.find((era) => era.id === trajectory.byEraId);
+    if (!byEra)
+        return true;
+    return currentEra.sortOrder <= byEra.sortOrder;
+}
+function pickExplicitTrajectoryMatch(eraTrajectories, eraId, eras) {
+    const currentEra = eras.find((era) => era.id === eraId);
+    if (eras.length > 0 && currentEra) {
+        const matches = eraTrajectories.filter((trajectory) => trajectoryAppliesToEra(trajectory, currentEra, eras));
+        if (matches.length === 0)
+            return null;
+        matches.sort((a, b) => {
+            const aExact = a.eraId === eraId ? 1 : 0;
+            const bExact = b.eraId === eraId ? 1 : 0;
+            if (aExact !== bExact)
+                return bExact - aExact;
+            const aFrom = eras.find((era) => era.id === a.eraId)?.sortOrder ?? -1;
+            const bFrom = eras.find((era) => era.id === b.eraId)?.sortOrder ?? -1;
+            return bFrom - aFrom;
+        });
+        return matches[0] ?? null;
+    }
+    return eraTrajectories.find((t) => t.eraId === eraId) ?? null;
+}
+/**
+ * Explicit From/By resolution for any subject — no world-state fallback.
+ * Characters and Locations use this path only.
+ */
+function resolveExplicitTrajectoryForEra(input) {
+    return pickExplicitTrajectoryMatch(input.eraTrajectories, input.eraId, input.eras ?? []);
+}
+/**
+ * Prefer explicit era trajectory (From/By range when eras provided);
+ * fall back to organization world state for the target era.
+ * Organization-only compatibility path — do not use for Characters/Locations.
+ */
+function resolveFactionTrajectoryForEra(input) {
+    const explicit = resolveExplicitTrajectoryForEra({
+        eraTrajectories: input.eraTrajectories,
+        eraId: input.eraId,
+        eras: input.eras,
+    });
+    if (explicit)
+        return explicit;
+    const momentumState = organizationWorldStateToMomentum(input.worldState);
+    if (!momentumState)
+        return null;
+    return {
+        eraId: input.eraId,
+        byEraId: null,
+        direction: null,
+        outcome: null,
+        momentumState,
+        pressure: null,
+        gmNote: null,
+    };
+}
+/** Create a planning-only trajectory (Characters / Locations). */
+function createEraTrajectory(patch) {
+    return {
+        eraId: patch.eraId,
+        byEraId: patch.byEraId ?? null,
+        direction: patch.direction ?? null,
+        outcome: patch.outcome ?? null,
+        gmNote: patch.gmNote ?? null,
+    };
+}
+function createFactionEraTrajectory(patch) {
+    return {
+        ...createEraTrajectory(patch),
+        momentumState: patch.momentumState ?? exports.DEFAULT_TRAJECTORY_MOMENTUM_STATE,
+        pressure: patch.pressure ?? null,
+    };
+}
 exports.DEFAULT_PRESENT_ERA_ID = 'era-present';
 function createDefaultPresentEra() {
     return {
@@ -109,6 +219,12 @@ function normalizeNarrativeNote(raw) {
     const trimmed = raw.trim();
     return trimmed.length > 0 ? trimmed.slice(0, 500) : null;
 }
+function normalizeShortText(raw, maxLen) {
+    if (typeof raw !== 'string')
+        return null;
+    const trimmed = raw.trim();
+    return trimmed.length > 0 ? trimmed.slice(0, maxLen) : null;
+}
 function normalizeCampaignEra(raw, index) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
         return null;
@@ -148,10 +264,12 @@ function parseCampaignMomentumState(raw) {
             ...era,
             isCurrent: index === 0,
         }));
+    const worldDevelopment = obj.worldDevelopment != null ? (0, worldDevelopmentMetadata_js_1.parseWorldDevelopmentSettings)(obj.worldDevelopment) : undefined;
     return {
         version: exports.CAMPAIGN_MOMENTUM_SEMANTICS_VERSION,
         eras: normalizedEras,
         worldPressurePaused: obj.worldPressurePaused === true,
+        worldDevelopment,
     };
 }
 function serializeCampaignMomentumState(state) {
@@ -167,6 +285,7 @@ function serializeCampaignMomentumState(state) {
             narrativeNote: era.narrativeNote,
         })),
         worldPressurePaused: state.worldPressurePaused === true,
+        ...(state.worldDevelopment ? { worldDevelopment: state.worldDevelopment } : {}),
     };
 }
 function getCurrentCampaignEra(state) {
@@ -222,19 +341,48 @@ function resolveCampaignEraAtEpoch(state, targetEpochMinute) {
     });
     return matches[0] ?? getCurrentCampaignEra(state);
 }
-function normalizeFactionEraTrajectory(raw) {
+/** Normalize shared planning fields (Characters / Locations). Requires eraId only. */
+function normalizeEraTrajectory(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
         return null;
     const obj = raw;
     const eraId = normalizeEraId(obj.eraId);
-    const momentumState = normalizeMomentumState(obj.momentumState);
-    if (!eraId || !momentumState)
+    if (!eraId)
         return null;
     return {
         eraId,
+        byEraId: normalizeEraId(obj.byEraId),
+        direction: normalizeShortText(obj.direction, 120),
+        outcome: normalizeShortText(obj.outcome, 200),
+        gmNote: normalizeNarrativeNote(obj.gmNote),
+    };
+}
+function normalizeEraTrajectories(raw) {
+    if (!Array.isArray(raw))
+        return [];
+    const seen = new Set();
+    const result = [];
+    for (const item of raw) {
+        const trajectory = normalizeEraTrajectory(item);
+        if (!trajectory || seen.has(trajectory.eraId))
+            continue;
+        seen.add(trajectory.eraId);
+        result.push(trajectory);
+    }
+    return result;
+}
+function normalizeFactionEraTrajectory(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+        return null;
+    const obj = raw;
+    const base = normalizeEraTrajectory(raw);
+    const momentumState = normalizeMomentumState(obj.momentumState);
+    if (!base || !momentumState)
+        return null;
+    return {
+        ...base,
         momentumState,
         pressure: normalizePressure(obj.pressure),
-        gmNote: normalizeNarrativeNote(obj.gmNote),
     };
 }
 function normalizeFactionEraTrajectories(raw) {

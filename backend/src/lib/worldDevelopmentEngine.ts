@@ -13,7 +13,10 @@ import {
   type DevelopmentType,
   type WorldDevelopmentSettings,
 } from '../../../shared/worldDevelopmentMetadata.js';
-import type { DevelopmentCandidate } from '../../../shared/developmentProvider.js';
+import type {
+  DevelopmentCandidate,
+  ProjectedFactionState,
+} from '../../../shared/developmentProvider.js';
 import { isEligibleAdvanceMagnitudeForPrompts } from '../../../shared/worldEventSuggestionMetadata.js';
 import { normalizeWorldEventNarrative } from '../../../shared/worldEventSuggestionMetadata.js';
 import {
@@ -34,9 +37,19 @@ import { deriveConfidenceFromRationale } from '../../../shared/worldDevelopmentM
 
 export const WORLD_DEVELOPMENT_ENGINE_VERSION = 'world-development-engine-v2';
 
-function buildDependencyRefs(candidate: DevelopmentCandidate): DevelopmentDependencyRef[] {
+function buildDependencyRefs(
+  candidate: DevelopmentCandidate,
+  projectedStates: readonly ProjectedFactionState[],
+): DevelopmentDependencyRef[] {
   const refs: DevelopmentDependencyRef[] = [];
-  if (candidate.primaryOrgPageId) {
+  const trajectorySubject = candidate.trajectoryRef
+    ? projectedStates.find(
+        (state) => state.subjectPageId === candidate.trajectoryRef?.subjectPageId,
+      )
+    : null;
+  const supportsOrgDependency =
+    !candidate.trajectoryRef || trajectorySubject?.subjectCategory === 'organizations';
+  if (candidate.primaryOrgPageId && supportsOrgDependency) {
     refs.push({ kind: 'org', id: candidate.primaryOrgPageId });
   }
   return refs;
@@ -78,6 +91,7 @@ async function createSuggestionFromCandidate(
   input: {
     campaignId: string;
     candidate: DevelopmentCandidate;
+    projectedStates: readonly ProjectedFactionState[];
     settings: WorldDevelopmentSettings;
     context: GlobalTimeAdvanceContext;
     rank: number;
@@ -146,7 +160,7 @@ async function createSuggestionFromCandidate(
     significance: lifecycle.significance,
     rationale,
     confidence: deriveConfidenceFromRationale(rationale),
-    dependencyRefs: buildDependencyRefs(candidate),
+    dependencyRefs: buildDependencyRefs(candidate, input.projectedStates),
     parentSuggestionId: input.parentSuggestionId ?? null,
     chainStage: input.chainStage ?? null,
     chainStageLabel: input.chainStageLabel ?? null,
@@ -327,6 +341,7 @@ export async function emitWorldDevelopments(
         const created = await createSuggestionFromCandidate(tx, {
           campaignId: context.campaignId,
           candidate: stageCandidate,
+          projectedStates: wdContext.projectedFactionStates,
           settings,
           context,
           rank,
@@ -355,6 +370,7 @@ export async function emitWorldDevelopments(
       const created = await createSuggestionFromCandidate(tx, {
         campaignId: context.campaignId,
         candidate,
+        projectedStates: wdContext.projectedFactionStates,
         settings,
         context,
         rank,
