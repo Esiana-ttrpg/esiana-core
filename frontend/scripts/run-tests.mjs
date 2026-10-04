@@ -62,6 +62,7 @@ const result = spawnSync(
     'src/lib/commands/commandRegistry.test.ts',
     'src/lib/commands/resolveCommandContext.test.ts',
     'src/lib/commands/providers/coreCreateCommands.test.ts',
+    'src/lib/commands/providers/coreNavigationCommands.test.ts',
     'src/lib/commands/providers/corePageCommands.test.ts',
     '../shared/creatableCodexPageTypes.test.ts',
     '../shared/globalSearchQuery.test.ts',

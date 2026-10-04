@@ -65,7 +65,7 @@ export function GlobalSearchOverlay({
 }: GlobalSearchOverlayProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { can, resolvePageId } = useWiki();
+  const { can, resolvePageId, sidebarConfig } = useWiki();
   const activePage = useActivePageOptional();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -105,6 +105,7 @@ export function GlobalSearchOverlay({
         resolveCategoryPageId: (categoryTitle: CreatePageCategoryTitle) =>
           resolvePageId(categoryTitle),
         activePage: activePage?.snapshot ?? null,
+        sidebarConfig,
       }),
     [
       campaignHandle,
@@ -113,6 +114,7 @@ export function GlobalSearchOverlay({
       can,
       resolvePageId,
       activePage?.snapshot,
+      sidebarConfig,
     ],
   );
 
@@ -519,6 +521,7 @@ export function GlobalSearchOverlay({
           {isCommandMode ? (
             <CommandPaletteResults
               commands={filteredCommands}
+              sidebarConfig={sidebarConfig}
               activeIndex={keyboard.activeIndex}
               showGroupHeaders={
                 overlayMode.mode === 'command' && overlayMode.query.length === 0

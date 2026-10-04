@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { getDefaultSidebarConfig } from '@/lib/sidebarConfig';
 import { resolveCommandContext } from './resolveCommandContext.js';
 
 describe('resolveCommandContext', () => {
   it('derives workspaceSegment from pathname', () => {
+    const sidebarConfig = getDefaultSidebarConfig();
     const ctx = resolveCommandContext({
       campaignHandle: 'demo',
       campaignId: 'c1',
@@ -11,10 +13,12 @@ describe('resolveCommandContext', () => {
       can: () => true,
       resolveCategoryPageId: () => undefined,
       activePage: null,
+      sidebarConfig,
     });
     assert.equal(ctx.workspaceSegment, 'characters');
     assert.equal(ctx.campaignHandle, 'demo');
     assert.equal(ctx.activePage, null);
+    assert.equal(ctx.sidebarConfig, sidebarConfig);
   });
 
   it('passes through activePage', () => {
@@ -32,6 +36,7 @@ describe('resolveCommandContext', () => {
       can: () => false,
       resolveCategoryPageId: () => undefined,
       activePage: page,
+      sidebarConfig: getDefaultSidebarConfig(),
     });
     assert.equal(ctx.activePage, page);
   });

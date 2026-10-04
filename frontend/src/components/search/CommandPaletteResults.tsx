@@ -1,4 +1,5 @@
 import { COMMAND_GROUP_ORDER, type Command, type CommandGroup } from '@/lib/commands/types';
+import type { SidebarConfig } from '@/lib/sidebarConfig';
 import { CommandRow } from './CommandRow';
 
 const GROUP_LABELS: Record<CommandGroup, string> = {
@@ -10,6 +11,7 @@ const GROUP_LABELS: Record<CommandGroup, string> = {
 
 interface CommandPaletteResultsProps {
   commands: readonly Command[];
+  sidebarConfig: SidebarConfig;
   activeIndex: number;
   showGroupHeaders: boolean;
   onHover: (index: number) => void;
@@ -18,6 +20,7 @@ interface CommandPaletteResultsProps {
 
 export function CommandPaletteResults({
   commands,
+  sidebarConfig,
   activeIndex,
   showGroupHeaders,
   onHover,
@@ -36,6 +39,7 @@ export function CommandPaletteResults({
           <CommandRow
             key={command.id}
             command={command}
+            sidebarConfig={sidebarConfig}
             active={index === activeIndex}
             onHover={() => onHover(index)}
             onSelect={() => onSelect(index)}
@@ -67,6 +71,7 @@ export function CommandPaletteResults({
               <CommandRow
                 key={command.id}
                 command={command}
+                sidebarConfig={sidebarConfig}
                 active={index === activeIndex}
                 onHover={() => onHover(index)}
                 onSelect={() => onSelect(index)}

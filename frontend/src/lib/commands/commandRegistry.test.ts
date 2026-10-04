@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, it } from 'node:test';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
+import { getDefaultSidebarConfig } from '@/lib/sidebarConfig';
 import {
   clearCommandProviders,
   listCommandProviders,
@@ -20,6 +21,7 @@ function baseCtx(
     can: () => true,
     resolveCategoryPageId: () => 'cat',
     activePage: null,
+    sidebarConfig: getDefaultSidebarConfig(),
     ...partial,
   };
 }
