@@ -1,4 +1,4 @@
-import type { StoryViewId } from '@/lib/adventureLayout';
+import type { StoryViewId, StoryboardLensId } from '@/lib/adventureLayout';
 import type { ProgressionSectionId } from '@/lib/progressionLayout';
 
 export type StoryVisibilityFilter = 'all' | 'party' | 'dm' | 'hidden';
@@ -11,8 +11,8 @@ export interface StoryFilterState {
 
 export interface CampaignWorkspaceState {
   adventureStoryView?: StoryViewId;
+  adventureStoryboardLens?: StoryboardLensId;
   progressionSection?: ProgressionSectionId;
-  progressionScenesView?: import('@shared/progressionHub').ScenesViewId;
   storyFilters?: StoryFilterState;
   threadsLens?: 'all' | 'activity';
   workshopSession?: WorkshopSessionState;
@@ -136,11 +136,11 @@ export function patchProgressionSection(
   writeCampaignWorkspaceState(campaignHandle, { progressionSection: section });
 }
 
-export function patchProgressionScenesView(
+export function patchAdventureStoryboardLens(
   campaignHandle: string,
-  view: import('@shared/progressionHub').ScenesViewId,
+  lens: StoryboardLensId,
 ): void {
-  writeCampaignWorkspaceState(campaignHandle, { progressionScenesView: view });
+  writeCampaignWorkspaceState(campaignHandle, { adventureStoryboardLens: lens });
 }
 
 export function patchStoryFilters(

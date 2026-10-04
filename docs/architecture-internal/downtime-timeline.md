@@ -36,7 +36,7 @@ Rollup copy is narrative-first (e.g. *"3 weeks passed between sessions — 2 tim
 | Surface | Domains / behaviour |
 |---------|---------------------|
 | Chronology Hub › Campaign feed | `downtime_period` domain chip + span-labelled rows |
-| Adventure › Timeline | `downtime_period` included in default domain filter |
+| Continuity / chronology embeds | `downtime_period` included when the chronology projection is shown |
 | Downtime Hub › Overview | `currentDowntimePeriod` card with link to chronology feed |
 
 Scene Timeline (session-column planner) is **out of scope** — it uses session ordering, not epoch ranges.
@@ -55,7 +55,7 @@ Downtime periods **optionally annotate involved entities** — derived, textual,
 
 Auto-derived annotations are **ephemeral** (computed at overlay read). GM overlays are period-scoped JSON on the campaign — not entity metadata.
 
-Merged into `DowntimePeriodPayload.annotations` and `locationMentions` on convergence anchors. UI: inline **Affected** list on downtime period rows (Chronology Hub + Adventure Timeline).
+Merged into `DowntimePeriodPayload.annotations` and `locationMentions` on convergence anchors. UI: inline **Affected** list on downtime period rows (Chronology Hub).
 
 ## Promotion overlay
 

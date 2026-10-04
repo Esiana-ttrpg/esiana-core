@@ -35,7 +35,7 @@ export function DowntimeOverviewSection({
           <span className="text-foreground">{snapshot.factionPressureHint}</span>
           {' · '}
           <Link
-            to={campaignProgressionPath(campaignHandle, 'insights')}
+            to={campaignProgressionPath(campaignHandle, 'trajectories')}
             className="text-primary hover:underline"
           >
             Progression › Trajectories
@@ -44,7 +44,7 @@ export function DowntimeOverviewSection({
       ) : (
         <p className="text-sm text-muted-foreground">
           <Link
-            to={campaignProgressionPath(campaignHandle, 'insights')}
+            to={campaignProgressionPath(campaignHandle, 'trajectories')}
             className="text-primary hover:underline"
           >
             World pressure → Progression › Trajectories

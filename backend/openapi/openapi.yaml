@@ -1,13 +1,18 @@
 openapi: 3.1.0
 info:
   title: Esiana Core API
-  version: 1.7.0
+  version: 1.7.1
   description: |
     REST API for Esiana campaign narrative infrastructure.
 
     **Authentication:** Session cookie (`esiana_token`) or Bearer API token with scopes.
 
     **Campaign scope:** Most lore routes live under `/api/campaigns/{campaignHandle}/`.
+
+    ## Workspace IA (product)
+
+    - **Adventure** — intended play (Quests, Arcs, Threads, Unresolved, Investigation, Scenes, Storyboard).
+    - **Progression** — world change: Trajectories · Developments · History (Graph planned later, not implemented). Advance Time and scheduled narrative prompts live under Developments; Consequences stay on Chronology/event lore.
 
     ## Not available in core (v1.0)
 
@@ -2897,7 +2902,10 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get Adventure Storyboard
+      summary: Get Adventure Storyboard layout
+      description: |
+        Returns the Storyboard layout projection (`storyboard-view-v1`) for Adventure › Storyboard › Board.
+        Layout is projection-only; scene content remains on wiki scene pages.
       operationId: get_api_campaigns_campaignHandle_adventure_storyboard
       x-esiana-authorization:
         boundary: campaign
@@ -2932,11 +2940,13 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
     patch:
       tags:
         - Campaigns
-      summary: Update Adventure Storyboard
+      summary: Update Adventure Storyboard layout
+      description: |
+        Patches Storyboard canvas layout (node positions, lanes, filters, annotations).
+        Does not rewrite wiki narrative text. Used by Adventure › Storyboard.
       operationId: patch_api_campaigns_campaignHandle_adventure_storyboard
       x-esiana-authorization:
         boundary: campaign
@@ -2979,7 +2989,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign storyboard-edit capability."
   /api/campaigns/{campaignHandle}/assets/import-url:
     post:
       tags:
@@ -3032,7 +3041,10 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get Authoring Growth Metrics
+      summary: Get authoring growth metrics
+      description: |
+        Campaign growth counters (NPCs, threads, scenes, factions, quests) for Workshop /
+        authoring analytics. Not mounted as a Progression destination.
       operationId: get_api_campaigns_campaignHandle_authoring_growth_metrics
       x-esiana-authorization:
         boundary: campaign
@@ -3068,7 +3080,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign page-edit capability."
   /api/campaigns/{campaignHandle}/authoring/writing-session:
     post:
       tags:
@@ -13614,7 +13625,10 @@ paths:
     get:
       tags:
         - Wiki
-      summary: Get Wiki Adventure Hub
+      summary: Get Adventure hub payload
+      description: |
+        Adventure workspace hub without a page id. Prefer `/wiki/adventure-hub/{pageId}` with a
+        Quests-category page id and `section` query for lens-specific payloads.
       operationId: get_api_campaigns_campaignHandle_wiki_adventure_hub
       x-esiana-authorization:
         boundary: campaign
@@ -13650,12 +13664,26 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/adventure-hub/{pageId}:
     get:
       tags:
         - Wiki
-      summary: Get Adventure Hub PageId
+      summary: Get Adventure hub section payload
+      description: |
+        Adventure workspace projection for a Quests-category page.
+
+        Frontend Adventure lenses map to `section` as follows:
+        - Quests → `board`
+        - Arcs → `arcs`
+        - Scenes / Storyboard Board → `scenes` (includes storyboard projection + palette)
+        - Storyboard Sequence → `scene-timeline`
+        - Storyboard ready-scenes / lane preset support → `sessions`
+        - Investigation → `investigation`
+        - Continuity rail → `continuity`
+        - Threads activity → `thread-history`
+        - Embedded chronology → `timeline`
+
+        Progression owns Trajectories / Developments / History (separate workspace).
       operationId: get_api_campaigns_campaignHandle_wiki_adventure_hub_pageId
       x-esiana-authorization:
         boundary: campaign
@@ -13677,6 +13705,28 @@ paths:
           required: true
           schema:
             type: string
+        - name: section
+          in: query
+          required: false
+          description: Adventure hub section to project. Defaults to `board` (Quests).
+          schema:
+            type: string
+            enum:
+              - board
+              - scenes
+              - investigation
+              - continuity
+              - arcs
+              - sessions
+              - scene-timeline
+              - thread-history
+              - timeline
+        - name: previewAsPlayer
+          in: query
+          required: false
+          description: When true for GM/Writer, project player-visible Adventure state.
+          schema:
+            type: boolean
       responses:
         "200":
           description: Successful response
@@ -13696,7 +13746,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/aliases/{aliasId}:
     delete:
       tags:
@@ -16142,7 +16191,10 @@ paths:
     get:
       tags:
         - World State
-      summary: Get CampaignHandle World Pressure
+      summary: Get world pressure projection
+      description: |
+        Current-era world pressure projection (missing trajectories, brewing conflicts, forecasts).
+        Progression › Trajectories surfaces eras and missing trajectories; full outlook/Graph UI is deferred.
       operationId: get_api_campaigns_campaignHandle_world_pressure
       x-esiana-authorization:
         boundary: campaign
@@ -16177,12 +16229,14 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
   /api/campaigns/{campaignHandle}/world-pressure/preview:
     get:
       tags:
         - World State
-      summary: Get World Pressure Preview
+      summary: Preview world pressure at epoch
+      description: |
+        Advisory projection at a target epoch minute. API retained; no Progression UI for
+        preview-at-epoch in this pass (not mounted on Trajectories).
       operationId: get_api_campaigns_campaignHandle_world_pressure_preview
       x-esiana-authorization:
         boundary: campaign
@@ -16198,6 +16252,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: targetEpochMinute
+          in: query
+          required: true
+          description: Non-negative integer epoch minute string to preview against.
+          schema:
+            type: string
+            pattern: '^[0-9]+$'
       responses:
         "200":
           description: Successful response
@@ -16217,7 +16278,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
   /api/campaigns/{campaignHandle}/world-state/apply:
     post:
       tags:

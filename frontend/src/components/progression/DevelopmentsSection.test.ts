@@ -31,7 +31,8 @@ test('empty and sparse campaigns receive only real, actionable routes', () => {
   assert.match(source, /Ways to develop your world/);
   assert.match(source, /campaignChronologyPath\(campaignHandle, 'events'\)/);
   assert.match(source, /campaignWorkspaceIndexPath\(campaignHandle, 'organizations'\)/);
-  assert.match(source, /campaignProgressionPath\(campaignHandle, 'insights'\)/);
+  assert.match(source, /campaignProgressionPath\(campaignHandle, 'trajectories'\)/);
+  assert.match(source, /Fix missing trajectories/);
 });
 
 test('advance time reuses the global time advancement flow from every page action', () => {
@@ -52,4 +53,9 @@ test('campaign calendar and existing accepted history provide temporal context',
   assert.match(source, /status: \['accepted'\]/);
   assert.match(source, /Recently Applied/);
   assert.match(source, /campaignProgressionPath\(campaignHandle, 'history'\)/);
+});
+
+test('scheduled narrative prompts are embedded in Developments, not a peer destination', () => {
+  assert.match(source, /ScheduledNarrativePanel/);
+  assert.match(source, /embedded/);
 });

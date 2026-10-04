@@ -46,22 +46,3 @@ export function resolveWorkshopBootstrapOpenIds(input: {
     ...sessionIds.filter((id) => id !== input.primaryDraftId),
   ];
 }
-
-/** Legacy progression workshop URLs → dedicated workshop route. */
-export function resolveLegacyWorkshopRedirect(
-  campaignHandle: string,
-  search: string,
-): string | null {
-  const params = new URLSearchParams(search);
-  const section = params.get('section');
-  if (section !== 'workshop' && section !== 'authoringWorkshop') return null;
-
-  const draft = params.get('draft');
-  const anchors = params.get('anchors');
-  const fromPageId = anchors?.split(',')[0]?.trim() || null;
-
-  return campaignWorkshopPath(campaignHandle, {
-    draftId: draft ?? undefined,
-    fromPageId: fromPageId ?? undefined,
-  });
-}

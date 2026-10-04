@@ -41,10 +41,10 @@ export function WorldPressureForecastWidget({
         <div className="space-y-3 text-sm text-muted">
           <p>{WORLD_PRESSURE_FORECAST_EMPTY_MESSAGE}</p>
           <Link
-            to={campaignProgressionPath(campaignHandle, 'insights')}
+            to={campaignProgressionPath(campaignHandle, 'trajectories')}
             className="font-medium text-primary hover:underline"
           >
-            Open Progression insights
+            Open Progression › Trajectories
           </Link>
         </div>
       ) : (

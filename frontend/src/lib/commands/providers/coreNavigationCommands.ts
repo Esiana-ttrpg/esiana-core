@@ -37,17 +37,41 @@ export function buildCoreNavigationCommands(ctx: CommandContext): Command[] {
   });
 
   if (isSidebarSectionVisible(ctx.sidebarConfig, 'progression')) {
-    commands.push({
-      id: 'core.navigate.developments',
-      label: 'Open Developments',
-      sidebarSectionId: 'progression',
-      keywords: ['developments', 'progression', 'pending'],
-      group: 'navigate',
-      action: {
-        type: 'navigate',
-        href: campaignProgressionPath(handle, 'developments'),
+    commands.push(
+      {
+        id: 'core.navigate.trajectories',
+        label: 'Open Trajectories',
+        sidebarSectionId: 'progression',
+        keywords: ['trajectories', 'progression', 'eras', 'faction directions'],
+        group: 'navigate',
+        action: {
+          type: 'navigate',
+          href: campaignProgressionPath(handle, 'trajectories'),
+        },
       },
-    });
+      {
+        id: 'core.navigate.developments',
+        label: 'Open Developments',
+        sidebarSectionId: 'progression',
+        keywords: ['developments', 'progression', 'pending'],
+        group: 'navigate',
+        action: {
+          type: 'navigate',
+          href: campaignProgressionPath(handle, 'developments'),
+        },
+      },
+      {
+        id: 'core.navigate.history',
+        label: 'Open Development History',
+        sidebarSectionId: 'progression',
+        keywords: ['history', 'progression', 'developments', 'accepted'],
+        group: 'navigate',
+        action: {
+          type: 'navigate',
+          href: campaignProgressionPath(handle, 'history'),
+        },
+      },
+    );
   }
 
   if (isSidebarSectionVisible(ctx.sidebarConfig, 'settings')) {

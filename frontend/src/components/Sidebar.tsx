@@ -8,7 +8,6 @@ import { useWiki } from '@/contexts/WikiContext';
 import {
   campaignCategoryChildPath,
   campaignChronologyPath,
-  campaignCreativeDriftPath,
   campaignDashboardPath,
   campaignNotesPath,
   campaignPartyPath,
@@ -429,7 +428,7 @@ export function Sidebar({
     if (child.kind === 'wiki') {
       return wikiHrefForSection(child.sectionId, SIDEBAR_SECTION_META[child.sectionId].wikiTitle!);
     }
-    return campaignCreativeDriftPath(campaignHandle);
+    return adventureViewHref(adventureBase, 'unresolved');
   }
 
   function isAdventureChildActive(child: AdventureSidebarItem): boolean {
@@ -440,7 +439,10 @@ export function Sidebar({
       );
       return location.pathname === href.split('?')[0];
     }
-    return location.pathname === campaignCreativeDriftPath(campaignHandle);
+    return (
+      location.pathname === adventureBase.split('?')[0] &&
+      new URLSearchParams(location.search).get('view') === 'unresolved'
+    );
   }
 
   function renderFixedSection(sectionId: SidebarSectionId) {

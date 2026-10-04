@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
@@ -9,16 +10,19 @@ import {
 import { parseOrganizationMetadata } from '@/lib/organizationMetadata';
 import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { resolveFactionTrajectoryForEra } from '@shared/factionMomentumMetadata';
-import { CampaignEraEditor } from '@/components/progression/CampaignEraEditor';
-import { CampaignPacingPanel } from '@/components/progression/CampaignPacingPanel';
-import { WorldPressurePanel } from '@/components/progression/WorldPressurePanel';
 import type { CampaignEra } from '@shared/factionMomentumMetadata';
-import type { WorldPressureProjection } from '@shared/worldPressureProjection';
+import { campaignWikiPath } from '@/lib/campaignPaths';
+import { CampaignEraEditor } from '@/components/progression/CampaignEraEditor';
 
 interface ProgressionTrajectoriesSectionProps {
   campaignHandle: string;
 }
 
+/**
+ * Progression › Trajectories — where the world is going.
+ * Eras + missing trajectories. Graph visualization is a planned later Progression view.
+ * Pacing / preview / outlook panels are not mounted here.
+ */
 export function ProgressionTrajectoriesSection({
   campaignHandle,
 }: ProgressionTrajectoriesSectionProps) {
@@ -29,7 +33,8 @@ export function ProgressionTrajectoriesSection({
   const [momentumState, setMomentumState] = useState<
     Awaited<ReturnType<typeof fetchCampaignMomentum>>['state'] | null
   >(null);
-  const [projection, setProjection] = useState<WorldPressureProjection | null>(null);
+  const [currentEraId, setCurrentEraId] = useState<string | null>(null);
+  const [currentEraName, setCurrentEraName] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,7 +45,8 @@ export function ProgressionTrajectoriesSection({
         fetchWorldPressure(campaignHandle),
       ]);
       setMomentumState(momentum.state);
-      setProjection(pressure.projection);
+      setCurrentEraId(pressure.projection.currentEra.id);
+      setCurrentEraName(pressure.projection.currentEra.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load trajectories');
     } finally {
@@ -53,8 +59,7 @@ export function ProgressionTrajectoriesSection({
   }, [load]);
 
   const missingTrajectoryOrgs = useMemo(() => {
-    if (!momentumState || !projection) return [];
-    const currentEraId = projection.currentEra.id;
+    if (!currentEraId) return [];
     return flatPages
       .filter((page) => resolveCanonicalEntityCategory(page, flatPages) === 'organizations')
       .map((page) => {
@@ -70,15 +75,20 @@ export function ProgressionTrajectoriesSection({
       })
       .filter((row): row is { id: string; title: string } => row != null)
       .slice(0, 12);
-  }, [flatPages, momentumState, projection]);
+  }, [currentEraId, flatPages]);
 
   async function handleSaveEras(eras: CampaignEra[]) {
     setSaving(true);
+    setError(null);
     try {
       const result = await updateCampaignMomentum(campaignHandle, { eras });
       setMomentumState(result.state);
       const pressure = await fetchWorldPressure(campaignHandle);
-      setProjection(pressure.projection);
+      setCurrentEraId(pressure.projection.currentEra.id);
+      setCurrentEraName(pressure.projection.currentEra.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save eras');
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -87,39 +97,69 @@ export function ProgressionTrajectoriesSection({
   if (loading) {
     return (
       <div className="py-12">
-        <LoadingSpinner label="Loading world outlook…" />
+        <LoadingSpinner label="Loading trajectories…" />
       </div>
     );
   }
 
-  if (error) {
+  if (error && !momentumState) {
     return <p className="text-sm text-red-400">{error}</p>;
   }
 
-  if (!momentumState || !projection) {
+  if (!momentumState) {
     return <p className="text-sm text-muted-foreground">No trajectory data available.</p>;
-  }
-
-  async function reloadProjection() {
-    const pressure = await fetchWorldPressure(campaignHandle);
-    setProjection(pressure.projection);
   }
 
   return (
     <div className="space-y-6">
-      <CampaignEraEditor state={momentumState} saving={saving} onSave={handleSaveEras} />
-      <CampaignPacingPanel
-        campaignHandle={campaignHandle}
-        momentumState={momentumState}
-        onMomentumChange={setMomentumState}
-        onProjectionReload={reloadProjection}
+      <header className="space-y-1">
+        <h2 className="text-lg font-semibold text-foreground">Trajectories</h2>
+        <p className="text-sm text-muted-foreground">
+          Where the world is going — campaign eras and faction directions
+          {currentEraName ? (
+            <>
+              {' '}
+              for <span className="font-medium text-foreground">{currentEraName}</span>
+            </>
+          ) : null}
+          .
+        </p>
+      </header>
+
+      <CampaignEraEditor
+        key={momentumState.eras.map((era) => `${era.id}:${era.isCurrent ? '1' : '0'}`).join('|')}
+        state={momentumState}
+        saving={saving}
+        onSave={handleSaveEras}
       />
-      <WorldPressurePanel
-        campaignHandle={campaignHandle}
-        projection={projection}
-        missingTrajectoryOrgs={missingTrajectoryOrgs}
-        worldPressurePaused={momentumState.worldPressurePaused === true}
-      />
+
+      {missingTrajectoryOrgs.length > 0 ? (
+        <section className="space-y-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-3">
+          <h3 className="text-sm font-medium text-foreground">Missing trajectories</h3>
+          <p className="text-xs text-muted-foreground">
+            These active organizations have no trajectory for the current era. Open an organization
+            to author one — that direction feeds Developments when time advances.
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {missingTrajectoryOrgs.map((org) => (
+              <li key={org.id}>
+                <Link
+                  to={campaignWikiPath(campaignHandle, org.id, flatPages)}
+                  className="rounded border border-border bg-background/60 px-3 py-1.5 text-sm hover:border-primary/40 hover:text-primary"
+                >
+                  {org.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          All active organizations have a trajectory for the current era.
+        </p>
+      )}
+
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
     </div>
   );
 }

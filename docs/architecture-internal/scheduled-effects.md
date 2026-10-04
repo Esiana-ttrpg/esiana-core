@@ -88,7 +88,7 @@ Ledger hub payload includes `scheduledTreasury` lines (`scope=treasury`). Downti
 ## UI
 
 - **Downtime › Ledger** — Scheduled treasury panel (list, add, pause, archive)
-- **Progression › Scheduled Effects** — Narrative schedules (world-development + haven-threat prompts)
+- **Progression › Developments › Scheduled** — Narrative schedules (world-development + haven-threat prompts)
 - **Haven manage** — “Create recurring upkeep in Ledger” prefills from authored upkeep cost
 
 Fired treasury items appear in **Pending treasury events**. Fired narrative items appear in **Progression › Developments**.
