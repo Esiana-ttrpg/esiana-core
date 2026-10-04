@@ -53,3 +53,8 @@ test('campaign calendar and existing accepted history provide temporal context',
   assert.match(source, /Recently Applied/);
   assert.match(source, /campaignProgressionPath\(campaignHandle, 'history'\)/);
 });
+
+test('scheduled narrative prompts are embedded in Developments, not a peer destination', () => {
+  assert.match(source, /ScheduledNarrativePanel/);
+  assert.match(source, /embedded/);
+});

@@ -19,12 +19,15 @@ interface ScheduledNarrativePanelProps {
   campaignHandle: string;
   organizationPages: WikiTreeNode[];
   canManage: boolean;
+  /** When true, use a subordinate heading for embedding under Developments. */
+  embedded?: boolean;
 }
 
 export function ScheduledNarrativePanel({
   campaignHandle,
   organizationPages,
   canManage,
+  embedded = false,
 }: ScheduledNarrativePanelProps) {
   const [schedules, setSchedules] = useState<NarrativeScheduledEffectDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +81,11 @@ export function ScheduledNarrativePanel({
     <div className="space-y-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className={TYPE_DISPLAY_CLASS}>Narrative schedules</h2>
+          {embedded ? (
+            <h3 className="text-lg font-semibold text-foreground">Scheduled</h3>
+          ) : (
+            <h2 className={TYPE_DISPLAY_CLASS}>Narrative schedules</h2>
+          )}
           <p className="text-sm text-muted-foreground">
             Seasonal world-event and haven-threat prompts that fire when campaign time advances.
             Requires{' '}

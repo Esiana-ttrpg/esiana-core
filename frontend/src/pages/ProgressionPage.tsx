@@ -1,5 +1,4 @@
 import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
-import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { useEffect } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
@@ -17,10 +16,7 @@ import {
   readCampaignWorkspaceState,
 } from '@/lib/workspacePersistence';
 import { ProgressionTrajectoriesSection } from '@/components/progression/ProgressionTrajectoriesSection';
-import { AdvanceTimeSection } from '@/components/progression/AdvanceTimeSection';
 import { DevelopmentsSection } from '@/components/progression/DevelopmentsSection';
-import { ScheduledEffectsProgressionSection } from '@/components/progression/ScheduledEffectsProgressionSection';
-import { ConsequencesSection } from '@/components/progression/ConsequencesSection';
 import { DevelopmentHistorySection } from '@/components/progression/DevelopmentHistorySection';
 
 const VALID_PROGRESSION_SECTION_IDS = new Set<string>(
@@ -30,7 +26,7 @@ const VALID_PROGRESSION_SECTION_IDS = new Set<string>(
 export function ProgressionPage() {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const location = useLocation();
-  const { campaign, flatPages } = useWiki();
+  const { campaign } = useWiki();
 
   const canAccess =
     campaign?.role === CampaignMemberRoles.GAMEMASTER ||
@@ -89,26 +85,8 @@ export function ProgressionPage() {
         <ProgressionTrajectoriesSection campaignHandle={campaignHandle} />
       ) : null}
 
-      {activeSection === 'advance' ? (
-        <AdvanceTimeSection campaignHandle={campaignHandle} />
-      ) : null}
-
       {activeSection === 'developments' ? (
         <DevelopmentsSection campaignHandle={campaignHandle} />
-      ) : null}
-
-      {activeSection === 'scheduledEffects' ? (
-        <ScheduledEffectsProgressionSection
-          campaignHandle={campaignHandle}
-          organizationPages={flatPages.filter(
-            (page) => resolveCanonicalEntityCategory(page, flatPages) === 'organizations',
-          )}
-          canManage={canAccess}
-        />
-      ) : null}
-
-      {activeSection === 'consequences' ? (
-        <ConsequencesSection campaignHandle={campaignHandle} />
       ) : null}
 
       {activeSection === 'history' ? (

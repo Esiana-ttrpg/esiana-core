@@ -12,7 +12,7 @@ info:
     ## Workspace IA (product)
 
     - **Adventure** — intended play (Quests, Arcs, Threads, Unresolved, Investigation, Scenes, Storyboard).
-    - **Progression** — world change (Trajectories, Developments, History; Advance Time / Scheduled Effects / Consequences remain interim until collapsed).
+    - **Progression** — world change (Trajectories · Developments · History). Advance Time is an action on Developments; scheduled narrative prompts live under Developments; Consequences authoring is contextual on Chronology/event lore. Insights has been removed.
     - **Insights** — removed; do not document or link Insights destinations.
 
     ## Not available in core (v1.0)

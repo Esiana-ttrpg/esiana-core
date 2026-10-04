@@ -83,7 +83,7 @@ On time advance (`medium` magnitude or larger), the advisory `event_generation` 
 ## UI surfaces
 
 - **Progression › Trajectories** (interim) — missing trajectories for the current era only. Era management, pacing, preview-at-epoch, simulation receipts, and world outlook are **not** mounted here after Insights removal; components/APIs remain for later Trajectories/Graph/settings work.
-- **Progression › Pending Developments** — unified inbox (world + reputation suggestions)
+- **Progression › Developments** — unified inbox (world + reputation suggestions); Advance Time action; scheduled narrative prompts
 - **Downtime › World Events** — deep link to Progression inbox
 - **Organization metadata** — per-era trajectory table (author trajectories here)
 - **Downtime overview** — one-line pulse hint + link to Progression
