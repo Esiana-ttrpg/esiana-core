@@ -28,11 +28,11 @@ Use `?view=<lens>`:
 
 **Quests** owns its own toolbar (no Story-level search row). **Threads** and **Unresolved** use a slim Story toolbar (search + Recent only). **DM / Party** preview is global in the workspace rail only — not duplicated in Story chips.
 
-**Campaign pulse** (active arcs, unresolved count, pressure signals) currently lives in **Progression › Insights** (pending Insights cleanup).
+**Campaign pulse** is not an Adventure destination. Dashboard widgets may surface pulse signals; Adventure owns Unresolved and Continuity drawer instead of an Insights aggregation.
 
 ## Continuity
 
-Not a navigation tab. Continuity appears in the **contextual rail** (narrative pressure feed) with a drawer for full diagnostics. Per-page continuity remains in wiki codex rails. The full pressure feed also appears in Progression › Insights.
+Not a navigation tab. Continuity appears in the **contextual rail** (narrative pressure feed) with a drawer for full diagnostics. Per-page continuity remains in wiki codex rails.
 
 ## Authoring surfaces (Adventure GM lenses)
 
@@ -71,20 +71,7 @@ Projection loads when Story › Arcs lens is active. Storyboard act-lane filter 
 | **Adventure › Storyboard › Sequence** | Authorial scene ordering — `plannedSessionId`, `sortOrder` |
 | **Chronology Hub** | Full calendar/timeline/events authoring |
 
-## Legacy redirects
-
-| Old URL | Redirect |
-|---------|----------|
-| `?section=board` | `?view=quests` |
-| `?section=scenes` / `/progression?section=scenes` | `?view=scenes` |
-| `?section=scene-timeline` / Progression scenes `view=sequence` | `?view=storyboard&storyboardLens=sequence` |
-| `?section=storyboard` / Progression scenes `view=board` | `?view=storyboard` |
-| `?section=sceneSequence` | `?view=storyboard&storyboardLens=sequence` |
-| `?section=sessions` / `/progression?section=sessionPrep` | `?view=storyboard` |
-| `?section=trajectories` | `/progression?section=insights` |
-| `?section=authoringWorkshop` | Workshop route |
-| `?section=thread-history` | `?view=threads&threadsLens=activity` |
-| `/narrative/unresolved` | Story › Unresolved lens |
+Legacy `?section=` Adventure URLs and `/narrative/unresolved` have been removed (no redirects). Use `?view=` lenses and Adventure › Unresolved.
 
 ## APIs
 

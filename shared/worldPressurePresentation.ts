@@ -19,7 +19,7 @@ export const WORLD_PRESSURE_PAUSED_MESSAGE =
   'World pressure forecasting is paused for this campaign.';
 
 export const WORLD_PRESSURE_FORECAST_EMPTY_MESSAGE =
-  'Assign era trajectories in Progression › Insights to shape forecasts.';
+  'Assign era trajectories in Progression › Trajectories to shape forecasts.';
 
 export const CAMPAIGN_PACING_PANEL_TITLE = 'Campaign pacing';
 
@@ -47,7 +47,7 @@ export function formatAwaitingReviewCount(count: number): string {
 }
 
 export const WORLD_EVENT_PROMPTS_EMPTY_MESSAGE =
-  'No developments awaiting review. Author trajectories in Progression › Insights to shape what emerges.';
+  'No developments awaiting review. Author trajectories in Progression › Trajectories to shape what emerges.';
 
 export const WORLD_EVENT_CREATE_BUTTON = 'Create event';
 

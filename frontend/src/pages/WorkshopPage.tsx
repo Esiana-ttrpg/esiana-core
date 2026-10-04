@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import type { WorkshopDocument } from '@shared/workshopDocument';
 import type { WorkshopFormalizeTarget } from '@shared/workshopDocument';
 import { useWiki } from '@/contexts/WikiContext';
@@ -35,7 +35,6 @@ import {
   buildWorkshopSearch,
   readWorkshopDraftIdFromSearch,
   readWorkshopFromPageId,
-  resolveLegacyWorkshopRedirect,
   resolveWorkshopBootstrapOpenIds,
 } from '@/lib/workshopNavigation';
 import { resolveWorkshopFieldSchema } from '@/lib/workshopFieldSchema';
@@ -306,11 +305,6 @@ export function WorkshopPage() {
     }
     return map;
   }, [anchorPages, flatPages]);
-
-  const legacyRedirect = resolveLegacyWorkshopRedirect(campaignHandle, location.search);
-  if (legacyRedirect) {
-    return <Navigate to={legacyRedirect} replace />;
-  }
 
   if (loading) {
     return <LoadingSpinner label="Opening workshop…" />;

@@ -20,7 +20,7 @@ function issueReviewHref(
   switch (kind) {
     case 'missing_trajectories':
     case 'no_pressure_signals':
-      return campaignProgressionPath(campaignHandle, 'insights');
+      return campaignProgressionPath(campaignHandle, 'trajectories');
     case 'no_campaign_time':
       return campaignTimeTrackingPath(campaignHandle);
     case 'budget_exhausted':
@@ -30,7 +30,7 @@ function issueReviewHref(
     case 'world_pressure_paused':
       return campaignProgressionPath(campaignHandle, 'developments');
     default:
-      return campaignProgressionPath(campaignHandle, 'insights');
+      return campaignProgressionPath(campaignHandle, 'trajectories');
   }
 }
 
@@ -42,7 +42,7 @@ export function DevelopmentReadinessPanel({
 
   const primaryReviewHref = readiness.issues[0]
     ? issueReviewHref(campaignHandle, readiness.issues[0].kind)
-    : campaignProgressionPath(campaignHandle, 'insights');
+    : campaignProgressionPath(campaignHandle, 'trajectories');
 
   return (
     <details

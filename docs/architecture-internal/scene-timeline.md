@@ -13,10 +13,7 @@ Authorial session-column planning for narrative scenes — **not** canonical chr
 | **Adventure › Timeline** | World chronology convergence feed (read-only) |
 | **Chronology Hub** | Full world-time authoring |
 
-Legacy entries redirect to Adventure Storyboard:
-
-- `/progression?section=scenes&view=sequence` → `?view=storyboard&storyboardLens=sequence`
-- `?section=sceneSequence` / `scene-timeline` → Adventure Storyboard Sequence
+Legacy Progression scenes URLs are not redirected. Use Adventure › Storyboard › Sequence.
 
 ## Canonical metadata (persisted)
 

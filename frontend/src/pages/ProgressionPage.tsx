@@ -1,30 +1,31 @@
 import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import { CampaignMemberRoles } from '@/types/domain';
 import { campaignPath } from '@/lib/campaignPaths';
 import {
   DEFAULT_PROGRESSION_SECTION,
+  PROGRESSION_SECTIONS,
+  isProgressionSectionId,
   readProgressionSectionFromSearch,
-  resolveProgressionLegacyNavigateTarget,
+  type ProgressionSectionId,
 } from '@/lib/progressionLayout';
-import {
-  parseSystemCategoryKey,
-  SYSTEM_CATEGORY_QUESTS,
-} from '@/lib/wikiSystemCategory';
 import {
   patchProgressionSection,
   readCampaignWorkspaceState,
 } from '@/lib/workspacePersistence';
-import { InsightsSection } from '@/components/progression/InsightsSection';
+import { ProgressionTrajectoriesSection } from '@/components/progression/ProgressionTrajectoriesSection';
 import { AdvanceTimeSection } from '@/components/progression/AdvanceTimeSection';
 import { DevelopmentsSection } from '@/components/progression/DevelopmentsSection';
 import { ScheduledEffectsProgressionSection } from '@/components/progression/ScheduledEffectsProgressionSection';
 import { ConsequencesSection } from '@/components/progression/ConsequencesSection';
 import { DevelopmentHistorySection } from '@/components/progression/DevelopmentHistorySection';
-import { resolveLegacyWorkshopRedirect } from '@/lib/workshopNavigation';
+
+const VALID_PROGRESSION_SECTION_IDS = new Set<string>(
+  PROGRESSION_SECTIONS.map((section) => section.id),
+);
 
 export function ProgressionPage() {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
@@ -35,19 +36,7 @@ export function ProgressionPage() {
     campaign?.role === CampaignMemberRoles.GAMEMASTER ||
     campaign?.role === CampaignMemberRoles.WRITER;
 
-  const questsCategoryId = useMemo(
-    () =>
-      flatPages.find((p) => parseSystemCategoryKey(p.metadata) === SYSTEM_CATEGORY_QUESTS)?.id ??
-      null,
-    [flatPages],
-  );
-
   const progressionBasePath = campaignPath(campaignHandle, 'progression');
-  const legacyTarget = resolveProgressionLegacyNavigateTarget(
-    progressionBasePath,
-    location.search,
-    campaignHandle,
-  );
 
   const hasSectionParam = location.search.includes('section=');
   const activeSection = hasSectionParam
@@ -55,7 +44,7 @@ export function ProgressionPage() {
     : DEFAULT_PROGRESSION_SECTION;
 
   useEffect(() => {
-    if (canAccess && hasSectionParam) {
+    if (canAccess && hasSectionParam && isProgressionSectionId(activeSection)) {
       patchProgressionSection(campaignHandle, activeSection);
     }
   }, [activeSection, campaignHandle, canAccess, hasSectionParam]);
@@ -64,27 +53,24 @@ export function ProgressionPage() {
     return <Navigate to={`/campaigns/${campaignHandle}/dashboard`} replace />;
   }
 
-  const workshopRedirect = resolveLegacyWorkshopRedirect(campaignHandle, location.search);
-  if (workshopRedirect) {
-    return <Navigate to={workshopRedirect} replace />;
-  }
-
-  if (legacyTarget) {
-    return <Navigate to={legacyTarget} replace />;
-  }
-
   if (!hasSectionParam) {
     const sticky = readCampaignWorkspaceState(campaignHandle).progressionSection;
-    const resolved =
-      sticky &&
-      ['insights', 'advance', 'developments', 'scheduledEffects', 'consequences', 'history'].includes(
-        sticky,
-      )
-        ? sticky
+    const resolved: ProgressionSectionId =
+      sticky && VALID_PROGRESSION_SECTION_IDS.has(sticky)
+        ? (sticky as ProgressionSectionId)
         : DEFAULT_PROGRESSION_SECTION;
     return (
       <Navigate
         to={`${progressionBasePath}?${new URLSearchParams({ section: resolved }).toString()}`}
+        replace
+      />
+    );
+  }
+
+  if (!isProgressionSectionId(new URLSearchParams(location.search).get('section'))) {
+    return (
+      <Navigate
+        to={`${progressionBasePath}?${new URLSearchParams({ section: DEFAULT_PROGRESSION_SECTION }).toString()}`}
         replace
       />
     );
@@ -95,12 +81,12 @@ export function ProgressionPage() {
       <header className="space-y-1">
         <h1 className={TYPE_DISPLAY_CLASS}>Progression</h1>
         <p className="text-sm text-muted-foreground">
-          Shape how the world changes — momentum, developments, and campaign history.
+          Shape how the world changes — trajectories, developments, and campaign history.
         </p>
       </header>
 
-      {activeSection === 'insights' && questsCategoryId ? (
-        <InsightsSection campaignHandle={campaignHandle} questsCategoryId={questsCategoryId} />
+      {activeSection === 'trajectories' ? (
+        <ProgressionTrajectoriesSection campaignHandle={campaignHandle} />
       ) : null}
 
       {activeSection === 'advance' ? (

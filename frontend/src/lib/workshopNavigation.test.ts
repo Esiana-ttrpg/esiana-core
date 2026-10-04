@@ -5,7 +5,6 @@ import {
   campaignWorkshopPath,
   readWorkshopDraftIdFromSearch,
   readWorkshopFromPageId,
-  resolveLegacyWorkshopRedirect,
   resolveWorkshopBootstrapOpenIds,
 } from './workshopNavigation.js';
 
@@ -28,18 +27,6 @@ describe('workshopNavigation', () => {
   it('builds workshop search string', () => {
     assert.equal(buildWorkshopSearch('draft-1', 'page-1'), '?draft=draft-1&from=page-1');
     assert.equal(buildWorkshopSearch(null), '');
-  });
-
-  it('redirects legacy progression workshop URLs', () => {
-    assert.equal(
-      resolveLegacyWorkshopRedirect('camp', '?section=workshop&draft=old'),
-      '/campaigns/camp/workshop?draft=old',
-    );
-    assert.equal(
-      resolveLegacyWorkshopRedirect('camp', '?section=authoringWorkshop&anchors=page1'),
-      '/campaigns/camp/workshop?from=page1',
-    );
-    assert.equal(resolveLegacyWorkshopRedirect('camp', '?section=scenes'), null);
   });
 
   it('bare bootstrap with no primary draft and empty session yields empty workspace', () => {

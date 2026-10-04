@@ -1,13 +1,19 @@
 openapi: 3.1.0
 info:
   title: Esiana Core API
-  version: 1.7.0
+  version: 1.7.1
   description: |
     REST API for Esiana campaign narrative infrastructure.
 
     **Authentication:** Session cookie (`esiana_token`) or Bearer API token with scopes.
 
     **Campaign scope:** Most lore routes live under `/api/campaigns/{campaignHandle}/`.
+
+    ## Workspace IA (product)
+
+    - **Adventure** — intended play (Quests, Arcs, Threads, Unresolved, Investigation, Scenes, Storyboard).
+    - **Progression** — world change (Trajectories, Developments, History; Advance Time / Scheduled Effects / Consequences remain interim until collapsed).
+    - **Insights** — removed; do not document or link Insights destinations.
 
     ## Not available in core (v1.0)
 
@@ -2897,7 +2903,10 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get Adventure Storyboard
+      summary: Get Adventure Storyboard layout
+      description: |
+        Returns the Storyboard layout projection (`storyboard-view-v1`) for Adventure › Storyboard › Board.
+        Layout is projection-only; scene content remains on wiki scene pages.
       operationId: get_api_campaigns_campaignHandle_adventure_storyboard
       x-esiana-authorization:
         boundary: campaign
@@ -2936,7 +2945,10 @@ paths:
     patch:
       tags:
         - Campaigns
-      summary: Update Adventure Storyboard
+      summary: Update Adventure Storyboard layout
+      description: |
+        Patches Storyboard canvas layout (node positions, lanes, filters, annotations).
+        Does not rewrite wiki narrative text. Used by Adventure › Storyboard.
       operationId: patch_api_campaigns_campaignHandle_adventure_storyboard
       x-esiana-authorization:
         boundary: campaign
@@ -3032,7 +3044,10 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get Authoring Growth Metrics
+      summary: Get authoring growth metrics
+      description: |
+        Campaign growth counters (NPCs, threads, scenes, factions, quests) for Workshop /
+        authoring analytics. Not a Progression › Insights surface (Insights has been removed).
       operationId: get_api_campaigns_campaignHandle_authoring_growth_metrics
       x-esiana-authorization:
         boundary: campaign
@@ -13614,7 +13629,10 @@ paths:
     get:
       tags:
         - Wiki
-      summary: Get Wiki Adventure Hub
+      summary: Get Adventure hub payload
+      description: |
+        Adventure workspace hub without a page id. Prefer `/wiki/adventure-hub/{pageId}` with a
+        Quests-category page id and `section` query for lens-specific payloads.
       operationId: get_api_campaigns_campaignHandle_wiki_adventure_hub
       x-esiana-authorization:
         boundary: campaign
@@ -13655,7 +13673,22 @@ paths:
     get:
       tags:
         - Wiki
-      summary: Get Adventure Hub PageId
+      summary: Get Adventure hub section payload
+      description: |
+        Adventure workspace projection for a Quests-category page.
+
+        Frontend Adventure lenses map to `section` as follows:
+        - Quests → `board`
+        - Arcs → `arcs`
+        - Scenes / Storyboard Board → `scenes` (includes storyboard projection + palette)
+        - Storyboard Sequence → `scene-timeline`
+        - Storyboard ready-scenes / lane preset support → `sessions`
+        - Investigation → `investigation`
+        - Continuity rail → `continuity`
+        - Threads activity → `thread-history`
+        - Embedded chronology → `timeline`
+
+        There is no Insights hub section; Progression owns Trajectories / Developments / History.
       operationId: get_api_campaigns_campaignHandle_wiki_adventure_hub_pageId
       x-esiana-authorization:
         boundary: campaign
@@ -13677,6 +13710,28 @@ paths:
           required: true
           schema:
             type: string
+        - name: section
+          in: query
+          required: false
+          description: Adventure hub section to project. Defaults to `board` (Quests).
+          schema:
+            type: string
+            enum:
+              - board
+              - scenes
+              - investigation
+              - continuity
+              - arcs
+              - sessions
+              - scene-timeline
+              - thread-history
+              - timeline
+        - name: previewAsPlayer
+          in: query
+          required: false
+          description: When true for GM/Writer, project player-visible Adventure state.
+          schema:
+            type: boolean
       responses:
         "200":
           description: Successful response
@@ -16142,7 +16197,10 @@ paths:
     get:
       tags:
         - World State
-      summary: Get CampaignHandle World Pressure
+      summary: Get world pressure projection
+      description: |
+        Current-era world pressure projection (missing trajectories, brewing conflicts, forecasts).
+        Progression › Trajectories currently surfaces missing trajectories; full outlook UI is deferred.
       operationId: get_api_campaigns_campaignHandle_world_pressure
       x-esiana-authorization:
         boundary: campaign
@@ -16182,7 +16240,10 @@ paths:
     get:
       tags:
         - World State
-      summary: Get World Pressure Preview
+      summary: Preview world pressure at epoch
+      description: |
+        Advisory projection at a target epoch minute. API retained; Progression UI for preview-at-epoch
+        was removed with Insights and is not relocated onto Trajectories in this pass.
       operationId: get_api_campaigns_campaignHandle_world_pressure_preview
       x-esiana-authorization:
         boundary: campaign
@@ -16198,6 +16259,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: targetEpochMinute
+          in: query
+          required: true
+          description: Non-negative integer epoch minute string to preview against.
+          schema:
+            type: string
+            pattern: '^[0-9]+$'
       responses:
         "200":
           description: Successful response

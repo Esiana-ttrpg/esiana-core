@@ -93,14 +93,8 @@ export function OrganizationEraTrajectoriesBlock({
   if (eras.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        Load campaign eras from{' '}
-        <Link
-          to={campaignProgressionPath(campaignHandle, 'insights')}
-          className="text-primary hover:underline"
-        >
-          Progression › Trajectories
-        </Link>
-        .
+        No campaign eras are configured yet. Era management will return under Progression ›
+        Trajectories.
       </p>
     );
   }
@@ -110,10 +104,10 @@ export function OrganizationEraTrajectoriesBlock({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-medium text-foreground">Era trajectories</p>
         <Link
-          to={campaignProgressionPath(campaignHandle, 'insights')}
+          to={campaignProgressionPath(campaignHandle, 'trajectories')}
           className="text-xs text-primary hover:underline"
         >
-          Manage eras
+          Missing trajectories
         </Link>
       </div>
       <div className="overflow-x-auto">

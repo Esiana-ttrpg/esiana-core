@@ -52,8 +52,8 @@ export function WorkshopContextRail({
       <WorkshopContinuityHints draft={draft} />
 
       <p className="text-xs text-muted-foreground">
-        <Link to={campaignProgressionPath(campaignHandle, 'insights')} className="hover:text-primary">
-          More in Insights →
+        <Link to={campaignProgressionPath(campaignHandle, 'trajectories')} className="hover:text-primary">
+          More in Trajectories →
         </Link>
       </p>
     </aside>

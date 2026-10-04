@@ -13,8 +13,6 @@ export interface CampaignWorkspaceState {
   adventureStoryView?: StoryViewId;
   adventureStoryboardLens?: StoryboardLensId;
   progressionSection?: ProgressionSectionId;
-  /** @deprecated Prefer adventureStoryboardLens; kept for sticky migration. */
-  progressionScenesView?: import('@shared/progressionHub').ScenesViewId;
   storyFilters?: StoryFilterState;
   threadsLens?: 'all' | 'activity';
   workshopSession?: WorkshopSessionState;
@@ -136,14 +134,6 @@ export function patchProgressionSection(
   section: ProgressionSectionId,
 ): void {
   writeCampaignWorkspaceState(campaignHandle, { progressionSection: section });
-}
-
-/** @deprecated Prefer patchAdventureStoryboardLens. */
-export function patchProgressionScenesView(
-  campaignHandle: string,
-  view: import('@shared/progressionHub').ScenesViewId,
-): void {
-  writeCampaignWorkspaceState(campaignHandle, { progressionScenesView: view });
 }
 
 export function patchAdventureStoryboardLens(

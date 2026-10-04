@@ -165,7 +165,6 @@ export const SIDEBAR_SECTION_META: Record<
       | 'recent-changes'
       | 'visual-atlas'
       | 'relations'
-      | 'narrative-unresolved'
       | 'progression';
     statusLabel?: string;
     settingsDescription?: string;
@@ -206,7 +205,7 @@ export const SIDEBAR_SECTION_META: Record<
     route: 'progression',
     statusLabel: 'Game Master',
     settingsDescription:
-      'How the world itself changes — campaign momentum, pending developments, and development history.',
+      'How the world itself changes — trajectories, pending developments, and development history.',
   },
   narrativeThreads: {
     label: 'Threads',
@@ -214,7 +213,6 @@ export const SIDEBAR_SECTION_META: Record<
   },
   creativeDrift: {
     label: 'Unresolved',
-    route: 'narrative-unresolved',
   },
   journals: { label: 'Journals', wikiTitle: 'Journals' },
   timeTracking: {

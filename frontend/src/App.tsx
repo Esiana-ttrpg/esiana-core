@@ -9,7 +9,6 @@ import { GlobalPluginPageHost } from '@/pages/GlobalPluginPageHost';
 import { PluginPageHost } from '@/pages/PluginPageHost';
 import { WikiPage } from '@/pages/WikiPage';
 import { WorldMaintenancePage } from '@/pages/WorldMaintenancePage';
-import { CreativeDriftPage } from '@/pages/CreativeDriftPage';
 import { WorkspaceIndexPage } from '@/pages/WorkspaceIndexPage';
 import { FreeformPagesIndex } from '@/pages/FreeformPagesIndex';
 import {
@@ -140,11 +139,6 @@ export default function App() {
               element={<WikiInterpretiveSummaryRedirect />}
             />
             <Route path="wiki/maintenance" element={<WorldMaintenancePage />} />
-            <Route path="narrative/unresolved" element={<CreativeDriftPage />} />
-            <Route
-              path="narrative/drift"
-              element={<Navigate to="unresolved" replace relative="path" />}
-            />
             <Route
               path="session-notes/compile"
               element={<SessionNotesCompilePage />}

@@ -63,13 +63,14 @@ Every suggestion includes frozen `rationale[]` at generation ("Why suggested") â
 
 ## Progression hub
 
+- Trajectories (interim â€” missing trajectories; Graph planned later)
 - Advance Time (resolution wizard)
 - Pending Developments
 - Scheduled Effects
 - Consequences
 - History (filtered audit trail)
 
-Settings live in Campaign Settings, not top-level Progression nav.
+Insights has been removed. Settings live in Campaign Settings, not top-level Progression nav.
 
 ## APIs
 

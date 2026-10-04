@@ -4,7 +4,6 @@ import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { fetchAdventureHub, type AdventureHubPayload } from '@/lib/adventure';
 import {
   adventureViewHref,
-  needsLegacyAdventureRedirect,
   readStoryViewFromSearch,
   readThreadsLensFromSearch,
   type ThreadsLensId,
@@ -41,15 +40,8 @@ export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewP
   const threadsLens = readThreadsLensFromSearch(location.search, campaignHandle);
 
   const redirectTo = useMemo(() => {
-    const legacyRedirect = needsLegacyAdventureRedirect(location.search);
-    if (legacyRedirect?.kind === 'adventure') {
-      return adventureViewHref(basePath, legacyRedirect.view ?? 'quests', {
-        threadsLens: legacyRedirect.threadsLens,
-        storyboardLens: legacyRedirect.storyboardLens,
-      });
-    }
     const searchParams = new URLSearchParams(location.search);
-    if (!searchParams.has('view') && !searchParams.has('section')) {
+    if (!searchParams.has('view')) {
       return adventureViewHref(basePath, readStoryViewFromSearch(location.search, campaignHandle), {
         threadsLens: threadsLens !== 'all' ? threadsLens : undefined,
       });

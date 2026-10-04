@@ -82,10 +82,10 @@ On time advance (`medium` magnitude or larger), the advisory `event_generation` 
 
 ## UI surfaces
 
-- **Progression › Trajectories** (primary) — era editor, **campaign pacing panel** (pause, epoch preview, simulation receipts), world outlook panel, forecasts
+- **Progression › Trajectories** (interim) — missing trajectories for the current era only. Era management, pacing, preview-at-epoch, simulation receipts, and world outlook are **not** mounted here after Insights removal; components/APIs remain for later Trajectories/Graph/settings work.
 - **Progression › Pending Developments** — unified inbox (world + reputation suggestions)
 - **Downtime › World Events** — deep link to Progression inbox
-- **Organization metadata** — per-era trajectory table
+- **Organization metadata** — per-era trajectory table (author trajectories here)
 - **Downtime overview** — one-line pulse hint + link to Progression
 - **Campaign home › Continuity stream** (Phase 3) — GM/Writer next-session or near-future forecast from `worldPressurePreview` on dashboard summary
 - **Campaign home › World Pressure Forecast widget** (Phase 3) — optional customize-mode widget (`worldPressureForecast`, disabled by default)
@@ -103,7 +103,7 @@ Surfaces are **advisory only** — same boundary as Progression › Trajectories
 
 ## Campaign pacing controls (Phase 4)
 
-Assistive GM pacing on **Progression › Trajectories** — not time travel.
+Assistive GM pacing APIs remain available — UI was removed from Insights and is **not** relocated onto Trajectories in this pass. Prefer Campaign Settings for pause/forecast controls when those surfaces are rebuilt.
 
 ### Pause forecasting
 
