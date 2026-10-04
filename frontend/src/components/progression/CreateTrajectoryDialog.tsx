@@ -107,6 +107,14 @@ export function CreateTrajectoryDialog({
       setError('This entity already has a trajectory starting in that era.');
       return;
     }
+    if (byEraId) {
+      const fromEra = eras.find((era) => era.id === fromEraId);
+      const byEra = eras.find((era) => era.id === byEraId);
+      if (fromEra && byEra && byEra.sortOrder < fromEra.sortOrder) {
+        setError('The By era must match or follow the From era.');
+        return;
+      }
+    }
     setSaving(true);
     setError(null);
     try {
