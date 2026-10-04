@@ -3,30 +3,23 @@ description: Report incorrect behavior in Esiana core
 title: "[Bug]: "
 labels:
   - bug
+
 body:
   - type: markdown
     attributes:
       value: |
         Search existing issues first. For security vulnerabilities, see [SECURITY.md](../../SECURITY.md) — do not file public bugs for those.
 
-  - type: input
+  - type: dropdown
     id: version
     attributes:
       label: Esiana version
-      description: From Admin UI, package.json, or release tag (e.g. v1.0.0)
-      placeholder: v1.0.0
-    validations:
-      required: true
-
-  - type: dropdown
-    id: deployment
-    attributes:
-      label: Deployment
       options:
-        - Local dev (npm run dev)
-        - Docker Compose (GHCR pull)
-        - Docker Compose (build from source)
-        - Other
+        - Latest
+        - Nightly
+        - Older version
+        - Unknown
+      default: 0
     validations:
       required: true
 
@@ -38,6 +31,7 @@ body:
         - PostgreSQL
         - SQLite
         - Unknown
+      default: 0
     validations:
       required: true
 
@@ -54,32 +48,17 @@ body:
       required: true
 
   - type: textarea
-    id: expected
+    id: behavior
     attributes:
-      label: Expected behavior
+      label: What happened?
+      description: What happened, and what did you expect instead?
     validations:
-      required: true
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual behavior
-    validations:
-      required: true
+      required: false
 
   - type: textarea
     id: logs
     attributes:
       label: Logs or screenshots
-      description: Browser console, `docker compose logs esiana`, or backend terminal output
-    validations:
-      required: false
-
-  - type: input
-    id: campaign-scope
-    attributes:
-      label: Campaign scope (optional)
-      description: Does this affect one campaign, all campaigns, or system admin only?
-      placeholder: Single campaign / all campaigns / admin
+      description: Add anything that might help diagnose the problem.
     validations:
       required: false
