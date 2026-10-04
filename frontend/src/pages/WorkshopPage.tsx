@@ -156,6 +156,9 @@ export function WorkshopPage() {
         const active = draft ?? loaded.find((d) => d.id === session.activeDraftId) ?? loaded[0] ?? null;
         if (active) {
           await activateDraft(active, { sync: true });
+        } else {
+          // Clear leftover draft from a previous campaign / session when bare empty.
+          setActiveDraft(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
