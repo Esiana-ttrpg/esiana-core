@@ -20,6 +20,8 @@ test('organizationWorldStateToMomentum maps legacy world state labels', () => {
   assert.equal(organizationWorldStateToMomentum('rising'), 'rising');
   assert.equal(organizationWorldStateToMomentum('reforming'), 'resurgent');
   assert.equal(organizationWorldStateToMomentum('schismatic'), 'fragmenting');
+  assert.equal(organizationWorldStateToMomentum('constructor'), null);
+  assert.equal(organizationWorldStateToMomentum('__proto__'), null);
   assert.equal(organizationWorldStateToMomentum(null), null);
 });
 

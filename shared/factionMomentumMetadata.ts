@@ -62,7 +62,9 @@ export function organizationWorldStateToMomentum(
 ): FactionMomentumState | null {
   if (!worldState || typeof worldState !== 'string') return null;
   const key = worldState.trim().toLowerCase();
-  return ORGANIZATION_WORLD_STATE_TO_MOMENTUM[key] ?? null;
+  return Object.hasOwn(ORGANIZATION_WORLD_STATE_TO_MOMENTUM, key)
+    ? ORGANIZATION_WORLD_STATE_TO_MOMENTUM[key] ?? null
+    : null;
 }
 
 /**
