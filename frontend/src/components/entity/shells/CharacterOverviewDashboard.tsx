@@ -1,7 +1,13 @@
 import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
+import { PlanningEraTrajectoriesBlock } from '@/components/entity/PlanningEraTrajectoriesBlock';
 import { EntityBiographyWidget } from '@/components/wiki/widgets/EntityBiographyWidget';
 import { WikiPageTagsInput } from '@/components/wiki/WikiPageTagsInput';
 import { buildCharacterOverviewDisplayValues } from '@/lib/characterOverviewDisplay';
+import {
+  parseCharacterMetadata,
+  type CharacterIdentityFields,
+} from '@/lib/characterMetadata';
+import { updateCharacterMetadata } from '@/lib/wiki';
 import type { EntityOverviewProps } from '@/lib/entityPageShells/types';
 import type { WikiPageBlock } from '@/types/wiki';
 import { useCampaignChronologyNow } from '@/hooks/useCampaignChronologyNow';
@@ -13,7 +19,7 @@ import {
   EntityFactRowList,
   EntityWikiInfobox,
 } from './EntityFactRow';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 function findBiographyBlock(blocks: WikiPageBlock[]): WikiPageBlock | undefined {
   return blocks.find((b) => b.type === 'text-biography');
@@ -43,6 +49,14 @@ export function CharacterOverviewDashboard({
   const campaignNow = useCampaignChronologyNow(campaignHandle);
   const biographyBlock = findBiographyBlock(blocks);
   const bioContent = (biographyBlock?.content as Record<string, unknown>) ?? { markdown: '' };
+
+  const [trajectoryDraft, setTrajectoryDraft] = useState<CharacterIdentityFields>(() =>
+    parseCharacterMetadata(pageMetadata),
+  );
+
+  useEffect(() => {
+    setTrajectoryDraft(parseCharacterMetadata(pageMetadata));
+  }, [pageMetadata]);
 
   const displayValues = useMemo(
     () =>
@@ -110,6 +124,32 @@ export function CharacterOverviewDashboard({
       <EntityPageSection id="character-context" title="World context" wikiFacts>
         <EntityWikiInfobox className="max-w-md">{identityFacts}</EntityWikiInfobox>
       </EntityPageSection>
+
+      {canEdit || trajectoryDraft.eraTrajectories.length > 0 ? (
+        <EntityPageSection id="character-trajectories" title="Trajectories" wikiFacts>
+          {canEdit ? (
+            <PlanningEraTrajectoriesBlock
+              campaignHandle={campaignHandle}
+              draft={trajectoryDraft}
+              setDraft={setTrajectoryDraft}
+              onPersist={async (patch) => {
+                const result = await updateCharacterMetadata(campaignHandle, pageId, patch);
+                onMetadataSaved(result.metadata);
+              }}
+              emptyHint="No trajectories on this character yet. Trajectories are opt-in directions over time."
+            />
+          ) : (
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {trajectoryDraft.eraTrajectories.map((row) => (
+                <li key={row.eraId}>
+                  {row.direction?.trim() || 'Trajectory'}
+                  {row.outcome?.trim() ? ` → ${row.outcome.trim()}` : ''}
+                </li>
+              ))}
+            </ul>
+          )}
+        </EntityPageSection>
+      ) : null}
 
       <EntityPageSection id="character-description" title="Description" dominant>
         <EntityBiographyWidget

@@ -53,6 +53,7 @@ export const DEVELOPMENT_TYPES = [
   'trade_rumor',
   'faction_pressure',
   'era_trend',
+  'trajectory_shift',
 ] as const;
 
 /** Legacy ids → canonical development type. */
@@ -151,6 +152,12 @@ export const DEFAULT_TYPE_LIFECYCLES: Record<DevelopmentType, DevelopmentTypeLif
   era_trend: {
     prepMinutes: 0,
     cooldownMinutes: 1 * MONTH_MINUTES,
+    significance: 'minor',
+  },
+  /** Modest core beat for Character/Location explicit trajectories (literal direction/outcome). */
+  trajectory_shift: {
+    prepMinutes: 0,
+    cooldownMinutes: 2 * WEEK_MINUTES,
     significance: 'minor',
   },
 };

@@ -5,9 +5,11 @@ import {
   FACTION_MOMENTUM_STATES,
   FACTION_MOMENTUM_STATE_LABELS,
   type CampaignEra,
+  type EraTrajectory,
   type FactionEraTrajectory,
   type FactionMomentumState,
 } from '@shared/factionMomentumMetadata';
+import type { TrajectorySubjectCategory } from '@shared/developmentProvider';
 import { campaignProgressionPath, campaignWikiPath } from '@/lib/campaignPaths';
 import type { WikiTreeNode } from '@/types/wiki';
 
@@ -17,10 +19,17 @@ const cellInputClass =
 const cellSelectClass =
   'w-full min-w-[5rem] rounded border border-transparent bg-transparent px-1 py-1 text-sm text-foreground outline-none hover:border-border focus:border-primary/60 focus:bg-background';
 
+const CATEGORY_CUE: Record<TrajectorySubjectCategory, string> = {
+  organizations: 'Org',
+  characters: 'Char',
+  locations: 'Loc',
+};
+
 export type TrajectoryTableRow = {
   pageId: string;
   title: string;
-  trajectory: FactionEraTrajectory;
+  category: TrajectorySubjectCategory;
+  trajectory: EraTrajectory | FactionEraTrajectory;
 };
 
 interface TrajectoryTableProps {
@@ -42,9 +51,22 @@ function eraName(eras: CampaignEra[], eraId: string | null | undefined): string 
   return eras.find((era) => era.id === eraId)?.name ?? eraId;
 }
 
-function directionDisplay(trajectory: FactionEraTrajectory): string {
+function hasMomentum(trajectory: EraTrajectory | FactionEraTrajectory): trajectory is FactionEraTrajectory {
+  return (
+    'momentumState' in trajectory &&
+    typeof (trajectory as FactionEraTrajectory).momentumState === 'string'
+  );
+}
+
+function directionDisplay(
+  trajectory: EraTrajectory | FactionEraTrajectory,
+  category: TrajectorySubjectCategory,
+): string {
   if (trajectory.direction?.trim()) return trajectory.direction.trim();
-  return FACTION_MOMENTUM_STATE_LABELS[trajectory.momentumState];
+  if (category === 'organizations' && hasMomentum(trajectory)) {
+    return FACTION_MOMENTUM_STATE_LABELS[trajectory.momentumState];
+  }
+  return '';
 }
 
 export function TrajectoryTable({
@@ -96,7 +118,7 @@ export function TrajectoryTable({
                   onToggle={() => setExpanded(isOpen ? null : rowKey)}
                   onPatch={onPatch}
                   onPersistPage={onPersistPage}
-                  directionValue={directionDisplay(trajectory)}
+                  directionValue={directionDisplay(trajectory, row.category)}
                 />
               );
             })}
@@ -133,7 +155,8 @@ function FragmentRow({
   onPersistPage: (pageId: string) => void;
   directionValue: string;
 }) {
-  const { pageId, title, trajectory } = row;
+  const { pageId, title, category, trajectory } = row;
+  const showFactionControls = category === 'organizations' && hasMomentum(trajectory);
 
   return (
     <>
@@ -150,12 +173,17 @@ function FragmentRow({
           </button>
         </td>
         <td className="py-1.5 pr-3">
-          <Link
-            to={campaignWikiPath(campaignHandle, pageId, flatPages)}
-            className="font-medium text-foreground hover:text-primary hover:underline"
-          >
-            {title}
-          </Link>
+          <div className="flex items-baseline gap-2">
+            <Link
+              to={campaignWikiPath(campaignHandle, pageId, flatPages)}
+              className="font-medium text-foreground hover:text-primary hover:underline"
+            >
+              {title}
+            </Link>
+            <span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+              {CATEGORY_CUE[category]}
+            </span>
+          </div>
         </td>
         <td className="py-1.5 pr-3">
           <input
@@ -228,47 +256,51 @@ function FragmentRow({
         <tr className="border-b border-border/40 bg-surface/30">
           <td colSpan={6} className="px-3 py-3">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <label className="block text-xs font-medium text-muted-foreground">
-                Development signal
-                <select
-                  value={trajectory.momentumState}
-                  onChange={(e) => {
-                    onPatch(
-                      pageId,
-                      trajectory.eraId,
-                      { momentumState: e.target.value as FactionMomentumState },
-                      true,
-                    );
-                  }}
-                  className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
-                >
-                  {FACTION_MOMENTUM_STATES.map((state) => (
-                    <option key={state} value={state}>
-                      {FACTION_MOMENTUM_STATE_LABELS[state]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-medium text-muted-foreground">
-                Pressure (internal)
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={trajectory.pressure ?? ''}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    onPatch(
-                      pageId,
-                      trajectory.eraId,
-                      { pressure: raw === '' ? null : Number(raw) },
-                      false,
-                    );
-                  }}
-                  onBlur={() => onPersistPage(pageId)}
-                  className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
-                />
-              </label>
+              {showFactionControls ? (
+                <>
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    Development signal
+                    <select
+                      value={trajectory.momentumState}
+                      onChange={(e) => {
+                        onPatch(
+                          pageId,
+                          trajectory.eraId,
+                          { momentumState: e.target.value as FactionMomentumState },
+                          true,
+                        );
+                      }}
+                      className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+                    >
+                      {FACTION_MOMENTUM_STATES.map((state) => (
+                        <option key={state} value={state}>
+                          {FACTION_MOMENTUM_STATE_LABELS[state]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    Pressure (internal)
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={trajectory.pressure ?? ''}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        onPatch(
+                          pageId,
+                          trajectory.eraId,
+                          { pressure: raw === '' ? null : Number(raw) },
+                          false,
+                        );
+                      }}
+                      onBlur={() => onPersistPage(pageId)}
+                      className="mt-1 block w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+                    />
+                  </label>
+                </>
+              ) : null}
               <label className="block text-xs font-medium text-muted-foreground sm:col-span-2 lg:col-span-1">
                 GM note
                 <input

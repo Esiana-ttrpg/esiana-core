@@ -20,6 +20,8 @@ const ACTIVITY_WEIGHT: Record<string, number> = {
   high: 3,
 };
 
+const TRAJECTORY_SHIFT_DEF_ID = 'trajectory_shift';
+
 function scoreFaction(faction: ProjectedFactionState): number {
   const activity = ACTIVITY_WEIGHT[faction.activityLevel] ?? 2;
   const tension = faction.bullets.length > 0 ? 2 : 1;
@@ -29,9 +31,9 @@ function scoreFaction(faction: ProjectedFactionState): number {
 function candidateIdempotencyKey(
   nextEpochMinute: string,
   definitionId: string,
-  orgPageId: string,
+  subjectPageId: string,
 ): string {
-  return `world-dev:${nextEpochMinute}:${definitionId}:${orgPageId}`;
+  return `world-dev:${nextEpochMinute}:${definitionId}:${subjectPageId}`;
 }
 
 function buildTrajectoryRationale(faction: ProjectedFactionState): DevelopmentRationaleLine[] {
@@ -105,15 +107,75 @@ function buildCandidate(
       def.id,
       faction.subjectPageId,
     ),
+    // Legacy storage name — carries generic subject page id (org / character / location).
     primaryOrgPageId: faction.subjectPageId,
     eraId: faction.resolvedForEraId,
     momentumState: faction.momentumState,
     trendDirection,
     proposedAcceptTarget: def.acceptTarget,
+    // Legacy DB kind: subject-scoped (not organization-exclusive).
     suggestionKind: 'faction_pressure',
     trajectoryRef: faction.isExplicit
       ? { subjectPageId: faction.subjectPageId, fromEraId: faction.fromEraId }
       : null,
+  };
+}
+
+/**
+ * Modest Char/Loc candidate — literal restatement of authored direction/outcome.
+ * Does not invent intermediate events (plugins / Ollama own that).
+ */
+function modestTrajectoryShiftCopy(subject: ProjectedFactionState): {
+  title: string;
+  narrative: string;
+} {
+  const direction = subject.direction?.trim() || null;
+  const outcome = subject.outcome?.trim() || null;
+  const title = direction
+    ? `${subject.subjectTitle} — ${direction}`
+    : `${subject.subjectTitle} — Trajectory`;
+  let narrative: string;
+  if (direction && outcome) {
+    narrative = `${subject.subjectTitle} is ${direction.toLowerCase()} toward ${outcome.toLowerCase()}.`;
+  } else if (outcome) {
+    narrative = `Trajectory toward: ${outcome}`;
+  } else if (direction) {
+    narrative = `${subject.subjectTitle} continues ${direction.toLowerCase()}.`;
+  } else {
+    narrative = `${subject.subjectTitle} continues on an authored trajectory.`;
+  }
+  return { title, narrative };
+}
+
+function buildModestTrajectoryShiftCandidate(
+  subject: ProjectedFactionState,
+  context: WorldDevelopmentContext,
+  def: DevelopmentDefinition,
+): ProviderDevelopmentCandidate {
+  const { title, narrative } = modestTrajectoryShiftCopy(subject);
+  return {
+    definitionId: def.id,
+    developmentType: def.developmentType,
+    title,
+    narrative,
+    rationale: buildTrajectoryRationale(subject),
+    idempotencyKey: candidateIdempotencyKey(
+      context.nextEpochMinute,
+      def.id,
+      subject.subjectPageId,
+    ),
+    // Legacy storage name — Character/Location page ids are expected here.
+    primaryOrgPageId: subject.subjectPageId,
+    eraId: subject.resolvedForEraId,
+    momentumState: null,
+    trendDirection: null,
+    proposedAcceptTarget: def.acceptTarget,
+    // Legacy DB kind: subject-scoped suggestion.
+    suggestionKind: 'faction_pressure',
+    trajectoryRef: {
+      subjectPageId: subject.subjectPageId,
+      fromEraId: subject.fromEraId,
+    },
   };
 }
 
@@ -124,7 +186,9 @@ function generateRegionalInstabilityCandidate(
   if (!def || !context.projection) return null;
 
   const fragmenting = context.projectedFactionStates.filter(
-    (f) => f.momentumState === 'fragmenting' || f.momentumState === 'desperate',
+    (f) =>
+      f.subjectCategory === 'organizations' &&
+      (f.momentumState === 'fragmenting' || f.momentumState === 'desperate'),
   );
   if (fragmenting.length < 2) return null;
 
@@ -162,7 +226,11 @@ export const coreDevelopmentProvider: DevelopmentProvider = {
     const candidates: ProviderDevelopmentCandidate[] = [];
     const usedKeys = new Set<string>();
 
-    const scored = [...context.projectedFactionStates]
+    const orgStates = context.projectedFactionStates.filter(
+      (f) => f.subjectCategory === 'organizations',
+    );
+
+    const scored = [...orgStates]
       .filter((f) => f.momentumState !== 'stable' && f.momentumState !== 'dormant')
       .sort((a, b) => scoreFaction(b) - scoreFaction(a));
 
@@ -174,6 +242,25 @@ export const coreDevelopmentProvider: DevelopmentProvider = {
       );
       if (!def) continue;
       candidates.push(buildCandidate(def, faction, context));
+    }
+
+    const trajectoryShiftDef = CORE_DEVELOPMENT_DEFINITIONS.find(
+      (d) => d.id === TRAJECTORY_SHIFT_DEF_ID,
+    );
+    if (trajectoryShiftDef) {
+      for (const subject of context.projectedFactionStates) {
+        if (subject.subjectCategory === 'organizations') continue;
+        if (!subject.isExplicit) continue;
+        const hasIntent =
+          Boolean(subject.direction?.trim()) || Boolean(subject.outcome?.trim());
+        if (!hasIntent) continue;
+        const key = `${trajectoryShiftDef.id}:${subject.subjectPageId}`;
+        if (usedKeys.has(key)) continue;
+        usedKeys.add(key);
+        candidates.push(
+          buildModestTrajectoryShiftCandidate(subject, context, trajectoryShiftDef),
+        );
+      }
     }
 
     const regional = generateRegionalInstabilityCandidate(context);

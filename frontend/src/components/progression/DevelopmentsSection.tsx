@@ -116,8 +116,8 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
     <header className="flex min-w-0 items-start justify-between gap-3 border-b border-border/40 pb-4">
       <div className="min-w-0">
         <h2 className={TYPE_DISPLAY_CLASS}>Developments</h2>
-        <p className="mt-1 text-sm text-muted-foreground">World Development · {stateLabel}</p>
-        <p className="text-sm text-muted-foreground">{data.status.generatedThisCampaignMonth} developments this campaign month · {data.pendingCount} awaiting review</p>
+        <p className="mt-1 text-sm text-muted-foreground">What is happening?</p>
+        <p className="text-sm text-muted-foreground">World Development · {stateLabel} · {data.status.generatedThisCampaignMonth} this campaign month · {data.pendingCount} awaiting review</p>
         {!data.settings.enabled ? <p className="mt-1 text-xs text-muted-foreground">Suggestions are disabled in campaign settings.</p> : null}
         {data.settings.paused ? <p className="mt-1 text-xs text-muted-foreground">New suggestions are paused; pending ones remain available.</p> : null}
       </div>
@@ -148,18 +148,18 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
           <h4 className="text-sm font-semibold text-foreground">Ways to develop your world</h4>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
             <Link className="text-primary hover:underline" to={campaignChronologyPath(campaignHandle, 'events')}>Create a world event</Link>
+            <Link className="text-primary hover:underline" to={campaignProgressionPath(campaignHandle, 'trajectories')}>
+              Add a trajectory
+            </Link>
             {activeFactions.length === 0 ? (
-              <Link className="text-primary hover:underline" to={campaignWorkspaceIndexPath(campaignHandle, 'organizations')}>Create a faction</Link>
-            ) : (
-              <Link className="text-primary hover:underline" to={campaignProgressionPath(campaignHandle, 'trajectories')}>
-                Add a trajectory
-              </Link>
-            )}
+              <Link className="text-primary hover:underline" to={campaignWorkspaceIndexPath(campaignHandle, 'organizations')}>Create an organization</Link>
+            ) : null}
             <button type="button" onClick={() => setAdvanceOpen(true)} className="text-left text-primary hover:underline">Advance campaign time</button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Trajectories are optional. Add one when you want to give part of the world a direction
-            over time — or create events and advance time without them.
+            Trajectories are optional directions for organizations, characters, and locations.
+            Add one when you want part of the world to pull future developments — or create
+            events and advance time without them.
           </p>
         </div>
       </div> : <ul className="space-y-3">{data.pending.map((row) => {

@@ -29,6 +29,10 @@ import {
   normalizeCharacterLocationRelations,
   type CharacterLocationRelation,
 } from '@shared/characterLocationRelations';
+import {
+  normalizeEraTrajectories,
+  type EraTrajectory,
+} from '@shared/factionMomentumMetadata';
 
 export function isCharacterWikiPage(page: {
   metadata?: unknown;
@@ -97,6 +101,8 @@ export interface CharacterIdentityFields {
   partyParticipation: PartyParticipation;
   locationRelations: CharacterLocationRelation[];
   appearance: CharacterAppearanceMetadata;
+  /** Explicit opt-in trajectories (planning fields only — no faction momentum). */
+  eraTrajectories: EraTrajectory[];
 }
 
 export type { CharacterLocationRelation, CharacterLocationRole } from '@shared/characterLocationRelations';
@@ -116,6 +122,7 @@ export const CHARACTER_IDENTITY_KEYS = [
   'partyParticipation',
   'locationRelations',
   'appearance',
+  'eraTrajectories',
 ] as const;
 
 const EMPTY_APPEARANCE: CharacterAppearanceMetadata = {
@@ -154,6 +161,7 @@ const EMPTY_IDENTITY: CharacterIdentityFields = {
   partyParticipation: { ...DEFAULT_PARTY_PARTICIPATION },
   locationRelations: [],
   appearance: { ...EMPTY_APPEARANCE },
+  eraTrajectories: [],
 };
 
 const LIFE_STATUSES: readonly CharacterLifeStatus[] = [
@@ -271,6 +279,7 @@ export function parseCharacterMetadata(metadata: unknown): CharacterIdentityFiel
     partyParticipation: parsePartyParticipation(raw),
     locationRelations: normalizeCharacterLocationRelations(raw.locationRelations),
     appearance: resolveAppearanceWithLegacy(raw),
+    eraTrajectories: normalizeEraTrajectories(raw.eraTrajectories),
   };
 }
 
@@ -411,6 +420,7 @@ export function mergeCharacterMetadata(
     appearance: normalizedPatch.appearance
       ? { ...parsed.appearance, ...normalizedPatch.appearance }
       : parsed.appearance,
+    eraTrajectories: normalizedPatch.eraTrajectories ?? parsed.eraTrajectories,
   };
 
   const result: Record<string, unknown> = {
@@ -427,6 +437,7 @@ export function mergeCharacterMetadata(
     partyParticipation: merged.partyParticipation,
     locationRelations: merged.locationRelations,
     appearance: merged.appearance,
+    eraTrajectories: merged.eraTrajectories,
   };
 
   delete result.gender;
@@ -447,6 +458,9 @@ export function isCharacterMetadataPresent(metadata: unknown): boolean {
     }
     if (key === 'partyParticipation' && typeof value === 'object') {
       return isActivePartyCharacter({ partyParticipation: value });
+    }
+    if (key === 'eraTrajectories' && Array.isArray(value)) {
+      return value.length > 0;
     }
     return true;
   });
@@ -488,6 +502,10 @@ export function normalizeCharacterMetadataPatch(
     normalized.locationRelations = normalizeCharacterLocationRelations(
       patch.locationRelations,
     );
+  }
+
+  if ('eraTrajectories' in patch) {
+    normalized.eraTrajectories = normalizeEraTrajectories(patch.eraTrajectories);
   }
 
   const appearanceOverrides: Partial<CharacterAppearanceMetadata> =

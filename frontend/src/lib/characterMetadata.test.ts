@@ -59,6 +59,32 @@ describe('characterMetadata', () => {
     assert.equal(merged.gender, undefined);
   });
 
+  it('round-trips eraTrajectories planning fields', () => {
+    const merged = mergeCharacterMetadata(
+      {},
+      {
+        eraTrajectories: [
+          {
+            eraId: 'era-1',
+            byEraId: 'era-2',
+            direction: 'Rising influence',
+            outcome: 'Takes the throne',
+            gmNote: 'Court',
+          },
+        ],
+      },
+    );
+    const parsed = parseCharacterMetadata(merged);
+    assert.equal(parsed.eraTrajectories.length, 1);
+    assert.deepEqual(parsed.eraTrajectories[0], {
+      eraId: 'era-1',
+      byEraId: 'era-2',
+      direction: 'Rising influence',
+      outcome: 'Takes the throne',
+      gmNote: 'Court',
+    });
+  });
+
   it('maps legacy top-level patch keys into appearance', () => {
     const merged = mergeCharacterMetadata(
       {},

@@ -23,6 +23,7 @@ test('buildNormalizedTrajectoryContext sets canonical fields and deprecated alia
   const ctx = buildNormalizedTrajectoryContext({
     subjectPageId: 'org-1',
     subjectTitle: 'Westgate',
+    subjectCategory: 'organizations',
     region: 'Coast',
     trajectory: {
       eraId: 'era-i',
@@ -44,6 +45,8 @@ test('buildNormalizedTrajectoryContext sets canonical fields and deprecated alia
   assert.equal(ctx.orgPageId, 'org-1');
   assert.equal(ctx.subjectTitle, 'Westgate');
   assert.equal(ctx.orgTitle, 'Westgate');
+  assert.equal(ctx.subjectCategory, 'organizations');
+  assert.equal(ctx.organizationState?.momentumState, 'declining');
   assert.equal(ctx.momentumState, 'declining');
   assert.equal(ctx.momentum, 'declining');
   assert.equal(ctx.fromEraId, 'era-i');
@@ -61,6 +64,7 @@ test('buildNormalizedTrajectoryContext clears authorial fields for fallback', ()
   const ctx = buildNormalizedTrajectoryContext({
     subjectPageId: 'org-1',
     subjectTitle: 'Westgate',
+    subjectCategory: 'organizations',
     region: null,
     trajectory: {
       eraId: 'era-i',
@@ -82,12 +86,39 @@ test('buildNormalizedTrajectoryContext clears authorial fields for fallback', ()
   assert.equal(ctx.byEraId, null);
   assert.equal(ctx.gmNote, null);
   assert.equal(ctx.momentumState, 'rising');
+  assert.ok(ctx.organizationState);
+});
+
+test('buildNormalizedTrajectoryContext for characters has no organizationState', () => {
+  const ctx = buildNormalizedTrajectoryContext({
+    subjectPageId: 'char-1',
+    subjectTitle: 'Mara',
+    subjectCategory: 'characters',
+    region: null,
+    trajectory: {
+      eraId: 'era-i',
+      byEraId: null,
+      direction: 'Rising influence',
+      outcome: 'Takes the throne',
+      gmNote: null,
+    },
+    resolvedForEraId: 'era-i',
+    eras: [eraI],
+    activityLevel: 'medium',
+    isExplicit: true,
+  });
+  assert.equal(ctx.subjectCategory, 'characters');
+  assert.equal(ctx.organizationState, undefined);
+  assert.equal(ctx.direction, 'Rising influence');
+  assert.equal(ctx.outcome, 'Takes the throne');
+  assert.equal(ctx.momentumState, 'stable');
 });
 
 test('validateTrajectoryRef accepts only explicit matching contexts', () => {
   const explicit = buildNormalizedTrajectoryContext({
     subjectPageId: 'org-1',
     subjectTitle: 'A',
+    subjectCategory: 'organizations',
     region: null,
     trajectory: {
       eraId: 'era-i',
@@ -116,6 +147,57 @@ test('validateTrajectoryRef accepts only explicit matching contexts', () => {
   assert.equal(
     validateTrajectoryRef({ subjectPageId: 'org-2', fromEraId: 'era-i' }, [explicit]),
     null,
+  );
+});
+
+test('validateTrajectoryRef accepts character and location explicit contexts', () => {
+  const character = buildNormalizedTrajectoryContext({
+    subjectPageId: 'char-1',
+    subjectTitle: 'Mara',
+    subjectCategory: 'characters',
+    region: null,
+    trajectory: {
+      eraId: 'era-i',
+      byEraId: null,
+      direction: 'Rising influence',
+      outcome: 'Takes the throne',
+      gmNote: null,
+    },
+    resolvedForEraId: 'era-i',
+    eras: [eraI],
+    activityLevel: 'medium',
+    isExplicit: true,
+  });
+  const location = buildNormalizedTrajectoryContext({
+    subjectPageId: 'loc-1',
+    subjectTitle: 'Westgate',
+    subjectCategory: 'locations',
+    region: null,
+    trajectory: {
+      eraId: 'era-i',
+      byEraId: null,
+      direction: 'Declining',
+      outcome: 'Severe famine',
+      gmNote: null,
+    },
+    resolvedForEraId: 'era-i',
+    eras: [eraI],
+    activityLevel: 'medium',
+    isExplicit: true,
+  });
+  assert.deepEqual(
+    validateTrajectoryRef({ subjectPageId: 'char-1', fromEraId: 'era-i' }, [
+      character,
+      location,
+    ]),
+    { subjectPageId: 'char-1', fromEraId: 'era-i' },
+  );
+  assert.deepEqual(
+    validateTrajectoryRef({ subjectPageId: 'loc-1', fromEraId: 'era-i' }, [
+      character,
+      location,
+    ]),
+    { subjectPageId: 'loc-1', fromEraId: 'era-i' },
   );
 });
 

@@ -11,15 +11,22 @@
 World Development is **not** autonomous simulation. It is a **suggestion-first pipeline**:
 
 ```text
-Faction trajectory (signals)
-    → NormalizedTrajectoryContext (explicit or worldState fallback)
+Explicit trajectories (Organizations · Characters · Locations)
+    + Organization worldState fallback (org-only)
+    → NormalizedTrajectoryContext
     → Development registry (core + plugins)
     → Candidate events (unified pool; registry stamps providerId, validates trajectoryRef)
     → GM approve / reject (or auto-apply per mode)
     → Canon via acceptTarget (calendar event, rumor, quest, …)
 ```
 
-Core owns **signal generation** (`WorldDevelopmentContext.projectedFactionStates`). Providers own **candidate generation**. The GM sees one inbox — no distinction between core and plugin sources. Payload provenance (`providerId`, `trajectoryRef`) is retained for history/debug/future Graph.
+Core owns **signal generation** (`WorldDevelopmentContext.projectedFactionStates` — name retained; holds all subject categories). Providers own **candidate generation**. The GM sees one inbox — no distinction between core and plugin sources. Payload provenance (`providerId`, `trajectoryRef`) is retained for history/debug/future Graph.
+
+**Legacy storage names:** `primaryOrgPageId` and `suggestionKind: 'faction_pressure'` may carry any supported subject page id (Character / Location / Organization). They are temporary DB/API names, not organization-exclusive.
+
+**Core Char/Loc candidates** are deliberately modest (`trajectory_shift`) — literal restatements of authored direction/outcome. Concrete intermediate events belong to richer plugins / Ollama later.
+
+Organization momentum/pressure remains faction engine state only; Characters and Locations use shared planning fields without fake equivalents.
 
 Default mode is **Off** — no generation, no queues, no background activity.
 
@@ -70,7 +77,7 @@ Graph [future] · Trajectories · Developments · History
 
 | Section | Job |
 |---------|-----|
-| **Trajectories** | Where the world is going — opt-in GM planning directions (table + compact eras). Graph owns relationships later. |
+| **Trajectories** | Where the world is going — opt-in GM planning for Organizations · Characters · Locations (table + compact eras). Graph owns relationships later. |
 | **Developments** | What is happening — pending inbox, Advance Time action, scheduled narrative prompts |
 | **History** | What developments happened — development provenance/outcome (not Chronology) |
 | **Graph** (future) | Relationships between trajectories, entities, developments, and pressures |

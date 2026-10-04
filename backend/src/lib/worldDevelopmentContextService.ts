@@ -7,6 +7,7 @@ import {
   type WorldDevelopmentContext,
 } from '../../../shared/developmentProvider.js';
 import {
+  resolveExplicitTrajectoryForEra,
   resolveFactionTrajectoryForEra,
   type FactionEraTrajectory,
 } from '../../../shared/factionMomentumMetadata.js';
@@ -14,6 +15,8 @@ import { buildCampaignWorldPressureProjection } from './worldPressureProjectionS
 import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { resolveWorldDevelopmentSettings } from './worldDevelopmentSettingsService.js';
 import { parseOrganizationMetadata } from './organizationMetadata.js';
+import { parseCharacterMetadata } from './characterMetadata.js';
+import { parseLocationMetadata } from './locationMetadata.js';
 import { ensureCampaignMomentum, getCurrentCampaignEra, toCampaignMomentumPayload } from './campaignMomentumService.js';
 import type { FactionPressureLine } from '../../../shared/worldPressureProjection.js';
 
@@ -36,6 +39,7 @@ export function projectedFactionStateFromLine(
   return buildNormalizedTrajectoryContext({
     subjectPageId: line.orgPageId,
     subjectTitle: line.orgTitle,
+    subjectCategory: 'organizations',
     region: null,
     trajectory: {
       eraId,
@@ -62,6 +66,11 @@ export function projectedFactionStateFromLine(
   });
 }
 
+/**
+ * Project trajectory contexts for Organizations · Characters · Locations.
+ * Name retained for plugin compatibility — not organization-exclusive.
+ * Organization worldState fallback remains org-only; Char/Loc are explicit-only.
+ */
 export async function buildProjectedFactionStates(
   campaignId: string,
   options?: { tx?: Prisma.TransactionClient },
@@ -72,17 +81,38 @@ export async function buildProjectedFactionStates(
   const eras = momentumPayload.state.eras;
   const currentEra = getCurrentCampaignEra(momentumPayload.state);
 
-  const orgPages = await db.wikiPage.findMany({
-    where: {
-      campaignId,
-      deletedAt: null,
-      ...buildEntityCategoryWhereClause('organizations'),
-    },
-    select: { id: true, title: true, metadata: true },
-    orderBy: { title: 'asc' },
-  });
+  const [orgPages, characterPages, locationPages] = await Promise.all([
+    db.wikiPage.findMany({
+      where: {
+        campaignId,
+        deletedAt: null,
+        ...buildEntityCategoryWhereClause('organizations'),
+      },
+      select: { id: true, title: true, metadata: true },
+      orderBy: { title: 'asc' },
+    }),
+    db.wikiPage.findMany({
+      where: {
+        campaignId,
+        deletedAt: null,
+        ...buildEntityCategoryWhereClause('characters'),
+      },
+      select: { id: true, title: true, metadata: true },
+      orderBy: { title: 'asc' },
+    }),
+    db.wikiPage.findMany({
+      where: {
+        campaignId,
+        deletedAt: null,
+        ...buildEntityCategoryWhereClause('locations'),
+      },
+      select: { id: true, title: true, metadata: true },
+      orderBy: { title: 'asc' },
+    }),
+  ]);
 
   const states: ProjectedFactionState[] = [];
+
   for (const page of orgPages) {
     const org = parseOrganizationMetadata(page.metadata);
     if (org.organizationStatus !== 'ACTIVE') continue;
@@ -108,6 +138,7 @@ export async function buildProjectedFactionStates(
       buildNormalizedTrajectoryContext({
         subjectPageId: page.id,
         subjectTitle: page.title,
+        subjectCategory: 'organizations',
         region: org.region,
         trajectory,
         resolvedForEraId: currentEra.id,
@@ -118,6 +149,59 @@ export async function buildProjectedFactionStates(
       }),
     );
   }
+
+  for (const page of characterPages) {
+    const character = parseCharacterMetadata(page.metadata);
+    if (character.eraTrajectories.length === 0) continue;
+    const trajectory = resolveExplicitTrajectoryForEra({
+      eraTrajectories: character.eraTrajectories,
+      eraId: currentEra.id,
+      eras,
+    });
+    if (!trajectory) continue;
+
+    states.push(
+      buildNormalizedTrajectoryContext({
+        subjectPageId: page.id,
+        subjectTitle: page.title,
+        subjectCategory: 'characters',
+        region: null,
+        trajectory,
+        resolvedForEraId: currentEra.id,
+        eras,
+        activityLevel: 'medium',
+        isExplicit: true,
+        bullets: [],
+      }),
+    );
+  }
+
+  for (const page of locationPages) {
+    const location = parseLocationMetadata(page.metadata);
+    if (location.eraTrajectories.length === 0) continue;
+    const trajectory = resolveExplicitTrajectoryForEra({
+      eraTrajectories: location.eraTrajectories,
+      eraId: currentEra.id,
+      eras,
+    });
+    if (!trajectory) continue;
+
+    states.push(
+      buildNormalizedTrajectoryContext({
+        subjectPageId: page.id,
+        subjectTitle: page.title,
+        subjectCategory: 'locations',
+        region: location.region,
+        trajectory,
+        resolvedForEraId: currentEra.id,
+        eras,
+        activityLevel: 'medium',
+        isExplicit: true,
+        bullets: [],
+      }),
+    );
+  }
+
   return states;
 }
 
@@ -145,13 +229,19 @@ export async function buildWorldDevelopmentContext(
 
   const enrichedStates = projectedFactionStates.map((state) => ({
     ...state,
-    bullets: bulletByOrg.get(state.subjectPageId) ?? state.bullets,
+    bullets:
+      state.subjectCategory === 'organizations'
+        ? (bulletByOrg.get(state.subjectPageId) ?? state.bullets)
+        : state.bullets,
   }));
+
+  const momentumRow = await ensureCampaignMomentum(campaignId, input.tx);
+  const currentEra = getCurrentCampaignEra(toCampaignMomentumPayload(momentumRow).state);
 
   return {
     campaignId,
     projectedFactionStates: enrichedStates,
-    currentEra: projection.currentEra,
+    currentEra,
     settings,
     advanceMagnitude: input.advanceMagnitude,
     nextEpochMinute: input.nextEpochMinute,
@@ -159,4 +249,3 @@ export async function buildWorldDevelopmentContext(
     projection,
   };
 }
-

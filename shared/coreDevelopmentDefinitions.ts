@@ -119,6 +119,13 @@ export const CORE_DEVELOPMENT_DEFINITIONS: DevelopmentDefinition[] = [
     'calendar_event',
     ['regional'],
   ),
+  coreDef(
+    'trajectory_shift',
+    'Trajectory shift',
+    [],
+    'calendar_event',
+    ['trajectory'],
+  ),
 ];
 
 export function findCoreDefinitionById(id: string): DevelopmentDefinition | undefined {

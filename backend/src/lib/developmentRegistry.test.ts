@@ -25,6 +25,7 @@ function explicitFactionState(
   const base = buildNormalizedTrajectoryContext({
     subjectPageId: 'org-1',
     subjectTitle: 'Test Faction',
+    subjectCategory: 'organizations',
     region: null,
     trajectory: {
       eraId: 'era-1',
@@ -174,6 +175,93 @@ test('registry keeps trajectoryRef only for explicit projected states', () => {
     ctx,
   );
   assert.equal(stamped.trajectoryRef, null);
+});
+
+test('registry accepts trajectoryRef for explicit character and location subjects', () => {
+  const era = createDefaultPresentEra();
+  const character = buildNormalizedTrajectoryContext({
+    subjectPageId: 'char-1',
+    subjectTitle: 'Mara',
+    subjectCategory: 'characters',
+    region: null,
+    trajectory: {
+      eraId: 'era-1',
+      byEraId: null,
+      direction: 'Rising influence',
+      outcome: 'Takes the throne',
+      gmNote: null,
+    },
+    resolvedForEraId: 'era-1',
+    eras: [{ ...era, id: 'era-1', name: 'Era I' }],
+    activityLevel: 'medium',
+    isExplicit: true,
+  });
+  const location = buildNormalizedTrajectoryContext({
+    subjectPageId: 'loc-1',
+    subjectTitle: 'Westgate',
+    subjectCategory: 'locations',
+    region: null,
+    trajectory: {
+      eraId: 'era-1',
+      byEraId: null,
+      direction: 'Declining',
+      outcome: 'Severe famine',
+      gmNote: null,
+    },
+    resolvedForEraId: 'era-1',
+    eras: [{ ...era, id: 'era-1', name: 'Era I' }],
+    activityLevel: 'medium',
+    isExplicit: true,
+  });
+  const ctx = baseContext([character, location]);
+
+  const charStamped = stampAndValidateCandidate(
+    'core',
+    {
+      definitionId: 'trajectory_shift',
+      developmentType: 'trajectory_shift',
+      title: 'Mara — Rising influence',
+      narrative: null,
+      rationale: [],
+      idempotencyKey: 'char-1',
+      primaryOrgPageId: 'char-1',
+      eraId: 'era-1',
+      momentumState: null,
+      trendDirection: null,
+      proposedAcceptTarget: 'calendar_event',
+      suggestionKind: 'faction_pressure',
+      trajectoryRef: { subjectPageId: 'char-1', fromEraId: 'era-1' },
+    },
+    ctx,
+  );
+  assert.deepEqual(charStamped.trajectoryRef, {
+    subjectPageId: 'char-1',
+    fromEraId: 'era-1',
+  });
+
+  const locStamped = stampAndValidateCandidate(
+    'core',
+    {
+      definitionId: 'trajectory_shift',
+      developmentType: 'trajectory_shift',
+      title: 'Westgate — Declining',
+      narrative: null,
+      rationale: [],
+      idempotencyKey: 'loc-1',
+      primaryOrgPageId: 'loc-1',
+      eraId: 'era-1',
+      momentumState: null,
+      trendDirection: null,
+      proposedAcceptTarget: 'calendar_event',
+      suggestionKind: 'faction_pressure',
+      trajectoryRef: { subjectPageId: 'loc-1', fromEraId: 'era-1' },
+    },
+    ctx,
+  );
+  assert.deepEqual(locStamped.trajectoryRef, {
+    subjectPageId: 'loc-1',
+    fromEraId: 'era-1',
+  });
 });
 
 test('eligibility provider filters candidates', async () => {

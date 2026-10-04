@@ -3,11 +3,15 @@ import test from 'node:test';
 import {
   createDefaultCampaignMomentumState,
   createDefaultPresentEra,
+  createEraTrajectory,
   createFactionEraTrajectory,
   DEFAULT_TRAJECTORY_MOMENTUM_STATE,
+  normalizeEraTrajectory,
+  normalizeEraTrajectories,
   normalizeFactionEraTrajectory,
   organizationWorldStateToMomentum,
   resolveCampaignEraAtEpoch,
+  resolveExplicitTrajectoryForEra,
   resolveFactionTrajectoryForEra,
   type CampaignEra,
 } from './factionMomentumMetadata.js';
@@ -26,6 +30,19 @@ test('createFactionEraTrajectory defaults momentum to stable engine default', ()
   assert.equal(row.direction, 'Militarizing');
   assert.equal(row.byEraId, null);
   assert.equal(row.outcome, null);
+});
+
+test('createEraTrajectory has planning fields only', () => {
+  const row = createEraTrajectory({
+    eraId: 'era-1',
+    direction: 'Rising influence',
+    outcome: 'Takes the throne',
+  });
+  assert.equal(row.direction, 'Rising influence');
+  assert.equal(row.outcome, 'Takes the throne');
+  assert.equal(row.byEraId, null);
+  assert.equal(row.gmNote, null);
+  assert.equal('momentumState' in row, false);
 });
 
 test('normalizeFactionEraTrajectory round-trips hybrid planning fields', () => {
@@ -47,6 +64,26 @@ test('normalizeFactionEraTrajectory round-trips hybrid planning fields', () => {
     pressure: 40,
     gmNote: 'Watch the harvest',
   });
+});
+
+test('normalizeEraTrajectory round-trips character/location planning fields', () => {
+  const normalized = normalizeEraTrajectory({
+    eraId: 'era-1',
+    byEraId: 'era-2',
+    direction: 'Rising influence',
+    outcome: 'Takes the throne',
+    gmNote: 'Court intrigue',
+    momentumState: 'rising',
+    pressure: 99,
+  });
+  assert.deepEqual(normalized, {
+    eraId: 'era-1',
+    byEraId: 'era-2',
+    direction: 'Rising influence',
+    outcome: 'Takes the throne',
+    gmNote: 'Court intrigue',
+  });
+  assert.equal(normalizeEraTrajectories([normalized, { eraId: 'era-1' }]).length, 1);
 });
 
 test('resolveFactionTrajectoryForEra prefers explicit era trajectory', () => {
@@ -99,6 +136,42 @@ const eraIV: CampaignEra = {
   narrativeNote: null,
 };
 const eras = [eraI, eraII, eraIII, eraIV];
+
+test('resolveExplicitTrajectoryForEra works for planning-only trajectories', () => {
+  const trajectory = createEraTrajectory({
+    eraId: eraI.id,
+    byEraId: eraIII.id,
+    direction: 'Declining',
+    outcome: 'Severe famine',
+  });
+  assert.equal(
+    resolveExplicitTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: eraII.id,
+      eras,
+    })?.direction,
+    'Declining',
+  );
+  assert.equal(
+    resolveExplicitTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: eraIV.id,
+      eras,
+    }),
+    null,
+  );
+});
+
+test('resolveExplicitTrajectoryForEra returns nothing without explicit rows', () => {
+  assert.equal(
+    resolveExplicitTrajectoryForEra({
+      eraTrajectories: [],
+      eraId: eraI.id,
+      eras,
+    }),
+    null,
+  );
+});
 
 test('resolveFactionTrajectoryForEra: From=I By=null matches Era I and later', () => {
   const trajectory = createFactionEraTrajectory({
@@ -179,6 +252,18 @@ test('resolveFactionTrajectoryForEra: before From does not match', () => {
     })?.direction,
     'Collapsing',
   );
+});
+
+test('resolveFactionTrajectoryForEra falls back to worldState when no explicit match', () => {
+  const resolved = resolveFactionTrajectoryForEra({
+    eraTrajectories: [],
+    eraId: eraI.id,
+    worldState: 'rising',
+    eras,
+  });
+  assert.equal(resolved?.momentumState, 'rising');
+  assert.equal(resolved?.direction, null);
+  assert.equal(resolved?.outcome, null);
 });
 
 test('resolveCampaignEraAtEpoch falls back to current era when no bounds match', () => {

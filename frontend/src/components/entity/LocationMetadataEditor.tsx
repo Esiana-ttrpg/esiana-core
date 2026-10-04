@@ -23,6 +23,7 @@ import {
 import { filterLocationPages, filterMapPages, findLocationsCategoryPage } from '@/lib/questHubLayout';
 import { updateLocationMetadata, updateWikiPage } from '@/lib/wiki';
 import type { WikiTreeNode } from '@/types/wiki';
+import { PlanningEraTrajectoriesBlock } from '@/components/entity/PlanningEraTrajectoriesBlock';
 
 type LocationContextCreateTarget = 'parent' | 'region';
 
@@ -301,6 +302,15 @@ export function LocationMetadataEditor({
               onChange={(nextId) => void persist({ mapPageId: nextId })}
             />
           </label>
+          <div className="sm:col-span-2">
+            <PlanningEraTrajectoriesBlock
+              campaignHandle={campaignHandle}
+              draft={draft}
+              setDraft={setDraft}
+              onPersist={(patch) => void persist(patch)}
+              emptyHint="No trajectories on this location yet. Trajectories are opt-in directions over time."
+            />
+          </div>
         </div>
       ) : null}
 

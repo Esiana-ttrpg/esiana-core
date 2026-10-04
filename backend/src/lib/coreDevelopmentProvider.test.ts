@@ -18,6 +18,7 @@ function makeContext(
       buildNormalizedTrajectoryContext({
         subjectPageId: 'org-1',
         subjectTitle: 'Silver Harbor',
+        subjectCategory: 'organizations',
         region: 'north',
         trajectory: {
           eraId: 'era-1',
@@ -71,6 +72,7 @@ test('core provider includes direction in rationale for explicit trajectories', 
         buildNormalizedTrajectoryContext({
           subjectPageId: 'org-1',
           subjectTitle: 'Iron Compact',
+          subjectCategory: 'organizations',
           region: null,
           trajectory: {
             eraId: 'era-1',
@@ -101,6 +103,7 @@ test('core provider omits trajectoryRef for worldState fallback contexts', () =>
   const fallback = buildNormalizedTrajectoryContext({
     subjectPageId: 'org-1',
     subjectTitle: 'Iron Compact',
+    subjectCategory: 'organizations',
     region: null,
     trajectory: {
       eraId: 'era-1',
@@ -123,4 +126,110 @@ test('core provider omits trajectoryRef for worldState fallback contexts', () =>
   const faction = candidates.find((c) => c.suggestionKind === 'faction_pressure');
   assert.ok(faction);
   assert.equal(faction!.trajectoryRef, null);
+});
+
+test('core provider emits modest trajectory_shift for explicit character trajectories', () => {
+  const era = { ...createDefaultPresentEra(), id: 'era-1', name: 'Era I' };
+  const candidates = coreDevelopmentProvider.generateCandidates(
+    makeContext({
+      projectedFactionStates: [
+        buildNormalizedTrajectoryContext({
+          subjectPageId: 'char-1',
+          subjectTitle: 'Mara',
+          subjectCategory: 'characters',
+          region: null,
+          trajectory: {
+            eraId: 'era-1',
+            byEraId: null,
+            direction: 'Rising influence',
+            outcome: 'Takes the throne',
+            gmNote: null,
+          },
+          resolvedForEraId: 'era-1',
+          eras: [era],
+          activityLevel: 'medium',
+          isExplicit: true,
+        }),
+      ],
+    }),
+  );
+  const match = candidates.find((c) => c.definitionId === 'trajectory_shift');
+  assert.ok(match);
+  assert.equal(match!.title, 'Mara — Rising influence');
+  assert.match(match!.narrative ?? '', /rising influence/i);
+  assert.match(match!.narrative ?? '', /takes the throne/i);
+  assert.doesNotMatch(match!.narrative ?? '', /courtier|grain|famine pulse/i);
+  assert.deepEqual(match!.trajectoryRef, {
+    subjectPageId: 'char-1',
+    fromEraId: 'era-1',
+  });
+  assert.equal(match!.primaryOrgPageId, 'char-1');
+});
+
+test('core provider emits modest trajectory_shift for explicit location trajectories', () => {
+  const era = { ...createDefaultPresentEra(), id: 'era-1', name: 'Era I' };
+  const candidates = coreDevelopmentProvider.generateCandidates(
+    makeContext({
+      projectedFactionStates: [
+        buildNormalizedTrajectoryContext({
+          subjectPageId: 'loc-1',
+          subjectTitle: 'Westgate',
+          subjectCategory: 'locations',
+          region: null,
+          trajectory: {
+            eraId: 'era-1',
+            byEraId: null,
+            direction: 'Declining',
+            outcome: 'Severe famine',
+            gmNote: null,
+          },
+          resolvedForEraId: 'era-1',
+          eras: [era],
+          activityLevel: 'medium',
+          isExplicit: true,
+        }),
+      ],
+    }),
+  );
+  const match = candidates.find((c) => c.definitionId === 'trajectory_shift');
+  assert.ok(match);
+  assert.equal(match!.title, 'Westgate — Declining');
+  assert.match(match!.narrative ?? '', /declining/i);
+  assert.match(match!.narrative ?? '', /severe famine/i);
+  assert.doesNotMatch(match!.narrative ?? '', /grain prices/i);
+  assert.deepEqual(match!.trajectoryRef, {
+    subjectPageId: 'loc-1',
+    fromEraId: 'era-1',
+  });
+});
+
+test('core provider skips character/location without direction or outcome', () => {
+  const era = { ...createDefaultPresentEra(), id: 'era-1', name: 'Era I' };
+  const candidates = coreDevelopmentProvider.generateCandidates(
+    makeContext({
+      projectedFactionStates: [
+        buildNormalizedTrajectoryContext({
+          subjectPageId: 'loc-1',
+          subjectTitle: 'Westgate',
+          subjectCategory: 'locations',
+          region: null,
+          trajectory: {
+            eraId: 'era-1',
+            byEraId: null,
+            direction: null,
+            outcome: null,
+            gmNote: 'note only',
+          },
+          resolvedForEraId: 'era-1',
+          eras: [era],
+          activityLevel: 'medium',
+          isExplicit: true,
+        }),
+      ],
+    }),
+  );
+  assert.equal(
+    candidates.filter((c) => c.definitionId === 'trajectory_shift').length,
+    0,
+  );
 });
