@@ -160,7 +160,11 @@ export function extractHubSessionMarkdown(blocks: unknown): string {
     const trimmed = blocks.trim();
     if (!trimmed) return '';
     try {
-      return extractHubSessionMarkdown(JSON.parse(trimmed));
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return extractHubSessionMarkdown(parsed);
+      }
+      return trimmed;
     } catch {
       // Preserve compatibility with legacy pages whose blocks field held Markdown directly.
       return trimmed;
@@ -180,7 +184,11 @@ export function extractHubSessionMarkdown(blocks: unknown): string {
       (block) =>
         block !== null &&
         typeof block === 'object' &&
-        (block as { type?: unknown }).type === 'text-tiptap',
+        (block as { type?: unknown }).type === 'text-tiptap' &&
+        typeof (block as { content?: { markdown?: unknown } }).content?.markdown === 'string' &&
+        Boolean(
+          (block as { content: { markdown: string } }).content.markdown.trim(),
+        ),
     );
 
   if (body === null || typeof body !== 'object') return '';

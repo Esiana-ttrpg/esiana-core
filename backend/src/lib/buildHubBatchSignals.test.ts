@@ -40,10 +40,15 @@ describe('extractHubSessionMarkdown', () => {
     assert.equal(extractHubSessionMarkdown(blocks), 'A clean recap.');
   });
 
-  it('falls back to the first text block and ignores unsupported structures', () => {
+  it('preserves legacy scalar Markdown that is also valid JSON', () => {
+    assert.equal(extractHubSessionMarkdown('2026'), '2026');
+  });
+
+  it('falls back to the first nonempty text block and ignores unsupported structures', () => {
     assert.equal(
       extractHubSessionMarkdown([
         { type: 'image', content: { imageUrl: '/map.png' } },
+        { type: 'text-tiptap', content: { markdown: '  ' } },
         { type: 'text-tiptap', content: { markdown: 'Fallback prose.' } },
       ]),
       'Fallback prose.',
