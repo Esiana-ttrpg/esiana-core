@@ -287,6 +287,8 @@ export type CreatableCodexPageType = {
   segment: NonNullable<ReturnType<typeof workspaceToSegment>>;
   /** Category folder title from indexResolver wikiTitle. */
   categoryTitle: string;
+  /** Sidebar section id for visibility + icon parity with campaign nav. */
+  sidebarId: string;
 };
 
 /**
@@ -299,12 +301,14 @@ export function listCreatableCodexPageTypes(): readonly CreatableCodexPageType[]
     if (route.createVia !== 'create-page-modal') continue;
     if (!route.workspace) continue;
     if (route.indexResolver.type !== 'wikiTitle') continue;
+    if (!route.sidebarId) continue;
     const segment = workspaceToSegment(route.workspace);
     if (!segment) continue;
     result.push({
       workspace: route.workspace,
       segment,
       categoryTitle: route.indexResolver.title,
+      sidebarId: route.sidebarId,
     });
   }
   return result;

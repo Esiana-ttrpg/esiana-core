@@ -858,6 +858,22 @@ export function findSidebarBucketItem(
   return null;
 }
 
+/**
+ * Whether a sidebar section would render for this campaign config.
+ * Bucket items use `enabled`; fixed sections use fixedSectionVisibility; unknown ids stay visible.
+ */
+export function isSidebarSectionVisible(
+  config: SidebarConfig,
+  sectionId: SidebarSectionId | string,
+): boolean {
+  const bucket = findSidebarBucketItem(config, sectionId);
+  if (bucket) return bucket.item.enabled;
+  if (SIDEBAR_FIXED_IDS.includes(sectionId as SidebarSectionId)) {
+    return isFixedSectionVisible(config, sectionId as SidebarSectionId);
+  }
+  return true;
+}
+
 export function getSidebarSectionStoredIcon(
   config: SidebarConfig,
   sectionId: SidebarSectionId,

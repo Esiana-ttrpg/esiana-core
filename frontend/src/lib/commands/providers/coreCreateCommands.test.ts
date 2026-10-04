@@ -2,11 +2,30 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { listCreatableCodexPageTypes } from '@/lib/campaignWorkspaceRoutes';
+import {
+  getDefaultSidebarConfig,
+  toggleSidebarItem,
+  type SidebarConfig,
+} from '@/lib/sidebarConfig';
 import { createItemLabel } from '@/lib/wikiLabels';
 import { buildCoreCreateCommands } from './coreCreateCommands.js';
 import type { CommandContext } from '../types.js';
 
 const ALL_TITLES = listCreatableCodexPageTypes().map((t) => t.categoryTitle);
+
+function withObjectsEnabled(config: SidebarConfig = getDefaultSidebarConfig()): SidebarConfig {
+  const objects = config.worldLoreOrder.find((row) => row.id === 'objects');
+  if (!objects || objects.enabled) return config;
+  return toggleSidebarItem(config, 'worldLore', 'objects');
+}
+
+function withSessionNotesDisabled(
+  config: SidebarConfig = getDefaultSidebarConfig(),
+): SidebarConfig {
+  const notes = config.playOrder.find((row) => row.id === 'sessionNotes');
+  if (!notes || !notes.enabled) return config;
+  return toggleSidebarItem(config, 'play', 'sessionNotes');
+}
 
 function ctx(
   partial: Partial<CommandContext> & {
@@ -22,6 +41,7 @@ function ctx(
     can: () => true,
     resolveCategoryPageId: (title) => categories[title],
     activePage: null,
+    sidebarConfig: withObjectsEnabled(),
     ...rest,
   };
 }
@@ -52,7 +72,7 @@ describe('buildCoreCreateCommands', () => {
     assert.ok(!commands.some((c) => /wiki|uncategor|freeform|generic/i.test(c.label)));
   });
 
-  it('emits all creatable codex types when every category resolves', () => {
+  it('emits all creatable codex types when every category resolves and sections are visible', () => {
     const commands = buildCoreCreateCommands(
       ctx({ categories: allCategoriesResolved() }),
     );
@@ -71,7 +91,45 @@ describe('buildCoreCreateCommands', () => {
       const cmd = commands.find((c) => c.id === `core.create.${type.segment}`);
       assert.ok(cmd, `missing command for ${type.segment}`);
       assert.equal(cmd!.label, `Create ${createItemLabel(type.categoryTitle)}`);
+      assert.equal(cmd!.sidebarSectionId, type.sidebarId);
     }
+    assert.equal(
+      commands.find((c) => c.id === 'core.create.session-note')?.sidebarSectionId,
+      'sessionNotes',
+    );
+  });
+
+  it('omits Create Object when Objects sidebar section is hidden (default)', () => {
+    const commands = buildCoreCreateCommands(
+      ctx({
+        categories: allCategoriesResolved(),
+        sidebarConfig: getDefaultSidebarConfig(),
+      }),
+    );
+    assert.ok(!commands.some((c) => c.id === 'core.create.objects'));
+    assert.ok(commands.some((c) => c.id === 'core.create.characters'));
+  });
+
+  it('emits Create Object when Objects sidebar section is enabled', () => {
+    const commands = buildCoreCreateCommands(
+      ctx({
+        categories: allCategoriesResolved(),
+        sidebarConfig: withObjectsEnabled(),
+      }),
+    );
+    const objects = commands.find((c) => c.id === 'core.create.objects');
+    assert.ok(objects);
+    assert.equal(objects!.sidebarSectionId, 'objects');
+  });
+
+  it('omits New Session Note when sessionNotes sidebar section is hidden', () => {
+    const commands = buildCoreCreateCommands(
+      ctx({
+        categories: allCategoriesResolved(),
+        sidebarConfig: withSessionNotesDisabled(withObjectsEnabled()),
+      }),
+    );
+    assert.ok(!commands.some((c) => c.id === 'core.create.session-note'));
   });
 
   it('never exposes Journals, Pages, or a generic Create Wiki Page command', () => {
@@ -100,18 +158,5 @@ describe('buildCoreCreateCommands', () => {
         return c.action.dialog.kind === 'session-note';
       }),
     );
-  });
-
-  it('still emits create commands when icon map has no entry (generic fallback)', () => {
-    // CUSTOM is not in the createVia set; this asserts icons are optional by
-    // checking every emitted create has an icon string (fallback included).
-    const commands = buildCoreCreateCommands(
-      ctx({ categories: allCategoriesResolved() }),
-    );
-    for (const cmd of commands) {
-      if (cmd.id === 'core.create.session-note') continue;
-      assert.equal(typeof cmd.icon, 'string');
-      assert.ok((cmd.icon?.length ?? 0) > 0);
-    }
   });
 });

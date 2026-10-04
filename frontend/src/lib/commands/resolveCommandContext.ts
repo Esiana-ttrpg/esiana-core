@@ -1,3 +1,4 @@
+import type { SidebarConfig } from '@/lib/sidebarConfig';
 import { workspaceSegmentFromCampaignPath } from '@/lib/resolveWikiRoutePageId';
 import type {
   ActivePageSnapshot,
@@ -14,6 +15,7 @@ export function resolveCommandContext(input: {
     categoryTitle: CreatePageCategoryTitle,
   ) => string | undefined;
   activePage: ActivePageSnapshot | null;
+  sidebarConfig: SidebarConfig;
 }): CommandContext {
   const workspaceSegment = workspaceSegmentFromCampaignPath(
     input.pathname,
@@ -28,5 +30,6 @@ export function resolveCommandContext(input: {
     can: input.can,
     resolveCategoryPageId: input.resolveCategoryPageId,
     activePage: input.activePage,
+    sidebarConfig: input.sidebarConfig,
   };
 }

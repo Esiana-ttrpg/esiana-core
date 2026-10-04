@@ -1,4 +1,5 @@
 import type { CampaignCapability } from '@shared/campaignPolicy/capabilities';
+import type { SidebarConfig, SidebarSectionId } from '@/lib/sidebarConfig';
 
 /** Snapshot of the page WikiPage is currently rendering (published via ActivePageContext). */
 export interface ActivePageSnapshot {
@@ -25,6 +26,8 @@ export interface CommandContext {
     categoryTitle: CreatePageCategoryTitle,
   ) => string | undefined;
   activePage: ActivePageSnapshot | null;
+  /** Campaign sidebar config — used for create/nav visibility and icons. */
+  sidebarConfig: SidebarConfig;
 }
 
 /** Declarative, serializable. Only CommandActionHost interprets these. */
@@ -52,7 +55,12 @@ export const COMMAND_GROUP_ORDER: readonly CommandGroup[] = [
 export interface Command {
   id: string;
   label: string;
+  /** Lucide catalog name when not tied to a sidebar section. */
   icon?: string;
+  /**
+   * When set, CommandRow resolves the icon via SidebarNavIcon (defaults + campaign overrides).
+   */
+  sidebarSectionId?: SidebarSectionId;
   keywords?: readonly string[];
   group: CommandGroup;
   description?: string;

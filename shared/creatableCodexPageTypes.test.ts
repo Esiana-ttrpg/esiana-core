@@ -26,6 +26,8 @@ describe('listCreatableCodexPageTypes', () => {
     for (const entry of types) {
       assert.ok(entry.workspace);
       assert.equal(entry.segment, workspaceToSegment(entry.workspace));
+      assert.equal(typeof entry.sidebarId, 'string');
+      assert.ok(entry.sidebarId.length > 0);
     }
   });
 });
