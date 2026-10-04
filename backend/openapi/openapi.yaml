@@ -12,8 +12,7 @@ info:
     ## Workspace IA (product)
 
     - **Adventure** — intended play (Quests, Arcs, Threads, Unresolved, Investigation, Scenes, Storyboard).
-    - **Progression** — world change (Trajectories · Developments · History). Advance Time is an action on Developments; scheduled narrative prompts live under Developments; Consequences authoring is contextual on Chronology/event lore. Insights has been removed.
-    - **Insights** — removed; do not document or link Insights destinations.
+    - **Progression** — world change: Trajectories · Developments · History (Graph planned later, not implemented). Advance Time and scheduled narrative prompts live under Developments; Consequences stay on Chronology/event lore.
 
     ## Not available in core (v1.0)
 
@@ -3047,7 +3046,7 @@ paths:
       summary: Get authoring growth metrics
       description: |
         Campaign growth counters (NPCs, threads, scenes, factions, quests) for Workshop /
-        authoring analytics. Not a Progression › Insights surface (Insights has been removed).
+        authoring analytics. Not mounted as a Progression destination.
       operationId: get_api_campaigns_campaignHandle_authoring_growth_metrics
       x-esiana-authorization:
         boundary: campaign
@@ -13688,7 +13687,7 @@ paths:
         - Threads activity → `thread-history`
         - Embedded chronology → `timeline`
 
-        There is no Insights hub section; Progression owns Trajectories / Developments / History.
+        Progression owns Trajectories / Developments / History (separate workspace).
       operationId: get_api_campaigns_campaignHandle_wiki_adventure_hub_pageId
       x-esiana-authorization:
         boundary: campaign
@@ -16200,7 +16199,7 @@ paths:
       summary: Get world pressure projection
       description: |
         Current-era world pressure projection (missing trajectories, brewing conflicts, forecasts).
-        Progression › Trajectories currently surfaces missing trajectories; full outlook UI is deferred.
+        Progression › Trajectories surfaces eras and missing trajectories; full outlook/Graph UI is deferred.
       operationId: get_api_campaigns_campaignHandle_world_pressure
       x-esiana-authorization:
         boundary: campaign
@@ -16242,8 +16241,8 @@ paths:
         - World State
       summary: Preview world pressure at epoch
       description: |
-        Advisory projection at a target epoch minute. API retained; Progression UI for preview-at-epoch
-        was removed with Insights and is not relocated onto Trajectories in this pass.
+        Advisory projection at a target epoch minute. API retained; no Progression UI for
+        preview-at-epoch in this pass (not mounted on Trajectories).
       operationId: get_api_campaigns_campaignHandle_world_pressure_preview
       x-esiana-authorization:
         boundary: campaign

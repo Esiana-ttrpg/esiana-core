@@ -10,7 +10,6 @@ Authorial session-column planning for narrative scenes — **not** canonical chr
 | **Adventure › Storyboard › Sequence** | Session sequencing planner for scenes (inline editor on card select) |
 | **Adventure › Scenes** | Editor-first stack of expandable scene cards |
 | **Adventure › Storyboard › Board** | Spatial storyboard canvas (`followsScenePageIds` graph) |
-| **Adventure › Timeline** | World chronology convergence feed (read-only) |
 | **Chronology Hub** | Full world-time authoring |
 
 Legacy Progression scenes URLs are not redirected. Use Adventure › Storyboard › Sequence.

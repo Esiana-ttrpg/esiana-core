@@ -2,37 +2,51 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { fetchWorldPressure } from '@/lib/progressionApi';
+import {
+  fetchCampaignMomentum,
+  fetchWorldPressure,
+  updateCampaignMomentum,
+} from '@/lib/progressionApi';
 import { parseOrganizationMetadata } from '@/lib/organizationMetadata';
 import { resolveCanonicalEntityCategory } from '@shared/resolveCanonicalEntityCategory';
 import { resolveFactionTrajectoryForEra } from '@shared/factionMomentumMetadata';
+import type { CampaignEra } from '@shared/factionMomentumMetadata';
 import { campaignWikiPath } from '@/lib/campaignPaths';
+import { CampaignEraEditor } from '@/components/progression/CampaignEraEditor';
 
 interface ProgressionTrajectoriesSectionProps {
   campaignHandle: string;
 }
 
 /**
- * Progression › Trajectories — interim thin workspace after Insights removal.
- * Missing trajectories only. Era management, pacing, forecast, and outlook
- * are not relocated here merely to preserve Insights contents.
+ * Progression › Trajectories — where the world is going.
+ * Eras + missing trajectories. Graph visualization is a planned later Progression view.
+ * Pacing / preview / outlook panels are not mounted here.
  */
 export function ProgressionTrajectoriesSection({
   campaignHandle,
 }: ProgressionTrajectoriesSectionProps) {
   const { flatPages } = useWiki();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentEraName, setCurrentEraName] = useState<string | null>(null);
+  const [momentumState, setMomentumState] = useState<
+    Awaited<ReturnType<typeof fetchCampaignMomentum>>['state'] | null
+  >(null);
   const [currentEraId, setCurrentEraId] = useState<string | null>(null);
+  const [currentEraName, setCurrentEraName] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const pressure = await fetchWorldPressure(campaignHandle);
-      setCurrentEraName(pressure.projection.currentEra.name);
+      const [momentum, pressure] = await Promise.all([
+        fetchCampaignMomentum(campaignHandle),
+        fetchWorldPressure(campaignHandle),
+      ]);
+      setMomentumState(momentum.state);
       setCurrentEraId(pressure.projection.currentEra.id);
+      setCurrentEraName(pressure.projection.currentEra.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load trajectories');
     } finally {
@@ -63,6 +77,23 @@ export function ProgressionTrajectoriesSection({
       .slice(0, 12);
   }, [currentEraId, flatPages]);
 
+  async function handleSaveEras(eras: CampaignEra[]) {
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await updateCampaignMomentum(campaignHandle, { eras });
+      setMomentumState(result.state);
+      const pressure = await fetchWorldPressure(campaignHandle);
+      setCurrentEraId(pressure.projection.currentEra.id);
+      setCurrentEraName(pressure.projection.currentEra.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save eras');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="py-12">
@@ -71,8 +102,12 @@ export function ProgressionTrajectoriesSection({
     );
   }
 
-  if (error) {
+  if (error && !momentumState) {
     return <p className="text-sm text-red-400">{error}</p>;
+  }
+
+  if (!momentumState) {
+    return <p className="text-sm text-muted-foreground">No trajectory data available.</p>;
   }
 
   return (
@@ -80,7 +115,7 @@ export function ProgressionTrajectoriesSection({
       <header className="space-y-1">
         <h2 className="text-lg font-semibold text-foreground">Trajectories</h2>
         <p className="text-sm text-muted-foreground">
-          Where the world is going — start with factions that still need a direction
+          Where the world is going — campaign eras and faction directions
           {currentEraName ? (
             <>
               {' '}
@@ -91,12 +126,19 @@ export function ProgressionTrajectoriesSection({
         </p>
       </header>
 
+      <CampaignEraEditor
+        key={momentumState.eras.map((era) => `${era.id}:${era.isCurrent ? '1' : '0'}`).join('|')}
+        state={momentumState}
+        saving={saving}
+        onSave={handleSaveEras}
+      />
+
       {missingTrajectoryOrgs.length > 0 ? (
         <section className="space-y-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-3">
           <h3 className="text-sm font-medium text-foreground">Missing trajectories</h3>
           <p className="text-xs text-muted-foreground">
             These active organizations have no trajectory for the current era. Open an organization
-            to author one.
+            to author one — that direction feeds Developments when time advances.
           </p>
           <ul className="flex flex-wrap gap-2">
             {missingTrajectoryOrgs.map((org) => (
@@ -116,6 +158,8 @@ export function ProgressionTrajectoriesSection({
           All active organizations have a trajectory for the current era.
         </p>
       )}
+
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
     </div>
   );
 }

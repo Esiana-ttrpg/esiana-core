@@ -63,13 +63,19 @@ Every suggestion includes frozen `rationale[]` at generation ("Why suggested") �
 
 ## Progression hub
 
-- Trajectories (interim — missing trajectories; Graph planned later)
-- Developments (pending inbox + Advance Time action + scheduled narrative prompts)
-- History (development audit trail)
+```
+Trajectories · Developments · History
+(+ Graph planned later — not implemented)
+```
 
-Advance Time, Scheduled Effects, and Consequences are no longer Progression destinations.
-Consequence authoring stays on Chronology / event lore. Insights has been removed.
-Settings live in Campaign Settings, not top-level Progression nav.
+| Section | Job |
+|---------|-----|
+| **Trajectories** | Where the world is going — campaign eras + missing faction trajectories |
+| **Developments** | What is happening — pending inbox, Advance Time action, scheduled narrative prompts |
+| **History** | What developments happened — development provenance/outcome (not Chronology) |
+
+Advance Time, Scheduled Effects, and Consequences are not Progression destinations.
+Consequence authoring stays on Chronology / event lore. Settings live in Campaign Settings.
 
 ## APIs
 

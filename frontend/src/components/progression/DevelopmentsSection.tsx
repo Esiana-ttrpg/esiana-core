@@ -148,9 +148,19 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
           <h4 className="text-sm font-semibold text-foreground">Ways to develop your world</h4>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
             <Link className="text-primary hover:underline" to={campaignChronologyPath(campaignHandle, 'events')}>Create a world event</Link>
-            {activeFactions.length === 0 ? <Link className="text-primary hover:underline" to={campaignWorkspaceIndexPath(campaignHandle, 'organizations')}>Create a faction</Link> : <Link className="text-primary hover:underline" to={campaignProgressionPath(campaignHandle, 'trajectories')}>Give a faction a direction</Link>}
+            {activeFactions.length === 0 ? (
+              <Link className="text-primary hover:underline" to={campaignWorkspaceIndexPath(campaignHandle, 'organizations')}>Create a faction</Link>
+            ) : (
+              <Link className="text-primary hover:underline" to={campaignProgressionPath(campaignHandle, 'trajectories')}>
+                Fix missing trajectories
+              </Link>
+            )}
             <button type="button" onClick={() => setAdvanceOpen(true)} className="text-left text-primary hover:underline">Advance campaign time</button>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Developments need faction directions and campaign time. Author trajectories first when
+            suggestions stay empty.
+          </p>
         </div>
       </div> : <ul className="space-y-3">{data.pending.map((row) => {
         const isEditing = editingId === row.id;

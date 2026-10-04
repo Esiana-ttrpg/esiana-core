@@ -82,8 +82,9 @@ On time advance (`medium` magnitude or larger), the advisory `event_generation` 
 
 ## UI surfaces
 
-- **Progression › Trajectories** (interim) — missing trajectories for the current era only. Era management, pacing, preview-at-epoch, simulation receipts, and world outlook are **not** mounted here after Insights removal; components/APIs remain for later Trajectories/Graph/settings work.
+- **Progression › Trajectories** — campaign eras + missing trajectories for the current era. Interconnected trajectory **Graph** is a planned later Progression view. Pacing / preview-at-epoch / simulation receipts / world-outlook panels are not mounted on Trajectories.
 - **Progression › Developments** — unified inbox (world + reputation suggestions); Advance Time action; scheduled narrative prompts
+- **Progression › History** — what developments happened (provenance/outcome), not campaign Chronology
 - **Downtime › World Events** — deep link to Progression inbox
 - **Organization metadata** — per-era trajectory table (author trajectories here)
 - **Downtime overview** — one-line pulse hint + link to Progression
@@ -103,7 +104,7 @@ Surfaces are **advisory only** — same boundary as Progression › Trajectories
 
 ## Campaign pacing controls (Phase 4)
 
-Assistive GM pacing APIs remain available — UI was removed from Insights and is **not** relocated onto Trajectories in this pass. Prefer Campaign Settings for pause/forecast controls when those surfaces are rebuilt.
+Assistive GM pacing APIs remain available — preview/pacing UI is **not** mounted on Trajectories in this pass. Prefer Campaign Settings for pause/forecast controls when those surfaces are rebuilt.
 
 ### Pause forecasting
 

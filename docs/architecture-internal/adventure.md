@@ -10,7 +10,8 @@ Adventure is the campaign's operational narrative layer — active quests, arcs,
 | Section | Purpose |
 |---------|---------|
 | **Story** | Living campaign state — quests, arcs, threads, unresolved, investigation, scenes, storyboard lenses |
-| **Timeline** | Chronology overlay (embedded projection) — canonical time |
+
+There is no Adventure › Timeline destination. Chronology lives in the Chronology hub; Adventure may embed a read-only chronology projection in the continuity/contextual rail when present.
 
 ## Story lenses (not route-level tabs)
 
@@ -28,7 +29,7 @@ Use `?view=<lens>`:
 
 **Quests** owns its own toolbar (no Story-level search row). **Threads** and **Unresolved** use a slim Story toolbar (search + Recent only). **DM / Party** preview is global in the workspace rail only — not duplicated in Story chips.
 
-**Campaign pulse** is not an Adventure destination. Dashboard widgets may surface pulse signals; Adventure owns Unresolved and Continuity drawer instead of an Insights aggregation.
+**Campaign pulse** is not an Adventure destination. Dashboard widgets may surface pulse signals; Adventure owns Unresolved and the Continuity drawer rather than a separate diagnostics aggregation.
 
 ## Continuity
 
@@ -67,9 +68,9 @@ Projection loads when Story › Arcs lens is active. Storyboard act-lane filter 
 
 | Surface | Role |
 |---------|------|
-| **Adventure › Timeline** | Embedded convergence feed |
 | **Adventure › Storyboard › Sequence** | Authorial scene ordering — `plannedSessionId`, `sortOrder` |
 | **Chronology Hub** | Full calendar/timeline/events authoring |
+| **Continuity rail** (contextual) | May embed a read-only chronology/convergence feed |
 
 Legacy `?section=` Adventure URLs and `/narrative/unresolved` have been removed (no redirects). Use `?view=` lenses and Adventure › Unresolved.
 

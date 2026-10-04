@@ -1,5 +1,8 @@
 /**
  * Progression workspace — section routing (browser-safe).
+ *
+ * Canonical IA: Trajectories | Developments | History
+ * Planned later (not implemented): Graph — interconnected trajectory visualization.
  */
 
 export const PROGRESSION_SECTIONS = [
@@ -10,7 +13,7 @@ export const PROGRESSION_SECTIONS = [
 
 export type ProgressionSectionId = (typeof PROGRESSION_SECTIONS)[number]['id'];
 
-/** Interim default; Part 4 formalizes Graph · Trajectories · Developments · History. */
+/** Default opens Trajectories — where the world is going. */
 export const DEFAULT_PROGRESSION_SECTION: ProgressionSectionId = 'trajectories';
 
 export function isProgressionSectionId(value: string | null | undefined): value is ProgressionSectionId {

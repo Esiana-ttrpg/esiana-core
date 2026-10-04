@@ -39,21 +39,25 @@ function ctx(partial: Partial<CommandContext> = {}): CommandContext {
 }
 
 describe('buildCoreNavigationCommands', () => {
-  it('emits sessions, timeline, developments, and settings with sidebar section icons', () => {
+  it('emits sessions, timeline, progression sections, and settings with sidebar section icons', () => {
     const commands = buildCoreNavigationCommands(ctx());
     assert.deepEqual(
       commands.map((c) => c.id),
       [
         'core.navigate.sessions',
         'core.navigate.timeline',
+        'core.navigate.trajectories',
         'core.navigate.developments',
+        'core.navigate.history',
         'core.navigate.settings',
       ],
     );
     assert.equal(commands[0]?.sidebarSectionId, 'sessionNotes');
     assert.equal(commands[1]?.sidebarSectionId, 'timeTracking');
     assert.equal(commands[2]?.sidebarSectionId, 'progression');
-    assert.equal(commands[3]?.sidebarSectionId, 'settings');
+    assert.equal(commands[3]?.sidebarSectionId, 'progression');
+    assert.equal(commands[4]?.sidebarSectionId, 'progression');
+    assert.equal(commands[5]?.sidebarSectionId, 'settings');
   });
 
   it('omits Open Sessions when sessionNotes is hidden', () => {
@@ -64,11 +68,13 @@ describe('buildCoreNavigationCommands', () => {
     assert.ok(commands.some((c) => c.id === 'core.navigate.timeline'));
   });
 
-  it('omits Open Developments when progression is hidden', () => {
+  it('omits progression commands when progression is hidden', () => {
     const commands = buildCoreNavigationCommands(
       ctx({ sidebarConfig: withProgressionDisabled() }),
     );
+    assert.ok(!commands.some((c) => c.id === 'core.navigate.trajectories'));
     assert.ok(!commands.some((c) => c.id === 'core.navigate.developments'));
+    assert.ok(!commands.some((c) => c.id === 'core.navigate.history'));
   });
 
   it('keeps timeline even when play sections are hidden', () => {

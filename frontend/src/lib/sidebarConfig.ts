@@ -205,7 +205,7 @@ export const SIDEBAR_SECTION_META: Record<
     route: 'progression',
     statusLabel: 'Game Master',
     settingsDescription:
-      'How the world itself changes — trajectories, pending developments, and development history.',
+      'How the world itself changes — trajectories, developments, and development history.',
   },
   narrativeThreads: {
     label: 'Threads',

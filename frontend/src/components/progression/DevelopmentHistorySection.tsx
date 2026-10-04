@@ -63,9 +63,10 @@ export function DevelopmentHistorySection({ campaignHandle }: DevelopmentHistory
   return (
     <div className="space-y-4">
       <header>
-        <h2 className={TYPE_DISPLAY_CLASS}>Development History</h2>
+        <h2 className={TYPE_DISPLAY_CLASS}>History</h2>
         <p className="text-sm text-muted-foreground">
-          Audit trail for resolved developments — filtered by outcome, not a mixed archive.
+          What developments happened — accepted, rejected, archived, or obsolete. This is
+          development provenance, not campaign Chronology.
         </p>
       </header>
 

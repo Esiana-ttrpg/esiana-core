@@ -93,8 +93,14 @@ export function OrganizationEraTrajectoriesBlock({
   if (eras.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        No campaign eras are configured yet. Era management will return under Progression ›
-        Trajectories.
+        No campaign eras yet. Configure them in{' '}
+        <Link
+          to={campaignProgressionPath(campaignHandle, 'trajectories')}
+          className="text-primary hover:underline"
+        >
+          Progression › Trajectories
+        </Link>
+        .
       </p>
     );
   }
@@ -107,7 +113,7 @@ export function OrganizationEraTrajectoriesBlock({
           to={campaignProgressionPath(campaignHandle, 'trajectories')}
           className="text-xs text-primary hover:underline"
         >
-          Missing trajectories
+          Manage eras
         </Link>
       </div>
       <div className="overflow-x-auto">
