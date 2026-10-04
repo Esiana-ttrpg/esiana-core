@@ -137,6 +137,7 @@ export const DEVELOPMENT_TYPE_LABELS: Record<DevelopmentType, string> = {
   trade_rumor: 'Trade rumor',
   faction_pressure: 'Faction pressure',
   era_trend: 'Era trend',
+  trajectory_shift: 'Trajectory shift',
 };
 
 const CAMPAIGN_MONTH_MINUTES = 30 * 24 * 60;
