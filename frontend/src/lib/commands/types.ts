@@ -41,7 +41,8 @@ export type CommandAction =
         | { kind: 'advance-time' };
     }
   | { type: 'page.enterEdit'; pageId: string }
-  | { type: 'copyLink'; href: string; successMessage: string };
+  | { type: 'copyLink'; href: string; successMessage: string }
+  | { type: 'workshop.newBlank' };
 
 export type CommandGroup = 'page' | 'create' | 'navigate' | 'campaign';
 

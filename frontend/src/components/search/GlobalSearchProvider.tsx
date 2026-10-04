@@ -23,8 +23,10 @@ import type {
 } from '@/lib/commands/types';
 import {
   campaignNotesPath,
+  campaignWorkshopPath,
   resolveCanonicalPagePath,
 } from '@/lib/campaignPaths';
+import { createWorkshopDraft } from '@/lib/workshopDrafts';
 import { fetchSessionNotesIndex } from '@/lib/wiki';
 import { hasTimelineSessions } from '@/lib/sessionNotesIndex';
 import { CampaignMemberRoles } from '@/types/domain';
@@ -256,13 +258,32 @@ export function GlobalSearchProvider({
           );
           return;
         }
+        case 'workshop.newBlank': {
+          void createWorkshopDraft(campaignHandle)
+            .then((draft) => {
+              navigate(
+                campaignWorkshopPath(campaignHandle, { draftId: draft.id }),
+              );
+            })
+            .catch(() => {
+              showToast('Unable to create a new page draft');
+            });
+          return;
+        }
         default: {
           const _exhaustive: never = action;
           void _exhaustive;
         }
       }
     },
-    [activePage, closeSearch, navigate, resolvePageId, showToast],
+    [
+      activePage,
+      campaignHandle,
+      closeSearch,
+      navigate,
+      resolvePageId,
+      showToast,
+    ],
   );
 
   useEffect(() => {

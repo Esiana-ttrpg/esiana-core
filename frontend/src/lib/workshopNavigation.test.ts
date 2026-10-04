@@ -6,6 +6,7 @@ import {
   readWorkshopDraftIdFromSearch,
   readWorkshopFromPageId,
   resolveLegacyWorkshopRedirect,
+  resolveWorkshopBootstrapOpenIds,
 } from './workshopNavigation.js';
 
 describe('workshopNavigation', () => {
@@ -39,5 +40,32 @@ describe('workshopNavigation', () => {
       '/campaigns/camp/workshop?from=page1',
     );
     assert.equal(resolveLegacyWorkshopRedirect('camp', '?section=scenes'), null);
+  });
+
+  it('bare bootstrap with no primary draft and empty session yields empty workspace', () => {
+    assert.deepEqual(
+      resolveWorkshopBootstrapOpenIds({
+        primaryDraftId: null,
+        sessionOpenDraftIds: [],
+      }),
+      [],
+    );
+  });
+
+  it('bootstrap prefers primary draft then session tabs without inventing extras', () => {
+    assert.deepEqual(
+      resolveWorkshopBootstrapOpenIds({
+        primaryDraftId: 'draft-a',
+        sessionOpenDraftIds: ['draft-b', 'draft-a'],
+      }),
+      ['draft-a', 'draft-b'],
+    );
+    assert.deepEqual(
+      resolveWorkshopBootstrapOpenIds({
+        primaryDraftId: null,
+        sessionOpenDraftIds: ['draft-b', 'draft-c'],
+      }),
+      ['draft-b', 'draft-c'],
+    );
   });
 });

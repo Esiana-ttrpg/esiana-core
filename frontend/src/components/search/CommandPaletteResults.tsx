@@ -4,7 +4,7 @@ import { CommandRow } from './CommandRow';
 
 const GROUP_LABELS: Record<CommandGroup, string> = {
   page: 'Page',
-  create: 'Create',
+  create: 'New',
   navigate: 'Navigate',
   campaign: 'Campaign',
 };

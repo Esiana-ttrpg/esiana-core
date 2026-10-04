@@ -30,6 +30,23 @@ export function buildWorkshopSearch(draftId: string | null, fromPageId?: string 
   return query ? `?${query}` : '';
 }
 
+/**
+ * Draft tabs to open on Workshop bootstrap.
+ * Bare visits with no primary draft and no session tabs yield an empty workspace —
+ * never invent a "most recent" campaign draft as a destination hub.
+ */
+export function resolveWorkshopBootstrapOpenIds(input: {
+  primaryDraftId: string | null;
+  sessionOpenDraftIds: readonly string[];
+}): string[] {
+  const sessionIds = [...input.sessionOpenDraftIds];
+  if (!input.primaryDraftId) return sessionIds;
+  return [
+    input.primaryDraftId,
+    ...sessionIds.filter((id) => id !== input.primaryDraftId),
+  ];
+}
+
 /** Legacy progression workshop URLs → dedicated workshop route. */
 export function resolveLegacyWorkshopRedirect(
   campaignHandle: string,

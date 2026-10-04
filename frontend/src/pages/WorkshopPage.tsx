@@ -36,6 +36,7 @@ import {
   readWorkshopDraftIdFromSearch,
   readWorkshopFromPageId,
   resolveLegacyWorkshopRedirect,
+  resolveWorkshopBootstrapOpenIds,
 } from '@/lib/workshopNavigation';
 import { resolveWorkshopFieldSchema } from '@/lib/workshopFieldSchema';
 import { WorkshopDocumentEditor } from '@/components/workshop/WorkshopDocumentEditor';
@@ -144,16 +145,10 @@ export function WorkshopPage() {
         }
 
         const sessionIds = session.openDraftIds ?? [];
-        const ids = draft
-          ? [draft.id, ...sessionIds.filter((id) => id !== draft!.id)]
-          : sessionIds;
-
-        if (!ids.length && !draft) {
-          const all = await fetchWorkshopDrafts(campaignHandle, { limit: 1 });
-          if (all[0]) draft = all[0];
-        }
-
-        const finalIds = draft ? [draft.id, ...ids.filter((id) => id !== draft!.id)] : ids;
+        const finalIds = resolveWorkshopBootstrapOpenIds({
+          primaryDraftId: draft?.id ?? null,
+          sessionOpenDraftIds: sessionIds,
+        });
         const loaded = await refreshOpenDrafts(finalIds.slice(0, 8));
         if (cancelled) return;
 
@@ -161,6 +156,9 @@ export function WorkshopPage() {
         const active = draft ?? loaded.find((d) => d.id === session.activeDraftId) ?? loaded[0] ?? null;
         if (active) {
           await activateDraft(active, { sync: true });
+        } else {
+          // Clear leftover draft from a previous campaign / session when bare empty.
+          setActiveDraft(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
