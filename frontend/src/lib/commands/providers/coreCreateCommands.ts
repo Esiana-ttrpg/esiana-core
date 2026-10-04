@@ -21,6 +21,16 @@ function keywordsForCreate(categoryTitle: string, itemLabel: string, segment: st
 export function buildCoreCreateCommands(ctx: CommandContext): Command[] {
   const commands: Command[] = [];
 
+  commands.push({
+    id: 'core.create.page',
+    label: 'Page',
+    icon: 'file-text',
+    keywords: ['new', 'page', 'draft', 'write', 'workshop', 'blank'],
+    group: 'create',
+    requires: [CampaignCapabilities.PAGE_CREATE],
+    action: { type: 'workshop.newBlank' },
+  });
+
   for (const type of listCreatableCodexPageTypes()) {
     if (!ctx.resolveCategoryPageId(type.categoryTitle)) continue;
     if (!isSidebarSectionVisible(ctx.sidebarConfig, type.sidebarId)) continue;
