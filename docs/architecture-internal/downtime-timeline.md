@@ -55,7 +55,7 @@ Downtime periods **optionally annotate involved entities** — derived, textual,
 
 Auto-derived annotations are **ephemeral** (computed at overlay read). GM overlays are period-scoped JSON on the campaign — not entity metadata.
 
-Merged into `DowntimePeriodPayload.annotations` and `locationMentions` on convergence anchors. UI: inline **Affected** list on downtime period rows (Chronology Hub + Adventure Timeline).
+Merged into `DowntimePeriodPayload.annotations` and `locationMentions` on convergence anchors. UI: inline **Affected** list on downtime period rows (Chronology Hub).
 
 ## Promotion overlay
 

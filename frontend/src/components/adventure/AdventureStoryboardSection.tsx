@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { STORYBOARD_PRESETS } from '@shared/storyboardProjection';
@@ -40,6 +40,7 @@ export function AdventureStoryboardSection({
   const navigate = useNavigate();
   const basePath = campaignAdventureHubPath(campaignHandle);
   const activeLens = readStoryboardLensFromSearch(location.search, campaignHandle);
+  const loadRequestIdRef = useRef(0);
 
   const [scenesData, setScenesData] = useState<AdventureHubPayload['scenes'] | null>(null);
   const [timelineData, setTimelineData] = useState<AdventureHubPayload['sceneTimeline'] | null>(
@@ -71,6 +72,7 @@ export function AdventureStoryboardSection({
   }, [activeLens, basePath, location.search, navigate]);
 
   const loadViewData = useCallback(async () => {
+    const requestId = ++loadRequestIdRef.current;
     setLoading(true);
     try {
       if (activeLens === 'sequence') {
@@ -88,6 +90,7 @@ export function AdventureStoryboardSection({
             section: 'sessions',
           }),
         ]);
+        if (requestId !== loadRequestIdRef.current) return;
         setTimelineData(timelinePayload.sceneTimeline ?? null);
         setScenesData(scenesPayload.scenes ?? null);
         setSessionsData(sessionsPayload.sessions ?? null);
@@ -103,6 +106,7 @@ export function AdventureStoryboardSection({
             section: 'sessions',
           }),
         ]);
+        if (requestId !== loadRequestIdRef.current) return;
         setScenesData(scenesPayload.scenes ?? null);
         setSessionsData(sessionsPayload.sessions ?? null);
         setDramaticTopology(
@@ -112,17 +116,24 @@ export function AdventureStoryboardSection({
         setTimelineData(null);
       }
     } catch {
+      if (requestId !== loadRequestIdRef.current) return;
       setScenesData(null);
       setTimelineData(null);
       setSessionsData(null);
       setDramaticTopology(undefined);
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [activeLens, campaignHandle, questsCategoryId]);
 
   useEffect(() => {
     void loadViewData();
+    return () => {
+      // Invalidate in-flight loads when lens/deps change or the section unmounts.
+      loadRequestIdRef.current += 1;
+    };
   }, [loadViewData, refreshToken]);
 
   const createButton = useMemo(

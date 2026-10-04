@@ -2940,7 +2940,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
     patch:
       tags:
         - Campaigns
@@ -2990,7 +2989,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign storyboard-edit capability."
   /api/campaigns/{campaignHandle}/assets/import-url:
     post:
       tags:
@@ -3082,7 +3080,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign page-edit capability."
   /api/campaigns/{campaignHandle}/authoring/writing-session:
     post:
       tags:
@@ -13667,7 +13664,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/adventure-hub/{pageId}:
     get:
       tags:
@@ -13750,7 +13746,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/aliases/{aliasId}:
     delete:
       tags:
@@ -16234,7 +16229,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
   /api/campaigns/{campaignHandle}/world-pressure/preview:
     get:
       tags:
@@ -16284,7 +16278,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
   /api/campaigns/{campaignHandle}/world-state/apply:
     post:
       tags:
