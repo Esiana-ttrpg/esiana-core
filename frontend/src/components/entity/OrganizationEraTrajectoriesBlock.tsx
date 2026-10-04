@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   FACTION_MOMENTUM_STATES,
   FACTION_MOMENTUM_STATE_LABELS,
+  createFactionEraTrajectory,
   type CampaignEra,
   type FactionEraTrajectory,
   type FactionMomentumState,
@@ -21,28 +22,22 @@ interface OrganizationEraTrajectoriesBlockProps {
   onPersist: (patch: Partial<OrganizationMetadataFields>) => void | Promise<void>;
 }
 
-function trajectoryForEra(
+function upsertTrajectory(
   trajectories: FactionEraTrajectory[],
-  eraId: string,
-): FactionEraTrajectory | undefined {
-  return trajectories.find((t) => t.eraId === eraId);
-}
-
-function nextTrajectories(
-  trajectories: FactionEraTrajectory[],
-  eraId: string,
+  fromEraId: string,
   patch: Partial<FactionEraTrajectory>,
 ): FactionEraTrajectory[] {
-  const existing = trajectoryForEra(trajectories, eraId);
-  const nextTrajectory: FactionEraTrajectory = existing
-    ? { ...existing, ...patch }
-    : {
-        eraId,
-        momentumState: (patch.momentumState ?? 'stable') as FactionMomentumState,
-        pressure: patch.pressure ?? null,
-        gmNote: patch.gmNote ?? null,
-      };
-  const without = trajectories.filter((t) => t.eraId !== eraId);
+  const existing = trajectories.find((t) => t.eraId === fromEraId);
+  const nextEraId = patch.eraId ?? existing?.eraId ?? fromEraId;
+  if (nextEraId !== fromEraId && trajectories.some((t) => t.eraId === nextEraId)) {
+    return trajectories;
+  }
+  const nextTrajectory = createFactionEraTrajectory({
+    ...(existing ?? { eraId: fromEraId }),
+    ...patch,
+    eraId: nextEraId,
+  });
+  const without = trajectories.filter((t) => t.eraId !== fromEraId);
   return [...without, nextTrajectory];
 }
 
@@ -53,7 +48,7 @@ export function OrganizationEraTrajectoriesBlock({
   onPersist,
 }: OrganizationEraTrajectoriesBlockProps) {
   const [eras, setEras] = useState<CampaignEra[]>([]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showSignals, setShowSignals] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,12 +65,12 @@ export function OrganizationEraTrajectoriesBlock({
   }, [campaignHandle]);
 
   function updateTrajectory(
-    eraId: string,
+    fromEraId: string,
     patch: Partial<FactionEraTrajectory>,
     persist = false,
   ) {
     setDraft((prev) => {
-      const eraTrajectories = nextTrajectories(prev.eraTrajectories, eraId, patch);
+      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, fromEraId, patch);
       if (persist) {
         void onPersist({ eraTrajectories });
       }
@@ -87,6 +82,29 @@ export function OrganizationEraTrajectoriesBlock({
     setDraft((prev) => {
       void onPersist({ eraTrajectories: prev.eraTrajectories });
       return prev;
+    });
+  }
+
+  function addTrajectory() {
+    const currentEra = eras.find((era) => era.isCurrent) ?? eras[0];
+    if (!currentEra) return;
+    if (draft.eraTrajectories.some((t) => t.eraId === currentEra.id)) return;
+    setDraft((prev) => {
+      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, currentEra.id, {
+        direction: '',
+        outcome: null,
+        byEraId: null,
+      });
+      void onPersist({ eraTrajectories });
+      return { ...prev, eraTrajectories };
+    });
+  }
+
+  function removeTrajectory(eraId: string) {
+    setDraft((prev) => {
+      const eraTrajectories = prev.eraTrajectories.filter((t) => t.eraId !== eraId);
+      void onPersist({ eraTrajectories });
+      return { ...prev, eraTrajectories };
     });
   }
 
@@ -105,103 +123,184 @@ export function OrganizationEraTrajectoriesBlock({
     );
   }
 
+  const trajectories = draft.eraTrajectories;
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-medium text-foreground">Era trajectories</p>
+        <p className="text-xs font-medium text-foreground">Trajectories</p>
         <Link
           to={campaignProgressionPath(campaignHandle, 'trajectories')}
           className="text-xs text-primary hover:underline"
         >
-          Manage eras
+          Open Trajectories
         </Link>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[28rem] text-left text-xs">
-          <thead>
-            <tr className="text-muted-foreground">
-              <th className="pb-1 pr-2 font-medium">Era</th>
-              <th className="pb-1 pr-2 font-medium">Trajectory</th>
-              <th className="pb-1 font-medium">Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {eras.map((era) => {
-              const trajectory = trajectoryForEra(draft.eraTrajectories, era.id);
-              return (
-                <tr key={era.id} className="border-t border-border/50">
-                  <td className="py-2 pr-2 align-top text-foreground">
-                    {era.name}
-                    {era.isCurrent ? (
-                      <span className="ml-1 text-[10px] uppercase text-muted-foreground">
-                        (current)
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="py-2 pr-2 align-top">
-                    <select
-                      value={trajectory?.momentumState ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.value as FactionMomentumState | '';
-                        if (!value) return;
-                        updateTrajectory(era.id, { momentumState: value }, true);
-                      }}
-                      className={fieldClass}
-                    >
-                      <option value="">—</option>
-                      {FACTION_MOMENTUM_STATES.map((state) => (
-                        <option key={state} value={state}>
-                          {FACTION_MOMENTUM_STATE_LABELS[state]}
-                        </option>
-                      ))}
-                    </select>
-                    {showAdvanced ? (
-                      <label className="mt-1 block text-[10px] text-muted-foreground">
-                        Pressure (internal)
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={trajectory?.pressure ?? ''}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            updateTrajectory(era.id, {
-                              pressure: raw === '' ? null : Number(raw),
-                            });
-                          }}
-                          onBlur={persistCurrentTrajectories}
-                          className={`${fieldClass} mt-0.5`}
-                        />
-                      </label>
-                    ) : null}
-                  </td>
-                  <td className="py-2 align-top">
+
+      {trajectories.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No trajectories on this organization yet. Trajectories are opt-in directions over time.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[28rem] text-left text-xs">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="pb-1 pr-2 font-medium">Trajectory</th>
+                <th className="pb-1 pr-2 font-medium">From</th>
+                <th className="pb-1 pr-2 font-medium">Outcome</th>
+                <th className="pb-1 pr-2 font-medium">By</th>
+                <th className="pb-1 font-medium" aria-label="Remove" />
+              </tr>
+            </thead>
+            <tbody>
+              {trajectories.map((trajectory) => (
+                <tr key={trajectory.eraId} className="border-t border-border/50 align-top">
+                  <td className="py-2 pr-2">
                     <input
                       type="text"
-                      value={trajectory?.gmNote ?? ''}
+                      value={trajectory.direction ?? ''}
                       onChange={(e) =>
-                        updateTrajectory(era.id, {
-                          gmNote: e.target.value.trim() || null,
+                        updateTrajectory(trajectory.eraId, {
+                          direction: e.target.value.trim() || null,
                         })
                       }
                       onBlur={persistCurrentTrajectories}
                       className={fieldClass}
-                      placeholder="GM note"
+                      placeholder="Direction"
+                    />
+                    {showSignals ? (
+                      <div className="mt-1 space-y-1">
+                        <select
+                          value={trajectory.momentumState}
+                          onChange={(e) => {
+                            updateTrajectory(
+                              trajectory.eraId,
+                              { momentumState: e.target.value as FactionMomentumState },
+                              true,
+                            );
+                          }}
+                          className={fieldClass}
+                          aria-label="Development signal"
+                        >
+                          {FACTION_MOMENTUM_STATES.map((state) => (
+                            <option key={state} value={state}>
+                              {FACTION_MOMENTUM_STATE_LABELS[state]}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={trajectory.pressure ?? ''}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            updateTrajectory(trajectory.eraId, {
+                              pressure: raw === '' ? null : Number(raw),
+                            });
+                          }}
+                          onBlur={persistCurrentTrajectories}
+                          className={fieldClass}
+                          placeholder="Pressure"
+                          aria-label="Pressure"
+                        />
+                        <input
+                          type="text"
+                          value={trajectory.gmNote ?? ''}
+                          onChange={(e) =>
+                            updateTrajectory(trajectory.eraId, {
+                              gmNote: e.target.value.trim() || null,
+                            })
+                          }
+                          onBlur={persistCurrentTrajectories}
+                          className={fieldClass}
+                          placeholder="GM note"
+                        />
+                      </div>
+                    ) : null}
+                  </td>
+                  <td className="py-2 pr-2">
+                    <select
+                      value={trajectory.eraId}
+                      onChange={(e) => {
+                        updateTrajectory(trajectory.eraId, { eraId: e.target.value }, true);
+                      }}
+                      className={fieldClass}
+                    >
+                      {eras.map((era) => (
+                        <option key={era.id} value={era.id}>
+                          {era.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-2 pr-2">
+                    <input
+                      type="text"
+                      value={trajectory.outcome ?? ''}
+                      onChange={(e) =>
+                        updateTrajectory(trajectory.eraId, {
+                          outcome: e.target.value.trim() || null,
+                        })
+                      }
+                      onBlur={persistCurrentTrajectories}
+                      className={fieldClass}
+                      placeholder="Outcome"
                     />
                   </td>
+                  <td className="py-2 pr-2">
+                    <select
+                      value={trajectory.byEraId ?? ''}
+                      onChange={(e) => {
+                        updateTrajectory(
+                          trajectory.eraId,
+                          { byEraId: e.target.value || null },
+                          true,
+                        );
+                      }}
+                      className={fieldClass}
+                    >
+                      <option value="">Open-ended</option>
+                      {eras.map((era) => (
+                        <option key={era.id} value={era.id}>
+                          {era.name}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="py-2">
+                    <button
+                      type="button"
+                      onClick={() => removeTrajectory(trajectory.eraId)}
+                      className="text-[10px] text-muted-foreground hover:text-foreground"
+                    >
+                      Remove
+                    </button>
+                  </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={addTrajectory}
+          className="text-xs text-primary hover:underline"
+        >
+          + Trajectory
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowSignals((v) => !v)}
+          className="text-[10px] text-muted-foreground hover:text-foreground"
+        >
+          {showSignals ? 'Hide development signal' : 'Development signal'}
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={() => setShowAdvanced((v) => !v)}
-        className="text-[10px] text-muted-foreground hover:text-foreground"
-      >
-        {showAdvanced ? 'Hide advanced' : 'Advanced pressure weighting'}
-      </button>
     </div>
   );
 }

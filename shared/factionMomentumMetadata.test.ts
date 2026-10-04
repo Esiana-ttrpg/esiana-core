@@ -3,9 +3,13 @@ import test from 'node:test';
 import {
   createDefaultCampaignMomentumState,
   createDefaultPresentEra,
+  createFactionEraTrajectory,
+  DEFAULT_TRAJECTORY_MOMENTUM_STATE,
+  normalizeFactionEraTrajectory,
   organizationWorldStateToMomentum,
   resolveCampaignEraAtEpoch,
   resolveFactionTrajectoryForEra,
+  type CampaignEra,
 } from './factionMomentumMetadata.js';
 
 test('organizationWorldStateToMomentum maps legacy world state labels', () => {
@@ -15,14 +19,166 @@ test('organizationWorldStateToMomentum maps legacy world state labels', () => {
   assert.equal(organizationWorldStateToMomentum(null), null);
 });
 
+test('createFactionEraTrajectory defaults momentum to stable engine default', () => {
+  const row = createFactionEraTrajectory({ eraId: 'era-1', direction: 'Militarizing' });
+  assert.equal(row.momentumState, DEFAULT_TRAJECTORY_MOMENTUM_STATE);
+  assert.equal(row.momentumState, 'stable');
+  assert.equal(row.direction, 'Militarizing');
+  assert.equal(row.byEraId, null);
+  assert.equal(row.outcome, null);
+});
+
+test('normalizeFactionEraTrajectory round-trips hybrid planning fields', () => {
+  const normalized = normalizeFactionEraTrajectory({
+    eraId: 'era-1',
+    byEraId: 'era-3',
+    direction: 'Declining',
+    outcome: 'Severe famine',
+    momentumState: 'declining',
+    pressure: 40,
+    gmNote: 'Watch the harvest',
+  });
+  assert.deepEqual(normalized, {
+    eraId: 'era-1',
+    byEraId: 'era-3',
+    direction: 'Declining',
+    outcome: 'Severe famine',
+    momentumState: 'declining',
+    pressure: 40,
+    gmNote: 'Watch the harvest',
+  });
+});
+
 test('resolveFactionTrajectoryForEra prefers explicit era trajectory', () => {
   const era = createDefaultPresentEra();
   const explicit = resolveFactionTrajectoryForEra({
-    eraTrajectories: [{ eraId: era.id, momentumState: 'stable', pressure: null, gmNote: null }],
+    eraTrajectories: [
+      createFactionEraTrajectory({ eraId: era.id, momentumState: 'stable' }),
+    ],
     eraId: era.id,
     worldState: 'rising',
+    eras: [era],
   });
   assert.equal(explicit?.momentumState, 'stable');
+});
+
+const eraI: CampaignEra = {
+  id: 'era-i',
+  name: 'Era I',
+  sortOrder: 0,
+  isCurrent: true,
+  epochStartMinute: null,
+  epochEndMinute: null,
+  narrativeNote: null,
+};
+const eraII: CampaignEra = {
+  id: 'era-ii',
+  name: 'Era II',
+  sortOrder: 1,
+  isCurrent: false,
+  epochStartMinute: null,
+  epochEndMinute: null,
+  narrativeNote: null,
+};
+const eraIII: CampaignEra = {
+  id: 'era-iii',
+  name: 'Era III',
+  sortOrder: 2,
+  isCurrent: false,
+  epochStartMinute: null,
+  epochEndMinute: null,
+  narrativeNote: null,
+};
+const eraIV: CampaignEra = {
+  id: 'era-iv',
+  name: 'Era IV',
+  sortOrder: 3,
+  isCurrent: false,
+  epochStartMinute: null,
+  epochEndMinute: null,
+  narrativeNote: null,
+};
+const eras = [eraI, eraII, eraIII, eraIV];
+
+test('resolveFactionTrajectoryForEra: From=I By=null matches Era I and later', () => {
+  const trajectory = createFactionEraTrajectory({
+    eraId: eraI.id,
+    byEraId: null,
+    direction: 'Militarizing',
+    momentumState: 'expanding',
+  });
+  for (const era of eras) {
+    const resolved = resolveFactionTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: era.id,
+      worldState: null,
+      eras,
+    });
+    assert.equal(resolved?.direction, 'Militarizing', `expected match for ${era.name}`);
+  }
+});
+
+test('resolveFactionTrajectoryForEra: From=I By=III matches I–III inclusive, not after', () => {
+  const trajectory = createFactionEraTrajectory({
+    eraId: eraI.id,
+    byEraId: eraIII.id,
+    direction: 'Rising influence',
+    momentumState: 'rising',
+  });
+  assert.equal(
+    resolveFactionTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: eraI.id,
+      worldState: null,
+      eras,
+    })?.direction,
+    'Rising influence',
+  );
+  assert.equal(
+    resolveFactionTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: eraIII.id,
+      worldState: null,
+      eras,
+    })?.direction,
+    'Rising influence',
+  );
+  assert.equal(
+    resolveFactionTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: eraIV.id,
+      worldState: null,
+      eras,
+    }),
+    null,
+  );
+});
+
+test('resolveFactionTrajectoryForEra: before From does not match', () => {
+  const trajectory = createFactionEraTrajectory({
+    eraId: eraII.id,
+    byEraId: null,
+    direction: 'Collapsing',
+    momentumState: 'declining',
+  });
+  assert.equal(
+    resolveFactionTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: eraI.id,
+      worldState: null,
+      eras,
+    }),
+    null,
+  );
+  assert.equal(
+    resolveFactionTrajectoryForEra({
+      eraTrajectories: [trajectory],
+      eraId: eraII.id,
+      worldState: null,
+      eras,
+    })?.direction,
+    'Collapsing',
+  );
 });
 
 test('resolveCampaignEraAtEpoch falls back to current era when no bounds match', () => {

@@ -344,10 +344,7 @@ export function WorldDevelopmentSettingsForm({
           </ul>
           <p className="text-xs text-muted-foreground">
             {sourceSignals.factionsWithSignalsCount} of {sourceSignals.activeFactionCount} active
-            factions contribute signals.
-            {sourceSignals.factionsMissingTrajectoryCount > 0
-              ? ` ${sourceSignals.factionsMissingTrajectoryCount} have no trajectory data.`
-              : ''}
+            factions currently contribute trajectory signals.
           </p>
         </section>
       ) : null}

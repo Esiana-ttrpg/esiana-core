@@ -152,14 +152,14 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
               <Link className="text-primary hover:underline" to={campaignWorkspaceIndexPath(campaignHandle, 'organizations')}>Create a faction</Link>
             ) : (
               <Link className="text-primary hover:underline" to={campaignProgressionPath(campaignHandle, 'trajectories')}>
-                Fix missing trajectories
+                Add a trajectory
               </Link>
             )}
             <button type="button" onClick={() => setAdvanceOpen(true)} className="text-left text-primary hover:underline">Advance campaign time</button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Developments need faction directions and campaign time. Author trajectories first when
-            suggestions stay empty.
+            Trajectories are optional. Add one when you want to give part of the world a direction
+            over time — or create events and advance time without them.
           </p>
         </div>
       </div> : <ul className="space-y-3">{data.pending.map((row) => {

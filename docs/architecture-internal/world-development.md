@@ -64,17 +64,17 @@ Every suggestion includes frozen `rationale[]` at generation ("Why suggested") �
 ## Progression hub
 
 ```
-Trajectories · Developments · History
-(+ Graph planned later — not implemented)
+Graph [future] · Trajectories · Developments · History
 ```
 
 | Section | Job |
 |---------|-----|
-| **Trajectories** | Where the world is going — campaign eras + missing faction trajectories |
+| **Trajectories** | Where the world is going — opt-in GM planning directions (table + compact eras). Graph owns relationships later. |
 | **Developments** | What is happening — pending inbox, Advance Time action, scheduled narrative prompts |
 | **History** | What developments happened — development provenance/outcome (not Chronology) |
+| **Graph** (future) | Relationships between trajectories, entities, developments, and pressures |
 
-Advance Time, Scheduled Effects, and Consequences are not Progression destinations.
+Trajectories are opt-in; absence is not incompleteness. Advance Time, Scheduled Effects, and Consequences are not Progression destinations.
 Consequence authoring stays on Chronology / event lore. Settings live in Campaign Settings.
 
 ## APIs

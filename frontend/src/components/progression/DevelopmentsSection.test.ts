@@ -32,7 +32,9 @@ test('empty and sparse campaigns receive only real, actionable routes', () => {
   assert.match(source, /campaignChronologyPath\(campaignHandle, 'events'\)/);
   assert.match(source, /campaignWorkspaceIndexPath\(campaignHandle, 'organizations'\)/);
   assert.match(source, /campaignProgressionPath\(campaignHandle, 'trajectories'\)/);
-  assert.match(source, /Fix missing trajectories/);
+  assert.match(source, /Add a trajectory/);
+  assert.doesNotMatch(source, /Fix missing trajectories/);
+  assert.match(source, /Trajectories are optional/);
 });
 
 test('advance time reuses the global time advancement flow from every page action', () => {

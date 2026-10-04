@@ -67,6 +67,7 @@ export async function buildProjectedFactionStates(
       eraTrajectories: org.eraTrajectories,
       eraId: currentEra.id,
       worldState: org.worldState,
+      eras: momentumPayload.state.eras,
     });
     if (!trajectory?.momentumState) continue;
     states.push({
