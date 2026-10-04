@@ -3,8 +3,6 @@
  */
 
 export const PROGRESSION_SECTIONS = [
-  { id: 'scenes', label: 'Scenes' },
-  { id: 'sessionPrep', label: 'Session Prep' },
   { id: 'insights', label: 'Insights' },
   { id: 'advance', label: 'Advance Time' },
   { id: 'developments', label: 'Pending Developments' },
@@ -15,54 +13,72 @@ export const PROGRESSION_SECTIONS = [
 
 export type ProgressionSectionId = (typeof PROGRESSION_SECTIONS)[number]['id'];
 
+export const DEFAULT_PROGRESSION_SECTION: ProgressionSectionId = 'insights';
+
+/** @deprecated Scenes/Storyboard moved under Adventure; kept for sticky/legacy typing. */
 export const SCENES_VIEWS = [
   { id: 'outline', label: 'Outline' },
   { id: 'board', label: 'Board' },
   { id: 'sequence', label: 'Sequence' },
 ] as const;
 
+/** @deprecated */
 export type ScenesViewId = (typeof SCENES_VIEWS)[number]['id'];
 
+/** @deprecated */
 export const DEFAULT_SCENES_VIEW: ScenesViewId = 'outline';
 
-export const DEFAULT_PROGRESSION_SECTION: ProgressionSectionId = 'scenes';
+export type LegacyProgressionRedirect =
+  | {
+      destination: 'progression';
+      section: ProgressionSectionId;
+      /** Preserve authoringKind, anchors, overlays from legacy authoringWorkshop URLs. */
+      preserveSearchParams?: boolean;
+    }
+  | {
+      destination: 'adventure';
+      view: 'scenes' | 'storyboard';
+      storyboardLens?: 'board' | 'sequence';
+    };
 
-/** Maps Progression section id to adventure-hub API section param. */
-export function progressionToAdventureApiSection(
-  section: ProgressionSectionId,
-  scenesView?: ScenesViewId,
-): string | null {
-  switch (section) {
-    case 'sessionPrep':
-      return 'sessions';
-    case 'scenes':
-      return scenesView === 'sequence' ? 'scene-timeline' : 'scenes';
-    default:
-      return null;
-  }
-}
-
-export type LegacyProgressionRedirect = {
-  section: ProgressionSectionId;
-  view?: ScenesViewId;
-  /** Preserve authoringKind, anchors, overlays from legacy authoringWorkshop URLs. */
-  preserveSearchParams?: boolean;
-};
-
-/** Legacy progression / adventure section aliases → canonical route. */
+/**
+ * Legacy progression section aliases → Progression or Adventure destinations.
+ * Adventure owns Scenes / Storyboard; Progression no longer hosts them.
+ */
 export function resolveLegacyProgressionRedirect(
   section: string | null,
+  scenesView?: string | null,
 ): LegacyProgressionRedirect | null {
   if (!section) return null;
   switch (section) {
+    case 'scenes':
+      if (scenesView === 'board' || scenesView === 'sequence') {
+        return {
+          destination: 'adventure',
+          view: 'storyboard',
+          storyboardLens: scenesView,
+        };
+      }
+      return { destination: 'adventure', view: 'scenes' };
+    case 'sessionPrep':
+    case 'sessions':
+      return { destination: 'adventure', view: 'storyboard' };
     case 'storyboard':
-      return { section: 'scenes', view: 'board' };
+      return {
+        destination: 'adventure',
+        view: 'storyboard',
+        storyboardLens: 'board',
+      };
     case 'sceneSequence':
     case 'scene-timeline':
     case 'sceneTimeline':
-      return { section: 'scenes', view: 'sequence' };
+      return {
+        destination: 'adventure',
+        view: 'storyboard',
+        storyboardLens: 'sequence',
+      };
     case 'trajectories':
-      return { section: 'insights' };
+      return { destination: 'progression', section: 'insights' };
     case 'workshop':
     case 'authoringWorkshop':
       return null;
@@ -70,7 +86,7 @@ export function resolveLegacyProgressionRedirect(
       break;
   }
   if (PROGRESSION_SECTIONS.some((s) => s.id === section)) {
-    return { section: section as ProgressionSectionId };
+    return { destination: 'progression', section: section as ProgressionSectionId };
   }
   return null;
 }

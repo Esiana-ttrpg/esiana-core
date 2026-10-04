@@ -1,6 +1,7 @@
 # Narrative storyboard (Layer 5)
 
-**Storage:** `storyboard-view-v1` on hidden wiki page `__storyboard_layout__` under Quests category root.
+**Storage:** `storyboard-view-v1` on hidden wiki page `__storyboard_layout__` under Quests category root.  
+**Entry:** Adventure › **Storyboard › Board** (`/c/:slug/adventures?view=storyboard`)
 
 Storyboard is a **projection-only view layer** — coordinates, lanes, visibility filters, and annotations never duplicate wiki narrative text.
 

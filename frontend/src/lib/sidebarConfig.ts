@@ -193,7 +193,7 @@ export const SIDEBAR_SECTION_META: Record<
     label: 'Adventure',
     wikiTitle: 'Adventure',
     settingsDescription:
-      'Living campaign narrative — Story lenses for quests, arcs, threads, and unresolved items.',
+      'Living campaign narrative — Story lenses for quests, arcs, threads, unresolved items, plus GM Scenes and Storyboard.',
   },
   downtime: {
     label: 'Downtime',
@@ -206,7 +206,7 @@ export const SIDEBAR_SECTION_META: Record<
     route: 'progression',
     statusLabel: 'Game Master',
     settingsDescription:
-      'Narrative forecasting for Game Masters and Writers — write scenes, prep sessions, and read campaign insights.',
+      'How the world itself changes — campaign momentum, pending developments, and development history.',
   },
   narrativeThreads: {
     label: 'Threads',

@@ -5,8 +5,8 @@ import {
   inferAuthoringKindFromMetadata,
   type AuthoringContextKind,
 } from '@shared/authoringContext';
-import { campaignWorkshopPath, campaignProgressionPath } from '@/lib/campaignPaths';
-import { progressionSectionHref } from '@/lib/progressionLayout';
+import { campaignWorkshopPath, campaignAdventureHubPath } from '@/lib/campaignPaths';
+import { adventureViewHref } from '@/lib/adventureLayout';
 import { isAuthoringWorkshopEligible } from '@/lib/authoringEligibility';
 
 interface OpenInAuthoringWorkshopLinkProps {
@@ -32,7 +32,7 @@ export function OpenInAuthoringWorkshopLink({
     inferAuthoringKindFromMetadata(metadata) ?? 'narrative_workspace';
 
   if (kind === 'scene') {
-    const href = `${progressionSectionHref(campaignProgressionPath(campaignHandle), 'scenes')}&anchors=${pageId}`;
+    const href = adventureViewHref(campaignAdventureHubPath(campaignHandle), 'scenes');
     const label = compact ? 'Scenes' : 'Open in Scenes';
     return (
       <Link

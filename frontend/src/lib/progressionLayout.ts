@@ -7,6 +7,8 @@ import {
   type ProgressionSectionId,
   type ScenesViewId,
 } from '@shared/progressionHub';
+import { adventureViewHref } from '@/lib/adventureLayout';
+import { campaignAdventureHubPath } from '@/lib/campaignPaths';
 import { readCampaignWorkspaceState } from '@/lib/workspacePersistence';
 
 export {
@@ -24,8 +26,8 @@ export function readProgressionSectionFromSearch(
 ): ProgressionSectionId {
   const params = new URLSearchParams(search);
   const section = params.get('section');
-  const legacy = resolveLegacyProgressionRedirect(section);
-  if (legacy) return legacy.section;
+  const legacy = resolveLegacyProgressionRedirect(section, params.get('view'));
+  if (legacy?.destination === 'progression') return legacy.section;
   if (section && PROGRESSION_SECTIONS.some((s) => s.id === section)) {
     return section as ProgressionSectionId;
   }
@@ -38,20 +40,19 @@ export function readProgressionSectionFromSearch(
   return DEFAULT_PROGRESSION_SECTION;
 }
 
+/** @deprecated Scenes views moved to Adventure; kept for sticky migration. */
 export function readScenesViewFromSearch(
   search: string,
   campaignHandle?: string,
 ): ScenesViewId {
   const params = new URLSearchParams(search);
-  const legacy = resolveLegacyProgressionRedirect(params.get('section'));
-  if (legacy?.view) return legacy.view;
   const view = params.get('view');
-  if (view && SCENES_VIEWS.some((v) => v.id === view)) {
+  if (view && SCENES_VIEWS.some((s) => s.id === view)) {
     return view as ScenesViewId;
   }
   if (campaignHandle) {
     const sticky = readCampaignWorkspaceState(campaignHandle).progressionScenesView;
-    if (sticky && SCENES_VIEWS.some((v) => v.id === sticky)) {
+    if (sticky && SCENES_VIEWS.some((s) => s.id === sticky)) {
       return sticky;
     }
   }
@@ -61,50 +62,45 @@ export function readScenesViewFromSearch(
 export function progressionSectionHref(
   basePath: string,
   section: ProgressionSectionId,
-  options?: { view?: ScenesViewId },
 ): string {
   const params = new URLSearchParams({ section });
-  if (options?.view) {
-    params.set('view', options.view);
-  }
   return `${basePath}?${params.toString()}`;
 }
 
-export function scenesViewHref(
-  basePath: string,
-  view: ScenesViewId,
-): string {
-  return progressionSectionHref(basePath, 'scenes', { view });
-}
-
-/** Returns a replacement URL when legacy section params need redirecting. */
+/**
+ * Returns a replacement URL when legacy section params need redirecting.
+ * Scenes / Session Prep / Storyboard aliases leave Progression for Adventure.
+ */
 export function resolveProgressionLegacyNavigateTarget(
-  basePath: string,
+  progressionBasePath: string,
   search: string,
+  campaignHandle: string,
 ): string | null {
   const params = new URLSearchParams(search);
   const section = params.get('section');
-  const legacy = resolveLegacyProgressionRedirect(section);
+  const legacy = resolveLegacyProgressionRedirect(section, params.get('view'));
   if (!legacy) return null;
+
+  if (legacy.destination === 'adventure') {
+    return adventureViewHref(campaignAdventureHubPath(campaignHandle), legacy.view, {
+      storyboardLens: legacy.storyboardLens,
+    });
+  }
 
   const isCanonical =
     section === legacy.section &&
-    (!legacy.view || params.get('view') === legacy.view) &&
-    !['storyboard', 'sceneSequence', 'scene-timeline', 'sceneTimeline', 'trajectories', 'authoringWorkshop'].includes(
+    !['storyboard', 'sceneSequence', 'scene-timeline', 'sceneTimeline', 'trajectories', 'authoringWorkshop', 'scenes', 'sessionPrep', 'sessions'].includes(
       section ?? '',
     );
   if (isCanonical) return null;
 
   const next = new URLSearchParams();
   next.set('section', legacy.section);
-  if (legacy.view) {
-    next.set('view', legacy.view);
-  }
   if (legacy.preserveSearchParams) {
     for (const key of ['authoringKind', 'anchors', 'overlays'] as const) {
       const value = params.get(key);
       if (value) next.set(key, value);
     }
   }
-  return `${basePath}?${next.toString()}`;
+  return `${progressionBasePath}?${next.toString()}`;
 }
