@@ -33,11 +33,13 @@ Choose how much change the campaign generates over a campaign month:
 
 Use **Pause development** on the Developments page during a focused story arc. This is temporary and operational — not a settings change.
 
-## Readiness
+## Trajectories (optional)
 
-If suggestions are not appearing, check **Development readiness** at the bottom of the Developments page. Common fixes:
+Faction **trajectories** are opt-in directions over time. Add them in **Progression › Trajectories** when you want part of the world to have a defined direction. Organizations without trajectories are normal.
 
-- Set era trajectories or world state on active factions
+If suggestions stay empty, common checks:
+
+- Add trajectories for factions whose direction should drive pressure
 - Configure campaign time
 - Unpause development
 - Review world activity limits

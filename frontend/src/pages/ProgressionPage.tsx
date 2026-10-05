@@ -77,7 +77,7 @@ export function ProgressionPage() {
       <header className="space-y-1">
         <h1 className={TYPE_DISPLAY_CLASS}>Progression</h1>
         <p className="text-sm text-muted-foreground">
-          Shape how the world changes — trajectories, developments, and what developments happened.
+          Trajectories, developments, and history — where the world is going and what changed.
         </p>
       </header>
 

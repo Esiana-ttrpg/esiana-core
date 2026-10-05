@@ -62,21 +62,111 @@ export function organizationWorldStateToMomentum(
 ): FactionMomentumState | null {
   if (!worldState || typeof worldState !== 'string') return null;
   const key = worldState.trim().toLowerCase();
-  return ORGANIZATION_WORLD_STATE_TO_MOMENTUM[key] ?? null;
+  return Object.hasOwn(ORGANIZATION_WORLD_STATE_TO_MOMENTUM, key)
+    ? ORGANIZATION_WORLD_STATE_TO_MOMENTUM[key] ?? null
+    : null;
 }
 
-/** Prefer explicit era trajectory; fall back to organization world state for current era. */
+/**
+ * Engine default for new trajectories — least directional existing state.
+ * Not inferred from GM-authored `direction` text.
+ */
+export const DEFAULT_TRAJECTORY_MOMENTUM_STATE: FactionMomentumState = 'stable';
+
+/** Shared planning fields for Organizations · Characters · Locations. */
+export type EraTrajectory = {
+  /** From — era when this direction begins/applies. */
+  eraId: string;
+  /** Optional inclusive upper bound; null = open-ended from From onward. */
+  byEraId: string | null;
+  /** GM-authored freeform direction. */
+  direction: string | null;
+  /** GM-authored intended outcome. */
+  outcome: string | null;
+  gmNote: string | null;
+};
+
+function trajectoryAppliesToEra(
+  trajectory: Pick<EraTrajectory, 'eraId' | 'byEraId'>,
+  currentEra: CampaignEra,
+  eras: CampaignEra[],
+): boolean {
+  const fromEra = eras.find((era) => era.id === trajectory.eraId);
+  if (!fromEra) {
+    return trajectory.eraId === currentEra.id;
+  }
+  if (currentEra.sortOrder < fromEra.sortOrder) return false;
+  if (trajectory.byEraId == null) return true;
+  const byEra = eras.find((era) => era.id === trajectory.byEraId);
+  if (!byEra) return true;
+  return currentEra.sortOrder <= byEra.sortOrder;
+}
+
+function pickExplicitTrajectoryMatch<T extends Pick<EraTrajectory, 'eraId' | 'byEraId'>>(
+  eraTrajectories: T[],
+  eraId: string,
+  eras: CampaignEra[],
+): T | null {
+  const currentEra = eras.find((era) => era.id === eraId);
+
+  if (eras.length > 0 && currentEra) {
+    const matches = eraTrajectories.filter((trajectory) =>
+      trajectoryAppliesToEra(trajectory, currentEra, eras),
+    );
+    if (matches.length === 0) return null;
+    matches.sort((a, b) => {
+      const aExact = a.eraId === eraId ? 1 : 0;
+      const bExact = b.eraId === eraId ? 1 : 0;
+      if (aExact !== bExact) return bExact - aExact;
+      const aFrom = eras.find((era) => era.id === a.eraId)?.sortOrder ?? -1;
+      const bFrom = eras.find((era) => era.id === b.eraId)?.sortOrder ?? -1;
+      return bFrom - aFrom;
+    });
+    return matches[0] ?? null;
+  }
+
+  return eraTrajectories.find((t) => t.eraId === eraId) ?? null;
+}
+
+/**
+ * Explicit From/By resolution for any subject — no world-state fallback.
+ * Characters and Locations use this path only.
+ */
+export function resolveExplicitTrajectoryForEra<T extends Pick<EraTrajectory, 'eraId' | 'byEraId'>>(input: {
+  eraTrajectories: T[];
+  eraId: string;
+  /** When provided, From/By matching uses era sortOrder (By null = open-ended). */
+  eras?: CampaignEra[];
+}): T | null {
+  return pickExplicitTrajectoryMatch(input.eraTrajectories, input.eraId, input.eras ?? []);
+}
+
+/**
+ * Prefer explicit era trajectory (From/By range when eras provided);
+ * fall back to organization world state for the target era.
+ * Organization-only compatibility path — do not use for Characters/Locations.
+ */
 export function resolveFactionTrajectoryForEra(input: {
   eraTrajectories: FactionEraTrajectory[];
   eraId: string;
   worldState: string | null;
+  /** When provided, From/By matching uses era sortOrder (By null = open-ended). */
+  eras?: CampaignEra[];
 }): FactionEraTrajectory | null {
-  const explicit = input.eraTrajectories.find((t) => t.eraId === input.eraId);
+  const explicit = resolveExplicitTrajectoryForEra({
+    eraTrajectories: input.eraTrajectories,
+    eraId: input.eraId,
+    eras: input.eras,
+  });
   if (explicit) return explicit;
+
   const momentumState = organizationWorldStateToMomentum(input.worldState);
   if (!momentumState) return null;
   return {
     eraId: input.eraId,
+    byEraId: null,
+    direction: null,
+    outcome: null,
     momentumState,
     pressure: null,
     gmNote: null,
@@ -100,12 +190,12 @@ export type CampaignMomentumState = {
   worldDevelopment?: WorldDevelopmentSettings;
 };
 
-export type FactionEraTrajectory = {
-  eraId: string;
+/** Organization trajectory = shared planning fields + faction engine state. */
+export type FactionEraTrajectory = EraTrajectory & {
+  /** Engine development signal — not semantic direction text. */
   momentumState: FactionMomentumState;
   /** 0–100 internal weighting only; not player-facing. */
   pressure: number | null;
-  gmNote: string | null;
   desiredDirection?: 'rising' | 'stable' | 'declining' | null;
   desiredNarrative?: string[] | null;
   allowedCauses?: string[] | null;
@@ -113,6 +203,29 @@ export type FactionEraTrajectory = {
   developmentTypes?: string[] | null;
   isKeyFaction?: boolean | null;
 };
+
+/** Create a planning-only trajectory (Characters / Locations). */
+export function createEraTrajectory(
+  patch: Partial<EraTrajectory> & Pick<EraTrajectory, 'eraId'>,
+): EraTrajectory {
+  return {
+    eraId: patch.eraId,
+    byEraId: patch.byEraId ?? null,
+    direction: patch.direction ?? null,
+    outcome: patch.outcome ?? null,
+    gmNote: patch.gmNote ?? null,
+  };
+}
+
+export function createFactionEraTrajectory(
+  patch: Partial<FactionEraTrajectory> & Pick<FactionEraTrajectory, 'eraId'>,
+): FactionEraTrajectory {
+  return {
+    ...createEraTrajectory(patch),
+    momentumState: patch.momentumState ?? DEFAULT_TRAJECTORY_MOMENTUM_STATE,
+    pressure: patch.pressure ?? null,
+  };
+}
 
 export const DEFAULT_PRESENT_ERA_ID = 'era-present';
 
@@ -175,6 +288,12 @@ function normalizeNarrativeNote(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();
   return trimmed.length > 0 ? trimmed.slice(0, 500) : null;
+}
+
+function normalizeShortText(raw: unknown, maxLen: number): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, maxLen) : null;
 }
 
 export function normalizeCampaignEra(raw: unknown, index: number): CampaignEra | null {
@@ -307,17 +426,44 @@ export function resolveCampaignEraAtEpoch(
   return matches[0] ?? getCurrentCampaignEra(state);
 }
 
-export function normalizeFactionEraTrajectory(raw: unknown): FactionEraTrajectory | null {
+/** Normalize shared planning fields (Characters / Locations). Requires eraId only. */
+export function normalizeEraTrajectory(raw: unknown): EraTrajectory | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const obj = raw as Record<string, unknown>;
   const eraId = normalizeEraId(obj.eraId);
-  const momentumState = normalizeMomentumState(obj.momentumState);
-  if (!eraId || !momentumState) return null;
+  if (!eraId) return null;
   return {
     eraId,
+    byEraId: normalizeEraId(obj.byEraId),
+    direction: normalizeShortText(obj.direction, 120),
+    outcome: normalizeShortText(obj.outcome, 200),
+    gmNote: normalizeNarrativeNote(obj.gmNote),
+  };
+}
+
+export function normalizeEraTrajectories(raw: unknown): EraTrajectory[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const result: EraTrajectory[] = [];
+  for (const item of raw) {
+    const trajectory = normalizeEraTrajectory(item);
+    if (!trajectory || seen.has(trajectory.eraId)) continue;
+    seen.add(trajectory.eraId);
+    result.push(trajectory);
+  }
+  return result;
+}
+
+export function normalizeFactionEraTrajectory(raw: unknown): FactionEraTrajectory | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+  const base = normalizeEraTrajectory(raw);
+  const momentumState = normalizeMomentumState(obj.momentumState);
+  if (!base || !momentumState) return null;
+  return {
+    ...base,
     momentumState,
     pressure: normalizePressure(obj.pressure),
-    gmNote: normalizeNarrativeNote(obj.gmNote),
   };
 }
 

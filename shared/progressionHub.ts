@@ -1,8 +1,14 @@
 /**
  * Progression workspace — section routing (browser-safe).
  *
- * Canonical IA: Trajectories | Developments | History
- * Planned later (not implemented): Graph — interconnected trajectory visualization.
+ * Canonical IA: Graph [future] · Trajectories · Developments · History
+ *
+ * - **Trajectories** — create/edit individual directions over time (opt-in).
+ * - **Developments** — review suggested/manual world changes.
+ * - **History** — what developments happened.
+ * - **Graph** (planned) — relationships between trajectories, entities, developments,
+ *   pressures, and other interconnected world state. Not implemented; do not add
+ *   relationship/propagation visualization to Trajectories.
  */
 
 export const PROGRESSION_SECTIONS = [

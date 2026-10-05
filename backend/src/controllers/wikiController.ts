@@ -2957,6 +2957,11 @@ export async function updateWikiPageMetadata(
         partyParticipation: characterPatchInput.partyParticipation,
       }).partyParticipation;
     }
+    if ('eraTrajectories' in characterPatchInput) {
+      patch.eraTrajectories = parseCharacterMetadata({
+        eraTrajectories: characterPatchInput.eraTrajectories,
+      }).eraTrajectories;
+    }
     if ('appearance' in characterPatchInput) {
       const appearanceInput = characterPatchInput.appearance;
       if (

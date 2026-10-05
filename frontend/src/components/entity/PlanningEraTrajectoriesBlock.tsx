@@ -1,38 +1,37 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  FACTION_MOMENTUM_STATES,
-  FACTION_MOMENTUM_STATE_LABELS,
-  createFactionEraTrajectory,
+  createEraTrajectory,
   type CampaignEra,
-  type FactionEraTrajectory,
-  type FactionMomentumState,
+  type EraTrajectory,
 } from '@shared/factionMomentumMetadata';
 import { campaignProgressionPath } from '@/lib/campaignPaths';
 import { fetchCampaignMomentum } from '@/lib/progressionApi';
-import type { OrganizationMetadataFields } from '@/lib/organizationMetadata';
 
 const fieldClass =
   'w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus:border-primary/60';
 
-interface OrganizationEraTrajectoriesBlockProps {
+type TrajectoriesDraft = { eraTrajectories: EraTrajectory[] };
+
+interface PlanningEraTrajectoriesBlockProps<T extends TrajectoriesDraft> {
   campaignHandle: string;
-  draft: OrganizationMetadataFields;
-  setDraft: Dispatch<SetStateAction<OrganizationMetadataFields>>;
-  onPersist: (patch: Partial<OrganizationMetadataFields>) => void | Promise<void>;
+  draft: T;
+  setDraft: Dispatch<SetStateAction<T>>;
+  onPersist: (patch: Partial<T>) => void | Promise<void>;
+  emptyHint?: string;
 }
 
 function upsertTrajectory(
-  trajectories: FactionEraTrajectory[],
+  trajectories: EraTrajectory[],
   fromEraId: string,
-  patch: Partial<FactionEraTrajectory>,
-): FactionEraTrajectory[] {
+  patch: Partial<EraTrajectory>,
+): EraTrajectory[] {
   const existing = trajectories.find((t) => t.eraId === fromEraId);
   const nextEraId = patch.eraId ?? existing?.eraId ?? fromEraId;
   if (nextEraId !== fromEraId && trajectories.some((t) => t.eraId === nextEraId)) {
     return trajectories;
   }
-  const nextTrajectory = createFactionEraTrajectory({
+  const nextTrajectory = createEraTrajectory({
     ...(existing ?? { eraId: fromEraId }),
     ...patch,
     eraId: nextEraId,
@@ -41,9 +40,7 @@ function upsertTrajectory(
   return [...without, nextTrajectory];
 }
 
-function trajectoriesForPersistence(
-  trajectories: FactionEraTrajectory[],
-): FactionEraTrajectory[] {
+function trajectoriesForPersistence(trajectories: EraTrajectory[]): EraTrajectory[] {
   return trajectories.map((trajectory) => ({
     ...trajectory,
     direction: trajectory.direction?.trim() || null,
@@ -52,14 +49,18 @@ function trajectoriesForPersistence(
   }));
 }
 
-export function OrganizationEraTrajectoriesBlock({
+/**
+ * Lightweight trajectory editor for Characters / Locations — planning fields only.
+ * Same underlying eraTrajectories objects as Progression › Trajectories.
+ */
+export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
   campaignHandle,
   draft,
   setDraft,
   onPersist,
-}: OrganizationEraTrajectoriesBlockProps) {
+  emptyHint = 'No trajectories yet. Trajectories are opt-in directions over time.',
+}: PlanningEraTrajectoriesBlockProps<T>) {
   const [eras, setEras] = useState<CampaignEra[]>([]);
-  const [showSignals, setShowSignals] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,15 +76,11 @@ export function OrganizationEraTrajectoriesBlock({
     };
   }, [campaignHandle]);
 
-  function updateTrajectory(
-    fromEraId: string,
-    patch: Partial<FactionEraTrajectory>,
-    persist = false,
-  ) {
+  function updateTrajectory(fromEraId: string, patch: Partial<EraTrajectory>, persist = false) {
     setDraft((prev) => {
       const eraTrajectories = upsertTrajectory(prev.eraTrajectories, fromEraId, patch);
       if (persist) {
-        void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) });
+        void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       }
       return { ...prev, eraTrajectories };
     });
@@ -91,7 +88,9 @@ export function OrganizationEraTrajectoriesBlock({
 
   function persistCurrentTrajectories() {
     setDraft((prev) => {
-      void onPersist({ eraTrajectories: trajectoriesForPersistence(prev.eraTrajectories) });
+      void onPersist({
+        eraTrajectories: trajectoriesForPersistence(prev.eraTrajectories),
+      } as Partial<T>);
       return prev;
     });
   }
@@ -106,7 +105,7 @@ export function OrganizationEraTrajectoriesBlock({
         outcome: null,
         byEraId: null,
       });
-      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) });
+      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       return { ...prev, eraTrajectories };
     });
   }
@@ -114,7 +113,7 @@ export function OrganizationEraTrajectoriesBlock({
   function removeTrajectory(eraId: string) {
     setDraft((prev) => {
       const eraTrajectories = prev.eraTrajectories.filter((t) => t.eraId !== eraId);
-      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) });
+      void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       return { ...prev, eraTrajectories };
     });
   }
@@ -149,9 +148,7 @@ export function OrganizationEraTrajectoriesBlock({
       </div>
 
       {trajectories.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
-          No trajectories on this organization yet. Trajectories are opt-in directions over time.
-        </p>
+        <p className="text-xs text-muted-foreground">{emptyHint}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[28rem] text-left text-xs">
@@ -180,56 +177,18 @@ export function OrganizationEraTrajectoriesBlock({
                       className={fieldClass}
                       placeholder="Direction"
                     />
-                    {showSignals ? (
-                      <div className="mt-1 space-y-1">
-                        <select
-                          value={trajectory.momentumState}
-                          onChange={(e) => {
-                            updateTrajectory(
-                              trajectory.eraId,
-                              { momentumState: e.target.value as FactionMomentumState },
-                              true,
-                            );
-                          }}
-                          className={fieldClass}
-                          aria-label="Development signal"
-                        >
-                          {FACTION_MOMENTUM_STATES.map((state) => (
-                            <option key={state} value={state}>
-                              {FACTION_MOMENTUM_STATE_LABELS[state]}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={trajectory.pressure ?? ''}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            updateTrajectory(trajectory.eraId, {
-                              pressure: raw === '' ? null : Number(raw),
-                            });
-                          }}
-                          onBlur={persistCurrentTrajectories}
-                          className={fieldClass}
-                          placeholder="Pressure"
-                          aria-label="Pressure"
-                        />
-                        <input
-                          type="text"
-                          value={trajectory.gmNote ?? ''}
-                          onChange={(e) =>
-                            updateTrajectory(trajectory.eraId, {
-                              gmNote: e.target.value,
-                            })
-                          }
-                          onBlur={persistCurrentTrajectories}
-                          className={fieldClass}
-                          placeholder="GM note"
-                        />
-                      </div>
-                    ) : null}
+                    <input
+                      type="text"
+                      value={trajectory.gmNote ?? ''}
+                      onChange={(e) =>
+                        updateTrajectory(trajectory.eraId, {
+                          gmNote: e.target.value,
+                        })
+                      }
+                      onBlur={persistCurrentTrajectories}
+                      className={`${fieldClass} mt-1`}
+                      placeholder="GM note"
+                    />
                   </td>
                   <td className="py-2 pr-2">
                     <select
@@ -296,22 +255,13 @@ export function OrganizationEraTrajectoriesBlock({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={addTrajectory}
-          className="text-xs text-primary hover:underline"
-        >
-          + Trajectory
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowSignals((v) => !v)}
-          className="text-[10px] text-muted-foreground hover:text-foreground"
-        >
-          {showSignals ? 'Hide development signal' : 'Development signal'}
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={addTrajectory}
+        className="text-xs text-primary hover:underline"
+      >
+        + Trajectory
+      </button>
     </div>
   );
 }

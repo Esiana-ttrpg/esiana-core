@@ -65,8 +65,7 @@ export function DevelopmentHistorySection({ campaignHandle }: DevelopmentHistory
       <header>
         <h2 className={TYPE_DISPLAY_CLASS}>History</h2>
         <p className="text-sm text-muted-foreground">
-          What developments happened — accepted, rejected, archived, or obsolete. This is
-          development provenance, not campaign Chronology.
+          What developments happened?
         </p>
       </header>
 

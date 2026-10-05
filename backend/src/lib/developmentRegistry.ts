@@ -5,11 +5,12 @@ import type {
   DevelopmentProvider,
   DevelopmentResolveProvider,
   EligibilityProvider,
+  ProviderDevelopmentCandidate,
   RationaleProvider,
   WorldDevelopmentContext,
 } from '../../../shared/developmentProvider.js';
+import { validateTrajectoryRef } from '../../../shared/developmentProvider.js';
 import type { DevelopmentRationaleLine } from '../../../shared/worldDevelopmentMetadata.js';
-import { deriveConfidenceFromRationale } from '../../../shared/worldDevelopmentMetadata.js';
 
 const providers = new Map<string, DevelopmentProvider>();
 const eligibilityProviders = new Map<string, EligibilityProvider>();
@@ -91,8 +92,9 @@ async function applyEligibilityFilter(
     }
     const faction =
       candidate.primaryOrgPageId != null
-        ? context.projectedFactionStates.find((f) => f.orgPageId === candidate.primaryOrgPageId) ??
-          null
+        ? context.projectedFactionStates.find(
+            (f) => f.subjectPageId === candidate.primaryOrgPageId,
+          ) ?? null
         : null;
     const allowed = await eligibility.isEligible({
       campaignId,
@@ -115,8 +117,9 @@ function applyRationaleAppend(
     if (!rationaleProvider) return candidate;
     const faction =
       candidate.primaryOrgPageId != null
-        ? context.projectedFactionStates.find((f) => f.orgPageId === candidate.primaryOrgPageId) ??
-          null
+        ? context.projectedFactionStates.find(
+            (f) => f.subjectPageId === candidate.primaryOrgPageId,
+          ) ?? null
         : null;
     const appended = rationaleProvider.appendRationale({
       campaignId,
@@ -143,12 +146,33 @@ export async function resolveCandidatesForCampaign(
       if (enabledPlugins && !enabledPlugins.has(providerId)) continue;
     }
     const generated = provider.generateCandidates(context);
-    raw.push(...generated);
+    for (const candidate of generated) {
+      raw.push(stampAndValidateCandidate(providerId, candidate, context));
+    }
   }
 
   const deduped = dedupeCandidates(raw);
   const eligible = await applyEligibilityFilter(campaignId, deduped, context);
   return applyRationaleAppend(campaignId, eligible, context);
+}
+
+/**
+ * Registry is the authority for providerId (overwrite any provider-supplied value).
+ * trajectoryRef is accepted only when it matches an explicit projected trajectory.
+ */
+export function stampAndValidateCandidate(
+  providerId: string,
+  candidate: ProviderDevelopmentCandidate & { providerId?: string },
+  context: WorldDevelopmentContext,
+): DevelopmentCandidate {
+  const { providerId: _ignored, ...rest } = candidate as ProviderDevelopmentCandidate & {
+    providerId?: string;
+  };
+  return {
+    ...rest,
+    providerId,
+    trajectoryRef: validateTrajectoryRef(rest.trajectoryRef, context.projectedFactionStates),
+  };
 }
 
 function dedupeCandidates(candidates: DevelopmentCandidate[]): DevelopmentCandidate[] {

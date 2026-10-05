@@ -5,6 +5,10 @@ import {
   syncMetadataIndexFields,
 } from './codexMetadataShared';
 import { normalizeNullableText, normalizeStringArray } from './entityRelationTypes';
+import {
+  normalizeEraTrajectories,
+  type EraTrajectory,
+} from '@shared/factionMomentumMetadata';
 
 /** Short narrative entries (not taxonomy tags); v1 UI may present as chips. */
 export type LocationKnownForEntry = string;
@@ -22,6 +26,8 @@ export interface LocationMetadataFields {
   currentStatus: string | null;
   mapPageId: string | null;
   relatedLocationIds: string[];
+  /** Explicit opt-in trajectories (planning fields only — no faction momentum). */
+  eraTrajectories: EraTrajectory[];
 }
 
 function dedupeStringsCaseInsensitive(entries: string[]): string[] {
@@ -63,6 +69,7 @@ const LOCATION_METADATA_KEYS = [
   'currentStatus',
   'mapPageId',
   'relatedLocationIds',
+  'eraTrajectories',
 ] as const;
 
 const EMPTY: LocationMetadataFields = {
@@ -78,6 +85,7 @@ const EMPTY: LocationMetadataFields = {
   currentStatus: null,
   mapPageId: null,
   relatedLocationIds: [],
+  eraTrajectories: [],
 };
 
 const REGION_LOCATION_TYPES =
@@ -130,6 +138,7 @@ export function parseLocationMetadata(metadata: unknown): LocationMetadataFields
     currentStatus: normalizeNullableText(raw.currentStatus),
     mapPageId: normalizeOptionalPageId(raw.mapPageId),
     relatedLocationIds: normalizePageIdList(raw.relatedLocationIds),
+    eraTrajectories: normalizeEraTrajectories(raw.eraTrajectories),
   };
 }
 

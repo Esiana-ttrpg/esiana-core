@@ -68,7 +68,8 @@ export async function buildWorldDevelopmentSourceSignals(
   ]);
 
   const momentum = await ensureCampaignMomentum(campaignId);
-  const currentEra = getCurrentCampaignEra(toCampaignMomentumPayload(momentum).state);
+  const momentumState = toCampaignMomentumPayload(momentum).state;
+  const currentEra = getCurrentCampaignEra(momentumState);
 
   const activeOrgs = orgPages.filter((page) => {
     const org = parseOrganizationMetadata(page.metadata);
@@ -84,6 +85,7 @@ export async function buildWorldDevelopmentSourceSignals(
       eraTrajectories: org.eraTrajectories,
       eraId: currentEra.id,
       worldState: org.worldState,
+      eras: momentumState.eras,
     });
     if (trajectory) {
       factionsWithSignals += 1;
@@ -130,7 +132,8 @@ export async function buildWorldDevelopmentReadiness(input: {
   ]);
 
   const momentum = await ensureCampaignMomentum(campaignId);
-  const currentEra = getCurrentCampaignEra(toCampaignMomentumPayload(momentum).state);
+  const momentumState = toCampaignMomentumPayload(momentum).state;
+  const currentEra = getCurrentCampaignEra(momentumState);
 
   const missingTrajectoryOrgs: Array<{ id: string; title: string }> = [];
 
@@ -141,6 +144,7 @@ export async function buildWorldDevelopmentReadiness(input: {
       eraTrajectories: org.eraTrajectories,
       eraId: currentEra.id,
       worldState: org.worldState,
+      eras: momentumState.eras,
     });
     if (!trajectory) {
       missingTrajectoryOrgs.push({ id: page.id, title: page.title });
