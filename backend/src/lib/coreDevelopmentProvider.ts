@@ -193,6 +193,7 @@ function generateRegionalInstabilityCandidate(
   if (fragmenting.length < 2) return null;
 
   const eraId = context.currentEra.id;
+  if (!eraId) return null;
   const trendDirection: TrendDirection = 'destabilizing';
   const narrative = context.projection.eraTrends[0] ?? 'Instability is spreading between factions.';
 

@@ -426,6 +426,7 @@ function AgendaItem({
         )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-foreground">{occurrence.title}</p>
+          {!!occurrence.eraNames?.length && <p className="text-xs text-muted-foreground">{occurrence.eraNames.join(' · ')}</p>}
           <p className="mt-1 text-[11px] text-muted">{categoryName}</p>
           {occurrence.duration > 1 && (
             <p className="mt-1 text-[10px] text-muted">

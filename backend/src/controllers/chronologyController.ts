@@ -2,6 +2,11 @@ import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { canManageChronology } from '../lib/acl.js';
+import { chronologyCanView, chronologyElevated } from '../lib/chronologyAccess.js';
+import { ensureChronologyEras, listChronologyEras, eraMatchesMinute } from '../lib/chronologyEraService.js';
+import { calendarEpochMinuteForDate, convertEpochToCalendarState } from '../lib/timeEngine.js';
+import type { CampaignEra } from '../lib/prismaClient.js';
+import { eraOccurrenceSchedule, type EraHistory } from '../lib/eraOccurrenceHistory.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import {
   advanceCalendarDate,
@@ -92,6 +97,8 @@ function buildOccurrences(
   baseEvents: BaseEvent[],
   calendarsById: Map<string, CalendarRowForResolve>,
   campaignEpochMinute: bigint | null,
+  eras: CampaignEra[] = [],
+  eraHistory: EraHistory = {},
 ) {
   const occurrences: Array<Record<string, unknown>> = [];
   const truncatedBaseEventIds: string[] = [];
@@ -115,8 +122,16 @@ function buildOccurrences(
       epochMinute: resolved.epochMinute,
     };
 
+    const eraSchedule = event.isRepeating && event.repeatUnit === 'ERAS' && calendarRow
+      ? eraOccurrenceSchedule(event, calendarRow, campaignEpochMinute, eras, eraHistory[event.id]) : null;
     const maxIterations = event.isRepeating ? limit : 1;
     for (let i = 0; i < maxIterations; i += 1) {
+      if (eraSchedule && calendarRow) {
+        const minute = eraSchedule[i];
+        if (minute == null) continue;
+        const date = convertEpochToCalendarState(minute, calendarRow);
+        state = { year: date.year, month: date.monthIndex, day: date.day, monthName: date.monthName, epochMinute: minute.toString() };
+      }
       if (generatedForEvent >= MAX_GENERATED_PER_EVENT || occurrences.length >= MAX_GENERATED_TOTAL) {
         truncatedBaseEventIds.push(event.id);
         if (generatedForEvent >= MAX_GENERATED_PER_EVENT) warnings.add('CAP_APPLIED_PER_EVENT');
@@ -191,6 +206,7 @@ function buildOccurrences(
       generatedForEvent += 1;
 
       if (!event.isRepeating || !event.repeatUnit || !event.repeatInterval) break;
+      if (eraSchedule) continue;
       const monthLengths =
         calendarRow && state.year !== null
           ? getMonthLengthsForYear(calendarRow, state.year)
@@ -282,7 +298,7 @@ export async function getChronologyTimelineBundle(
     prisma.calendarEvent.findMany({
       where: {
         calendar: { campaignId },
-        ...chronologyVisibilityFilter(canManage),
+        ...chronologyVisibilityFilter(chronologyElevated(req.campaign!)),
       },
       orderBy: [
         { targetEpochMinute: 'asc' },
@@ -334,10 +350,10 @@ export async function getChronologyTimelineBundle(
     allowPlayerChronologyManagement:
       req.campaign?.allowPlayerChronologyManagement ?? false,
   });
-  const visibleEvents = canManage
+  const visibleEvents = chronologyElevated(req.campaign!)
     ? events
     : events.filter((event) =>
-        isTimelineEventVisible(
+        chronologyCanView(req.campaign!, event.visibility) && isTimelineEventVisible(
           projectTimelineEventVisibility(
             event.id,
             event.visibility,
@@ -347,6 +363,10 @@ export async function getChronologyTimelineBundle(
         ),
       );
 
+  const visibleIds = new Set(visibleEvents.map(event => event.id));
+  for (const event of visibleEvents) {
+    if (event.prerequisiteId && !visibleIds.has(event.prerequisiteId)) event.prerequisiteId = null;
+  }
   const baseEvents = visibleEvents.map((event) => ({
     ...event,
     targetEpochMinute: event.targetEpochMinute?.toString() ?? null,
@@ -364,13 +384,29 @@ export async function getChronologyTimelineBundle(
     calendars.map((row) => [row.id, row]),
   );
   const campaignEpochMinute = campaign?.currentEpochMinute ?? null;
+  await ensureChronologyEras(campaignId);
+  const structuralEras = await prisma.campaignEra.findMany({ where: { campaignId } });
   const expanded = buildOccurrences(
     visibleEvents as BaseEvent[],
     calendarsById,
     campaignEpochMinute,
+    structuralEras,
+    ((await prisma.campaignMomentum.findUnique({ where: { campaignId }, select: { eraRecurrenceHistory: true } }))?.eraRecurrenceHistory ?? {}) as EraHistory,
   );
 
+  const eras = await listChronologyEras(req.campaign!);
+  for (const occurrence of expanded.occurrences) {
+    const start = occurrence.start as { year: number | null; month: number | null; day: number | null; epochMinute: string | null };
+    const track = calendarsById.get(String(occurrence.calendarId));
+    const minute = start.epochMinute != null ? BigInt(start.epochMinute)
+      : track && start.year != null && start.month != null && start.day != null ? calendarEpochMinuteForDate(track, start.year, start.month, start.day) : null;
+    const matchingIds = new Set(structuralEras.filter(era => era.calendarId === occurrence.calendarId && minute != null && eraMatchesMinute(era, minute)).map(era => era.id));
+    const matchingEras = eras.filter(era => matchingIds.has(era.id));
+    occurrence.eraIds = matchingEras.map(era => era.id);
+    occurrence.eraNames = matchingEras.map(era => `${era.name}${era.visibility === 'DM_ONLY' ? ' [DM]' : ''}`);
+  }
   res.json({
+    eras,
     calendars: calendars.map(({ id, name, isMasterTime }) => ({
       id,
       name,
@@ -428,6 +464,7 @@ export async function getChronologyOverlayBundle(
   const bundle = await buildConvergenceOverlay({
     campaignId,
     campaignHandle,
+    elevatedNarrativeView: chronologyElevated(req.campaign!),
     role: req.campaign?.role ?? null,
     allowPlayerChronologyManagement:
       req.campaign?.allowPlayerChronologyManagement ?? false,

@@ -121,6 +121,9 @@ export async function buildCampaignWorldPressureProjection(
     targetEpochMinute != null
       ? resolveCampaignEraAtEpoch(momentumPayload.state, targetEpochMinute)
       : getCurrentCampaignEra(momentumPayload.state);
+  if (!currentEra.id) return {
+    currentEra, risingTensions: [], eraTrends: ['Choose a current era in Chronology to enable forecasting.'], nearFutureBullets: [], projectedByNextSession: null,
+  };
   const activeOrgs = orgPages.filter((page) => {
     const org = parseOrganizationMetadata(page.metadata);
     return org.organizationStatus === 'ACTIVE';

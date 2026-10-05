@@ -1,3 +1,4 @@
+import { trajectoryKey } from '@shared/factionMomentumMetadata';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -39,7 +40,7 @@ interface TrajectoryTableProps {
   rows: TrajectoryTableRow[];
   onPatch: (
     pageId: string,
-    eraId: string,
+    eraId: string | null,
     patch: Partial<FactionEraTrajectory>,
     persist: boolean,
   ) => void;
@@ -103,7 +104,7 @@ export function TrajectoryTable({
           </thead>
           <tbody>
             {rows.map((row) => {
-              const rowKey = `${row.pageId}::${row.trajectory.eraId}`;
+              const rowKey = `${row.pageId}::${trajectoryKey(row.trajectory)}`;
               const isOpen = expanded === rowKey;
               const { trajectory } = row;
               return (
@@ -194,7 +195,7 @@ function FragmentRow({
             onBlur={(e) => {
               const next = e.target.value.trim() || null;
               if (next === (trajectory.direction?.trim() || null)) return;
-              onPatch(pageId, trajectory.eraId, { direction: next }, true);
+              onPatch(pageId, trajectoryKey(trajectory), { direction: next }, true);
             }}
             className={cellInputClass}
           />
@@ -202,17 +203,18 @@ function FragmentRow({
         <td className="py-1.5 pr-3">
           <select
             aria-label={`From era for ${title}`}
-            value={trajectory.eraId}
+            value={trajectory.eraId ?? ''}
             onChange={(e) => {
               const nextFrom = e.target.value;
               if (nextFrom === trajectory.eraId) return;
-              onPatch(pageId, trajectory.eraId, { eraId: nextFrom }, true);
+              onPatch(pageId, trajectoryKey(trajectory), { eraId: nextFrom }, true);
             }}
             className={cellSelectClass}
           >
+            {!trajectory.eraId && <option value="">{trajectory.eraSnapshot?.name ?? 'Era'} (deleted)</option>}
             {eras.map((era) => (
               <option key={era.id} value={era.id}>
-                {era.name}
+                {era.calendarName ? `${era.calendarName} · ` : ''}{era.name}{era.visibility === 'DM_ONLY' ? ' [DM]' : ''}
               </option>
             ))}
           </select>
@@ -226,7 +228,7 @@ function FragmentRow({
             onBlur={(e) => {
               const next = e.target.value.trim() || null;
               if (next === (trajectory.outcome?.trim() || null)) return;
-              onPatch(pageId, trajectory.eraId, { outcome: next }, true);
+              onPatch(pageId, trajectoryKey(trajectory), { outcome: next }, true);
             }}
             className={cellInputClass}
             placeholder="—"
@@ -239,14 +241,14 @@ function FragmentRow({
             onChange={(e) => {
               const next = e.target.value || null;
               if (next === (trajectory.byEraId ?? null)) return;
-              onPatch(pageId, trajectory.eraId, { byEraId: next }, true);
+              onPatch(pageId, trajectoryKey(trajectory), { byEraId: next }, true);
             }}
             className={cellSelectClass}
           >
-            <option value="">—</option>
-            {eras.map((era) => (
+            <option value="">{trajectory.byEraSnapshot ? `${trajectory.byEraSnapshot.name} (deleted)` : '—'}</option>
+            {eras.filter(era => era.calendarId === eras.find(from => from.id === trajectory.eraId)?.calendarId).map((era) => (
               <option key={era.id} value={era.id}>
-                {era.name}
+                {era.calendarName ? `${era.calendarName} · ` : ''}{era.name}{era.visibility === 'DM_ONLY' ? ' [DM]' : ''}
               </option>
             ))}
           </select>
@@ -265,7 +267,7 @@ function FragmentRow({
                       onChange={(e) => {
                         onPatch(
                           pageId,
-                          trajectory.eraId,
+                          trajectoryKey(trajectory),
                           { momentumState: e.target.value as FactionMomentumState },
                           true,
                         );
@@ -290,7 +292,7 @@ function FragmentRow({
                         const raw = e.target.value;
                         onPatch(
                           pageId,
-                          trajectory.eraId,
+                          trajectoryKey(trajectory),
                           { pressure: raw === '' ? null : Number(raw) },
                           false,
                         );
@@ -309,7 +311,7 @@ function FragmentRow({
                   onChange={(e) => {
                     onPatch(
                       pageId,
-                      trajectory.eraId,
+                      trajectoryKey(trajectory),
                       { gmNote: e.target.value },
                       false,
                     );
@@ -317,7 +319,7 @@ function FragmentRow({
                   onBlur={(e) => {
                     onPatch(
                       pageId,
-                      trajectory.eraId,
+                      trajectoryKey(trajectory),
                       { gmNote: e.target.value.trim() || null },
                       true,
                     );

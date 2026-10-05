@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { canManageChronology } from '../lib/acl.js';
+import { chronologyCanManage, chronologyCanView } from '../lib/chronologyAccess.js';
 import {
   dedupeEventConsequencesById,
   parseEventConsequenceSet,
@@ -15,7 +15,7 @@ import { prisma } from '../lib/prisma.js';
 async function ensureCalendarEventInCampaign(campaignId: string, eventId: string) {
   return prisma.calendarEvent.findFirst({
     where: { id: eventId, calendar: { campaignId } },
-    select: { id: true, title: true, calendarId: true },
+    select: { id: true, title: true, calendarId: true, visibility: true },
   });
 }
 
@@ -38,7 +38,7 @@ export async function getEventConsequences(
   }
 
   const event = await ensureCalendarEventInCampaign(campaignId, eventId);
-  if (!event) {
+  if (!event || !chronologyCanView(req.campaign!, event.visibility)) {
     res.status(404).json({ error: 'Calendar event not found' });
     return;
   }
@@ -57,10 +57,7 @@ export async function putEventConsequences(
 ): Promise<void> {
   const ctx = req.campaign!;
   if (
-    !canManageChronology(
-      ctx.role,
-      ctx.allowPlayerChronologyManagement ?? false,
-    )
+    !chronologyCanManage(ctx)
   ) {
     res.status(403).json({ error: 'Forbidden' });
     return;
@@ -74,7 +71,7 @@ export async function putEventConsequences(
 
   const eventId = String(req.params.eventId ?? '');
   const event = await ensureCalendarEventInCampaign(ctx.campaignId, eventId);
-  if (!event) {
+  if (!event || !chronologyCanView(req.campaign!, event.visibility)) {
     res.status(404).json({ error: 'Calendar event not found' });
     return;
   }
@@ -114,10 +111,7 @@ export async function postApplyEventConsequences(
 ): Promise<void> {
   const ctx = req.campaign!;
   if (
-    !canManageChronology(
-      ctx.role,
-      ctx.allowPlayerChronologyManagement ?? false,
-    )
+    !chronologyCanManage(ctx)
   ) {
     res.status(403).json({ error: 'Forbidden' });
     return;
@@ -131,7 +125,7 @@ export async function postApplyEventConsequences(
 
   const eventId = String(req.params.eventId ?? '');
   const event = await ensureCalendarEventInCampaign(ctx.campaignId, eventId);
-  if (!event) {
+  if (!event || !chronologyCanView(req.campaign!, event.visibility)) {
     res.status(404).json({ error: 'Calendar event not found' });
     return;
   }

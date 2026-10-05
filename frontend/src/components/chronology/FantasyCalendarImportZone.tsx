@@ -112,9 +112,7 @@ export function FantasyCalendarImportZone({
       const timelineNote = result.createdNewTimeline
         ? ` Added new timeline “${result.calendarName}”.`
         : ` Set master timeline “${result.calendarName}”.`;
-      const summary = `Imported successfully.${timelineNote} ${formatPreviewSummary(result)}${
-        result.isMasterTime ? ` Epoch minute ${result.currentEpochMinute}.` : ''
-      }`;
+      const summary = `Imported successfully.${timelineNote} ${formatPreviewSummary(result)}`;
       setImportSummary(summary);
       setPreview(result);
       onImportComplete?.(result);

@@ -3,6 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
+import { createEraOverview, ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
+import { extractDescriptionMarkdown } from './eventLoreWiki.js';
 import { env } from '../config/env.js';
 import { generateHandle, makeUniqueHandle, isValidHandle } from './handleUtils.js';
 import { getDefaultSidebarConfig, normalizeSidebarConfig } from './sidebarConfig.js';
@@ -93,6 +95,7 @@ async function copyAssetFile(sourceUrl: string, newAssetId: string): Promise<str
 export async function duplicateCampaign(
   input: DuplicateCampaignInput,
 ): Promise<DuplicateCampaignResult> {
+  await ensureChronologyEras(input.sourceCampaignId);
   const source = await prisma.campaign.findUnique({
     where: { id: input.sourceCampaignId },
     include: {
@@ -257,6 +260,7 @@ export async function duplicateCampaign(
     }
 
     const calendarIdMap = new Map<string, string>();
+    const eventIdMap = new Map<string, string>();
     const categoryIdMap = new Map<string, string>();
 
     if (copy.scheduling.calendarStructure) {
@@ -289,7 +293,7 @@ export async function duplicateCampaign(
 
         if (copy.scheduling.sessionEventsLogs) {
           for (const event of calendar.events) {
-            await tx.calendarEvent.create({
+            const copiedEvent = await tx.calendarEvent.create({
               data: {
                 calendarId: createdCalendar.id,
                 categoryId: event.categoryId
@@ -313,6 +317,7 @@ export async function duplicateCampaign(
                 recurrenceRule: event.recurrenceRule as Prisma.InputJsonValue,
               },
             });
+            eventIdMap.set(event.id, copiedEvent.id);
           }
         }
       }
@@ -343,6 +348,7 @@ export async function duplicateCampaign(
 
     if (copy.structure.wikiPages) {
       const pagesToCopy = source.wikiPages.filter((page) => {
+        if (!copy.scheduling.calendarStructure && (page.metadata as Record<string, unknown> | null)?.eraOverview === true) return false;
         if (!copy.scheduling.sessionEventsLogs && isSessionLikePage(page)) {
           return false;
         }
@@ -553,6 +559,28 @@ export async function duplicateCampaign(
       });
     }
 
+    if (calendarIdMap.size) {
+      const sourceEras = await tx.campaignEra.findMany({ where: { campaignId: source.id }, include: { overview: true } });
+      for (const era of sourceEras) {
+        const calendarId = calendarIdMap.get(era.calendarId);
+        if (!calendarId) continue;
+        let overviewPageId = pageIdMap.get(era.overviewPageId);
+        if (!overviewPageId) {
+          const page = await createEraOverview(tx, campaign.id, era.name, era.visibility, extractDescriptionMarkdown(era.overview.blocks) ?? '');
+          overviewPageId = page.id;
+        }
+        await tx.campaignEra.create({ data: {
+          campaignId: campaign.id, id: era.id, calendarId, overviewPageId, name: era.name,
+          sortOrder: era.sortOrder, isCurrent: era.isCurrent, visibility: era.visibility,
+          epochStartMinute: era.epochStartMinute, epochEndMinute: era.epochEndMinute,
+        } });
+      }
+      await tx.campaignMomentum.upsert({ where: { campaignId: campaign.id }, create: { campaignId: campaign.id, erasMigrated: true }, update: { erasMigrated: true } });
+      await syncEraProjection(tx, campaign.id);
+      const sourceHistory = (await tx.campaignMomentum.findUnique({ where: { campaignId: source.id } }))?.eraRecurrenceHistory as import('./eraOccurrenceHistory.js').EraHistory | undefined;
+      const history = Object.fromEntries(Object.entries(sourceHistory ?? {}).filter(([id]) => eventIdMap.has(id)).map(([id, value]) => [eventIdMap.get(id)!, value]));
+      await tx.campaignMomentum.update({ where: { campaignId: campaign.id }, data: { eraRecurrenceHistory: history as Prisma.InputJsonValue } });
+    }
     return campaign;
   });
 

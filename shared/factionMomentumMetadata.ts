@@ -76,7 +76,9 @@ export const DEFAULT_TRAJECTORY_MOMENTUM_STATE: FactionMomentumState = 'stable';
 /** Shared planning fields for Organizations · Characters · Locations. */
 export type EraTrajectory = {
   /** From — era when this direction begins/applies. */
-  eraId: string;
+  eraId: string | null;
+  eraSnapshot?: { id?: string; name: string; calendarName: string; visibility?: string };
+  byEraSnapshot?: { id?: string; name: string; calendarName: string; visibility?: string };
   /** Optional inclusive upper bound; null = open-ended from From onward. */
   byEraId: string | null;
   /** GM-authored freeform direction. */
@@ -91,15 +93,22 @@ function trajectoryAppliesToEra(
   currentEra: CampaignEra,
   eras: CampaignEra[],
 ): boolean {
+  if (!trajectory.eraId) return false;
   const fromEra = eras.find((era) => era.id === trajectory.eraId);
   if (!fromEra) {
     return trajectory.eraId === currentEra.id;
   }
+  if (fromEra.calendarId && currentEra.calendarId !== fromEra.calendarId) return false;
   if (currentEra.sortOrder < fromEra.sortOrder) return false;
   if (trajectory.byEraId == null) return true;
   const byEra = eras.find((era) => era.id === trajectory.byEraId);
   if (!byEra) return true;
   return currentEra.sortOrder <= byEra.sortOrder;
+}
+
+/** Stable editor identity also preserves multiple detached trajectories on one page. */
+export function trajectoryKey(trajectory: EraTrajectory): string {
+  return trajectory.eraId ?? `deleted:${trajectory.eraSnapshot?.id ?? trajectory.eraSnapshot?.name ?? ''}`;
 }
 
 function pickExplicitTrajectoryMatch<T extends Pick<EraTrajectory, 'eraId' | 'byEraId'>>(
@@ -174,6 +183,10 @@ export function resolveFactionTrajectoryForEra(input: {
 }
 
 export type CampaignEra = {
+  calendarId?: string;
+  calendarName?: string;
+  isMasterTime?: boolean;
+  visibility?: string;
   id: string;
   name: string;
   sortOrder: number;
@@ -184,6 +197,7 @@ export type CampaignEra = {
 };
 
 export type CampaignMomentumState = {
+  chronologyOwned?: boolean;
   version: typeof CAMPAIGN_MOMENTUM_SEMANTICS_VERSION;
   eras: CampaignEra[];
   worldPressurePaused?: boolean;
@@ -214,6 +228,8 @@ export function createEraTrajectory(
     direction: patch.direction ?? null,
     outcome: patch.outcome ?? null,
     gmNote: patch.gmNote ?? null,
+    ...(patch.eraSnapshot ? { eraSnapshot: patch.eraSnapshot } : {}),
+    ...(patch.byEraSnapshot ? { byEraSnapshot: patch.byEraSnapshot } : {}),
   };
 }
 
@@ -303,6 +319,7 @@ export function normalizeCampaignEra(raw: unknown, index: number): CampaignEra |
   if (!id) return null;
   return {
     id,
+    ...(typeof obj.calendarId === 'string' ? { calendarId: obj.calendarId, calendarName: String(obj.calendarName ?? ''), isMasterTime: obj.isMasterTime === true, visibility: String(obj.visibility ?? 'PARTY') } : {}),
     name: normalizeEraName(obj.name, `Era ${index + 1}`),
     sortOrder:
       typeof obj.sortOrder === 'number' && Number.isFinite(obj.sortOrder)
@@ -326,13 +343,13 @@ export function parseCampaignMomentumState(raw: unknown): CampaignMomentumState 
     .filter((era): era is CampaignEra => era !== null)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
-  if (eras.length === 0) {
+  if (eras.length === 0 && obj.chronologyOwned !== true) {
     return createDefaultCampaignMomentumState();
   }
 
   const currentCount = eras.filter((e) => e.isCurrent).length;
   const normalizedEras =
-    currentCount === 1
+    obj.chronologyOwned === true || currentCount === 1
       ? eras
       : eras.map((era, index) => ({
           ...era,
@@ -345,6 +362,7 @@ export function parseCampaignMomentumState(raw: unknown): CampaignMomentumState 
   return {
     version: CAMPAIGN_MOMENTUM_SEMANTICS_VERSION,
     eras: normalizedEras,
+    chronologyOwned: obj.chronologyOwned === true,
     worldPressurePaused: obj.worldPressurePaused === true,
     worldDevelopment,
   };
@@ -355,7 +373,9 @@ export function serializeCampaignMomentumState(
 ): Record<string, unknown> {
   return {
     version: CAMPAIGN_MOMENTUM_SEMANTICS_VERSION,
+    chronologyOwned: state.chronologyOwned,
     eras: state.eras.map((era) => ({
+      ...era,
       id: era.id,
       name: era.name,
       sortOrder: era.sortOrder,
@@ -370,10 +390,12 @@ export function serializeCampaignMomentumState(
 }
 
 export function getCurrentCampaignEra(state: CampaignMomentumState): CampaignEra {
+  if (state.chronologyOwned) return state.eras.find(e => e.isCurrent && e.isMasterTime)
+    ?? { id: '', name: 'No current era', isCurrent: false, sortOrder: -1, epochStartMinute: null, epochEndMinute: null, narrativeNote: null };
   return state.eras.find((e) => e.isCurrent) ?? state.eras[0] ?? createDefaultPresentEra();
 }
 
-function eraContainsEpochMinute(era: CampaignEra, target: bigint): boolean {
+function eraContainsEpochMinute(era: CampaignEra, target: bigint, exclusiveEnd = false): boolean {
   const startRaw = era.epochStartMinute;
   const endRaw = era.epochEndMinute;
   if (startRaw == null && endRaw == null) return false;
@@ -382,7 +404,7 @@ function eraContainsEpochMinute(era: CampaignEra, target: bigint): boolean {
   const end = endRaw != null ? BigInt(endRaw) : null;
 
   if (start != null && target < start) return false;
-  if (end != null && target > end) return false;
+  if (end != null && (exclusiveEnd ? target >= end : target > end)) return false;
   return true;
 }
 
@@ -407,7 +429,8 @@ export function resolveCampaignEraAtEpoch(
     return getCurrentCampaignEra(state);
   }
 
-  const matches = state.eras.filter((era) => eraContainsEpochMinute(era, target));
+  if (state.chronologyOwned && !getCurrentCampaignEra(state).id) return getCurrentCampaignEra(state);
+  const matches = state.eras.filter((era) => (!state.chronologyOwned || era.isMasterTime) && eraContainsEpochMinute(era, target, state.chronologyOwned));
   if (matches.length === 0) {
     return getCurrentCampaignEra(state);
   }
@@ -431,9 +454,11 @@ export function normalizeEraTrajectory(raw: unknown): EraTrajectory | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const obj = raw as Record<string, unknown>;
   const eraId = normalizeEraId(obj.eraId);
-  if (!eraId) return null;
+  if (!eraId && !(obj.eraSnapshot && typeof obj.eraSnapshot === 'object')) return null;
   return {
     eraId,
+    ...(obj.eraSnapshot && typeof obj.eraSnapshot === 'object' ? { eraSnapshot: obj.eraSnapshot as EraTrajectory['eraSnapshot'] } : {}),
+    ...(obj.byEraSnapshot && typeof obj.byEraSnapshot === 'object' ? { byEraSnapshot: obj.byEraSnapshot as EraTrajectory['byEraSnapshot'] } : {}),
     byEraId: normalizeEraId(obj.byEraId),
     direction: normalizeShortText(obj.direction, 120),
     outcome: normalizeShortText(obj.outcome, 200),
@@ -447,8 +472,8 @@ export function normalizeEraTrajectories(raw: unknown): EraTrajectory[] {
   const result: EraTrajectory[] = [];
   for (const item of raw) {
     const trajectory = normalizeEraTrajectory(item);
-    if (!trajectory || seen.has(trajectory.eraId)) continue;
-    seen.add(trajectory.eraId);
+    if (!trajectory || (trajectory.eraId && seen.has(trajectory.eraId))) continue;
+    if (trajectory.eraId) seen.add(trajectory.eraId);
     result.push(trajectory);
   }
   return result;
@@ -473,8 +498,8 @@ export function normalizeFactionEraTrajectories(raw: unknown): FactionEraTraject
   const result: FactionEraTrajectory[] = [];
   for (const item of raw) {
     const trajectory = normalizeFactionEraTrajectory(item);
-    if (!trajectory || seen.has(trajectory.eraId)) continue;
-    seen.add(trajectory.eraId);
+    if (!trajectory || (trajectory.eraId && seen.has(trajectory.eraId))) continue;
+    if (trajectory.eraId) seen.add(trajectory.eraId);
     result.push(trajectory);
   }
   return result;

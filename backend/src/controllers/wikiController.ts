@@ -587,6 +587,10 @@ async function formatWikiPageDetailResponse(
     const sanitized = sanitizeSceneMetadataForRole(parsed, canManage);
     metadata = mergeSceneMetadata(rest.metadata, sanitized);
   }
+  if (options?.campaignId && !(options.actor ? hasElevatedNarrativeView(options.actor) : canManage)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    metadata = redactEraReferences(metadata, await hiddenEraIds(options.campaignId));
+  }
   const normalizedBlocks = normalizeBlocksWithStableIds(rest.blocks);
   let responseBlocks = normalizedBlocks.blocks;
 
@@ -852,6 +856,11 @@ export async function getWikiTree(
 
   sidebarConfig = await enrichSidebarConfigWithIconUrls(sidebarConfig);
 
+  if (!hasElevatedNarrativeView(ctx.actor)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    const hidden = await hiddenEraIds(ctx.campaignId);
+    for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
+  }
   const tree = buildWikiTree(pages, ctx.role);
 
   const lastWikiUpdate = pages.reduce<Date | null>((latest, page) => {
@@ -1471,6 +1480,13 @@ export async function updateWikiPage(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const ownedEra = await prisma.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, overviewPageId: String(req.params.pageId ?? '') }, select: { visibility: true } });
+  if (ownedEra) {
+    if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(ctx.actor)) {
+      res.status(404).json({ error: 'Page not found' }); return;
+    }
+    res.status(409).json({ error: 'Manage this era Overview in Chronology.' }); return;
+  }
   const pageId = String(req.params.pageId);
   const { parentId, title, tags } = req.body as {
     parentId?: string | null;
@@ -1648,6 +1664,13 @@ export async function transformWikiPage(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const ownedEra = await prisma.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, overviewPageId: String(req.params.pageId ?? '') }, select: { visibility: true } });
+  if (ownedEra) {
+    if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(ctx.actor)) {
+      res.status(404).json({ error: 'Page not found' }); return;
+    }
+    res.status(409).json({ error: 'Manage this era Overview in Chronology.' }); return;
+  }
   const pageId = String(req.params.pageId);
   const { targetModule } = req.body as { targetModule?: string };
 
@@ -1998,6 +2021,13 @@ export async function updateWikiPageLayout(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const ownedEra = await prisma.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, overviewPageId: String(req.params.pageId ?? '') }, select: { visibility: true } });
+  if (ownedEra) {
+    if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(ctx.actor)) {
+      res.status(404).json({ error: 'Page not found' }); return;
+    }
+    res.status(409).json({ error: 'Manage this era Overview in Chronology.' }); return;
+  }
   const pageId = String(req.params.pageId);
   const { temporal, rest } = extractTemporalFromBody(req.body);
   const { blocks } = rest as {
@@ -2151,6 +2181,13 @@ export async function updateWikiPageVisibility(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const ownedEra = await prisma.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, overviewPageId: String(req.params.pageId ?? '') }, select: { visibility: true } });
+  if (ownedEra) {
+    if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(ctx.actor)) {
+      res.status(404).json({ error: 'Page not found' }); return;
+    }
+    res.status(409).json({ error: 'Manage this era Overview in Chronology.' }); return;
+  }
   const pageId = String(req.params.pageId);
   const { visibility } = req.body as { visibility?: string };
 
@@ -2263,6 +2300,13 @@ export async function updateWikiPageMetadata(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const ownedEra = await prisma.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, overviewPageId: String(req.params.pageId ?? '') }, select: { visibility: true } });
+  if (ownedEra) {
+    if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(ctx.actor)) {
+      res.status(404).json({ error: 'Page not found' }); return;
+    }
+    res.status(409).json({ error: 'Manage this era Overview in Chronology.' }); return;
+  }
   const pageId = String(req.params.pageId);
   const body = req.body as Record<string, unknown> & {
     key?: string;
@@ -4823,6 +4867,13 @@ export async function deleteWikiPage(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const ownedEra = await prisma.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, overviewPageId: String(req.params.pageId ?? '') }, select: { visibility: true } });
+  if (ownedEra) {
+    if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(ctx.actor)) {
+      res.status(404).json({ error: 'Page not found' }); return;
+    }
+    res.status(409).json({ error: 'Manage this era Overview in Chronology.' }); return;
+  }
   const pageId = String(req.params.pageId);
   const parsed = parseWikiDeleteBody(req.body);
   if (!parsed.ok) {

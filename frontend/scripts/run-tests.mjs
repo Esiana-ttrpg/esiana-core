@@ -16,6 +16,7 @@ const result = spawnSync(
     'src/components/recruitment/RecruitmentHostSection.test.tsx',
     'src/components/hub/NewCampaignWizard.layout.test.ts',
     'src/components/chronology/worldAdvanceFeedGrouping.test.ts',
+    'src/components/chronology/ErasView.test.ts',
     'src/components/progression/DevelopmentsSection.test.ts',
     'src/components/progression/ProgressionTrajectoriesSection.test.ts',
     'src/lib/chronologyDates.test.ts',

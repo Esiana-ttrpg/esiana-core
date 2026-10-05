@@ -57,6 +57,8 @@ export interface TimelineBaseEventRecord {
 }
 
 export interface TimelineOccurrenceRecord {
+  eraIds?: string[];
+  eraNames?: string[];
   occurrenceId: string;
   baseEventId: string;
   occurrenceIndex: number;
@@ -100,6 +102,7 @@ export type ExpansionWarningCode =
   | 'WINDOW_PARSE_FALLBACK_APPLIED';
 
 export interface ChronologyTimelineBundle {
+  eras?: import('@shared/chronologyEras').ChronologyEra[];
   calendars: TimelineCalendarRecord[];
   categories: TimelineCategoryRecord[];
   baseEvents: TimelineBaseEventRecord[];

@@ -1,4 +1,9 @@
 import { prisma } from './prisma.js';
+import { ensureChronologyEras } from './chronologyEraService.js';
+import { eraOccurrenceSchedule, type EraHistory } from './eraOccurrenceHistory.js';
+import { calendarEpochMinuteForDate, convertEpochToCalendarState } from './timeEngine.js';
+import type { CampaignEra } from './prismaClient.js';
+import { isElevatedMembershipRole } from '../../../shared/campaignPolicy/membershipRoles.js';
 import { canManageChronology, normalizeCampaignMemberRole } from './acl.js';
 import { chronologyVisibilityFilter } from './chronologyVisibility.js';
 import {
@@ -59,6 +64,7 @@ type BuildOverlayInput = {
   campaignHandle: string;
   role: string | null;
   allowPlayerChronologyManagement: boolean;
+  elevatedNarrativeView?: boolean;
   window: ChronologyWindowQuery;
   domains: ChronologyDomainKindValue[] | null;
   sessionLinkedOnly: boolean;
@@ -114,6 +120,8 @@ function expandOccurrences(
   baseEvents: BaseEvent[],
   calendarsById: Map<string, CalendarRowForResolve>,
   campaignEpochMinute: bigint | null,
+  eras: CampaignEra[] = [],
+  eraHistory: EraHistory = {},
 ): Array<{
   occurrenceId: string;
   baseEventId: string;
@@ -158,8 +166,16 @@ function expandOccurrences(
       day: resolved.day,
       epochMinute: resolved.epochMinute,
     };
+    const eraSchedule = event.isRepeating && event.repeatUnit === 'ERAS' && calendarRow
+      ? eraOccurrenceSchedule(event, calendarRow, campaignEpochMinute, eras, eraHistory[event.id]) : null;
     const maxIterations = event.isRepeating ? limit : 1;
     for (let i = 0; i < maxIterations; i += 1) {
+      if (eraSchedule && calendarRow) {
+        const minute = eraSchedule[i];
+        if (minute == null) continue;
+        const date = convertEpochToCalendarState(minute, calendarRow);
+        state = { year: date.year, month: date.monthIndex, day: date.day, epochMinute: minute.toString() };
+      }
       if (generatedForEvent >= MAX_GENERATED_PER_EVENT || occurrences.length >= MAX_GENERATED_TOTAL) {
         break;
       }
@@ -199,6 +215,7 @@ function expandOccurrences(
       }
       generatedForEvent += 1;
       if (!event.isRepeating || !event.repeatUnit || !event.repeatInterval) break;
+      if (eraSchedule) continue;
       const monthLengths =
         calendarRow && state.year !== null
           ? getMonthLengthsForYear(calendarRow, state.year)
@@ -271,6 +288,8 @@ async function collectWorldAnchors(
     events as BaseEvent[],
     calendarsById,
     campaign?.currentEpochMinute ?? null,
+    await (async () => { await ensureChronologyEras(campaignId); return prisma.campaignEra.findMany({ where: { campaignId } }); })(),
+    ((await prisma.campaignMomentum.findUnique({ where: { campaignId }, select: { eraRecurrenceHistory: true } }))?.eraRecurrenceHistory ?? {}) as EraHistory,
   );
   return occurrences.map((occ) => anchorFromTimelineOccurrence(occ));
 }
@@ -491,10 +510,7 @@ function domainEnabled(
 export async function buildConvergenceOverlay(
   input: BuildOverlayInput,
 ): Promise<ConvergenceOverlayBundle> {
-  const canManage = canManageChronology(
-    normalizeCampaignMemberRole(input.role),
-    input.allowPlayerChronologyManagement,
-  );
+  const canManage = input.elevatedNarrativeView ?? isElevatedMembershipRole(input.role ?? '');
   const includeSuppressed = input.includeSuppressed && canManage;
 
   const [dateParts, campaign] = await Promise.all([

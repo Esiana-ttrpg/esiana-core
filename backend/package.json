@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:eras": "node scripts/test-chronology-eras.mjs",
     "dev": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsx watch src/index.ts",
     "test:assets": "node --import tsx --test --test-concurrency=1 src/routes/assets.http.test.ts src/lib/assetAccess.test.ts",
     "test:wiki-updated-at": "node --import tsx --test --test-concurrency=1 src/routes/wikiPageUpdatedAt.http.test.ts",
@@ -74,6 +75,8 @@
     "@types/pg": "^8.15.5",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/ws": "^8.18.1",
+    "embedded-postgres": "18.4.0-beta.17",
+    "playwright": "^1.63.0",
     "prisma": "7.10.0",
     "tsx": "^4.23.15",
     "typescript": "^5.8.3"
