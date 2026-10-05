@@ -47,6 +47,8 @@ model User {
   timezone String?
   /// BCP 47 UI locale (e.g. en, fr). Null = auto-detect from browser.
   uiLocale String?
+  /// Enables unmodified letter shortcuts for navigation inside campaign workspaces.
+  campaignNavigationShortcutsEnabled Boolean @default(false)
   /// Incremented to invalidate outstanding session JWT cookies.
   sessionVersion Int @default(0)
   /// Inclusive first calendar day of user vacation (UTC date; null = not away).
