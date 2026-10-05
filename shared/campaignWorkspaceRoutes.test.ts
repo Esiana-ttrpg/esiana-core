@@ -48,6 +48,12 @@ describe('campaignWorkspaceRoutes', () => {
     expect(resolveWorkspaceIndexPathForFolderTitle('red-sands', 'Quests')).toBe(
       '/campaigns/red-sands/adventures',
     );
+    expect(resolveWorkspaceIndexPathForFolderTitle('red-sands', 'Havens')).toBe(
+      '/campaigns/red-sands/downtime?section=havens',
+    );
+    expect(resolveWorkspaceIndexPathForFolderTitle('red-sands', 'Projects')).toBe(
+      '/campaigns/red-sands/downtime?section=projects',
+    );
   });
 
   it('resolves category folder pages to hub paths, not dashboard', () => {
@@ -63,6 +69,19 @@ describe('campaignWorkspaceRoutes', () => {
         [],
       ),
     ).toBe('/campaigns/red-sands/maps');
+
+    expect(
+      resolveCanonicalPagePath(
+        'red-sands',
+        {
+          id: 'havens-folder-id',
+          title: 'Havens',
+          parentId: 'downtime-folder-id',
+          templateType: 'DEFAULT',
+        },
+        [],
+      ),
+    ).toBe('/campaigns/red-sands/downtime?section=havens');
   });
 
   it('falls back to page id when pathKey is missing on entity pages', () => {
