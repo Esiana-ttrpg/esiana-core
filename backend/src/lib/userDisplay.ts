@@ -192,6 +192,7 @@ export function serializeUserIdentity(user: {
   displayName?: string | null;
   avatarUrl?: string | null;
   passwordHash?: string | null;
+  campaignNavigationShortcutsEnabled?: boolean;
 }) {
   const username = deriveUsername(user.email);
   return {
@@ -202,5 +203,7 @@ export function serializeUserIdentity(user: {
     avatarUrl: user.avatarUrl ?? null,
     username,
     passwordAuthEnabled: isPasswordAuthEnabled(user),
+    campaignNavigationShortcutsEnabled:
+      user.campaignNavigationShortcutsEnabled ?? false,
   };
 }

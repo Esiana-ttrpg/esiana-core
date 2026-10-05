@@ -59,6 +59,7 @@ const PROFILE_UPDATE_KEYS = [
   'statusBlurb',
   'timezone',
   'uiLocale',
+  'campaignNavigationShortcutsEnabled',
   ...USER_SOCIAL_LINK_KEYS,
 ] as const;
 
@@ -70,6 +71,7 @@ const profileSelect = {
   allowCampaignSystemOverride: true,
   timezone: true,
   uiLocale: true,
+  campaignNavigationShortcutsEnabled: true,
   createdAt: true,
   campaignMembers: {
     select: {
@@ -108,6 +110,7 @@ function serializeProfile(
     allowCampaignSystemOverride: boolean;
     timezone: string | null;
     uiLocale: string | null;
+    campaignNavigationShortcutsEnabled: boolean;
     createdAt: Date;
     campaignMembers: Array<{
       role: string;
@@ -138,6 +141,8 @@ function serializeProfile(
     allowCampaignSystemOverride: user.allowCampaignSystemOverride,
     timezone: user.timezone,
     uiLocale: user.uiLocale,
+    campaignNavigationShortcutsEnabled:
+      user.campaignNavigationShortcutsEnabled,
     effectiveTimezone: resolveEffectiveTimezone({
       userTimezone: user.timezone,
       systemDefaultTimezone,
@@ -412,6 +417,22 @@ export async function updateUserProfile(
       }
       updateData.uiLocale = sanitized;
     }
+  }
+
+  if (
+    Object.prototype.hasOwnProperty.call(
+      body,
+      'campaignNavigationShortcutsEnabled',
+    )
+  ) {
+    if (typeof body.campaignNavigationShortcutsEnabled !== 'boolean') {
+      res.status(400).json({
+        error: 'campaignNavigationShortcutsEnabled must be a boolean',
+      });
+      return;
+    }
+    updateData.campaignNavigationShortcutsEnabled =
+      body.campaignNavigationShortcutsEnabled;
   }
 
   const [user, settings] = await Promise.all([

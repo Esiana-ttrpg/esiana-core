@@ -22317,6 +22317,9 @@ components:
           type: string
         passwordAuthEnabled:
           type: boolean
+        campaignNavigationShortcutsEnabled:
+          type: boolean
+          default: false
     UserWithProviders:
       allOf:
         - $ref: "#/components/schemas/User"

@@ -15,6 +15,7 @@ export interface User {
   username?: string;
   role: UserRole;
   passwordAuthEnabled?: boolean;
+  campaignNavigationShortcutsEnabled?: boolean;
 }
 
 export interface CampaignSummary {

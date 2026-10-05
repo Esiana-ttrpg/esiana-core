@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { CampaignRecencyRecorder } from '@/components/layout/CampaignRecencyRecorder';
@@ -33,6 +33,11 @@ import { WorkspaceRail } from '@/components/layout/WorkspaceRail';
 import { useWorkspaceChrome } from '@/hooks/useWorkspaceChrome';
 import { ActivePageProvider } from '@/contexts/ActivePageContext';
 import { GlobalSearchProvider } from '@/components/search/GlobalSearchProvider';
+import {
+  findCampaignNavigationShortcut,
+  resolveCampaignNavigationDestination,
+  shouldHandleCampaignNavigationKey,
+} from '@/lib/campaignNavigationShortcuts';
 
 function CampaignThemeBridge() {
   const { campaign } = useWiki();
@@ -158,6 +163,8 @@ function InviteJoinBridge() {
 function CampaignLayoutShell() {
   const { sidebarOpen, closeSidebar, sidebarCollapsed } = useCampaignNav();
   const { campaign, campaignHandle } = useWiki();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [pageWidth, setPageWidth] = useState<MasterPageWidth>(() =>
     getMasterPageWidthPreference(),
   );
@@ -172,6 +179,28 @@ function CampaignLayoutShell() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [sidebarOpen, closeSidebar]);
+
+  useEffect(() => {
+    if (!user?.campaignNavigationShortcutsEnabled || !campaign) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!shouldHandleCampaignNavigationKey(event)) return;
+      const shortcut = findCampaignNavigationShortcut(event.key);
+      if (!shortcut) return;
+
+      const href = resolveCampaignNavigationDestination(
+        campaignHandle,
+        shortcut.destination,
+      );
+      if (!href) return;
+
+      event.preventDefault();
+      navigate(href);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [campaign, campaignHandle, navigate, user?.campaignNavigationShortcutsEnabled]);
 
   useEffect(() => {
     const handleCustom = (event: Event) => {
