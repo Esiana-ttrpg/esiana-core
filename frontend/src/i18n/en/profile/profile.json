@@ -22,7 +22,7 @@
   "profile.profile.shortcuts.description": "Move quickly between destinations while you are inside a campaign.",
   "profile.profile.shortcuts.enable": "Enable keyboard shortcuts",
   "profile.profile.shortcuts.enableHint": "Shortcuts pause whenever you are typing or editing content.",
-  "profile.profile.shortcuts.saving": "Saving preferenceâ€¦",
+  "profile.profile.shortcuts.saving": "Saving preference…",
   "profile.profile.shortcuts.saveFailed": "Unable to save keyboard shortcut preference.",
   "profile.profile.shortcuts.destination": "Destination",
   "profile.profile.shortcuts.shortcut": "Shortcut",

@@ -41,13 +41,20 @@ export function UserKeyboardShortcutsSection({
     setError(null);
     try {
       await updateUserProfile({ campaignNavigationShortcutsEnabled: next });
-      onEnabledChange(next);
-      await refresh();
     } catch (err) {
       setChecked(previous);
       setError(
         err instanceof Error ? err.message : t('profile.profile.shortcuts.saveFailed'),
       );
+      setSaving(false);
+      return;
+    }
+
+    onEnabledChange(next);
+    try {
+      await refresh();
+    } catch (err) {
+      console.error('Unable to refresh user after saving shortcut preference', err);
     } finally {
       setSaving(false);
     }
