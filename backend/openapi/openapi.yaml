@@ -36,6 +36,7 @@ tags:
   - name: System Catalog
   - name: Public Profiles
   - name: Notifications
+  - name: Calendar
   - name: Character Portfolio
     description: User-owned characters that exist independently of campaigns. Portfolio characters may be cloned into or created from campaign characters, but remain separate records and are never synchronized with campaign wiki pages. Portfolio resources are owned by the authenticated user (not campaign-scoped). PortfolioCharacterAdventure rows record provenance/history for campaign incarnations without changing ownership or granting campaign access. Public endpoints expose only the allowlisted projection for explicitly showcased characters; campaign titles in those projections remain subject to campaign visibility/linkability rules.
   - name: User Account
@@ -54,6 +55,219 @@ tags:
   - name: Import
   - name: System
 paths:
+  /api/calendar/sessions:
+    get:
+      tags:
+        - Calendar
+      summary: List my upcoming campaign sessions
+      description: Returns the authenticated user's visible published, cancelled, and completed session events across campaign memberships. When `from` is omitted, it defaults to the current instant. Dates are returned as UTC ISO 8601 instants with a validated IANA display timezone.
+      operationId: listMySessionCalendar
+      parameters:
+        - $ref: "#/components/parameters/calendarFrom"
+        - $ref: "#/components/parameters/calendarTo"
+        - $ref: "#/components/parameters/calendarLimit"
+        - $ref: "#/components/parameters/calendarCursor"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Page of canonical session calendar events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionCalendarPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires:
+          - Authenticated application user session or API token with campaign:read scope
+          - Campaign membership and wiki-page visibility are enforced per event
+  /api/calendar/sessions.ics:
+    get:
+      tags: [Calendar]
+      summary: Download my upcoming sessions as ICS
+      description: One-time download of the authenticated user's aggregate upcoming-session calendar. The same live campaign membership and wiki visibility rules as `/api/calendar/sessions` apply.
+      operationId: downloadMySessionCalendar
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: RFC 5545 calendar attachment
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/calendar:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires:
+          - Authenticated application user session or API token with campaign:read scope
+          - Campaign membership and wiki-page visibility are evaluated at request time
+  /api/calendar/subscription:
+    get:
+      tags: [Calendar]
+      summary: Get calendar subscription status
+      operationId: getCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current subscription status; the secret URL is never returned after issuance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionStatusResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+    post:
+      tags: [Calendar]
+      summary: Create a private calendar subscription
+      description: Creates the user's single active subscription and returns its high-entropy URL once. Returns 409 when one is already active.
+      operationId: createCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "201":
+          description: Subscription created; copy the returned URL now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A subscription is already active
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+    delete:
+      tags: [Calendar]
+      summary: Revoke the private calendar subscription
+      operationId: revokeCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Subscription revoked, or already absent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+  /api/calendar/subscription/regenerate:
+    post:
+      tags: [Calendar]
+      summary: Regenerate the private calendar subscription URL
+      description: Immediately invalidates the previous URL and returns a new high-entropy URL once. Also creates a subscription when none exists.
+      operationId: regenerateCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Existing subscription regenerated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
+        "201":
+          description: Subscription created because none existed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+  /api/calendar/subscriptions/{token}/feed.ics:
+    get:
+      tags: [Calendar]
+      summary: Read a private user calendar subscription
+      description: The path token identifies the user but does not snapshot permissions. Campaign membership and wiki-page visibility are evaluated on every request. Treat this URL as a secret.
+      operationId: getSubscribedSessionCalendar
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: High-entropy private subscription credential.
+          schema: { type: string }
+      security:
+        - {}
+      responses:
+        "200":
+          description: RFC 5545 calendar feed
+          content:
+            text/calendar:
+              schema: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: private-capability-url
+        requires:
+          - Valid active calendar subscription token
+          - Campaign membership and wiki-page visibility are evaluated at request time
+  /api/campaigns/{campaignHandle}/calendar/sessions:
+    get:
+      tags:
+        - Calendar
+      summary: List a campaign's session calendar
+      description: Returns visible published, cancelled, and completed session events for one campaign. Unlike the user-level route, no date lower bound is applied when `from` is omitted.
+      operationId: listCampaignSessionCalendar
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - $ref: "#/components/parameters/calendarFrom"
+        - $ref: "#/components/parameters/calendarTo"
+        - $ref: "#/components/parameters/calendarLimit"
+        - $ref: "#/components/parameters/calendarCursor"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Page of canonical session calendar events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionCalendarPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+      x-esiana-authorization:
+        boundary: campaign-member
+        requires:
+          - Membership in the target campaign
+          - API tokens require campaign:read scope
+          - Wiki-page visibility is enforced per event
   /api/health:
     get:
       tags:
@@ -21802,6 +22016,35 @@ components:
       scheme: bearer
       bearerFormat: API token with scopes
   parameters:
+    calendarFrom:
+      name: from
+      in: query
+      description: Inclusive lower bound for session start time. Defaults to now only on the user-level route.
+      schema:
+        type: string
+        format: date-time
+    calendarTo:
+      name: to
+      in: query
+      description: Inclusive upper bound for session start time.
+      schema:
+        type: string
+        format: date-time
+    calendarLimit:
+      name: limit
+      in: query
+      description: Number of events to return (default 50, maximum 200).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    calendarCursor:
+      name: cursor
+      in: query
+      description: Opaque pagination cursor returned by the preceding page.
+      schema:
+        type: string
     campaignId:
       name: campaignId
       in: path
@@ -21816,6 +22059,107 @@ components:
         type: string
       example: port-haven
   schemas:
+    CalendarSubscriptionStatusResponse:
+      type: object
+      required: [subscription]
+      properties:
+        subscription:
+          oneOf:
+            - type: object
+              required: [active, createdAt, updatedAt, lastAccessAt]
+              properties:
+                active: { type: boolean, const: true }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+                lastAccessAt: { type: [string, "null"], format: date-time }
+            - type: "null"
+    CalendarSubscriptionIssuedResponse:
+      type: object
+      required: [subscription]
+      properties:
+        subscription:
+          type: object
+          required: [active, url, createdAt, updatedAt]
+          properties:
+            active: { type: boolean, const: true }
+            url:
+              type: string
+              format: uri
+              description: Secret subscription URL, returned only when issued or regenerated.
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    SessionCalendarEvent:
+      type: object
+      required:
+        - id
+        - kind
+        - title
+        - status
+        - startsAt
+        - endsAt
+        - timezone
+        - campaign
+        - href
+        - venue
+        - sequenceOrder
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Stable session timeline point identifier.
+        kind:
+          type: string
+          const: session
+        title:
+          type: string
+        status:
+          type: string
+          enum: [PUBLISHED, CANCELLED, COMPLETED]
+        startsAt:
+          type: string
+          format: date-time
+          description: UTC ISO 8601 instant.
+        endsAt:
+          type: [string, "null"]
+          format: date-time
+          description: UTC ISO 8601 instant when known.
+        timezone:
+          type: string
+          description: Validated IANA timezone for local display; falls back to the campaign timezone and then UTC.
+        campaign:
+          type: object
+          required: [id, name, handle]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            handle: { type: string }
+        href:
+          type: string
+        venue:
+          oneOf:
+            - type: object
+              required: [type, label, url, locationPageId]
+              properties:
+                type: { type: [string, "null"] }
+                label: { type: [string, "null"] }
+                url: { type: [string, "null"] }
+                locationPageId: { type: [string, "null"] }
+            - type: "null"
+        sequenceOrder:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+    SessionCalendarPage:
+      type: object
+      required: [events, nextCursor]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionCalendarEvent"
+        nextCursor:
+          type: [string, "null"]
     SourceIdentity:
       type: object
       required:

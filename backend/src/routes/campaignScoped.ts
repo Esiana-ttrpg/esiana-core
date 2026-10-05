@@ -421,6 +421,7 @@ import {
   patchMySessionAttendance,
   listSessionAttendance,
 } from '../controllers/sessionScheduleController.js';
+import { listCampaignSessionCalendar } from '../controllers/sessionCalendarController.js';
 import {
   getCampaignSchedule,
   patchCampaignSchedule,
@@ -1172,6 +1173,7 @@ campaignScopedRouter.post(
   ensureSessionAuthorNote,
 );
 campaignScopedRouter.get('/session-timeline/next-published', getNextPublishedSession);
+campaignScopedRouter.get('/calendar/sessions', listCampaignSessionCalendar);
 campaignScopedRouter.get('/schedule', getCampaignSchedule);
 campaignScopedRouter.patch('/schedule', requireNotesModerate, patchCampaignSchedule);
 campaignScopedRouter.post('/schedule/upcoming', requireNotesModerate, postScheduleUpcoming);

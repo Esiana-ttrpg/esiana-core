@@ -9,6 +9,7 @@ import { ScheduleSettingsBar } from '@/components/schedule/ScheduleSettingsBar';
 import { VacationModal } from '@/components/schedule/VacationModal';
 import { UpcomingSessionsList } from '@/components/schedule/UpcomingSessionsList';
 import { ScheduleMonthCalendar } from '@/components/schedule/ScheduleMonthCalendar';
+import { SessionCalendarAccess } from '@/components/schedule/SessionCalendarAccess';
 import {
   fetchUserSchedule,
   monthGridRange,
@@ -101,10 +102,10 @@ export function SchedulePage() {
         <header className="space-y-1">
           <div className="flex items-center gap-2 text-primary">
             <CalendarDays className="size-7" strokeWidth={1.5} />
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Schedule</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Session Calendar</h1>
           </div>
           <p className="text-sm text-muted">
-            Upcoming sessions across your campaigns, availability, and Auto RSVP.
+            Keep track of upcoming sessions across your campaigns.
           </p>
         </header>
 
@@ -153,6 +154,8 @@ export function SchedulePage() {
             </div>
           </>
         ) : null}
+
+        <SessionCalendarAccess />
       </SettingsPageLayout>
 
       {preferences ? (
