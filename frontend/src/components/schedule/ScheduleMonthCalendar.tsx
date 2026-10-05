@@ -193,6 +193,9 @@ export function ScheduleMonthCalendar({
                           />
                         ) : null}
                       </span>
+                      {skipped ? (
+                        <span className="block pl-2.5 opacity-80 sm:hidden">No session</span>
+                      ) : null}
                     </>
                   );
                   return (
