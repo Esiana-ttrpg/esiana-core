@@ -2,6 +2,7 @@ import type { Express, Router as ExpressRouter } from 'express';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { userRouter } from './routes/user.js';
+import { calendarRouter } from './routes/calendar.js';
 import { campaignsRouter } from './routes/campaigns.js';
 import { pluginConnectionsRouter } from './routes/pluginConnections.js';
 import { pluginConnectionFixturesRouter } from './routes/pluginConnectionFixtures.js';
@@ -63,6 +64,7 @@ export function listRouterMounts(): RouterMount[] {
     { path: '/api/users', router: usersPublicRouter },
     { path: '/api/auth', router: authRouter },
     { path: '/api/user', router: userRouter },
+    { path: '/api/calendar', router: calendarRouter },
     { path: '/api/campaigns', router: campaignsRouter },
     { path: '/api/plugin-connections', router: pluginConnectionsRouter },
     {
