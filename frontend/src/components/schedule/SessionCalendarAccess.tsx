@@ -13,21 +13,29 @@ import { META_SECTION_LABEL_CLASS, SURFACE_RECESSED_CLASS } from '@/lib/surfaceL
 type PendingAction = 'create' | 'regenerate' | 'revoke' | null;
 
 export function SessionCalendarAccess() {
-  const [subscription, setSubscription] = useState<CalendarSubscriptionStatus | null>(null);
+  const [subscription, setSubscription] = useState<
+    CalendarSubscriptionStatus | null | undefined
+  >(undefined);
   const [issuedUrl, setIssuedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<PendingAction>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setStatusError(null);
     try {
       const result = await fetchCalendarSubscription();
       setSubscription(result.subscription);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to load calendar subscription.');
+      setSubscription(undefined);
+      setStatusError(
+        reason instanceof Error
+          ? reason.message
+          : 'Unable to load calendar subscription.',
+      );
     } finally {
       setLoading(false);
     }
@@ -117,10 +125,16 @@ export function SessionCalendarAccess() {
         <div className="space-y-3">
           <div>
             <p className="text-sm font-medium text-foreground">
-              {subscription ? 'Calendar subscription: Active' : 'Subscribe to calendar'}
+              {subscription === undefined
+                ? 'Calendar subscription'
+                : subscription
+                  ? 'Calendar subscription: Active'
+                  : 'Subscribe to calendar'}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-muted">
-              {subscription
+              {subscription === undefined
+                ? 'Check whether your private calendar subscription is active.'
+                : subscription
                 ? 'Your calendar stays synchronized. The existing private URL cannot be shown again.'
                 : 'Automatically keeps sessions up to date. Anyone with the private URL can view your calendar.'}
             </p>
@@ -153,6 +167,20 @@ export function SessionCalendarAccess() {
 
           {loading ? (
             <p className="text-xs text-muted">Checking subscription…</p>
+          ) : statusError ? (
+            <div className="space-y-2">
+              <p role="alert" className="text-sm text-destructive">
+                {statusError}
+              </p>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-elevated"
+              >
+                <RefreshCw className="size-3.5" aria-hidden />
+                Retry
+              </button>
+            </div>
           ) : subscription ? (
             <div className="flex flex-wrap gap-2">
               <button
@@ -174,7 +202,7 @@ export function SessionCalendarAccess() {
                 {pending === 'revoke' ? 'Revoking…' : 'Revoke'}
               </button>
             </div>
-          ) : (
+          ) : subscription === null ? (
             <button
               type="button"
               disabled={pending !== null}
@@ -184,7 +212,7 @@ export function SessionCalendarAccess() {
               <CalendarSync className="size-4" aria-hidden />
               {pending === 'create' ? 'Creating subscription…' : 'Subscribe to calendar'}
             </button>
-          )}
+          ) : null}
         </div>
 
         <div className="space-y-3 md:border-l md:border-border/40 md:pl-5">

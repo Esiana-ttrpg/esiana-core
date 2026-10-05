@@ -152,10 +152,10 @@ export function SchedulePage() {
                 <UpcomingSessionsList upcoming={upcoming} onRsvpChanged={() => void load()} />
               </div>
             </div>
-
-            <SessionCalendarAccess />
           </>
         ) : null}
+
+        <SessionCalendarAccess />
       </SettingsPageLayout>
 
       {preferences ? (

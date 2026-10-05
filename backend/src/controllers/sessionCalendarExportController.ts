@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { env } from '../config/env.js';
 import { prisma } from '../lib/prisma.js';
+import { Prisma } from '../lib/prismaClient.js';
 import { hashApiToken } from '../lib/apiToken.js';
 import { serializeSessionCalendarIcs } from '../lib/sessionCalendarIcs.js';
 import { loadVisibleUserCalendarEvents } from './sessionCalendarController.js';
@@ -67,23 +68,43 @@ async function issueSubscription(
   replace: boolean,
   res: Response,
 ): Promise<void> {
-  const existing = await prisma.userCalendarSubscription.findUnique({
-    where: { userId },
-    select: { userId: true },
-  });
-  if (existing && !replace) {
-    res.status(409).json({
-      error: 'A calendar subscription is already active; regenerate it to issue a new URL',
-    });
-    return;
-  }
   const secret = newSubscriptionSecret();
-  const row = await prisma.userCalendarSubscription.upsert({
-    where: { userId },
-    create: { userId, tokenHash: hashApiToken(secret) },
-    update: { tokenHash: hashApiToken(secret), lastAccessAt: null },
-    select: { createdAt: true, updatedAt: true },
-  });
+  const tokenHash = hashApiToken(secret);
+  let existing = false;
+  let row: { createdAt: Date; updatedAt: Date };
+
+  if (replace) {
+    existing = Boolean(
+      await prisma.userCalendarSubscription.findUnique({
+        where: { userId },
+        select: { userId: true },
+      }),
+    );
+    row = await prisma.userCalendarSubscription.upsert({
+      where: { userId },
+      create: { userId, tokenHash },
+      update: { tokenHash, lastAccessAt: null },
+      select: { createdAt: true, updatedAt: true },
+    });
+  } else {
+    try {
+      row = await prisma.userCalendarSubscription.create({
+        data: { userId, tokenHash },
+        select: { createdAt: true, updatedAt: true },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        res.status(409).json({
+          error: 'A calendar subscription is already active; regenerate it to issue a new URL',
+        });
+        return;
+      }
+      throw error;
+    }
+  }
   res.status(existing ? 200 : 201).json({
     subscription: {
       active: true,
