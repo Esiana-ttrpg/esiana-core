@@ -31,6 +31,8 @@ export type MaterializedScheduleEntry = {
   campaignId: string;
   campaignHandle: string;
   campaignName: string;
+  gameSystemLabel: string;
+  membershipRoleLabel: string;
   appearanceProfile: unknown;
   timelinePointId: string;
   sessionTitle: string;

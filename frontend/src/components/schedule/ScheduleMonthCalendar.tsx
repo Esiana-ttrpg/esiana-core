@@ -22,11 +22,6 @@ function accentFromAppearance(appearanceProfile: unknown): string {
   return getProfilePreviewPalette(profile).primary ?? fallback;
 }
 
-function shortName(name: string): string {
-  const first = name.split(/\s+/)[0] ?? name;
-  return first.length > 10 ? `${first.slice(0, 9)}…` : first;
-}
-
 function dayKey(year: number, monthIndex: number, day: number): string {
   const m = String(monthIndex + 1).padStart(2, '0');
   const d = String(day).padStart(2, '0');
@@ -167,21 +162,25 @@ export function ScheduleMonthCalendar({
                         className="rounded px-1 py-0.5 text-[10px] leading-tight text-muted"
                         title="Expected session — not scheduled yet"
                       >
-                        <span className="mr-1 inline-block size-1.5 rounded-full border border-current opacity-60" />
-                        {shortName(entry.campaignName)}
-                        <span className="block pl-2.5 opacity-80">Expected</span>
+                        <span className="flex min-w-0 items-start gap-1">
+                          <span className="mt-0.5 size-1.5 shrink-0 rounded-full border border-current opacity-60" />
+                          <span className="line-clamp-2 min-w-0">{entry.campaignName}</span>
+                        </span>
+                        <span className="hidden pl-2.5 opacity-80 sm:block">Expected</span>
                       </li>
                     );
                   }
                   const skipped = entry.status === 'SKIPPED';
                   const body = (
                     <>
-                      <span
-                        className="mr-1 inline-block size-1.5 rounded-full"
-                        style={{ backgroundColor: skipped ? 'transparent' : accent, border: skipped ? `1px solid ${accent}` : undefined }}
-                      />
-                      {shortName(entry.campaignName)}
-                      <span className="flex items-center justify-between gap-1 pl-2.5">
+                      <span className="flex min-w-0 items-start gap-1">
+                        <span
+                          className="mt-0.5 size-1.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: skipped ? 'transparent' : accent, border: skipped ? `1px solid ${accent}` : undefined }}
+                        />
+                        <span className="line-clamp-2 min-w-0">{entry.campaignName}</span>
+                      </span>
+                      <span className="hidden items-center justify-between gap-1 pl-2.5 sm:flex">
                         <span className="opacity-80">
                           {skipped
                             ? 'No session'

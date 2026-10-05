@@ -13,6 +13,11 @@ import { campaignNotePath } from './notifications/deepLinks.js';
 import { resolveUserDisplayName } from './userDisplay.js';
 import { PageOwnerTypes } from '../../../shared/campaignPolicy/pageOwnership.js';
 import { isCharacterWikiPage } from './memberIdentity.js';
+import { resolveGameSystemLabel } from './gameSystemValidation.js';
+import {
+  isMembershipRole,
+  membershipRoleUiLabel,
+} from '../../../shared/campaignPolicy/membershipRoles.js';
 
 export const AUTO_RSVP_ALLOWED_DAYS = [1, 3, 7, 14] as const;
 export type AutoRsvpDaysBefore = (typeof AUTO_RSVP_ALLOWED_DAYS)[number];
@@ -53,6 +58,8 @@ export type MaterializedScheduleEntry = {
   campaignId: string;
   campaignHandle: string;
   campaignName: string;
+  gameSystemLabel: string;
+  membershipRoleLabel: string;
   appearanceProfile: unknown;
   timelinePointId: string;
   sessionTitle: string;
@@ -288,6 +295,8 @@ type PersistedScheduleRow = {
       handle: string;
       name: string;
       appearanceProfile: unknown;
+      gameSystem: string | null;
+      customGameSystemName: string | null;
       scheduleFrequency: string | null;
       scheduleDay: string | null;
       scheduleTime: string | null;
@@ -464,12 +473,15 @@ export async function buildUserSchedule(params: {
     where: { userId: params.userId },
     select: {
       campaignId: true,
+      role: true,
       campaign: {
         select: {
           id: true,
           handle: true,
           name: true,
           appearanceProfile: true,
+          gameSystem: true,
+          customGameSystemName: true,
           scheduleFrequency: true,
           scheduleDay: true,
           scheduleTime: true,
@@ -486,6 +498,9 @@ export async function buildUserSchedule(params: {
     .map((m) => m.campaign)
     .filter((c) => !c.archivedAt);
   const campaignIds = activeCampaigns.map((c) => c.id);
+  const membershipRoleByCampaign = new Map(
+    memberships.map((membership) => [membership.campaignId, membership.role]),
+  );
   const preferences = serializeSchedulePreferences(viewer);
 
   if (campaignIds.length === 0) {
@@ -523,6 +538,8 @@ export async function buildUserSchedule(params: {
               handle: true,
               name: true,
               appearanceProfile: true,
+              gameSystem: true,
+              customGameSystemName: true,
               scheduleFrequency: true,
               scheduleDay: true,
               scheduleTime: true,
@@ -645,6 +662,7 @@ export async function buildUserSchedule(params: {
 
   function enrichMaterialized(row: PersistedScheduleRow): MaterializedScheduleEntry {
     const campaign = row.timelinePoint.campaign;
+    const membershipRole = membershipRoleByCampaign.get(campaign.id);
     const identity = resolveMaterializedSessionIdentity({
       current: {
         timelinePointId: row.timelinePointId,
@@ -677,6 +695,14 @@ export async function buildUserSchedule(params: {
       campaignId: campaign.id,
       campaignHandle: campaign.handle,
       campaignName: campaign.name,
+      gameSystemLabel: resolveGameSystemLabel(
+        campaign.gameSystem,
+        campaign.customGameSystemName,
+      ),
+      membershipRoleLabel:
+        typeof membershipRole === 'string' && isMembershipRole(membershipRole)
+          ? membershipRoleUiLabel(membershipRole)
+          : 'Guest',
       appearanceProfile: campaign.appearanceProfile,
       timelinePointId: row.timelinePointId,
       sessionTitle: row.timelinePoint.wikiPage.title,
