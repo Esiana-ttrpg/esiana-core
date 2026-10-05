@@ -367,12 +367,24 @@ const CATEGORY_FOLDER_SEGMENT_ALIASES: Record<string, string> = {
   Threads: 'threads',
 };
 
+const DOWNTIME_CATEGORY_SECTIONS: Record<string, string> = {
+  Havens: 'havens',
+  Projects: 'projects',
+};
+
 export function resolveWorkspaceIndexPathForFolderTitle(
   handle: string,
   title: string,
 ): PublicPagePath | null {
   const normalized = title.trim();
   if (!normalized) return null;
+
+  const downtimeSection = DOWNTIME_CATEGORY_SECTIONS[normalized];
+  if (downtimeSection) {
+    return asPublicPagePath(
+      `${campaignWorkspaceIndexPath(handle, 'downtime')}?section=${downtimeSection}`,
+    );
+  }
 
   const aliasSegment = CATEGORY_FOLDER_SEGMENT_ALIASES[normalized];
   if (aliasSegment) {

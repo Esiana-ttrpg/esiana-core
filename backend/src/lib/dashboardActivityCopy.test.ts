@@ -46,3 +46,26 @@ test('mapCampaignActivityToBulletinItem formats session notes', () => {
   assert.match(item.line, /Session 14 notes were published/);
   assert.equal(item.href, '/campaigns/winter-campaign/notes/tp-1');
 });
+
+test('mapCampaignActivityToBulletinItem links the Havens folder to its downtime section', () => {
+  const item = mapCampaignActivityToBulletinItem(
+    {
+      id: 'a3',
+      actionType: 'CREATE',
+      entityType: 'WIKI_PAGE',
+      entityId: 'havens-folder',
+      entityName: 'Havens',
+      parentContext: 'Downtime',
+      createdAt: new Date('2026-01-03T00:00:00.000Z'),
+    },
+    'winter-campaign',
+    {
+      id: 'havens-folder',
+      title: 'Havens',
+      parentId: 'downtime-folder',
+      templateType: 'DEFAULT',
+    },
+  );
+
+  assert.equal(item.href, '/campaigns/winter-campaign/downtime?section=havens');
+});
