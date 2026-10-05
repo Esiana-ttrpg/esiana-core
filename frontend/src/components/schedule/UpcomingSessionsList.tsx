@@ -9,10 +9,6 @@ import {
   rsvpRespondedFraction,
 } from '@/components/schedule/RsvpCompletenessIndicator';
 
-function shortCampaignName(name: string): string {
-  return name.length > 28 ? `${name.slice(0, 26)}…` : name;
-}
-
 function campaignAccent(appearanceProfile: unknown): string {
   return resolveCampaignAccentColor({
     appearanceProfile,
@@ -84,15 +80,21 @@ export function UpcomingSessionsList({ upcoming, onRsvpChanged }: UpcomingSessio
             className="rounded-xl border border-border bg-surface/50 px-4 py-3"
             style={{ borderLeftWidth: 3, borderLeftColor: accent }}
           >
-            <p className="text-xs font-semibold tracking-wide text-muted">
-              {formatDayHeader(entry.plannedStartAt)}
-            </p>
-            <Link
-              to={entry.deepLinkPath}
-              className="mt-0.5 block text-base font-semibold text-foreground hover:text-primary"
-            >
-              {shortCampaignName(entry.campaignName)}
-            </Link>
+            <div className="flex items-start justify-between gap-3 text-xs font-semibold tracking-wide text-muted">
+              <span>{formatDayHeader(entry.plannedStartAt)}</span>
+              <span className="text-right">{entry.gameSystemLabel.toUpperCase()}</span>
+            </div>
+            <div className="mt-0.5 flex items-start justify-between gap-3">
+              <Link
+                to={entry.deepLinkPath}
+                className="line-clamp-2 min-w-0 text-base font-semibold text-foreground hover:text-primary"
+              >
+                {entry.campaignName}
+              </Link>
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted">
+                {entry.membershipRoleLabel}
+              </span>
+            </div>
             <p className="text-sm text-muted">
               {isSkipped
                 ? entry.skipReason
