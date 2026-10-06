@@ -55,6 +55,16 @@ test('fetchPluginRemoteText rejects non-allowlisted host before fetch', async ()
   assert.equal(fetchCalled, false);
 });
 
+test('plugin source policy rejects redirect CDN lookalikes', async () => {
+  await assert.rejects(
+    () => fetchPluginRemoteText(new URL('https://release-assets.githubusercontent.com.evil.example/plugin.tgz'), {
+      maxBytes: 1024,
+      timeoutSeconds: 5,
+    }),
+    (error: unknown) => error instanceof NetworkFetchError && /not allowed/.test(error.message),
+  );
+});
+
 test('fetchAssetRemoteBuffer rejects HTTP when allowHttp is false', async () => {
   let fetchCalled = false;
   globalThis.fetch = mock.fn(async () => {

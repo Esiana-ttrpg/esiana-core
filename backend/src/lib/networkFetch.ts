@@ -33,10 +33,12 @@ export class NetworkFetchError extends Error {
   }
 }
 
-// INVARIANT: untrusted URLs are fetched exactly once at the validated URL.
-// redirect is always 'error'. Redirects are never followed.
+// INVARIANT: every untrusted destination is validated and DNS-pinned before fetch.
+// Only unauthenticated plugin downloads follow redirects, with every hop revalidated.
 type FetchMode = 'asset' | 'plugin';
 type AbortReason = 'timeout' | 'size-limit';
+const MAX_PLUGIN_REDIRECTS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 interface RemoteFetchOptions {
   maxBytes: number;
@@ -96,14 +98,52 @@ function pinnedDispatcher(addresses: ValidatedRemoteAddress[]): Agent {
   return new Agent({ connect: { lookup: createPinnedLookup(addresses) } });
 }
 
-async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: NonNullable<Parameters<typeof undiciFetch>[1]>): Promise<{ response: globalThis.Response; dispatcher: Agent }> {
+async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: NonNullable<Parameters<typeof undiciFetch>[1]>, redirect: 'error' | 'manual' = 'error'): Promise<{ response: globalThis.Response; dispatcher: Agent }> {
   const dispatcher = pinnedDispatcher(addresses);
   try {
-    const response = await undiciFetch(url, { ...init, dispatcher, redirect: 'error' }) as unknown as globalThis.Response;
+    const response = await undiciFetch(url, { ...init, dispatcher, redirect }) as unknown as globalThis.Response;
     return { response, dispatcher };
   } catch (error) {
     await dispatcher.close().catch(() => {});
     throw error;
+  }
+}
+
+async function validatePluginFetchTarget(url: URL): Promise<ValidatedRemoteAddress[]> {
+  if (!isPluginSourceUrlSync(url) || !isUrlSafeForImportSync(url, { allowHttp: false })) {
+    return rejectRemoteFetchPolicy(url, 'plugin', false);
+  }
+  try {
+    await resolvePluginUrlSafeForRemoteFetch(url);
+    return await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false });
+  } catch (error) {
+    throw mapPolicyError(error);
+  }
+}
+
+/** Follow a small redirect chain while reapplying plugin host, URL, DNS, and IP checks per hop. */
+async function fetchPluginPinned(
+  initialUrl: URL,
+  init: NonNullable<Parameters<typeof undiciFetch>[1]>,
+): Promise<{ response: globalThis.Response; dispatcher: Agent; url: URL }> {
+  let url = initialUrl;
+  for (let redirects = 0; ; redirects += 1) {
+    const addresses = await validatePluginFetchTarget(url);
+    const pinned = await fetchPinned(url, addresses, init, 'manual');
+    if (!REDIRECT_STATUSES.has(pinned.response.status)) {
+      return { ...pinned, url };
+    }
+
+    const location = pinned.response.headers.get('location');
+    await pinned.response.body?.cancel().catch(() => {});
+    await pinned.dispatcher.close().catch(() => {});
+    if (!location) throw new NetworkFetchError('Plugin download redirect is missing a Location header');
+    if (redirects >= MAX_PLUGIN_REDIRECTS) throw new NetworkFetchError('Plugin download exceeded redirect limit');
+    try {
+      url = new URL(location, url);
+    } catch {
+      throw new NetworkFetchError('Plugin download redirect URL is invalid');
+    }
   }
 }
 
@@ -386,16 +426,12 @@ async function fetchRemoteBody(
       } catch (error) {
         throw mapPolicyError(error);
       }
-      let addresses: ValidatedRemoteAddress[];
-      try { addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false }); }
-      catch (error) { throw mapPolicyError(error); }
-
       const controller = new AbortController();
       const timeoutMs = options.timeoutSeconds * 1000;
       const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
 
       try {
-        const pinned = await fetchPinned(url, addresses, {
+        const pinned = await fetchPluginPinned(url, {
           signal: controller.signal,
           headers: options.headers,
         });
@@ -404,7 +440,7 @@ async function fetchRemoteBody(
           controller,
           options.maxBytes,
           options.timeoutSeconds,
-          url,
+          pinned.url,
         ); } finally { await pinned.dispatcher.close().catch(() => {}); }
       } catch (error) {
         throw toNetworkFetchError(error, controller, options.timeoutSeconds, { url });
@@ -501,8 +537,7 @@ export async function fetchPluginRemoteStream(
     let dispatcher: Agent | undefined;
 
     try {
-      const addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false });
-      const pinned = await fetchPinned(url, addresses, {
+      const pinned = await fetchPluginPinned(url, {
         signal: controller.signal,
         headers: options.headers,
       });
