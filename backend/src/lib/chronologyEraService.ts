@@ -244,11 +244,21 @@ export async function chronologyEraImpact(ctx: CampaignContext, id: string) {
   requireManager(ctx);
   return impact(prisma, ctx, id);
 }
-export async function deleteChronologyEra(ctx: CampaignContext, id: string) {
+export async function deleteChronologyEra(
+  ctx: CampaignContext,
+  id: string,
+  options: { tx?: Db; authorization?: 'visible' | 'manager' } = {},
+) {
   requireManager(ctx);
-  await prisma.$transaction(async db => {
+  const remove = async (db: Db) => {
     await lock(db, ctx.campaignId);
-    const era = await accessibleEra(db, ctx, id);
+    const era = options.authorization === 'manager'
+      ? await db.campaignEra.findUnique({
+          where: { campaignId_id: { campaignId: ctx.campaignId, id } },
+          include: { calendar: true, overview: true },
+        })
+      : await accessibleEra(db, ctx, id);
+    if (!era) throw new EraError('Era not found.', 404);
     const pages = await db.wikiPage.findMany({ where: { campaignId: ctx.campaignId }, select: { id: true, metadata: true } });
     for (const page of pages) {
       const detached = visitTrajectories(page.metadata, id, { id, name: era.name, calendarName: era.calendar.name, visibility: era.visibility });
@@ -260,5 +270,7 @@ export async function deleteChronologyEra(ctx: CampaignContext, id: string) {
     const remaining = await db.campaignEra.findMany({ where: { campaignId: ctx.campaignId, calendarId: era.calendarId }, orderBy: { sortOrder: 'asc' } });
     for (const [sortOrder, row] of remaining.entries()) await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id: row.id } }, data: { sortOrder } });
     await syncEraProjection(db, ctx.campaignId);
-  });
+  };
+  if (options.tx) await remove(options.tx);
+  else await prisma.$transaction(remove);
 }

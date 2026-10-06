@@ -83,7 +83,7 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
   const otherTrack = await prisma.fantasyCalendar.create({ data: {
     campaignId: campaign.id, name: 'Other history', weekdays: [], months: calendar.months!, seasons: [], moons: [], leapDays: [],
   } });
-  const otherEra = await saveChronologyEra(gm, { ...input, calendarId: otherTrack.id, name: 'Other track current', visibility: 'PARTY' });
+  const otherEra = await saveChronologyEra(gm, { ...input, calendarId: otherTrack.id, name: 'Other track current', visibility: 'DM_ONLY' });
   const otherOverview = (await listChronologyEras(gm)).find(era => era.id === otherEra)!.overviewPageId;
   await reorderChronologyEras(gm, calendar.id, [id, 'legacy', second]);
   eras = await listChronologyEras(gm);
@@ -122,7 +122,7 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
   assert.equal((await listChronologyEras(gm)).filter(era => era.calendarId === calendar.id).some(era => era.isCurrent), false);
   assert.deepEqual((await listChronologyEras(gm)).filter(era => era.calendarId === calendar.id).map(era => era.sortOrder), [0, 1]);
   let calendarDeleteBody: unknown;
-  await deleteFantasyCalendar({ campaign: gm, params: { calendarId: otherTrack.id } } as any, {
+  await deleteFantasyCalendar({ campaign: player, params: { calendarId: otherTrack.id } } as any, {
     status(code: number) { assert.equal(code, 200); return this; },
     json(body: unknown) { calendarDeleteBody = body; return this; },
   } as any);

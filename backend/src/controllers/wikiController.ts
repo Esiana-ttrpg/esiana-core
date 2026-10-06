@@ -3187,15 +3187,23 @@ export async function updateWikiPageMetadata(
 
   const parsed = parseQuestMetadata(updatedPage.metadata);
   const threadParse = parseThreadMetadataWithWarnings(updatedPage.metadata);
+  let responseMetadata = isQuestMetadataPresent(updatedPage.metadata)
+    ? mergeQuestMetadata(
+        updatedPage.metadata,
+        sanitizeQuestMetadataForRole(parsed, canManage),
+      )
+    : isThreadMetadataPresent(updatedPage.metadata)
+      ? mergeThreadMetadata(updatedPage.metadata, threadParse.fields)
+      : updatedPage.metadata;
+  if (!hasElevatedNarrativeView(ctx.actor)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    responseMetadata = redactEraReferences(
+      responseMetadata,
+      await hiddenEraIds(ctx.campaignId),
+    ) as typeof responseMetadata;
+  }
   res.json({
-    metadata: isQuestMetadataPresent(updatedPage.metadata)
-      ? mergeQuestMetadata(
-          updatedPage.metadata,
-          sanitizeQuestMetadataForRole(parsed, canManage),
-        )
-      : isThreadMetadataPresent(updatedPage.metadata)
-        ? mergeThreadMetadata(updatedPage.metadata, threadParse.fields)
-        : updatedPage.metadata,
+    metadata: responseMetadata,
     ...(canManage && threadParse.warnings.length > 0
       ? { metadataWarnings: threadParse.warnings }
       : {}),
