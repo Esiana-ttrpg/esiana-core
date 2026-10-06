@@ -7,6 +7,7 @@ import {
 import { campaignPath } from '@/lib/campaignPaths';
 import type { CampaignMapAsset } from '@/types/maps';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { MapUploadDialog } from './MapUploadDialog';
 
 interface MapsManagerPanelProps {
   campaignHandle: string;
@@ -17,6 +18,7 @@ export function MapsManagerPanel({ campaignHandle }: MapsManagerPanelProps) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const reload = async () => {
     setLoading(true);
@@ -34,19 +36,17 @@ export function MapsManagerPanel({ campaignHandle }: MapsManagerPanelProps) {
     void reload();
   }, [campaignHandle]);
 
-  const onUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const onUpload = async (file: File, displayName: string) => {
     setUploading(true);
     setError(null);
     try {
-      await uploadCampaignMap(campaignHandle, file);
+      await uploadCampaignMap(campaignHandle, file, displayName);
+      setUploadFile(null);
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
-      event.target.value = '';
     }
   };
 
@@ -66,7 +66,10 @@ export function MapsManagerPanel({ campaignHandle }: MapsManagerPanelProps) {
             accept="image/png,image/jpeg,image/webp"
             className="hidden"
             disabled={uploading}
-            onChange={onUpload}
+            onChange={(event) => {
+              setUploadFile(event.target.files?.[0] ?? null);
+              event.target.value = '';
+            }}
           />
         </label>
       </div>
@@ -102,6 +105,16 @@ export function MapsManagerPanel({ campaignHandle }: MapsManagerPanelProps) {
           ))}
         </ul>
       )}
+      <MapUploadDialog
+        file={uploadFile}
+        uploading={uploading}
+        error={uploadFile ? error : null}
+        onClose={() => {
+          setUploadFile(null);
+          setError(null);
+        }}
+        onUpload={onUpload}
+      />
     </section>
   );
 }

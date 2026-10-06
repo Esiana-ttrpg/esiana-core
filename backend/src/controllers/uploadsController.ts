@@ -45,6 +45,10 @@ export async function uploadCampaignImage(
       campaignId,
       file: req.file,
       type: type as AssetType,
+      displayName:
+        type === AssetTypes.MAP && typeof req.body?.displayName === 'string'
+          ? req.body.displayName.slice(0, 200)
+          : null,
       uploadedByUserId,
     });
 

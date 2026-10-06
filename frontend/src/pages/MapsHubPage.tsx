@@ -16,6 +16,7 @@ import type { CategoryDiscoverySummary } from '@/lib/wiki';
 import { MapCard, type MapCardSize } from '@/components/maps/MapCard';
 import { MapHubTable } from '@/components/maps/MapHubTable';
 import { MapDeleteDialog } from '@/components/maps/MapDeleteDialog';
+import { MapUploadDialog } from '@/components/maps/MapUploadDialog';
 import { MapsHierarchyView } from '@/components/maps/MapsHierarchyView';
 import {
   buildWikiBreadcrumbs,
@@ -62,6 +63,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
   const [viewMode, setViewMode] = useState<MapsBrowseViewMode>('hierarchy');
   const [browseHydrated, setBrowseHydrated] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CampaignMapAsset | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const pageById = buildWikiPageLookup(flatPages);
   const parentChain = resolveWikiParentChain(categoryPageId, null, pageById);
@@ -158,19 +160,17 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
     canCreate: canManage,
   });
 
-  const onUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const onUpload = async (file: File, displayName: string) => {
     setUploading(true);
     setError(null);
     try {
-      await uploadCampaignMap(campaignHandle, file);
+      await uploadCampaignMap(campaignHandle, file, displayName);
+      setUploadFile(null);
       await reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
-      event.target.value = '';
     }
   };
 
@@ -182,7 +182,10 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
         disabled={uploading}
-        onChange={onUpload}
+        onChange={(event) => {
+          setUploadFile(event.target.files?.[0] ?? null);
+          event.target.value = '';
+        }}
       />
       <button
         type="button"
@@ -320,6 +323,16 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
           setDeleteTarget(null);
           await reload();
         }}
+      />
+      <MapUploadDialog
+        file={uploadFile}
+        uploading={uploading}
+        error={uploadFile ? error : null}
+        onClose={() => {
+          setUploadFile(null);
+          setError(null);
+        }}
+        onUpload={onUpload}
       />
     </CategoryHubShell>
   );
