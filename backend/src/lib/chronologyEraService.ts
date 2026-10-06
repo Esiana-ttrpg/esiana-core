@@ -65,6 +65,11 @@ export async function createEraOverview(db: Db, campaignId: string, name: string
 
 /** Idempotent portable backfill. The momentum row serializes migration and subsequent mutations. */
 export async function ensureChronologyEras(campaignId: string, tx?: Db): Promise<void> {
+  const existing = await (tx ?? prisma).campaignMomentum.findUnique({
+    where: { campaignId },
+    select: { erasMigrated: true },
+  });
+  if (existing?.erasMigrated) return;
   const migrate = async (db: Db) => {
     const row = await db.campaignMomentum.upsert({ where: { campaignId }, update: {}, create: { campaignId } });
     if (row.erasMigrated) return;

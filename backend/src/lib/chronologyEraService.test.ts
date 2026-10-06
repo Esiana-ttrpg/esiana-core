@@ -12,6 +12,7 @@ import { eraContainsDate } from '../../../shared/chronologyEras.js';
 import { redactEraReferences } from './eraDisclosure.js';
 import { convertEpochToCalendarState } from './timeEngine.js';
 import { buildOperationalPayload, restoreOperationalPayload } from './campaignExport/sovereignOperational.js';
+import { deleteFantasyCalendar } from '../controllers/fantasyCalendarController.js';
 
 // env.ts intentionally reloads development config; restore the isolated fixture selection.
 if (process.env.CHRONOLOGY_ERA_TEST_DATABASE_URL) {
@@ -83,6 +84,7 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
     campaignId: campaign.id, name: 'Other history', weekdays: [], months: calendar.months!, seasons: [], moons: [], leapDays: [],
   } });
   const otherEra = await saveChronologyEra(gm, { ...input, calendarId: otherTrack.id, name: 'Other track current', visibility: 'PARTY' });
+  const otherOverview = (await listChronologyEras(gm)).find(era => era.id === otherEra)!.overviewPageId;
   await reorderChronologyEras(gm, calendar.id, [id, 'legacy', second]);
   eras = await listChronologyEras(gm);
   assert.deepEqual(eras.filter(era => era.calendarId === calendar.id).map(era => era.id), [id, 'legacy', second]);
@@ -119,6 +121,15 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
   assert.equal(getCurrentCampaignEra(state).id, '');
   assert.equal((await listChronologyEras(gm)).filter(era => era.calendarId === calendar.id).some(era => era.isCurrent), false);
   assert.deepEqual((await listChronologyEras(gm)).filter(era => era.calendarId === calendar.id).map(era => era.sortOrder), [0, 1]);
+  let calendarDeleteBody: unknown;
+  await deleteFantasyCalendar({ campaign: gm, params: { calendarId: otherTrack.id } } as any, {
+    status(code: number) { assert.equal(code, 200); return this; },
+    json(body: unknown) { calendarDeleteBody = body; return this; },
+  } as any);
+  assert.deepEqual(calendarDeleteBody, { ok: true });
+  assert.equal(await prisma.campaignEra.findUnique({ where: { campaignId_id: { campaignId: campaign.id, id: otherEra } } }), null);
+  assert.equal(await prisma.wikiPage.findUnique({ where: { id: otherOverview } }), null);
+  assert.equal(await prisma.fantasyCalendar.findUnique({ where: { id: otherTrack.id } }), null);
 });
 
 test('era recurrence follows manual sequence, including private eras and midnight starts', () => {

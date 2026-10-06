@@ -25,7 +25,7 @@ try {
   const cli = path.join(path.dirname(require.resolve('prisma/package.json')), 'build/index.js');
   run([cli, 'migrate', 'deploy']);
   run([cli, 'migrate', 'status']);
-  run(['--import', 'tsx', '--test', 'src/lib/chronologyEraService.test.ts']);
+  run(['--import', 'tsx', '--test', '--test-concurrency=1', 'src/lib/chronologyEraService.test.ts', 'src/lib/campaignExport/sovereignOperational.test.ts']);
   if (process.argv.includes('--backend-tests')) {
     const pkg = JSON.parse(fs.readFileSync(path.join(backend, 'package.json'), 'utf8'));
     const files = pkg.scripts.test.split(' ').filter(value => value.endsWith('.test.ts'));

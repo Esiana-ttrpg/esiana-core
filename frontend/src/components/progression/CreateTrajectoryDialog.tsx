@@ -111,7 +111,7 @@ export function CreateTrajectoryDialog({
     if (byEraId) {
       const fromEra = eras.find((era) => era.id === fromEraId);
       const byEra = eras.find((era) => era.id === byEraId);
-      if (fromEra && byEra && (byEra.calendarId !== fromEra.calendarId || byEra.sortOrder < fromEra.sortOrder)) {
+      if (fromEra && byEra && ((byEra.calendarId ?? '') !== (fromEra.calendarId ?? '') || byEra.sortOrder < fromEra.sortOrder)) {
         setError('The By era must match or follow the From era.');
         return;
       }
@@ -320,7 +320,7 @@ export function CreateTrajectoryDialog({
             className={fieldClass}
           >
             <option value="">Open-ended</option>
-            {eras.filter(era => era.calendarId === eras.find(from => from.id === fromEraId)?.calendarId).map((era) => (
+            {eras.filter(era => (era.calendarId ?? '') === (eras.find(from => from.id === fromEraId)?.calendarId ?? '')).map((era) => (
               <option key={era.id} value={era.id}>
                 {era.calendarName ? `${era.calendarName} · ` : ''}{era.name}{era.visibility === 'DM_ONLY' ? ' [DM]' : ''}
               </option>

@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import { Prisma } from '../lib/prismaClient.js';
 import { getCampaignPrisma } from '../lib/campaignPrisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
+import { deleteChronologyEra, ensureChronologyEras } from '../lib/chronologyEraService.js';
 import {
   buildFantasyCalendarExportPayload,
   fantasyCalendarExportFilename,
@@ -219,6 +220,16 @@ export async function deleteFantasyCalendar(
         'Cannot delete the master chronology calendar. Promote another calendar to master before deleting this one.',
     });
     return;
+  }
+
+  await ensureChronologyEras(campaignId);
+  const eras = await campaignPrisma.campaignEra.findMany({
+    where: { campaignId, calendarId },
+    orderBy: { sortOrder: 'asc' },
+    select: { id: true },
+  });
+  for (const era of eras) {
+    await deleteChronologyEra(req.campaign!, era.id);
   }
 
   await campaignPrisma.fantasyCalendar.deleteMany({

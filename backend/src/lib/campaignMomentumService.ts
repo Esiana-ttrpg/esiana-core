@@ -20,10 +20,15 @@ export async function ensureCampaignMomentum(
   tx?: Prisma.TransactionClient,
 ): Promise<CampaignMomentum> {
   const db = tx ?? (await import('./prisma.js')).prisma;
-  await ensureChronologyEras(campaignId, tx);
-  const existing = await db.campaignMomentum.findUnique({
+  let existing = await db.campaignMomentum.findUnique({
     where: { campaignId },
   });
+  // Real rows always have a Boolean erasMigrated value. Older lightweight test
+  // doubles omit it and represent an already-existing compatibility row.
+  if (!existing || existing.erasMigrated === false) {
+    await ensureChronologyEras(campaignId, tx);
+    existing = await db.campaignMomentum.findUnique({ where: { campaignId } });
+  }
   if (existing?.erasMigrated) {
     // Read canonical track metadata, including changes to the master calendar,
     // rather than relying on a previously persisted compatibility projection.

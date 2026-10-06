@@ -163,7 +163,13 @@ export async function restoreOperationalPayload(
   if (payload.campaignEras) {
     await prisma.$transaction(async tx => {
       const calendars = new Set((await tx.fantasyCalendar.findMany({ where: { campaignId }, select: { id: true } })).map(row => row.id));
-      const pages = new Set((await tx.wikiPage.findMany({ where: { campaignId }, select: { id: true } })).map(row => row.id));
+      const pages = new Set((await tx.wikiPage.findMany({
+        where: { campaignId },
+        select: { id: true, metadata: true },
+      })).filter(row => {
+        const metadata = row.metadata as Record<string, unknown> | null;
+        return metadata?.eraOverview === true;
+      }).map(row => row.id));
       for (const row of payload.campaignEras!) {
         if (!row || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 120
           || !Number.isInteger(row.sortOrder) || Number(row.sortOrder) < 0

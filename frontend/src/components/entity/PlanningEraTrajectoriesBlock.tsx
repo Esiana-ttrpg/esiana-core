@@ -24,21 +24,21 @@ interface PlanningEraTrajectoriesBlockProps<T extends TrajectoriesDraft> {
 
 function upsertTrajectory(
   trajectories: EraTrajectory[],
-  fromEraId: string | null,
+  trajectoryIndex: number,
   patch: Partial<EraTrajectory>,
 ): EraTrajectory[] {
-  const existing = trajectories.find((t) => trajectoryKey(t) === fromEraId);
-  const nextEraId = patch.eraId !== undefined ? patch.eraId : existing ? existing.eraId : fromEraId;
+  const existing = trajectoryIndex >= 0 ? trajectories[trajectoryIndex] : undefined;
+  const nextEraId = patch.eraId !== undefined ? patch.eraId : existing?.eraId ?? null;
   if (nextEraId != null && nextEraId !== existing?.eraId && trajectories.some((t) => t.eraId === nextEraId)) {
     return trajectories;
   }
   const nextTrajectory = createEraTrajectory({
-    ...(existing ?? { eraId: fromEraId }),
+    ...(existing ?? { eraId: null }),
     ...patch,
     eraId: nextEraId,
   });
-  const without = trajectories.filter((t) => trajectoryKey(t) !== fromEraId);
-  return [...without, nextTrajectory];
+  if (trajectoryIndex < 0) return [...trajectories, nextTrajectory];
+  return trajectories.map((trajectory, index) => index === trajectoryIndex ? nextTrajectory : trajectory);
 }
 
 function trajectoriesForPersistence(trajectories: EraTrajectory[]): EraTrajectory[] {
@@ -77,9 +77,9 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
     };
   }, [campaignHandle]);
 
-  function updateTrajectory(fromEraId: string | null, patch: Partial<EraTrajectory>, persist = false) {
+  function updateTrajectory(trajectoryIndex: number, patch: Partial<EraTrajectory>, persist = false) {
     setDraft((prev) => {
-      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, fromEraId, patch);
+      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, trajectoryIndex, patch);
       if (persist) {
         void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       }
@@ -101,7 +101,8 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
     if (!currentEra) return;
     if (draft.eraTrajectories.some((t) => t.eraId === currentEra.id)) return;
     setDraft((prev) => {
-      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, currentEra.id, {
+      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, -1, {
+        eraId: currentEra.id,
         direction: '',
         outcome: null,
         byEraId: null,
@@ -111,9 +112,9 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
     });
   }
 
-  function removeTrajectory(eraId: string | null) {
+  function removeTrajectory(trajectoryIndex: number) {
     setDraft((prev) => {
-      const eraTrajectories = prev.eraTrajectories.filter((t) => trajectoryKey(t) !== eraId);
+      const eraTrajectories = prev.eraTrajectories.filter((_trajectory, candidate) => candidate !== trajectoryIndex);
       void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       return { ...prev, eraTrajectories };
     });
@@ -127,7 +128,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
           to={`/campaigns/${campaignHandle}/chronology?view=eras`}
           className="text-primary hover:underline"
         >
-          Progression › Trajectories
+          Chronology › Eras
         </Link>
         .
       </p>
@@ -163,14 +164,14 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
               </tr>
             </thead>
             <tbody>
-              {trajectories.map((trajectory) => (
-                <tr key={trajectoryKey(trajectory)} className="border-t border-border/50 align-top">
+              {trajectories.map((trajectory, trajectoryIndex) => (
+                <tr key={`${trajectoryKey(trajectory)}:${trajectoryIndex}`} className="border-t border-border/50 align-top">
                   <td className="py-2 pr-2">
                     <input
                       type="text"
                       value={trajectory.direction ?? ''}
                       onChange={(e) =>
-                        updateTrajectory(trajectoryKey(trajectory), {
+                        updateTrajectory(trajectoryIndex, {
                           direction: e.target.value,
                         })
                       }
@@ -182,7 +183,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       type="text"
                       value={trajectory.gmNote ?? ''}
                       onChange={(e) =>
-                        updateTrajectory(trajectoryKey(trajectory), {
+                        updateTrajectory(trajectoryIndex, {
                           gmNote: e.target.value,
                         })
                       }
@@ -195,7 +196,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                     <select
                       value={trajectory.eraId ?? ''}
                       onChange={(e) => {
-                        updateTrajectory(trajectoryKey(trajectory), { eraId: e.target.value }, true);
+                        updateTrajectory(trajectoryIndex, { eraId: e.target.value }, true);
                       }}
                       className={fieldClass}
                     >
@@ -212,7 +213,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       type="text"
                       value={trajectory.outcome ?? ''}
                       onChange={(e) =>
-                        updateTrajectory(trajectoryKey(trajectory), {
+                        updateTrajectory(trajectoryIndex, {
                           outcome: e.target.value,
                         })
                       }
@@ -226,7 +227,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       value={trajectory.byEraId ?? ''}
                       onChange={(e) => {
                         updateTrajectory(
-                          trajectoryKey(trajectory),
+                          trajectoryIndex,
                           { byEraId: e.target.value || null },
                           true,
                         );
@@ -244,7 +245,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                   <td className="py-2">
                     <button
                       type="button"
-                      onClick={() => removeTrajectory(trajectoryKey(trajectory))}
+                      onClick={() => removeTrajectory(trajectoryIndex)}
                       className="text-[10px] text-muted-foreground hover:text-foreground"
                     >
                       Remove

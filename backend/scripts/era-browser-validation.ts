@@ -40,12 +40,16 @@ await new Promise<void>(resolve => server.once('listening', resolve));
 const port = (server.address() as any).port;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../frontend');
 const vite = await createServer({ configFile: false, root, optimizeDeps: { entries: ['e2e/eras.html'] }, plugins: [{ name: 'shared-typescript', enforce: 'pre', resolveId(source, importer) {
-  if (importer && source.startsWith('.') && source.endsWith('.js') && path.normalize(importer).includes(path.sep + 'shared' + path.sep)) {
+  if (importer && source.startsWith('.') && source.endsWith('.js') && /[\\/]shared[\\/]/.test(importer)) {
     const file = path.resolve(path.dirname(importer), source.replace(/\.js$/, '.ts')); if (existsSync(file)) return file;
+  }
+}, transform(code, id) {
+  if (/[\\/]shared[\\/].*\.ts$/.test(id)) {
+    return code.replace(/(from\s+['"]\.\.?\/[^'"]+)\.js(['"])/g, '$1.ts$2');
   }
 } }, react()], resolve: { alias: { '@/contexts/WikiContext': path.join(root, 'e2e/era-wiki-context.ts'), '@': path.join(root, 'src'), '@shared': path.resolve(root, '../shared') } }, server: { host: '127.0.0.1', port: 0, proxy: { '/api': `http://127.0.0.1:${port}`, '/fixture': `http://127.0.0.1:${port}` } } });
 await vite.listen();
-const browser = await chromium.launch({ channel: 'msedge', headless: true });
+const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage();
   const errors: string[] = [];
