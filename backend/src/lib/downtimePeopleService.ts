@@ -4,6 +4,9 @@ import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { canViewWikiPage } from './wikiTree.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
+import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
+import { RESERVED_PATH_KEY_SEGMENTS } from '../../../shared/campaignWorkspaceRoutes.js';
+import { generatePathKeyFromTitle } from '../../../shared/pathKeyUtils.js';
 
 const TYPES = ['HIRELING', 'FOLLOWER', 'MEMBER'] as const;
 const STATUSES = ['ACTIVE', 'INACTIVE', 'FORMER'] as const;
@@ -45,6 +48,13 @@ function featuresOf(value: unknown) {
     if (!title) return [];
     return [{ id: text(item.id, 120) ?? `feature-${index}`, title, description: text(item.description, 1000) }];
   });
+}
+
+export function buildHirelingCharacterRouting(title: string, existingCharacterPathKeys: Iterable<string>) {
+  return {
+    workspace: CampaignWorkspace.CHARACTERS,
+    pathKey: generatePathKeyFromTitle(title, new Set(existingCharacterPathKeys), RESERVED_PATH_KEY_SEGMENTS),
+  };
 }
 
 function present(row: any, handle: string, role: CampaignMemberRole | null, canEdit: boolean) {
@@ -120,10 +130,17 @@ export async function createDowntimePerson(campaignId: string, actorUserId: stri
         const page = await tx.wikiPage.findFirst({ where: { id: pageId, campaignId, deletedAt: null } });
         if (!page) throw new Error('Character not found.');
       } else {
-        const candidates = await tx.wikiPage.findMany({ where: { campaignId, deletedAt: null }, select: { id: true, metadata: true } });
+        const candidates = await tx.wikiPage.findMany({
+          where: { campaignId, deletedAt: null },
+          select: { id: true, metadata: true, workspace: true, pathKey: true },
+        });
         const folder = candidates.find((page) => { const meta = page.metadata as Record<string, unknown> | null; return meta?.systemCategoryKey === 'characters' || meta?.categoryKey === 'characters'; });
         if (!folder) throw new Error('Characters category not found.');
-        const page = await tx.wikiPage.create({ data: { campaignId, parentId: folder.id, title: characterName!, visibility: WikiVisibility.PARTY, templateType: 'CHARACTER', metadata: { character: {} }, createdByUserId: actorUserId }, select: { id: true } });
+        const routing = buildHirelingCharacterRouting(
+          characterName!,
+          candidates.flatMap((page) => page.workspace === CampaignWorkspace.CHARACTERS && page.pathKey ? [page.pathKey] : []),
+        );
+        const page = await tx.wikiPage.create({ data: { campaignId, parentId: folder.id, title: characterName!, visibility: WikiVisibility.PARTY, templateType: 'CHARACTER', workspace: routing.workspace, pathKey: routing.pathKey, metadata: { character: {} }, createdByUserId: actorUserId }, select: { id: true } });
         pageId = page.id;
       }
       const existing = await tx.downtimePersonRelationship.findFirst({ where: { campaignId, characterPageId: pageId!, status: 'ACTIVE' } });

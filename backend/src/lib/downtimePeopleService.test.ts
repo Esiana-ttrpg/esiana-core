@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
-import { presentDowntimePerson, resolveLifecycleAssignment } from './downtimePeopleService.js';
+import { buildHirelingCharacterRouting, presentDowntimePerson, resolveLifecycleAssignment } from './downtimePeopleService.js';
 
 test('inactive and former relationships clear their current assignment', () => {
   assert.deepEqual(resolveLifecycleAssignment('INACTIVE', { havenId: 'haven-1', projectId: null }), { havenId: null, projectId: null });
@@ -43,4 +43,11 @@ test('hireling presentation uses the canonical Character workspace path', () => 
   }, 'red-sands', 'PLAYER', false);
 
   assert.equal(person.characterHref, '/campaigns/red-sands/characters/nyra');
+});
+
+test('new hireling Characters receive a unique Character workspace path key', () => {
+  assert.deepEqual(buildHirelingCharacterRouting('Nyra of the Vale', ['nyra-of-the-vale']), {
+    workspace: CampaignWorkspace.CHARACTERS,
+    pathKey: 'nyra-of-the-vale-2',
+  });
 });

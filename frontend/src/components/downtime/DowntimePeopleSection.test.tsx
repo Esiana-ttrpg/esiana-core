@@ -39,4 +39,23 @@ test('editors get a quick assignment dropdown with haven and project choices', (
   assert.match(html, /aria-label="Assignment for Nyra"/);
   assert.match(html, /value="haven:haven-1">The Lantern House/);
   assert.match(html, /value="project:project-1">Chart the Hollow Road/);
+  assert.match(html, /<span class="block text-xs text-muted">Unassigned<\/span>/);
+});
+
+test('editors retain a link to the current assignment beside the quick selector', () => {
+  const assigned = {
+    ...data,
+    people: [{
+      ...data.people[0]!,
+      assignment: { kind: 'haven' as const, id: 'haven-1', label: 'The Lantern House', href: '/campaigns/red-sands/havens/the-lantern-house' },
+    }],
+  };
+  const html = renderToStaticMarkup(
+    <MemoryRouter>
+      <DowntimePeopleSection data={assigned} campaignHandle="red-sands" onChanged={() => undefined} />
+    </MemoryRouter>,
+  );
+
+  assert.match(html, /href="\/campaigns\/red-sands\/havens\/the-lantern-house"/);
+  assert.match(html, /View The Lantern House/);
 });

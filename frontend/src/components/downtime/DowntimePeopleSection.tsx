@@ -54,7 +54,12 @@ export function DowntimePeopleSection({ data, campaignHandle, onChanged }: { dat
         <td className="px-4 py-3 font-medium"><Link className="text-primary hover:underline" to={person.characterHref}>{person.characterName}</Link></td>
         <td className="px-4 py-3 text-muted">{person.role ?? '—'}</td>
         <td className="px-4 py-3">{person.canEdit
-          ? <QuickAssignmentSelect person={person} data={data} campaignHandle={campaignHandle} onChanged={onChanged} />
+          ? <div className="space-y-1.5">
+              <QuickAssignmentSelect person={person} data={data} campaignHandle={campaignHandle} onChanged={onChanged} />
+              {person.assignment
+                ? <Link className="block text-xs text-primary hover:underline" to={person.assignment.href}>View {person.assignment.label}</Link>
+                : <span className="block text-xs text-muted">Unassigned</span>}
+            </div>
           : person.assignment ? <Link className="hover:underline" to={person.assignment.href}>{person.assignment.label}</Link> : <span className="text-muted">Unassigned</span>}</td>
         <td className="px-4 py-3 text-muted">{person.compensation.label}</td><td className="px-4 py-3 capitalize">{person.status.toLowerCase()}</td>
         <td className="px-4 py-3 text-right">{person.canEdit ? <button type="button" className="text-xs text-primary hover:underline" onClick={() => setEditing(person)}>Edit</button> : null}</td>
