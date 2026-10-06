@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Settings } from 'lucide-react';
+import { Maximize2, Minimize2, Settings } from 'lucide-react';
 import { fetchCampaignMap, fetchCampaignMaps, resolveMapsHubPath } from '@/lib/maps';
 import { fetchTimeTracking, type TimeTrackingBundle } from '@/lib/timeTrackingApi';
 import { campaignPath, campaignWikiPath, readCampaignHandle } from '@/lib/campaignPaths';
@@ -56,6 +56,7 @@ export function MapViewerPage() {
   const [editingObject, setEditingObject] = useState<MapSceneObjectDto | null>(null);
   const [mapActionError, setMapActionError] = useState<string | null>(null);
   const [knowledgeFogEnabled, setKnowledgeFogEnabled] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const wikiPages = useMemo(
     () => flattenWikiTree(tree).map((page) => ({ id: page.id, title: page.title })),
@@ -178,6 +179,17 @@ export function MapViewerPage() {
     }
   }, [editorTool]);
 
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setFullscreen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [fullscreen]);
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -236,7 +248,13 @@ export function MapViewerPage() {
     ) : null;
 
   return (
-    <div className="w-full min-w-0 space-y-3">
+    <div
+      className={
+        fullscreen
+          ? 'fixed inset-0 z-[1900] w-full min-w-0 space-y-2 overflow-y-auto bg-background p-3'
+          : 'w-full min-w-0 space-y-3'
+      }
+    >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <Link
@@ -264,6 +282,22 @@ export function MapViewerPage() {
               scene.applyPresentationPreset(preset, setViewEpochMinute);
             }}
           />
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
+            onClick={() => setFullscreen((value) => !value)}
+            aria-label={fullscreen ? 'Exit fullscreen map' : 'View map fullscreen'}
+            title={fullscreen ? 'Exit fullscreen (Esc)' : 'View fullscreen'}
+          >
+            {fullscreen ? (
+              <Minimize2 className="size-4" aria-hidden />
+            ) : (
+              <Maximize2 className="size-4" aria-hidden />
+            )}
+            <span className={fullscreen ? '' : 'sr-only'}>
+              {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            </span>
+          </button>
           {canEdit ? (
             <Link
               to={campaignPath(campaignHandle, 'maps', assetId, 'settings')}
@@ -276,7 +310,7 @@ export function MapViewerPage() {
         </div>
       </header>
 
-      {showBreadcrumbTrail ? (
+      {showBreadcrumbTrail && !fullscreen ? (
         <MapViewerToolbar
           mapsHubHref={mapsHubPath}
           breadcrumbs={breadcrumbs}
@@ -376,6 +410,7 @@ export function MapViewerPage() {
           <MapCanvas
             campaignHandle={campaignHandle}
             map={detail.map}
+            fullscreen={fullscreen}
             canEdit={canEdit}
             wikiPages={wikiPages}
             campaignMaps={campaignMaps}

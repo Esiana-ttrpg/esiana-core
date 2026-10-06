@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   MapContainer,
   ImageOverlay,
+  useMap,
   useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
@@ -30,6 +31,7 @@ interface MapCanvasProps {
   wikiPages?: { id: string; title: string }[];
   campaignMaps?: CampaignMapAsset[];
   className?: string;
+  fullscreen?: boolean;
   editMode: boolean;
   ghostMode: boolean;
   onToggleEditMode: () => void;
@@ -45,6 +47,17 @@ interface MapCanvasProps {
   isPersistingDraw?: boolean;
   onNavigateWiki?: (pageId: string) => void;
   onNavigateMap?: (assetId: string, title?: string) => void;
+}
+
+function MapResizeSync({ fullscreen }: { fullscreen: boolean }) {
+  const leafletMap = useMap();
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => leafletMap.invalidateSize());
+    return () => window.cancelAnimationFrame(frame);
+  }, [fullscreen, leafletMap]);
+
+  return null;
 }
 
 function MapInteractionLayer({
@@ -70,6 +83,7 @@ export function MapCanvas({
   wikiPages = [],
   campaignMaps = [],
   className = '',
+  fullscreen = false,
   editMode,
   ghostMode,
   onToggleEditMode,
@@ -130,7 +144,13 @@ export function MapCanvas({
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="relative min-h-[min(72vh,780px)] overflow-hidden rounded-xl border border-border bg-[#1a1a1a]">
+      <div
+        className={`relative overflow-hidden border border-border bg-[#1a1a1a] ${
+          fullscreen
+            ? 'h-[calc(100dvh-11rem)] min-h-[24rem] rounded-lg'
+            : 'min-h-[min(72vh,780px)] rounded-xl'
+        }`}
+      >
         {loading ? (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20">
             <LoadingSpinner />
@@ -184,9 +204,14 @@ export function MapCanvas({
           minZoom={-3}
           maxZoom={4}
           zoom={0}
-          style={{ height: 'min(72vh, 780px)', width: '100%', background: '#111' }}
+          style={{
+            height: fullscreen ? '100%' : 'min(72vh, 780px)',
+            width: '100%',
+            background: '#111',
+          }}
           scrollWheelZoom
         >
+          <MapResizeSync fullscreen={fullscreen} />
           <ImageOverlay url={imageUrl} bounds={bounds} />
           {hiddenZoneGeometries.length > 0 ? (
             <MapFogLayer
