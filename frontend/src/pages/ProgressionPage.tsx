@@ -1,4 +1,3 @@
-import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useEffect } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
@@ -74,13 +73,6 @@ export function ProgressionPage() {
 
   return (
     <div className="wiki-focal-region wiki-focal-region--canvas space-y-6 py-4">
-      <header className="space-y-1">
-        <h1 className={TYPE_DISPLAY_CLASS}>Progression</h1>
-        <p className="text-sm text-muted-foreground">
-          Trajectories, developments, and history — where the world is going and what changed.
-        </p>
-      </header>
-
       {activeSection === 'trajectories' ? (
         <ProgressionTrajectoriesSection campaignHandle={campaignHandle} />
       ) : null}
