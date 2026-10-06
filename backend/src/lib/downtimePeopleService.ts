@@ -3,6 +3,7 @@ import { WikiVisibility } from '../types/domain.js';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { canViewWikiPage } from './wikiTree.js';
+import { buildWikiPageHref } from './wikiLinkService.js';
 
 const TYPES = ['HIRELING', 'FOLLOWER', 'MEMBER'] as const;
 const STATUSES = ['ACTIVE', 'INACTIVE', 'FORMER'] as const;
@@ -10,9 +11,9 @@ type RelationshipType = (typeof TYPES)[number];
 type RelationshipStatus = (typeof STATUSES)[number];
 
 const include = {
-  characterPage: { select: { id: true, title: true, visibility: true } },
-  haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true } } } },
-  project: { include: { wikiPage: { select: { id: true, title: true, visibility: true } } } },
+  characterPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } },
+  haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } } } },
+  project: { include: { wikiPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } } } },
 } satisfies Prisma.DowntimePersonRelationshipInclude;
 
 function text(value: unknown, max = 500): string | null {
@@ -46,15 +47,11 @@ function featuresOf(value: unknown) {
   });
 }
 
-function href(handle: string, pageId: string) {
-  return `/campaigns/${encodeURIComponent(handle)}/wiki/${encodeURIComponent(pageId)}`;
-}
-
 function present(row: any, handle: string, role: CampaignMemberRole | null, canEdit: boolean) {
   const target = row.haven && canViewWikiPage(row.haven.wikiPage.visibility, role)
-    ? { kind: 'haven' as const, id: row.haven.id, label: row.haven.wikiPage.title, href: href(handle, row.haven.wikiPage.id) }
+    ? { kind: 'haven' as const, id: row.haven.id, label: row.haven.wikiPage.title, href: buildWikiPageHref(handle, row.haven.wikiPage) }
     : row.project && canViewWikiPage(row.project.wikiPage.visibility, role)
-      ? { kind: 'project' as const, id: row.project.id, label: row.project.wikiPage.title, href: href(handle, row.project.wikiPage.id) }
+      ? { kind: 'project' as const, id: row.project.id, label: row.project.wikiPage.title, href: buildWikiPageHref(handle, row.project.wikiPage) }
       : null;
   const compensationLabel = row.compensationUnpaid
     ? 'Unpaid'
@@ -65,7 +62,7 @@ function present(row: any, handle: string, role: CampaignMemberRole | null, canE
     id: row.id,
     characterPageId: row.characterPage.id,
     characterName: row.characterPage.title,
-    characterHref: href(handle, row.characterPage.id),
+    characterHref: buildWikiPageHref(handle, row.characterPage),
     relationshipType: row.relationshipType,
     role: row.role,
     status: row.status,
