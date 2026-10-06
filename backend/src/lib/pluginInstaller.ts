@@ -9,8 +9,7 @@ import { registerCampaignPluginDefinition } from './campaignPlugins.js';
 import { fetchAndValidateManifestFromUrl, parseTargetUrl } from './fetchPluginManifest.js';
 import { fetchPluginRemoteStream, NetworkFetchError } from './networkFetch.js';
 import {
-  isBackendOnlyGlobalPlugin,
-  isDataOnlyContentPackPlugin,
+  hasSupportedPluginRuntime,
   isRegistryEntryInstallable,
   PluginScopes,
   registryEntryToManifest,
@@ -200,13 +199,9 @@ async function resolveInstallManifest(
 }
 
 function assertRuntimeManifest(manifest: PluginManifest): void {
-  const backendOptional = isDataOnlyContentPackPlugin(manifest);
-  if (!manifest.backendEntry?.trim() && !backendOptional) {
-    throw new Error('Installed plugin manifest must declare backendEntry');
-  }
-  if (!manifest.frontendEntry && !isBackendOnlyGlobalPlugin(manifest)) {
+  if (!hasSupportedPluginRuntime(manifest)) {
     throw new Error(
-      'Installed plugin manifest must declare frontendEntry (or be a backend-only global plugin with contentPack, campaignGenerator, or developmentProvider capability)',
+      'Installed plugin manifest must declare frontendEntry, or be a supported backend-only or data-only global plugin',
     );
   }
 }
