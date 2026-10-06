@@ -210,6 +210,17 @@ export function isDataOnlyContentPackPlugin(
   return caps.includes(PluginCapabilities.CONTENT_PACK);
 }
 
+/** Whether a manifest has a runtime shape the host can load or expose. */
+export function hasSupportedPluginRuntime(
+  manifest: Pick<PluginManifest, 'scope' | 'capabilities' | 'backendEntry' | 'frontendEntry'>,
+): boolean {
+  // UI-only plugins are valid; they are loaded by the frontend plugin host.
+  if (manifest.frontendEntry?.trim()) return true;
+  if (isDataOnlyContentPackPlugin(manifest)) return true;
+  // Backend-only plugins remain limited to the explicitly supported global capabilities.
+  return Boolean(manifest.backendEntry?.trim()) && isBackendOnlyGlobalPlugin(manifest);
+}
+
 export interface PluginGithubSource {
   type: 'github';
   repo: string;
