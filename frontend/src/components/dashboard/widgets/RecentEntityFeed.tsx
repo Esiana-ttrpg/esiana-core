@@ -9,6 +9,14 @@ interface RecentEntityFeedProps {
   tone?: 'canvas' | 'focal';
 }
 
+const ENTITY_TYPE_LABELS: Record<RecentEntityFeedItem['entityType'], string> = {
+  WIKI_PAGE: 'Lore',
+  QUEST: 'Quest',
+  SESSION: 'Session Notes',
+  CHARACTER: 'Character',
+  CALENDAR_EVENT: 'Chronology event',
+};
+
 export function RecentEntityFeed({
   items,
   emptyMessage = 'Nothing here yet.',
@@ -56,7 +64,9 @@ export function RecentEntityFeed({
               <span className={titleClass}>{item.title}</span>
               {item.freshnessLabel ? (
                 <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
-                  {item.freshnessLabel === 'Updated recently' ? 'Recent' : item.freshnessLabel}
+                  {item.freshnessLabel === 'Updated recently'
+                    ? item.contentTypeLabel || ENTITY_TYPE_LABELS[item.entityType]
+                    : item.freshnessLabel}
                 </span>
               ) : null}
             </span>

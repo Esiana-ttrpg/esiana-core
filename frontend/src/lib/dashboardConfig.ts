@@ -57,6 +57,9 @@ export type DashboardWidgetId =
   | 'recentEntities'
   | 'worldEvents'
   | 'factionsAtWar'
+  | 'description'
+  | 'text'
+  | 'havenDowntime'
   | 'sessionClock'
   | 'worldClock'
   | 'announcements'
@@ -125,6 +128,9 @@ export const DASHBOARD_WIDGET_IDS: DashboardWidgetId[] = [
   'recentEntities',
   'worldEvents',
   'factionsAtWar',
+  'description',
+  'text',
+  'havenDowntime',
 ];
 
 const LEGACY_WIDGET_ID_MAP: Record<string, DashboardWidgetId> = {
@@ -235,6 +241,9 @@ export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   recentEntities: 'Recent Entities',
   worldEvents: 'World Events',
   factionsAtWar: 'Factions at War',
+  description: 'Description',
+  text: 'Text',
+  havenDowntime: 'Havens & Downtime',
   sessionClock: 'Session Schedule',
   worldClock: 'World Chronometer',
   announcements: 'Campaign Bulletin',
@@ -243,6 +252,12 @@ export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
 
 function migrateWidgetId(id: string): DashboardWidgetId {
   return LEGACY_WIDGET_ID_MAP[id] ?? (id as DashboardWidgetId);
+}
+
+function sanitizeTextWidgetConfig(config: Record<string, unknown> | undefined): Record<string, unknown> {
+  const title = typeof config?.title === 'string' ? config.title.slice(0, 80) : '';
+  const text = typeof config?.text === 'string' ? config.text.slice(0, 2_000) : '';
+  return { title, text };
 }
 
 function defaultPlacement(
@@ -308,6 +323,12 @@ export function getDefaultDashboardConfig(): DashboardConfig {
         enabled: false,
         config: { ...DEFAULT_FACTION_CONFLICT_CONFIG },
       }),
+      defaultPlacement('description', 0, 44, 6, 3, { enabled: false }),
+      defaultPlacement('text', 6, 44, 6, 3, {
+        enabled: false,
+        config: { title: '', text: '' },
+      }),
+      defaultPlacement('havenDowntime', 0, 47, 12, 4, { enabled: false }),
     ],
   };
 }
@@ -369,6 +390,9 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
       h: Math.max(1, Math.floor(item.h)),
       ...(scope ? { scope } : {}),
     };
+    if (canonicalId === 'text') {
+      placement.config = sanitizeTextWidgetConfig(placement.config);
+    }
     const existing = byCanonicalId.get(canonicalId);
     if (!existing) {
       byCanonicalId.set(canonicalId, placement);

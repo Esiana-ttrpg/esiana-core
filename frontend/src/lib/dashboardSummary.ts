@@ -23,6 +23,7 @@ export interface RecentEntityFeedItem {
   reason?: string | null;
   freshnessLabel?: string | null;
   importance?: 'PINNED' | 'SESSION_RELEVANT' | 'RESURFACED' | null;
+  contentTypeLabel?: string | null;
 }
 
 export interface DashboardSessionSummary {

@@ -30,6 +30,8 @@ export interface RecentEntityFeedItem {
   reason?: string | null;
   freshnessLabel?: string | null;
   importance?: RecentEntityImportance;
+  /** User-facing area or content type, such as Characters or Session Notes. */
+  contentTypeLabel?: string | null;
 }
 
 export interface RecentEntityFeedOptions {
