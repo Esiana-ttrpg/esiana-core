@@ -165,16 +165,15 @@ export async function buildDowntimeHubResponse(
 
     const currentEpochMinute = campaign?.currentEpochMinute ?? 0n;
     const projectCards = buildDowntimeProjectOperationCards(projects);
+    const residentPageIds = [...new Set(havens.flatMap((haven) => haven.residentPageIds))];
+    const residentTitles = await resolveWikiPageTitles(ctx.campaignId, residentPageIds);
     const residentLabelsByHaven = new Map<string, string[]>();
-    await Promise.all(
-      havens.map(async (haven) => {
-        const labels = await resolveWikiPageTitles(ctx.campaignId, haven.residentPageIds);
-        residentLabelsByHaven.set(
-          haven.id,
-          haven.residentPageIds.map((id) => labels.get(id) ?? 'Unknown'),
-        );
-      }),
-    );
+    for (const haven of havens) {
+      residentLabelsByHaven.set(
+        haven.id,
+        haven.residentPageIds.map((id) => residentTitles.get(id) ?? 'Unknown'),
+      );
+    }
     const havenCards = buildHavenSituationCards(
       havens,
       residentLabelsByHaven,

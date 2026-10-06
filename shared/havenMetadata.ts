@@ -502,10 +502,24 @@ export function parseHavenActivityEntry(raw: unknown, index: number): HavenActiv
   const record = raw as Record<string, unknown>;
   const summary = normalizeNullableString(record.summary);
   if (!summary) return null;
+  let atEpochMinute: string | null = null;
+  const rawEpochMinute = record.atEpochMinute;
+  if (typeof rawEpochMinute === 'bigint' && rawEpochMinute >= 0n) {
+    atEpochMinute = rawEpochMinute.toString();
+  } else if (
+    typeof rawEpochMinute === 'number' &&
+    Number.isSafeInteger(rawEpochMinute) &&
+    rawEpochMinute >= 0
+  ) {
+    atEpochMinute = BigInt(rawEpochMinute).toString();
+  } else if (typeof rawEpochMinute === 'string') {
+    const trimmed = rawEpochMinute.trim();
+    if (/^\d+$/.test(trimmed)) atEpochMinute = BigInt(trimmed).toString();
+  }
   return {
     id: normalizeNullableString(record.id) ?? `activity-${index}`,
     summary,
-    atEpochMinute: normalizeNullableString(record.atEpochMinute),
+    atEpochMinute,
     tone: normalizeHavenActivityTone(record.tone),
     origin: normalizeHavenActivityOrigin(record.origin),
     sourceProjectId: normalizeNullableString(record.sourceProjectId),
