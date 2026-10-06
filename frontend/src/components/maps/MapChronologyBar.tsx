@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, X } from 'lucide-react';
 import type { MapPresentationPresetDto } from '@/types/maps';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 import {
@@ -44,6 +44,7 @@ export function MapChronologyBar({
     timeTracking,
   );
   const atPresent = isViewingCampaignPresent(viewEpochMinute, campaignEpochMinute);
+  const asOfLabel = atPresent ? 'Present' : viewingLabel;
   const calendar = calendarLikeFromBundle(timeTracking);
 
   const openPicker = () => {
@@ -63,72 +64,18 @@ export function MapChronologyBar({
 
   return (
     <>
-      <section
-        className="flex flex-col gap-2 border-y border-border/60 bg-muted/5 px-1 py-2.5"
-        aria-label="Map chronology"
+      <button
+        type="button"
+        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted transition-colors hover:bg-muted/10 hover:text-foreground disabled:cursor-default disabled:hover:bg-transparent"
+        onClick={openPicker}
+        disabled={!canEdit || !calendar}
+        aria-label={canEdit ? `Map state as of ${asOfLabel}; change date` : `Map state as of ${asOfLabel}`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Calendar className="size-4 shrink-0 text-muted" aria-hidden />
-            <span className="text-sm text-muted">Viewing</span>
-            <span className="text-sm font-medium text-foreground">{viewingLabel}</span>
-            {!atPresent ? (
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200">
-                Historical
-              </span>
-            ) : null}
-          </div>
-          {canEdit ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {!atPresent ? (
-                <button
-                  type="button"
-                  className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted/10"
-                  onClick={() => onViewEpochMinuteChange(null)}
-                >
-                  Return to present
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted/10"
-                onClick={openPicker}
-              >
-                Change date
-              </button>
-            </div>
-          ) : null}
-        </div>
-
-        {presentationPresets.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-medium text-muted">Eras</span>
-            {presentationPresets.map((preset) => {
-              const active = preset.id === activeEraPresetId;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  className={`rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
-                    active
-                      ? 'border-amber-500/50 bg-amber-500/15 font-medium text-amber-900 dark:text-amber-100'
-                      : 'border-border bg-background hover:bg-muted/10'
-                  }`}
-                  onClick={() => {
-                    if (onSelectPreset) {
-                      onSelectPreset(preset);
-                    } else {
-                      onViewEpochMinuteChange(preset.anchorEpochMinute);
-                    }
-                  }}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-      </section>
+        <CalendarDays className="size-4" aria-hidden />
+        <span>As of:</span>
+        <span className="font-medium text-foreground">{asOfLabel}</span>
+        {canEdit && calendar ? <ChevronDown className="size-3.5" aria-hidden /> : null}
+      </button>
 
       {pickerOpen && calendar ? (
         <div
@@ -166,7 +113,49 @@ export function MapChronologyBar({
               value={draftParts}
               onChange={setDraftParts}
             />
+            {presentationPresets.length > 0 ? (
+              <div className="mt-4 border-t border-border pt-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+                  Saved eras
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {presentationPresets.map((preset) => {
+                    const active = preset.id === activeEraPresetId;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                          active
+                            ? 'border-amber-500/50 bg-amber-500/15 font-medium text-amber-900 dark:text-amber-100'
+                            : 'border-border hover:bg-muted/10'
+                        }`}
+                        onClick={() => {
+                          if (onSelectPreset) onSelectPreset(preset);
+                          else onViewEpochMinuteChange(preset.anchorEpochMinute);
+                          setPickerOpen(false);
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className="mt-4 flex justify-end gap-2">
+              {!atPresent ? (
+                <button
+                  type="button"
+                  className="mr-auto rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted/10"
+                  onClick={() => {
+                    onViewEpochMinuteChange(null);
+                    setPickerOpen(false);
+                  }}
+                >
+                  Return to present
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted/10"

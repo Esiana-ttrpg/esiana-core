@@ -251,15 +251,29 @@ export function MapViewerPage() {
             px
           </p>
         </div>
-        {canEdit ? (
-          <Link
-            to={campaignPath(campaignHandle, 'maps', assetId, 'settings')}
-            className="inline-flex shrink-0 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
-          >
-            <Settings className="size-4" />
-            Settings
-          </Link>
-        ) : null}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+          <MapChronologyBar
+            viewEpochMinute={viewEpochMinute}
+            campaignEpochMinute={campaignEpochMinute}
+            timeTracking={timeTracking}
+            canEdit={canEdit}
+            presentationPresets={scene.presentationPresets}
+            activeEraPresetId={scene.activeEraPresetId}
+            onViewEpochMinuteChange={setViewEpochMinute}
+            onSelectPreset={(preset) => {
+              scene.applyPresentationPreset(preset, setViewEpochMinute);
+            }}
+          />
+          {canEdit ? (
+            <Link
+              to={campaignPath(campaignHandle, 'maps', assetId, 'settings')}
+              className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
+            >
+              <Settings className="size-4" />
+              Settings
+            </Link>
+          ) : null}
+        </div>
       </header>
 
       {showBreadcrumbTrail ? (
@@ -277,19 +291,6 @@ export function MapViewerPage() {
           }}
         />
       ) : null}
-
-      <MapChronologyBar
-        viewEpochMinute={viewEpochMinute}
-        campaignEpochMinute={campaignEpochMinute}
-        timeTracking={timeTracking}
-        canEdit={canEdit}
-        presentationPresets={scene.presentationPresets}
-        activeEraPresetId={scene.activeEraPresetId}
-        onViewEpochMinuteChange={setViewEpochMinute}
-        onSelectPreset={(preset) => {
-          scene.applyPresentationPreset(preset, setViewEpochMinute);
-        }}
-      />
 
       {editMode && canEdit ? (
         <MapPresentationPresetsPanel
