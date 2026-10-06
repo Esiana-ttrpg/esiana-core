@@ -287,6 +287,10 @@ test('normalizeDashboardConfig adds authored and downtime widgets disabled by de
     assert.ok(widget, `expected ${id} widget`);
     assert.equal(widget.enabled, false);
   }
+  assert.deepEqual(
+    normalized.widgets.find((item) => item.id === 'text')?.config,
+    { title: '', text: '' },
+  );
 });
 
 test('normalizeDashboardConfig bounds text widget content', () => {

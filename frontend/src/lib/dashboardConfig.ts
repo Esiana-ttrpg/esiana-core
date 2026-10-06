@@ -255,7 +255,7 @@ function migrateWidgetId(id: string): DashboardWidgetId {
 }
 
 function sanitizeTextWidgetConfig(config: Record<string, unknown> | undefined): Record<string, unknown> {
-  const title = typeof config?.title === 'string' ? config.title.slice(0, 80) : 'Campaign note';
+  const title = typeof config?.title === 'string' ? config.title.slice(0, 80) : '';
   const text = typeof config?.text === 'string' ? config.text.slice(0, 2_000) : '';
   return { title, text };
 }
@@ -326,7 +326,7 @@ export function getDefaultDashboardConfig(): DashboardConfig {
       defaultPlacement('description', 0, 44, 6, 3, { enabled: false }),
       defaultPlacement('text', 6, 44, 6, 3, {
         enabled: false,
-        config: { title: 'Campaign note', text: '' },
+        config: { title: '', text: '' },
       }),
       defaultPlacement('havenDowntime', 0, 47, 12, 4, { enabled: false }),
     ],

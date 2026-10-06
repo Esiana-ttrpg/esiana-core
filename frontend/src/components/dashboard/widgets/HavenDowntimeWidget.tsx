@@ -54,22 +54,26 @@ export function HavenDowntimeWidget({ campaignHandle, customizeMode, onHide }: H
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="font-serif text-2xl text-foreground">{overview.projects.length}</p>
-                <p className="text-xs text-muted">Active projects</p>
+                <p className="text-xs text-muted">{t('campaign.dashboard.havenDowntimeProjects')}</p>
               </div>
               <div>
                 <p className="font-serif text-2xl text-foreground">{overview.havens.length}</p>
-                <p className="text-xs text-muted">Havens & holdings</p>
+                <p className="text-xs text-muted">{t('campaign.dashboard.havenDowntimeHavens')}</p>
               </div>
             </div>
             {overview.recentActivity[0] ? (
-              <p className="line-clamp-2 text-sm text-muted">Latest: {overview.recentActivity[0].title}</p>
+              <p className="line-clamp-2 text-sm text-muted">
+                {t('campaign.dashboard.havenDowntimeLatest', {
+                  activity: overview.recentActivity[0].title,
+                })}
+              </p>
             ) : null}
           </>
         ) : (
-          <p className="text-sm text-muted">No downtime activity is available yet.</p>
+          <p className="text-sm text-muted">{t('campaign.dashboard.havenDowntimeEmpty')}</p>
         )}
         <Link className="mt-auto text-sm font-medium text-primary hover:underline" to={campaignDowntimeHubPath(campaignHandle)}>
-          Open Downtime
+          {t('campaign.dashboard.havenDowntimeOpen')}
         </Link>
       </div>
     </DashboardWidgetShell>

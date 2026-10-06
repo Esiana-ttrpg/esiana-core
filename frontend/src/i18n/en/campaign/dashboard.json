@@ -38,6 +38,12 @@
   "campaign.dashboard.textWidgetTitle": "Title",
   "campaign.dashboard.textWidgetBody": "Text",
   "campaign.dashboard.textWidgetEmpty": "Customize this widget to add a campaign note.",
+  "campaign.dashboard.descriptionWidgetEmpty": "Add a campaign description in Campaign settings.",
+  "campaign.dashboard.havenDowntimeProjects": "Active projects",
+  "campaign.dashboard.havenDowntimeHavens": "Havens & holdings",
+  "campaign.dashboard.havenDowntimeLatest": "Latest: {{activity}}",
+  "campaign.dashboard.havenDowntimeEmpty": "No downtime activity is available yet.",
+  "campaign.dashboard.havenDowntimeOpen": "Open Downtime",
 
   "campaign.dashboard.widgetCustomizeCategory": "Category",
   "campaign.dashboard.widgetCustomizeSort": "Sort",

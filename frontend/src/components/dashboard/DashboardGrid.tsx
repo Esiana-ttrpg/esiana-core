@@ -105,6 +105,9 @@ export function DashboardGrid({
   const containerRef = useRef<HTMLDivElement>(null);
   const [gridWidth, setGridWidth] = useState(960);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveGenerationRef = useRef(0);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingSaveCountRef = useRef(0);
 
   const enabledWidgets = useMemo(
     () => config.widgets.filter((widget) => widget.enabled),
@@ -135,29 +138,46 @@ export function DashboardGrid({
   }, []);
 
   const persistLayout = useCallback(
-    async (nextConfig: DashboardConfig) => {
+    (nextConfig: DashboardConfig, generation: number) => {
+      pendingSaveCountRef.current += 1;
       onLayoutSavingChange?.(true);
-      try {
-        const saved = await updateDashboardLayout(campaignHandle, nextConfig);
-        onConfigChange(saved);
-      } catch (err) {
-        window.alert(
-          err instanceof Error ? err.message : t('campaign.dashboard.layoutSaveFailed'),
-        );
-      } finally {
-        onLayoutSavingChange?.(false);
-      }
+
+      const save = async () => {
+        try {
+          const saved = await updateDashboardLayout(campaignHandle, nextConfig);
+          if (generation === saveGenerationRef.current) {
+            onConfigChange(saved);
+          }
+        } catch (err) {
+          if (generation === saveGenerationRef.current) {
+            window.alert(
+              err instanceof Error ? err.message : t('campaign.dashboard.layoutSaveFailed'),
+            );
+          }
+        } finally {
+          pendingSaveCountRef.current -= 1;
+          if (pendingSaveCountRef.current === 0) {
+            onLayoutSavingChange?.(false);
+          }
+        }
+      };
+
+      saveQueueRef.current = saveQueueRef.current.then(save, save);
+      return saveQueueRef.current;
     },
     [campaignHandle, onConfigChange, onLayoutSavingChange, t],
   );
 
   const scheduleSave = useCallback(
     (nextConfig: DashboardConfig) => {
+      const generation = saveGenerationRef.current + 1;
+      saveGenerationRef.current = generation;
       onConfigChange(nextConfig);
       if (!canEditLayout) return;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
-        void persistLayout(nextConfig);
+        saveTimerRef.current = null;
+        void persistLayout(nextConfig, generation);
       }, LAYOUT_SAVE_DEBOUNCE_MS);
     },
     [canEditLayout, onConfigChange, persistLayout],

@@ -20,7 +20,7 @@ export function DescriptionWidget({ description, customizeMode, onHide }: Descri
       onHide={onHide}
     >
       <p className={`${TYPE_PROSE_CLASS} whitespace-pre-wrap text-sm text-foreground/90`}>
-        {description?.trim() || 'Add a campaign description in Campaign settings.'}
+        {description?.trim() || t('campaign.dashboard.descriptionWidgetEmpty')}
       </p>
     </DashboardWidgetShell>
   );
