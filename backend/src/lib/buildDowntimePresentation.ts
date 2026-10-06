@@ -11,6 +11,11 @@ import type {
   DowntimeFeedCard,
   DowntimeFeedCardTone,
   DowntimeHubWorldEventsPayload,
+  DowntimeHubOverviewPayload,
+  DowntimeHubLedgerPayload,
+  DowntimeHubReputationPayload,
+  DowntimeHavenSituationCard,
+  DowntimeOverviewActivity,
   DowntimePressureCounts,
   DowntimeProjectOperationCard,
   DowntimeProjectOverviewLink,
@@ -243,6 +248,21 @@ function computeElapsedDays(
   const diff = currentEpochMinute - sinceEpochMinute;
   if (diff <= 0n) return 0n;
   return diff / MINUTES_PER_DAY;
+}
+
+export function buildDowntimeCurrentTimePresentation(input: {
+  currentEpochMinute: bigint;
+  sinceEpochMinute: bigint | null;
+  chronometer: DashboardChronometerSummary | null;
+}): { currentTimeLabel: string; elapsedSinceLabel: string | null } {
+  const elapsedDays = computeElapsedDays(input.currentEpochMinute, input.sinceEpochMinute);
+  return {
+    currentTimeLabel:
+      input.chronometer?.label != null
+        ? [input.chronometer.season, input.chronometer.label].filter(Boolean).join(' · ')
+        : 'Campaign time not configured',
+    elapsedSinceLabel: elapsedDays != null ? formatElapsedDays(elapsedDays) : null,
+  };
 }
 
 function activityDensityLabel(recentCount: number, elapsedDays: bigint | null): string {
@@ -590,6 +610,177 @@ export function buildDowntimeProjectOperationCards(
       operationPostureLabel: formatOperationPostureLabel(posture),
     };
   });
+}
+
+export type DowntimeOverviewHavenActivity = {
+  id: string;
+  havenTitle: string;
+  havenHref: string;
+  summary: string;
+  occurredAtEpochMinute: string;
+  tone?: DowntimeFeedCardTone;
+};
+
+export type BuildDowntimeOverviewPresentationInput = {
+  currentEpochMinute: bigint;
+  currentTimeLabel: string;
+  elapsedSinceLabel: string | null;
+  currentDowntimePeriod: DowntimeCurrentPeriod | null;
+  projectCards: DowntimeProjectOperationCard[];
+  havenCards: DowntimeHavenSituationCard[];
+  havenActivity: DowntimeOverviewHavenActivity[];
+  ledger: DowntimeHubLedgerPayload;
+  reputation: DowntimeHubReputationPayload;
+  pendingWorldEventSuggestionsCount: number;
+};
+
+const TERMINAL_PROJECT_STATUSES = new Set(['COMPLETED', 'FAILED', 'ABANDONED']);
+
+function overviewProjectRank(card: DowntimeProjectOperationCard): number {
+  if (card.clockState === 'running') return 0;
+  if (card.clockState === 'waiting') return 1;
+  if (card.clockState === 'paused') return 2;
+  return 3;
+}
+
+function reputationToneRank(tone: DowntimeFeedCardTone): number {
+  if (tone === 'escalation') return 0;
+  if (tone === 'warning') return 1;
+  return 2;
+}
+
+function activityDateLabel(epochMinute: string, currentEpochMinute: bigint): string {
+  return formatRelativeEpochLabel(epochMinute, currentEpochMinute) ?? `Minute ${epochMinute}`;
+}
+
+/** Builds the Downtime sheet read model from canonical domain projections. */
+export function buildDowntimeOverviewPresentation(
+  input: BuildDowntimeOverviewPresentationInput,
+): DowntimeHubOverviewPayload {
+  const projectActivities: DowntimeOverviewActivity[] = input.projectCards
+    .filter(
+      (card) =>
+        TERMINAL_PROJECT_STATUSES.has(card.status) && card.completedAtEpochMinute != null,
+    )
+    .map((card) => ({
+      id: `project:${card.id}:${card.completedAtEpochMinute}`,
+      source: 'project',
+      sourceLabel: 'Project',
+      title: `${card.title} ${
+        card.status === 'COMPLETED'
+          ? 'completed'
+          : card.status === 'FAILED'
+            ? 'failed'
+            : 'was abandoned'
+      }`,
+      detail: null,
+      dateLabel: activityDateLabel(card.completedAtEpochMinute!, input.currentEpochMinute),
+      occurredAtEpochMinute: card.completedAtEpochMinute!,
+      href: card.href,
+      tone: card.status === 'COMPLETED' ? 'neutral' : 'warning',
+    }));
+
+  const ledgerActivities: DowntimeOverviewActivity[] = input.ledger.feed.map((line) => ({
+    id: `ledger:${line.id}`,
+    source: 'ledger',
+    sourceLabel: 'Ledger',
+    title: line.title,
+    detail: line.amountLabel,
+    dateLabel: line.dateLabel,
+    occurredAtEpochMinute: line.occurredAtEpochMinute,
+    href: line.href,
+    tone: line.tone,
+  }));
+
+  const reputationActivities: DowntimeOverviewActivity[] = input.reputation.feed.map(
+    (line) => ({
+      id: `reputation:${line.id}`,
+      source: 'reputation',
+      sourceLabel: 'Reputation',
+      title: `${line.factionTitle} ${line.directionArrow} ${line.bandLabel}`,
+      detail: line.narrative || null,
+      dateLabel: line.dateLabel,
+      occurredAtEpochMinute: line.occurredAtEpochMinute,
+      href: line.factionHref,
+      tone: line.tone,
+    }),
+  );
+
+  const havenActivities: DowntimeOverviewActivity[] = input.havenActivity.map((entry) => ({
+    id: `haven:${entry.id}`,
+    source: 'haven',
+    sourceLabel: 'Haven',
+    title: entry.summary,
+    detail: entry.havenTitle,
+    dateLabel: activityDateLabel(entry.occurredAtEpochMinute, input.currentEpochMinute),
+    occurredAtEpochMinute: entry.occurredAtEpochMinute,
+    href: entry.havenHref,
+    tone: entry.tone,
+  }));
+
+  const recentActivity = [
+    ...projectActivities,
+    ...ledgerActivities,
+    ...reputationActivities,
+    ...havenActivities,
+  ]
+    .sort((a, b) => {
+      const timeOrder = BigInt(b.occurredAtEpochMinute) - BigInt(a.occurredAtEpochMinute);
+      if (timeOrder !== 0n) return timeOrder > 0n ? 1 : -1;
+      return a.id.localeCompare(b.id);
+    })
+    .slice(0, 8);
+
+  const projects = input.projectCards
+    .filter((card) => !TERMINAL_PROJECT_STATUSES.has(card.status))
+    .sort((a, b) => {
+      const rank = overviewProjectRank(a) - overviewProjectRank(b);
+      return rank || a.title.localeCompare(b.title);
+    })
+    .slice(0, 5);
+
+  const standings = [...input.reputation.standings]
+    .sort((a, b) => {
+      const aRank = Math.min(reputationToneRank(a.trustTone), reputationToneRank(a.notorietyTone));
+      const bRank = Math.min(reputationToneRank(b.trustTone), reputationToneRank(b.notorietyTone));
+      return aRank - bRank || a.factionTitle.localeCompare(b.factionTitle);
+    })
+    .slice(0, 3);
+
+  const havenCount = input.havenCards.length;
+  return {
+    currentTimeLabel: input.currentTimeLabel,
+    elapsedSinceLabel: input.elapsedSinceLabel,
+    currentDowntimePeriod: input.currentDowntimePeriod,
+    projects,
+    havens: input.havenCards.slice(0, 3),
+    ledger: {
+      hasEntries: input.ledger.feed.length > 0,
+      balanceLabel:
+        input.ledger.feed.length > 0 || input.ledger.treasury.openingBalance !== 0
+          ? input.ledger.treasury.balanceLabel
+          : null,
+      entries: input.ledger.feed.slice(0, 2),
+    },
+    reputation: {
+      standingCount: input.reputation.standings.length,
+      standings,
+    },
+    partyOperations: [
+      {
+        id: 'holdings',
+        label: 'Holdings',
+        supported: true,
+        value: havenCount,
+        valueLabel: `${havenCount.toString()} ${havenCount === 1 ? 'haven' : 'havens'}`,
+      },
+      { id: 'hirelings_followers', label: 'Hirelings & followers', supported: false },
+      { id: 'obligations', label: 'Obligations', supported: false },
+      { id: 'other_resources', label: 'Other resources', supported: false },
+    ],
+    recentActivity,
+    pendingWorldEventSuggestionsCount: input.pendingWorldEventSuggestionsCount,
+  };
 }
 
 export { DOWNTIME_OVERVIEW_DOMAINS, DOWNTIME_WORLD_EVENT_DOMAINS };

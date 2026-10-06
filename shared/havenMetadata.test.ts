@@ -61,6 +61,22 @@ describe('havenMetadata', () => {
     assert.equal(fields.activityLog[0]?.sourceProjectId, 'proj-1');
   });
 
+  it('normalizes malformed activity timestamps before sorting', () => {
+    const fields = parseDowntimeHavenFields({
+      activityLog: [
+        { summary: 'Malformed timestamp', atEpochMinute: 'not-a-minute' },
+        { summary: 'Negative timestamp', atEpochMinute: '-5' },
+        { summary: 'Canonical timestamp', atEpochMinute: '000200' },
+      ],
+    });
+
+    assert.equal(fields.activityLog[0]?.atEpochMinute, null);
+    assert.equal(fields.activityLog[1]?.atEpochMinute, null);
+    assert.equal(fields.activityLog[2]?.atEpochMinute, '200');
+    assert.doesNotThrow(() => sortActivityLogNewestFirst(fields.activityLog));
+    assert.equal(sortActivityLogNewestFirst(fields.activityLog)[0]?.summary, 'Canonical timestamp');
+  });
+
   it('sorts activity log newest first', () => {
     const sorted = sortActivityLogNewestFirst([
       createHavenActivityEntry({

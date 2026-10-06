@@ -118,7 +118,52 @@ export type DowntimePlaceholderFraming = {
 };
 
 export type DowntimeHubOverviewPayload = {
-  simulationSnapshot: DowntimeSimulationSnapshot;
+  currentTimeLabel: string;
+  elapsedSinceLabel: string | null;
+  currentDowntimePeriod: DowntimeCurrentPeriod | null;
+  projects: DowntimeProjectOperationCard[];
+  havens: DowntimeHavenSituationCard[];
+  ledger: {
+    hasEntries: boolean;
+    balanceLabel: string | null;
+    entries: LedgerTransactionLine[];
+  };
+  reputation: {
+    standingCount: number;
+    standings: ReputationStandingCard[];
+  };
+  partyOperations: PartyOperationsField[];
+  recentActivity: DowntimeOverviewActivity[];
+  pendingWorldEventSuggestionsCount: number;
+};
+
+type PartyOperationsFieldBase = {
+  id: 'holdings' | 'hirelings_followers' | 'obligations' | 'other_resources';
+  label: string;
+};
+
+export type PartyOperationsField = PartyOperationsFieldBase &
+  (
+    | { supported: true; value: number; valueLabel: string }
+    | { supported: false; value?: never; valueLabel?: never }
+  );
+
+export type DowntimeOverviewActivitySource =
+  | 'project'
+  | 'haven'
+  | 'ledger'
+  | 'reputation';
+
+export type DowntimeOverviewActivity = {
+  id: string;
+  source: DowntimeOverviewActivitySource;
+  sourceLabel: string;
+  title: string;
+  detail: string | null;
+  dateLabel: string;
+  occurredAtEpochMinute: string;
+  href?: string;
+  tone?: DowntimeFeedCardTone;
 };
 
 export type WorldEventSuggestionLine = {
@@ -160,6 +205,7 @@ export type LedgerTransactionLine = {
   href?: string;
   entryKind: LedgerEntryKind;
   amount: number;
+  occurredAtEpochMinute: string;
   projectId?: string | null;
   havenWikiPageId?: string | null;
   contributorPageId?: string | null;
@@ -237,6 +283,7 @@ export type ReputationFeedLine = {
   axis: 'trust' | 'notoriety';
   narrative: string;
   dateLabel: string;
+  occurredAtEpochMinute: string;
   tone?: DowntimeFeedCardTone;
 };
 
