@@ -10,8 +10,11 @@ export class PluginSourcePolicyError extends Error {
 /** Exact host allowlist for plugin supply-chain fetches. Not suffix/wildcard matching. */
 export const PLUGIN_SOURCE_HOST_ALLOWLIST = [
   'github.com',
+  'codeload.github.com',
   'gitlab.com',
   'raw.githubusercontent.com',
+  'objects.githubusercontent.com',
+  'release-assets.githubusercontent.com',
   'gitlabusercontent.com',
 ] as const;
 
