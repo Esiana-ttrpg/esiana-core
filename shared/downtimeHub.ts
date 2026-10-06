@@ -355,6 +355,8 @@ export type DowntimeHavenOverviewSpace = {
   id: string;
   label: string;
   description: string | null;
+  type: import('./havenMetadata.js').HavenSpaceType;
+  status: import('./havenMetadata.js').HavenSpaceStatus;
 };
 
 export type DowntimeHavenOverviewPayload = {

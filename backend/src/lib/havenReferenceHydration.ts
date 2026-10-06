@@ -315,10 +315,14 @@ export function hydrateHavenSpaces(spaces: HavenSpaceEntry[]): Array<{
   id: string;
   label: string;
   description: string | null;
+  type: HavenSpaceEntry['type'];
+  status: HavenSpaceEntry['status'];
 }> {
   return sortHavenSpaces(spaces).map((space) => ({
     id: space.id,
     label: space.label,
     description: space.description,
+    type: space.type,
+    status: space.status,
   }));
 }

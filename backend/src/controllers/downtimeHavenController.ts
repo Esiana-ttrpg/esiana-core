@@ -187,6 +187,9 @@ export async function updateDowntimeHavenHandler(
 
   const patch: Record<string, unknown> = {};
   if (typeof body.title === 'string') patch.title = body.title;
+  if (typeof body.bannerAssetId === 'string' || body.bannerAssetId === null) {
+    patch.bannerAssetId = body.bannerAssetId;
+  }
   if (typeof body.visibility === 'string') patch.visibility = body.visibility;
   if (typeof body.appendActivity === 'object' && body.appendActivity) {
     patch.appendActivity = body.appendActivity;
