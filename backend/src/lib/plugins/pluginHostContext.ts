@@ -69,6 +69,7 @@ import {
   type PluginSecretsApi,
   type PluginTimelineApi,
   type PluginWorldApi,
+  type PluginDowntimeApi,
 } from './pluginHostServices.js';
 import {
   registerImportProvider as registerImportProviderEntry,
@@ -138,6 +139,7 @@ export interface PluginHostContext {
   world: PluginWorldApi;
   lore: PluginLoreApi;
   maps: PluginMapsApi;
+  downtime: PluginDowntimeApi;
   config: PluginConfigApi;
   secrets: PluginSecretsApi;
   events: PluginEventsApi;

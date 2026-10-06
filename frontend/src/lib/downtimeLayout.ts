@@ -67,6 +67,12 @@ export const DOWNTIME_SECTION_HEADER_CONFIG: Record<
     countSingular: 'haven',
     createLabel: 'New haven',
   },
+  people: {
+    displayTitle: 'Hirelings',
+    countSingular: 'person',
+    countPlural: 'people',
+    createLabel: 'Add hireling',
+  },
   ledger: {
     displayTitle: 'Ledger',
     countSingular: 'entry',
@@ -102,6 +108,8 @@ export function resolveDowntimeSectionItemCount(
       return data.projects?.cards.length ?? 0;
     case 'havens':
       return data.havens?.cards.length ?? 0;
+    case 'people':
+      return data.people?.people.length ?? 0;
     case 'ledger':
       return data.ledger?.feed.length ?? 0;
     case 'worldEvents':

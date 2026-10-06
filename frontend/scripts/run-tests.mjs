@@ -45,6 +45,7 @@ const result = spawnSync(
     'src/lib/entityProjectionQueries.test.ts',
     'src/lib/organizationMetadata.test.ts',
     'src/lib/characterMetadata.test.ts',
+    'src/lib/hirelingManagedPage.test.ts',
     'src/lib/locationMetadata.test.ts',
     'src/lib/createEntityConfig.test.ts',
     'src/lib/entityAppearanceProjection.test.ts',

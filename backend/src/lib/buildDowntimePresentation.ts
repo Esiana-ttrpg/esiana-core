@@ -113,8 +113,9 @@ export async function buildProjectOverviewPayload(input: {
   campaignId: string;
   campaignHandle: string;
   role: CampaignMemberRole | null;
+  assignedPeople: DowntimeProjectOverviewPayload['assignedPeople'];
 }): Promise<DowntimeProjectOverviewPayload> {
-  const { project, wikiMetadata, blocks, campaignId, campaignHandle, role } = input;
+  const { project, wikiMetadata, blocks, campaignId, campaignHandle, role, assignedPeople } = input;
   const cards = buildDowntimeProjectOperationCards([{ project, wikiMetadata }]);
   const operation = cards[0];
   if (!operation) {
@@ -141,6 +142,7 @@ export async function buildProjectOverviewPayload(input: {
     outcomes: project.outcomes,
     owner,
     haven,
+    assignedPeople,
     loreMarkdown: extractLoreMarkdown(blocks),
     recentChanges: [],
     pendingTreasurySuggestions:
@@ -632,6 +634,7 @@ export type BuildDowntimeOverviewPresentationInput = {
   ledger: DowntimeHubLedgerPayload;
   reputation: DowntimeHubReputationPayload;
   pendingWorldEventSuggestionsCount: number;
+  activePeopleCount?: number;
 };
 
 const TERMINAL_PROJECT_STATUSES = new Set(['COMPLETED', 'FAILED', 'ABANDONED']);
@@ -774,7 +777,13 @@ export function buildDowntimeOverviewPresentation(
         value: havenCount,
         valueLabel: `${havenCount.toString()} ${havenCount === 1 ? 'haven' : 'havens'}`,
       },
-      { id: 'hirelings_followers', label: 'Hirelings & followers', supported: false },
+      {
+        id: 'hirelings_followers',
+        label: 'Hirelings',
+        supported: true,
+        value: input.activePeopleCount ?? 0,
+        valueLabel: String(input.activePeopleCount ?? 0),
+      },
       { id: 'obligations', label: 'Obligations', supported: false },
       { id: 'other_resources', label: 'Other resources', supported: false },
     ],

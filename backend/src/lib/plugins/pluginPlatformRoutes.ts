@@ -206,6 +206,17 @@ export function mountPluginPlatformRoutes(
     }
   });
 
+  router.get('/campaign/downtime/hirelings', readScope, async (req, res) => {
+    try {
+      const context = resolveContext(req, res, buildContext);
+      if (!context) return;
+      const data = await context.downtime.getHirelings(viewerUserId(req));
+      res.json({ hirelings: data });
+    } catch (error) {
+      sendServiceError(res, error);
+    }
+  });
+
   router.post('/assets/upload', pluginAssetUpload.single('file'), async (req, res) => {
     try {
       const context = resolveContext(req, res, buildContext);

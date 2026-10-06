@@ -19,6 +19,8 @@ import { DowntimeOverviewSection } from '@/components/downtime/DowntimeOverviewS
 import { DowntimeWorldEventsSection } from '@/components/downtime/DowntimeWorldEventsSection';
 import { DowntimeProjectsSection } from '@/components/downtime/DowntimeProjectsSection';
 import { DowntimeHavensSection } from '@/components/downtime/DowntimeHavensSection';
+import { DowntimePeopleSection } from '@/components/downtime/DowntimePeopleSection';
+import { AddDowntimePersonModal } from '@/components/downtime/AddDowntimePersonModal';
 import {
   DowntimeLedgerSection,
   type DowntimeLedgerSectionHandle,
@@ -63,6 +65,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   const [error, setError] = useState<string | null>(null);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateHavenOpen, setIsCreateHavenOpen] = useState(false);
+  const [isCreatePersonOpen, setIsCreatePersonOpen] = useState(false);
   const [isOverviewLedgerOpen, setIsOverviewLedgerOpen] = useState(false);
   const [ledgerBrowse, setLedgerBrowse] = useState<LedgerBrowseState>(
     DEFAULT_LEDGER_BROWSE_STATE,
@@ -231,10 +234,11 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
         onCreate={() => {
           if (activeSection === 'projects') setIsCreateProjectOpen(true);
           else if (activeSection === 'havens') setIsCreateHavenOpen(true);
+          else if (activeSection === 'people') setIsCreatePersonOpen(true);
           else if (activeSection === 'ledger') ledgerSectionRef.current?.openAdd();
         }}
         createAction={
-          activeSection === 'projects' || activeSection === 'havens'
+          activeSection === 'projects' || activeSection === 'havens' || activeSection === 'people'
             ? canManage
               ? undefined
               : null
@@ -327,6 +331,8 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
               cards={sectionData.havens.cards}
               framing={sectionData.havens.framing}
             />
+          ) : activeSection === 'people' && sectionData?.people ? (
+            <DowntimePeopleSection data={sectionData.people} campaignHandle={campaignHandle} onChanged={() => void loadSection()} />
           ) : activeSection === 'ledger' && sectionData?.ledger ? (
             <DowntimeLedgerSection
               ref={ledgerSectionRef}
@@ -367,6 +373,15 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
         campaignHandle={campaignHandle}
         onClose={() => setIsCreateHavenOpen(false)}
         onCreated={() => void handleHavenCreated()}
+      />
+      <AddDowntimePersonModal
+        open={isCreatePersonOpen}
+        campaignHandle={campaignHandle}
+        characters={characterOptions}
+        havens={sectionData?.people?.assignmentOptions.havens ?? []}
+        projects={sectionData?.people?.assignmentOptions.projects ?? []}
+        onClose={() => setIsCreatePersonOpen(false)}
+        onSaved={() => { void refresh(); void loadSection(); }}
       />
       <AddLedgerEntryModal
         open={isOverviewLedgerOpen}

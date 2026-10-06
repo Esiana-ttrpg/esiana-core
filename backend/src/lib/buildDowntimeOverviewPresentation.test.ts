@@ -89,8 +89,8 @@ test('buildDowntimeOverviewPresentation preserves the complete empty sheet contr
   assert.equal(overview.partyOperations[0]?.id, 'holdings');
   assert.equal(overview.partyOperations[0]?.supported, true);
   assert.equal(overview.partyOperations[0]?.value, 0);
-  assert.equal(overview.partyOperations[1]?.supported, false);
-  assert.equal(overview.partyOperations[1]?.value, undefined);
+  assert.equal(overview.partyOperations[1]?.supported, true);
+  assert.equal(overview.partyOperations[1]?.value, 0);
 });
 
 test('buildDowntimeOverviewPresentation filters projects and merges only operational activity', () => {

@@ -7,6 +7,7 @@ import type {
   PluginPartyMemberDto,
   PluginTimelineEventDto,
   PluginWorldSummaryDto,
+  PluginHirelingReadDto,
 } from '../../../../shared/pluginCampaignRead.js';
 import {
   readPluginCalendar,
@@ -15,6 +16,7 @@ import {
   readPluginParty,
   readPluginTimelineRecent,
   readPluginWorldSummary,
+  readPluginHirelings,
 } from './pluginCampaignReadService.js';
 import {
   getPluginCampaignConfig,
@@ -88,6 +90,10 @@ export interface PluginMapsApi {
   list(viewerUserId?: string | null, limit?: number): Promise<PluginMapSummaryDto[]>;
 }
 
+export interface PluginDowntimeApi {
+  getHirelings(viewerUserId?: string | null): Promise<PluginHirelingReadDto[]>;
+}
+
 export interface PluginConfigApi {
   get(key?: string): Promise<unknown>;
   set(partial: Record<string, unknown>): Promise<Record<string, unknown>>;
@@ -112,6 +118,7 @@ export interface PluginHostServiceBundle {
   world: PluginWorldApi;
   lore: PluginLoreApi;
   maps: PluginMapsApi;
+  downtime: PluginDowntimeApi;
   config: PluginConfigApi;
   secrets: PluginSecretsApi;
   events: PluginEventsApi;
@@ -206,6 +213,12 @@ export function createPluginHostServices(input: {
       list(viewerUserId = null, limit = 50) {
         assertPermission(pluginId, permissions, 'campaign:read-maps');
         return readPluginMaps(campaignIdFor(), viewerUserId, limit);
+      },
+    },
+    downtime: {
+      getHirelings(viewerUserId = null) {
+        assertPermission(pluginId, permissions, 'campaign:read-world');
+        return readPluginHirelings(campaignIdFor(), viewerUserId);
       },
     },
     config: {

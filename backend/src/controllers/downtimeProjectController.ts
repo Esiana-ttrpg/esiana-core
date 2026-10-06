@@ -10,6 +10,7 @@ import {
   updateDowntimeProject,
 } from '../lib/downtimeProjectService.js';
 import { buildProjectOverviewPayload } from '../lib/buildDowntimePresentation.js';
+import { listDowntimePeople } from '../lib/downtimePeopleService.js';
 import {
   normalizeProjectStatus,
   type ProjectStatus,
@@ -126,6 +127,7 @@ export async function getDowntimeProjectOverviewHandler(
 
   const { wikiMetadata, blocks, ...project } = withBlocks;
 
+  const people = await listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, false);
   const overview = await buildProjectOverviewPayload({
     project,
     wikiMetadata,
@@ -133,6 +135,7 @@ export async function getDowntimeProjectOverviewHandler(
     campaignId: ctx.campaignId,
     campaignHandle,
     role: ctx.role,
+    assignedPeople: people.people.filter((person) => person.status === 'ACTIVE' && person.assignment?.kind === 'project' && person.assignment.id === projectId),
   });
 
   res.json({ overview });

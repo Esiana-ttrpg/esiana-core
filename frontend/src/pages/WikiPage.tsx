@@ -81,6 +81,8 @@ import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEd
 import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
 import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVisibilityBadge';
 import { CharacterCanvasPage } from '@/components/entity/CharacterCanvasPage';
+import { CharacterDowntimePage } from '@/components/downtime/CharacterDowntimePage';
+import { isHirelingDowntimeManagedPage } from '@/lib/hirelingManagedPage';
 import { PluginCharacterPageHost } from '@/components/entity/PluginCharacterPageHost';
 import { CharacterPageManager } from '@/components/entity/CharacterPageManager';
 import { EntityCustomFieldsPanel } from '@/components/entity/EntityCustomFieldsPanel';
@@ -1532,6 +1534,12 @@ export function WikiPage() {
 
   const wikiPageRendererSlot = useMemo(() => {
     if (!pageData) return null;
+    if (
+      entityPageShell.key === 'character' &&
+      isHirelingDowntimeManagedPage(activeCharacterPage)
+    ) {
+      return <CharacterDowntimePage campaignHandle={campaignHandle} characterPageId={pageId} />;
+    }
     if (managesEntityPages && activeCharacterPage?.renderMode === 'CANVAS') {
       return (
         <CharacterCanvasPage

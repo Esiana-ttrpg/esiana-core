@@ -5462,6 +5462,93 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
+  /api/campaigns/{campaignHandle}/downtime/people:
+    get:
+      tags: [Downtime]
+      summary: List campaign Hirelings
+      operationId: listDowntimeHirelings
+      description: Returns visibility-filtered Hireling relationships and visible Haven/Project assignment options.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+      responses:
+        "200":
+          description: Hireling roster
+          content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingRoster" } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Downtime]
+      summary: Create or link a Hireling
+      operationId: createDowntimeHireling
+      description: Atomically creates an optional Character and its Hireling relationship, or links an existing campaign Character.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingCreateInput" } } }
+      responses:
+        "201":
+          description: Hireling created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [person]
+                properties: { person: { $ref: "#/components/schemas/DowntimeHireling" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/campaigns/{campaignHandle}/downtime/people/by-character/{pageId}:
+    get:
+      tags: [Downtime]
+      summary: Get a Hireling by Character
+      operationId: getDowntimeHirelingByCharacter
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - { name: pageId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Character-context Hireling presentation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [person, assignmentOptions]
+                properties:
+                  person: { $ref: "#/components/schemas/DowntimeHireling" }
+                  assignmentOptions: { $ref: "#/components/schemas/DowntimeHirelingAssignmentOptions" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/campaigns/{campaignHandle}/downtime/people/{id}:
+    patch:
+      tags: [Downtime]
+      summary: Update a Hireling
+      operationId: updateDowntimeHireling
+      description: Inactive or Former status clears the current assignment; returning to Active does not restore it. Character pages and tags are not synchronized.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingUpdateInput" } } }
+      responses:
+        "200":
+          description: Hireling updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [person]
+                properties: { person: { $ref: "#/components/schemas/DowntimeHireling" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/campaigns/{campaignHandle}/downtime/projects:
     get:
       tags:
@@ -22227,6 +22314,105 @@ components:
         type: string
       example: port-haven
   schemas:
+    IdLabel:
+      type: object
+      required: [id, label]
+      properties:
+        id: { type: string }
+        label: { type: string }
+    DowntimeHirelingFeature:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: [string, "null"], maxLength: 1000 }
+    DowntimeHirelingAssignmentOptions:
+      type: object
+      required: [havens, projects]
+      properties:
+        havens: { type: array, items: { $ref: "#/components/schemas/IdLabel" } }
+        projects: { type: array, items: { $ref: "#/components/schemas/IdLabel" } }
+    DowntimeHireling:
+      type: object
+      required: [id, characterPageId, characterName, characterHref, relationshipType, status, compensation, features, canEdit]
+      properties:
+        id: { type: string }
+        characterPageId: { type: string }
+        characterName: { type: string }
+        characterHref: { type: string }
+        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER] }
+        role: { type: [string, "null"] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, FORMER] }
+        assignment:
+          oneOf:
+            - type: object
+              required: [kind, id, label, href]
+              properties:
+                kind: { type: string, enum: [haven, project] }
+                id: { type: string }
+                label: { type: string }
+                href: { type: string }
+            - type: "null"
+        compensation:
+          type: object
+          required: [amount, currency, cadence, unpaid, label]
+          properties:
+            amount: { type: [integer, "null"], minimum: 0 }
+            currency: { type: [string, "null"] }
+            cadence: { type: [string, "null"] }
+            unpaid: { type: boolean }
+            label: { type: string }
+        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
+        notes: { type: [string, "null"] }
+        startedAtEpochMinute: { type: [string, "null"] }
+        endedAtEpochMinute: { type: [string, "null"] }
+        canEdit: { type: boolean }
+    DowntimeHirelingCreateInput:
+      type: object
+      required: [relationshipType]
+      properties:
+        characterPageId: { type: string, description: Existing campaign Character; mutually exclusive with characterName. }
+        characterName: { type: string, description: Minimal Character name for atomic creation; mutually exclusive with characterPageId. }
+        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER], default: HIRELING }
+        role: { type: string, maxLength: 200 }
+        havenId: { type: [string, "null"] }
+        projectId: { type: [string, "null"], description: Mutually exclusive with havenId. }
+        compensationAmount: { type: integer, minimum: 0 }
+        compensationCurrency: { type: string }
+        compensationCadence: { type: string, enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL] }
+        compensationUnpaid: { type: boolean }
+        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        addHirelingTag: { type: boolean, default: false, description: Explicit opt-in only; never synchronized afterward. }
+    DowntimeHirelingUpdateInput:
+      type: object
+      properties:
+        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER] }
+        role: { type: [string, "null"], maxLength: 200 }
+        status: { type: string, enum: [ACTIVE, INACTIVE, FORMER] }
+        havenId: { type: [string, "null"] }
+        projectId: { type: [string, "null"], description: Mutually exclusive with havenId. }
+        compensationAmount: { type: [integer, "null"], minimum: 0 }
+        compensationCurrency: { type: [string, "null"] }
+        compensationCadence: { type: [string, "null"], enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL, null] }
+        compensationUnpaid: { type: boolean }
+        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
+        notes: { type: [string, "null"], maxLength: 5000 }
+    DowntimeHirelingRoster:
+      type: object
+      required: [people, summary, assignmentOptions]
+      properties:
+        people: { type: array, items: { $ref: "#/components/schemas/DowntimeHireling" } }
+        summary:
+          type: object
+          required: [active, assignedToProjects, assignedToHavens, unassigned]
+          properties:
+            active: { type: integer, minimum: 0 }
+            assignedToProjects: { type: integer, minimum: 0 }
+            assignedToHavens: { type: integer, minimum: 0 }
+            unassigned: { type: integer, minimum: 0 }
+        assignmentOptions: { $ref: "#/components/schemas/DowntimeHirelingAssignmentOptions" }
     CampaignCalendarDate:
       type: object
       required: [year, month, day]

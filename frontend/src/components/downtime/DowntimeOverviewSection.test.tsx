@@ -16,7 +16,7 @@ function emptyOverview(): DowntimeHubOverviewPayload {
     reputation: { standingCount: 0, standings: [] },
     partyOperations: [
       { id: 'holdings', label: 'Holdings', supported: true, value: 0, valueLabel: '0 havens' },
-      { id: 'hirelings_followers', label: 'Hirelings & followers', supported: false },
+      { id: 'hirelings_followers', label: 'Hirelings', supported: false },
       { id: 'obligations', label: 'Obligations', supported: false },
       { id: 'other_resources', label: 'Other resources', supported: false },
     ],
