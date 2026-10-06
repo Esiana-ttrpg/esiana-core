@@ -46,6 +46,7 @@ type HavenWithWiki = DowntimeHaven & {
     deletedAt: Date | null;
     blocks: unknown;
     metadata: unknown;
+    featuredImageId: string | null;
     templateType: string;
     workspace: string | null;
     pathKey: string | null;
@@ -62,6 +63,7 @@ export type CreateDowntimeHavenInput = {
 
 export type UpdateDowntimeHavenInput = Partial<DowntimeHavenFields> & {
   title?: string;
+  bannerAssetId?: string | null;
   visibility?: string;
   appendActivity?: {
     summary: string;
@@ -153,6 +155,7 @@ export function toDowntimeHavenDetail(
   const summary = toDowntimeHavenSummary(row, campaignHandle, counts);
   return {
     ...summary,
+    bannerAssetId: row.wikiPage.featuredImageId,
     establishedAt: fields.establishedAt,
     residentPageIds: fields.residentPageIds,
     factionPageIds: fields.factionPageIds,
@@ -357,6 +360,7 @@ export async function updateDowntimeHaven(
           deletedAt: true,
           blocks: true,
           metadata: true,
+          featuredImageId: true,
         },
       },
     },
@@ -367,7 +371,7 @@ export async function updateDowntimeHaven(
   }
 
   const currentFields = rowToFields(existing);
-  const { havenSimulation: simulationPatch, appendActivity, title, visibility, ledgerSimulationHints, ...fieldPatch } =
+  const { havenSimulation: simulationPatch, appendActivity, title, visibility, bannerAssetId, ledgerSimulationHints, ...fieldPatch } =
     patch;
 
   let nextFields = parseDowntimeHavenFields({
@@ -420,14 +424,29 @@ export async function updateDowntimeHaven(
     return { ok: false, status: 400, error: 'Haven title is required.' };
   }
 
+  if (bannerAssetId) {
+    const bannerAsset = await prisma.asset.findFirst({
+      where: { id: bannerAssetId, campaignId },
+      select: { id: true },
+    });
+    if (!bannerAsset) {
+      return { ok: false, status: 400, error: 'Banner asset was not found in this campaign.' };
+    }
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
-    if (title !== undefined || visibility !== undefined) {
+    if (title !== undefined || visibility !== undefined || bannerAssetId !== undefined) {
       const wikiPatch: Prisma.WikiPageUpdateInput = {};
       if (title !== undefined) {
         wikiPatch.title = title.trim();
       }
       if (visibility !== undefined) {
         wikiPatch.visibility = visibility.trim();
+      }
+      if (bannerAssetId !== undefined) {
+        wikiPatch.featuredImage = bannerAssetId
+          ? { connect: { id: bannerAssetId } }
+          : { disconnect: true };
       }
       await tx.wikiPage.update({
         where: { id: existing.wikiPageId },

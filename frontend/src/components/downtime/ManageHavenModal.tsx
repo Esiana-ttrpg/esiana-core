@@ -19,7 +19,6 @@ import {
   createHavenBenefitEntry,
   createHavenCrewEntry,
   createHavenReferenceEntry,
-  createHavenSpaceEntry,
   createHavenThreatEntry,
   createHavenUpgradeEntry,
   HAVEN_REFERENCE_TYPES,
@@ -53,6 +52,7 @@ import {
 import { parseHavenLedgerSimulationHints } from '@shared/havenMetadata';
 import { IdentityPagePicker } from '@/components/campaign/IdentityPagePicker';
 import { HavenAssetIdField } from '@/components/downtime/HavenAssetIdField';
+import { HavenSpacesManager } from '@/components/downtime/HavenSpacesManager';
 import { fetchDowntimeHaven, updateDowntimeHaven } from '@/lib/downtime';
 import { storeScheduledTreasuryPrefill } from '@/lib/downtimeScheduledEffects';
 import { downtimeSectionHref } from '@/lib/downtimeLayout';
@@ -77,6 +77,12 @@ interface ManageHavenModalProps {
 const fieldClass =
   'mt-1 w-full rounded border border-border bg-background px-2.5 py-1.5 text-sm text-foreground outline-none transition-colors focus:border-primary/60';
 const sectionClass = 'space-y-3 border-t border-border/60 pt-4 first:border-t-0 first:pt-0';
+const HAVEN_TABS = [
+  ['overview', 'Overview'], ['artwork', 'Artwork'], ['spaces', 'Spaces'],
+  ['references', 'References'], ['simulation', 'Simulation'],
+  ['people', 'People & Benefits'], ['updates', 'Updates'],
+] as const;
+type HavenTab = (typeof HAVEN_TABS)[number][0];
 
 export function ManageHavenModal({
   open,
@@ -91,9 +97,11 @@ export function ManageHavenModal({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<HavenTab>('overview');
 
   const [title, setTitle] = useState('');
   const [wikiPageId, setWikiPageId] = useState<string | null>(null);
+  const [bannerAssetId, setBannerAssetId] = useState<string | null>(null);
   const [havenType, setHavenType] = useState<HavenType>(DEFAULT_HAVEN_TYPE);
   const [status, setStatus] = useState<HavenStatus>(DEFAULT_HAVEN_STATUS);
   const [scale, setScale] = useState<HavenScale | ''>('');
@@ -121,8 +129,6 @@ export function ManageHavenModal({
   const [newCrewRole, setNewCrewRole] = useState('');
   const [newBenefitLabel, setNewBenefitLabel] = useState('');
   const [newBenefitDescription, setNewBenefitDescription] = useState('');
-  const [newSpaceLabel, setNewSpaceLabel] = useState('');
-  const [newSpaceDescription, setNewSpaceDescription] = useState('');
   const [newRefType, setNewRefType] = useState<HavenReferenceType>('wiki_page');
   const [newRefTitle, setNewRefTitle] = useState('');
   const [newRefTargetType, setNewRefTargetType] =
@@ -178,6 +184,10 @@ export function ManageHavenModal({
     () => flatPages.filter((page) => page.templateType !== 'DOWNTIME_HAVEN'),
     [flatPages],
   );
+  const linkedLocationAssetId = useMemo(
+    () => flatPages.find((page) => page.id === locationPageId)?.featuredImageId ?? null,
+    [flatPages, locationPageId],
+  );
 
   const residentLabels = useMemo(() => {
     const byId = new Map(flatPages.map((page) => [page.id, page.title]));
@@ -188,6 +198,7 @@ export function ManageHavenModal({
     if (!open) return;
 
     setError(null);
+    setActiveTab('overview');
     setActivitySummary('');
     setActivityTone('');
     setNewThreatLabel('');
@@ -202,6 +213,7 @@ export function ManageHavenModal({
         const haven = await fetchDowntimeHaven(campaignHandle, havenId);
         setTitle(haven.title);
         setWikiPageId(haven.wikiPageId);
+        setBannerAssetId(haven.bannerAssetId);
         setHavenType(haven.havenType);
         setStatus(haven.status);
         setScale(haven.scale ?? '');
@@ -254,8 +266,38 @@ export function ManageHavenModal({
     setResidentPageIds((prev) => prev.filter((id) => id !== pageId));
   }
 
+  function addReference() {
+    if (!newRefTitle.trim()) return;
+    const targetType = newRefType === 'external_doc' ? 'external' : newRefTargetType;
+    setReferences((prev) => [
+      ...prev,
+      createHavenReferenceEntry({
+        type: newRefType,
+        title: newRefTitle.trim(),
+        targetType,
+        targetId: targetType === 'external' ? null : targetType === 'asset' ? newRefAssetId : newRefTargetId,
+        url: newRefType === 'external_doc' ? newRefUrl.trim() || null : null,
+        sortOrder: prev.length,
+      }),
+    ]);
+    setNewRefTitle('');
+    setNewRefTargetId(null);
+    setNewRefAssetId(null);
+    setNewRefUrl('');
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!title.trim()) {
+      setActiveTab('overview');
+      setError('Haven title is required.');
+      return;
+    }
+    if (spaces.some((space) => !space.label.trim())) {
+      setActiveTab('spaces');
+      setError('Every space needs a name.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -280,16 +322,12 @@ export function ManageHavenModal({
         );
       }
 
-      const nextSpaces = [...spaces];
-      if (newSpaceLabel.trim()) {
-        nextSpaces.push(
-          createHavenSpaceEntry({
-            label: newSpaceLabel.trim(),
-            description: newSpaceDescription.trim() || null,
-            sortOrder: nextSpaces.length,
-          }),
-        );
-      }
+      const nextSpaces = spaces.map((space, sortOrder) => ({
+        ...space,
+        label: space.label.trim(),
+        description: space.description?.trim() || null,
+        sortOrder,
+      }));
 
       const nextReferences = [...references];
       if (newRefTitle.trim()) {
@@ -336,6 +374,7 @@ export function ManageHavenModal({
 
       const patch: Parameters<typeof updateDowntimeHaven>[2] = {
         title: title.trim(),
+        bannerAssetId,
         havenType,
         status,
         scale: scale || null,
@@ -393,7 +432,7 @@ export function ManageHavenModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="manage-haven-title"
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-background shadow-xl"
+        className="flex h-[100dvh] w-full flex-col overflow-hidden border border-border bg-background shadow-xl sm:h-[92vh] sm:max-w-5xl sm:rounded-xl"
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 id="manage-haven-title" className="text-base font-semibold text-foreground">
@@ -412,8 +451,20 @@ export function ManageHavenModal({
         {loading ? (
           <p className="px-4 py-8 text-sm text-muted-foreground">Loading haven…</p>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-0 px-4 py-4">
-            <div className={sectionClass}>
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+            <div className="shrink-0 border-b border-border px-4 py-3">
+              <label className="block md:hidden">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">Section</span>
+                <select value={activeTab} onChange={(event) => setActiveTab(event.target.value as HavenTab)} className={fieldClass}>
+                  {HAVEN_TABS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                </select>
+              </label>
+              <div role="tablist" aria-label="Manage haven sections" className="hidden grid-cols-3 gap-1 md:grid lg:grid-cols-7">
+                {HAVEN_TABS.map(([id, label], index) => <button key={id} id={`manage-haven-tab-${id}`} type="button" role="tab" aria-controls={`manage-haven-panel-${id}`} aria-selected={activeTab === id} tabIndex={activeTab === id ? 0 : -1} onClick={() => setActiveTab(id)} onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); const offset = event.key === 'ArrowRight' ? 1 : -1; const next = HAVEN_TABS[(index + offset + HAVEN_TABS.length) % HAVEN_TABS.length]; setActiveTab(next[0]); requestAnimationFrame(() => document.getElementById(`manage-haven-tab-${next[0]}`)?.focus()); }} className={`rounded px-2 py-2 text-xs font-medium ${activeTab === id ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{label}</button>)}
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            <div className={`${sectionClass} ${activeTab === 'overview' ? '' : 'hidden'}`}>
               <label className="block text-sm font-medium text-foreground">
                 Title
                 <input
@@ -421,7 +472,6 @@ export function ManageHavenModal({
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   className={fieldClass}
-                  required
                 />
               </label>
 
@@ -529,11 +579,8 @@ export function ManageHavenModal({
               </div>
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'overview' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Identity</p>
-              <p className="text-xs text-muted-foreground">
-                Banner image uses the wiki page featured image — set via Edit lore.
-              </p>
               <label className="block text-sm font-medium text-foreground">
                 Summary
                 <textarea
@@ -548,31 +595,6 @@ export function ManageHavenModal({
                   placeholder="What is this place?"
                 />
               </label>
-              <HavenAssetIdField
-                campaignHandle={campaignHandle}
-                label="Portrait / key art"
-                value={identityHints.portraitAssetId}
-                onChange={(assetId) =>
-                  setIdentityHints((prev) => ({ ...prev, portraitAssetId: assetId }))
-                }
-              />
-              <HavenAssetIdField
-                campaignHandle={campaignHandle}
-                label="Crest / icon"
-                value={identityHints.crestAssetId}
-                onChange={(assetId) =>
-                  setIdentityHints((prev) => ({ ...prev, crestAssetId: assetId }))
-                }
-              />
-              <HavenAssetIdField
-                campaignHandle={campaignHandle}
-                label="Ambient gallery"
-                value={identityHints.galleryAssetIds}
-                onChange={(assetIds) =>
-                  setIdentityHints((prev) => ({ ...prev, galleryAssetIds: assetIds }))
-                }
-                allowMultiple
-              />
               <label className="block text-sm font-medium text-foreground">
                 Location
                 <div className="mt-1">
@@ -587,7 +609,15 @@ export function ManageHavenModal({
               </label>
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'artwork' ? '' : 'hidden'}`}>
+              <p className="text-xs text-muted-foreground">Choose distinct artwork for each role. The linked location image is copied only when you request it.</p>
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Banner" value={bannerAssetId} onChange={setBannerAssetId} linkedLocationAssetId={linkedLocationAssetId} />
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Portrait / key art" value={identityHints.portraitAssetId} onChange={(assetId) => setIdentityHints((prev) => ({ ...prev, portraitAssetId: assetId }))} linkedLocationAssetId={linkedLocationAssetId} />
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Crest / icon" value={identityHints.crestAssetId} onChange={(assetId) => setIdentityHints((prev) => ({ ...prev, crestAssetId: assetId }))} linkedLocationAssetId={linkedLocationAssetId} />
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Ambient gallery" value={identityHints.galleryAssetIds} onChange={(assetIds) => setIdentityHints((prev) => ({ ...prev, galleryAssetIds: assetIds }))} linkedLocationAssetId={linkedLocationAssetId} allowMultiple />
+            </div>
+
+            <div className={`${sectionClass} ${activeTab === 'overview' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Factions</p>
               {factionPageIds.length > 0 ? (
                 <ul className="space-y-1">
@@ -635,7 +665,7 @@ export function ManageHavenModal({
               </div>
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'references' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">References</p>
               {references.length > 0 ? (
                 <ul className="space-y-1">
@@ -713,48 +743,16 @@ export function ManageHavenModal({
                   onChange={setNewRefTargetId}
                 />
               )}
+              <button type="button" onClick={addReference} disabled={!newRefTitle.trim()} className="rounded border border-border px-3 py-2 text-sm font-medium hover:border-primary/60 disabled:opacity-50">
+                Add reference
+              </button>
             </div>
 
-            <div className={sectionClass}>
-              <p className="text-sm font-medium text-foreground">Spaces</p>
-              {spaces.length > 0 ? (
-                <ul className="space-y-1">
-                  {spaces.map((space) => (
-                    <li
-                      key={space.id}
-                      className="flex items-center justify-between rounded border border-border px-2 py-1 text-sm"
-                    >
-                      <span>{space.label}</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSpaces((prev) => prev.filter((entry) => entry.id !== space.id))
-                        }
-                        className="text-xs text-muted-foreground hover:text-red-400"
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <input
-                type="text"
-                value={newSpaceLabel}
-                onChange={(event) => setNewSpaceLabel(event.target.value)}
-                className={fieldClass}
-                placeholder="War Room, Forge Wing…"
-              />
-              <input
-                type="text"
-                value={newSpaceDescription}
-                onChange={(event) => setNewSpaceDescription(event.target.value)}
-                className={fieldClass}
-                placeholder="Optional one-liner"
-              />
+            <div className={activeTab === 'spaces' ? '' : 'hidden'}>
+              <HavenSpacesManager spaces={spaces} onChange={setSpaces} />
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'references' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Related pages</p>
               {relatedPageIds.length > 0 ? (
                 <ul className="space-y-1">
@@ -802,7 +800,7 @@ export function ManageHavenModal({
               </div>
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'simulation' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Time simulation</p>
               <p className="text-xs text-muted-foreground">
                 When enabled, this haven drifts with campaign time (opt-in per haven).
@@ -870,7 +868,7 @@ export function ManageHavenModal({
               })}
             </div>
 
-            <details className={sectionClass}>
+            <details className={`${sectionClass} ${activeTab === 'simulation' ? '' : 'hidden'}`}>
               <summary className="cursor-pointer text-sm font-medium text-foreground">
                 Treasury impact (optional)
               </summary>
@@ -942,7 +940,7 @@ export function ManageHavenModal({
               </div>
             </details>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'people' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Crew</p>
               {crew.length > 0 ? (
                 <ul className="space-y-1">
@@ -984,7 +982,7 @@ export function ManageHavenModal({
               />
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'people' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Passive benefits</p>
               {passiveBenefits.length > 0 ? (
                 <ul className="space-y-1">
@@ -1024,7 +1022,7 @@ export function ManageHavenModal({
               />
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'people' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Residents</p>
               {residentLabels.length > 0 ? (
                 <ul className="space-y-1">
@@ -1068,7 +1066,7 @@ export function ManageHavenModal({
               </div>
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'updates' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Record an update</p>
               <p className="text-xs text-muted-foreground">
                 Adds a line to Recent changes on save.
@@ -1097,7 +1095,7 @@ export function ManageHavenModal({
               </label>
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'updates' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Add threat</p>
               <input
                 type="text"
@@ -1122,7 +1120,7 @@ export function ManageHavenModal({
               </select>
             </div>
 
-            <div className={sectionClass}>
+            <div className={`${sectionClass} ${activeTab === 'updates' ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Add improvement</p>
               <input
                 type="text"
@@ -1139,11 +1137,12 @@ export function ManageHavenModal({
               />
             </div>
 
+            </div>
             {error ? (
-              <p className="rounded bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</p>
+              <p className="mx-4 mt-2 shrink-0 rounded bg-red-950/40 px-3 py-2 text-sm text-red-300" role="alert">{error}</p>
             ) : null}
 
-            <div className="flex justify-end gap-2 border-t border-border pt-4">
+            <div className="flex shrink-0 justify-end gap-2 border-t border-border px-4 py-3">
               <button
                 type="button"
                 onClick={onClose}

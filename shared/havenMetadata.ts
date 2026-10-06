@@ -223,7 +223,35 @@ export interface HavenSpaceEntry {
   id: string;
   label: string;
   description: string | null;
+  type: HavenSpaceType;
+  status: HavenSpaceStatus;
   sortOrder: number;
+}
+
+export const HAVEN_SPACE_TYPES = [
+  'room',
+  'facility',
+  'wing',
+  'exterior',
+  'landmark',
+  'other',
+] as const;
+export type HavenSpaceType = (typeof HAVEN_SPACE_TYPES)[number];
+
+export const HAVEN_SPACE_STATUSES = [
+  'active',
+  'unavailable',
+  'restoring',
+  'ruined',
+] as const;
+export type HavenSpaceStatus = (typeof HAVEN_SPACE_STATUSES)[number];
+
+export function formatHavenSpaceTypeLabel(type: HavenSpaceType): string {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+export function formatHavenSpaceStatusLabel(status: HavenSpaceStatus): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export interface DowntimeHavenFields {
@@ -268,6 +296,7 @@ export type DowntimeHavenSummary = {
 };
 
 export type DowntimeHavenDetail = DowntimeHavenSummary & {
+  bannerAssetId: string | null;
   establishedAt: string | null;
   residentPageIds: string[];
   factionPageIds: string[];
@@ -607,6 +636,12 @@ export function parseHavenSpaceEntry(raw: unknown, index: number): HavenSpaceEnt
     id: normalizeNullableString(record.id) ?? `space-${index}`,
     label,
     description: normalizeNullableString(record.description),
+    type: HAVEN_SPACE_TYPES.includes(record.type as HavenSpaceType)
+      ? (record.type as HavenSpaceType)
+      : 'room',
+    status: HAVEN_SPACE_STATUSES.includes(record.status as HavenSpaceStatus)
+      ? (record.status as HavenSpaceStatus)
+      : 'active',
     sortOrder: normalizeSortOrder(record.sortOrder, index),
   };
 }
@@ -643,12 +678,16 @@ export function createHavenReferenceEntry(input: {
 export function createHavenSpaceEntry(input: {
   label: string;
   description?: string | null;
+  type?: HavenSpaceType;
+  status?: HavenSpaceStatus;
   sortOrder?: number;
 }): HavenSpaceEntry {
   return {
     id: randomId(),
     label: input.label.trim(),
     description: input.description ?? null,
+    type: input.type ?? 'room',
+    status: input.status ?? 'active',
     sortOrder: input.sortOrder ?? 0,
   };
 }

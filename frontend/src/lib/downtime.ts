@@ -372,6 +372,7 @@ export async function fetchDowntimeHaven(
 
 export type UpdateDowntimeHavenInput = {
   title?: string;
+  bannerAssetId?: string | null;
   havenType?: HavenType;
   status?: HavenStatus;
   scale?: HavenScale | null;
