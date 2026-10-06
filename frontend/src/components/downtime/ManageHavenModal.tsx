@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import {
@@ -97,7 +97,10 @@ export function ManageHavenModal({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
+  const [pendingUploads, setPendingUploads] = useState(0);
   const [activeTab, setActiveTab] = useState<HavenTab>('overview');
+  const referenceUrlRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState('');
   const [wikiPageId, setWikiPageId] = useState<string | null>(null);
@@ -188,6 +191,13 @@ export function ManageHavenModal({
     () => flatPages.find((page) => page.id === locationPageId)?.featuredImageId ?? null,
     [flatPages, locationPageId],
   );
+  const referenceTargetPresent =
+    newRefType === 'external_doc'
+      ? newRefUrl.trim().length > 0
+      : newRefTargetType === 'asset'
+        ? newRefAssetId != null
+        : newRefTargetId != null;
+  const canAddReference = newRefTitle.trim().length > 0 && referenceTargetPresent;
 
   const residentLabels = useMemo(() => {
     const byId = new Map(flatPages.map((page) => [page.id, page.title]));
@@ -198,6 +208,8 @@ export function ManageHavenModal({
     if (!open) return;
 
     setError(null);
+    setReferenceError(null);
+    setPendingUploads(0);
     setActiveTab('overview');
     setActivitySummary('');
     setActivityTone('');
@@ -266,8 +278,29 @@ export function ManageHavenModal({
     setResidentPageIds((prev) => prev.filter((id) => id !== pageId));
   }
 
+  function handleUploadPendingChange(pending: boolean) {
+    setPendingUploads((count) => Math.max(0, count + (pending ? 1 : -1)));
+  }
+
   function addReference() {
     if (!newRefTitle.trim()) return;
+    if (!referenceTargetPresent) {
+      setActiveTab('references');
+      setReferenceError(
+        newRefType === 'external_doc'
+          ? 'Enter a URL for this reference.'
+          : newRefTargetType === 'asset'
+            ? 'Select an asset for this reference.'
+            : 'Select a page for this reference.',
+      );
+      return;
+    }
+    if (newRefType === 'external_doc' && !referenceUrlRef.current?.checkValidity()) {
+      setActiveTab('references');
+      setReferenceError(referenceUrlRef.current?.validationMessage || 'Enter a valid URL.');
+      return;
+    }
+    setReferenceError(null);
     const targetType = newRefType === 'external_doc' ? 'external' : newRefTargetType;
     setReferences((prev) => [
       ...prev,
@@ -288,6 +321,7 @@ export function ManageHavenModal({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (pendingUploads > 0) return;
     if (!title.trim()) {
       setActiveTab('overview');
       setError('Haven title is required.');
@@ -296,6 +330,18 @@ export function ManageHavenModal({
     if (spaces.some((space) => !space.label.trim())) {
       setActiveTab('spaces');
       setError('Every space needs a name.');
+      return;
+    }
+    if (newRefTitle.trim() && !referenceTargetPresent) {
+      setActiveTab('references');
+      setReferenceError(
+        newRefType === 'external_doc'
+          ? 'Enter a URL for this reference.'
+          : newRefTargetType === 'asset'
+            ? 'Select an asset for this reference.'
+            : 'Select a page for this reference.',
+      );
+      setError('Complete the draft reference before saving.');
       return;
     }
     setSubmitting(true);
@@ -611,10 +657,10 @@ export function ManageHavenModal({
 
             <div className={`${sectionClass} ${activeTab === 'artwork' ? '' : 'hidden'}`}>
               <p className="text-xs text-muted-foreground">Choose distinct artwork for each role. The linked location image is copied only when you request it.</p>
-              <HavenAssetIdField campaignHandle={campaignHandle} label="Banner" value={bannerAssetId} onChange={setBannerAssetId} linkedLocationAssetId={linkedLocationAssetId} />
-              <HavenAssetIdField campaignHandle={campaignHandle} label="Portrait / key art" value={identityHints.portraitAssetId} onChange={(assetId) => setIdentityHints((prev) => ({ ...prev, portraitAssetId: assetId }))} linkedLocationAssetId={linkedLocationAssetId} />
-              <HavenAssetIdField campaignHandle={campaignHandle} label="Crest / icon" value={identityHints.crestAssetId} onChange={(assetId) => setIdentityHints((prev) => ({ ...prev, crestAssetId: assetId }))} linkedLocationAssetId={linkedLocationAssetId} />
-              <HavenAssetIdField campaignHandle={campaignHandle} label="Ambient gallery" value={identityHints.galleryAssetIds} onChange={(assetIds) => setIdentityHints((prev) => ({ ...prev, galleryAssetIds: assetIds }))} linkedLocationAssetId={linkedLocationAssetId} allowMultiple />
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Banner" value={bannerAssetId} onChange={setBannerAssetId} linkedLocationAssetId={linkedLocationAssetId} onUploadPendingChange={handleUploadPendingChange} />
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Portrait / key art" value={identityHints.portraitAssetId} onChange={(assetId) => setIdentityHints((prev) => ({ ...prev, portraitAssetId: assetId }))} linkedLocationAssetId={linkedLocationAssetId} onUploadPendingChange={handleUploadPendingChange} />
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Crest / icon" value={identityHints.crestAssetId} onChange={(assetId) => setIdentityHints((prev) => ({ ...prev, crestAssetId: assetId }))} linkedLocationAssetId={linkedLocationAssetId} onUploadPendingChange={handleUploadPendingChange} />
+              <HavenAssetIdField campaignHandle={campaignHandle} label="Ambient gallery" value={identityHints.galleryAssetIds} onChange={(assetIds) => setIdentityHints((prev) => ({ ...prev, galleryAssetIds: assetIds }))} linkedLocationAssetId={linkedLocationAssetId} onUploadPendingChange={handleUploadPendingChange} allowMultiple />
             </div>
 
             <div className={`${sectionClass} ${activeTab === 'overview' ? '' : 'hidden'}`}>
@@ -694,7 +740,10 @@ export function ManageHavenModal({
               <input
                 type="text"
                 value={newRefTitle}
-                onChange={(event) => setNewRefTitle(event.target.value)}
+                onChange={(event) => {
+                  setNewRefTitle(event.target.value);
+                  setReferenceError(null);
+                }}
                 className={fieldClass}
                 placeholder="Reference title"
               />
@@ -703,6 +752,7 @@ export function ManageHavenModal({
                 onChange={(event) => {
                   const type = event.target.value as HavenReferenceType;
                   setNewRefType(type);
+                  setReferenceError(null);
                   if (type === 'external_doc') {
                     setNewRefTargetType('external');
                   } else if (type === 'image' || type === 'map' || type === 'vtt_scene') {
@@ -720,19 +770,37 @@ export function ManageHavenModal({
                 ))}
               </select>
               {newRefType === 'external_doc' ? (
-                <input
-                  type="url"
-                  value={newRefUrl}
-                  onChange={(event) => setNewRefUrl(event.target.value)}
-                  className={fieldClass}
-                  placeholder="https://…"
-                />
+                <div>
+                  <input
+                    ref={referenceUrlRef}
+                    type="url"
+                    required={newRefTitle.trim().length > 0}
+                    value={newRefUrl}
+                    onChange={(event) => {
+                      setNewRefUrl(event.target.value);
+                      setReferenceError(null);
+                    }}
+                    onInvalid={(event) => {
+                      setActiveTab('references');
+                      setReferenceError(event.currentTarget.validationMessage);
+                    }}
+                    aria-invalid={referenceError ? true : undefined}
+                    aria-describedby={referenceError ? 'haven-reference-error' : undefined}
+                    className={fieldClass}
+                    placeholder="https://…"
+                  />
+                  {referenceError ? <p id="haven-reference-error" className="mt-1 text-xs text-destructive" role="alert">{referenceError}</p> : null}
+                </div>
               ) : newRefTargetType === 'asset' ? (
                 <HavenAssetIdField
                   campaignHandle={campaignHandle}
                   label="Asset"
                   value={newRefAssetId}
-                  onChange={setNewRefAssetId}
+                  onChange={(assetId) => {
+                    setNewRefAssetId(assetId);
+                    setReferenceError(null);
+                  }}
+                  onUploadPendingChange={handleUploadPendingChange}
                 />
               ) : (
                 <IdentityPagePicker
@@ -740,10 +808,14 @@ export function ManageHavenModal({
                   lookupPages={flatPages}
                   value={newRefTargetId}
                   placeholder="Link wiki page…"
-                  onChange={setNewRefTargetId}
+                  onChange={(pageId) => {
+                    setNewRefTargetId(pageId);
+                    setReferenceError(null);
+                  }}
                 />
               )}
-              <button type="button" onClick={addReference} disabled={!newRefTitle.trim()} className="rounded border border-border px-3 py-2 text-sm font-medium hover:border-primary/60 disabled:opacity-50">
+              {newRefType !== 'external_doc' && referenceError ? <p className="text-xs text-destructive" role="alert">{referenceError}</p> : null}
+              <button type="button" onClick={addReference} disabled={!canAddReference} className="rounded border border-border px-3 py-2 text-sm font-medium hover:border-primary/60 disabled:opacity-50">
                 Add reference
               </button>
             </div>
@@ -1152,10 +1224,14 @@ export function ManageHavenModal({
               </button>
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || pendingUploads > 0}
                 className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
               >
-                {submitting ? 'Saving…' : 'Save changes'}
+                {submitting
+                  ? 'Saving…'
+                  : pendingUploads > 0
+                    ? 'Uploading artwork…'
+                    : 'Save changes'}
               </button>
             </div>
           </form>

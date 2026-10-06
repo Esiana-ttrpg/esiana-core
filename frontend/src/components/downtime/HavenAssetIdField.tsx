@@ -12,6 +12,7 @@ interface HavenAssetIdFieldProps {
   onChange: (assetId: string | null) => void;
   allowMultiple?: false;
   linkedLocationAssetId?: string | null;
+  onUploadPendingChange?: (pending: boolean) => void;
 }
 
 interface HavenAssetGalleryFieldProps {
@@ -21,6 +22,7 @@ interface HavenAssetGalleryFieldProps {
   onChange: (assetIds: string[]) => void;
   allowMultiple: true;
   linkedLocationAssetId?: string | null;
+  onUploadPendingChange?: (pending: boolean) => void;
 }
 
 type Props = HavenAssetIdFieldProps | HavenAssetGalleryFieldProps;
@@ -79,6 +81,7 @@ export function HavenAssetIdField(props: Props) {
 
   async function upload(file: File) {
     setUploading(true);
+    props.onUploadPendingChange?.(true);
     setUploadError(null);
     try {
       const result = await uploadCampaignImage(campaignHandle, file);
@@ -92,6 +95,7 @@ export function HavenAssetIdField(props: Props) {
       setUploadError(error instanceof Error ? error.message : 'Failed to upload image.');
     } finally {
       setUploading(false);
+      props.onUploadPendingChange?.(false);
     }
   }
 
