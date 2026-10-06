@@ -131,6 +131,12 @@ import {
   listDowntimeHavensHandler,
   updateDowntimeHavenHandler,
 } from '../controllers/downtimeHavenController.js';
+import {
+  createDowntimePersonHandler,
+  getDowntimePersonByCharacterHandler,
+  listDowntimePeopleHandler,
+  updateDowntimePersonHandler,
+} from '../controllers/downtimePeopleController.js';
 import { putDowntimeGapOverlay } from '../controllers/downtimeGapOverlayController.js';
 import {
   createCustomCharacterPage,
@@ -732,6 +738,10 @@ campaignScopedRouter.delete(
   requireDowntimeManage,
   deleteDowntimeHavenHandler,
 );
+campaignScopedRouter.get('/downtime/people', listDowntimePeopleHandler);
+campaignScopedRouter.get('/downtime/people/by-character/:pageId', getDowntimePersonByCharacterHandler);
+campaignScopedRouter.post('/downtime/people', requireDowntimeManage, createDowntimePersonHandler);
+campaignScopedRouter.patch('/downtime/people/:id', requireDowntimeManage, updateDowntimePersonHandler);
 campaignScopedRouter.get('/downtime/ledger', getCampaignLedgerHandler);
 campaignScopedRouter.get('/downtime/ledger/suggestions', listLedgerSuggestionsHandler);
 campaignScopedRouter.post(

@@ -85,6 +85,7 @@ model User {
   pageNarrativeStatusUpdates PageNarrativeStatus[]     @relation("PageNarrativeStatusUpdatedBy")
   downtimeProjectUpdates    DowntimeProject[]         @relation("DowntimeProjectUpdatedBy")
   downtimeHavenUpdates      DowntimeHaven[]           @relation("DowntimeHavenUpdatedBy")
+  downtimePersonUpdates     DowntimePersonRelationship[] @relation("DowntimePersonUpdatedBy")
   campaignLedgerUpdates     CampaignLedger[]          @relation("CampaignLedgerUpdatedBy")
   campaignLedgerEntriesCreated CampaignLedgerEntry[]    @relation("CampaignLedgerEntryCreatedBy")
   campaignLedgerEntriesUpdated CampaignLedgerEntry[]    @relation("CampaignLedgerEntryUpdatedBy")
@@ -601,6 +602,7 @@ model Campaign {
   timeAdvanceSimulationRuns    TimeAdvanceSimulationRun[]
   downtimeProjects           DowntimeProject[]
   downtimeHavens             DowntimeHaven[]
+  downtimePeople             DowntimePersonRelationship[]
   campaignLedger             CampaignLedger?
   campaignLedgerEntries      CampaignLedgerEntry[]
   campaignLedgerSuggestions  CampaignLedgerSuggestion[]
@@ -667,6 +669,7 @@ model DowntimeProject {
   ledgerSuggestions CampaignLedgerSuggestion[]
   reputationEvents  CampaignReputationEvent[]
   reputationSuggestions CampaignReputationSuggestion[]
+  assignedPeople        DowntimePersonRelationship[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -708,6 +711,7 @@ model DowntimeHaven {
   wikiPage     WikiPage  @relation("DowntimeHavenWiki", fields: [wikiPageId], references: [id], onDelete: Cascade)
   locationPage WikiPage? @relation("DowntimeHavenLocation", fields: [locationPageId], references: [id], onDelete: SetNull)
   updatedBy    User?     @relation("DowntimeHavenUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  assignedPeople DowntimePersonRelationship[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -716,6 +720,48 @@ model DowntimeHaven {
   @@index([campaignId, havenType])
   @@index([campaignId, ownershipType])
   @@index([campaignId, discoveryState])
+}
+
+/// Campaign-scoped operational relationship for a canonical Character page.
+model DowntimePersonRelationship {
+  id                       String   @id @default(cuid())
+  campaignId               String
+  characterPageId          String
+  /// Mirrors characterPageId only while ACTIVE; portable nullable uniqueness.
+  activeCharacterKey       String?
+  /// HIRELING | FOLLOWER | MEMBER
+  relationshipType         String
+  role                     String?
+  /// ACTIVE | INACTIVE | FORMER
+  status                   String   @default("ACTIVE")
+  havenId                  String?
+  projectId                String?
+  compensationAmount       Int?
+  compensationCurrency     String?
+  /// ONE_TIME | WEEKLY | MONTHLY | SEASONAL
+  compensationCadence      String?
+  compensationUnpaid       Boolean  @default(false)
+  features                 Json     @default("[]")
+  notes                    String?
+  startedAtEpochMinute     BigInt?
+  endedAtEpochMinute       BigInt?
+  semanticsVersion         String   @default("downtime-person-v1")
+  updatedByUserId          String?
+
+  campaign      Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterPage WikiPage         @relation("DowntimePersonCharacter", fields: [characterPageId], references: [id], onDelete: Cascade)
+  haven         DowntimeHaven?   @relation(fields: [havenId], references: [id], onDelete: SetNull)
+  project       DowntimeProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  updatedBy     User?            @relation("DowntimePersonUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status])
+  @@index([campaignId, characterPageId])
+  @@unique([campaignId, activeCharacterKey])
+  @@index([havenId])
+  @@index([projectId])
 }
 
 /// Layer 1 — campaign economic ledger settings (one per campaign).
@@ -1523,6 +1569,7 @@ model WikiPage {
   downtimeProjectsOwned    DowntimeProject[] @relation("DowntimeProjectOwner")
   downtimeProjectsAtHaven  DowntimeProject[] @relation("DowntimeProjectHaven")
   downtimeHaven            DowntimeHaven?    @relation("DowntimeHavenWiki")
+  downtimePersonRelationships DowntimePersonRelationship[] @relation("DowntimePersonCharacter")
   downtimeHavensAtLocation DowntimeHaven[]   @relation("DowntimeHavenLocation")
   campaignLedgerEntriesAtHaven CampaignLedgerEntry[] @relation("CampaignLedgerEntryHaven")
   campaignLedgerEntriesAsContributor CampaignLedgerEntry[] @relation("CampaignLedgerEntryContributor")

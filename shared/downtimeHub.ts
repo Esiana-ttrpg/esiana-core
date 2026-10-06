@@ -25,6 +25,7 @@ export const DOWNTIME_HUB_TITLE = 'Downtime';
 export const DOWNTIME_SECTIONS = [
   { id: 'projects', label: 'Projects' },
   { id: 'havens', label: 'Havens' },
+  { id: 'people', label: 'Hirelings' },
   { id: 'worldEvents', label: 'World Events' },
   { id: 'reputation', label: 'Reputation' },
   { id: 'ledger', label: 'Ledger' },
@@ -367,6 +368,7 @@ export type DowntimeHavenOverviewPayload = {
   references: DowntimeHavenOverviewReference[];
   spaces: DowntimeHavenOverviewSpace[];
   activeOperations: DowntimeProjectOperationCard[];
+  assignedPeople: DowntimePersonLine[];
   threats: Array<{
     id: string;
     label: string;
@@ -390,6 +392,40 @@ export type DowntimeHavenOverviewPayload = {
 export type DowntimeHubHavensPayload = {
   cards: DowntimeHavenSituationCard[];
   framing: DowntimePlaceholderFraming;
+};
+
+export type DowntimePersonRelationshipType = 'HIRELING' | 'FOLLOWER' | 'MEMBER';
+export type DowntimePersonStatus = 'ACTIVE' | 'INACTIVE' | 'FORMER';
+export type DowntimePersonFeature = { id: string; title: string; description: string | null };
+export type DowntimePersonLine = {
+  id: string;
+  characterPageId: string;
+  characterName: string;
+  characterHref: string;
+  relationshipType: DowntimePersonRelationshipType;
+  role: string | null;
+  status: DowntimePersonStatus;
+  assignment: { kind: 'haven' | 'project'; id: string; label: string; href: string } | null;
+  compensation: {
+    amount: number | null;
+    currency: string | null;
+    cadence: string | null;
+    unpaid: boolean;
+    label: string;
+  };
+  features: DowntimePersonFeature[];
+  notes: string | null;
+  startedAtEpochMinute: string | null;
+  endedAtEpochMinute: string | null;
+  canEdit: boolean;
+};
+export type DowntimeHubPeoplePayload = {
+  people: DowntimePersonLine[];
+  summary: { active: number; assignedToProjects: number; assignedToHavens: number; unassigned: number };
+  assignmentOptions: {
+    havens: Array<{ id: string; label: string }>;
+    projects: Array<{ id: string; label: string }>;
+  };
 };
 
 export type ProjectClockState =
@@ -425,6 +461,7 @@ export type DowntimeProjectOverviewPayload = {
   outcomes: ProjectOutcomeEntry[];
   owner: DowntimeProjectOverviewLink | null;
   haven: DowntimeProjectOverviewLink | null;
+  assignedPeople: DowntimePersonLine[];
   loreMarkdown: string | null;
   recentChanges: DowntimeFeedCard[];
   pendingTreasurySuggestions?: LedgerSuggestionLine[];
@@ -444,6 +481,7 @@ export type DowntimeHubPayload = {
   worldEvents?: DowntimeHubWorldEventsPayload;
   projects?: DowntimeHubProjectsPayload;
   havens?: DowntimeHubHavensPayload;
+  people?: DowntimeHubPeoplePayload;
   reputation?: DowntimeHubReputationPayload;
   ledger?: DowntimeHubLedgerPayload;
 };
@@ -475,6 +513,11 @@ export const DOWNTIME_PLACEHOLDER_FRAMING: Record<
       'Operational bases — ships, strongholds, sanctuaries, and crew quarters — will take shape here.',
       'Each haven will carry its own rhythm of activity, threat, and upkeep.',
     ],
+    phase: 3,
+  },
+  people: {
+    headline: 'No hirelings yet.',
+    body: ['People who persistently work with, work for, or accompany the party will appear here.'],
     phase: 3,
   },
   reputation: {

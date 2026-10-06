@@ -39,6 +39,7 @@ import {
 import { buildLedgerHubPayload } from '../lib/campaignLedgerService.js';
 import { buildWorldEventSuggestionsForHub } from '../lib/buildWorldEventsPresentation.js';
 import { prisma } from '../lib/prisma.js';
+import { listDowntimePeople } from '../lib/downtimePeopleService.js';
 
 function placeholderPayload(section: Exclude<DowntimeSectionId, 'worldEvents'>) {
   const framing = DOWNTIME_PLACEHOLDER_FRAMING[section];
@@ -138,7 +139,7 @@ export async function buildDowntimeHubResponse(
 
   if (section == null) {
     const { buildReputationHubPayload } = await import('../lib/buildReputationPresentation.js');
-    const [campaign, chronometer, milestone, currentDowntimePeriod, projects, havens, ledger, reputation, worldEventReview] =
+    const [campaign, chronometer, milestone, currentDowntimePeriod, projects, havens, people, ledger, reputation, worldEventReview] =
       await Promise.all([
         prisma.campaign.findUnique({
           where: { id: ctx.campaignId },
@@ -156,6 +157,7 @@ export async function buildDowntimeHubResponse(
         buildCurrentDowntimePeriodPresentation({ campaignId: ctx.campaignId, campaignHandle }),
         listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx.role, { includeTerminal: true }),
         listDowntimeHavens(ctx.campaignId, campaignHandle, ctx.role),
+        listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, canManage),
         buildLedgerHubPayload(ctx.campaignId, campaignHandle, ctx.role, req.user?.id ?? null),
         buildReputationHubPayload(ctx.campaignId, campaignHandle, ctx.role),
         canManage
@@ -207,6 +209,7 @@ export async function buildDowntimeHubResponse(
       ledger,
       reputation,
       pendingWorldEventSuggestionsCount: worldEventReview.pendingSuggestionsCount,
+      activePeopleCount: people.summary.active,
     });
   } else if (section === 'worldEvents') {
     const [context, eventConsequences, worldEventSuggestions] = await Promise.all([
@@ -268,6 +271,13 @@ export async function buildDowntimeHubResponse(
       ),
       framing: DOWNTIME_PLACEHOLDER_FRAMING.havens,
     };
+  } else if (section === 'people') {
+    payload.people = await listDowntimePeople(
+      ctx.campaignId,
+      campaignHandle,
+      ctx.role,
+      canManage,
+    );
   } else if (section === 'reputation') {
     const { buildReputationHubPayload } = await import('../lib/buildReputationPresentation.js');
     payload.reputation = await buildReputationHubPayload(

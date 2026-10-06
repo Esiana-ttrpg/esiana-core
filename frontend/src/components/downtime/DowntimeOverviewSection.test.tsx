@@ -16,7 +16,7 @@ function emptyOverview(): DowntimeHubOverviewPayload {
     reputation: { standingCount: 0, standings: [] },
     partyOperations: [
       { id: 'holdings', label: 'Holdings', supported: true, value: 0, valueLabel: '0 havens' },
-      { id: 'hirelings_followers', label: 'Hirelings & followers', supported: false },
+      { id: 'hirelings_followers', label: 'Hirelings', supported: false },
       { id: 'obligations', label: 'Obligations', supported: false },
       { id: 'other_resources', label: 'Other resources', supported: false },
     ],
@@ -48,7 +48,7 @@ test('DowntimeOverviewSection keeps every empty sheet region visible', () => {
   }
   assert.match(html, /No active projects/);
   assert.match(html, /0 havens/);
-  assert.match(html, /Hirelings &amp; followers: Not tracked yet/);
+  assert.match(html, /Hirelings: Not tracked yet/);
   assert.doesNotMatch(html, />Downtime</);
   assert.doesNotMatch(html, /Start a project/);
 });

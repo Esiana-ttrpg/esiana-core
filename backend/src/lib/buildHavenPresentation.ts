@@ -167,6 +167,7 @@ export async function buildHavenOverviewPayload(input: {
   activeProjects: Array<{ project: DowntimeProjectDetail; wikiMetadata?: unknown }>;
   residentLabels: Map<string, string>;
   currentEpochMinute: bigint;
+  assignedPeople: DowntimeHavenOverviewPayload['assignedPeople'];
 }): Promise<DowntimeHavenOverviewPayload> {
   const {
     haven,
@@ -177,6 +178,7 @@ export async function buildHavenOverviewPayload(input: {
     activeProjects,
     residentLabels,
     currentEpochMinute,
+    assignedPeople,
   } = input;
 
   const [identity, references, spaces] = await Promise.all([
@@ -235,6 +237,7 @@ export async function buildHavenOverviewPayload(input: {
     references,
     spaces,
     activeOperations,
+    assignedPeople,
     threats,
     improvements,
     present: {
