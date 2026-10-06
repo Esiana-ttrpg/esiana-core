@@ -19,6 +19,7 @@ const result = spawnSync(
     'src/components/chronology/ErasView.test.ts',
     'src/components/progression/DevelopmentsSection.test.ts',
     'src/components/progression/ProgressionTrajectoriesSection.test.ts',
+    'src/components/downtime/DowntimeOverviewSection.test.tsx',
     'src/lib/chronologyDates.test.ts',
     'src/lib/wikiHierarchy.test.ts',
     'src/lib/formatWikiPageKind.test.ts',

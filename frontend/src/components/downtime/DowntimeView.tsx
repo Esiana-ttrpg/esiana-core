@@ -28,7 +28,9 @@ import { LedgerRefinePopover } from '@/components/downtime/LedgerRefinePopover';
 import { LedgerSortControl } from '@/components/downtime/LedgerSortControl';
 import { CreateProjectModal } from '@/components/downtime/CreateProjectModal';
 import { CreateHavenModal } from '@/components/downtime/CreateHavenModal';
+import { AddLedgerEntryModal } from '@/components/downtime/AddLedgerEntryModal';
 import { CampaignMemberRoles } from '@/types/domain';
+import { isCharacterEntityPage } from '@shared/resolveCanonicalEntityCategory';
 import { formatWorkspaceHubCountHint } from '@/lib/workspaceHeaderPolicy';
 import {
   clearLedgerRefineChip,
@@ -61,6 +63,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   const [error, setError] = useState<string | null>(null);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateHavenOpen, setIsCreateHavenOpen] = useState(false);
+  const [isOverviewLedgerOpen, setIsOverviewLedgerOpen] = useState(false);
   const [ledgerBrowse, setLedgerBrowse] = useState<LedgerBrowseState>(
     DEFAULT_LEDGER_BROWSE_STATE,
   );
@@ -72,6 +75,13 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
 
   const canContributeToLedger =
     canManage || campaign?.role === CampaignMemberRoles.PARTICIPANT;
+
+  const characterOptions = useMemo(
+    () => flatPages
+      .filter((page) => isCharacterEntityPage(page, flatPages))
+      .map((page) => ({ id: page.id, label: page.title })),
+    [flatPages],
+  );
 
   const loadSection = useCallback(async () => {
     setLoadingSection(true);
@@ -271,7 +281,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
       <WikiWorkspaceShell
         composition="studio"
         header={
-          headerConfig ? (
+          headerConfig && activeSection ? (
             <WorkspaceHeader
               title={headerConfig.displayTitle}
               actions={activeSection ? sectionToolbar : undefined}
@@ -296,8 +306,12 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
           ) : activeSection == null && sectionData?.overview ? (
             <DowntimeOverviewSection
               campaignHandle={campaignHandle}
-              categoryPageId={categoryPageId}
-              snapshot={sectionData.overview.simulationSnapshot}
+              overview={sectionData.overview}
+              canManage={canManage}
+              canContributeToLedger={canContributeToLedger}
+              onCreateProject={() => setIsCreateProjectOpen(true)}
+              onCreateHaven={() => setIsCreateHavenOpen(true)}
+              onAddLedgerEntry={() => setIsOverviewLedgerOpen(true)}
             />
           ) : activeSection === 'worldEvents' && sectionData?.worldEvents ? (
             <DowntimeWorldEventsSection
@@ -353,6 +367,16 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
         campaignHandle={campaignHandle}
         onClose={() => setIsCreateHavenOpen(false)}
         onCreated={() => void handleHavenCreated()}
+      />
+      <AddLedgerEntryModal
+        open={isOverviewLedgerOpen}
+        campaignHandle={campaignHandle}
+        editingLine={null}
+        acceptingSuggestion={null}
+        characterOptions={characterOptions}
+        showContributor
+        onClose={() => setIsOverviewLedgerOpen(false)}
+        onSaved={() => void loadSection()}
       />
     </>
   );

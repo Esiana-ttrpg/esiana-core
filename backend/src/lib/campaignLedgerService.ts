@@ -203,6 +203,7 @@ function entryToFeedLine(
     href,
     entryKind: entry.entryKind,
     amount: entry.amount,
+    occurredAtEpochMinute: entry.occurredAtEpochMinute,
     projectId: entry.projectId,
     havenWikiPageId: entry.havenWikiPageId,
     contributorPageId: entry.contributorPageId,

@@ -6,6 +6,38 @@
 @import './styles/esiana-logo.css';
 @import './styles/page-print.css';
 
+.downtime-party-sheet-grid {
+  display: grid;
+  gap: 1px;
+  grid-template-areas: "current" "projects" "funds" "havens" "reputation" "operations" "activity";
+}
+
+.downtime-party-sheet__current { grid-area: current; }
+.downtime-party-sheet__projects { grid-area: projects; }
+.downtime-party-sheet__funds { grid-area: funds; }
+.downtime-party-sheet__havens { grid-area: havens; }
+.downtime-party-sheet__reputation { grid-area: reputation; }
+.downtime-party-sheet__operations { grid-area: operations; }
+.downtime-party-sheet__activity { grid-area: activity; }
+
+@media (min-width: 768px) {
+  .downtime-party-sheet-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-areas: "current funds" "projects projects" "havens reputation" "operations operations" "activity activity";
+  }
+}
+
+@media (min-width: 1280px) {
+  .downtime-party-sheet-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-areas:
+      "current current current current current funds funds funds reputation reputation reputation reputation"
+      "projects projects projects projects projects projects projects projects havens havens havens havens"
+      "operations operations operations operations operations operations operations operations operations operations operations operations"
+      "activity activity activity activity activity activity activity activity activity activity activity activity";
+  }
+}
+
 /*
  * Tailwind v4 theme tokens → runtime CSS variables on :root/html.
  * Use utilities like bg-primary, text-foreground, border-border, bg-surface.
