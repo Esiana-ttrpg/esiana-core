@@ -3,6 +3,10 @@ import { WikiVisibility } from '../types/domain.js';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
 import { canViewWikiPage } from './wikiTree.js';
+import { buildWikiPageHref } from './wikiLinkService.js';
+import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
+import { RESERVED_PATH_KEY_SEGMENTS } from '../../../shared/campaignWorkspaceRoutes.js';
+import { generatePathKeyFromTitle } from '../../../shared/pathKeyUtils.js';
 
 const TYPES = ['HIRELING', 'FOLLOWER', 'MEMBER'] as const;
 const STATUSES = ['ACTIVE', 'INACTIVE', 'FORMER'] as const;
@@ -10,9 +14,9 @@ type RelationshipType = (typeof TYPES)[number];
 type RelationshipStatus = (typeof STATUSES)[number];
 
 const include = {
-  characterPage: { select: { id: true, title: true, visibility: true } },
-  haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true } } } },
-  project: { include: { wikiPage: { select: { id: true, title: true, visibility: true } } } },
+  characterPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } },
+  haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } } } },
+  project: { include: { wikiPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } } } },
 } satisfies Prisma.DowntimePersonRelationshipInclude;
 
 function text(value: unknown, max = 500): string | null {
@@ -46,15 +50,18 @@ function featuresOf(value: unknown) {
   });
 }
 
-function href(handle: string, pageId: string) {
-  return `/campaigns/${encodeURIComponent(handle)}/wiki/${encodeURIComponent(pageId)}`;
+export function buildHirelingCharacterRouting(title: string, existingCharacterPathKeys: Iterable<string>) {
+  return {
+    workspace: CampaignWorkspace.CHARACTERS,
+    pathKey: generatePathKeyFromTitle(title, new Set(existingCharacterPathKeys), RESERVED_PATH_KEY_SEGMENTS),
+  };
 }
 
 function present(row: any, handle: string, role: CampaignMemberRole | null, canEdit: boolean) {
   const target = row.haven && canViewWikiPage(row.haven.wikiPage.visibility, role)
-    ? { kind: 'haven' as const, id: row.haven.id, label: row.haven.wikiPage.title, href: href(handle, row.haven.wikiPage.id) }
+    ? { kind: 'haven' as const, id: row.haven.id, label: row.haven.wikiPage.title, href: buildWikiPageHref(handle, row.haven.wikiPage) }
     : row.project && canViewWikiPage(row.project.wikiPage.visibility, role)
-      ? { kind: 'project' as const, id: row.project.id, label: row.project.wikiPage.title, href: href(handle, row.project.wikiPage.id) }
+      ? { kind: 'project' as const, id: row.project.id, label: row.project.wikiPage.title, href: buildWikiPageHref(handle, row.project.wikiPage) }
       : null;
   const compensationLabel = row.compensationUnpaid
     ? 'Unpaid'
@@ -65,7 +72,7 @@ function present(row: any, handle: string, role: CampaignMemberRole | null, canE
     id: row.id,
     characterPageId: row.characterPage.id,
     characterName: row.characterPage.title,
-    characterHref: href(handle, row.characterPage.id),
+    characterHref: buildWikiPageHref(handle, row.characterPage),
     relationshipType: row.relationshipType,
     role: row.role,
     status: row.status,
@@ -123,10 +130,17 @@ export async function createDowntimePerson(campaignId: string, actorUserId: stri
         const page = await tx.wikiPage.findFirst({ where: { id: pageId, campaignId, deletedAt: null } });
         if (!page) throw new Error('Character not found.');
       } else {
-        const candidates = await tx.wikiPage.findMany({ where: { campaignId, deletedAt: null }, select: { id: true, metadata: true } });
+        const candidates = await tx.wikiPage.findMany({
+          where: { campaignId, deletedAt: null },
+          select: { id: true, metadata: true, workspace: true, pathKey: true },
+        });
         const folder = candidates.find((page) => { const meta = page.metadata as Record<string, unknown> | null; return meta?.systemCategoryKey === 'characters' || meta?.categoryKey === 'characters'; });
         if (!folder) throw new Error('Characters category not found.');
-        const page = await tx.wikiPage.create({ data: { campaignId, parentId: folder.id, title: characterName!, visibility: WikiVisibility.PARTY, templateType: 'CHARACTER', metadata: { character: {} }, createdByUserId: actorUserId }, select: { id: true } });
+        const routing = buildHirelingCharacterRouting(
+          characterName!,
+          candidates.flatMap((page) => page.workspace === CampaignWorkspace.CHARACTERS && page.pathKey ? [page.pathKey] : []),
+        );
+        const page = await tx.wikiPage.create({ data: { campaignId, parentId: folder.id, title: characterName!, visibility: WikiVisibility.PARTY, templateType: 'CHARACTER', workspace: routing.workspace, pathKey: routing.pathKey, metadata: { character: {} }, createdByUserId: actorUserId }, select: { id: true } });
         pageId = page.id;
       }
       const existing = await tx.downtimePersonRelationship.findFirst({ where: { campaignId, characterPageId: pageId!, status: 'ACTIVE' } });
