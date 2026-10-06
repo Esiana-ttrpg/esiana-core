@@ -29,7 +29,7 @@ function viewerUserId(req: Request): string | null {
 function resolveContext(
   req: Request,
   res: Response,
-  buildContext: (campaignId: string) => PluginHostContext,
+  buildContext: (campaignId: string, trustedViewerUserId: string | null) => PluginHostContext,
 ): PluginHostContext | null {
   const campaignId = getPluginJailedCampaignId(req);
   if (!campaignId) {
@@ -38,12 +38,12 @@ function resolveContext(
     });
     return null;
   }
-  return buildContext(campaignId);
+  return buildContext(campaignId, viewerUserId(req));
 }
 
 export function mountPluginPlatformRoutes(
   router: IRouter,
-  buildContext: (campaignId: string) => PluginHostContext,
+  buildContext: (campaignId: string, trustedViewerUserId: string | null) => PluginHostContext,
 ): void {
   const readScope = requireTokenScopes([API_TOKEN_SCOPES.CAMPAIGN_READ]);
   const writeScope = requireTokenScopes([API_TOKEN_SCOPES.CAMPAIGN_WRITE]);
@@ -210,7 +210,7 @@ export function mountPluginPlatformRoutes(
     try {
       const context = resolveContext(req, res, buildContext);
       if (!context) return;
-      const data = await context.downtime.getHirelings(viewerUserId(req));
+      const data = await context.downtime.getHirelings();
       res.json({ hirelings: data });
     } catch (error) {
       sendServiceError(res, error);

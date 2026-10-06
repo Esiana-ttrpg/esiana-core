@@ -85,7 +85,10 @@ export async function listDowntimePeople(campaignId: string, handle: string, rol
     prisma.downtimeHaven.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
     prisma.downtimeProject.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
   ]);
-  const people = rows.filter((row) => canViewWikiPage(row.characterPage.visibility, role)).map((row) => present(row, handle, role, canEdit));
+  const people = rows
+    .filter((row) => row.relationshipType === 'HIRELING')
+    .filter((row) => canViewWikiPage(row.characterPage.visibility, role))
+    .map((row) => present(row, handle, role, canEdit));
   const active = people.filter((person) => person.status === 'ACTIVE');
   return {
     people,
@@ -152,8 +155,17 @@ export async function updateDowntimePerson(campaignId: string, id: string, actor
       const relationshipType = raw.relationshipType === undefined ? current.relationshipType as RelationshipType : typeOf(raw.relationshipType);
       const status = raw.status === undefined ? current.status as RelationshipStatus : statusOf(raw.status);
       if (!relationshipType || !status) throw new Error('Invalid relationship type or status.');
+      if (status === 'ACTIVE') {
+        const activeConflict = await tx.downtimePersonRelationship.findFirst({ where: { campaignId, characterPageId: current.characterPageId, status: 'ACTIVE', id: { not: id } }, select: { id: true } });
+        if (activeConflict) throw new Error('This Character already has an active Downtime relationship.');
+      }
       const assignment = resolveLifecycleAssignment(status, { havenId, projectId });
-      const updated = await tx.downtimePersonRelationship.update({ where: { id }, data: { relationshipType, status, activeCharacterKey: status === 'ACTIVE' ? current.characterPageId : null, role: raw.role === undefined ? undefined : text(raw.role, 200), havenId: assignment.havenId, projectId: assignment.projectId, compensationAmount: raw.compensationAmount === undefined ? undefined : typeof raw.compensationAmount === 'number' ? raw.compensationAmount : null, compensationCurrency: raw.compensationCurrency === undefined ? undefined : text(raw.compensationCurrency, 80), compensationCadence: raw.compensationCadence === undefined ? undefined : text(raw.compensationCadence, 40)?.toUpperCase() ?? null, compensationUnpaid: raw.compensationUnpaid === undefined ? undefined : raw.compensationUnpaid === true, features: raw.features === undefined ? undefined : featuresOf(raw.features), notes: raw.notes === undefined ? undefined : text(raw.notes, 5000), endedAtEpochMinute: status === 'FORMER' && current.status !== 'FORMER' ? (await tx.campaign.findUnique({ where: { id: campaignId }, select: { currentEpochMinute: true } }))?.currentEpochMinute ?? null : status !== 'FORMER' ? null : undefined, updatedByUserId: actorUserId }, include });
+      const compensationAmount = raw.compensationAmount === undefined
+        ? undefined
+        : typeof raw.compensationAmount === 'number' && Number.isInteger(raw.compensationAmount) && raw.compensationAmount >= 0
+          ? raw.compensationAmount
+          : null;
+      const updated = await tx.downtimePersonRelationship.update({ where: { id }, data: { relationshipType, status, activeCharacterKey: status === 'ACTIVE' ? current.characterPageId : null, role: raw.role === undefined ? undefined : text(raw.role, 200), havenId: assignment.havenId, projectId: assignment.projectId, compensationAmount, compensationCurrency: raw.compensationCurrency === undefined ? undefined : text(raw.compensationCurrency, 80), compensationCadence: raw.compensationCadence === undefined ? undefined : text(raw.compensationCadence, 40)?.toUpperCase() ?? null, compensationUnpaid: raw.compensationUnpaid === undefined ? undefined : raw.compensationUnpaid === true, features: raw.features === undefined ? undefined : featuresOf(raw.features), notes: raw.notes === undefined ? undefined : text(raw.notes, 5000), endedAtEpochMinute: status === 'FORMER' && current.status !== 'FORMER' ? (await tx.campaign.findUnique({ where: { id: campaignId }, select: { currentEpochMinute: true } }))?.currentEpochMinute ?? null : status !== 'FORMER' ? null : undefined, updatedByUserId: actorUserId }, include });
       return updated;
     });
     return { ok: true as const, row };

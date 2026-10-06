@@ -48,7 +48,7 @@ test('DowntimeOverviewSection keeps every empty sheet region visible', () => {
   }
   assert.match(html, /No active projects/);
   assert.match(html, /0 havens/);
-  assert.match(html, /Hirelings &amp; followers: Not tracked yet/);
+  assert.match(html, /Hirelings: Not tracked yet/);
   assert.doesNotMatch(html, />Downtime</);
   assert.doesNotMatch(html, /Start a project/);
 });

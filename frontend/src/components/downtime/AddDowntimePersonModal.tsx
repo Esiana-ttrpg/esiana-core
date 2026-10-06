@@ -40,7 +40,7 @@ export function AddDowntimePersonModal({ open, campaignHandle, characters, haven
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setSaving(true); setError(null);
     const [assignmentKind, assignmentId] = assignment.split(':');
-    const common = { role, havenId: assignmentKind === 'haven' ? assignmentId : null, projectId: assignmentKind === 'project' ? assignmentId : null, compensationAmount: amount ? Number(amount) : undefined, compensationCurrency: amount ? currency : undefined, compensationCadence: amount ? cadence : undefined, features, notes };
+    const common = { role, havenId: assignmentKind === 'haven' ? assignmentId : null, projectId: assignmentKind === 'project' ? assignmentId : null, compensationAmount: amount ? Number(amount) : editing ? null : undefined, compensationCurrency: amount ? currency : undefined, compensationCadence: amount ? cadence : undefined, features, notes };
     try {
       if (editing) await updateDowntimePerson(campaignHandle, editing.id, { ...common, status });
       else await createDowntimePerson(campaignHandle, { ...common, characterName: mode === 'create' ? name : undefined, characterPageId: mode === 'link' ? characterPageId : undefined, relationshipType: 'HIRELING', addHirelingTag });

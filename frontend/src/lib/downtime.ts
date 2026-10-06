@@ -125,7 +125,7 @@ export type CreateDowntimePersonInput = {
   role?: string;
   havenId?: string | null;
   projectId?: string | null;
-  compensationAmount?: number;
+  compensationAmount?: number | null;
   compensationCurrency?: string;
   compensationCadence?: string;
   compensationUnpaid?: boolean;

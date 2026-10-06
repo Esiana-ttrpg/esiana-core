@@ -91,7 +91,7 @@ export interface PluginMapsApi {
 }
 
 export interface PluginDowntimeApi {
-  getHirelings(viewerUserId?: string | null): Promise<PluginHirelingReadDto[]>;
+  getHirelings(): Promise<PluginHirelingReadDto[]>;
 }
 
 export interface PluginConfigApi {
@@ -129,13 +129,14 @@ export function createPluginHostServices(input: {
   pluginId: string;
   permissions: string[];
   jailedCampaignId?: string;
+  trustedViewerUserId?: string | null;
   data: PluginDataApi;
   subscribeToDomainEvent: (
     pattern: string,
     listener: DomainEventListener,
   ) => () => void;
 }): PluginHostServiceBundle {
-  const { pluginId, permissions, jailedCampaignId, data, subscribeToDomainEvent } =
+  const { pluginId, permissions, jailedCampaignId, trustedViewerUserId = null, data, subscribeToDomainEvent } =
     input;
 
   const campaignIdFor = (requested?: string) =>
@@ -216,9 +217,9 @@ export function createPluginHostServices(input: {
       },
     },
     downtime: {
-      getHirelings(viewerUserId = null) {
+      getHirelings() {
         assertPermission(pluginId, permissions, 'campaign:read-world');
-        return readPluginHirelings(campaignIdFor(), viewerUserId);
+        return readPluginHirelings(campaignIdFor(), trustedViewerUserId);
       },
     },
     config: {

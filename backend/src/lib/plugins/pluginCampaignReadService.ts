@@ -178,7 +178,7 @@ export async function readPluginMaps(
 export async function readPluginHirelings(campaignId: string, viewerUserId: string | null): Promise<PluginHirelingReadDto[]> {
   const role = await resolveViewerRole(campaignId, viewerUserId);
   const rows = await prisma.downtimePersonRelationship.findMany({
-    where: { campaignId },
+    where: { campaignId, relationshipType: 'HIRELING' },
     include: {
       characterPage: { select: { id: true, title: true, visibility: true } },
       haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true } } } },

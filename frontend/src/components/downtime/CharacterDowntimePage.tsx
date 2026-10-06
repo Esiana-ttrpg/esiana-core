@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DowntimePersonLine } from '@shared/downtimeHub';
 import { fetchDowntimePersonByCharacter } from '@/lib/downtime';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -12,13 +12,22 @@ export function CharacterDowntimePage({ campaignHandle, characterPageId }: { cam
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const requestSequence = useRef(0);
   const load = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     setLoading(true); setError(null);
-    try { const payload = await fetchDowntimePersonByCharacter(campaignHandle, characterPageId); setPerson(payload.person); setOptions(payload.assignmentOptions); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Unable to load Hireling details.'); setPerson(null); }
-    finally { setLoading(false); }
+    try {
+      const payload = await fetchDowntimePersonByCharacter(campaignHandle, characterPageId);
+      if (requestId !== requestSequence.current) return;
+      setPerson(payload.person); setOptions(payload.assignmentOptions);
+    } catch (err) {
+      if (requestId !== requestSequence.current) return;
+      setError(err instanceof Error ? err.message : 'Unable to load Hireling details.'); setPerson(null);
+    } finally {
+      if (requestId === requestSequence.current) setLoading(false);
+    }
   }, [campaignHandle, characterPageId]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); return () => { requestSequence.current += 1; }; }, [load]);
   if (loading) return <LoadingSpinner label="Loading Downtime…" />;
   if (error || !person) return <p className="rounded-lg border border-border bg-elevated/20 p-4 text-sm text-muted">{error ?? 'No Hireling relationship is available.'}</p>;
   return <div className="mx-auto w-full max-w-3xl space-y-6 py-4">

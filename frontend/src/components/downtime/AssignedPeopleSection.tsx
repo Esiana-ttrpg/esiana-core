@@ -8,7 +8,7 @@ export function AssignedPeopleSection({ people, title }: { people: DowntimePerso
     <div className="mt-3 divide-y divide-border rounded-lg border border-border bg-elevated/20">
       {people.map((person) => <div key={person.id} className="flex items-center justify-between gap-4 px-4 py-3">
         <Link to={person.characterHref} className="font-medium text-primary hover:underline">{person.characterName}</Link>
-        <span className="text-sm text-muted-foreground">{person.role ?? 'Hireling'}</span>
+        <span className="text-sm text-muted-foreground">{person.role ?? ({ HIRELING: 'Hireling', FOLLOWER: 'Follower', MEMBER: 'Member' } as const)[person.relationshipType]}</span>
       </div>)}
     </div>
   </section>;

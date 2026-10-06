@@ -242,7 +242,7 @@ export function createPluginHostContext(
   pluginId: string,
   manifestPermissions: string[] = [],
   pluginRoot = '',
-  options: { jailedCampaignId?: string; scope?: string; outboundOrigins?: string[] } = {},
+  options: { jailedCampaignId?: string; scope?: string; outboundOrigins?: string[]; trustedViewerUserId?: string | null } = {},
 ): PluginHostContext {
   const scope = options.scope ?? PluginScopes.GLOBAL;
   const jailedCampaignId = options.jailedCampaignId;
@@ -283,6 +283,7 @@ export function createPluginHostContext(
     pluginId,
     permissions: manifestPermissions,
     jailedCampaignId,
+    trustedViewerUserId: options.trustedViewerUserId,
     data: dataService,
     subscribeToDomainEvent,
   });
@@ -450,9 +451,10 @@ export function attachPluginPlatformRoutes(
   platformRouter.use(requireAuthenticatedApiOrSession);
   platformRouter.use(requirePluginCampaignJail);
   platformRouter.use(requireCampaignPluginEnabled(pluginId));
-  mountPluginPlatformRoutes(platformRouter, (campaignId) =>
+  mountPluginPlatformRoutes(platformRouter, (campaignId, trustedViewerUserId) =>
     createPluginHostContext(pluginId, manifestPermissions, pluginRoot, {
       jailedCampaignId: campaignId,
+      trustedViewerUserId,
       scope,
       outboundOrigins,
     }),
