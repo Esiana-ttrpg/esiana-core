@@ -280,6 +280,30 @@ test('normalizeDashboardConfig adds world widget bank entries disabled by defaul
   }
 });
 
+test('normalizeDashboardConfig adds authored and downtime widgets disabled by default', () => {
+  const normalized = normalizeDashboardConfig(null);
+  for (const id of ['description', 'text', 'havenDowntime'] as const) {
+    const widget = normalized.widgets.find((item) => item.id === id);
+    assert.ok(widget, `expected ${id} widget`);
+    assert.equal(widget.enabled, false);
+  }
+});
+
+test('normalizeDashboardConfig bounds text widget content', () => {
+  const base = normalizeDashboardConfig(null);
+  const normalized = normalizeDashboardConfig({
+    ...base,
+    widgets: base.widgets.map((widget) =>
+      widget.id === 'text'
+        ? { ...widget, config: { title: 'T'.repeat(100), text: 'B'.repeat(2_100) } }
+        : widget,
+    ),
+  });
+  const textWidget = normalized.widgets.find((widget) => widget.id === 'text');
+  assert.equal((textWidget?.config?.title as string).length, 80);
+  assert.equal((textWidget?.config?.text as string).length, 2_000);
+});
+
 test('parseDashboardLayoutPayload rejects invalid recentEntities config', () => {
   const base = normalizeDashboardConfig(null);
   const payload = {

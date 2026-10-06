@@ -61,6 +61,9 @@ export type DashboardWidgetId =
   | 'recentEntities'
   | 'worldEvents'
   | 'factionsAtWar'
+  | 'description'
+  | 'text'
+  | 'havenDowntime'
   | 'sessionClock'
   /** @deprecated migrated silently */
   | 'worldClock'
@@ -121,6 +124,9 @@ const CANONICAL_WIDGET_IDS: DashboardWidgetId[] = [
   'recentEntities',
   'worldEvents',
   'factionsAtWar',
+  'description',
+  'text',
+  'havenDowntime',
 ];
 
 const LEGACY_WIDGET_ID_MAP: Record<string, DashboardWidgetId> = {
@@ -163,6 +169,9 @@ const WIDGET_LABELS: Record<DashboardWidgetId, string> = {
   recentEntities: 'Recent Entities',
   worldEvents: 'World Events',
   factionsAtWar: 'Factions at War',
+  description: 'Description',
+  text: 'Text',
+  havenDowntime: 'Havens & Downtime',
   sessionClock: 'Session Schedule',
   worldClock: 'World Chronometer',
   announcements: 'Campaign Bulletin',
@@ -308,6 +317,12 @@ export function getDefaultDashboardConfig(): DashboardConfig {
         enabled: false,
         config: { ...DEFAULT_FACTION_CONFLICT_CONFIG },
       }),
+      defaultPlacement('description', 0, 44, 6, 3, { enabled: false }),
+      defaultPlacement('text', 6, 44, 6, 3, {
+        enabled: false,
+        config: { title: 'Campaign note', text: '' },
+      }),
+      defaultPlacement('havenDowntime', 0, 47, 12, 4, { enabled: false }),
     ],
   };
 }
@@ -350,6 +365,12 @@ function mergeWidgetConfigs(
   };
 }
 
+function sanitizeTextWidgetConfig(config: Record<string, unknown> | undefined): Record<string, unknown> {
+  const title = typeof config?.title === 'string' ? config.title.slice(0, 80) : 'Campaign note';
+  const text = typeof config?.text === 'string' ? config.text.slice(0, 2_000) : '';
+  return { title, text };
+}
+
 export function isDashboardConfigBlank(raw: unknown): boolean {
   if (raw == null || typeof raw !== 'object') return true;
   const parsed = raw as { widgets?: unknown };
@@ -388,6 +409,9 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
       ...(scope ? { scope } : {}),
       ...(item.config && typeof item.config === 'object' ? { config: item.config } : {}),
     };
+    if (canonicalId === 'text') {
+      placement.config = sanitizeTextWidgetConfig(placement.config);
+    }
 
     const existing = byCanonicalId.get(canonicalId);
     if (!existing) {

@@ -42,6 +42,9 @@ import { ExploreWidget } from '@/components/dashboard/widgets/ExploreWidget';
 import { RecentEntitiesWidget } from '@/components/dashboard/widgets/RecentEntitiesWidget';
 import { WorldEventsWidget } from '@/components/dashboard/widgets/WorldEventsWidget';
 import { FactionsAtWarWidget } from '@/components/dashboard/widgets/FactionsAtWarWidget';
+import { DescriptionWidget } from '@/components/dashboard/widgets/DescriptionWidget';
+import { TextWidget } from '@/components/dashboard/widgets/TextWidget';
+import { HavenDowntimeWidget } from '@/components/dashboard/widgets/HavenDowntimeWidget';
 import { getCompositionProfile } from '@/lib/compositionDoctrine';
 import {
   buildPluginWidgetPlacementId,
@@ -68,6 +71,7 @@ export interface DashboardGridProps {
   canManageTime: boolean;
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
+  campaignDescription: string | null;
   narrativeSnapshot?: CampaignNarrativeSnapshot;
   recentEntities?: RecentEntitiesFeedResult | null;
   worldEvents?: DashboardWorldEventsFeedResult | null;
@@ -88,6 +92,7 @@ export function DashboardGrid({
   canManageTime,
   isLookingForGroup,
   sessionDuration,
+  campaignDescription,
   narrativeSnapshot,
   recentEntities,
   worldEvents,
@@ -302,6 +307,7 @@ export function DashboardGrid({
                   canManageTime={canManageTime}
                   isLookingForGroup={isLookingForGroup}
                   sessionDuration={sessionDuration}
+                  campaignDescription={campaignDescription}
                   narrativeSnapshot={narrativeSnapshot}
                   recentEntities={recentEntities}
                   worldEvents={worldEvents}
@@ -384,6 +390,7 @@ interface DashboardWidgetRendererProps {
   canManageTime: boolean;
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
+  campaignDescription: string | null;
   narrativeSnapshot?: CampaignNarrativeSnapshot;
   recentEntities?: RecentEntitiesFeedResult | null;
   worldEvents?: DashboardWorldEventsFeedResult | null;
@@ -408,6 +415,7 @@ function DashboardWidgetRenderer({
   canManageTime,
   isLookingForGroup,
   sessionDuration,
+  campaignDescription,
   narrativeSnapshot,
   recentEntities,
   worldEvents,
@@ -550,6 +558,18 @@ function DashboardWidgetRenderer({
       return (
         <ExploreWidget campaignHandle={campaignHandle} {...shellProps} />
       );
+    case 'description':
+      return <DescriptionWidget description={campaignDescription} {...shellProps} />;
+    case 'text':
+      return (
+        <TextWidget
+          config={widget.config}
+          onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}
+          {...shellProps}
+        />
+      );
+    case 'havenDowntime':
+      return <HavenDowntimeWidget campaignHandle={campaignHandle} {...shellProps} />;
     case 'recentEntities':
       return (
         <RecentEntitiesWidget

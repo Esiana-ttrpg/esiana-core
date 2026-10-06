@@ -17,6 +17,35 @@ import type {
 const DEFAULT_LIMIT = 12;
 const WIKI_FETCH_BUFFER = 20;
 
+const WORKSPACE_LABELS: Record<string, string> = {
+  CHARACTERS: 'Characters',
+  BESTIARY: 'Bestiary',
+  ANCESTRIES: 'Ancestries',
+  ORGANIZATIONS: 'Organizations',
+  LOCATIONS: 'Locations',
+  OBJECTS: 'Objects',
+  FAMILIES: 'Families',
+  RULES_RESOURCES: 'Rules/Resources',
+  ADVENTURES: 'Adventure',
+  THREADS: 'Threads',
+  HAVENS: 'Havens',
+  PROJECTS: 'Projects',
+  JOURNALS: 'Journal',
+  PAGES: 'Codex',
+  CUSTOM: 'Codex',
+};
+
+function wikiContentTypeLabel(row: { workspace?: string | null; templateType: string }): string {
+  if (row.workspace && WORKSPACE_LABELS[row.workspace]) return WORKSPACE_LABELS[row.workspace];
+  const template = row.templateType.trim();
+  if (!template || template === 'DEFAULT') return 'Codex';
+  return template
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 function normalizeVisibility(visibility: string): 'PUBLIC' | 'PARTY' | 'DM_ONLY' | null {
   if (visibility === 'Public') return 'PUBLIC';
   if (visibility === 'Party') return 'PARTY';
@@ -62,6 +91,7 @@ async function fetchWikiFeedItems(
       updatedAt: updatedAt.toISOString(),
       visibility: normalizeVisibility(row.visibility),
       freshnessLabel: formatEditorialFreshness(updatedAt),
+      contentTypeLabel: wikiContentTypeLabel(row),
     });
   }
   return items;
@@ -93,6 +123,7 @@ async function fetchQuestFeedItems(
     updatedAt: q.updatedAt,
     summary: q.snippet || null,
     freshnessLabel: formatEditorialFreshness(new Date(q.updatedAt)),
+    contentTypeLabel: 'Quest',
   }));
 }
 
@@ -140,6 +171,7 @@ async function fetchSessionFeedItems(
       reason: 'Next session',
       importance: 'SESSION_RELEVANT',
       freshnessLabel: 'Upcoming',
+      contentTypeLabel: 'Session Notes',
     });
   }
 
@@ -154,6 +186,7 @@ async function fetchSessionFeedItems(
       reason: 'Last session',
       importance: 'SESSION_RELEVANT',
       freshnessLabel: formatEditorialFreshness(updatedAt),
+      contentTypeLabel: 'Session Notes',
     });
   }
 
@@ -185,6 +218,7 @@ async function fetchCalendarEventFeedItems(
     href: `/campaigns/${campaignHandle}/chronology?view=events`,
     updatedAt: event.updatedAt.toISOString(),
     freshnessLabel: formatEditorialFreshness(event.updatedAt),
+    contentTypeLabel: 'Chronology event',
   }));
 }
 
