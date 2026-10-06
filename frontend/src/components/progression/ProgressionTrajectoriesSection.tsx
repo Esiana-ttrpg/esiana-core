@@ -1,3 +1,4 @@
+import { trajectoryKey } from '@shared/factionMomentumMetadata';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CircleHelp, Plus } from 'lucide-react';
@@ -5,8 +6,6 @@ import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import {
   fetchCampaignMomentum,
-  fetchWorldPressure,
-  updateCampaignMomentum,
 } from '@/lib/progressionApi';
 import {
   parseCharacterMetadata,
@@ -25,12 +24,10 @@ import type { TrajectorySubjectCategory } from '@shared/developmentProvider';
 import {
   createEraTrajectory,
   createFactionEraTrajectory,
-  type CampaignEra,
   type EraTrajectory,
   type FactionEraTrajectory,
 } from '@shared/factionMomentumMetadata';
 import { platformGuidePath } from '@/lib/platformGuides';
-import { CampaignEraEditor } from '@/components/progression/CampaignEraEditor';
 import {
   CreateTrajectoryDialog,
   trajectoryOrgEraKey,
@@ -56,13 +53,11 @@ export function ProgressionTrajectoriesSection({
 }: ProgressionTrajectoriesSectionProps) {
   const { flatPages, refresh: refreshWiki } = useWiki();
   const [loading, setLoading] = useState(true);
-  const [savingEras, setSavingEras] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [momentumState, setMomentumState] = useState<
     Awaited<ReturnType<typeof fetchCampaignMomentum>>['state'] | null
   >(null);
   const [currentEraName, setCurrentEraName] = useState<string | null>(null);
-  const [manageErasOpen, setManageErasOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [search, setSearch] = useState('');
@@ -76,12 +71,9 @@ export function ProgressionTrajectoriesSection({
     setLoading(true);
     setError(null);
     try {
-      const [momentum, pressure] = await Promise.all([
-        fetchCampaignMomentum(campaignHandle),
-        fetchWorldPressure(campaignHandle),
-      ]);
+      const momentum = await fetchCampaignMomentum(campaignHandle);
       setMomentumState(momentum.state);
-      setCurrentEraName(pressure.projection.currentEra.name);
+      setCurrentEraName(momentum.state.eras.find(era => era.isMasterTime && era.isCurrent)?.name ?? null);
       setOverrides({});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load trajectories');
@@ -158,7 +150,7 @@ export function ProgressionTrajectoriesSection({
     list.sort((a, b) => {
       const titleCmp = a.title.localeCompare(b.title);
       if (titleCmp !== 0) return titleCmp;
-      return a.trajectory.eraId.localeCompare(b.trajectory.eraId);
+      return (a.trajectory.eraId ?? '').localeCompare(b.trajectory.eraId ?? '');
     });
     return list;
   }, [subjectPages.all, trajectoriesForPage]);
@@ -221,7 +213,7 @@ export function ProgressionTrajectoriesSection({
 
   function handlePatch(
     pageId: string,
-    fromEraId: string,
+    fromEraId: string | null,
     patch: Partial<FactionEraTrajectory>,
     persist: boolean,
   ) {
@@ -230,11 +222,11 @@ export function ProgressionTrajectoriesSection({
     const page = flatPages.find((p) => p.id === pageId);
     if (!page) return;
     const current = trajectoriesForPage(pageId, page.metadata, category);
-    const existing = current.find((t) => t.eraId === fromEraId);
+    const existing = current.find((t) => trajectoryKey(t) === fromEraId);
     if (!existing) return;
 
-    const nextEraId = patch.eraId ?? existing.eraId;
-    if (nextEraId !== fromEraId && current.some((t) => t.eraId === nextEraId)) {
+    const nextEraId = patch.eraId !== undefined ? patch.eraId : existing.eraId;
+    if (nextEraId != null && nextEraId !== existing?.eraId && current.some((t) => t.eraId === nextEraId)) {
       setError('This entity already has a trajectory starting in that era.');
       return;
     }
@@ -254,7 +246,7 @@ export function ProgressionTrajectoriesSection({
             gmNote: patch.gmNote !== undefined ? patch.gmNote : existing.gmNote,
             eraId: nextEraId,
           });
-    const without = current.filter((t) => t.eraId !== fromEraId);
+    const without = current.filter((t) => trajectoryKey(t) !== fromEraId);
     const eraTrajectories = [...without, nextTrajectory];
     setOverrides((prev) => ({ ...prev, [pageId]: eraTrajectories }));
     if (persist) {
@@ -269,22 +261,6 @@ export function ProgressionTrajectoriesSection({
     if (!page) return;
     const eraTrajectories = trajectoriesForPage(pageId, page.metadata, category);
     void persistPageTrajectories(pageId, eraTrajectories, category);
-  }
-
-  async function handleSaveEras(eras: CampaignEra[]) {
-    setSavingEras(true);
-    setError(null);
-    try {
-      const result = await updateCampaignMomentum(campaignHandle, { eras });
-      setMomentumState(result.state);
-      const pressure = await fetchWorldPressure(campaignHandle);
-      setCurrentEraName(pressure.projection.currentEra.name);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save eras');
-      throw err;
-    } finally {
-      setSavingEras(false);
-    }
   }
 
   if (loading) {
@@ -304,7 +280,7 @@ export function ProgressionTrajectoriesSection({
   }
 
   const eras = momentumState.eras;
-  const currentLabel = currentEraName ?? eras.find((era) => era.isCurrent)?.name ?? 'Present';
+  const currentLabel = currentEraName ?? 'No current era';
 
   return (
     <div className="space-y-4">
@@ -334,21 +310,8 @@ export function ProgressionTrajectoriesSection({
       </header>
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <button
-          type="button"
-          onClick={() => setManageErasOpen((open) => !open)}
-          className="rounded-md border border-border/70 px-2.5 py-1 text-foreground hover:border-primary/40"
-          aria-expanded={manageErasOpen}
-        >
-          Era: {currentLabel} ▾
-        </button>
-        <button
-          type="button"
-          onClick={() => setManageErasOpen(true)}
-          className="text-primary hover:underline"
-        >
-          Manage eras
-        </button>
+        <span>Era: {currentLabel}</span>
+        <Link to={`/campaigns/${campaignHandle}/chronology?view=eras`} className="text-primary hover:underline">Manage eras</Link>
         <select
           aria-label="Filter by type"
           value={categoryFilter}
@@ -370,14 +333,7 @@ export function ProgressionTrajectoriesSection({
         />
       </div>
 
-      {manageErasOpen ? (
-        <CampaignEraEditor
-          key={eras.map((era) => `${era.id}:${era.isCurrent ? '1' : '0'}`).join('|')}
-          state={momentumState}
-          saving={savingEras}
-          onSave={handleSaveEras}
-        />
-      ) : null}
+
 
       <TrajectoryTable
         campaignHandle={campaignHandle}

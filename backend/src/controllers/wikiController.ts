@@ -587,6 +587,10 @@ async function formatWikiPageDetailResponse(
     const sanitized = sanitizeSceneMetadataForRole(parsed, canManage);
     metadata = mergeSceneMetadata(rest.metadata, sanitized);
   }
+  if (options?.campaignId && !(options.actor ? hasElevatedNarrativeView(options.actor) : canManage)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    metadata = redactEraReferences(metadata, await hiddenEraIds(options.campaignId));
+  }
   const normalizedBlocks = normalizeBlocksWithStableIds(rest.blocks);
   let responseBlocks = normalizedBlocks.blocks;
 
@@ -852,6 +856,11 @@ export async function getWikiTree(
 
   sidebarConfig = await enrichSidebarConfigWithIconUrls(sidebarConfig);
 
+  if (!hasElevatedNarrativeView(ctx.actor)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    const hidden = await hiddenEraIds(ctx.campaignId);
+    for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
+  }
   const tree = buildWikiTree(pages, ctx.role);
 
   const lastWikiUpdate = pages.reduce<Date | null>((latest, page) => {
@@ -1466,12 +1475,32 @@ export async function getWikiPage(
   );
 }
 
+async function rejectEraOwnedOverview(
+  campaignId: string,
+  pageId: string,
+  actor: CampaignActor,
+  res: Response,
+): Promise<boolean> {
+  const ownedEra = await prisma.campaignEra.findFirst({
+    where: { campaignId, overviewPageId: pageId },
+    select: { visibility: true },
+  });
+  if (!ownedEra) return false;
+  if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(actor)) {
+    res.status(404).json({ error: 'Page not found' });
+    return true;
+  }
+  res.status(409).json({ error: 'Manage this era Overview in Chronology.' });
+  return true;
+}
+
 export async function updateWikiPage(
   req: CampaignScopedRequest & AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { parentId, title, tags } = req.body as {
     parentId?: string | null;
     title?: string;
@@ -1649,6 +1678,7 @@ export async function transformWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { targetModule } = req.body as { targetModule?: string };
 
   if (typeof targetModule !== 'string' || !targetModule.trim()) {
@@ -1999,6 +2029,7 @@ export async function updateWikiPageLayout(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { temporal, rest } = extractTemporalFromBody(req.body);
   const { blocks } = rest as {
     blocks?: Array<Record<string, unknown>>;
@@ -2152,6 +2183,7 @@ export async function updateWikiPageVisibility(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { visibility } = req.body as { visibility?: string };
 
   if (
@@ -2264,6 +2296,7 @@ export async function updateWikiPageMetadata(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const body = req.body as Record<string, unknown> & {
     key?: string;
     value?: string;
@@ -3154,15 +3187,23 @@ export async function updateWikiPageMetadata(
 
   const parsed = parseQuestMetadata(updatedPage.metadata);
   const threadParse = parseThreadMetadataWithWarnings(updatedPage.metadata);
+  let responseMetadata = isQuestMetadataPresent(updatedPage.metadata)
+    ? mergeQuestMetadata(
+        updatedPage.metadata,
+        sanitizeQuestMetadataForRole(parsed, canManage),
+      )
+    : isThreadMetadataPresent(updatedPage.metadata)
+      ? mergeThreadMetadata(updatedPage.metadata, threadParse.fields)
+      : updatedPage.metadata;
+  if (!hasElevatedNarrativeView(ctx.actor)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    responseMetadata = redactEraReferences(
+      responseMetadata,
+      await hiddenEraIds(ctx.campaignId),
+    ) as typeof responseMetadata;
+  }
   res.json({
-    metadata: isQuestMetadataPresent(updatedPage.metadata)
-      ? mergeQuestMetadata(
-          updatedPage.metadata,
-          sanitizeQuestMetadataForRole(parsed, canManage),
-        )
-      : isThreadMetadataPresent(updatedPage.metadata)
-        ? mergeThreadMetadata(updatedPage.metadata, threadParse.fields)
-        : updatedPage.metadata,
+    metadata: responseMetadata,
     ...(canManage && threadParse.warnings.length > 0
       ? { metadataWarnings: threadParse.warnings }
       : {}),
@@ -4824,6 +4865,7 @@ export async function deleteWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const parsed = parseWikiDeleteBody(req.body);
   if (!parsed.ok) {
     res.status(400).json({ error: parsed.error });

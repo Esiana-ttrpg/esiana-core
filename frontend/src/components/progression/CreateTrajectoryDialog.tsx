@@ -34,7 +34,7 @@ interface CreateTrajectoryDialogProps {
   onCancel: () => void;
 }
 
-function subjectKey(pageId: string, eraId: string): string {
+function subjectKey(pageId: string, eraId: string | null): string {
   return `${pageId}::${eraId}`;
 }
 
@@ -63,6 +63,7 @@ export function CreateTrajectoryDialog({
   const [pageId, setPageId] = useState('');
   const [direction, setDirection] = useState('');
   const [fromEraId, setFromEraId] = useState(defaultEraId);
+  const [calendarId, setCalendarId] = useState(eras.find(era => era.id === defaultEraId)?.calendarId ?? '');
   const [outcome, setOutcome] = useState('');
   const [byEraId, setByEraId] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -110,7 +111,7 @@ export function CreateTrajectoryDialog({
     if (byEraId) {
       const fromEra = eras.find((era) => era.id === fromEraId);
       const byEra = eras.find((era) => era.id === byEraId);
-      if (fromEra && byEra && byEra.sortOrder < fromEra.sortOrder) {
+      if (fromEra && byEra && ((byEra.calendarId ?? '') !== (fromEra.calendarId ?? '') || byEra.sortOrder < fromEra.sortOrder)) {
         setError('The By era must match or follow the From era.');
         return;
       }
@@ -278,15 +279,22 @@ export function CreateTrajectoryDialog({
         </label>
 
         <label className="block space-y-1 text-sm">
+          <span className="font-medium text-foreground">Timeline</span>
+          <select className={fieldClass} value={calendarId} onChange={e => {
+            const id = e.target.value; setCalendarId(id); setByEraId('');
+            setFromEraId(eras.find(era => era.calendarId === id && era.isCurrent)?.id ?? eras.find(era => era.calendarId === id)?.id ?? '');
+          }}>
+            {[...new Map(eras.map(era => [era.calendarId ?? '', era.calendarName ?? 'Campaign timeline'])).entries()].map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
           <span className="font-medium text-foreground">From</span>
           <select
             value={fromEraId}
             onChange={(e) => setFromEraId(e.target.value)}
             className={fieldClass}
           >
-            {eras.map((era) => (
+            {eras.filter(era => (era.calendarId ?? '') === calendarId).map((era) => (
               <option key={era.id} value={era.id}>
-                {era.name}
+                {era.calendarName ? `${era.calendarName} · ` : ''}{era.name}{era.visibility === 'DM_ONLY' ? ' [DM]' : ''}
                 {era.isCurrent ? ' (current)' : ''}
               </option>
             ))}
@@ -312,9 +320,9 @@ export function CreateTrajectoryDialog({
             className={fieldClass}
           >
             <option value="">Open-ended</option>
-            {eras.map((era) => (
+            {eras.filter(era => (era.calendarId ?? '') === (eras.find(from => from.id === fromEraId)?.calendarId ?? '')).map((era) => (
               <option key={era.id} value={era.id}>
-                {era.name}
+                {era.calendarName ? `${era.calendarName} · ` : ''}{era.name}{era.visibility === 'DM_ONLY' ? ' [DM]' : ''}
               </option>
             ))}
           </select>

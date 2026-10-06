@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { ChronologyEventSidebar } from '@/components/chronology/ChronologyEventSidebar';
 import { FantasyDatePicker } from '@/components/chronology/FantasyDatePicker';
 import { ConditionTreeBuilder } from '@/components/chronology/ConditionTreeBuilder';
-import { EventsLedgerView } from '@/components/chronology/EventsLedgerView';
+import { ErasView } from '@/components/chronology/ErasView';
 import { MoonOverridesEditor } from '@/components/chronology/MoonOverridesEditor';
 import { TechTreeTimeline } from '@/components/chronology/TechTreeTimeline';
 import {
@@ -59,7 +59,8 @@ function calendarApiRowToLike(row: FantasyCalendarApiRow): FantasyCalendarLike {
 }
 
 function parseActiveView(raw: string | null): ChronologyView {
-  if (raw === 'timeline' || raw === 'events' || raw === 'calendar' || raw === 'feed') {
+  if (raw === 'events') return 'eras';
+  if (raw === 'timeline' || raw === 'eras' || raw === 'calendar' || raw === 'feed') {
     return raw;
   }
   return 'calendar';
@@ -513,7 +514,7 @@ export function ChronologyPage() {
                   events={bundle.events}
                   selectedBaseEventId={selectedOccurrence?.baseEventId ?? null}
                   onSelectEvent={setSelectedOccurrence}
-                  showElevatedVisibility={canManageChronologyAccess}
+                  showElevatedVisibility={can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW)}
                 />
               </div>
               <div className="basis-1/5 min-w-0 overflow-hidden">
@@ -544,8 +545,10 @@ export function ChronologyPage() {
             </div>
           )}
 
-          {activeView === 'events' && bundle && (
-            <EventsLedgerView
+          {activeView === 'eras' && bundle && (
+            <ErasView
+              eras={bundle.eras ?? []}
+              onErasChanged={load}
               campaignHandle={campaignHandle}
               categories={bundle.categories}
               calendars={bundle.calendars}

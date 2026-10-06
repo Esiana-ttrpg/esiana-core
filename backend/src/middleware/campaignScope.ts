@@ -223,27 +223,14 @@ export function requireChronologyManager(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!req.campaign) {
+  if (!req.campaign || req.campaign.role === 'OBSERVER') {
     res.status(403).json({
       error: 'Forbidden: chronology management not permitted',
     });
     return;
   }
   if (
-    !canManageChronology(
-      req.campaign.role,
-      req.campaign.allowPlayerChronologyManagement,
-      req.campaign.chronologyContributor,
-      {
-        userId: req.user?.id ?? null,
-        membershipRole: req.campaign.role,
-        campaignOwnerUserId: req.campaign.campaignOwnerUserId,
-        discoverability: req.campaign.discoverability,
-        allowPlayerChronologyManagement:
-          req.campaign.allowPlayerChronologyManagement,
-        chronologyContributor: req.campaign.chronologyContributor,
-      },
-    )
+    !policyCan(req.campaign.actor, CampaignCapabilities.CHRONOLOGY_EDIT)
   ) {
     res.status(403).json({
       error: 'Forbidden: chronology management not permitted',

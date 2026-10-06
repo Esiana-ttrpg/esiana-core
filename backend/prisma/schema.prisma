@@ -611,6 +611,7 @@ model Campaign {
   campaignScheduledEffects      CampaignScheduledEffect[]
   campaignScheduledEffectOccurrences CampaignScheduledEffectOccurrence[]
   campaignMomentum           CampaignMomentum?
+  eras                       CampaignEra[]
   userPins                   UserCampaignPin[]
   parties                    Party[]
   roleCapabilityOverrides    CampaignRoleCapabilityOverride[]
@@ -1082,6 +1083,8 @@ model CampaignMomentum {
   campaignId       String @unique
   state            Json   @default("{}")
   semanticsVersion String @default("campaign-momentum-v1")
+  erasMigrated     Boolean @default(false)
+  eraRecurrenceHistory Json @default("{}")
   updatedByUserId  String?
 
   campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -1089,6 +1092,31 @@ model CampaignMomentum {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Chronology-owned era. IDs are campaign-scoped to preserve legacy era-present identities.
+model CampaignEra {
+  campaignId String
+  id String
+  calendarId String
+  name String
+  sortOrder Int
+  isCurrent Boolean @default(false)
+  epochStartMinute BigInt?
+  epochEndMinute BigInt?
+  visibility String @default("PARTY")
+  overviewPageId String @unique
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  calendar FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  overview WikiPage @relation(fields: [overviewPageId], references: [id], onDelete: Restrict)
+
+  @@id([campaignId, id])
+  @@index([campaignId, calendarId, sortOrder])
 }
 
 /// Layer 1 — pending world event prompts from pressure projection (human-approved only).
@@ -1301,6 +1329,7 @@ model UserWritingDailyRollup {
 }
 
 model FantasyCalendar {
+  eras CampaignEra[]
   id           String  @id @default(uuid())
   campaignId   String
   name         String
@@ -1442,6 +1471,7 @@ model CampaignMember {
 // ---------------------------------------------------------------------------
 
 model WikiPage {
+  ownedEra CampaignEra?
   id              String  @id @default(cuid())
   campaignId      String
   /// Workspace namespace for public routing (scoped with pathKey).

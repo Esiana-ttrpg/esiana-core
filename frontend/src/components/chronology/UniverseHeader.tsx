@@ -2,7 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Settings } from 'lucide-react';
 import { campaignChronologyPath } from '@/lib/campaignPaths';
 
-export type ChronologyView = 'calendar' | 'timeline' | 'events' | 'feed';
+export type ChronologyView = 'calendar' | 'timeline' | 'eras' | 'feed';
 
 export interface UniverseClockPill {
   id: string;
@@ -21,7 +21,7 @@ interface UniverseHeaderProps {
 const VIEW_TABS: Array<{ id: ChronologyView; label: string }> = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'timeline', label: 'Timeline' },
-  { id: 'events', label: 'Events' },
+  { id: 'eras', label: 'Eras' },
   { id: 'feed', label: 'Campaign feed' },
 ];
 

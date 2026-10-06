@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { listEras, createEra, updateEra, reorderEras, eraImpact, deleteEra } from '../controllers/chronologyErasController.js';
 import {
   advanceCampaignTime,
   getCampaign,
@@ -513,6 +514,12 @@ campaignScopedRouter.post('/discord/:destinationId/test', requireGamemasterSetti
 campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemasterSettings, listDiscordDeliveries);
 
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
+campaignScopedRouter.get('/chronology/eras', listEras);
+campaignScopedRouter.post('/chronology/eras', requireChronologyManager, createEra);
+campaignScopedRouter.put('/chronology/eras/order', requireChronologyManager, reorderEras);
+campaignScopedRouter.get('/chronology/eras/:eraId/impact', requireChronologyManager, eraImpact);
+campaignScopedRouter.put('/chronology/eras/:eraId', requireChronologyManager, updateEra);
+campaignScopedRouter.delete('/chronology/eras/:eraId', requireChronologyManager, deleteEra);
 campaignScopedRouter.get('/chronology/timeline', rateLimitPolicy('expensive'), getChronologyTimelineBundle);
 campaignScopedRouter.get('/chronology/overlay', getChronologyOverlayBundle);
 campaignScopedRouter.post(

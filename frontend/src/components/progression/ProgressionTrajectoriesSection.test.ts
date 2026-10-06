@@ -59,9 +59,9 @@ test('create trajectory dialog searches all subject types with character life-st
   assert.match(create, /Add trajectory/);
 });
 
-test('era management stays compact and collapsible on Trajectories', () => {
+test('era management links to the canonical Chronology surface', () => {
   assert.match(section, /Era: \{currentLabel\}/);
   assert.match(section, /Manage eras/);
-  assert.match(section, /manageErasOpen/);
-  assert.match(section, /CampaignEraEditor/);
+  assert.match(section, /chronology\?view=eras/);
+  assert.doesNotMatch(section, /manageErasOpen|CampaignEraEditor|handleSaveEras/);
 });

@@ -80,6 +80,7 @@ export async function buildProjectedFactionStates(
   const momentumPayload = toCampaignMomentumPayload(momentumRow);
   const eras = momentumPayload.state.eras;
   const currentEra = getCurrentCampaignEra(momentumPayload.state);
+  if (!currentEra.id) return [];
 
   const [orgPages, characterPages, locationPages] = await Promise.all([
     db.wikiPage.findMany({

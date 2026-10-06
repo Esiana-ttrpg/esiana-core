@@ -55,6 +55,174 @@ tags:
   - name: Import
   - name: System
 paths:
+  /api/campaigns/{campaignHandle}/chronology/eras:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+    get:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      tags: [Chronology]
+      summary: List disclosed eras in authored sequence
+      description: Returns campaign-calendar dates only. DM-only eras require narrative.elevated_view; chronology.edit does not confer disclosure.
+      responses:
+        '200':
+          description: Visible eras
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eras:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChronologyEra'
+    post:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      tags: [Chronology]
+      summary: Create an era and its canonical Overview
+      description: Requires chronology.edit. Observers are always denied. DM-only visibility additionally requires narrative.elevated_view. Names are authored; eras append to the track sequence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChronologyEraInput'
+      responses:
+        '201':
+          description: Created era
+        '400':
+          description: Invalid campaign-calendar dates or era fields
+        '403':
+          description: Insufficient chronology or disclosure authority
+  /api/campaigns/{campaignHandle}/chronology/eras/order:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+    put:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      tags: [Chronology]
+      summary: Reorder the visible eras within one calendar track
+      description: Requires chronology.edit. Supply every visible era ID exactly once; hidden eras retain their slots. Dates never determine presentation order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calendarId, ids]
+              properties:
+                calendarId:
+                  type: string
+                ids:
+                  type: array
+                  uniqueItems: true
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated visible sequence
+        '400':
+          description: Invalid or stale sequence
+        '403':
+          description: Chronology editing denied
+  /api/campaigns/{campaignHandle}/chronology/eras/{eraId}:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+      - name: eraId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: eraId
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [Chronology]
+      summary: Edit, close, publish, or make an era current
+      description: Requires chronology.edit and disclosure access to the era. Current state is explicitly authored per track, independent of dates. Changing dates never changes visibility. End date is inclusive.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChronologyEraInput'
+      responses:
+        '200':
+          description: Updated era
+        '400':
+          description: Invalid era or calendar dates
+        '403':
+          description: Editing or visibility change denied
+        '404':
+          description: Era unavailable
+    delete:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: eraId
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [Chronology]
+      summary: Delete an era and its owned Overview after impact confirmation
+      description: Preserves events and trajectory content, detaches references with former-name snapshots, and leaves the track without a current era if necessary. Incoming wiki links do not block deletion. Recurrence uses remaining applicable eras independent of viewer visibility.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              properties:
+                confirmed:
+                  const: true
+      responses:
+        '204':
+          description: Era and Overview deleted
+        '400':
+          description: Confirmation required
+        '403':
+          description: Chronology editing denied
+        '404':
+          description: Era unavailable
+  /api/campaigns/{campaignHandle}/chronology/eras/{eraId}/impact:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+      - name: eraId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: eraId
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [Chronology]
+      summary: Preview era deletion impact
+      description: Requires chronology.edit and disclosure access. Counts do not disclose private events or wiki pages.
+      responses:
+        '200':
+          description: Reference counts and Overview word count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events: { type: integer }
+                  trajectories: { type: integer }
+                  recurringRules: { type: integer }
+                  overviewWords: { type: integer }
+        '404':
+          description: Era unavailable
   /api/calendar/sessions:
     get:
       tags:
@@ -22059,6 +22227,43 @@ components:
         type: string
       example: port-haven
   schemas:
+    CampaignCalendarDate:
+      type: object
+      required: [year, month, day]
+      properties:
+        year: { type: integer, minimum: 1, maximum: 10000 }
+        month: { type: integer, minimum: 0, description: Zero-based month in the selected calendar and year. }
+        day: { type: integer, minimum: 1 }
+    ChronologyEraInput:
+      type: object
+      required: [calendarId, name, startDate, endDate, visibility, isCurrent]
+      properties:
+        calendarId: { type: string }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        startDate:
+          oneOf:
+            - $ref: '#/components/schemas/CampaignCalendarDate'
+            - type: 'null'
+        endDate:
+          description: Inclusive final campaign-calendar day; null means no end date.
+          oneOf:
+            - $ref: '#/components/schemas/CampaignCalendarDate'
+            - type: 'null'
+        visibility: { type: string, enum: [PUBLIC, PARTY, DM_ONLY] }
+        isCurrent: { type: boolean }
+        overview: { type: string, description: Markdown authored through the standard rich-text editor and stored on the owned wiki page. }
+    ChronologyEra:
+      allOf:
+        - $ref: '#/components/schemas/ChronologyEraInput'
+        - type: object
+          properties:
+            id: { type: string }
+            calendarName: { type: string }
+            isMasterTime: { type: boolean }
+            sortOrder: { type: integer }
+            status: { type: string, enum: [PAST, PRESENT, FUTURE] }
+            overviewPageId: { type: string }
+            canManage: { type: boolean }
     CalendarSubscriptionStatusResponse:
       type: object
       required: [subscription]

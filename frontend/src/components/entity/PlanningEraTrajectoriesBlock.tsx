@@ -1,3 +1,4 @@
+import { trajectoryKey } from '@shared/factionMomentumMetadata';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -23,21 +24,21 @@ interface PlanningEraTrajectoriesBlockProps<T extends TrajectoriesDraft> {
 
 function upsertTrajectory(
   trajectories: EraTrajectory[],
-  fromEraId: string,
+  trajectoryIndex: number,
   patch: Partial<EraTrajectory>,
 ): EraTrajectory[] {
-  const existing = trajectories.find((t) => t.eraId === fromEraId);
-  const nextEraId = patch.eraId ?? existing?.eraId ?? fromEraId;
-  if (nextEraId !== fromEraId && trajectories.some((t) => t.eraId === nextEraId)) {
+  const existing = trajectoryIndex >= 0 ? trajectories[trajectoryIndex] : undefined;
+  const nextEraId = patch.eraId !== undefined ? patch.eraId : existing?.eraId ?? null;
+  if (nextEraId != null && nextEraId !== existing?.eraId && trajectories.some((t) => t.eraId === nextEraId)) {
     return trajectories;
   }
   const nextTrajectory = createEraTrajectory({
-    ...(existing ?? { eraId: fromEraId }),
+    ...(existing ?? { eraId: null }),
     ...patch,
     eraId: nextEraId,
   });
-  const without = trajectories.filter((t) => t.eraId !== fromEraId);
-  return [...without, nextTrajectory];
+  if (trajectoryIndex < 0) return [...trajectories, nextTrajectory];
+  return trajectories.map((trajectory, index) => index === trajectoryIndex ? nextTrajectory : trajectory);
 }
 
 function trajectoriesForPersistence(trajectories: EraTrajectory[]): EraTrajectory[] {
@@ -51,7 +52,7 @@ function trajectoriesForPersistence(trajectories: EraTrajectory[]): EraTrajector
 
 /**
  * Lightweight trajectory editor for Characters / Locations — planning fields only.
- * Same underlying eraTrajectories objects as Progression › Trajectories.
+ * Same underlying eraTrajectories objects as Chronology › Eras.
  */
 export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
   campaignHandle,
@@ -76,9 +77,9 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
     };
   }, [campaignHandle]);
 
-  function updateTrajectory(fromEraId: string, patch: Partial<EraTrajectory>, persist = false) {
+  function updateTrajectory(trajectoryIndex: number, patch: Partial<EraTrajectory>, persist = false) {
     setDraft((prev) => {
-      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, fromEraId, patch);
+      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, trajectoryIndex, patch);
       if (persist) {
         void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       }
@@ -100,7 +101,8 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
     if (!currentEra) return;
     if (draft.eraTrajectories.some((t) => t.eraId === currentEra.id)) return;
     setDraft((prev) => {
-      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, currentEra.id, {
+      const eraTrajectories = upsertTrajectory(prev.eraTrajectories, -1, {
+        eraId: currentEra.id,
         direction: '',
         outcome: null,
         byEraId: null,
@@ -110,23 +112,23 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
     });
   }
 
-  function removeTrajectory(eraId: string) {
+  function removeTrajectory(trajectoryIndex: number) {
     setDraft((prev) => {
-      const eraTrajectories = prev.eraTrajectories.filter((t) => t.eraId !== eraId);
+      const eraTrajectories = prev.eraTrajectories.filter((_trajectory, candidate) => candidate !== trajectoryIndex);
       void onPersist({ eraTrajectories: trajectoriesForPersistence(eraTrajectories) } as Partial<T>);
       return { ...prev, eraTrajectories };
     });
   }
 
-  if (eras.length === 0) {
+  if (eras.length === 0 && draft.eraTrajectories.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
         No campaign eras yet. Configure them in{' '}
         <Link
-          to={campaignProgressionPath(campaignHandle, 'trajectories')}
+          to={`/campaigns/${campaignHandle}/chronology?view=eras`}
           className="text-primary hover:underline"
         >
-          Progression › Trajectories
+          Chronology › Eras
         </Link>
         .
       </p>
@@ -162,14 +164,14 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
               </tr>
             </thead>
             <tbody>
-              {trajectories.map((trajectory) => (
-                <tr key={trajectory.eraId} className="border-t border-border/50 align-top">
+              {trajectories.map((trajectory, trajectoryIndex) => (
+                <tr key={`${trajectoryKey(trajectory)}:${trajectoryIndex}`} className="border-t border-border/50 align-top">
                   <td className="py-2 pr-2">
                     <input
                       type="text"
                       value={trajectory.direction ?? ''}
                       onChange={(e) =>
-                        updateTrajectory(trajectory.eraId, {
+                        updateTrajectory(trajectoryIndex, {
                           direction: e.target.value,
                         })
                       }
@@ -181,7 +183,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       type="text"
                       value={trajectory.gmNote ?? ''}
                       onChange={(e) =>
-                        updateTrajectory(trajectory.eraId, {
+                        updateTrajectory(trajectoryIndex, {
                           gmNote: e.target.value,
                         })
                       }
@@ -192,15 +194,16 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                   </td>
                   <td className="py-2 pr-2">
                     <select
-                      value={trajectory.eraId}
+                      value={trajectory.eraId ?? ''}
                       onChange={(e) => {
-                        updateTrajectory(trajectory.eraId, { eraId: e.target.value }, true);
+                        updateTrajectory(trajectoryIndex, { eraId: e.target.value }, true);
                       }}
                       className={fieldClass}
                     >
+                      {!trajectory.eraId && <option value="">{trajectory.eraSnapshot?.name ?? 'Era'} (deleted)</option>}
                       {eras.map((era) => (
                         <option key={era.id} value={era.id}>
-                          {era.name}
+                          {era.calendarName ? `${era.calendarName} · ` : ''}{era.name}{era.visibility === 'DM_ONLY' ? ' [DM]' : ''}
                         </option>
                       ))}
                     </select>
@@ -210,7 +213,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       type="text"
                       value={trajectory.outcome ?? ''}
                       onChange={(e) =>
-                        updateTrajectory(trajectory.eraId, {
+                        updateTrajectory(trajectoryIndex, {
                           outcome: e.target.value,
                         })
                       }
@@ -224,17 +227,17 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                       value={trajectory.byEraId ?? ''}
                       onChange={(e) => {
                         updateTrajectory(
-                          trajectory.eraId,
+                          trajectoryIndex,
                           { byEraId: e.target.value || null },
                           true,
                         );
                       }}
                       className={fieldClass}
                     >
-                      <option value="">Open-ended</option>
-                      {eras.map((era) => (
+                      <option value="">{trajectory.byEraSnapshot ? `${trajectory.byEraSnapshot.name} (deleted)` : 'Open-ended'}</option>
+                      {eras.filter(era => era.calendarId === eras.find(from => from.id === trajectory.eraId)?.calendarId).map((era) => (
                         <option key={era.id} value={era.id}>
-                          {era.name}
+                          {era.calendarName ? `${era.calendarName} · ` : ''}{era.name}{era.visibility === 'DM_ONLY' ? ' [DM]' : ''}
                         </option>
                       ))}
                     </select>
@@ -242,7 +245,7 @@ export function PlanningEraTrajectoriesBlock<T extends TrajectoriesDraft>({
                   <td className="py-2">
                     <button
                       type="button"
-                      onClick={() => removeTrajectory(trajectory.eraId)}
+                      onClick={() => removeTrajectory(trajectoryIndex)}
                       className="text-[10px] text-muted-foreground hover:text-foreground"
                     >
                       Remove

@@ -30,6 +30,7 @@ import type {
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 
 interface EventsLedgerViewProps {
+  showYearHeadings?: boolean;
   campaignHandle: string;
   categories: TimelineCategoryRecord[];
   calendars: TimelineCalendarRecord[];
@@ -149,6 +150,7 @@ function calendarRowToLike(row: {
 }
 
 export function EventsLedgerView({
+  showYearHeadings = false,
   campaignHandle,
   categories,
   calendars,
@@ -398,12 +400,15 @@ export function EventsLedgerView({
           <p className="py-8 text-center text-sm text-muted">No events in this category.</p>
         ) : (
           <div className="space-y-6">
-            {sections.map((section) => (
+            {sections.map((section, sectionIndex) => (
               <section
                 key={section.isSynthetic ? 'synthetic-now' : section.key}
                 data-ledger-section={section.key}
                 ref={section.isCurrentMonth ? anchorRef : undefined}
               >
+                {showYearHeadings && (sectionIndex === 0 || partsFromSectionKey(sections[sectionIndex - 1]!.key).year !== partsFromSectionKey(section.key).year) && (
+                  <h3 className="mb-4 text-lg font-medium">Year {partsFromSectionKey(section.key).year ?? 'Unknown'}</h3>
+                )}
                 <div
                   className={`sticky top-0 z-10 mb-3 border-b py-2 text-center text-xs font-semibold uppercase tracking-wide ${
                     section.isCurrentMonth
