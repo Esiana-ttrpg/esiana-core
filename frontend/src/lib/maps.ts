@@ -53,10 +53,12 @@ export async function fetchMapPinPreview(
 export async function uploadCampaignMap(
   campaignHandle: string,
   file: File,
+  displayName?: string,
 ): Promise<CampaignMapAsset> {
   const form = new FormData();
   form.append('image', file);
   form.append('type', 'map');
+  if (displayName?.trim()) form.append('displayName', displayName.trim());
   const data = await apiFetch<{ asset: CampaignMapAsset }>(
     `/campaigns/${campaignHandle}/uploads`,
     {
@@ -65,6 +67,22 @@ export async function uploadCampaignMap(
     },
   );
   return data.asset;
+}
+
+export function mapTitleFromFilename(filename: string): string {
+  const withoutExtension = filename.replace(/\.[^.]+$/, '');
+  const words = withoutExtension
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+  if (!words) return 'Untitled map';
+  return words.replace(
+    /(^|\s)(\p{L})/gu,
+    (_match, prefix: string, letter: string) =>
+      `${prefix}${letter.toLocaleUpperCase()}`,
+  );
 }
 
 export async function deleteCampaignMap(

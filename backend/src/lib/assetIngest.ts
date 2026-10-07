@@ -180,6 +180,7 @@ export async function ingestMapImage(input: {
   campaignId: string;
   buffer: Buffer;
   originalFilename: string;
+  displayName?: string | null;
   uploadedByUserId?: string | null;
   assetId?: string;
 }): Promise<IngestImageResult> {
@@ -239,6 +240,7 @@ export async function ingestMapImage(input: {
         originalWidth: variants.originalWidth,
         originalHeight: variants.originalHeight,
         type: AssetTypes.MAP,
+        displayName: input.displayName?.trim() || null,
         uploadedByUserId: input.uploadedByUserId ?? undefined,
       },
     });

@@ -33,6 +33,7 @@ export interface ImportFromUploadInput {
   campaignId: string;
   file: Express.Multer.File;
   type: AssetType;
+  displayName?: string | null;
   uploadedByUserId?: string | null;
 }
 
@@ -109,6 +110,7 @@ export async function importFromUpload(
       campaignId: input.campaignId,
       buffer,
       originalFilename: input.file.originalname || input.file.filename,
+      displayName: input.displayName,
       uploadedByUserId: input.uploadedByUserId,
     });
     return { asset: result.asset, referenceUrl: result.referenceUrl };
