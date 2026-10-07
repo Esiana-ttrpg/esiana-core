@@ -8,5 +8,13 @@
   "home.emptyTitle": "Aucune campagne",
   "home.emptyDescription": "Créez une campagne pour bâtir votre premier monde.",
   "home.explorePublicTitle": "Campagnes publiques",
-  "home.explorePublicDescription": "Découvrez les mondes partagés par la communauté."
+  "home.explorePublicDescription": "Découvrez les mondes partagés par la communauté.",
+  "home.storySoFarTitle": "Votre histoire jusqu'ici",
+  "home.storySoFarViewReflection": "Voir la réflexion →",
+  "home.storySoFarStreak": "Série",
+  "home.storySoFarPagesCreated": "Pages créées",
+  "home.storySoFarCharacters": "Personnages",
+  "home.storySoFarWordsWritten": "Mots écrits",
+  "home.storySoFarStreakUnitDay": "jour",
+  "home.storySoFarStreakUnitDays": "jours"
 }

@@ -69,6 +69,7 @@ import {
   type PluginSecretsApi,
   type PluginTimelineApi,
   type PluginWorldApi,
+  type PluginDowntimeApi,
 } from './pluginHostServices.js';
 import {
   registerImportProvider as registerImportProviderEntry,
@@ -138,6 +139,7 @@ export interface PluginHostContext {
   world: PluginWorldApi;
   lore: PluginLoreApi;
   maps: PluginMapsApi;
+  downtime: PluginDowntimeApi;
   config: PluginConfigApi;
   secrets: PluginSecretsApi;
   events: PluginEventsApi;
@@ -240,7 +242,7 @@ export function createPluginHostContext(
   pluginId: string,
   manifestPermissions: string[] = [],
   pluginRoot = '',
-  options: { jailedCampaignId?: string; scope?: string; outboundOrigins?: string[] } = {},
+  options: { jailedCampaignId?: string; scope?: string; outboundOrigins?: string[]; trustedViewerUserId?: string | null } = {},
 ): PluginHostContext {
   const scope = options.scope ?? PluginScopes.GLOBAL;
   const jailedCampaignId = options.jailedCampaignId;
@@ -281,6 +283,7 @@ export function createPluginHostContext(
     pluginId,
     permissions: manifestPermissions,
     jailedCampaignId,
+    trustedViewerUserId: options.trustedViewerUserId,
     data: dataService,
     subscribeToDomainEvent,
   });
@@ -448,9 +451,10 @@ export function attachPluginPlatformRoutes(
   platformRouter.use(requireAuthenticatedApiOrSession);
   platformRouter.use(requirePluginCampaignJail);
   platformRouter.use(requireCampaignPluginEnabled(pluginId));
-  mountPluginPlatformRoutes(platformRouter, (campaignId) =>
+  mountPluginPlatformRoutes(platformRouter, (campaignId, trustedViewerUserId) =>
     createPluginHostContext(pluginId, manifestPermissions, pluginRoot, {
       jailedCampaignId: campaignId,
+      trustedViewerUserId,
       scope,
       outboundOrigins,
     }),

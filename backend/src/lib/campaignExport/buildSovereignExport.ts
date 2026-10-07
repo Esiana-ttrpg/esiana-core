@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { prisma } from '../prisma.js';
+import { ensureChronologyEras } from '../chronologyEraService.js';
 import { env } from '../../config/env.js';
 import { uploadFilenameFromUrl } from '../campaignMediaSize.js';
 import { buildWikiTreePaths } from './buildWikiTreePaths.js';
@@ -55,6 +56,7 @@ export async function buildSovereignExport(
   });
 
   if (!campaign) return null;
+  await ensureChronologyEras(campaignId);
 
   const [wikiPages, wikiLinks, tags, assets, mapPins] =
     await Promise.all([

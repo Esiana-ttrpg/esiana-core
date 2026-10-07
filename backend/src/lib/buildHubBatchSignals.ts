@@ -33,6 +33,8 @@ export type HubRecentEditItem = {
   campaignName: string;
   campaignHandle: string;
   entityType: string;
+  /** Wiki template type when entityType is WIKI_PAGE; used for hub icon wells. */
+  templateType: string | null;
   entityId: string;
   title: string;
   href: string;
@@ -152,6 +154,48 @@ function stripSnippet(markdown: string): string {
     .slice(0, 200);
 }
 
+/** Extract prose from a session page without exposing its stored block JSON. */
+export function extractHubSessionMarkdown(blocks: unknown): string {
+  if (typeof blocks === 'string') {
+    const trimmed = blocks.trim();
+    if (!trimmed) return '';
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        return extractHubSessionMarkdown(parsed);
+      }
+      return trimmed;
+    } catch {
+      // Preserve compatibility with legacy pages whose blocks field held Markdown directly.
+      return trimmed;
+    }
+  }
+
+  if (!Array.isArray(blocks)) return '';
+
+  const body =
+    blocks.find(
+      (block) =>
+        block !== null &&
+        typeof block === 'object' &&
+        (block as { id?: unknown }).id === 'session-note-body',
+    ) ??
+    blocks.find(
+      (block) =>
+        block !== null &&
+        typeof block === 'object' &&
+        (block as { type?: unknown }).type === 'text-tiptap' &&
+        typeof (block as { content?: { markdown?: unknown } }).content?.markdown === 'string' &&
+        Boolean(
+          (block as { content: { markdown: string } }).content.markdown.trim(),
+        ),
+    );
+
+  if (body === null || typeof body !== 'object') return '';
+  const markdown = (body as { content?: { markdown?: unknown } }).content?.markdown;
+  return typeof markdown === 'string' ? markdown : '';
+}
+
 export async function batchLastSessions(
   campaignIds: string[],
 ): Promise<Map<string, HubLastSessionSignal>> {
@@ -180,12 +224,8 @@ export async function batchLastSessions(
   for (const row of rows) {
     const campaignId = row.timelinePoint.campaignId;
     if (map.has(campaignId)) continue;
-    const blocks = row.timelinePoint.wikiPage.blocks;
-    const raw =
-      typeof blocks === 'string'
-        ? blocks
-        : JSON.stringify(blocks ?? '');
-    const snippet = stripSnippet(raw) || null;
+    const markdown = extractHubSessionMarkdown(row.timelinePoint.wikiPage.blocks);
+    const snippet = stripSnippet(markdown) || null;
     map.set(campaignId, {
       title: row.timelinePoint.wikiPage.title,
       playedAt: row.plannedStartAt?.toISOString() ?? row.publishedAt?.toISOString() ?? null,
@@ -415,6 +455,7 @@ export async function batchRecentEditsForCampaigns(
           campaignName: ctx.name,
           campaignHandle: ctx.handle,
           entityType: 'WIKI_PAGE',
+          templateType: r.templateType ?? null,
           entityId: r.id,
           title: r.title,
           href: campaignWikiHref(ctx.handle, r),

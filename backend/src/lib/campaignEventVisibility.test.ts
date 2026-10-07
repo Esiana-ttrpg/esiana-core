@@ -28,6 +28,12 @@ test('elevated roles receive restricted resource events', () => {
   assert.equal(canReceiveTimelineVisibility(writer, 'DM_ONLY'), true);
 });
 
+test('chronology management does not disclose DM-only events', () => {
+  const manager = { ...participant, allowPlayerChronologyManagement: true };
+  assert.equal(canReceiveTimelineVisibility(manager, 'DM_ONLY'), false);
+  assert.equal(canReceiveTimelineVisibility(manager, 'PARTY'), true);
+});
+
 test('unknown and plugin event projections fail closed', async () => {
   const baseEvent = {
     id: 'evt_test',

@@ -40,6 +40,8 @@ export interface HubRecentEditItem {
   campaignName: string;
   campaignHandle: string;
   entityType: string;
+  /** Wiki template type when entityType is WIKI_PAGE; used for hub icon wells. */
+  templateType?: string | null;
   entityId: string;
   title: string;
   href: string;

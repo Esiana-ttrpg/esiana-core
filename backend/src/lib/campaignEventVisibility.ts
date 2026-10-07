@@ -1,5 +1,6 @@
 import type { CampaignMemberRole } from '../types/domain.js';
 import { canManageChronology } from './acl.js';
+import { isElevatedMembershipRole } from '../../../shared/campaignPolicy/membershipRoles.js';
 import { prisma } from './prisma.js';
 import { canViewWikiPage } from './wikiTree.js';
 import type { DomainEvent } from './domainEvents/index.js';
@@ -81,7 +82,7 @@ export function canReceiveTimelineVisibility(
 ): boolean {
   return (
     visibility !== 'DM_ONLY' ||
-    canManageChronology(subscriber.role, subscriber.allowPlayerChronologyManagement)
+    isElevatedMembershipRole(subscriber.role)
   );
 }
 

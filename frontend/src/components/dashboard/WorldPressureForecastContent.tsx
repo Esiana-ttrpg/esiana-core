@@ -65,7 +65,7 @@ export function WorldPressureForecastContent({
 
   const progressionLink = (
     <Link
-      to={campaignProgressionPath(campaignHandle, 'insights')}
+      to={campaignProgressionPath(campaignHandle, 'trajectories')}
       className="text-xs text-primary hover:underline"
     >
       Progression › Trajectories

@@ -14,6 +14,7 @@ import type {
   PluginPartyMemberDto,
   PluginTimelineEventDto,
   PluginWorldSummaryDto,
+  PluginHirelingReadDto,
 } from '../../../../shared/pluginCampaignRead.js';
 import { serializeEpochMinute } from '../timeTracking.js';
 
@@ -172,4 +173,25 @@ export async function readPluginMaps(
     result.push({ id: asset.id, title: asset.displayName ?? 'Untitled map' });
   }
   return result;
+}
+
+export async function readPluginHirelings(campaignId: string, viewerUserId: string | null): Promise<PluginHirelingReadDto[]> {
+  const role = await resolveViewerRole(campaignId, viewerUserId);
+  const rows = await prisma.downtimePersonRelationship.findMany({
+    where: { campaignId, relationshipType: 'HIRELING' },
+    include: {
+      characterPage: { select: { id: true, title: true, visibility: true } },
+      haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true } } } },
+      project: { include: { wikiPage: { select: { id: true, title: true, visibility: true } } } },
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  return rows.filter((row) => canViewWikiPage(row.characterPage.visibility, role)).map((row) => {
+    const assignment = row.haven && canViewWikiPage(row.haven.wikiPage.visibility, role)
+      ? { kind: 'haven' as const, id: row.haven.id, pageId: row.haven.wikiPage.id, title: row.haven.wikiPage.title }
+      : row.project && canViewWikiPage(row.project.wikiPage.visibility, role)
+        ? { kind: 'project' as const, id: row.project.id, pageId: row.project.wikiPage.id, title: row.project.wikiPage.title }
+        : null;
+    return { id: row.id, characterPageId: row.characterPage.id, characterName: row.characterPage.title, role: row.role, status: row.status as PluginHirelingReadDto['status'], assignment, compensation: { amount: row.compensationAmount, currency: row.compensationCurrency, cadence: row.compensationCadence, unpaid: row.compensationUnpaid }, features: Array.isArray(row.features) ? row.features as PluginHirelingReadDto['features'] : [], notes: row.notes };
+  });
 }

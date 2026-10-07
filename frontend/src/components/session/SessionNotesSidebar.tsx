@@ -5,6 +5,7 @@ import { MemberIdentityLabel } from '@/components/campaign/MemberIdentityLabel';
 import { ReferencesWidget } from '@/components/wiki/widgets/ReferencesWidget';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { campaignNoteAllViewPath } from '@/lib/campaignPaths';
+import { countWordsInMarkdown } from '@/lib/workshopDrafts';
 import { SESSION_COMBINED_VIEW_ID } from '@/utils/sessionNoteConstants';
 import type {
   CombinedSessionNotesPayload,
@@ -62,7 +63,11 @@ export function SessionNotesSidebar({
             <LayoutGrid className="size-4 shrink-0 text-primary" aria-hidden />
             All Players
           </span>
-          <span className="text-[11px] text-muted">Combined notes for this session</span>
+          <span className="text-[11px] text-muted">
+            {combined?.aggregate
+              ? `${combined.aggregate.notesWithContent} of ${combined.aggregate.rosterCount} players wrote notes`
+              : 'Combined notes for this session'}
+          </span>
         </button>
         {allViewHref && (
           <Link
@@ -79,6 +84,7 @@ export function SessionNotesSidebar({
             {roster.map((member) => {
               const isActive = member.id === activeUserId;
               const showMasked = member.masked && !member.hasNotes;
+              const wordCount = countWordsInMarkdown(member.markdown);
               return (
                 <button
                   key={member.id}
@@ -121,7 +127,7 @@ export function SessionNotesSidebar({
                     {member.masked
                       ? 'Hidden from party'
                       : member.hasNotes
-                        ? 'Has notes'
+                        ? `${wordCount} ${wordCount === 1 ? 'word' : 'words'}`
                         : 'No notes yet'}
                   </span>
                 </button>

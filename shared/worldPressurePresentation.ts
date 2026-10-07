@@ -19,7 +19,7 @@ export const WORLD_PRESSURE_PAUSED_MESSAGE =
   'World pressure forecasting is paused for this campaign.';
 
 export const WORLD_PRESSURE_FORECAST_EMPTY_MESSAGE =
-  'Assign era trajectories in Progression › Insights to shape forecasts.';
+  'Add a trajectory in Progression › Trajectories when you want forecasts shaped by faction directions.';
 
 export const CAMPAIGN_PACING_PANEL_TITLE = 'Campaign pacing';
 
@@ -47,7 +47,7 @@ export function formatAwaitingReviewCount(count: number): string {
 }
 
 export const WORLD_EVENT_PROMPTS_EMPTY_MESSAGE =
-  'No developments awaiting review. Author trajectories in Progression › Insights to shape what emerges.';
+  'No developments awaiting review. Add a trajectory when you want faction directions to shape what emerges — or create events and advance time without them.';
 
 export const WORLD_EVENT_CREATE_BUTTON = 'Create event';
 

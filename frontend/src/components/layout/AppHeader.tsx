@@ -52,23 +52,20 @@ export function AppHeader() {
             <PanelLeft className="size-5" />
           </button>
         )}
-        <Link
-          to="/"
-          className="flex min-w-0 items-center gap-2 text-foreground transition-colors hover:text-primary"
-        >
+        <Link to="/" className="esiana-brand-lockup">
           {logoError ? (
-            <BookOpen className="size-6 text-primary" strokeWidth={1.5} />
+            <BookOpen className="esiana-brand-lockup__mark" strokeWidth={1.5} />
           ) : globalLogoUrl ? (
             <img
               src={globalLogoUrl}
-              alt={globalTitle}
-              className="size-6 rounded object-contain"
+              alt=""
+              className="esiana-brand-lockup__mark esiana-brand-lockup__mark--image"
               onError={() => setLogoError(true)}
             />
           ) : (
-            <EsianaLogo className="size-6 text-foreground" title={globalTitle} />
+            <EsianaLogo className="esiana-brand-lockup__mark" />
           )}
-          <span className="truncate font-semibold tracking-tight">{globalTitle}</span>
+          <span className="esiana-brand-lockup__wordmark">{globalTitle}</span>
         </Link>
 
         <div className="flex-1" />

@@ -1,76 +1,27 @@
 /**
  * Progression workspace — section routing (browser-safe).
+ *
+ * Canonical IA: Graph [future] · Trajectories · Developments · History
+ *
+ * - **Trajectories** — create/edit individual directions over time (opt-in).
+ * - **Developments** — review suggested/manual world changes.
+ * - **History** — what developments happened.
+ * - **Graph** (planned) — relationships between trajectories, entities, developments,
+ *   pressures, and other interconnected world state. Not implemented; do not add
+ *   relationship/propagation visualization to Trajectories.
  */
 
 export const PROGRESSION_SECTIONS = [
-  { id: 'scenes', label: 'Scenes' },
-  { id: 'sessionPrep', label: 'Session Prep' },
-  { id: 'insights', label: 'Insights' },
-  { id: 'advance', label: 'Advance Time' },
-  { id: 'developments', label: 'Pending Developments' },
-  { id: 'scheduledEffects', label: 'Scheduled Effects' },
-  { id: 'consequences', label: 'Consequences' },
+  { id: 'trajectories', label: 'Trajectories' },
+  { id: 'developments', label: 'Developments' },
   { id: 'history', label: 'History' },
 ] as const;
 
 export type ProgressionSectionId = (typeof PROGRESSION_SECTIONS)[number]['id'];
 
-export const SCENES_VIEWS = [
-  { id: 'outline', label: 'Outline' },
-  { id: 'board', label: 'Board' },
-  { id: 'sequence', label: 'Sequence' },
-] as const;
+/** Default opens Trajectories — where the world is going. */
+export const DEFAULT_PROGRESSION_SECTION: ProgressionSectionId = 'trajectories';
 
-export type ScenesViewId = (typeof SCENES_VIEWS)[number]['id'];
-
-export const DEFAULT_SCENES_VIEW: ScenesViewId = 'outline';
-
-export const DEFAULT_PROGRESSION_SECTION: ProgressionSectionId = 'scenes';
-
-/** Maps Progression section id to adventure-hub API section param. */
-export function progressionToAdventureApiSection(
-  section: ProgressionSectionId,
-  scenesView?: ScenesViewId,
-): string | null {
-  switch (section) {
-    case 'sessionPrep':
-      return 'sessions';
-    case 'scenes':
-      return scenesView === 'sequence' ? 'scene-timeline' : 'scenes';
-    default:
-      return null;
-  }
-}
-
-export type LegacyProgressionRedirect = {
-  section: ProgressionSectionId;
-  view?: ScenesViewId;
-  /** Preserve authoringKind, anchors, overlays from legacy authoringWorkshop URLs. */
-  preserveSearchParams?: boolean;
-};
-
-/** Legacy progression / adventure section aliases → canonical route. */
-export function resolveLegacyProgressionRedirect(
-  section: string | null,
-): LegacyProgressionRedirect | null {
-  if (!section) return null;
-  switch (section) {
-    case 'storyboard':
-      return { section: 'scenes', view: 'board' };
-    case 'sceneSequence':
-    case 'scene-timeline':
-    case 'sceneTimeline':
-      return { section: 'scenes', view: 'sequence' };
-    case 'trajectories':
-      return { section: 'insights' };
-    case 'workshop':
-    case 'authoringWorkshop':
-      return null;
-    default:
-      break;
-  }
-  if (PROGRESSION_SECTIONS.some((s) => s.id === section)) {
-    return { section: section as ProgressionSectionId };
-  }
-  return null;
+export function isProgressionSectionId(value: string | null | undefined): value is ProgressionSectionId {
+  return Boolean(value && PROGRESSION_SECTIONS.some((section) => section.id === value));
 }

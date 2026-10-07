@@ -39,6 +39,18 @@ export interface PluginMapSummaryDto {
   title: string;
 }
 
+export interface PluginHirelingReadDto {
+  id: string;
+  characterPageId: string;
+  characterName: string;
+  role: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | 'FORMER';
+  assignment: { kind: 'haven' | 'project'; id: string; pageId: string; title: string } | null;
+  compensation: { amount: number | null; currency: string | null; cadence: string | null; unpaid: boolean };
+  features: Array<{ id: string; title: string; description: string | null }>;
+  notes: string | null;
+}
+
 export interface PluginCampaignReadPermissions {
   calendar: boolean;
   timeline: boolean;
@@ -46,4 +58,5 @@ export interface PluginCampaignReadPermissions {
   world: boolean;
   lore: boolean;
   maps: boolean;
+  downtime: boolean;
 }

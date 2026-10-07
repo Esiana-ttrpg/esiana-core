@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api';
+import { fetchEras } from './chronologyErasApi';
 import type {
   CampaignEra,
   CampaignMomentumState,
@@ -14,12 +15,21 @@ export type CampaignMomentumPayload = {
 export async function fetchCampaignMomentum(
   campaignHandle: string,
 ): Promise<CampaignMomentumPayload> {
-  return apiFetch<CampaignMomentumPayload>(`/campaigns/${campaignHandle}/momentum`);
+  const { eras } = await fetchEras(campaignHandle);
+  return {
+    semanticsVersion: 'campaign-momentum-v1', updatedAt: '',
+    state: { version: 'campaign-momentum-v1', chronologyOwned: true, eras: eras.map(era => ({
+      id: era.id, name: era.name, calendarId: era.calendarId, calendarName: era.calendarName,
+      isMasterTime: era.isMasterTime,
+      sortOrder: era.sortOrder, isCurrent: era.isCurrent, visibility: era.visibility,
+      epochStartMinute: null, epochEndMinute: null, narrativeNote: null,
+    })) },
+  };
 }
 
 export async function updateCampaignMomentum(
   campaignHandle: string,
-  input: { eras?: CampaignEra[]; worldPressurePaused?: boolean },
+  input: { worldPressurePaused?: boolean },
 ): Promise<CampaignMomentumPayload> {
   return apiFetch<CampaignMomentumPayload>(`/campaigns/${campaignHandle}/momentum`, {
     method: 'PUT',

@@ -48,3 +48,23 @@ test('keeps distinct recent activity as supporting text', () => {
 
   assert.equal(presentation.tensionLine, 'The Moon Court answered the signal.');
 });
+
+test('cover overlay uses localized bottom readability, not a full-card mid wash', () => {
+  const presentation = buildCampaignWorldPresentation(
+    campaign({ heroImageUrl: 'https://example.test/cover.jpg' }),
+  );
+  const background = String(presentation.overlayStyle.background ?? '');
+
+  assert.match(background, /transparent 100%/);
+  assert.doesNotMatch(background, /rgba\(0,0,0,[0-9.]+\) 50%/);
+  const vars = presentation.cardStyle as Record<string, string>;
+  assert.equal(vars['--hub-art-fg'], 'rgb(245 240 232)');
+  assert.ok(presentation.accentRgb.includes(','));
+});
+
+test('exposes artwork-safe foreground contract for on-cover type', () => {
+  const presentation = buildCampaignWorldPresentation(campaign());
+  const vars = presentation.cardStyle as Record<string, string>;
+  assert.equal(vars['--hub-art-fg'], 'rgb(245 240 232)');
+  assert.equal(vars['--hub-art-fg-muted'], 'rgb(245 240 232 / 0.78)');
+});

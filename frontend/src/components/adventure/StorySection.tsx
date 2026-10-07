@@ -7,7 +7,6 @@ import {
   type StoryViewId,
   type ThreadsLensId,
 } from '@/lib/adventureLayout';
-import { campaignAdventureHubPath } from '@/lib/campaignPaths';
 import {
   parseSystemCategoryKey,
   SYSTEM_CATEGORY_NARRATIVE_THREADS,
@@ -17,6 +16,8 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { BoardSection } from '@/components/adventure/BoardSection';
 import { ArcsSection } from '@/components/adventure/ArcsSection';
 import { InvestigationSection } from '@/components/adventure/InvestigationSection';
+import { AdventureScenesSection } from '@/components/adventure/AdventureScenesSection';
+import { AdventureStoryboardSection } from '@/components/adventure/AdventureStoryboardSection';
 import { ThreadHubView } from '@/components/thread/ThreadHubView';
 import { ThreadsLensViewToggle } from '@/components/thread/ThreadsLensViewToggle';
 import { CreativeDriftContent } from '@/components/creativeDrift/CreativeDriftContent';
@@ -45,8 +46,6 @@ export function StorySection({
   const { flatPages } = useWiki();
   const { playerPreview, isDMUser } = useAdventureWorkspace();
 
-  const basePath = campaignAdventureHubPath(campaignHandle);
-
   const threadsCategoryId = useMemo(
     () =>
       flatPages.find(
@@ -63,7 +62,7 @@ export function StorySection({
   const [error, setError] = useState<string | null>(null);
 
   const loadViewData = useCallback(async () => {
-    if (activeView === 'quests') {
+    if (activeView === 'quests' || activeView === 'scenes' || activeView === 'storyboard') {
       setSectionData(null);
       return;
     }
@@ -156,12 +155,15 @@ export function StorySection({
 
   useEffect(() => {
     if (!onHeaderActionsChange) return;
+    if (activeView === 'scenes' || activeView === 'storyboard') {
+      return;
+    }
     if (!threadsActivityToolbar) {
       return;
     }
     onHeaderActionsChange(threadsActivityToolbar);
     return () => onHeaderActionsChange(null);
-  }, [onHeaderActionsChange, threadsActivityToolbar]);
+  }, [activeView, onHeaderActionsChange, threadsActivityToolbar]);
 
   if (activeView === 'quests') {
     return (
@@ -170,6 +172,36 @@ export function StorySection({
         categoryPageId={categoryPageId}
         playerPreview={playerPreview}
         onHeaderToolbarChange={onHeaderActionsChange}
+      />
+    );
+  }
+
+  if (activeView === 'scenes') {
+    if (!isDMUser || playerPreview) {
+      return (
+        <p className="text-sm text-muted-foreground">Scenes are available to GMs only.</p>
+      );
+    }
+    return (
+      <AdventureScenesSection
+        campaignHandle={campaignHandle}
+        questsCategoryId={categoryPageId}
+        onHeaderActionsChange={onHeaderActionsChange}
+      />
+    );
+  }
+
+  if (activeView === 'storyboard') {
+    if (!isDMUser || playerPreview) {
+      return (
+        <p className="text-sm text-muted-foreground">Storyboard is available to GMs only.</p>
+      );
+    }
+    return (
+      <AdventureStoryboardSection
+        campaignHandle={campaignHandle}
+        questsCategoryId={categoryPageId}
+        onHeaderActionsChange={onHeaderActionsChange}
       />
     );
   }

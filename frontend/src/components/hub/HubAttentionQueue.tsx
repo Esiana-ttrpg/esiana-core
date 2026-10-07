@@ -13,9 +13,9 @@ interface HubAttentionQueueProps {
 }
 
 function chipClassForSeverity(severity: HubAttentionItem['severity']): string {
-  if (severity === 'elevated') return 'hub-chip hub-chip--attention hub-chip--attention-elevated';
-  if (severity === 'whisper') return 'hub-chip hub-chip--attention hub-chip--attention-whisper';
-  return 'hub-chip hub-chip--attention';
+  if (severity === 'elevated') return 'hub-chip hub-chip--severity-elevated';
+  if (severity === 'whisper') return 'hub-chip hub-chip--severity-whisper';
+  return 'hub-chip hub-chip--severity-soft';
 }
 
 export function HubAttentionQueue({
@@ -80,7 +80,7 @@ export function HubAttentionQueue({
 
   if (summaryMode) {
     return (
-      <section className="space-y-2">
+      <section className="hub-section-surface space-y-2">
         <HubSectionHeader title="Needs Attention" variant="attention" size="sm" />
         <HubActionButton variant="utility" onClick={() => setExpanded(true)} className="!rounded-full">
           {visible.length} items across your tables
@@ -91,7 +91,7 @@ export function HubAttentionQueue({
   }
 
   return (
-    <section className="space-y-2">
+    <section className="hub-section-surface space-y-2">
       <HubSectionHeader title="Needs Attention" variant="attention" size="sm" />
       <div className="flex flex-wrap items-center gap-2">
         {display.map((item) => (

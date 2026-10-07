@@ -10,6 +10,7 @@ import { DowntimeOperationCard } from '@/components/downtime/DowntimeOperationCa
 import { DowntimeFeedCardList } from '@/components/downtime/DowntimeFeedCardList';
 import { WikiPageBreadcrumbs } from '@/components/wiki/WikiPageBreadcrumbs';
 import { ManageProjectModal } from '@/components/downtime/ManageProjectModal';
+import { AssignedPeopleSection } from '@/components/downtime/AssignedPeopleSection';
 import type { WikiTreeNode } from '@/types/wiki';
 
 interface ProjectOverviewViewProps {
@@ -169,6 +170,8 @@ export function ProjectOverviewView({
           ) : null}
         </section>
       )}
+
+      <AssignedPeopleSection people={overview.assignedPeople} title="Assigned people" />
 
       {overview.pendingTreasurySuggestions &&
       overview.pendingTreasurySuggestions.length > 0 &&

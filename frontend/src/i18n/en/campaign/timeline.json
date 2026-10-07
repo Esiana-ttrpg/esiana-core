@@ -4,7 +4,7 @@
   "campaign.timeline.createEventFailed": "Failed to create event.",
   "campaign.timeline.createCategoryFailed": "Failed to create category.",
   "campaign.timeline.titleRequired": "Title is required.",
-  "campaign.timeline.createEventTitle": "Create Chronology Event",
+  "campaign.timeline.createEventTitle": "Create Event",
   "campaign.timeline.categoriesLabel": "Categories",
   "campaign.timeline.addCategory": "Add",
   "campaign.timeline.fieldTitle": "Title",

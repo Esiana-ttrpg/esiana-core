@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { membershipRoleUiLabel } from '@/types/domain';
 import {
   buildCampaignBannerStyle,
 } from '@/lib/campaignCardPresentation';
@@ -10,20 +10,19 @@ import type { CampaignSummary } from '@/types/campaign';
 
 interface CampaignSwitchRecentRowProps {
   campaign: CampaignSummary;
-  isCurrent: boolean;
   onSelect: () => void;
 }
 
 export function CampaignSwitchRecentRow({
   campaign,
-  isCurrent,
   onSelect,
 }: CampaignSwitchRecentRowProps) {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { coverUrl, gradientStyle } = buildCampaignBannerStyle(campaign);
-  const lastOpenedAt = getCampaignLastOpenedAt(campaign.id);
-  const lastOpenedLabel = formatLastOpened(lastOpenedAt ?? undefined);
+  const roleLabel = membershipRoleUiLabel(campaign.role);
+  const lastOpenedLabel = formatLastOpened(
+    getCampaignLastOpenedAt(campaign.id) ?? undefined,
+  );
 
   function handleClick() {
     onSelect();
@@ -52,11 +51,11 @@ export function CampaignSwitchRecentRow({
       />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{campaign.name}</p>
-        {isCurrent ? (
-          <p className="text-xs font-medium text-primary">{t('navigation.account.current')}</p>
+        {roleLabel ? (
+          <p className="truncate text-xs text-muted">{roleLabel}</p>
         ) : null}
         {lastOpenedLabel ? (
-          <p className="text-xs text-muted">{lastOpenedLabel}</p>
+          <p className="truncate text-xs text-muted">{lastOpenedLabel}</p>
         ) : null}
       </div>
     </button>

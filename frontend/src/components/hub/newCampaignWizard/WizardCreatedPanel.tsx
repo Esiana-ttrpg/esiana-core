@@ -1,18 +1,50 @@
 import { CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useCampaignInviteLink } from '@/hooks/useCampaignInviteLink';
 import { CampaignDiscoverability } from '@shared/campaignPolicy/discoverability';
 import type { CampaignSummary } from '@/types/campaign';
+import {
+  applyWizardScheduleBestEffort,
+  type WizardScheduleOutcome,
+} from '@/components/hub/newCampaignWizard/seedCampaignFoundation';
 
 interface WizardCreatedPanelProps {
   campaign: CampaignSummary;
   onDone: () => void;
+  scheduleWarning?: Extract<WizardScheduleOutcome, { ok: false }> | null;
 }
 
-export function WizardCreatedPanel({ campaign, onDone }: WizardCreatedPanelProps) {
+export function WizardCreatedPanel({
+  campaign,
+  onDone,
+  scheduleWarning = null,
+}: WizardCreatedPanelProps) {
   const handle = campaign.handle;
   const isPrivate =
     campaign.discoverability !== CampaignDiscoverability.PUBLIC;
   const invite = useCampaignInviteLink(handle, { enabled: isPrivate && Boolean(handle) });
+  const [warning, setWarning] = useState(scheduleWarning);
+  const [retrying, setRetrying] = useState(false);
+
+  useEffect(() => {
+    setWarning(scheduleWarning);
+  }, [scheduleWarning]);
+
+  async function handleRetrySchedule() {
+    if (!warning?.retry) return;
+    setRetrying(true);
+    try {
+      const outcome = await applyWizardScheduleBestEffort(
+        warning.retry.campaignId,
+        warning.retry.campaignHandle,
+        warning.retry.schedule,
+        false,
+      );
+      setWarning(outcome.ok ? null : outcome);
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   return (
     <section className="space-y-6 py-4">
@@ -25,6 +57,26 @@ export function WizardCreatedPanel({ campaign, onDone }: WizardCreatedPanelProps
           </p>
         </div>
       </div>
+
+      {warning ? (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+          <p className="text-sm font-semibold text-foreground">First session not scheduled</p>
+          <p className="text-xs text-muted">
+            {warning.message ||
+              'Your campaign was created, but the first session note was not created.'}
+          </p>
+          {warning.retry ? (
+            <button
+              type="button"
+              disabled={retrying}
+              onClick={() => void handleRetrySchedule()}
+              className="rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground hover:bg-elevated disabled:opacity-60"
+            >
+              {retrying ? 'Retrying…' : 'Retry scheduling first session'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {isPrivate ? (
         <div className="rounded-xl border border-border bg-background/50 p-4 space-y-3">

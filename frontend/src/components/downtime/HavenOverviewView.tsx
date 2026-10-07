@@ -16,6 +16,7 @@ import { ManageHavenModal } from '@/components/downtime/ManageHavenModal';
 import { HavenIdentityStrip } from '@/components/downtime/HavenIdentityStrip';
 import { HavenReferencesSection } from '@/components/downtime/HavenReferencesSection';
 import { HavenSpacesSection } from '@/components/downtime/HavenSpacesSection';
+import { AssignedPeopleSection } from '@/components/downtime/AssignedPeopleSection';
 import type { WikiTreeNode } from '@/types/wiki';
 
 interface HavenOverviewViewProps {
@@ -187,6 +188,8 @@ export function HavenOverviewView({
       />
 
       <HavenSpacesSection spaces={overview.spaces} />
+
+      <AssignedPeopleSection people={overview.assignedPeople} title="People" />
 
       {overview.activeOperations.length > 0 ? (
         <section>

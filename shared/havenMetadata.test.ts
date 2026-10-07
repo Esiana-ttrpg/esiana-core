@@ -61,6 +61,22 @@ describe('havenMetadata', () => {
     assert.equal(fields.activityLog[0]?.sourceProjectId, 'proj-1');
   });
 
+  it('normalizes malformed activity timestamps before sorting', () => {
+    const fields = parseDowntimeHavenFields({
+      activityLog: [
+        { summary: 'Malformed timestamp', atEpochMinute: 'not-a-minute' },
+        { summary: 'Negative timestamp', atEpochMinute: '-5' },
+        { summary: 'Canonical timestamp', atEpochMinute: '000200' },
+      ],
+    });
+
+    assert.equal(fields.activityLog[0]?.atEpochMinute, null);
+    assert.equal(fields.activityLog[1]?.atEpochMinute, null);
+    assert.equal(fields.activityLog[2]?.atEpochMinute, '200');
+    assert.doesNotThrow(() => sortActivityLogNewestFirst(fields.activityLog));
+    assert.equal(sortActivityLogNewestFirst(fields.activityLog)[0]?.summary, 'Canonical timestamp');
+  });
+
   it('sorts activity log newest first', () => {
     const sorted = sortActivityLogNewestFirst([
       createHavenActivityEntry({
@@ -185,6 +201,8 @@ describe('havenMetadata', () => {
     assert.equal(fields.references.length, 2);
     assert.equal(sortHavenReferences(fields.references)[0]?.title, 'House Rules');
     assert.equal(fields.spaces[0]?.label, 'War Room');
+    assert.equal(fields.spaces[0]?.type, 'room');
+    assert.equal(fields.spaces[0]?.status, 'active');
   });
 
   it('defaults identity hints when missing', () => {
@@ -212,5 +230,19 @@ describe('havenMetadata', () => {
     const space = createHavenSpaceEntry({ label: 'Forge Wing', description: 'Smithy' });
     assert.equal(space.label, 'Forge Wing');
     assert.equal(space.description, 'Smithy');
+    assert.equal(space.type, 'room');
+    assert.equal(space.status, 'active');
+  });
+
+  it('preserves space organization metadata', () => {
+    const space = createHavenSpaceEntry({
+      label: 'Collapsed West Tower',
+      type: 'landmark',
+      status: 'ruined',
+      sortOrder: 4,
+    });
+    assert.equal(space.type, 'landmark');
+    assert.equal(space.status, 'ruined');
+    assert.equal(space.sortOrder, 4);
   });
 });

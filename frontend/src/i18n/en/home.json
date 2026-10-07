@@ -8,5 +8,13 @@
   "home.emptyTitle": "No campaigns yet",
   "home.emptyDescription": "Create a campaign to build your first world on the shelf.",
   "home.explorePublicTitle": "Public campaigns",
-  "home.explorePublicDescription": "Discover worlds shared by the community."
+  "home.explorePublicDescription": "Discover worlds shared by the community.",
+  "home.storySoFarTitle": "Your Story So Far",
+  "home.storySoFarViewReflection": "View reflection →",
+  "home.storySoFarStreak": "Streak",
+  "home.storySoFarPagesCreated": "Pages created",
+  "home.storySoFarCharacters": "Characters",
+  "home.storySoFarWordsWritten": "Words written",
+  "home.storySoFarStreakUnitDay": "day",
+  "home.storySoFarStreakUnitDays": "days"
 }

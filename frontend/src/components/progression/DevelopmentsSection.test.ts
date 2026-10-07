@@ -11,10 +11,12 @@ const source = fs.readFileSync(
 
 test('developments is an inbox-first surface with compact status and accessible utility links', () => {
   assert.match(source, /Pending \(\{data\.pendingCount\}\)/);
+  assert.match(source, /What is happening\?/);
   assert.match(source, /World Development · \{stateLabel\}/);
   assert.match(source, /World Development settings/);
   assert.match(source, /World Development help/);
   assert.doesNotMatch(source, /WorldDevelopmentQuickControls|DevelopmentReadinessPanel|handleTogglePause/);
+  assert.doesNotMatch(source, /providerId|trajectoryRef/);
 });
 
 test('pending development cards preserve review actions, editing, dates, and provenance', () => {
@@ -31,7 +33,12 @@ test('empty and sparse campaigns receive only real, actionable routes', () => {
   assert.match(source, /Ways to develop your world/);
   assert.match(source, /campaignChronologyPath\(campaignHandle, 'events'\)/);
   assert.match(source, /campaignWorkspaceIndexPath\(campaignHandle, 'organizations'\)/);
-  assert.match(source, /campaignProgressionPath\(campaignHandle, 'insights'\)/);
+  assert.match(source, /campaignProgressionPath\(campaignHandle, 'trajectories'\)/);
+  assert.match(source, /Add a trajectory/);
+  assert.match(source, /Create an organization/);
+  assert.doesNotMatch(source, /Fix missing trajectories/);
+  assert.match(source, /Trajectories are optional/);
+  assert.match(source, /organizations, characters, and locations/);
 });
 
 test('advance time reuses the global time advancement flow from every page action', () => {
@@ -52,4 +59,9 @@ test('campaign calendar and existing accepted history provide temporal context',
   assert.match(source, /status: \['accepted'\]/);
   assert.match(source, /Recently Applied/);
   assert.match(source, /campaignProgressionPath\(campaignHandle, 'history'\)/);
+});
+
+test('scheduled narrative prompts are embedded in Developments, not a peer destination', () => {
+  assert.match(source, /ScheduledNarrativePanel/);
+  assert.match(source, /embedded/);
 });

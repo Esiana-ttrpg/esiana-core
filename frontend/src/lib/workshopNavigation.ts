@@ -30,21 +30,19 @@ export function buildWorkshopSearch(draftId: string | null, fromPageId?: string 
   return query ? `?${query}` : '';
 }
 
-/** Legacy progression workshop URLs → dedicated workshop route. */
-export function resolveLegacyWorkshopRedirect(
-  campaignHandle: string,
-  search: string,
-): string | null {
-  const params = new URLSearchParams(search);
-  const section = params.get('section');
-  if (section !== 'workshop' && section !== 'authoringWorkshop') return null;
-
-  const draft = params.get('draft');
-  const anchors = params.get('anchors');
-  const fromPageId = anchors?.split(',')[0]?.trim() || null;
-
-  return campaignWorkshopPath(campaignHandle, {
-    draftId: draft ?? undefined,
-    fromPageId: fromPageId ?? undefined,
-  });
+/**
+ * Draft tabs to open on Workshop bootstrap.
+ * Bare visits with no primary draft and no session tabs yield an empty workspace —
+ * never invent a "most recent" campaign draft as a destination hub.
+ */
+export function resolveWorkshopBootstrapOpenIds(input: {
+  primaryDraftId: string | null;
+  sessionOpenDraftIds: readonly string[];
+}): string[] {
+  const sessionIds = [...input.sessionOpenDraftIds];
+  if (!input.primaryDraftId) return sessionIds;
+  return [
+    input.primaryDraftId,
+    ...sessionIds.filter((id) => id !== input.primaryDraftId),
+  ];
 }

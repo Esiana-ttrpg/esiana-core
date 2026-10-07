@@ -120,6 +120,7 @@ export async function buildReputationHubPayload(
     axis: row.axis as ReputationFeedLine['axis'],
     narrative: row.narrative ?? '',
     dateLabel: formatEpochMinuteLabel(row.occurredAtEpochMinute, masterCalendar),
+    occurredAtEpochMinute: row.occurredAtEpochMinute.toString(),
     tone: toneForDirection(row.direction, row.axis),
     directionArrow: formatReputationDirectionArrow(
       row.direction as ReputationFeedLine['direction'],

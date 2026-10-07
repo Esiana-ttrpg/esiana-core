@@ -8,12 +8,8 @@ import {
   type DowntimeHubPayload,
   type DowntimeSectionId,
 } from '../../../shared/downtimeHub.js';
+import { listDowntimeProjectDetails } from '../lib/downtimeProjectService.js';
 import {
-  countActiveDowntimeProjects,
-  listDowntimeProjectDetails,
-} from '../lib/downtimeProjectService.js';
-import {
-  countDowntimeHavens,
   listDowntimeHavens,
   resolveWikiPageTitles,
 } from '../lib/downtimeHavenService.js';
@@ -25,17 +21,15 @@ import { buildCreativeDriftScan } from '../lib/creativeDriftService.js';
 import { buildConvergenceOverlay } from '../lib/chronologyConvergenceService.js';
 import { buildDashboardChronometer } from '../lib/buildDashboardChronometer.js';
 import {
-  buildDowntimeSimulationSnapshot,
+  buildDowntimeCurrentTimePresentation,
+  buildDowntimeOverviewPresentation,
   buildDowntimeWorldEventsPayload,
   buildDowntimeProjectOperationCards,
   DOWNTIME_WORLD_EVENT_DOMAINS,
 } from '../lib/buildDowntimePresentation.js';
+import { activityToneToFeedTone, sortActivityLogNewestFirst } from '../../../shared/havenMetadata.js';
 import { loadEventConsequencePresentation } from '../lib/buildEventConsequencePresentation.js';
-import { buildCampaignWorldPressureProjection } from '../lib/worldPressureProjectionService.js';
 import { buildCurrentDowntimePeriodPresentation } from '../lib/downtimePeriodProjectionService.js';
-import { loadQuestTimeFeedPresentation } from '../lib/buildQuestTimeFeedPresentation.js';
-import { loadDowntimePressurePresentation } from '../lib/loadDowntimePressurePresentation.js';
-import { emptyDowntimePressurePresentation } from '../../../shared/downtimeContinuityIntegration.js';
 import { ensureDowntimeSystemCategoryKey } from '../lib/ensureDowntimeSystemCategoryKey.js';
 import { listWorldAdvanceBatches } from '../lib/worldAdvanceService.js';
 import {
@@ -43,10 +37,9 @@ import {
   parseSystemCategoryKey,
 } from '../lib/wikiSystemCategory.js';
 import { buildLedgerHubPayload } from '../lib/campaignLedgerService.js';
-import { getScheduledTreasuryPulseHint } from '../lib/scheduledEffectService.js';
-import { countPendingReputationSuggestions } from '../lib/reputationSuggestionService.js';
 import { buildWorldEventSuggestionsForHub } from '../lib/buildWorldEventsPresentation.js';
 import { prisma } from '../lib/prisma.js';
+import { listDowntimePeople } from '../lib/downtimePeopleService.js';
 
 function placeholderPayload(section: Exclude<DowntimeSectionId, 'worldEvents'>) {
   const framing = DOWNTIME_PLACEHOLDER_FRAMING[section];
@@ -145,63 +138,79 @@ export async function buildDowntimeHubResponse(
   };
 
   if (section == null) {
-    const [context, activeProjectCount, havenCount, pendingReputationCount, eventConsequences, questTimeFeed, pressurePresentation, worldPressure, currentDowntimePeriod, scheduledTreasuryPulse] =
+    const { buildReputationHubPayload } = await import('../lib/buildReputationPresentation.js');
+    const [campaign, chronometer, milestone, currentDowntimePeriod, projects, havens, people, ledger, reputation, worldEventReview] =
       await Promise.all([
-        loadPresentationContext(req, campaignHandle),
-        countActiveDowntimeProjects(ctx.campaignId),
-        countDowntimeHavens(ctx.campaignId),
-        countPendingReputationSuggestions(ctx.campaignId),
-        canManage
-          ? loadEventConsequencePresentation(ctx.campaignId, campaignHandle)
-          : Promise.resolve({ cards: [], pendingActionableCount: 0 }),
-        canManage
-          ? loadQuestTimeFeedPresentation({
-              campaignId: ctx.campaignId,
-              campaignHandle,
-              currentEpochMinute: (await prisma.campaign.findUnique({
-                where: { id: ctx.campaignId },
-                select: { currentEpochMinute: true },
-              }))?.currentEpochMinute ?? 0n,
-            })
-          : Promise.resolve({ items: [], downtimeCards: [], pendingActionableCount: 0 }),
-        canManage
-          ? loadDowntimePressurePresentation({
-              campaignId: ctx.campaignId,
-              campaignHandle,
-              role: ctx.role,
-              currentEpochMinute: (await prisma.campaign.findUnique({
-                where: { id: ctx.campaignId },
-                select: { currentEpochMinute: true },
-              }))?.currentEpochMinute ?? 0n,
-            })
-          : Promise.resolve(emptyDowntimePressurePresentation()),
-        canManage
-          ? buildCampaignWorldPressureProjection(ctx.campaignId)
-          : Promise.resolve(null),
-        buildCurrentDowntimePeriodPresentation({
-          campaignId: ctx.campaignId,
-          campaignHandle,
+        prisma.campaign.findUnique({
+          where: { id: ctx.campaignId },
+          select: { currentEpochMinute: true },
         }),
-        getScheduledTreasuryPulseHint(ctx.campaignId),
+        buildDashboardChronometer(ctx.campaignId),
+        prisma.narrativeStateSnapshot.findFirst({
+          where: {
+            campaignId: ctx.campaignId,
+            kind: { in: [SnapshotKind.MILESTONE, SnapshotKind.PARTY_VISIT, SnapshotKind.MANUAL] },
+          },
+          orderBy: { capturedAtEpochMinute: 'desc' },
+          select: { capturedAtEpochMinute: true },
+        }),
+        buildCurrentDowntimePeriodPresentation({ campaignId: ctx.campaignId, campaignHandle }),
+        listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx.role, { includeTerminal: true }),
+        listDowntimeHavens(ctx.campaignId, campaignHandle, ctx.role),
+        listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, canManage),
+        buildLedgerHubPayload(ctx.campaignId, campaignHandle, ctx.role, req.user?.id ?? null),
+        buildReputationHubPayload(ctx.campaignId, campaignHandle, ctx.role),
+        canManage
+          ? buildWorldEventSuggestionsForHub(ctx.campaignId, campaignHandle, ctx.role)
+          : Promise.resolve({ pendingSuggestions: [], pendingSuggestionsCount: 0 }),
       ]);
-    payload.overview = {
-      simulationSnapshot: buildDowntimeSimulationSnapshot({
-        campaignHandle,
-        ...context,
-        currentDowntimePeriod,
-        activeProjectCount,
-        havenCount,
-        pendingReputationCount,
-        eventConsequenceCards: eventConsequences.cards,
-        pendingEventConsequenceCount: eventConsequences.pendingActionableCount,
-        questTimeFeedCards: questTimeFeed.downtimeCards,
-        pendingQuestTimeCount: questTimeFeed.pendingActionableCount,
-        pressureCards: pressurePresentation.cards,
-        pressureCounts: pressurePresentation.counts,
-        worldPressure,
-        scheduledTreasuryPulse,
-      }),
-    };
+
+    const currentEpochMinute = campaign?.currentEpochMinute ?? 0n;
+    const projectCards = buildDowntimeProjectOperationCards(projects);
+    const residentPageIds = [...new Set(havens.flatMap((haven) => haven.residentPageIds))];
+    const residentTitles = await resolveWikiPageTitles(ctx.campaignId, residentPageIds);
+    const residentLabelsByHaven = new Map<string, string[]>();
+    for (const haven of havens) {
+      residentLabelsByHaven.set(
+        haven.id,
+        haven.residentPageIds.map((id) => residentTitles.get(id) ?? 'Unknown'),
+      );
+    }
+    const havenCards = buildHavenSituationCards(
+      havens,
+      residentLabelsByHaven,
+      currentEpochMinute,
+    );
+    const havenActivity = havens.flatMap((haven) =>
+      sortActivityLogNewestFirst(haven.activityLog)
+        .filter((entry) => entry.atEpochMinute != null)
+        .map((entry) => ({
+          id: `${haven.id}:${entry.id}`,
+          havenTitle: haven.title,
+          havenHref: haven.href,
+          summary: entry.summary,
+          occurredAtEpochMinute: entry.atEpochMinute!,
+          tone: activityToneToFeedTone(entry.tone),
+        })),
+    );
+    const time = buildDowntimeCurrentTimePresentation({
+      currentEpochMinute,
+      sinceEpochMinute: milestone?.capturedAtEpochMinute ?? null,
+      chronometer,
+    });
+
+    payload.overview = buildDowntimeOverviewPresentation({
+      currentEpochMinute,
+      ...time,
+      currentDowntimePeriod,
+      projectCards,
+      havenCards,
+      havenActivity,
+      ledger,
+      reputation,
+      pendingWorldEventSuggestionsCount: worldEventReview.pendingSuggestionsCount,
+      activePeopleCount: people.summary.active,
+    });
   } else if (section === 'worldEvents') {
     const [context, eventConsequences, worldEventSuggestions] = await Promise.all([
       loadPresentationContext(req, campaignHandle),
@@ -262,6 +271,13 @@ export async function buildDowntimeHubResponse(
       ),
       framing: DOWNTIME_PLACEHOLDER_FRAMING.havens,
     };
+  } else if (section === 'people') {
+    payload.people = await listDowntimePeople(
+      ctx.campaignId,
+      campaignHandle,
+      ctx.role,
+      canManage,
+    );
   } else if (section === 'reputation') {
     const { buildReputationHubPayload } = await import('../lib/buildReputationPresentation.js');
     payload.reputation = await buildReputationHubPayload(

@@ -7,12 +7,14 @@ import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SessionTimeAdvanceModal } from '@/components/session/SessionTimeAdvanceModal';
+import { ScheduledNarrativePanel } from '@/components/progression/ScheduledNarrativePanel';
 import { campaignChronologyPath, campaignProgressionPath, campaignSettingsPath, campaignWorkspaceIndexPath } from '@/lib/campaignPaths';
 import { platformGuidePath } from '@/lib/platformGuides';
 import { convertEpochToCalendarState } from '@/lib/timeEngine';
 import { calendarRowToLike } from '@/lib/chronologyCalendar';
 import { fetchTimeTracking, masterCalendarFromBundle, type FantasyCalendarApiRow } from '@/lib/timeTrackingApi';
 import { fetchDevelopmentHistory, fetchPendingDevelopments, resolveDevelopmentSuggestion, suggestOnDemandDevelopments, type SuggestDevelopmentsResult } from '@/lib/worldDevelopmentApi';
+import { CampaignMemberRoles } from '@/types/domain';
 
 interface DevelopmentsSectionProps { campaignHandle: string }
 
@@ -45,7 +47,10 @@ function HeaderIconLink({ to, label, children }: { to: string; label: string; ch
 }
 
 export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps) {
-  const { flatPages } = useWiki();
+  const { campaign, flatPages } = useWiki();
+  const canManage =
+    campaign?.role === CampaignMemberRoles.GAMEMASTER ||
+    campaign?.role === CampaignMemberRoles.WRITER;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<WorldDevelopmentPresentation | null>(null);
   const [calendar, setCalendar] = useState<FantasyCalendarApiRow | null>(null);
@@ -92,7 +97,14 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
   }
 
   const currentDate = calendar ? `${calendar.state.day} ${calendar.state.monthName}, ${calendar.state.year}` : null;
-  const activeFactions = useMemo(() => flatPages.filter((page) => resolveCanonicalEntityCategory(page, flatPages) === 'organizations'), [flatPages]);
+  const organizationPages = useMemo(
+    () =>
+      flatPages.filter(
+        (page) => resolveCanonicalEntityCategory(page, flatPages) === 'organizations',
+      ),
+    [flatPages],
+  );
+  const activeFactions = organizationPages;
 
   if (loading) return <LoadingSpinner label="Loading pending developments…" />;
   if (!data) return <p className="text-sm text-destructive">{error ?? 'Failed to load developments.'}</p>;
@@ -104,8 +116,8 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
     <header className="flex min-w-0 items-start justify-between gap-3 border-b border-border/40 pb-4">
       <div className="min-w-0">
         <h2 className={TYPE_DISPLAY_CLASS}>Developments</h2>
-        <p className="mt-1 text-sm text-muted-foreground">World Development · {stateLabel}</p>
-        <p className="text-sm text-muted-foreground">{data.status.generatedThisCampaignMonth} developments this campaign month · {data.pendingCount} awaiting review</p>
+        <p className="mt-1 text-sm text-muted-foreground">What is happening?</p>
+        <p className="text-sm text-muted-foreground">World Development · {stateLabel} · {data.status.generatedThisCampaignMonth} this campaign month · {data.pendingCount} awaiting review</p>
         {!data.settings.enabled ? <p className="mt-1 text-xs text-muted-foreground">Suggestions are disabled in campaign settings.</p> : null}
         {data.settings.paused ? <p className="mt-1 text-xs text-muted-foreground">New suggestions are paused; pending ones remain available.</p> : null}
       </div>
@@ -136,9 +148,19 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
           <h4 className="text-sm font-semibold text-foreground">Ways to develop your world</h4>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
             <Link className="text-primary hover:underline" to={campaignChronologyPath(campaignHandle, 'events')}>Create a world event</Link>
-            {activeFactions.length === 0 ? <Link className="text-primary hover:underline" to={campaignWorkspaceIndexPath(campaignHandle, 'organizations')}>Create a faction</Link> : <Link className="text-primary hover:underline" to={campaignProgressionPath(campaignHandle, 'insights')}>Give a faction a direction</Link>}
+            <Link className="text-primary hover:underline" to={campaignProgressionPath(campaignHandle, 'trajectories')}>
+              Add a trajectory
+            </Link>
+            {activeFactions.length === 0 ? (
+              <Link className="text-primary hover:underline" to={campaignWorkspaceIndexPath(campaignHandle, 'organizations')}>Create an organization</Link>
+            ) : null}
             <button type="button" onClick={() => setAdvanceOpen(true)} className="text-left text-primary hover:underline">Advance campaign time</button>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Trajectories are optional directions for organizations, characters, and locations.
+            Add one when you want part of the world to pull future developments — or create
+            events and advance time without them.
+          </p>
         </div>
       </div> : <ul className="space-y-3">{data.pending.map((row) => {
         const isEditing = editingId === row.id;
@@ -164,6 +186,21 @@ export function DevelopmentsSection({ campaignHandle }: DevelopmentsSectionProps
     </section>
 
     <section aria-labelledby="campaign-time-heading" className="border-t border-border/40 pt-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="campaign-time-heading" className="text-base font-semibold">Campaign Time</h3><p className="mt-1 text-sm text-muted-foreground">{currentDate ?? 'No master calendar configured'}</p></div><button type="button" onClick={() => setAdvanceOpen(true)} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted">Advance time</button></div></section>
+
+    <section
+      aria-labelledby="scheduled-developments-heading"
+      className="border-t border-border/40 pt-5"
+    >
+      <span id="scheduled-developments-heading" className="sr-only">
+        Scheduled narrative prompts
+      </span>
+      <ScheduledNarrativePanel
+        campaignHandle={campaignHandle}
+        organizationPages={organizationPages}
+        canManage={Boolean(canManage)}
+        embedded
+      />
+    </section>
 
     {history.length > 0 ? <section aria-labelledby="recently-applied-heading" className="border-t border-border/40 pt-5"><h3 id="recently-applied-heading" className="text-base font-semibold">Recently Applied</h3><ul className="mt-3 space-y-2">{history.map((row) => <li key={row.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-sm"><span className="flex min-w-0 items-center gap-2"><Check className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="truncate">{row.title}</span></span><span className="text-xs text-muted-foreground">{formatDevelopmentDate(row.occurredAtEpochMinute, calendar)}</span></li>)}</ul><Link to={campaignProgressionPath(campaignHandle, 'history')} className="mt-3 inline-block text-sm text-primary hover:underline">View history →</Link></section> : null}
 

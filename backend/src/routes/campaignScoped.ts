@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { listEras, createEra, updateEra, reorderEras, eraImpact, deleteEra } from '../controllers/chronologyErasController.js';
 import {
   advanceCampaignTime,
   getCampaign,
@@ -101,6 +102,7 @@ import {
   updateWikiPageMetadata,
   transformWikiPage,
 } from '../controllers/wikiController.js';
+import { addWikiCharacterToPortfolio } from '../controllers/portfolioCampaignController.js';
 import {
   getAdventureHubBySystemKey,
   getAdventureHubIndex,
@@ -129,6 +131,12 @@ import {
   listDowntimeHavensHandler,
   updateDowntimeHavenHandler,
 } from '../controllers/downtimeHavenController.js';
+import {
+  createDowntimePersonHandler,
+  getDowntimePersonByCharacterHandler,
+  listDowntimePeopleHandler,
+  updateDowntimePersonHandler,
+} from '../controllers/downtimePeopleController.js';
 import { putDowntimeGapOverlay } from '../controllers/downtimeGapOverlayController.js';
 import {
   createCustomCharacterPage,
@@ -420,6 +428,13 @@ import {
   patchMySessionAttendance,
   listSessionAttendance,
 } from '../controllers/sessionScheduleController.js';
+import { listCampaignSessionCalendar } from '../controllers/sessionCalendarController.js';
+import {
+  getCampaignSchedule,
+  patchCampaignSchedule,
+  postScheduleUpcoming,
+  postSkipUpcomingSession,
+} from '../controllers/campaignScheduleController.js';
 import {
   acceptOwnershipTransfer,
   cancelOwnershipTransfer,
@@ -505,6 +520,12 @@ campaignScopedRouter.post('/discord/:destinationId/test', requireGamemasterSetti
 campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemasterSettings, listDiscordDeliveries);
 
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
+campaignScopedRouter.get('/chronology/eras', listEras);
+campaignScopedRouter.post('/chronology/eras', requireChronologyManager, createEra);
+campaignScopedRouter.put('/chronology/eras/order', requireChronologyManager, reorderEras);
+campaignScopedRouter.get('/chronology/eras/:eraId/impact', requireChronologyManager, eraImpact);
+campaignScopedRouter.put('/chronology/eras/:eraId', requireChronologyManager, updateEra);
+campaignScopedRouter.delete('/chronology/eras/:eraId', requireChronologyManager, deleteEra);
 campaignScopedRouter.get('/chronology/timeline', rateLimitPolicy('expensive'), getChronologyTimelineBundle);
 campaignScopedRouter.get('/chronology/overlay', getChronologyOverlayBundle);
 campaignScopedRouter.post(
@@ -717,6 +738,10 @@ campaignScopedRouter.delete(
   requireDowntimeManage,
   deleteDowntimeHavenHandler,
 );
+campaignScopedRouter.get('/downtime/people', listDowntimePeopleHandler);
+campaignScopedRouter.get('/downtime/people/by-character/:pageId', getDowntimePersonByCharacterHandler);
+campaignScopedRouter.post('/downtime/people', requireDowntimeManage, createDowntimePersonHandler);
+campaignScopedRouter.patch('/downtime/people/:id', requireDowntimeManage, updateDowntimePersonHandler);
 campaignScopedRouter.get('/downtime/ledger', getCampaignLedgerHandler);
 campaignScopedRouter.get('/downtime/ledger/suggestions', listLedgerSuggestionsHandler);
 campaignScopedRouter.post(
@@ -1165,6 +1190,20 @@ campaignScopedRouter.post(
   ensureSessionAuthorNote,
 );
 campaignScopedRouter.get('/session-timeline/next-published', getNextPublishedSession);
+campaignScopedRouter.get('/calendar/sessions', listCampaignSessionCalendar);
+campaignScopedRouter.get('/schedule', getCampaignSchedule);
+campaignScopedRouter.patch('/schedule', requireNotesModerate, patchCampaignSchedule);
+campaignScopedRouter.post('/schedule/upcoming', requireNotesModerate, postScheduleUpcoming);
+campaignScopedRouter.post(
+  '/schedule/upcoming/skip',
+  requireNotesModerate,
+  postSkipUpcomingSession,
+);
+campaignScopedRouter.post(
+  '/session-timeline/:timelinePointId/schedule/skip',
+  requireNotesModerate,
+  postSkipUpcomingSession,
+);
 campaignScopedRouter.get(
   '/session-timeline/:timelinePointId/schedule',
   getSessionSchedule,
@@ -1291,6 +1330,12 @@ campaignScopedRouter.delete(
   '/wiki/:pageId',
   requirePageEditAny,
   deleteWikiPage,
+);
+
+campaignScopedRouter.post(
+  '/wiki/:pageId/add-to-portfolio',
+  requireNonObserverMember,
+  addWikiCharacterToPortfolio,
 );
 
 campaignScopedRouter.patch('/wiki/:pageId/pin', togglePinnedPageShortcut);

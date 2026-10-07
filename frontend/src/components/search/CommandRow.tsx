@@ -1,8 +1,11 @@
 import { catalogLucideIcon } from '@/lib/tagIconCatalog';
+import type { SidebarConfig } from '@/lib/sidebarConfig';
 import type { Command } from '@/lib/commands/types';
+import { SidebarNavIcon } from '@/components/SidebarNavIcon';
 
 interface CommandRowProps {
   command: Command;
+  sidebarConfig: SidebarConfig;
   active: boolean;
   onHover: () => void;
   onSelect: () => void;
@@ -10,11 +13,12 @@ interface CommandRowProps {
 
 export function CommandRow({
   command,
+  sidebarConfig,
   active,
   onHover,
   onSelect,
 }: CommandRowProps) {
-  const Icon = catalogLucideIcon(command.icon ?? 'sparkles');
+  const FallbackIcon = catalogLucideIcon(command.icon ?? 'sparkles');
 
   return (
     <button
@@ -27,7 +31,15 @@ export function CommandRow({
         active ? 'bg-elevated/80' : 'hover:bg-elevated/50'
       }`}
     >
-      <Icon className="size-4 shrink-0 text-muted" aria-hidden />
+      {command.sidebarSectionId ? (
+        <SidebarNavIcon
+          config={sidebarConfig}
+          sectionId={command.sidebarSectionId}
+          className="size-4 shrink-0 text-muted opacity-80"
+        />
+      ) : (
+        <FallbackIcon className="size-4 shrink-0 text-muted" aria-hidden />
+      )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm text-foreground">
           {command.label}

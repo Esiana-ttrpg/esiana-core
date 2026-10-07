@@ -280,6 +280,7 @@ function CampaignDashboardContent({
         canManageTime={canManageTime}
         isLookingForGroup={Boolean(campaign.isLookingForGroup)}
         sessionDuration={campaign.sessionDuration}
+        campaignDescription={bundle.campaignDescription}
         narrativeSnapshot={bundle.narrativeSnapshot}
         recentEntities={bundle.recentEntities}
         worldEvents={bundle.worldEvents}

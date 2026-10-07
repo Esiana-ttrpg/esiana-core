@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { getDefaultSidebarConfig } from '@/lib/sidebarConfig';
 import { buildCorePageCommands } from './corePageCommands.js';
 import type { ActivePageSnapshot, CommandContext } from '../types.js';
 
@@ -12,6 +13,7 @@ function ctx(activePage: ActivePageSnapshot | null): CommandContext {
     can: () => true,
     resolveCategoryPageId: () => undefined,
     activePage,
+    sidebarConfig: getDefaultSidebarConfig(),
   };
 }
 

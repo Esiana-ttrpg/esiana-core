@@ -4,6 +4,7 @@ import type {
   DowntimeHavenOverviewPayload,
   DowntimeProjectOverviewPayload,
   DowntimeSectionId,
+  DowntimePersonLine,
 } from '@shared/downtimeHub';
 import type {
   DowntimeProjectDetail,
@@ -115,6 +116,40 @@ export async function fetchDowntimeHub(
     : `/campaigns/${campaignHandle}/wiki/downtime-hub`;
   const url = query ? `${base}?${query}` : base;
   return apiFetch<DowntimeHubPayload>(url);
+}
+
+export type CreateDowntimePersonInput = {
+  characterPageId?: string;
+  characterName?: string;
+  relationshipType: 'HIRELING' | 'FOLLOWER' | 'MEMBER';
+  role?: string;
+  havenId?: string | null;
+  projectId?: string | null;
+  compensationAmount?: number | null;
+  compensationCurrency?: string;
+  compensationCadence?: string;
+  compensationUnpaid?: boolean;
+  addHirelingTag?: boolean;
+  features?: Array<{ id: string; title: string; description: string | null }>;
+  notes?: string | null;
+};
+
+export async function createDowntimePerson(campaignHandle: string, input: CreateDowntimePersonInput): Promise<DowntimePersonLine> {
+  const response = await apiFetch<{ person: DowntimePersonLine }>(`/campaigns/${campaignHandle}/downtime/people`, { method: 'POST', body: JSON.stringify(input) });
+  return response.person;
+}
+
+export async function updateDowntimePerson(
+  campaignHandle: string,
+  personId: string,
+  input: Partial<CreateDowntimePersonInput> & { status?: 'ACTIVE' | 'INACTIVE' | 'FORMER'; havenId?: string | null; projectId?: string | null },
+): Promise<DowntimePersonLine> {
+  const response = await apiFetch<{ person: DowntimePersonLine }>(`/campaigns/${campaignHandle}/downtime/people/${personId}`, { method: 'PATCH', body: JSON.stringify(input) });
+  return response.person;
+}
+
+export async function fetchDowntimePersonByCharacter(campaignHandle: string, characterPageId: string): Promise<{ person: DowntimePersonLine; assignmentOptions: { havens: Array<{ id: string; label: string }>; projects: Array<{ id: string; label: string }> } }> {
+  return apiFetch(`/campaigns/${campaignHandle}/downtime/people/by-character/${characterPageId}`);
 }
 
 export async function createDowntimeProject(
@@ -337,6 +372,7 @@ export async function fetchDowntimeHaven(
 
 export type UpdateDowntimeHavenInput = {
   title?: string;
+  bannerAssetId?: string | null;
   havenType?: HavenType;
   status?: HavenStatus;
   scale?: HavenScale | null;

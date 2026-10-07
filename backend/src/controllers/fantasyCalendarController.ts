@@ -1,7 +1,9 @@
 import type { Response } from 'express';
 import { Prisma } from '../lib/prismaClient.js';
+import { prisma } from '../lib/prisma.js';
 import { getCampaignPrisma } from '../lib/campaignPrisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
+import { deleteChronologyEra, ensureChronologyEras } from '../lib/chronologyEraService.js';
 import {
   buildFantasyCalendarExportPayload,
   fantasyCalendarExportFilename,
@@ -221,8 +223,22 @@ export async function deleteFantasyCalendar(
     return;
   }
 
-  await campaignPrisma.fantasyCalendar.deleteMany({
-    where: { id: calendarId, campaignId },
+  await prisma.$transaction(async tx => {
+    await ensureChronologyEras(campaignId, tx);
+    const eras = await tx.campaignEra.findMany({
+      where: { campaignId, calendarId },
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true },
+    });
+    for (const era of eras) {
+      await deleteChronologyEra(req.campaign!, era.id, {
+        tx,
+        authorization: 'manager',
+      });
+    }
+    await tx.fantasyCalendar.deleteMany({
+      where: { id: calendarId, campaignId },
+    });
   });
 
   res.json({ ok: true });

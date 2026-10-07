@@ -11,8 +11,8 @@ import {
 } from '@shared/workshopFormalize';
 import { useWiki } from '@/contexts/WikiContext';
 import { formalizeWorkshopDraft } from '@/lib/workshopDrafts';
-import { campaignWikiPath, campaignProgressionPath } from '@/lib/campaignPaths';
-import { scenesViewHref } from '@/lib/progressionLayout';
+import { campaignWikiPath, campaignAdventureHubPath } from '@/lib/campaignPaths';
+import { adventureViewHref } from '@/lib/adventureLayout';
 
 interface FormalizeDraftModalProps {
   open: boolean;
@@ -99,7 +99,7 @@ export function FormalizeDraftModal({
       onFormalized?.();
       onClose();
       if (result.target === 'scene') {
-        navigate(scenesViewHref(campaignProgressionPath(campaignHandle), 'outline'));
+        navigate(adventureViewHref(campaignAdventureHubPath(campaignHandle), 'scenes'));
       } else {
         navigate(campaignWikiPath(campaignHandle, result.formalizedPageId, flatPages));
       }

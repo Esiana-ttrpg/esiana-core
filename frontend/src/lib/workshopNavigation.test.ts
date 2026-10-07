@@ -5,7 +5,7 @@ import {
   campaignWorkshopPath,
   readWorkshopDraftIdFromSearch,
   readWorkshopFromPageId,
-  resolveLegacyWorkshopRedirect,
+  resolveWorkshopBootstrapOpenIds,
 } from './workshopNavigation.js';
 
 describe('workshopNavigation', () => {
@@ -29,15 +29,30 @@ describe('workshopNavigation', () => {
     assert.equal(buildWorkshopSearch(null), '');
   });
 
-  it('redirects legacy progression workshop URLs', () => {
-    assert.equal(
-      resolveLegacyWorkshopRedirect('camp', '?section=workshop&draft=old'),
-      '/campaigns/camp/workshop?draft=old',
+  it('bare bootstrap with no primary draft and empty session yields empty workspace', () => {
+    assert.deepEqual(
+      resolveWorkshopBootstrapOpenIds({
+        primaryDraftId: null,
+        sessionOpenDraftIds: [],
+      }),
+      [],
     );
-    assert.equal(
-      resolveLegacyWorkshopRedirect('camp', '?section=authoringWorkshop&anchors=page1'),
-      '/campaigns/camp/workshop?from=page1',
+  });
+
+  it('bootstrap prefers primary draft then session tabs without inventing extras', () => {
+    assert.deepEqual(
+      resolveWorkshopBootstrapOpenIds({
+        primaryDraftId: 'draft-a',
+        sessionOpenDraftIds: ['draft-b', 'draft-a'],
+      }),
+      ['draft-a', 'draft-b'],
     );
-    assert.equal(resolveLegacyWorkshopRedirect('camp', '?section=scenes'), null);
+    assert.deepEqual(
+      resolveWorkshopBootstrapOpenIds({
+        primaryDraftId: null,
+        sessionOpenDraftIds: ['draft-b', 'draft-c'],
+      }),
+      ['draft-b', 'draft-c'],
+    );
   });
 });

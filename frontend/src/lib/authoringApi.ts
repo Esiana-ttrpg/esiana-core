@@ -8,14 +8,6 @@ export interface WritingSessionPayload {
   linksAdded: number;
 }
 
-export interface CampaignGrowthMetrics {
-  npcCount: number;
-  activeThreadCount: number;
-  sceneCount: number;
-  factionCount: number;
-  activeQuestCount: number;
-}
-
 export async function flushWritingSession(
   campaignHandle: string,
   payload: WritingSessionPayload,
@@ -24,10 +16,4 @@ export async function flushWritingSession(
     method: 'POST',
     body: JSON.stringify(payload),
   });
-}
-
-export async function fetchCampaignGrowthMetrics(
-  campaignHandle: string,
-): Promise<CampaignGrowthMetrics> {
-  return apiFetch<CampaignGrowthMetrics>(`/campaigns/${campaignHandle}/authoring/growth-metrics`);
 }

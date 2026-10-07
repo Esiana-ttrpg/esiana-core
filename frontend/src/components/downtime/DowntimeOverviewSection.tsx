@@ -1,146 +1,114 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar } from 'lucide-react';
-import type { DowntimeSimulationSnapshot } from '@/lib/downtime';
-import {
-  downtimeSectionHref,
-  type DowntimeSectionId,
-} from '@/lib/downtimeLayout';
-import { campaignDowntimeHubPath, campaignProgressionPath } from '@/lib/campaignPaths';
-import { DowntimePulseCard } from '@/components/downtime/DowntimePulseCard';
-import { DowntimeFeedCardList } from '@/components/downtime/DowntimeFeedCardList';
-import { WorldEventNarrativeFeed } from '@/components/downtime/WorldEventNarrativeFeed';
+import { ArrowRight, Plus } from 'lucide-react';
+import type { DowntimeHubOverviewPayload, DowntimeOverviewActivity } from '@shared/downtimeHub';
+import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
+import { downtimeSectionHref, type DowntimeSectionId } from '@/lib/downtimeLayout';
+import { campaignChronologyPath, campaignDowntimeHubPath } from '@/lib/campaignPaths';
 
 interface DowntimeOverviewSectionProps {
   campaignHandle: string;
-  categoryPageId: string;
-  snapshot: DowntimeSimulationSnapshot;
+  overview: DowntimeHubOverviewPayload;
+  canManage: boolean;
+  canContributeToLedger: boolean;
+  onCreateProject: () => void;
+  onCreateHaven: () => void;
+  onAddLedgerEntry: () => void;
 }
 
 function sectionLink(campaignHandle: string, section: DowntimeSectionId): string {
   return downtimeSectionHref(campaignDowntimeHubPath(campaignHandle), section);
 }
 
-export function DowntimeOverviewSection({
-  campaignHandle,
-  categoryPageId,
-  snapshot,
-}: DowntimeOverviewSectionProps) {
-  return (
-    <div className="flex flex-col gap-8">
-      <DowntimePulseCard pulse={snapshot.pulse} />
+function SheetRegion({ area, children }: { area: string; children: ReactNode }) {
+  return <section className={`downtime-party-sheet__${area} min-w-0 bg-background p-4 sm:p-5`}>{children}</section>;
+}
 
-      {snapshot.factionPressureHint ? (
-        <p className="text-sm text-muted-foreground">
-          World pressure:{' '}
-          <span className="text-foreground">{snapshot.factionPressureHint}</span>
-          {' · '}
-          <Link
-            to={campaignProgressionPath(campaignHandle, 'insights')}
-            className="text-primary hover:underline"
-          >
-            Progression › Trajectories
-          </Link>
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          <Link
-            to={campaignProgressionPath(campaignHandle, 'insights')}
-            className="text-primary hover:underline"
-          >
-            World pressure → Progression › Trajectories
-          </Link>
-        </p>
-      )}
+function SectionHeading({ children }: { children: ReactNode }) {
+  return <h2 className={META_SECTION_LABEL_CLASS}>{children}</h2>;
+}
 
-      <section>
-        <h2 className="text-base font-semibold text-foreground">Recent consequences</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Unresolved escalations, neglected threads, and ticking pressures.
-        </p>
-        <div className="mt-4">
-          <DowntimeFeedCardList
-            cards={snapshot.recentConsequences}
-            emptyMessage="Nothing demands immediate attention — for now."
-          />
-        </div>
-      </section>
+function TextLink({ to, children }: { to: string; children: ReactNode }) {
+  return <Link to={to} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">{children}<ArrowRight className="size-3.5" aria-hidden /></Link>;
+}
 
-      <section>
-        <h2 className="text-base font-semibold text-foreground">Recent world activity</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          What moved in the wider world while the party was elsewhere.
-        </p>
-        <div className="mt-4">
-          <WorldEventNarrativeFeed
-            items={snapshot.recentWorldActivity}
-            variant="compact"
-            emptyMessage="The chronology is quiet — the world waits for time to pass."
-          />
-        </div>
-      </section>
+function ActionButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return <button type="button" onClick={onClick} className="inline-flex items-center gap-1 text-sm text-primary hover:underline"><Plus className="size-3.5" aria-hidden />{children}</button>;
+}
 
-      <section>
-        <h2 className="text-base font-semibold text-foreground">Active operations</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Link
-            to={sectionLink(campaignHandle, 'projects')}
-            className="rounded-lg border border-border bg-elevated/20 p-4 transition-colors hover:border-primary/30 hover:bg-primary/5"
-          >
-            <p className="font-medium text-foreground">Projects</p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              {snapshot.activeOperationsSummary.projects.count === 0
-                ? 'No active projects yet. Long-term operations will appear here when time advances.'
-                : `${snapshot.activeOperationsSummary.projects.count} active project(s).`}
-            </p>
-          </Link>
-          <Link
-            to={sectionLink(campaignHandle, 'havens')}
-            className="rounded-lg border border-border bg-elevated/20 p-4 transition-colors hover:border-primary/30 hover:bg-primary/5"
-          >
-            <p className="font-medium text-foreground">Havens</p>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              {snapshot.activeOperationsSummary.havens.count === 0
-                ? 'No havens registered yet. Operational bases will take shape here.'
-                : `${snapshot.activeOperationsSummary.havens.count} haven(s) under watch.`}
-            </p>
-          </Link>
-        </div>
-      </section>
-
-      <section className="border-t border-border pt-4">
-        <h2 className="text-base font-semibold text-foreground">Current downtime period</h2>
-        {snapshot.currentDowntimePeriod ? (
-          <div className="mt-3 rounded-lg border border-border bg-elevated/20 p-4">
-            <p className="font-medium text-foreground">{snapshot.currentDowntimePeriod.title}</p>
-            {snapshot.currentDowntimePeriod.spanLabel ? (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {snapshot.currentDowntimePeriod.spanLabel}
-              </p>
-            ) : null}
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              {snapshot.currentDowntimePeriod.rollupHeadline}
-            </p>
-            <Link
-              to={snapshot.currentDowntimePeriod.chronologyFeedHref}
-              className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-            >
-              <Calendar className="size-3.5" />
-              View in campaign chronology
-            </Link>
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">
-            No open downtime span yet — time advances and session chronicle points will define
-            periods here.
-          </p>
-        )}
-        <p className="mt-4 text-sm text-muted-foreground">
-          <span className="text-foreground/80">Campaign now:</span> {snapshot.currentTimeLabel}
-        </p>
-        {snapshot.elapsedSinceLabel ? (
-          <p className="mt-1 text-sm text-muted-foreground">{snapshot.elapsedSinceLabel}</p>
-        ) : null}
-      </section>
+function ActivityRow({ item }: { item: DowntimeOverviewActivity }) {
+  const content = <>
+    <div className="flex min-w-0 flex-1 items-baseline gap-2">
+      <span className="truncate text-sm font-medium text-foreground">{item.title}</span>
+      {item.detail ? <span className="hidden truncate text-xs text-muted-foreground sm:inline">{item.detail}</span> : null}
     </div>
-  );
+    <div className="flex shrink-0 items-baseline gap-2 text-xs text-muted-foreground"><span>{item.sourceLabel}</span><span>{item.dateLabel}</span></div>
+  </>;
+  return item.href
+    ? <Link to={item.href} className="flex min-w-0 gap-3 py-2 hover:text-primary">{content}</Link>
+    : <div className="flex min-w-0 gap-3 py-2">{content}</div>;
+}
+
+export function DowntimeOverviewSection({ campaignHandle, overview, canManage, canContributeToLedger, onCreateProject, onCreateHaven, onAddLedgerEntry }: DowntimeOverviewSectionProps) {
+  const chronologyHref = overview.currentDowntimePeriod?.chronologyFeedHref ?? campaignChronologyPath(campaignHandle);
+  return <div className="downtime-party-sheet-grid overflow-hidden rounded-lg border border-border bg-border">
+    <SheetRegion area="current">
+      <SectionHeading>Current period</SectionHeading>
+      <p className="mt-2 font-serif text-xl text-foreground">{overview.currentTimeLabel}</p>
+      {overview.currentDowntimePeriod ? <>
+        <p className="mt-1 text-sm text-foreground/90">{overview.currentDowntimePeriod.title}</p>
+        {overview.currentDowntimePeriod.spanLabel ? <p className="mt-1 text-xs text-muted-foreground">{overview.currentDowntimePeriod.spanLabel}</p> : null}
+      </> : <p className="mt-1 text-sm text-muted-foreground">No active downtime period.</p>}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+        <TextLink to={chronologyHref}>Open Chronology</TextLink>
+        {overview.pendingWorldEventSuggestionsCount > 0 ? <TextLink to={sectionLink(campaignHandle, 'worldEvents')}>
+          {overview.pendingWorldEventSuggestionsCount} {overview.pendingWorldEventSuggestionsCount === 1 ? 'event' : 'events'} awaiting review
+        </TextLink> : null}
+      </div>
+    </SheetRegion>
+
+    <SheetRegion area="projects">
+      <div className="flex items-center justify-between gap-3"><SectionHeading>Projects</SectionHeading><TextLink to={sectionLink(campaignHandle, 'projects')}>All projects</TextLink></div>
+      {overview.projects.length > 0 ? <ul className="mt-3 divide-y divide-border/70">{overview.projects.map((project) => <li key={project.id} className="py-3 first:pt-1">
+        <div className="flex items-baseline justify-between gap-3">
+          <Link to={project.href} className="min-w-0 truncate font-medium text-foreground hover:text-primary">{project.title}</Link>
+          <span className="shrink-0 text-xs text-muted-foreground">{project.remainingLabel ?? project.clockState}</span>
+        </div>
+        {project.durationTotalMinutes !== '0' ? <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted/40" role="progressbar" aria-label={`${project.title} progress`} aria-valuenow={project.progressPercent} aria-valuemin={0} aria-valuemax={100}><div className="h-full bg-primary/45" style={{ width: `${Math.max(0, Math.min(100, project.progressPercent))}%` }} /></div> : null}
+        <p className="mt-1 text-xs text-muted-foreground">{project.blockersSummary ?? project.requiresSummary ?? project.operationPostureLabel ?? 'Ready for the next campaign-time advance.'}</p>
+      </li>)}</ul> : <div className="mt-3 min-h-24"><p className="text-sm font-medium text-foreground">No active projects.</p><p className="mt-1 max-w-md text-sm text-muted-foreground">Track something the party is working toward over time.</p></div>}
+      {canManage ? <div className="mt-3"><ActionButton onClick={onCreateProject}>Start a project</ActionButton></div> : null}
+    </SheetRegion>
+
+    <SheetRegion area="funds">
+      <SectionHeading>Party funds</SectionHeading>
+      {overview.ledger.hasEntries || overview.ledger.balanceLabel ? <>
+        {overview.ledger.balanceLabel ? <p className="mt-2 font-serif text-2xl text-foreground">{overview.ledger.balanceLabel}</p> : null}
+        <ul className="mt-2 divide-y divide-border/60">{overview.ledger.entries.map((entry) => <li key={entry.id} className="flex justify-between gap-2 py-1.5 text-xs"><span className="truncate text-muted-foreground">{entry.title}</span><span className="shrink-0 text-foreground">{entry.amountLabel}</span></li>)}</ul>
+      </> : <p className="mt-2 text-sm text-muted-foreground">No ledger entries.</p>}
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">{canContributeToLedger ? <ActionButton onClick={onAddLedgerEntry}>Add entry</ActionButton> : null}<TextLink to={sectionLink(campaignHandle, 'ledger')}>Ledger</TextLink></div>
+    </SheetRegion>
+
+    <SheetRegion area="havens">
+      <div className="flex items-center justify-between gap-3"><SectionHeading>Havens & holdings</SectionHeading><TextLink to={sectionLink(campaignHandle, 'havens')}>All havens</TextLink></div>
+      {overview.havens.length > 0 ? <ul className="mt-3 divide-y divide-border/70">{overview.havens.map((haven) => <li key={haven.id} className="py-2.5 first:pt-1"><Link to={haven.href} className="font-medium text-foreground hover:text-primary">{haven.title}</Link><p className="mt-0.5 text-xs text-muted-foreground">{haven.subtitle}{haven.pressureHeadline ? ` · ${haven.pressureHeadline}` : ''}</p></li>)}</ul> : <div className="mt-3 min-h-16"><p className="text-sm font-medium text-foreground">No havens or holdings yet.</p><p className="mt-1 text-sm text-muted-foreground">Add a place the party maintains.</p></div>}
+      {canManage ? <div className="mt-3"><ActionButton onClick={onCreateHaven}>Add a haven</ActionButton></div> : null}
+    </SheetRegion>
+
+    <SheetRegion area="reputation">
+      <SectionHeading>Reputation</SectionHeading>
+      {overview.reputation.standings.length > 0 ? <ul className="mt-3 divide-y divide-border/60">{overview.reputation.standings.map((standing) => <li key={standing.factionPageId} className="py-2 first:pt-0"><Link to={standing.factionHref} className="text-sm font-medium text-foreground hover:text-primary">{standing.factionTitle}</Link><p className="text-xs text-muted-foreground">{standing.trustBand} · {standing.notorietyBand}</p></li>)}</ul> : <><p className="mt-2 text-sm text-muted-foreground">No reputation recorded.</p><p className="mt-1 text-xs text-muted-foreground">Standings emerge from the party’s faction relationships.</p></>}
+      <div className="mt-3"><TextLink to={sectionLink(campaignHandle, 'reputation')}>View reputation</TextLink></div>
+    </SheetRegion>
+
+    <SheetRegion area="operations">
+      <SectionHeading>Party operations</SectionHeading>
+      <dl className="mt-3 grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-4">{overview.partyOperations.map((field) => <div key={field.id} className="min-w-0"><dt className="text-xs text-muted-foreground">{field.label}</dt><dd className="mt-1 font-serif text-lg text-foreground">{field.supported ? field.valueLabel : <span className="text-muted-foreground" title="Not tracked yet" aria-label={`${field.label}: Not tracked yet`}>—</span>}</dd></div>)}</dl>
+    </SheetRegion>
+
+    <SheetRegion area="activity">
+      <SectionHeading>Recent activity</SectionHeading>
+      {overview.recentActivity.length > 0 ? <ul className="mt-2 divide-y divide-border/60">{overview.recentActivity.map((item) => <li key={item.id}><ActivityRow item={item} /></li>)}</ul> : <p className="mt-2 text-sm text-muted-foreground">Nothing has changed yet.</p>}
+    </SheetRegion>
+  </div>;
 }

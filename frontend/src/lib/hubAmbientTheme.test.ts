@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   buildHubAmbientTokens,
+  HUB_MOMENTUM_TONE_CLASS,
   isTransDualToneProfile,
 } from './hubAmbientTheme.ts';
 import { normalizeThemeProfile, type ThemeProfile } from './theme/themeProfile.ts';
@@ -76,5 +77,12 @@ describe('hubAmbientTheme', () => {
     const tokens = buildHubAmbientTokens(oceanProfile) as Record<string, string>;
     assert.equal(tokens['--hub-section-resume'], tokens['--hub-accent']);
     assert.equal(tokens['--hub-section-library'], tokens['--hub-accent']);
+  });
+
+  it('maps momentum labels to distinct semantic status families', () => {
+    assert.match(HUB_MOMENTUM_TONE_CLASS.strong, /status-legend/);
+    assert.match(HUB_MOMENTUM_TONE_CLASS.steady, /status-neutral/);
+    assert.match(HUB_MOMENTUM_TONE_CLASS.fading, /status-warning/);
+    assert.match(HUB_MOMENTUM_TONE_CLASS.stalled, /status-secret/);
   });
 });

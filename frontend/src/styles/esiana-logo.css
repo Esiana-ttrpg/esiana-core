@@ -1,28 +1,75 @@
-/* Esiana mark — foreground fill with perceptual atmospheric halo (not a stroke outline). */
+/* Esiana brand mark + header lockup.
+ * Mark: theme accent fill with a restrained atmospheric halo.
+ * Wordmark: display-adjacent serif, foreground/display color (not accent-washed).
+ */
 
 .esiana-logo {
   display: block;
+  filter:
+    drop-shadow(0 1px 0 color-mix(in srgb, var(--color-foreground) 4%, transparent))
+    drop-shadow(0 0 10px color-mix(in srgb, currentColor 14%, transparent));
 }
 
 .esiana-logo__glyph {
-  stroke-opacity: 0.07;
-}
-
-.esiana-logo {
-  filter:
-    drop-shadow(0 1px 0 color-mix(in srgb, var(--color-foreground) 4%, transparent))
-    drop-shadow(0 0 10px color-mix(in srgb, var(--color-primary) 9%, transparent));
+  stroke-opacity: 0.08;
 }
 
 html.theme-light .esiana-logo,
 html.theme-parchment .esiana-logo {
   filter:
-    drop-shadow(0 1px 2px color-mix(in srgb, var(--color-primary-hover) 14%, transparent))
-    drop-shadow(0 0 6px color-mix(in srgb, var(--color-primary) 7%, transparent))
-    drop-shadow(0 0 0.45px color-mix(in srgb, var(--color-foreground) 30%, transparent));
+    drop-shadow(0 1px 2px color-mix(in srgb, var(--color-primary-hover) 12%, transparent))
+    drop-shadow(0 0 7px color-mix(in srgb, currentColor 10%, transparent))
+    drop-shadow(0 0 0.45px color-mix(in srgb, var(--color-foreground) 28%, transparent));
 }
 
 html.theme-light .esiana-logo__glyph,
 html.theme-parchment .esiana-logo__glyph {
   stroke-opacity: 0.1;
+}
+
+/* Compact header brand lockup — mark + wordmark as one unit. */
+.esiana-brand-lockup {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-display-foreground, var(--color-foreground));
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.esiana-brand-lockup:hover {
+  color: var(--color-display-foreground, var(--color-foreground));
+}
+
+.esiana-brand-lockup__mark {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  color: var(--color-primary);
+  transition: filter 160ms ease, color 160ms ease;
+}
+
+.esiana-brand-lockup__mark--image {
+  border-radius: 0.25rem;
+  object-fit: contain;
+}
+
+.esiana-brand-lockup:hover .esiana-logo {
+  filter:
+    drop-shadow(0 1px 0 color-mix(in srgb, var(--color-foreground) 4%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, currentColor 22%, transparent));
+}
+
+.esiana-brand-lockup__wordmark {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1;
+  color: inherit;
 }

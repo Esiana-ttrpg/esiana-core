@@ -25,7 +25,7 @@ import {
   type WorldPressureProjection,
   type FactionPressureInput,
 } from '../../../shared/worldPressureProjection.js';
-import type { FactionEraTrajectory } from '../../../shared/factionMomentumMetadata.js';
+import type { FactionEraTrajectory, CampaignEra } from '../../../shared/factionMomentumMetadata.js';
 
 export function canAccessWorldPressure(role: CampaignMemberRole | null): boolean {
   return (
@@ -48,8 +48,14 @@ function trajectoryForEra(
   trajectories: FactionEraTrajectory[],
   eraId: string,
   worldState: string | null,
+  eras: CampaignEra[],
 ): FactionEraTrajectory | null {
-  return resolveFactionTrajectoryForEra({ eraTrajectories: trajectories, eraId, worldState });
+  return resolveFactionTrajectoryForEra({
+    eraTrajectories: trajectories,
+    eraId,
+    worldState,
+    eras,
+  });
 }
 
 async function resolveChronologyNowFromDb(
@@ -115,6 +121,9 @@ export async function buildCampaignWorldPressureProjection(
     targetEpochMinute != null
       ? resolveCampaignEraAtEpoch(momentumPayload.state, targetEpochMinute)
       : getCurrentCampaignEra(momentumPayload.state);
+  if (!currentEra.id) return {
+    currentEra, risingTensions: [], eraTrends: ['Choose a current era in Chronology to enable forecasting.'], nearFutureBullets: [], projectedByNextSession: null,
+  };
   const activeOrgs = orgPages.filter((page) => {
     const org = parseOrganizationMetadata(page.metadata);
     return org.organizationStatus === 'ACTIVE';
@@ -125,7 +134,12 @@ export async function buildCampaignWorldPressureProjection(
     return {
       orgPageId: page.id,
       orgTitle: page.title,
-      trajectory: trajectoryForEra(org.eraTrajectories, currentEra.id, org.worldState),
+      trajectory: trajectoryForEra(
+        org.eraTrajectories,
+        currentEra.id,
+        org.worldState,
+        momentumPayload.state.eras,
+      ),
       currentPressures: org.currentPressures,
       worldState: org.worldState,
       hostileRelationCount: countHostileRelations(org, chronologyNow),

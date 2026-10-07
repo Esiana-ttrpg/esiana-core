@@ -10,8 +10,7 @@ import { clearSearchCollectionRegistry } from '../lib/plugins/pluginSearchRegist
 import { clearConnectionProviderRegistry } from '../lib/plugins/connectionProviderRegistry.js';
 import {
   PluginScopes,
-  isBackendOnlyGlobalPlugin,
-  isDataOnlyContentPackPlugin,
+  hasSupportedPluginRuntime,
   validatePluginManifest,
   type PluginManifest,
 } from '../lib/pluginManifest.js';
@@ -271,9 +270,7 @@ export async function assertPluginCanEnable(name: string): Promise<void> {
 
 function isSyncableManifest(manifest: PluginManifest | null): manifest is PluginManifest {
   if (!manifest) return false;
-  if (!manifest.backendEntry?.trim() && !isDataOnlyContentPackPlugin(manifest)) return false;
-  if (!manifest.frontendEntry && !isBackendOnlyGlobalPlugin(manifest)) return false;
-  return true;
+  return hasSupportedPluginRuntime(manifest);
 }
 
 function runtimeFrontendEntry(manifest: PluginManifest): string {

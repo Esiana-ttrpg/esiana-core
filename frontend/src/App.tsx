@@ -9,7 +9,6 @@ import { GlobalPluginPageHost } from '@/pages/GlobalPluginPageHost';
 import { PluginPageHost } from '@/pages/PluginPageHost';
 import { WikiPage } from '@/pages/WikiPage';
 import { WorldMaintenancePage } from '@/pages/WorldMaintenancePage';
-import { CreativeDriftPage } from '@/pages/CreativeDriftPage';
 import { WorkspaceIndexPage } from '@/pages/WorkspaceIndexPage';
 import { FreeformPagesIndex } from '@/pages/FreeformPagesIndex';
 import {
@@ -32,8 +31,13 @@ import { WorldAdvanceBatchPage } from '@/pages/WorldAdvanceBatchPage';
 import { ChronologyPage } from '@/pages/ChronologyPage';
 import { UserSettings } from '@/pages/UserSettings';
 import { YourCampaignsPage } from '@/pages/YourCampaignsPage';
+import { SchedulePage } from '@/pages/SchedulePage';
 import { CampaignDefaultEditorPage } from '@/pages/settings/CampaignDefaultEditorPage';
 import { PublicUserProfilePage } from '@/pages/PublicUserProfilePage';
+import { CharacterPortfolioPage } from '@/pages/portfolio/CharacterPortfolioPage';
+import { PortfolioCharacterPage } from '@/pages/portfolio/PortfolioCharacterPage';
+import { ManagePortfolioPage } from '@/pages/portfolio/ManagePortfolioPage';
+import { PublicPortfolioCharacterPage } from '@/pages/portfolio/PublicPortfolioCharacterPage';
 import { RecentChangesPage } from '@/pages/RecentChangesPage';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { AdminGeneralSettingsPage } from '@/pages/AdminGeneralSettingsPage';
@@ -90,9 +94,17 @@ export default function App() {
               element={<CampaignDefaultEditorPage />}
             />
             <Route path="campaigns" element={<YourCampaignsPage />} />
+            <Route path="schedule" element={<SchedulePage />} />
+            <Route path="characters" element={<CharacterPortfolioPage />} />
+            <Route path="characters/manage" element={<ManagePortfolioPage />} />
+            <Route path="characters/:id" element={<PortfolioCharacterPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="users/:id" element={<PublicUserProfilePage />} />
+            <Route
+              path="users/:id/characters/:characterId"
+              element={<PublicPortfolioCharacterPage />}
+            />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
 
@@ -127,11 +139,6 @@ export default function App() {
               element={<WikiInterpretiveSummaryRedirect />}
             />
             <Route path="wiki/maintenance" element={<WorldMaintenancePage />} />
-            <Route path="narrative/unresolved" element={<CreativeDriftPage />} />
-            <Route
-              path="narrative/drift"
-              element={<Navigate to="unresolved" replace relative="path" />}
-            />
             <Route
               path="session-notes/compile"
               element={<SessionNotesCompilePage />}

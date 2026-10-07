@@ -134,6 +134,7 @@ authRouter.post('/register', authRegisterLimiter, async (req, res) => {
       role: true,
       passwordHash: true,
       sessionVersion: true,
+      campaignNavigationShortcutsEnabled: true,
     },
   });
 
@@ -174,6 +175,7 @@ authRouter.post('/login', authLoginLimiter, authLoginEmailLimiter, async (req, r
       role: true,
       passwordHash: true,
       sessionVersion: true,
+      campaignNavigationShortcutsEnabled: true,
     },
   });
   if (!user || !isPasswordAuthEnabled(user)) {
@@ -202,6 +204,8 @@ authRouter.post('/login', authLoginLimiter, authLoginEmailLimiter, async (req, r
       avatarUrl: user.avatarUrl,
       role: user.role,
       passwordHash: user.passwordHash,
+      campaignNavigationShortcutsEnabled:
+        user.campaignNavigationShortcutsEnabled,
     }),
   });
 });

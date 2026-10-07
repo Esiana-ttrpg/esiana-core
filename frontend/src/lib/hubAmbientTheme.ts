@@ -14,13 +14,13 @@ export type HubMomentumLabel = HubMomentum['label'];
 /** Semantic status tokens for hub momentum chips (see hub-ambient.css). */
 export const HUB_MOMENTUM_TONE_CLASS: Record<HubMomentumLabel, string> = {
   strong:
-    'hub-momentum--strong border-[color:var(--color-status-warning-border)] bg-[color:var(--color-status-warning-bg)] text-[color:var(--color-status-warning-fg)]',
+    'hub-momentum--strong border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] text-[color:var(--color-status-legend-fg)]',
   steady:
-    'hub-momentum--steady border-[color:var(--color-status-legend-border)] bg-[color:var(--color-status-legend-bg)] text-[color:var(--color-status-legend-fg)]',
+    'hub-momentum--steady border-[color:var(--color-status-neutral-border)] bg-[color:var(--color-status-neutral-bg)] text-[color:var(--color-status-neutral-fg)]',
   fading:
-    'hub-momentum--fading border-[color:var(--color-status-muted-border)] bg-[color:var(--color-status-muted-bg)] text-[color:var(--color-status-muted-fg)]',
+    'hub-momentum--fading border-[color:var(--color-status-warning-border)] bg-[color:var(--color-status-warning-bg)] text-[color:var(--color-status-warning-fg)]',
   stalled:
-    'hub-momentum--stalled border-[color:var(--color-status-neutral-border)] bg-[color:var(--color-status-neutral-bg)] text-[color:var(--color-status-neutral-fg)]',
+    'hub-momentum--stalled border-[color:var(--color-status-secret-border)] bg-[color:var(--color-status-secret-bg)] text-[color:var(--color-status-secret-fg)]',
 };
 
 export type HubSectionVariant = 'resume' | 'library' | 'attention' | 'recent' | 'page';
@@ -74,6 +74,12 @@ function hexToRgb(hex: string): [number, number, number] | null {
 function hexToRgbString(hex: string, fallback: string): string {
   const rgb = hexToRgb(hex);
   return rgb ? `${rgb[0]}, ${rgb[1]}, ${rgb[2]}` : fallback;
+}
+
+/** Comma-separated RGB for CSS `rgba(var(--x), a)` usage. */
+export function accentColorToRgbString(hex: string): string | null {
+  const rgb = hexToRgb(hex);
+  return rgb ? `${rgb[0]}, ${rgb[1]}, ${rgb[2]}` : null;
 }
 
 export function blendAccentWithSemantic(dominant: string, semantic: string, ratio = 0.2): string {

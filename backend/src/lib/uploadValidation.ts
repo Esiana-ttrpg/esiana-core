@@ -138,15 +138,39 @@ export function assertDocumentFile(buffer: Buffer, ext: string): void {
   }
 }
 
+/**
+ * Resolve a candidate upload path and require it to stay under env.uploadsDir.
+ * Rejects path traversal (e.g. `../`, absolute escapes) before any filesystem read.
+ */
+export function resolveSafeUploadPath(candidate: string): string {
+  const root = path.resolve(env.uploadsDir);
+  const resolved = path.isAbsolute(candidate)
+    ? path.resolve(candidate)
+    : path.resolve(root, candidate);
+  const relative = path.relative(root, resolved);
+  if (
+    relative === '' ||
+    relative.startsWith(`..${path.sep}`) ||
+    relative === '..' ||
+    path.isAbsolute(relative)
+  ) {
+    throw new UploadValidationError('Uploaded file path is invalid');
+  }
+  return resolved;
+}
+
 export async function assertImageFile(
   input: Buffer | string,
   mimetype: string,
   ext: string,
 ): Promise<void> {
-  const buffer =
-    typeof input === 'string'
-      ? await fs.promises.readFile(input)
-      : input;
+  let buffer: Buffer;
+  if (typeof input === 'string') {
+    const safePath = resolveSafeUploadPath(input);
+    buffer = await fs.promises.readFile(safePath);
+  } else {
+    buffer = input;
+  }
 
   const detected = await detectImageFromBuffer(buffer);
   const normalizedExt = ext.toLowerCase();
@@ -185,11 +209,12 @@ function resolveDiskPath(file: Express.Multer.File): string {
   const candidate =
     file.path && fs.existsSync(file.path)
       ? file.path
-      : path.join(env.uploadsDir, file.filename);
-  if (!fs.existsSync(candidate)) {
+      : path.join(env.uploadsDir, path.basename(file.filename));
+  const resolved = resolveSafeUploadPath(candidate);
+  if (!fs.existsSync(resolved)) {
     throw new UploadValidationError('Uploaded file is missing on disk');
   }
-  return candidate;
+  return resolved;
 }
 
 export async function validateWizardUploadFile(

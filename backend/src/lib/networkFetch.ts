@@ -33,10 +33,12 @@ export class NetworkFetchError extends Error {
   }
 }
 
-// INVARIANT: untrusted URLs are fetched exactly once at the validated URL.
-// redirect is always 'error'. Redirects are never followed.
+// INVARIANT: every untrusted destination is validated and DNS-pinned before fetch.
+// Only unauthenticated plugin downloads follow redirects, with every hop revalidated.
 type FetchMode = 'asset' | 'plugin';
 type AbortReason = 'timeout' | 'size-limit';
+const MAX_PLUGIN_REDIRECTS = 5;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 interface RemoteFetchOptions {
   maxBytes: number;
@@ -96,14 +98,52 @@ function pinnedDispatcher(addresses: ValidatedRemoteAddress[]): Agent {
   return new Agent({ connect: { lookup: createPinnedLookup(addresses) } });
 }
 
-async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: NonNullable<Parameters<typeof undiciFetch>[1]>): Promise<{ response: globalThis.Response; dispatcher: Agent }> {
+async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: NonNullable<Parameters<typeof undiciFetch>[1]>, redirect: 'error' | 'manual' = 'error'): Promise<{ response: globalThis.Response; dispatcher: Agent }> {
   const dispatcher = pinnedDispatcher(addresses);
   try {
-    const response = await undiciFetch(url, { ...init, dispatcher, redirect: 'error' }) as unknown as globalThis.Response;
+    const response = await undiciFetch(url, { ...init, dispatcher, redirect }) as unknown as globalThis.Response;
     return { response, dispatcher };
   } catch (error) {
     await dispatcher.close().catch(() => {});
     throw error;
+  }
+}
+
+async function validatePluginFetchTarget(url: URL): Promise<ValidatedRemoteAddress[]> {
+  if (!isPluginSourceUrlSync(url) || !isUrlSafeForImportSync(url, { allowHttp: false })) {
+    return rejectRemoteFetchPolicy(url, 'plugin', false);
+  }
+  try {
+    await resolvePluginUrlSafeForRemoteFetch(url);
+    return await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false });
+  } catch (error) {
+    throw mapPolicyError(error);
+  }
+}
+
+/** Follow a small redirect chain while reapplying plugin host, URL, DNS, and IP checks per hop. */
+async function fetchPluginPinned(
+  initialUrl: URL,
+  init: NonNullable<Parameters<typeof undiciFetch>[1]>,
+): Promise<{ response: globalThis.Response; dispatcher: Agent; url: URL }> {
+  let url = initialUrl;
+  for (let redirects = 0; ; redirects += 1) {
+    const addresses = await validatePluginFetchTarget(url);
+    const pinned = await fetchPinned(url, addresses, init, 'manual');
+    if (!REDIRECT_STATUSES.has(pinned.response.status)) {
+      return { ...pinned, url };
+    }
+
+    const location = pinned.response.headers.get('location');
+    await pinned.response.body?.cancel().catch(() => {});
+    await pinned.dispatcher.close().catch(() => {});
+    if (!location) throw new NetworkFetchError('Plugin download redirect is missing a Location header');
+    if (redirects >= MAX_PLUGIN_REDIRECTS) throw new NetworkFetchError('Plugin download exceeded redirect limit');
+    try {
+      url = new URL(location, url);
+    } catch {
+      throw new NetworkFetchError('Plugin download redirect URL is invalid');
+    }
   }
 }
 
@@ -165,7 +205,7 @@ export async function fetchAuthenticatedRemote(
     }
     return { status: response.status, contentType: response.headers.get('content-type'), body: Buffer.concat(chunks) };
   } catch (error) {
-    throw toNetworkFetchError(error, controller, timeoutSeconds);
+    throw toNetworkFetchError(error, controller, timeoutSeconds, { url });
   } finally {
     clearTimeout(timeout);
     options.signal?.removeEventListener('abort', onAbort);
@@ -216,10 +256,84 @@ function mapPolicyError(error: unknown): NetworkFetchError {
   return new NetworkFetchError('Remote fetch failed');
 }
 
+/** Origin only — path/query/hash may carry webhook tokens or other secrets. */
+function urlForLog(url: URL | string | undefined): string | undefined {
+  if (url == null) return undefined;
+  if (typeof url === 'string') {
+    try {
+      return urlForLog(new URL(url));
+    } catch {
+      return '[unparseable URL]';
+    }
+  }
+  return url.origin;
+}
+
+/** Strip credential-bearing substrings that undici/Node may embed in error text. */
+export function sanitizeNetworkFetchLogText(text: string): string {
+  return text
+    .replace(/https?:\/\/\S+/gi, '[redacted URL]')
+    .replace(/\bBearer\s+\S+/gi, 'Bearer [redacted]')
+    .replace(/\bbasic\s+[A-Za-z0-9+/=_-]+/gi, 'basic [redacted]')
+    .slice(0, 500);
+}
+
+function causePart(value: unknown): string {
+  if (value instanceof Error) {
+    const code =
+      'code' in value && typeof (value as NodeJS.ErrnoException).code === 'string'
+        ? (value as NodeJS.ErrnoException).code
+        : undefined;
+    const text = code ? `${code} ${value.message}` : value.message;
+    return text.trim() || value.name;
+  }
+  if (value && typeof value === 'object' && 'code' in value) {
+    const code = (value as { code?: unknown }).code;
+    const message = 'message' in value ? String((value as { message?: unknown }).message ?? '') : '';
+    if (typeof code === 'string') {
+      return message ? `${code} ${message}` : code;
+    }
+  }
+  return String(value);
+}
+
+/** Walk Error.cause (and undici nested codes) for diagnostics; safe for logs. */
+export function summarizeErrorCauseChain(error: unknown, maxDepth = 5): string {
+  const parts: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current != null && depth < maxDepth; depth++) {
+    parts.push(causePart(current));
+    if (current instanceof Error && 'cause' in current && current.cause != null) {
+      current = current.cause;
+      continue;
+    }
+    break;
+  }
+  return parts.join(' ← ');
+}
+
+/** Remap a transport failure, log URL + cause chain, keep a stable public message. */
+export function unreachableUrlError(
+  error: unknown,
+  url?: URL | string,
+): NetworkFetchError {
+  const summary = sanitizeNetworkFetchLogText(summarizeErrorCauseChain(error));
+  console.error(
+    '[networkFetch] Unable to reach URL',
+    urlForLog(url) ?? '(unknown)',
+    summary,
+  );
+  if (error instanceof Error) {
+    return new NetworkFetchError(`Unable to reach URL: ${error.message}`);
+  }
+  return new NetworkFetchError('Unable to reach URL');
+}
+
 function toNetworkFetchError(
   error: unknown,
   controller: AbortController,
   timeoutSeconds: number,
+  context?: { url?: URL | string },
 ): NetworkFetchError {
   if (error instanceof NetworkFetchError) {
     return error;
@@ -236,10 +350,7 @@ function toNetworkFetchError(
       `Request aborted (timeout or cancellation after ${timeoutSeconds}s)`,
     );
   }
-  if (error instanceof Error) {
-    return new NetworkFetchError(`Unable to reach URL: ${error.message}`);
-  }
-  return new NetworkFetchError('Unable to reach URL');
+  return unreachableUrlError(error, context?.url);
 }
 
 async function readResponseBody(
@@ -247,6 +358,7 @@ async function readResponseBody(
   controller: AbortController,
   maxBytes: number,
   timeoutSeconds: number,
+  url?: URL,
 ): Promise<FetchBodyResult> {
   if (!response.ok) {
     throw new NetworkFetchError(`URL returned HTTP ${response.status}`);
@@ -275,7 +387,7 @@ async function readResponseBody(
     }
   } catch (error) {
     if (error instanceof NetworkFetchError) throw error;
-    throw toNetworkFetchError(error, controller, timeoutSeconds);
+    throw toNetworkFetchError(error, controller, timeoutSeconds, { url });
   }
 
   return { buffer: Buffer.concat(chunks), contentType };
@@ -314,16 +426,12 @@ async function fetchRemoteBody(
       } catch (error) {
         throw mapPolicyError(error);
       }
-      let addresses: ValidatedRemoteAddress[];
-      try { addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false }); }
-      catch (error) { throw mapPolicyError(error); }
-
       const controller = new AbortController();
       const timeoutMs = options.timeoutSeconds * 1000;
       const timeout = setTimeout(() => abortRequest(controller, 'timeout'), timeoutMs);
 
       try {
-        const pinned = await fetchPinned(url, addresses, {
+        const pinned = await fetchPluginPinned(url, {
           signal: controller.signal,
           headers: options.headers,
         });
@@ -332,9 +440,10 @@ async function fetchRemoteBody(
           controller,
           options.maxBytes,
           options.timeoutSeconds,
+          pinned.url,
         ); } finally { await pinned.dispatcher.close().catch(() => {}); }
       } catch (error) {
-        throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+        throw toNetworkFetchError(error, controller, options.timeoutSeconds, { url });
       } finally {
         clearTimeout(timeout);
       }
@@ -365,9 +474,10 @@ async function fetchRemoteBody(
         controller,
         options.maxBytes,
         options.timeoutSeconds,
+        url,
       ); } finally { await pinned.dispatcher.close().catch(() => {}); }
     } catch (error) {
-      throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+      throw toNetworkFetchError(error, controller, options.timeoutSeconds, { url });
     } finally {
       clearTimeout(timeout);
     }
@@ -427,8 +537,7 @@ export async function fetchPluginRemoteStream(
     let dispatcher: Agent | undefined;
 
     try {
-      const addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false });
-      const pinned = await fetchPinned(url, addresses, {
+      const pinned = await fetchPluginPinned(url, {
         signal: controller.signal,
         headers: options.headers,
       });
@@ -467,7 +576,7 @@ export async function fetchPluginRemoteStream(
       out.destroy();
       await fs.promises.rm(destinationPath, { force: true }).catch(() => {});
       if (error instanceof NetworkFetchError) throw error;
-      throw toNetworkFetchError(error, controller, options.timeoutSeconds);
+      throw toNetworkFetchError(error, controller, options.timeoutSeconds, { url });
     } finally {
       clearTimeout(timeout);
       void reader?.cancel().catch(() => {});

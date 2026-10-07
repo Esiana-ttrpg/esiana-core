@@ -13,6 +13,7 @@ import {
 import { listDowntimeProjectDetails } from '../lib/downtimeProjectService.js';
 import { buildHavenOverviewPayload } from '../lib/buildHavenPresentation.js';
 import { prisma } from '../lib/prisma.js';
+import { listDowntimePeople } from '../lib/downtimePeopleService.js';
 
 export async function listDowntimeHavensHandler(
   req: CampaignScopedRequest,
@@ -102,7 +103,7 @@ export async function getDowntimeHavenOverviewHandler(
     return;
   }
 
-  const [campaign, activeProjects, residentLabels, wikiPage] = await Promise.all([
+  const [campaign, activeProjects, residentLabels, wikiPage, people] = await Promise.all([
     prisma.campaign.findUnique({
       where: { id: ctx.campaignId },
       select: { currentEpochMinute: true },
@@ -116,6 +117,7 @@ export async function getDowntimeHavenOverviewHandler(
       where: { id: havenWithBlocks.wikiPageId, campaignId: ctx.campaignId },
       select: { featuredImageId: true },
     }),
+    listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, false),
   ]);
 
   const { blocks, ...haven } = havenWithBlocks;
@@ -129,6 +131,7 @@ export async function getDowntimeHavenOverviewHandler(
     activeProjects,
     residentLabels,
     currentEpochMinute: campaign?.currentEpochMinute ?? 0n,
+    assignedPeople: people.people.filter((person) => person.status === 'ACTIVE' && person.assignment?.kind === 'haven' && person.assignment.id === havenId),
   });
 
   res.json({ overview });
@@ -184,6 +187,9 @@ export async function updateDowntimeHavenHandler(
 
   const patch: Record<string, unknown> = {};
   if (typeof body.title === 'string') patch.title = body.title;
+  if (typeof body.bannerAssetId === 'string' || body.bannerAssetId === null) {
+    patch.bannerAssetId = body.bannerAssetId;
+  }
   if (typeof body.visibility === 'string') patch.visibility = body.visibility;
   if (typeof body.appendActivity === 'object' && body.appendActivity) {
     patch.appendActivity = body.appendActivity;

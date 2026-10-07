@@ -1,6 +1,5 @@
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { canManageChronology } from '../lib/acl.js';
 import {
   getCampaignMomentumPayload,
   updateCampaignMomentumState,
@@ -11,7 +10,6 @@ import {
   buildCampaignWorldPressureProjection,
   canAccessWorldPressure,
 } from '../lib/worldPressureProjectionService.js';
-import { normalizeCampaignEra, type CampaignEra } from '../../../shared/factionMomentumMetadata.js';
 
 function requireWorldPressureAccess(
   req: CampaignScopedRequest,
@@ -25,12 +23,6 @@ function requireWorldPressureAccess(
   return true;
 }
 
-function parseErasFromBody(body: Record<string, unknown>): CampaignEra[] | undefined {
-  if (!Array.isArray(body.eras)) return undefined;
-  return body.eras
-    .map((era, index) => normalizeCampaignEra(era, index))
-    .filter((era): era is CampaignEra => era !== null);
-}
 
 export async function getCampaignMomentumHandler(
   req: CampaignScopedRequest,
@@ -47,20 +39,18 @@ export async function putCampaignMomentumHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canManageChronology(ctx.role, ctx.allowPlayerChronologyManagement)) {
-    res.status(403).json({ error: 'Forbidden' });
-    return;
-  }
+  if (!requireWorldPressureAccess(req, res)) return;
 
   const body = (req.body ?? {}) as Record<string, unknown>;
-  const eras = parseErasFromBody(body);
+  if (body.eras !== undefined) {
+    res.status(400).json({ error: 'Manage eras through Chronology.' }); return;
+  }
   const worldPressurePaused =
     typeof body.worldPressurePaused === 'boolean' ? body.worldPressurePaused : undefined;
 
   try {
     const payload = await updateCampaignMomentumState({
       campaignId: ctx.campaignId,
-      eras,
       worldPressurePaused,
       updatedByUserId: req.user?.id ?? null,
     });

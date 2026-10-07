@@ -1,13 +1,18 @@
 openapi: 3.1.0
 info:
   title: Esiana Core API
-  version: 1.5.0
+  version: 1.7.1
   description: |
     REST API for Esiana campaign narrative infrastructure.
 
     **Authentication:** Session cookie (`esiana_token`) or Bearer API token with scopes.
 
     **Campaign scope:** Most lore routes live under `/api/campaigns/{campaignHandle}/`.
+
+    ## Workspace IA (product)
+
+    - **Adventure** — intended play (Quests, Arcs, Threads, Unresolved, Investigation, Scenes, Storyboard).
+    - **Progression** — world change: Trajectories · Developments · History (Graph planned later, not implemented). Advance Time and scheduled narrative prompts live under Developments; Consequences stay on Chronology/event lore.
 
     ## Not available in core (v1.0)
 
@@ -31,6 +36,9 @@ tags:
   - name: System Catalog
   - name: Public Profiles
   - name: Notifications
+  - name: Calendar
+  - name: Character Portfolio
+    description: User-owned characters that exist independently of campaigns. Portfolio characters may be cloned into or created from campaign characters, but remain separate records and are never synchronized with campaign wiki pages. Portfolio resources are owned by the authenticated user (not campaign-scoped). PortfolioCharacterAdventure rows record provenance/history for campaign incarnations without changing ownership or granting campaign access. Public endpoints expose only the allowlisted projection for explicitly showcased characters; campaign titles in those projections remain subject to campaign visibility/linkability rules.
   - name: User Account
   - name: Plugins
   - name: Backup
@@ -47,6 +55,387 @@ tags:
   - name: Import
   - name: System
 paths:
+  /api/campaigns/{campaignHandle}/chronology/eras:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+    get:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      tags: [Chronology]
+      summary: List disclosed eras in authored sequence
+      description: Returns campaign-calendar dates only. DM-only eras require narrative.elevated_view; chronology.edit does not confer disclosure.
+      responses:
+        '200':
+          description: Visible eras
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eras:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChronologyEra'
+    post:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      tags: [Chronology]
+      summary: Create an era and its canonical Overview
+      description: Requires chronology.edit. Observers are always denied. DM-only visibility additionally requires narrative.elevated_view. Names are authored; eras append to the track sequence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChronologyEraInput'
+      responses:
+        '201':
+          description: Created era
+        '400':
+          description: Invalid campaign-calendar dates or era fields
+        '403':
+          description: Insufficient chronology or disclosure authority
+  /api/campaigns/{campaignHandle}/chronology/eras/order:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+    put:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+      tags: [Chronology]
+      summary: Reorder the visible eras within one calendar track
+      description: Requires chronology.edit. Supply every visible era ID exactly once; hidden eras retain their slots. Dates never determine presentation order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [calendarId, ids]
+              properties:
+                calendarId:
+                  type: string
+                ids:
+                  type: array
+                  uniqueItems: true
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated visible sequence
+        '400':
+          description: Invalid or stale sequence
+        '403':
+          description: Chronology editing denied
+  /api/campaigns/{campaignHandle}/chronology/eras/{eraId}:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+      - name: eraId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: eraId
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [Chronology]
+      summary: Edit, close, publish, or make an era current
+      description: Requires chronology.edit and disclosure access to the era. Current state is explicitly authored per track, independent of dates. Changing dates never changes visibility. End date is inclusive.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChronologyEraInput'
+      responses:
+        '200':
+          description: Updated era
+        '400':
+          description: Invalid era or calendar dates
+        '403':
+          description: Editing or visibility change denied
+        '404':
+          description: Era unavailable
+    delete:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: eraId
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [Chronology]
+      summary: Delete an era and its owned Overview after impact confirmation
+      description: Preserves events and trajectory content, detaches references with former-name snapshots, and leaves the track without a current era if necessary. Incoming wiki links do not block deletion. Recurrence uses remaining applicable eras independent of viewer visibility.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              properties:
+                confirmed:
+                  const: true
+      responses:
+        '204':
+          description: Era and Overview deleted
+        '400':
+          description: Confirmation required
+        '403':
+          description: Chronology editing denied
+        '404':
+          description: Era unavailable
+  /api/campaigns/{campaignHandle}/chronology/eras/{eraId}/impact:
+    parameters:
+      - $ref: '#/components/parameters/campaignHandle'
+      - name: eraId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: eraId
+          in: path
+          required: true
+          schema:
+            type: string
+      tags: [Chronology]
+      summary: Preview era deletion impact
+      description: Requires chronology.edit and disclosure access. Counts do not disclose private events or wiki pages.
+      responses:
+        '200':
+          description: Reference counts and Overview word count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events: { type: integer }
+                  trajectories: { type: integer }
+                  recurringRules: { type: integer }
+                  overviewWords: { type: integer }
+        '404':
+          description: Era unavailable
+  /api/calendar/sessions:
+    get:
+      tags:
+        - Calendar
+      summary: List my upcoming campaign sessions
+      description: Returns the authenticated user's visible published, cancelled, and completed session events across campaign memberships. When `from` is omitted, it defaults to the current instant. Dates are returned as UTC ISO 8601 instants with a validated IANA display timezone.
+      operationId: listMySessionCalendar
+      parameters:
+        - $ref: "#/components/parameters/calendarFrom"
+        - $ref: "#/components/parameters/calendarTo"
+        - $ref: "#/components/parameters/calendarLimit"
+        - $ref: "#/components/parameters/calendarCursor"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Page of canonical session calendar events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionCalendarPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires:
+          - Authenticated application user session or API token with campaign:read scope
+          - Campaign membership and wiki-page visibility are enforced per event
+  /api/calendar/sessions.ics:
+    get:
+      tags: [Calendar]
+      summary: Download my upcoming sessions as ICS
+      description: One-time download of the authenticated user's aggregate upcoming-session calendar. The same live campaign membership and wiki visibility rules as `/api/calendar/sessions` apply.
+      operationId: downloadMySessionCalendar
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: RFC 5545 calendar attachment
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+          content:
+            text/calendar:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires:
+          - Authenticated application user session or API token with campaign:read scope
+          - Campaign membership and wiki-page visibility are evaluated at request time
+  /api/calendar/subscription:
+    get:
+      tags: [Calendar]
+      summary: Get calendar subscription status
+      operationId: getCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current subscription status; the secret URL is never returned after issuance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionStatusResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+    post:
+      tags: [Calendar]
+      summary: Create a private calendar subscription
+      description: Creates the user's single active subscription and returns its high-entropy URL once. Returns 409 when one is already active.
+      operationId: createCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "201":
+          description: Subscription created; copy the returned URL now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409":
+          description: A subscription is already active
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+    delete:
+      tags: [Calendar]
+      summary: Revoke the private calendar subscription
+      operationId: revokeCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Subscription revoked, or already absent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OkResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+  /api/calendar/subscription/regenerate:
+    post:
+      tags: [Calendar]
+      summary: Regenerate the private calendar subscription URL
+      description: Immediately invalidates the previous URL and returns a new high-entropy URL once. Also creates a subscription when none exists.
+      operationId: regenerateCalendarSubscription
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Existing subscription regenerated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
+        "201":
+          description: Subscription created because none existed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: authenticated-user
+        requires: [Authenticated application user session]
+  /api/calendar/subscriptions/{token}/feed.ics:
+    get:
+      tags: [Calendar]
+      summary: Read a private user calendar subscription
+      description: The path token identifies the user but does not snapshot permissions. Campaign membership and wiki-page visibility are evaluated on every request. Treat this URL as a secret.
+      operationId: getSubscribedSessionCalendar
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: High-entropy private subscription credential.
+          schema: { type: string }
+      security:
+        - {}
+      responses:
+        "200":
+          description: RFC 5545 calendar feed
+          content:
+            text/calendar:
+              schema: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+      x-esiana-authorization:
+        boundary: private-capability-url
+        requires:
+          - Valid active calendar subscription token
+          - Campaign membership and wiki-page visibility are evaluated at request time
+  /api/campaigns/{campaignHandle}/calendar/sessions:
+    get:
+      tags:
+        - Calendar
+      summary: List a campaign's session calendar
+      description: Returns visible published, cancelled, and completed session events for one campaign. Unlike the user-level route, no date lower bound is applied when `from` is omitted.
+      operationId: listCampaignSessionCalendar
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - $ref: "#/components/parameters/calendarFrom"
+        - $ref: "#/components/parameters/calendarTo"
+        - $ref: "#/components/parameters/calendarLimit"
+        - $ref: "#/components/parameters/calendarCursor"
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Page of canonical session calendar events
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionCalendarPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+      x-esiana-authorization:
+        boundary: campaign-member
+        requires:
+          - Membership in the target campaign
+          - API tokens require campaign:read scope
+          - Wiki-page visibility is enforced per event
   /api/health:
     get:
       tags:
@@ -653,7 +1042,9 @@ paths:
           required: false
           schema:
             type: string
-            enum: ["1", "true"]
+            enum:
+              - "1"
+              - "true"
           description: |
             When set by an elevated campaign member (GM/Writer), attach
             diagnostic `rank` on each result and top-level `diagnostics`.
@@ -687,7 +1078,7 @@ paths:
                       label: Session Note
                     title: Session 12
                     excerpt:
-                      text: "…Yuna arrived in Besaid…"
+                      text: …Yuna arrived in Besaid…
                       field: Body
                     href: /campaigns/demo/sessions/session-12
                     matchedOn: body
@@ -704,13 +1095,15 @@ paths:
                   - kind: best
                     key: best
                     label: Best match
-                    resultIds: [character:pg_yuna]
+                    resultIds:
+                      - character:pg_yuna
                     totalCount: 1
                   - kind: mentions
                     key: mentions:session-note
                     label: Mentioned in 40 session notes
                     typeKey: session-note
-                    resultIds: [session-note:sn_01]
+                    resultIds:
+                      - session-note:sn_01
                     totalCount: 40
         "400":
           description: Query too long
@@ -719,7 +1112,6 @@ paths:
         requires:
           - Authenticated application user or API token
           - Membership in the addressed campaign
-          - Resource-level visibility and ownership checks performed by the controller/service
       description: |
         Candidate retrieval uses a derived SearchIndexDocument projection with
         PostgreSQL tsvector/GIN inverted indexes (portable multi-token LIKE over
@@ -802,7 +1194,8 @@ paths:
             schema:
               oneOf:
                 - type: object
-                  required: [credential]
+                  required:
+                    - credential
                   properties:
                     credential:
                       type: string
@@ -813,7 +1206,9 @@ paths:
                       type: string
                       maxLength: 160
                 - type: object
-                  required: [username, password]
+                  required:
+                    - username
+                    - password
                   properties:
                     username:
                       type: string
@@ -2889,7 +3284,10 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get Adventure Storyboard
+      summary: Get Adventure Storyboard layout
+      description: |
+        Returns the Storyboard layout projection (`storyboard-view-v1`) for Adventure › Storyboard › Board.
+        Layout is projection-only; scene content remains on wiki scene pages.
       operationId: get_api_campaigns_campaignHandle_adventure_storyboard
       x-esiana-authorization:
         boundary: campaign
@@ -2924,11 +3322,13 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
     patch:
       tags:
         - Campaigns
-      summary: Update Adventure Storyboard
+      summary: Update Adventure Storyboard layout
+      description: |
+        Patches Storyboard canvas layout (node positions, lanes, filters, annotations).
+        Does not rewrite wiki narrative text. Used by Adventure › Storyboard.
       operationId: patch_api_campaigns_campaignHandle_adventure_storyboard
       x-esiana-authorization:
         boundary: campaign
@@ -2971,7 +3371,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign storyboard-edit capability."
   /api/campaigns/{campaignHandle}/assets/import-url:
     post:
       tags:
@@ -3024,7 +3423,10 @@ paths:
     get:
       tags:
         - Campaigns
-      summary: Get Authoring Growth Metrics
+      summary: Get authoring growth metrics
+      description: |
+        Campaign growth counters (NPCs, threads, scenes, factions, quests) for Workshop /
+        authoring analytics. Not mounted as a Progression destination.
       operationId: get_api_campaigns_campaignHandle_authoring_growth_metrics
       x-esiana-authorization:
         boundary: campaign
@@ -3060,7 +3462,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign page-edit capability."
   /api/campaigns/{campaignHandle}/authoring/writing-session:
     post:
       tags:
@@ -5061,6 +5462,93 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
+  /api/campaigns/{campaignHandle}/downtime/people:
+    get:
+      tags: [Downtime]
+      summary: List campaign Hirelings
+      operationId: listDowntimeHirelings
+      description: Returns visibility-filtered Hireling relationships and visible Haven/Project assignment options.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+      responses:
+        "200":
+          description: Hireling roster
+          content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingRoster" } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Downtime]
+      summary: Create or link a Hireling
+      operationId: createDowntimeHireling
+      description: Atomically creates an optional Character and its Hireling relationship, or links an existing campaign Character.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingCreateInput" } } }
+      responses:
+        "201":
+          description: Hireling created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [person]
+                properties: { person: { $ref: "#/components/schemas/DowntimeHireling" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/campaigns/{campaignHandle}/downtime/people/by-character/{pageId}:
+    get:
+      tags: [Downtime]
+      summary: Get a Hireling by Character
+      operationId: getDowntimeHirelingByCharacter
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - { name: pageId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Character-context Hireling presentation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [person, assignmentOptions]
+                properties:
+                  person: { $ref: "#/components/schemas/DowntimeHireling" }
+                  assignmentOptions: { $ref: "#/components/schemas/DowntimeHirelingAssignmentOptions" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/campaigns/{campaignHandle}/downtime/people/{id}:
+    patch:
+      tags: [Downtime]
+      summary: Update a Hireling
+      operationId: updateDowntimeHireling
+      description: Inactive or Former status clears the current assignment; returning to Active does not restore it. Character pages and tags are not synchronized.
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingUpdateInput" } } }
+      responses:
+        "200":
+          description: Hireling updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [person]
+                properties: { person: { $ref: "#/components/schemas/DowntimeHireling" } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/campaigns/{campaignHandle}/downtime/projects:
     get:
       tags:
@@ -10890,6 +11378,242 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign notes-moderation capability."
+  /api/campaigns/{campaignHandle}/session-timeline/{timelinePointId}/schedule/skip:
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run Schedule Skip
+      operationId: post_api_campaigns_campaignHandle_session_timeline_timelinePointId_schedule_skip
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign notes-moderation capability
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timelinePointId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign notes-moderation capability."
+  /api/campaigns/{campaignHandle}/schedule:
+    get:
+      tags:
+        - Campaigns
+      summary: Get CampaignHandle Schedule
+      operationId: get_api_campaigns_campaignHandle_schedule
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
+    patch:
+      tags:
+        - Campaigns
+      summary: Update CampaignHandle Schedule
+      operationId: patch_api_campaigns_campaignHandle_schedule
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign notes-moderation capability
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign notes-moderation capability."
+  /api/campaigns/{campaignHandle}/schedule/upcoming:
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run Schedule Upcoming
+      operationId: post_api_campaigns_campaignHandle_schedule_upcoming
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign notes-moderation capability
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign notes-moderation capability."
+  /api/campaigns/{campaignHandle}/schedule/upcoming/skip:
+    post:
+      tags:
+        - Campaigns
+      summary: Create or run Upcoming Skip
+      operationId: post_api_campaigns_campaignHandle_schedule_upcoming_skip
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Campaign notes-moderation capability
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Campaign notes-moderation capability."
   /api/campaigns/{campaignHandle}/session-timeline/new:
     post:
       tags:
@@ -13370,7 +14094,10 @@ paths:
     get:
       tags:
         - Wiki
-      summary: Get Wiki Adventure Hub
+      summary: Get Adventure hub payload
+      description: |
+        Adventure workspace hub without a page id. Prefer `/wiki/adventure-hub/{pageId}` with a
+        Quests-category page id and `section` query for lens-specific payloads.
       operationId: get_api_campaigns_campaignHandle_wiki_adventure_hub
       x-esiana-authorization:
         boundary: campaign
@@ -13406,12 +14133,26 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/adventure-hub/{pageId}:
     get:
       tags:
         - Wiki
-      summary: Get Adventure Hub PageId
+      summary: Get Adventure hub section payload
+      description: |
+        Adventure workspace projection for a Quests-category page.
+
+        Frontend Adventure lenses map to `section` as follows:
+        - Quests → `board`
+        - Arcs → `arcs`
+        - Scenes / Storyboard Board → `scenes` (includes storyboard projection + palette)
+        - Storyboard Sequence → `scene-timeline`
+        - Storyboard ready-scenes / lane preset support → `sessions`
+        - Investigation → `investigation`
+        - Continuity rail → `continuity`
+        - Threads activity → `thread-history`
+        - Embedded chronology → `timeline`
+
+        Progression owns Trajectories / Developments / History (separate workspace).
       operationId: get_api_campaigns_campaignHandle_wiki_adventure_hub_pageId
       x-esiana-authorization:
         boundary: campaign
@@ -13433,6 +14174,28 @@ paths:
           required: true
           schema:
             type: string
+        - name: section
+          in: query
+          required: false
+          description: Adventure hub section to project. Defaults to `board` (Quests).
+          schema:
+            type: string
+            enum:
+              - board
+              - scenes
+              - investigation
+              - continuity
+              - arcs
+              - sessions
+              - scene-timeline
+              - thread-history
+              - timeline
+        - name: previewAsPlayer
+          in: query
+          required: false
+          description: When true for GM/Writer, project player-visible Adventure state.
+          schema:
+            type: boolean
       responses:
         "200":
           description: Successful response
@@ -13452,7 +14215,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
   /api/campaigns/{campaignHandle}/wiki/aliases/{aliasId}:
     delete:
       tags:
@@ -15898,7 +16660,10 @@ paths:
     get:
       tags:
         - World State
-      summary: Get CampaignHandle World Pressure
+      summary: Get world pressure projection
+      description: |
+        Current-era world pressure projection (missing trajectories, brewing conflicts, forecasts).
+        Progression › Trajectories surfaces eras and missing trajectories; full outlook/Graph UI is deferred.
       operationId: get_api_campaigns_campaignHandle_world_pressure
       x-esiana-authorization:
         boundary: campaign
@@ -15933,12 +16698,14 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
   /api/campaigns/{campaignHandle}/world-pressure/preview:
     get:
       tags:
         - World State
-      summary: Get World Pressure Preview
+      summary: Preview world pressure at epoch
+      description: |
+        Advisory projection at a target epoch minute. API retained; no Progression UI for
+        preview-at-epoch in this pass (not mounted on Trajectories).
       operationId: get_api_campaigns_campaignHandle_world_pressure_preview
       x-esiana-authorization:
         boundary: campaign
@@ -15954,6 +16721,13 @@ paths:
           required: true
           schema:
             type: string
+        - name: targetEpochMinute
+          in: query
+          required: true
+          description: Non-negative integer epoch minute string to preview against.
+          schema:
+            type: string
+            pattern: '^[0-9]+$'
       responses:
         "200":
           description: Successful response
@@ -15973,7 +16747,6 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
   /api/campaigns/{campaignHandle}/world-state/apply:
     post:
       tags:
@@ -18469,8 +19242,8 @@ paths:
     get:
       tags:
         - Public Profiles
-      summary: Get Id Public Profile
-      operationId: get_api_users_id_public_profile
+      summary: Get public user profile
+      operationId: getPublicUserProfile
       x-esiana-authorization:
         boundary: public-or-resource-conditional
         requires: []
@@ -18482,11 +19255,11 @@ paths:
             type: string
       responses:
         "200":
-          description: Successful response
+          description: Public profile including showcased portfolio characters
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiResponse"
+                $ref: "#/components/schemas/PublicUserProfileResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -18499,6 +19272,10 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
+      description: |-
+        Front-facing profile. Includes showcasedCharacters as allowlisted PublicPortfolioCharacterProjection entries (ordered by showcaseOrder). Campaign information inside those projections respects viewer linkability.
+
+        Optional authentication improves campaign linkability for shared memberships.
   /uploads/{filename}:
     get:
       tags:
@@ -20677,6 +21454,812 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Resource-level visibility and ownership checks performed by the controller/service."
+  /api/user/schedule:
+    get:
+      tags:
+        - User Account
+      summary: Get User Schedule
+      operationId: get_api_user_schedule
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session."
+  /api/user/schedule/preferences:
+    patch:
+      tags:
+        - User Account
+      summary: Update Schedule Preferences
+      operationId: patch_api_user_schedule_preferences
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: false
+        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApiRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session."
+  /api/campaigns/{campaignHandle}/wiki/{pageId}/add-to-portfolio:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Clone campaign character into portfolio
+      operationId: addCampaignCharacterToPortfolio
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Authenticated application user or API token
+          - Membership in the addressed campaign
+          - Non-observer campaign membership
+          - Resource-level visibility and ownership checks performed by the controller/service
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/campaignHandle"
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Campaign wiki character page id (entityCategory=characters).
+      description: |-
+        Explicit clone/transform: creates an independent user-owned PortfolioCharacter from a campaign wiki character page, plus a PortfolioCharacterAdventure provenance row. Does not synchronize the two records afterward.
+
+        Authorization: Authenticated application user or API token; Membership in the addressed campaign; Non-observer campaign membership; Resource-level visibility and ownership checks performed by the controller/service.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "201":
+          description: Portfolio character created with adventure provenance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioAddFromCampaignResponse"
+        "400": &a1
+          $ref: "#/components/responses/BadRequest"
+        "401": &a2
+          $ref: "#/components/responses/Unauthorized"
+        "403": &a3
+          $ref: "#/components/responses/Forbidden"
+        "404": &a4
+          $ref: "#/components/responses/NotFound"
+        "429": &a5
+          $ref: "#/components/responses/RateLimited"
+        "500": &a6
+          $ref: "#/components/responses/InternalError"
+  /api/user/portfolio/adventures/{adventureId}/end:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Mark portfolio adventure as past
+      operationId: endPortfolioAdventure
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Explicit lifecycle transition from CURRENT to PAST (meaningful history — not staleness).
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - name: adventureId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioEndAdventureRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters:
+    get:
+      tags:
+        - Character Portfolio
+      summary: List portfolio characters
+      operationId: listPortfolioCharacters
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+            enum:
+              - all
+              - active
+              - past
+              - unassigned
+            default: all
+          description: Provenance-derived filter (mutually exclusive Active/Past/Unassigned).
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search name/tagline/role/biography.
+        - name: includeArchived
+          in: query
+          schema:
+            type: boolean
+        - name: favorite
+          in: query
+          schema:
+            type: boolean
+        - name: showcased
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterListResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+    post:
+      tags:
+        - Character Portfolio
+      summary: Create portfolio character
+      operationId: createPortfolioCharacter
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioCharacterCreateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}:
+    delete:
+      tags:
+        - Character Portfolio
+      summary: Delete portfolio character
+      operationId: deletePortfolioCharacter
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Deletes the user-owned portfolio character. Related campaign wiki pages are not cascade-deleted; adventure provenance detaches instead.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - &a7
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Portfolio character id owned by the authenticated user.
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+    get:
+      tags:
+        - Character Portfolio
+      summary: Get portfolio character
+      operationId: getPortfolioCharacter
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+    patch:
+      tags:
+        - Character Portfolio
+      summary: Update portfolio character
+      operationId: updatePortfolioCharacter
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioCharacterUpdateRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/add-to-campaign:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Clone portfolio character into a campaign
+      operationId: addPortfolioCharacterToCampaign
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Explicit clone/transform: creates a new campaign-scoped WikiPage character and a CURRENT PortfolioCharacterAdventure provenance row. The portfolio and campaign records remain independently owned and are never synchronized afterward. Favorite/showcase/archive are not copied.
+
+        Authorization: Authenticated application user session; caller must be a member of the target campaign.
+      parameters:
+        - *a7
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioAddToCampaignRequest"
+      responses:
+        "201":
+          description: Campaign character created; provenance adventure recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioAddToCampaignResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/archive:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Archive or unarchive portfolio character
+      operationId: setPortfolioCharacterArchived
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Personal organization only. Archive is orthogonal to provenance-derived Past.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioArchiveRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/duplicate:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Duplicate portfolio character
+      operationId: duplicatePortfolioCharacter
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Creates another independent portfolio character. Adventures are not copied. Favorite/showcase/archive are reset.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioDuplicateRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/export:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Export portfolio character
+      operationId: exportPortfolioCharacter
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterExportResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/favorite:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Toggle portfolio character favorite
+      operationId: setPortfolioCharacterFavorite
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioFavoriteRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/media:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Upload portfolio character media
+      operationId: uploadPortfolioCharacterMedia
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - kind
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kind:
+                  $ref: "#/components/schemas/PortfolioMediaKind"
+                caption:
+                  type: string
+                displayName:
+                  type: string
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/media/{mediaId}:
+    delete:
+      tags:
+        - Character Portfolio
+      summary: Delete portfolio character media
+      operationId: deletePortfolioCharacterMedia
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+        - name: mediaId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/{id}/showcase:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Set portfolio character showcase membership
+      operationId: setPortfolioCharacterShowcase
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Explicit showcase membership change. Public profile exposure requires isShowcased=true. Removing from showcase clears membership and order together — not an ordering-only mutation.
+
+        Authorization: Authenticated application user session.
+      parameters:
+        - *a7
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioShowcaseRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharacterResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/characters/bulk:
+    post:
+      tags:
+        - Character Portfolio
+      summary: Bulk portfolio management actions
+      operationId: bulkPortfolioCharacterActions
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Batch favorite/archive/showcase mutations for Manage Portfolio / Manage Showcase flows.
+
+        Authorization: Authenticated application user session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioBulkActionRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharactersResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/user/portfolio/showcase/reorder:
+    patch:
+      tags:
+        - Character Portfolio
+      summary: Reorder showcased portfolio characters
+      operationId: reorderPortfolioShowcase
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      description: |-
+        Reorders an already-showcased set. Does not add/remove showcase membership; use the showcase endpoint for membership.
+
+        Authorization: Authenticated application user session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioShowcaseReorderRequest"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioCharactersResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/users/{id}/characters/{characterId}:
+    get:
+      tags:
+        - Public Profiles
+      summary: Get public showcased portfolio character
+      operationId: getPublicPortfolioCharacter
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Profile user id (portfolio owner).
+        - name: characterId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Portfolio character id. Must be showcased unless the caller is the owner.
+      description: Returns the allowlisted public projection (and editorial public fields) for an explicitly showcased portfolio character. Private/non-showcased characters return 404 to non-owners. Campaign titles in adventures remain subject to campaign visibility/linkability for the viewer.
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicPortfolioCharacterPageResponse"
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
+  /api/users/assets/{assetId}:
+    get:
+      tags:
+        - Public Profiles
+      summary: Stream user portfolio asset
+      operationId: getPublicUserPortfolioAsset
+      x-esiana-authorization:
+        boundary: public-or-resource-conditional
+        requires: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+      description: Streams a UserAsset when the caller owns it, or when it is referenced by a showcased portfolio character.
+      responses:
+        "200":
+          description: Binary image/asset stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400": *a1
+        "401": *a2
+        "403": *a3
+        "404": *a4
+        "429": *a5
+        "500": *a6
 components:
   securitySchemes:
     cookieAuth:
@@ -20688,6 +22271,35 @@ components:
       scheme: bearer
       bearerFormat: API token with scopes
   parameters:
+    calendarFrom:
+      name: from
+      in: query
+      description: Inclusive lower bound for session start time. Defaults to now only on the user-level route.
+      schema:
+        type: string
+        format: date-time
+    calendarTo:
+      name: to
+      in: query
+      description: Inclusive upper bound for session start time.
+      schema:
+        type: string
+        format: date-time
+    calendarLimit:
+      name: limit
+      in: query
+      description: Number of events to return (default 50, maximum 200).
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    calendarCursor:
+      name: cursor
+      in: query
+      description: Opaque pagination cursor returned by the preceding page.
+      schema:
+        type: string
     campaignId:
       name: campaignId
       in: path
@@ -20702,6 +22314,243 @@ components:
         type: string
       example: port-haven
   schemas:
+    IdLabel:
+      type: object
+      required: [id, label]
+      properties:
+        id: { type: string }
+        label: { type: string }
+    DowntimeHirelingFeature:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        description: { type: [string, "null"], maxLength: 1000 }
+    DowntimeHirelingAssignmentOptions:
+      type: object
+      required: [havens, projects]
+      properties:
+        havens: { type: array, items: { $ref: "#/components/schemas/IdLabel" } }
+        projects: { type: array, items: { $ref: "#/components/schemas/IdLabel" } }
+    DowntimeHireling:
+      type: object
+      required: [id, characterPageId, characterName, characterHref, relationshipType, status, compensation, features, canEdit]
+      properties:
+        id: { type: string }
+        characterPageId: { type: string }
+        characterName: { type: string }
+        characterHref: { type: string }
+        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER] }
+        role: { type: [string, "null"] }
+        status: { type: string, enum: [ACTIVE, INACTIVE, FORMER] }
+        assignment:
+          oneOf:
+            - type: object
+              required: [kind, id, label, href]
+              properties:
+                kind: { type: string, enum: [haven, project] }
+                id: { type: string }
+                label: { type: string }
+                href: { type: string }
+            - type: "null"
+        compensation:
+          type: object
+          required: [amount, currency, cadence, unpaid, label]
+          properties:
+            amount: { type: [integer, "null"], minimum: 0 }
+            currency: { type: [string, "null"] }
+            cadence: { type: [string, "null"] }
+            unpaid: { type: boolean }
+            label: { type: string }
+        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
+        notes: { type: [string, "null"] }
+        startedAtEpochMinute: { type: [string, "null"] }
+        endedAtEpochMinute: { type: [string, "null"] }
+        canEdit: { type: boolean }
+    DowntimeHirelingCreateInput:
+      type: object
+      required: [relationshipType]
+      properties:
+        characterPageId: { type: string, description: Existing campaign Character; mutually exclusive with characterName. }
+        characterName: { type: string, description: Minimal Character name for atomic creation; mutually exclusive with characterPageId. }
+        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER], default: HIRELING }
+        role: { type: string, maxLength: 200 }
+        havenId: { type: [string, "null"] }
+        projectId: { type: [string, "null"], description: Mutually exclusive with havenId. }
+        compensationAmount: { type: integer, minimum: 0 }
+        compensationCurrency: { type: string }
+        compensationCadence: { type: string, enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL] }
+        compensationUnpaid: { type: boolean }
+        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
+        notes: { type: [string, "null"], maxLength: 5000 }
+        addHirelingTag: { type: boolean, default: false, description: Explicit opt-in only; never synchronized afterward. }
+    DowntimeHirelingUpdateInput:
+      type: object
+      properties:
+        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER] }
+        role: { type: [string, "null"], maxLength: 200 }
+        status: { type: string, enum: [ACTIVE, INACTIVE, FORMER] }
+        havenId: { type: [string, "null"] }
+        projectId: { type: [string, "null"], description: Mutually exclusive with havenId. }
+        compensationAmount: { type: [integer, "null"], minimum: 0 }
+        compensationCurrency: { type: [string, "null"] }
+        compensationCadence: { type: [string, "null"], enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL, null] }
+        compensationUnpaid: { type: boolean }
+        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
+        notes: { type: [string, "null"], maxLength: 5000 }
+    DowntimeHirelingRoster:
+      type: object
+      required: [people, summary, assignmentOptions]
+      properties:
+        people: { type: array, items: { $ref: "#/components/schemas/DowntimeHireling" } }
+        summary:
+          type: object
+          required: [active, assignedToProjects, assignedToHavens, unassigned]
+          properties:
+            active: { type: integer, minimum: 0 }
+            assignedToProjects: { type: integer, minimum: 0 }
+            assignedToHavens: { type: integer, minimum: 0 }
+            unassigned: { type: integer, minimum: 0 }
+        assignmentOptions: { $ref: "#/components/schemas/DowntimeHirelingAssignmentOptions" }
+    CampaignCalendarDate:
+      type: object
+      required: [year, month, day]
+      properties:
+        year: { type: integer, minimum: 1, maximum: 10000 }
+        month: { type: integer, minimum: 0, description: Zero-based month in the selected calendar and year. }
+        day: { type: integer, minimum: 1 }
+    ChronologyEraInput:
+      type: object
+      required: [calendarId, name, startDate, endDate, visibility, isCurrent]
+      properties:
+        calendarId: { type: string }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        startDate:
+          oneOf:
+            - $ref: '#/components/schemas/CampaignCalendarDate'
+            - type: 'null'
+        endDate:
+          description: Inclusive final campaign-calendar day; null means no end date.
+          oneOf:
+            - $ref: '#/components/schemas/CampaignCalendarDate'
+            - type: 'null'
+        visibility: { type: string, enum: [PUBLIC, PARTY, DM_ONLY] }
+        isCurrent: { type: boolean }
+        overview: { type: string, description: Markdown authored through the standard rich-text editor and stored on the owned wiki page. }
+    ChronologyEra:
+      allOf:
+        - $ref: '#/components/schemas/ChronologyEraInput'
+        - type: object
+          properties:
+            id: { type: string }
+            calendarName: { type: string }
+            isMasterTime: { type: boolean }
+            sortOrder: { type: integer }
+            status: { type: string, enum: [PAST, PRESENT, FUTURE] }
+            overviewPageId: { type: string }
+            canManage: { type: boolean }
+    CalendarSubscriptionStatusResponse:
+      type: object
+      required: [subscription]
+      properties:
+        subscription:
+          oneOf:
+            - type: object
+              required: [active, createdAt, updatedAt, lastAccessAt]
+              properties:
+                active: { type: boolean, const: true }
+                createdAt: { type: string, format: date-time }
+                updatedAt: { type: string, format: date-time }
+                lastAccessAt: { type: [string, "null"], format: date-time }
+            - type: "null"
+    CalendarSubscriptionIssuedResponse:
+      type: object
+      required: [subscription]
+      properties:
+        subscription:
+          type: object
+          required: [active, url, createdAt, updatedAt]
+          properties:
+            active: { type: boolean, const: true }
+            url:
+              type: string
+              format: uri
+              description: Secret subscription URL, returned only when issued or regenerated.
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    SessionCalendarEvent:
+      type: object
+      required:
+        - id
+        - kind
+        - title
+        - status
+        - startsAt
+        - endsAt
+        - timezone
+        - campaign
+        - href
+        - venue
+        - sequenceOrder
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Stable session timeline point identifier.
+        kind:
+          type: string
+          const: session
+        title:
+          type: string
+        status:
+          type: string
+          enum: [PUBLISHED, CANCELLED, COMPLETED]
+        startsAt:
+          type: string
+          format: date-time
+          description: UTC ISO 8601 instant.
+        endsAt:
+          type: [string, "null"]
+          format: date-time
+          description: UTC ISO 8601 instant when known.
+        timezone:
+          type: string
+          description: Validated IANA timezone for local display; falls back to the campaign timezone and then UTC.
+        campaign:
+          type: object
+          required: [id, name, handle]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            handle: { type: string }
+        href:
+          type: string
+        venue:
+          oneOf:
+            - type: object
+              required: [type, label, url, locationPageId]
+              properties:
+                type: { type: [string, "null"] }
+                label: { type: [string, "null"] }
+                url: { type: [string, "null"] }
+                locationPageId: { type: [string, "null"] }
+            - type: "null"
+        sequenceOrder:
+          type: integer
+        updatedAt:
+          type: string
+          format: date-time
+    SessionCalendarPage:
+      type: object
+      required: [events, nextCursor]
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/SessionCalendarEvent"
+        nextCursor:
+          type: [string, "null"]
     SourceIdentity:
       type: object
       required:
@@ -20859,6 +22708,9 @@ components:
           type: string
         passwordAuthEnabled:
           type: boolean
+        campaignNavigationShortcutsEnabled:
+          type: boolean
+          default: false
     UserWithProviders:
       allOf:
         - $ref: "#/components/schemas/User"
@@ -20985,6 +22837,673 @@ components:
       type: object
       description: Operation-specific request fields. Consult the operation summary and validation errors; unknown fields are not guaranteed to be retained.
       additionalProperties: true
+    PortfolioDerivedFilter:
+      type: string
+      description: Mutually exclusive provenance-derived filter. Active = ≥1 CURRENT adventure; Past = no CURRENT but ≥1 historical adventure; Unassigned = never had a campaign incarnation. Staleness alone never yields Past. Orthogonal to favorite/showcase/archive.
+      enum:
+        - ACTIVE
+        - PAST
+        - UNASSIGNED
+    PortfolioAdventureStatus:
+      type: string
+      enum:
+        - CURRENT
+        - PAST
+        - DETACHED
+    PortfolioAdventureDirection:
+      type: string
+      enum:
+        - TO_CAMPAIGN
+        - FROM_CAMPAIGN
+      description: Transform direction that created this provenance row. Not a live sync link.
+    PortfolioMediaKind:
+      type: string
+      enum:
+        - PORTRAIT
+        - GALLERY
+    PortfolioAdventureSnapshot:
+      type: object
+      description: Stable historical snapshot of a campaign incarnation. Survives even if the campaign page is later inaccessible.
+      properties:
+        campaignTitle:
+          type: string
+        campaignHandle:
+          type:
+            - string
+            - "null"
+        roleLabel:
+          type:
+            - string
+            - "null"
+        levelStart:
+          type:
+            - string
+            - "null"
+        levelEnd:
+          type:
+            - string
+            - "null"
+        startedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        endedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        sessionCount:
+          type:
+            - integer
+            - "null"
+        oneShot:
+          type: boolean
+        visibilityHint:
+          type:
+            - string
+            - "null"
+    PortfolioCharacterAdventure:
+      type: object
+      description: Provenance/history of a portfolio character's campaign incarnation. Does not change portfolio ownership or grant campaign access. Independent of the campaign wiki page after transform.
+      properties:
+        id:
+          type: string
+        status:
+          $ref: "#/components/schemas/PortfolioAdventureStatus"
+        direction:
+          $ref: "#/components/schemas/PortfolioAdventureDirection"
+        campaignId:
+          type: string
+        campaignCharacterPageId:
+          type:
+            - string
+            - "null"
+        snapshot:
+          $ref: "#/components/schemas/PortfolioAdventureSnapshot"
+        linkedAt:
+          type: string
+          format: date-time
+        unlinkedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+    PortfolioCharacterMedia:
+      type: object
+      description: First-class gallery/portrait association for a portfolio character.
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: "#/components/schemas/PortfolioMediaKind"
+        caption:
+          type:
+            - string
+            - "null"
+        sortOrder:
+          type: integer
+        occurredAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        adventureId:
+          type:
+            - string
+            - "null"
+        url:
+          type: string
+        displayUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+        assetId:
+          type: string
+        displayName:
+          type:
+            - string
+            - "null"
+    PortfolioCharacter:
+      type: object
+      description: User-owned character identity across stories. Never a campaign WikiPage. May accumulate PortfolioCharacterAdventure provenance rows for campaign incarnations without synchronizing to them.
+      required:
+        - id
+        - userId
+        - name
+        - isShowcased
+        - derivedFilter
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+          description: Owning user. Portfolio characters belong to exactly one user and are not campaign-scoped.
+        name:
+          type: string
+        biography:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          description: System-agnostic Core identity/physical-appearance JSON without campaign page IDs. Not a full public dump — owner management only.
+        tagline:
+          type:
+            - string
+            - "null"
+        roleLabel:
+          type:
+            - string
+            - "null"
+          description: Soft presentation class/role free text (not a rules engine).
+        levelLabel:
+          type:
+            - string
+            - "null"
+          description: Soft presentation level free text (not a rules engine).
+        favoritedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        archivedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        isShowcased:
+          type: boolean
+          description: Explicit showcase membership. Public exposure requires true. Clearing showcaseOrder alone must not un-expose.
+        showcaseOrder:
+          type:
+            - integer
+            - "null"
+          description: Order among showcased characters; meaningful only when isShowcased is true.
+        portraitMediaId:
+          type:
+            - string
+            - "null"
+        portraitUrl:
+          type:
+            - string
+            - "null"
+        derivedFilter:
+          $ref: "#/components/schemas/PortfolioDerivedFilter"
+        isFavorite:
+          type: boolean
+        isArchived:
+          type: boolean
+        adventures:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioCharacterAdventure"
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioCharacterMedia"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PortfolioCharacterListCounts:
+      type: object
+      properties:
+        all:
+          type: integer
+        active:
+          type: integer
+        past:
+          type: integer
+        unassigned:
+          type: integer
+    PortfolioCharacterListResponse:
+      type: object
+      required:
+        - characters
+        - counts
+      properties:
+        characters:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioCharacter"
+        counts:
+          $ref: "#/components/schemas/PortfolioCharacterListCounts"
+    PortfolioCharacterResponse:
+      type: object
+      required:
+        - character
+      properties:
+        character:
+          $ref: "#/components/schemas/PortfolioCharacter"
+    PortfolioCharacterCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        biography:
+          type: string
+        tagline:
+          type:
+            - string
+            - "null"
+        roleLabel:
+          type:
+            - string
+            - "null"
+        levelLabel:
+          type:
+            - string
+            - "null"
+        metadata:
+          type: object
+          additionalProperties: true
+    PortfolioCharacterUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        biography:
+          type: string
+        tagline:
+          type:
+            - string
+            - "null"
+        roleLabel:
+          type:
+            - string
+            - "null"
+        levelLabel:
+          type:
+            - string
+            - "null"
+        metadata:
+          type: object
+          additionalProperties: true
+    PortfolioFavoriteRequest:
+      type: object
+      properties:
+        favorite:
+          type: boolean
+    PortfolioArchiveRequest:
+      type: object
+      properties:
+        archive:
+          type: boolean
+          description: When true (default), archive; when false, unarchive. Orthogonal to Past.
+    PortfolioShowcaseRequest:
+      type: object
+      required:
+        - showcased
+      properties:
+        showcased:
+          type: boolean
+          description: Explicit showcase membership change. false clears membership and order together.
+    PortfolioShowcaseReorderRequest:
+      type: object
+      required:
+        - orderedIds
+      properties:
+        orderedIds:
+          type: array
+          items:
+            type: string
+          description: Complete ordered list of currently showcased character ids owned by the caller.
+    PortfolioBulkActionRequest:
+      type: object
+      required:
+        - ids
+        - action
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+        action:
+          type: string
+          enum:
+            - favorite
+            - unfavorite
+            - archive
+            - unarchive
+            - showcase
+            - unshowcase
+    PortfolioCharactersResponse:
+      type: object
+      required:
+        - characters
+      properties:
+        characters:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioCharacter"
+    PortfolioAddToCampaignRequest:
+      type: object
+      required:
+        - campaignId
+      properties:
+        campaignId:
+          type: string
+          description: Target campaign id. Caller must be a member. Creates a new campaign wiki character (clone), not a sync link.
+    PortfolioAddToCampaignResponse:
+      type: object
+      required:
+        - portfolioCharacter
+        - campaignCharacterPageId
+        - adventureId
+      properties:
+        portfolioCharacter:
+          $ref: "#/components/schemas/PortfolioCharacter"
+        campaignCharacterPageId:
+          type: string
+          description: Newly created campaign-scoped WikiPage id. Independent of the portfolio record.
+        adventureId:
+          type: string
+    PortfolioAddFromCampaignResponse:
+      type: object
+      required:
+        - portfolioCharacter
+        - adventureId
+      properties:
+        portfolioCharacter:
+          $ref: "#/components/schemas/PortfolioCharacter"
+        adventureId:
+          type: string
+    PortfolioEndAdventureRequest:
+      type: object
+      properties:
+        levelEnd:
+          type:
+            - string
+            - "null"
+    PortfolioCharacterExportResponse:
+      type: object
+      properties:
+        format:
+          type: string
+          example: esiana-portfolio-character-v1
+        exportedAt:
+          type: string
+          format: date-time
+        character:
+          type: object
+          properties:
+            name:
+              type: string
+            biography:
+              type: string
+            metadata:
+              type: object
+              additionalProperties: true
+            tagline:
+              type:
+                - string
+                - "null"
+            roleLabel:
+              type:
+                - string
+                - "null"
+            levelLabel:
+              type:
+                - string
+                - "null"
+    PortfolioDuplicateRequest:
+      type: object
+      properties:
+        copyMedia:
+          type: boolean
+          description: When true, copy media associations (shared UserAsset refs). Adventures are never copied.
+    PublicAdventureBlurb:
+      type: object
+      description: Campaign-aware public blurb. Campaign title/handle appear only when the campaign is linkable to the viewer; otherwise a generic label is used. Never a route around campaign visibility.
+      properties:
+        campaignTitle:
+          type:
+            - string
+            - "null"
+        campaignHandle:
+          type:
+            - string
+            - "null"
+        currentlyAdventuring:
+          type: boolean
+        genericLabel:
+          type:
+            - string
+            - "null"
+          example: Currently adventuring
+    PublicPortfolioCharacterProjection:
+      type: object
+      description: Allowlisted public projection for an explicitly showcased portfolio character. Showcase never means serialize the full character model.
+      required:
+        - id
+        - name
+        - ownerUserId
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tagline:
+          type:
+            - string
+            - "null"
+        roleLabel:
+          type:
+            - string
+            - "null"
+        levelLabel:
+          type:
+            - string
+            - "null"
+        pronouns:
+          type:
+            - string
+            - "null"
+        ancestry:
+          type:
+            - string
+            - "null"
+        appearanceSummary:
+          type:
+            - string
+            - "null"
+        biographyExcerpt:
+          type:
+            - string
+            - "null"
+        portraitUrl:
+          type:
+            - string
+            - "null"
+        adventureBlurb:
+          oneOf:
+            - $ref: "#/components/schemas/PublicAdventureBlurb"
+            - type: "null"
+        ownerUserId:
+          type: string
+    PublicPortfolioAdventure:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum:
+            - CURRENT
+            - PAST
+        campaignTitle:
+          type:
+            - string
+            - "null"
+          description: Present only when the campaign is linkable to the viewer.
+        campaignHandle:
+          type:
+            - string
+            - "null"
+        roleLabel:
+          type:
+            - string
+            - "null"
+        levelStart:
+          type:
+            - string
+            - "null"
+        levelEnd:
+          type:
+            - string
+            - "null"
+        startedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        endedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        sessionCount:
+          type:
+            - integer
+            - "null"
+        oneShot:
+          type: boolean
+        genericLabel:
+          type:
+            - string
+            - "null"
+    PublicPortfolioMedia:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: "#/components/schemas/PortfolioMediaKind"
+        caption:
+          type:
+            - string
+            - "null"
+        sortOrder:
+          type: integer
+        url:
+          type: string
+        thumbnailUrl:
+          type: string
+    PublicPortfolioCharacterPageResponse:
+      type: object
+      description: Public editorial payload for a showcased portfolio character (allowlisted fields only).
+      properties:
+        character:
+          $ref: "#/components/schemas/PublicPortfolioCharacterProjection"
+        biography:
+          type: string
+        adventures:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPortfolioAdventure"
+        media:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicPortfolioMedia"
+        public:
+          type: boolean
+    PublicUserProfile:
+      type: object
+      description: Front-facing user profile. Showcased portfolio characters are included as public projections only.
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        displayName:
+          type:
+            - string
+            - "null"
+        avatarUrl:
+          type:
+            - string
+            - "null"
+        pronouns:
+          type:
+            - string
+            - "null"
+        username:
+          type: string
+        publicBio:
+          type:
+            - string
+            - "null"
+        statusBlurb:
+          type:
+            - string
+            - "null"
+        bluesky:
+          type:
+            - string
+            - "null"
+        discord:
+          type:
+            - string
+            - "null"
+        github:
+          type:
+            - string
+            - "null"
+        reddit:
+          type:
+            - string
+            - "null"
+        mastodon:
+          type:
+            - string
+            - "null"
+        otherLink:
+          type:
+            - string
+            - "null"
+        gmStyleTags:
+          type: array
+          items:
+            type: string
+        hostedCampaigns:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              handle:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+              isLookingForGroup:
+                type: boolean
+        showcasedCharacters:
+          type: array
+          description: Explicitly showcased portfolio characters as public projections, ordered by showcaseOrder. Campaign titles inside adventure blurbs respect viewer linkability.
+          items:
+            $ref: "#/components/schemas/PublicPortfolioCharacterProjection"
+    PublicUserProfileResponse:
+      type: object
+      required:
+        - profile
+      properties:
+        profile:
+          $ref: "#/components/schemas/PublicUserProfile"
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
   responses:
     BadRequest:
       description: Invalid request

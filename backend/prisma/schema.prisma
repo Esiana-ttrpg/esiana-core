@@ -47,8 +47,18 @@ model User {
   timezone String?
   /// BCP 47 UI locale (e.g. en, fr). Null = auto-detect from browser.
   uiLocale String?
+  /// Enables unmodified letter shortcuts for navigation inside campaign workspaces.
+  campaignNavigationShortcutsEnabled Boolean @default(false)
   /// Incremented to invalidate outstanding session JWT cookies.
   sessionVersion Int @default(0)
+  /// Inclusive first calendar day of user vacation (UTC date; null = not away).
+  vacationStartDate DateTime?
+  /// Inclusive last calendar day of user vacation (UTC date; null = not away).
+  vacationEndDate DateTime?
+  /// When true, auto-RSVP Attending for upcoming published sessions within the threshold.
+  autoRsvpEnabled Boolean @default(false)
+  /// Days before session to auto-RSVP: 1 | 3 | 7 | 14. Null treated as 7 when enabled.
+  autoRsvpDaysBefore Int?
 
   campaignMembers    CampaignMember[]
   ownedCampaigns     Campaign[] @relation("CampaignOwner")
@@ -57,6 +67,7 @@ model User {
   notifications              Notification[]
   notificationPreference     UserNotificationPreference?
   apiTokens          UserToken[]
+  calendarSubscription UserCalendarSubscription?
   joinRequests       CampaignJoinRequest[]
   sessionTimelinePoints CampaignSessionTimeline[]
   campaignActivities    CampaignActivity[]
@@ -74,6 +85,7 @@ model User {
   pageNarrativeStatusUpdates PageNarrativeStatus[]     @relation("PageNarrativeStatusUpdatedBy")
   downtimeProjectUpdates    DowntimeProject[]         @relation("DowntimeProjectUpdatedBy")
   downtimeHavenUpdates      DowntimeHaven[]           @relation("DowntimeHavenUpdatedBy")
+  downtimePersonUpdates     DowntimePersonRelationship[] @relation("DowntimePersonUpdatedBy")
   campaignLedgerUpdates     CampaignLedger[]          @relation("CampaignLedgerUpdatedBy")
   campaignLedgerEntriesCreated CampaignLedgerEntry[]    @relation("CampaignLedgerEntryCreatedBy")
   campaignLedgerEntriesUpdated CampaignLedgerEntry[]    @relation("CampaignLedgerEntryUpdatedBy")
@@ -92,6 +104,8 @@ model User {
   journalPublicationsCreated  JournalPublication[] @relation("JournalPublicationCreatedBy")
   journalPublicationsReleased JournalPublication[] @relation("JournalPublicationReleasedBy")
   journalSeriesCreated        JournalSeries[]      @relation("JournalSeriesCreatedBy")
+  userAssets                  UserAsset[]
+  portfolioCharacters         PortfolioCharacter[]
 
   lastLogin DateTime?
   createdAt DateTime @default(now())
@@ -314,6 +328,16 @@ model UserToken {
   @@index([tokenHash])
 }
 
+model UserCalendarSubscription {
+  userId       String   @id
+  tokenHash    String   @unique
+  lastAccessAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
 model PasswordResetToken {
   id        String    @id @default(cuid())
   userId    String
@@ -489,6 +513,10 @@ model Campaign {
   scheduleTime      String?
   /// IANA timezone for public schedule display and applicant overlap hints.
   scheduleTimezone  String?
+  /// When true, this campaign has a recurring table cadence.
+  schedulingEnabled Boolean @default(false)
+  /// When true, create the next session from cadence after the upcoming one passes/skips.
+  autoScheduleUpcomingSession Boolean @default(true)
   currentSession    Int     @default(0)
   sessionDuration   String?
   estimatedLength   String?
@@ -538,6 +566,7 @@ model Campaign {
   characterPageTabs  CharacterPageTab[]
   pluginCharacterPageStates PluginCharacterPageState[]
   characterFields CharacterField[]
+  portfolioCharacterAdventures PortfolioCharacterAdventure[]
   notebookArcs       NoteBookArc[]
   assets             Asset[]
   mapLayers               MapLayer[]
@@ -573,6 +602,7 @@ model Campaign {
   timeAdvanceSimulationRuns    TimeAdvanceSimulationRun[]
   downtimeProjects           DowntimeProject[]
   downtimeHavens             DowntimeHaven[]
+  downtimePeople             DowntimePersonRelationship[]
   campaignLedger             CampaignLedger?
   campaignLedgerEntries      CampaignLedgerEntry[]
   campaignLedgerSuggestions  CampaignLedgerSuggestion[]
@@ -583,6 +613,7 @@ model Campaign {
   campaignScheduledEffects      CampaignScheduledEffect[]
   campaignScheduledEffectOccurrences CampaignScheduledEffectOccurrence[]
   campaignMomentum           CampaignMomentum?
+  eras                       CampaignEra[]
   userPins                   UserCampaignPin[]
   parties                    Party[]
   roleCapabilityOverrides    CampaignRoleCapabilityOverride[]
@@ -638,6 +669,7 @@ model DowntimeProject {
   ledgerSuggestions CampaignLedgerSuggestion[]
   reputationEvents  CampaignReputationEvent[]
   reputationSuggestions CampaignReputationSuggestion[]
+  assignedPeople        DowntimePersonRelationship[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -679,6 +711,7 @@ model DowntimeHaven {
   wikiPage     WikiPage  @relation("DowntimeHavenWiki", fields: [wikiPageId], references: [id], onDelete: Cascade)
   locationPage WikiPage? @relation("DowntimeHavenLocation", fields: [locationPageId], references: [id], onDelete: SetNull)
   updatedBy    User?     @relation("DowntimeHavenUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  assignedPeople DowntimePersonRelationship[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -687,6 +720,48 @@ model DowntimeHaven {
   @@index([campaignId, havenType])
   @@index([campaignId, ownershipType])
   @@index([campaignId, discoveryState])
+}
+
+/// Campaign-scoped operational relationship for a canonical Character page.
+model DowntimePersonRelationship {
+  id                       String   @id @default(cuid())
+  campaignId               String
+  characterPageId          String
+  /// Mirrors characterPageId only while ACTIVE; portable nullable uniqueness.
+  activeCharacterKey       String?
+  /// HIRELING | FOLLOWER | MEMBER
+  relationshipType         String
+  role                     String?
+  /// ACTIVE | INACTIVE | FORMER
+  status                   String   @default("ACTIVE")
+  havenId                  String?
+  projectId                String?
+  compensationAmount       Int?
+  compensationCurrency     String?
+  /// ONE_TIME | WEEKLY | MONTHLY | SEASONAL
+  compensationCadence      String?
+  compensationUnpaid       Boolean  @default(false)
+  features                 Json     @default("[]")
+  notes                    String?
+  startedAtEpochMinute     BigInt?
+  endedAtEpochMinute       BigInt?
+  semanticsVersion         String   @default("downtime-person-v1")
+  updatedByUserId          String?
+
+  campaign      Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  characterPage WikiPage         @relation("DowntimePersonCharacter", fields: [characterPageId], references: [id], onDelete: Cascade)
+  haven         DowntimeHaven?   @relation(fields: [havenId], references: [id], onDelete: SetNull)
+  project       DowntimeProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  updatedBy     User?            @relation("DowntimePersonUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([campaignId, status])
+  @@index([campaignId, characterPageId])
+  @@unique([campaignId, activeCharacterKey])
+  @@index([havenId])
+  @@index([projectId])
 }
 
 /// Layer 1 — campaign economic ledger settings (one per campaign).
@@ -1054,6 +1129,8 @@ model CampaignMomentum {
   campaignId       String @unique
   state            Json   @default("{}")
   semanticsVersion String @default("campaign-momentum-v1")
+  erasMigrated     Boolean @default(false)
+  eraRecurrenceHistory Json @default("{}")
   updatedByUserId  String?
 
   campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -1061,6 +1138,31 @@ model CampaignMomentum {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Chronology-owned era. IDs are campaign-scoped to preserve legacy era-present identities.
+model CampaignEra {
+  campaignId String
+  id String
+  calendarId String
+  name String
+  sortOrder Int
+  isCurrent Boolean @default(false)
+  epochStartMinute BigInt?
+  epochEndMinute BigInt?
+  visibility String @default("PARTY")
+  overviewPageId String @unique
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  calendar FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
+  overview WikiPage @relation(fields: [overviewPageId], references: [id], onDelete: Restrict)
+
+  @@id([campaignId, id])
+  @@index([campaignId, calendarId, sortOrder])
 }
 
 /// Layer 1 — pending world event prompts from pressure projection (human-approved only).
@@ -1273,6 +1375,7 @@ model UserWritingDailyRollup {
 }
 
 model FantasyCalendar {
+  eras CampaignEra[]
   id           String  @id @default(uuid())
   campaignId   String
   name         String
@@ -1414,6 +1517,7 @@ model CampaignMember {
 // ---------------------------------------------------------------------------
 
 model WikiPage {
+  ownedEra CampaignEra?
   id              String  @id @default(cuid())
   campaignId      String
   /// Workspace namespace for public routing (scoped with pathKey).
@@ -1465,6 +1569,7 @@ model WikiPage {
   downtimeProjectsOwned    DowntimeProject[] @relation("DowntimeProjectOwner")
   downtimeProjectsAtHaven  DowntimeProject[] @relation("DowntimeProjectHaven")
   downtimeHaven            DowntimeHaven?    @relation("DowntimeHavenWiki")
+  downtimePersonRelationships DowntimePersonRelationship[] @relation("DowntimePersonCharacter")
   downtimeHavensAtLocation DowntimeHaven[]   @relation("DowntimeHavenLocation")
   campaignLedgerEntriesAtHaven CampaignLedgerEntry[] @relation("CampaignLedgerEntryHaven")
   campaignLedgerEntriesAsContributor CampaignLedgerEntry[] @relation("CampaignLedgerEntryContributor")
@@ -1479,6 +1584,7 @@ model WikiPage {
   characterPageTabs CharacterPageTab[] @relation("CharacterPageTabs")
   pluginCharacterPageStates PluginCharacterPageState[] @relation("PluginCharacterPageStates")
   characterFields CharacterField[] @relation("CharacterFields")
+  portfolioAdventures PortfolioCharacterAdventure[] @relation("PortfolioAdventureCampaignPage")
 
   deletedAt DateTime?
 
@@ -1710,6 +1816,12 @@ model CampaignSessionSchedule {
   locationPageId  String?
   reminderSentAt  DateTime?
   publishedAt     DateTime?
+  /// MANUAL | CADENCE — whether automation owns this occurrence.
+  origin          String @default("MANUAL")
+  /// Optional brief reason when status is SKIPPED (max 200 chars enforced in app).
+  skipReason      String?
+  /// Optional planned in-world start (campaign epoch minutes). Distinct from OOC plannedStartAt.
+  plannedWorldEpochMinute BigInt?
 
   timelinePoint CampaignSessionTimeline @relation(fields: [timelinePointId], references: [id], onDelete: Cascade)
 
@@ -1718,6 +1830,7 @@ model CampaignSessionSchedule {
 
   @@index([status, plannedStartAt])
   @@index([plannedStartAt, reminderSentAt])
+  @@index([origin, status, plannedStartAt])
 }
 
 model SessionAttendance {
@@ -2552,4 +2665,124 @@ model SearchIndexDocument {
   @@index([campaignId, visibility])
   @@index([partyVector], type: Gin)
   @@index([elevatedVector], type: Gin)
+}
+
+// ---------------------------------------------------------------------------
+// Character Portfolio (user-owned; not campaign-scoped)
+// ---------------------------------------------------------------------------
+
+/// User-owned media for portfolio portraits and galleries (separate from campaign Asset).
+model UserAsset {
+  id           String  @id @default(cuid())
+  userId       String
+  url          String
+  type         String  @default("image")
+  displayUrl   String?
+  thumbnailUrl String?
+  width        Int?
+  height       Int?
+  displayName  String?
+  imageCredit  Json?
+
+  user   User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media  PortfolioCharacterMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+/// Player-owned character identity across stories (not a campaign wiki page).
+model PortfolioCharacter {
+  id           String  @id @default(cuid())
+  userId       String
+  name         String
+  /// Long-form biography (markdown/plain).
+  biography    String  @default("")
+  /// System-agnostic Core identity/physical-appearance JSON (no campaign page IDs).
+  metadata     Json    @default("{}")
+  /// Soft presentation: short epithet for editorial hero.
+  tagline      String?
+  /// Soft presentation: class/role free text (not a rules engine).
+  roleLabel    String?
+  /// Soft presentation: level free text (e.g. "7" or "Level 7").
+  levelLabel   String?
+  favoritedAt  DateTime?
+  archivedAt   DateTime?
+  /// Explicit showcase membership — public exposure requires true.
+  isShowcased  Boolean @default(false)
+  /// Order among showcased characters; meaningful only when isShowcased.
+  showcaseOrder Int?
+  /// Convenience pointer to PORTRAIT media row (optional).
+  portraitMediaId String? @unique
+
+  user          User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  portraitMedia PortfolioCharacterMedia?    @relation("CharacterPortrait", fields: [portraitMediaId], references: [id], onDelete: SetNull)
+  media         PortfolioCharacterMedia[]   @relation("CharacterMedia")
+  adventures    PortfolioCharacterAdventure[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isShowcased, showcaseOrder])
+  @@index([userId, archivedAt])
+}
+
+/// First-class gallery/portrait association for a portfolio character.
+model PortfolioCharacterMedia {
+  id                   String  @id @default(cuid())
+  portfolioCharacterId String
+  userAssetId          String
+  /// PORTRAIT | GALLERY
+  kind                 String
+  caption              String?
+  sortOrder            Int     @default(0)
+  /// Reserved for Moments: when this media "happened".
+  occurredAt           DateTime?
+  /// Reserved for Moments: optional adventure link.
+  adventureId          String?
+
+  character PortfolioCharacter           @relation("CharacterMedia", fields: [portfolioCharacterId], references: [id], onDelete: Cascade)
+  userAsset UserAsset                    @relation(fields: [userAssetId], references: [id], onDelete: Cascade)
+  adventure PortfolioCharacterAdventure? @relation(fields: [adventureId], references: [id], onDelete: SetNull)
+  portraitFor PortfolioCharacter?        @relation("CharacterPortrait")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioCharacterId, kind, sortOrder])
+  @@index([userAssetId])
+  @@index([adventureId])
+}
+
+/// Provenance + historical record of a portfolio character's campaign incarnation.
+model PortfolioCharacterAdventure {
+  id                       String  @id @default(cuid())
+  portfolioCharacterId     String
+  /// Nullable when the campaign is deleted (DETACHED); snapshot remains.
+  campaignId               String?
+  /// Nullable if the campaign wiki page was deleted (DETACHED).
+  campaignCharacterPageId  String?
+  /// TO_CAMPAIGN | FROM_CAMPAIGN
+  direction                String
+  /// CURRENT | PAST | DETACHED
+  status                   String
+  /// Stable snapshot: campaignTitle, roleLabel, levelStart/End, dates, sessionCount, etc.
+  snapshot                 Json    @default("{}")
+  linkedAt                 DateTime @default(now())
+  unlinkedAt               DateTime?
+
+  character       PortfolioCharacter         @relation(fields: [portfolioCharacterId], references: [id], onDelete: Cascade)
+  campaign        Campaign?                  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignPage    WikiPage?                  @relation("PortfolioAdventureCampaignPage", fields: [campaignCharacterPageId], references: [id], onDelete: SetNull)
+  mediaMoments    PortfolioCharacterMedia[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portfolioCharacterId, status])
+  @@index([campaignId])
+  @@index([campaignCharacterPageId])
 }

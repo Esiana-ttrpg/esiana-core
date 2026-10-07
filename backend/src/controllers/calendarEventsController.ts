@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
 import { canManageChronology } from '../lib/acl.js';
+import { chronologyCanView, chronologyElevated } from '../lib/chronologyAccess.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import { convertEpochToCalendarState } from '../lib/timeEngine.js';
@@ -124,7 +125,7 @@ async function ensureCategoryInCampaign(campaignId: string, categoryId: string) 
 async function ensurePrerequisiteInCampaign(campaignId: string, prerequisiteId: string) {
   return prisma.calendarEvent.findFirst({
     where: { id: prerequisiteId, calendar: { campaignId } },
-    select: { id: true },
+    select: { id: true, visibility: true },
   });
 }
 
@@ -213,7 +214,7 @@ export async function listCalendarEvents(
   const events = await prisma.calendarEvent.findMany({
     where: {
       calendarId,
-      ...chronologyVisibilityFilter(canManage),
+      ...chronologyVisibilityFilter(chronologyElevated(req.campaign!)),
     },
     orderBy: [
       { targetEpochMinute: 'asc' },
@@ -224,7 +225,9 @@ export async function listCalendarEvents(
     ],
   });
 
-  res.json({ events: events.map(serializeEvent) });
+  const visible = events.filter(event => chronologyCanView(req.campaign!, event.visibility));
+  const visibleIds = new Set(visible.map(event => event.id));
+  res.json({ events: visible.map(event => serializeEvent({ ...event, prerequisiteId: event.prerequisiteId && visibleIds.has(event.prerequisiteId) ? event.prerequisiteId : null })) });
 }
 
 export async function createCalendarEvent(
@@ -271,13 +274,16 @@ export async function createCalendarEvent(
   }
   if (prerequisiteId) {
     const prerequisite = await ensurePrerequisiteInCampaign(campaignId, prerequisiteId);
-    if (!prerequisite) {
+    if (!prerequisite || !chronologyCanView(req.campaign!, prerequisite.visibility)) {
       res.status(400).json({ error: 'prerequisiteId must reference an event in this campaign' });
       return;
     }
   }
 
   const visibility = parseEventVisibility(body.visibility);
+  if (visibility === 'DM_ONLY' && !chronologyElevated(req.campaign!)) {
+    res.status(403).json({ error: 'DM-only content requires elevated narrative access.' }); return;
+  }
   if (body.visibility !== undefined && visibility === null) {
     res.status(400).json({ error: 'visibility must be PUBLIC, PARTY, or DM_ONLY' });
     return;
@@ -454,7 +460,7 @@ export async function updateCalendarEvent(
   const existing = await prisma.calendarEvent.findFirst({
     where: { id: eventId, calendarId },
   });
-  if (!existing) {
+  if (!existing || !chronologyCanView(req.campaign!, existing.visibility)) {
     res.status(404).json({ error: 'Event not found' });
     return;
   }
@@ -499,7 +505,7 @@ export async function updateCalendarEvent(
   }
   if (prerequisiteId) {
     const prerequisite = await ensurePrerequisiteInCampaign(campaignId, prerequisiteId);
-    if (!prerequisite) {
+    if (!prerequisite || !chronologyCanView(req.campaign!, prerequisite.visibility)) {
       res.status(400).json({ error: 'prerequisiteId must reference an event in this campaign' });
       return;
     }
@@ -507,6 +513,9 @@ export async function updateCalendarEvent(
 
   const parsedVisibility =
     body.visibility === undefined ? existing.visibility : parseEventVisibility(body.visibility);
+  if (parsedVisibility === 'DM_ONLY' && !chronologyElevated(req.campaign!)) {
+    res.status(403).json({ error: 'DM-only content requires elevated narrative access.' }); return;
+  }
   if (body.visibility !== undefined && parsedVisibility === null) {
     res.status(400).json({ error: 'visibility must be PUBLIC, PARTY, or DM_ONLY' });
     return;
@@ -655,9 +664,9 @@ export async function deleteCalendarEvent(
 
   const existing = await prisma.calendarEvent.findFirst({
     where: { id: eventId, calendarId },
-    select: { id: true },
+    select: { id: true, visibility: true },
   });
-  if (!existing) {
+  if (!existing || !chronologyCanView(req.campaign!, existing.visibility)) {
     res.status(404).json({ error: 'Event not found' });
     return;
   }

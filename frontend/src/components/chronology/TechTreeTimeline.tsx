@@ -142,6 +142,7 @@ function FragmentRow({
                       </span>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5">
                         <p className="text-sm font-medium text-foreground">{event.title}</p>
+                        {!!event.eraNames?.length && <p className="text-xs text-muted-foreground">{event.eraNames.join(' · ')}</p>}
                         <ElevatedBrowseVisibilityChip
                           pageVisibility={event.visibility}
                           showWhenElevated={showElevatedVisibility}

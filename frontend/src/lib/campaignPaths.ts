@@ -114,7 +114,7 @@ export function campaignPagesIndexPath(handle: string): string {
 }
 
 export function campaignCreativeDriftPath(handle: string): string {
-  return campaignPath(handle, 'narrative', 'unresolved');
+  return `${campaignAdventureHubPath(handle)}?view=unresolved`;
 }
 
 export function campaignProgressionPath(

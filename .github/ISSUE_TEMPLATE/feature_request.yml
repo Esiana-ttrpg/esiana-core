@@ -1,55 +1,38 @@
 name: Feature request
-description: Suggest narrative infrastructure improvements for Esiana core
+description: Suggest an idea or improvement for Esiana
 title: "[Feature]: "
 labels:
   - enhancement
+
 body:
   - type: markdown
     attributes:
       value: |
-        Esiana is campaign narrative infrastructure — not a VTT. See [philosophy.md](../../philosophy.md) for product scope.
-        Plugin-only integrations may belong in [community-plugins](https://github.com/Esiana-ttrpg/community-plugins) instead.
+        Have an idea that would make Esiana better? Tell us about it.
+
+        Esiana focuses on campaign narrative and continuity rather than virtual tabletop features. Integrations with other tools may be better suited for [community-plugins](https://github.com/Esiana-ttrpg/community-plugins).
 
   - type: textarea
     id: problem
     attributes:
-      label: Problem or gap
-      description: What workflow or continuity need is unmet?
-    validations:
-      required: true
-
-  - type: textarea
-    id: narrative-fit
-    attributes:
-      label: Narrative continuity fit
-      description: How does this strengthen continuity, discovery, or temporal world state?
-    validations:
-      required: true
-
-  - type: dropdown
-    id: scope
-    attributes:
-      label: Scope
-      options:
-        - Core product (esiana-core)
-        - Plugin / integration (community-plugins)
-        - Documentation only
-        - Unsure
+      label: What would you like to improve?
+      description: Describe what's missing, difficult, or could work better.
+      placeholder: It would be helpful if...
     validations:
       required: true
 
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed solution
-      description: Optional — sketch UX, API, or data model at a high level
+      label: What would you like to see?
+      description: Describe how you imagine this working. Screenshots, examples, or rough ideas are welcome.
     validations:
       required: false
 
-  - type: checkboxes
-    id: alternatives
+  - type: textarea
+    id: context
     attributes:
-      label: Alternatives considered
-      options:
-        - label: I checked deferred scope in docs/deferred-backlog.md or todo.md
-          required: false
+      label: Anything else?
+      description: Add any other context that might help us understand the request.
+    validations:
+      required: false

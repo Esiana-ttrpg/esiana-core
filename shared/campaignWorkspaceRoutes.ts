@@ -287,6 +287,8 @@ export type CreatableCodexPageType = {
   segment: NonNullable<ReturnType<typeof workspaceToSegment>>;
   /** Category folder title from indexResolver wikiTitle. */
   categoryTitle: string;
+  /** Sidebar section id for visibility + icon parity with campaign nav. */
+  sidebarId: string;
 };
 
 /**
@@ -299,12 +301,14 @@ export function listCreatableCodexPageTypes(): readonly CreatableCodexPageType[]
     if (route.createVia !== 'create-page-modal') continue;
     if (!route.workspace) continue;
     if (route.indexResolver.type !== 'wikiTitle') continue;
+    if (!route.sidebarId) continue;
     const segment = workspaceToSegment(route.workspace);
     if (!segment) continue;
     result.push({
       workspace: route.workspace,
       segment,
       categoryTitle: route.indexResolver.title,
+      sidebarId: route.sidebarId,
     });
   }
   return result;
@@ -363,12 +367,24 @@ const CATEGORY_FOLDER_SEGMENT_ALIASES: Record<string, string> = {
   Threads: 'threads',
 };
 
+const DOWNTIME_CATEGORY_SECTIONS: Record<string, string> = {
+  Havens: 'havens',
+  Projects: 'projects',
+};
+
 export function resolveWorkspaceIndexPathForFolderTitle(
   handle: string,
   title: string,
 ): PublicPagePath | null {
   const normalized = title.trim();
   if (!normalized) return null;
+
+  const downtimeSection = DOWNTIME_CATEGORY_SECTIONS[normalized];
+  if (downtimeSection) {
+    return asPublicPagePath(
+      `${campaignWorkspaceIndexPath(handle, 'downtime')}?section=${downtimeSection}`,
+    );
+  }
 
   const aliasSegment = CATEGORY_FOLDER_SEGMENT_ALIASES[normalized];
   if (aliasSegment) {

@@ -26,6 +26,10 @@ import { toInputJsonValue } from '../lib/inputJsonValue.js';
 import type { Prisma } from '../lib/prismaClient.js';
 import { enrichSidebarConfigWithIconUrls } from '../lib/sidebarIconEnrich.js';
 import { PLAYER_SESSION_NOTES_TITLE } from '../lib/seedWiki.js';
+import {
+  SessionAttendanceStatus,
+  SessionScheduleStatus,
+} from '../lib/notifications/types.js';
 import { ensureQuickAccessCategoryTitle } from '../lib/ensureQuickAccessCategoryTitle.js';
 import { ensureRemoveLegacyDashboardWikiPage } from '../lib/ensureRemoveLegacyDashboardWikiPage.js';
 import { normalizeEntityCategoryKey } from '../lib/entityCategoryKeys.js';
@@ -178,6 +182,7 @@ import {
   loadSessionHeaderContext,
   resolveSessionGroupContext,
 } from '../lib/sessionNotesCombined.js';
+import { loadKnownEntitiesForAggregation } from '../lib/sessionNoteAggregation/index.js';
 import { buildSessionNotesAttendance } from '../lib/sessionNotesAttendance.js';
 import {
   getAggregatedReferencesForPages,
@@ -582,6 +587,10 @@ async function formatWikiPageDetailResponse(
     const sanitized = sanitizeSceneMetadataForRole(parsed, canManage);
     metadata = mergeSceneMetadata(rest.metadata, sanitized);
   }
+  if (options?.campaignId && !(options.actor ? hasElevatedNarrativeView(options.actor) : canManage)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    metadata = redactEraReferences(metadata, await hiddenEraIds(options.campaignId));
+  }
   const normalizedBlocks = normalizeBlocksWithStableIds(rest.blocks);
   let responseBlocks = normalizedBlocks.blocks;
 
@@ -847,6 +856,11 @@ export async function getWikiTree(
 
   sidebarConfig = await enrichSidebarConfigWithIconUrls(sidebarConfig);
 
+  if (!hasElevatedNarrativeView(ctx.actor)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    const hidden = await hiddenEraIds(ctx.campaignId);
+    for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
+  }
   const tree = buildWikiTree(pages, ctx.role);
 
   const lastWikiUpdate = pages.reduce<Date | null>((latest, page) => {
@@ -1461,12 +1475,32 @@ export async function getWikiPage(
   );
 }
 
+async function rejectEraOwnedOverview(
+  campaignId: string,
+  pageId: string,
+  actor: CampaignActor,
+  res: Response,
+): Promise<boolean> {
+  const ownedEra = await prisma.campaignEra.findFirst({
+    where: { campaignId, overviewPageId: pageId },
+    select: { visibility: true },
+  });
+  if (!ownedEra) return false;
+  if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(actor)) {
+    res.status(404).json({ error: 'Page not found' });
+    return true;
+  }
+  res.status(409).json({ error: 'Manage this era Overview in Chronology.' });
+  return true;
+}
+
 export async function updateWikiPage(
   req: CampaignScopedRequest & AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { parentId, title, tags } = req.body as {
     parentId?: string | null;
     title?: string;
@@ -1644,6 +1678,7 @@ export async function transformWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { targetModule } = req.body as { targetModule?: string };
 
   if (typeof targetModule !== 'string' || !targetModule.trim()) {
@@ -1994,6 +2029,7 @@ export async function updateWikiPageLayout(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { temporal, rest } = extractTemporalFromBody(req.body);
   const { blocks } = rest as {
     blocks?: Array<Record<string, unknown>>;
@@ -2147,6 +2183,7 @@ export async function updateWikiPageVisibility(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { visibility } = req.body as { visibility?: string };
 
   if (
@@ -2259,6 +2296,7 @@ export async function updateWikiPageMetadata(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const body = req.body as Record<string, unknown> & {
     key?: string;
     value?: string;
@@ -2952,6 +2990,11 @@ export async function updateWikiPageMetadata(
         partyParticipation: characterPatchInput.partyParticipation,
       }).partyParticipation;
     }
+    if ('eraTrajectories' in characterPatchInput) {
+      patch.eraTrajectories = parseCharacterMetadata({
+        eraTrajectories: characterPatchInput.eraTrajectories,
+      }).eraTrajectories;
+    }
     if ('appearance' in characterPatchInput) {
       const appearanceInput = characterPatchInput.appearance;
       if (
@@ -3144,15 +3187,23 @@ export async function updateWikiPageMetadata(
 
   const parsed = parseQuestMetadata(updatedPage.metadata);
   const threadParse = parseThreadMetadataWithWarnings(updatedPage.metadata);
+  let responseMetadata = isQuestMetadataPresent(updatedPage.metadata)
+    ? mergeQuestMetadata(
+        updatedPage.metadata,
+        sanitizeQuestMetadataForRole(parsed, canManage),
+      )
+    : isThreadMetadataPresent(updatedPage.metadata)
+      ? mergeThreadMetadata(updatedPage.metadata, threadParse.fields)
+      : updatedPage.metadata;
+  if (!hasElevatedNarrativeView(ctx.actor)) {
+    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+    responseMetadata = redactEraReferences(
+      responseMetadata,
+      await hiddenEraIds(ctx.campaignId),
+    ) as typeof responseMetadata;
+  }
   res.json({
-    metadata: isQuestMetadataPresent(updatedPage.metadata)
-      ? mergeQuestMetadata(
-          updatedPage.metadata,
-          sanitizeQuestMetadataForRole(parsed, canManage),
-        )
-      : isThreadMetadataPresent(updatedPage.metadata)
-        ? mergeThreadMetadata(updatedPage.metadata, threadParse.fields)
-        : updatedPage.metadata,
+    metadata: responseMetadata,
     ...(canManage && threadParse.warnings.length > 0
       ? { metadataWarnings: threadParse.warnings }
       : {}),
@@ -4814,6 +4865,7 @@ export async function deleteWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const parsed = parseWikiDeleteBody(req.body);
   if (!parsed.ok) {
     res.status(400).json({ error: parsed.error });
@@ -4840,12 +4892,15 @@ export async function deleteWikiPage(
   const actorId = req.user?.id;
 
   try {
+    const { detachAdventuresForDeletedPage } = await import('../lib/portfolio/transform.js');
+
     if (parsed.mode === 'orphan') {
       const result = await executeOrphanDelete(ctx.campaignId, pageId, actorId);
       if (!result) {
         res.status(404).json({ error: 'Page not found' });
         return;
       }
+      await detachAdventuresForDeletedPage([pageId]);
       dispatchDomainEvent({
         type: CoreDomainEvents.WIKI_DELETED,
         campaignId: ctx.campaignId,
@@ -4875,6 +4930,7 @@ export async function deleteWikiPage(
       res.status(404).json({ error: 'Page not found' });
       return;
     }
+    await detachAdventuresForDeletedPage(result.deletedPageIds);
     dispatchDomainEvent({
       type: CoreDomainEvents.WIKI_DELETED,
       campaignId: ctx.campaignId,
@@ -5363,6 +5419,31 @@ export async function ensureSessionAuthorNote(
     res.status(404).json({ error: 'Player Session Notes folder not found' });
     return;
   }
+
+  // Check-in on note access: create ATTENDING only when no RSVP exists yet.
+  // Never overwrite ABSENT / LATE / MAYBE on subsequent opens.
+  const schedule = await prisma.campaignSessionSchedule.findUnique({
+    where: { timelinePointId },
+    select: { status: true },
+  });
+  if (schedule?.status !== SessionScheduleStatus.SKIPPED) {
+    const existingAttendance = await prisma.sessionAttendance.findUnique({
+      where: {
+        timelinePointId_userId: { timelinePointId, userId },
+      },
+      select: { userId: true },
+    });
+    if (!existingAttendance) {
+      await prisma.sessionAttendance.create({
+        data: {
+          timelinePointId,
+          userId,
+          status: SessionAttendanceStatus.ATTENDING,
+        },
+      });
+    }
+  }
+
   if (result.kind === 'existing') {
     res.json({
       created: false,
@@ -5426,7 +5507,7 @@ export async function getCombinedSessionNotes(
   });
   const primaryCalendar = campaignRow?.fantasyCalendars[0] ?? null;
 
-  const [members, authorPages, sessionHeader] = await Promise.all([
+  const [members, authorPages, sessionHeader, knownEntities] = await Promise.all([
     loadSessionRosterMembers(ctx.campaignId),
     fetchAuthorPagesForSession(
       ctx.campaignId,
@@ -5438,6 +5519,10 @@ export async function getCombinedSessionNotes(
       groupCtx,
       primaryCalendar,
     ),
+    loadKnownEntitiesForAggregation({
+      campaignId: ctx.campaignId,
+      role: ctx.role,
+    }),
   ]);
 
   const rosterMembers = members
@@ -5446,7 +5531,9 @@ export async function getCombinedSessionNotes(
 
   const entityIdSet = new Set<string>();
   for (const page of authorPages) {
-    if (!canManage && page.visibility === WikiVisibility.DM_ONLY) continue;
+    // Party-visible corpus only: DM_Only never contributes wiki-link entity chips
+    // tied to aggregate (even for managers).
+    if (page.visibility === WikiVisibility.DM_ONLY) continue;
     const blocks = Array.isArray(page.blocks)
       ? (page.blocks as Array<Record<string, unknown>>)
       : [];
@@ -5467,6 +5554,11 @@ export async function getCombinedSessionNotes(
       : [];
 
   const pageTitlesById = new Map(titlePages.map((p) => [p.id, p.title] as const));
+  for (const entity of knownEntities) {
+    if (!pageTitlesById.has(entity.pageId)) {
+      pageTitlesById.set(entity.pageId, entity.title);
+    }
+  }
 
   const built = buildCombinedSessionNotes({
     session: sessionHeader,
@@ -5474,6 +5566,7 @@ export async function getCombinedSessionNotes(
     members: rosterMembers,
     authorPages,
     pageTitlesById,
+    knownEntities,
   });
 
   const blocksByPageId = new Map<string, Array<Record<string, unknown>>>();

@@ -6,8 +6,10 @@ import type { ResolvedShelfDensity } from '@/lib/hubDensityPreference';
 import { buildCampaignWorldPresentation } from '@/lib/buildCampaignWorldPresentation';
 import { accentGlowShadow } from '@/lib/hubAmbientTheme';
 import { campaignDashboardPath } from '@/lib/campaignPaths';
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { CampaignPinButton } from '@/components/hub/CampaignPinButton';
+import { CampaignArtworkPreviewButton } from '@/components/hub/CampaignArtworkPreviewButton';
 import { HubRoleMomentumMeta } from '@/components/hub/HubMomentumBadge';
 import { formatRelativeUpdated } from '@/utils/formatDate';
 
@@ -31,42 +33,68 @@ export function CampaignLibraryCard({
   const featuredOnHearth = campaign.hubSignals?.featuredOnHearth ?? false;
   const effectiveDensity = featuredOnHearth && density === 'cinematic' ? 'shelf' : density;
   const bannerHeight =
-    effectiveDensity === 'cinematic' ? 'h-28' : effectiveDensity === 'shelf' ? 'h-16' : 'h-12';
+    effectiveDensity === 'cinematic' ? 'h-56' : effectiveDensity === 'shelf' ? 'h-36' : 'h-12';
   const href = campaignDashboardPath(campaign.handle);
   const nextSession = campaign.hubSignals?.nextSession;
   const party = campaign.hubSignals?.partyPreview ?? [];
-  const hoverGlow = accentGlowShadow(presentation.accentColor, 0.18);
+  const restingGlow = accentGlowShadow(presentation.accentColor, 0.1);
+  const hoverGlow = accentGlowShadow(presentation.accentColor, 0.2);
+  const cardMinHeight =
+    effectiveDensity === 'cinematic'
+      ? 'min-h-[22rem]'
+      : effectiveDensity === 'shelf'
+        ? 'min-h-[18rem]'
+        : '';
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-xl border bg-surface transition-all ${
-        featuredOnHearth ? 'hub-hearth border-border' : 'border-border hover:border-border/80'
-      } ${effectiveDensity === 'ledger' ? 'flex flex-row' : 'flex flex-col'}`}
+      className={`group relative flex h-full overflow-hidden rounded-xl border transition-all ${cardMinHeight} ${
+        featuredOnHearth ? 'hub-hearth' : ''
+      } ${effectiveDensity === 'ledger' ? 'flex-row' : 'flex-col'}`}
       style={
         {
+          ...presentation.cardStyle,
+          boxShadow: restingGlow,
+          borderColor: `rgba(${presentation.accentRgb}, 0.28)`,
           borderLeftColor: presentation.accentColor,
-          borderLeftWidth: 3,
-          '--card-accent': presentation.accentColor,
+          background: `color-mix(in srgb, rgba(${presentation.accentRgb}, 0.06) 40%, var(--color-depth-3, var(--color-focal-elevated)))`,
         } as CSSProperties
       }
       onMouseEnter={(e) => {
         e.currentTarget.style.boxShadow = hoverGlow;
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = '';
+        e.currentTarget.style.boxShadow = restingGlow;
       }}
     >
-      <Link
-        to={href}
+      <div
         className={`relative shrink-0 overflow-hidden ${bannerHeight} ${
           effectiveDensity === 'ledger' ? 'w-2' : 'w-full'
         }`}
-        style={effectiveDensity !== 'ledger' ? presentation.backdropStyle : { backgroundColor: presentation.accentColor }}
       >
-        {effectiveDensity !== 'ledger' ? (
-          <div className="absolute inset-0" style={presentation.overlayStyle} />
+        <Link
+          to={href}
+          aria-label={`Enter ${campaign.name}`}
+          className="absolute inset-0"
+          style={
+            effectiveDensity !== 'ledger'
+              ? presentation.backdropStyle
+              : { backgroundColor: presentation.accentColor }
+          }
+        >
+          {effectiveDensity !== 'ledger' ? (
+            <span className="absolute inset-0" style={presentation.overlayStyle} />
+          ) : null}
+        </Link>
+        {presentation.coverUrl && effectiveDensity !== 'ledger' ? (
+          <div className="absolute right-2 top-2 z-[2]">
+            <CampaignArtworkPreviewButton
+              src={presentation.coverUrl}
+              alt={`${campaign.name} artwork`}
+            />
+          </div>
         ) : null}
-      </Link>
+      </div>
 
       <div className={`flex flex-1 flex-col p-3 ${effectiveDensity === 'ledger' ? 'py-2' : ''}`}>
         <div className="flex items-start justify-between gap-2">
@@ -77,11 +105,19 @@ export function CampaignLibraryCard({
               </span>
             ) : null}
             {presentation.arcTitle ? (
-              <h3 className="truncate font-semibold text-foreground group-hover:[color:var(--card-accent)]">
+              <h3
+                className={`truncate ${TYPE_DISPLAY_CLASS} !text-base group-hover:[color:var(--card-accent)]`}
+              >
                 {presentation.arcTitle}
               </h3>
             ) : null}
-            <p className={`truncate text-foreground/90 ${presentation.arcTitle ? 'text-xs text-muted' : 'font-semibold'}`}>
+            <p
+              className={`truncate ${
+                presentation.arcTitle
+                  ? 'text-xs text-muted'
+                  : `${TYPE_DISPLAY_CLASS} !text-base`
+              }`}
+            >
               {campaign.name}
             </p>
           </div>

@@ -76,10 +76,13 @@ import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageSh
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { CharacterMasthead } from '@/components/entity/shells/CharacterMasthead';
+import { AddToPortfolioButton } from '@/components/portfolio/AddToPortfolioButton';
 import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
 import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
 import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVisibilityBadge';
 import { CharacterCanvasPage } from '@/components/entity/CharacterCanvasPage';
+import { CharacterDowntimePage } from '@/components/downtime/CharacterDowntimePage';
+import { isHirelingDowntimeManagedPage } from '@/lib/hirelingManagedPage';
 import { PluginCharacterPageHost } from '@/components/entity/PluginCharacterPageHost';
 import { CharacterPageManager } from '@/components/entity/CharacterPageManager';
 import { EntityCustomFieldsPanel } from '@/components/entity/EntityCustomFieldsPanel';
@@ -1531,6 +1534,12 @@ export function WikiPage() {
 
   const wikiPageRendererSlot = useMemo(() => {
     if (!pageData) return null;
+    if (
+      entityPageShell.key === 'character' &&
+      isHirelingDowntimeManagedPage(activeCharacterPage)
+    ) {
+      return <CharacterDowntimePage campaignHandle={campaignHandle} characterPageId={pageId} />;
+    }
     if (managesEntityPages && activeCharacterPage?.renderMode === 'CANVAS') {
       return (
         <CharacterCanvasPage
@@ -2115,12 +2124,24 @@ export function WikiPage() {
                   </div>
                 ) : undefined}
                 visibilityControl={
-                  <NarrativeVisibilityBadge
-                    pageVisibility={pageVisibility}
-                    discovery={pageCodexDiagnostics.discovery}
-                    isEditingPage={isEditingPage}
-                    onVisibilityChange={handleVisibilityChange}
-                  />
+                  <div className="flex flex-col items-end gap-2">
+                    <NarrativeVisibilityBadge
+                      pageVisibility={pageVisibility}
+                      discovery={pageCodexDiagnostics.discovery}
+                      isEditingPage={isEditingPage}
+                      onVisibilityChange={handleVisibilityChange}
+                    />
+                    {pageId ? (
+                      <AddToPortfolioButton
+                        pageId={pageId}
+                        characterName={
+                          characterIdentityProjection?.displayName ??
+                          pageData?.title ??
+                          'Character'
+                        }
+                      />
+                    ) : null}
+                  </div>
                 }
               />
             ) : undefined}

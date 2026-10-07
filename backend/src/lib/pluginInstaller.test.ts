@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isBackendOnlyGlobalPlugin,
   isDataOnlyContentPackPlugin,
+  hasSupportedPluginRuntime,
   PluginCapabilities,
   PluginScopes,
 } from './pluginManifest.js';
@@ -39,6 +40,17 @@ test('isBackendOnlyGlobalPlugin rejects campaign scope without frontend', () => 
       capabilities: [PluginCapabilities.DEVELOPMENT_PROVIDER],
     }),
     false,
+  );
+});
+
+test('hasSupportedPluginRuntime accepts a frontend-only global plugin', () => {
+  assert.equal(
+    hasSupportedPluginRuntime({
+      scope: PluginScopes.GLOBAL,
+      capabilities: [],
+      frontendEntry: 'frontend/index.js',
+    }),
+    true,
   );
 });
 

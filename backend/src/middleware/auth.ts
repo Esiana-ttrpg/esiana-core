@@ -101,6 +101,7 @@ async function attachUserFromCookie(
         role: true,
         passwordHash: true,
         sessionVersion: true,
+        campaignNavigationShortcutsEnabled: true,
       },
     });
     if (!user) return false;
@@ -216,6 +217,7 @@ export async function authenticateApiOrSession(
               displayName: true,
               avatarUrl: true,
               role: true,
+              campaignNavigationShortcutsEnabled: true,
             },
           },
         },

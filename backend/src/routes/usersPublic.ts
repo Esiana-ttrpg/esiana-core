@@ -4,6 +4,10 @@ import {
   getUserAvatar,
 } from '../controllers/userPublicController.js';
 import { getPublicCreatorAttribution, getPublicUserActivity } from '../controllers/statsController.js';
+import {
+  getPublicPortfolioCharacter,
+  getUserAssetFile,
+} from '../controllers/portfolioController.js';
 import { optionalAuth } from '../middleware/auth.js';
 import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 
@@ -16,6 +20,17 @@ usersPublicRouter.get(
   rateLimitPolicy('expensive', { scope: 'ip' }),
   getUserAvatar,
 );
-usersPublicRouter.get('/:id/public-profile', getPublicUserProfile);
+usersPublicRouter.get('/:id/public-profile', optionalAuth, getPublicUserProfile);
 usersPublicRouter.get('/:id/creator-attribution', optionalAuth, getPublicCreatorAttribution);
 usersPublicRouter.get('/:id/activity', optionalAuth, getPublicUserActivity);
+usersPublicRouter.get(
+  '/:id/characters/:characterId',
+  optionalAuth,
+  getPublicPortfolioCharacter,
+);
+usersPublicRouter.get(
+  '/assets/:assetId',
+  optionalAuth,
+  rateLimitPolicy('expensive', { scope: 'ip' }),
+  getUserAssetFile,
+);

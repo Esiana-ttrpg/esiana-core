@@ -15,6 +15,7 @@ export interface User {
   username?: string;
   role: UserRole;
   passwordAuthEnabled?: boolean;
+  campaignNavigationShortcutsEnabled?: boolean;
 }
 
 export interface CampaignSummary {
@@ -79,6 +80,8 @@ export interface CampaignDetail extends CampaignSummary {
   recruitmentPremise?: string | null;
   recruitmentBeforeApplyNote?: string | null;
   scheduleTimezone?: string | null;
+  schedulingEnabled?: boolean;
+  autoScheduleUpcomingSession?: boolean;
   campaignFormat?: string | null;
   experienceRequired?: string | null;
   ageRestriction?: string | null;

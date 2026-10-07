@@ -29,7 +29,17 @@ export function SchedulingStep({ schedule, onChange }: SchedulingStepProps) {
       onChange({ enabled: false });
       return;
     }
-    onChange({ enabled: true, cadence: optionId as ScheduleCadence });
+    onChange({
+      enabled: true,
+      cadence: optionId as ScheduleCadence,
+      firstSessionDate: schedule?.firstSessionDate ?? '',
+      firstSessionTime: schedule?.firstSessionTime ?? '',
+    });
+  }
+
+  function patch(partial: Partial<ScheduleDraft>) {
+    if (!schedule?.enabled) return;
+    onChange({ ...schedule, ...partial });
   }
 
   return (
@@ -37,8 +47,8 @@ export function SchedulingStep({ schedule, onChange }: SchedulingStepProps) {
       <div>
         <h3 className="text-lg font-semibold text-foreground">When do you play?</h3>
         <p className="mt-1 text-sm text-muted">
-          Optional table cadence for recruitment and scheduling settings. This does not create
-          calendar events.
+          Optional table cadence for recruitment and scheduling. If you set a first session date,
+          Esiana creates that upcoming session note automatically.
         </p>
       </div>
 
@@ -59,6 +69,35 @@ export function SchedulingStep({ schedule, onChange }: SchedulingStepProps) {
           </button>
         ))}
       </div>
+
+      {schedule?.enabled ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs text-muted" htmlFor="wizard-first-session-date">
+              First session date <span className="text-muted/80">(optional)</span>
+            </label>
+            <input
+              id="wizard-first-session-date"
+              type="date"
+              value={schedule.firstSessionDate ?? ''}
+              onChange={(e) => patch({ firstSessionDate: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-muted" htmlFor="wizard-first-session-time">
+              Time <span className="text-muted/80">(optional)</span>
+            </label>
+            <input
+              id="wizard-first-session-time"
+              type="time"
+              value={schedule.firstSessionTime ?? ''}
+              onChange={(e) => patch({ firstSessionTime: e.target.value })}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Bell, BookOpen, KeyRound, Palette, Shield, UserCircle } from 'lucide-react';
+import { Bell, BookOpen, KeyRound, Keyboard, Palette, Shield, UserCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,10 +25,12 @@ import { UserLinkedIdentitySection } from '@/components/settings/UserLinkedIdent
 import { UserCampaignDefaultsSection } from '@/components/settings/UserCampaignDefaultsSection';
 import { UserUiLanguageSection } from '@/components/settings/UserUiLanguageSection';
 import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
+import { UserKeyboardShortcutsSection } from '@/components/settings/UserKeyboardShortcutsSection';
 
 type SettingsTab =
   | 'profile'
   | 'appearance'
+  | 'interface'
   | 'campaignDefaults'
   | 'notifications'
   | 'developer'
@@ -37,6 +39,7 @@ type SettingsTab =
 const SETTINGS_TAB_META: Array<{ id: SettingsTab; labelKey: string; icon: LucideIcon }> = [
   { id: 'profile', labelKey: 'profile.profile.tabProfile', icon: UserCircle },
   { id: 'appearance', labelKey: 'profile.profile.tabAppearance', icon: Palette },
+  { id: 'interface', labelKey: 'profile.profile.tabInterface', icon: Keyboard },
   {
     id: 'campaignDefaults',
     labelKey: 'profile.profile.tabCampaignDefaults',
@@ -50,6 +53,7 @@ const SETTINGS_TAB_META: Array<{ id: SettingsTab; labelKey: string; icon: Lucide
 const TAB_DESCRIPTION_KEYS: Record<SettingsTab, string> = {
   profile: 'profile.profile.descProfile',
   appearance: 'profile.profile.descAppearance',
+  interface: 'profile.profile.descInterface',
   campaignDefaults: 'profile.profile.descCampaignDefaults',
   notifications: 'profile.profile.descNotifications',
   developer: 'profile.profile.descDeveloper',
@@ -426,6 +430,17 @@ export function UserSettings() {
           <UserUiLanguageSection />
           <UserAppearanceSection />
         </div>
+      )}
+
+      {profile && activeTab === 'interface' && (
+        <UserKeyboardShortcutsSection
+          enabled={profile.campaignNavigationShortcutsEnabled}
+          onEnabledChange={(campaignNavigationShortcutsEnabled) =>
+            setProfile((current) =>
+              current ? { ...current, campaignNavigationShortcutsEnabled } : current,
+            )
+          }
+        />
       )}
 
       {activeTab === 'campaignDefaults' && <UserCampaignDefaultsSection />}

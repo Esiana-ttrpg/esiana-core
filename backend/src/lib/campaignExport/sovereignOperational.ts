@@ -1,5 +1,6 @@
 import type { Prisma } from '../prismaClient.js';
 import { prisma } from '../prisma.js';
+import { ensureChronologyEras, syncEraProjection } from '../chronologyEraService.js';
 import type { SovereignOperational } from './types.js';
 
 export const SOVEREIGN_OPERATIONAL_PATH = 'sovereign/operational.json' as const;
@@ -24,6 +25,8 @@ export function parseOperationalPayload(raw: unknown): SovereignOperational | nu
   const payload = raw as SovereignOperational;
   return {
     downtimeHavens: Array.isArray(payload.downtimeHavens) ? payload.downtimeHavens : [],
+    ...(Array.isArray(payload.campaignEras) ? { campaignEras: payload.campaignEras } : {}),
+    ...(payload.eraRecurrenceHistory ? { eraRecurrenceHistory: payload.eraRecurrenceHistory } : {}),
     downtimeProjects: Array.isArray(payload.downtimeProjects) ? payload.downtimeProjects : [],
     pluginData: Array.isArray(payload.pluginData) ? payload.pluginData : [],
     pluginSettings: Array.isArray(payload.pluginSettings) ? payload.pluginSettings : [],
@@ -38,6 +41,9 @@ export function parseOperationalPayload(raw: unknown): SovereignOperational | nu
 export async function buildOperationalPayload(
   campaignId: string,
 ): Promise<SovereignOperational> {
+  await ensureChronologyEras(campaignId);
+  const campaignEras = await prisma.campaignEra.findMany({ where: { campaignId } });
+  const eraRecurrenceHistory = (await prisma.campaignMomentum.findUniqueOrThrow({ where: { campaignId } })).eraRecurrenceHistory as import('../eraOccurrenceHistory.js').EraHistory;
   const characterDb = prisma as typeof prisma & {
     characterPageTab: { findMany(args: unknown): Promise<unknown[]> };
     pluginCharacterPageState: { findMany(args: unknown): Promise<unknown[]> };
@@ -55,6 +61,8 @@ export async function buildOperationalPayload(
     ]);
 
   return serializeForOperationalJson({
+    campaignEras,
+    eraRecurrenceHistory,
     downtimeHavens,
     downtimeProjects,
     pluginData,
@@ -152,6 +160,40 @@ export async function restoreOperationalPayload(
   // Validate all new character-shell rows before any operational row is
   // mutated, so a malformed/colliding backup fails atomically at this layer.
   await validateCharacterRestoreOwnership(campaignId, payload);
+  if (payload.campaignEras) {
+    await prisma.$transaction(async tx => {
+      const calendars = new Set((await tx.fantasyCalendar.findMany({ where: { campaignId }, select: { id: true } })).map(row => row.id));
+      const pages = new Set((await tx.wikiPage.findMany({
+        where: { campaignId },
+        select: { id: true, metadata: true },
+      })).filter(row => {
+        const metadata = row.metadata as Record<string, unknown> | null;
+        return metadata?.eraOverview === true;
+      }).map(row => row.id));
+      for (const row of payload.campaignEras!) {
+        if (!row || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 120
+          || !Number.isInteger(row.sortOrder) || Number(row.sortOrder) < 0
+          || !['PUBLIC', 'PARTY', 'DM_ONLY'].includes(String(row.visibility))) throw new Error('Invalid era in campaign backup.');
+        if (typeof row.id !== 'string' || typeof row.calendarId !== 'string' || !calendars.has(row.calendarId)
+          || typeof row.overviewPageId !== 'string' || !pages.has(row.overviewPageId)) throw new Error('Era restore references content outside the target campaign.');
+        const data = {
+          calendarId: row.calendarId, overviewPageId: row.overviewPageId, name: String(row.name), sortOrder: Number(row.sortOrder),
+          isCurrent: row.isCurrent === true, visibility: String(row.visibility),
+          epochStartMinute: row.epochStartMinute == null ? null : BigInt(String(row.epochStartMinute)),
+          epochEndMinute: row.epochEndMinute == null ? null : BigInt(String(row.epochEndMinute)),
+        };
+        await tx.campaignEra.upsert({ where: { campaignId_id: { campaignId, id: row.id } }, create: { ...data, campaignId, id: row.id }, update: data });
+        await tx.wikiPage.update({ where: { id: row.overviewPageId }, data: { visibility: row.visibility === 'DM_ONLY' ? 'DM_Only' : row.visibility === 'PUBLIC' ? 'Public' : 'Party' } });
+      }
+      await tx.campaignMomentum.upsert({ where: { campaignId }, create: { campaignId, erasMigrated: true }, update: { erasMigrated: true } });
+      await syncEraProjection(tx, campaignId);
+      if (payload.eraRecurrenceHistory) {
+        const eventIds = new Set((await tx.calendarEvent.findMany({ where: { calendar: { campaignId } }, select: { id: true } })).map(event => event.id));
+        const history = Object.fromEntries(Object.entries(payload.eraRecurrenceHistory).filter(([id]) => eventIds.has(id)));
+        await tx.campaignMomentum.update({ where: { campaignId }, data: { eraRecurrenceHistory: history as Prisma.InputJsonValue } });
+      }
+    });
+  }
 
   let havenCount = 0;
   let projectCount = 0;

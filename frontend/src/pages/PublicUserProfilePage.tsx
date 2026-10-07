@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, BookOpen, History, LayoutGrid, PenLine, User } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarDays, History, LayoutGrid, PenLine, User } from 'lucide-react';
 import { campaignDashboardPath, resolveCampaignLinkHandle } from '@/lib/campaignPaths';
 import { fetchPublicUserProfile } from '@/lib/user';
 import { fetchOwnerCreatorAttribution, fetchPublicCreatorAttribution } from '@/lib/statsApi';
@@ -17,6 +17,7 @@ import {
   ProfileWritingTab,
 } from '@/components/profile/ProfileCreatorStats';
 import { ProfileActivityTab } from '@/components/profile/ProfileActivityTab';
+import { ProfileCharactersShowcase } from '@/components/portfolio/ProfileCharactersShowcase';
 import { ResponsiveSectionNav } from '@/components/settings/ResponsiveSectionNav';
 import { PageContainer, PagePanel } from '@/components/layout/PageContainer';
 import { PageShell, SHOWCASE_MAX_WIDTH_CLASS } from '@/components/layout/PageShell';
@@ -34,6 +35,7 @@ export function PublicUserProfilePage() {
   const { id = '' } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user: sessionUser } = useAuth();
   const activeTab = parseProfileTab(searchParams.get('tab'));
   const isSelf = sessionUser?.id === id;
@@ -91,11 +93,20 @@ export function PublicUserProfilePage() {
     ];
     if (isSelf) {
       items.push({ id: 'writing', label: t('profile.creatorstats.tabWriting'), icon: PenLine });
+      items.push({
+        id: 'schedule',
+        label: t('profile.creatorstats.tabSchedule', { defaultValue: 'Schedule' }),
+        icon: CalendarDays,
+      });
     }
     return items;
   }, [isSelf, t]);
 
-  const switchTab = (tab: ProfileTab) => {
+  const switchTab = (tab: string) => {
+    if (tab === 'schedule') {
+      navigate('/schedule');
+      return;
+    }
     setSearchParams(tab === 'overview' ? {} : { tab });
   };
 
@@ -168,7 +179,7 @@ export function PublicUserProfilePage() {
           <ResponsiveSectionNav
             sections={sections}
             activeId={activeTab}
-            onChange={(tab) => switchTab(tab as ProfileTab)}
+            onChange={(tab) => switchTab(tab)}
             ariaLabel={t('profile.creatorstats.sectionNavAria')}
             mobileLabel={t('profile.creatorstats.sectionNavMobile')}
           />
@@ -179,6 +190,13 @@ export function PublicUserProfilePage() {
             <ProfileCreatorStatsOverview
               attribution={attribution}
               displayName={profile.displayName ?? profile.username}
+              isSelf={isSelf}
+            />
+
+            <ProfileCharactersShowcase
+              ownerUserId={profile.id}
+              ownerLabel={profile.displayName ?? profile.label ?? profile.username}
+              characters={profile.showcasedCharacters ?? []}
               isSelf={isSelf}
             />
 
