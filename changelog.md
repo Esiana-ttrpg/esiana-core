@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## [1.8.0] - 2026-10-06
+
+### Added
+
+- **Dashboard widgets** — Added description and text widgets, with improved default widget configuration and localization.
+- **Map display names** — Map uploads can use a display name independent of the filename.
+
+### Changed
+
+- **Map chronology and fullscreen viewing** — Improved chronology date selection, fullscreen map support, and keyboard handling during drawing.
+- **Downtime and haven management** — Improved downtime presentation, person assignment, hireling routing, compensation filtering, haven asset uploads, banners, and space management.
+- **Plugin runtime validation** — Added supported-runtime validation and safer plugin download redirect handling.
+
+### Fixed
+
+- Added regression coverage for map title capitalization and chronology behavior.
+
 ## [1.7.0] - 2026-10-01
 
 ### Added
