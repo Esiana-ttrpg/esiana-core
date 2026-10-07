@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## [1.8.0] - 2026-10-06
+
+### Added
+
+- **Campaign Home editing** — Added the new Home experience with editable cards, artwork previews, and session-page content extraction.
+- **Character Portfolio** — Added portfolio characters to user profiles, with campaign membership context and normalized role handling.
+- **Session calendar and scheduling** — Added user calendar subscriptions, schedule management, campaign scheduling improvements, game-system and membership labels, and skipped-session indicators.
+- **Session notes improvements** — Added all-session aggregation, improved notes presentation and error handling, and sidebar word counts.
+- **Chronology eras and trajectories** — Added era CRUD, validation, deletion safeguards, trajectory ordering, and character/location era trajectories.
+- **Downtime, Havens, and hirelings** — Added downtime workspace sections, improved hireling relationships and compensation, quick assignments, character routing, banners, and Haven space management.
+- **Dashboard widgets** — Added description and text widgets, with improved default widget configuration and localization.
+- **Map display names** — Map uploads can use a display name independent of the filename.
+- **Workshop drafts** — Added workshop draft creation and improved command-palette integration.
+
+### Changed
+
+- **Map chronology and fullscreen viewing** — Improved chronology date selection, fullscreen map support, and keyboard handling during drawing.
+- **World development and adventure navigation** — Refined progression, trajectory context, adventure sections, and workspace navigation.
+- **Keyboard shortcuts and command palette** — Added user-configurable shortcuts and improved navigation/sidebar integration.
+- **Plugin runtime validation** — Added supported-runtime validation and safer plugin download redirect handling.
+
+### Fixed
+
+- Added regression coverage for map title capitalization and chronology behavior.
+
 ## [1.7.0] - 2026-10-01
 
 ### Added
