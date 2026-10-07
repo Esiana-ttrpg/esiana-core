@@ -46,6 +46,8 @@ export function MapChronologyBar({
   const atPresent = isViewingCampaignPresent(viewEpochMinute, campaignEpochMinute);
   const asOfLabel = atPresent ? 'Present' : viewingLabel;
   const calendar = calendarLikeFromBundle(timeTracking);
+  const canChooseDate = canEdit && Boolean(calendar);
+  const canOpenChronology = canChooseDate || presentationPresets.length > 0;
 
   const openPicker = () => {
     setDraftParts(
@@ -68,16 +70,16 @@ export function MapChronologyBar({
         type="button"
         className="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted transition-colors hover:bg-muted/10 hover:text-foreground disabled:cursor-default disabled:hover:bg-transparent"
         onClick={openPicker}
-        disabled={!canEdit || !calendar}
-        aria-label={canEdit ? `Map state as of ${asOfLabel}; change date` : `Map state as of ${asOfLabel}`}
+        disabled={!canOpenChronology}
+        aria-label={canOpenChronology ? `Map state as of ${asOfLabel}; choose map date or era` : `Map state as of ${asOfLabel}`}
       >
         <CalendarDays className="size-4" aria-hidden />
         <span>As of:</span>
         <span className="font-medium text-foreground">{asOfLabel}</span>
-        {canEdit && calendar ? <ChevronDown className="size-3.5" aria-hidden /> : null}
+        {canOpenChronology ? <ChevronDown className="size-3.5" aria-hidden /> : null}
       </button>
 
-      {pickerOpen && calendar ? (
+      {pickerOpen ? (
         <div
           className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 p-4"
           role="presentation"
@@ -96,7 +98,8 @@ export function MapChronologyBar({
                   Map viewing date
                 </h2>
                 <p className="text-sm text-muted">
-                  Show the map as it would appear at this point in your campaign chronology.
+                  Choose a saved era
+                  {canChooseDate ? ' or a date in your campaign chronology' : ''}.
                 </p>
               </div>
               <button
@@ -108,11 +111,13 @@ export function MapChronologyBar({
                 <X className="size-5" />
               </button>
             </div>
-            <FantasyDatePicker
-              calendar={calendar}
-              value={draftParts}
-              onChange={setDraftParts}
-            />
+            {canChooseDate && calendar ? (
+              <FantasyDatePicker
+                calendar={calendar}
+                value={draftParts}
+                onChange={setDraftParts}
+              />
+            ) : null}
             {presentationPresets.length > 0 ? (
               <div className="mt-4 border-t border-border pt-4">
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
@@ -144,7 +149,7 @@ export function MapChronologyBar({
               </div>
             ) : null}
             <div className="mt-4 flex justify-end gap-2">
-              {!atPresent ? (
+              {canChooseDate && !atPresent ? (
                 <button
                   type="button"
                   className="mr-auto rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted/10"
@@ -163,13 +168,15 @@ export function MapChronologyBar({
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
-                onClick={applyPicker}
-              >
-                Apply
-              </button>
+              {canChooseDate ? (
+                <button
+                  type="button"
+                  className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground"
+                  onClick={applyPicker}
+                >
+                  Apply
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

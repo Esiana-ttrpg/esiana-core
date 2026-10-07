@@ -183,12 +183,13 @@ export function MapViewerPage() {
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      if (regionDraw.phase === 'drawing' || pathDraw.phase === 'drawing') return;
       event.preventDefault();
       setFullscreen(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [fullscreen]);
+  }, [fullscreen, pathDraw.phase, regionDraw.phase]);
 
   if (loading) {
     return (

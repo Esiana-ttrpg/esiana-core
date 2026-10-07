@@ -78,7 +78,11 @@ export function mapTitleFromFilename(filename: string): string {
     .replace(/\s+/g, ' ');
 
   if (!words) return 'Untitled map';
-  return words.replace(/\b\p{L}/gu, (letter) => letter.toLocaleUpperCase());
+  return words.replace(
+    /(^|\s)(\p{L})/gu,
+    (_match, prefix: string, letter: string) =>
+      `${prefix}${letter.toLocaleUpperCase()}`,
+  );
 }
 
 export async function deleteCampaignMap(
