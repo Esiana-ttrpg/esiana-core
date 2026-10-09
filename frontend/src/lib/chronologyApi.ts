@@ -36,6 +36,7 @@ export interface TimelineBaseEventRecord {
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: 'PUBLIC' | 'PARTY' | 'DM_ONLY';
+  importance: 'NOTICE' | 'MINOR' | 'MAJOR';
   title: string;
   description: string | null;
   duration: number;
@@ -65,6 +66,7 @@ export interface TimelineOccurrenceRecord {
   calendarId: string;
   categoryId: string | null;
   visibility: 'PUBLIC' | 'PARTY' | 'DM_ONLY';
+  importance: 'NOTICE' | 'MINOR' | 'MAJOR';
   title: string;
   description: string | null;
   start: {

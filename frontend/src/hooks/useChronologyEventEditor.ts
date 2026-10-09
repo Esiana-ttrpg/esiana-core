@@ -42,6 +42,7 @@ export function useChronologyEventEditor({
   const [description, setDescription] = useState('');
   const [prerequisiteId, setPrerequisiteId] = useState<string | 'none'>('none');
   const [visibility, setVisibility] = useState<'PUBLIC' | 'PARTY' | 'DM_ONLY'>('PARTY');
+  const [importance, setImportance] = useState<'NOTICE' | 'MINOR' | 'MAJOR'>('MINOR');
   const [duration, setDuration] = useState(1);
   const [isRepeating, setIsRepeating] = useState(false);
   const [repeatInterval, setRepeatInterval] = useState<number | ''>('');
@@ -64,6 +65,7 @@ export function useChronologyEventEditor({
     setDescription(baseEvent.description ?? '');
     setPrerequisiteId(baseEvent.prerequisiteId ?? 'none');
     setVisibility(baseEvent.visibility);
+    setImportance(baseEvent.importance ?? 'MINOR');
     setDuration(baseEvent.duration);
     setIsRepeating(baseEvent.isRepeating);
     setRepeatInterval(baseEvent.repeatInterval ?? '');
@@ -118,6 +120,7 @@ export function useChronologyEventEditor({
         prerequisiteId:
           prerequisiteId === 'none' || prerequisiteId === baseEvent.id ? null : prerequisiteId,
         visibility,
+        importance,
         duration: Math.max(1, duration),
         isRepeating,
         repeatInterval: isRepeating ? (repeatInterval === '' ? null : repeatInterval) : null,
@@ -151,6 +154,7 @@ export function useChronologyEventEditor({
     conditions,
     description,
     duration,
+    importance,
     isRepeating,
     limitRepetitions,
     moonOverrides,
@@ -201,6 +205,11 @@ export function useChronologyEventEditor({
       markDirty();
     },
     visibility,
+    importance,
+    setImportance: (value: 'NOTICE' | 'MINOR' | 'MAJOR') => {
+      setImportance(value);
+      markDirty();
+    },
     setVisibility: (value: 'PUBLIC' | 'PARTY' | 'DM_ONLY') => {
       setVisibility(value);
       markDirty();

@@ -40,6 +40,7 @@ type BaseEvent = {
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: string;
+  importance: string;
   title: string;
   description: string | null;
   duration: number;
@@ -178,7 +179,8 @@ function buildOccurrences(
           occurrenceIndex: i,
           calendarId: event.calendarId,
           categoryId: event.categoryId,
-          visibility: event.visibility,
+            visibility: event.visibility,
+            importance: event.importance,
           title: event.title,
           description: event.description,
           start: {
@@ -314,6 +316,7 @@ export async function getChronologyTimelineBundle(
         categoryId: true,
         prerequisiteId: true,
         visibility: true,
+        importance: true,
         duration: true,
         isRepeating: true,
         repeatInterval: true,

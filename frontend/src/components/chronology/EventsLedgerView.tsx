@@ -170,6 +170,7 @@ export function EventsLedgerView({
   const [jumpYear, setJumpYear] = useState('');
   const [jumpMonthIndex, setJumpMonthIndex] = useState('0');
   const [expandedOccurrenceId, setExpandedOccurrenceId] = useState<string | null>(null);
+  const [importanceFilter, setImportanceFilter] = useState<Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean>>({ NOTICE: false, MINOR: true, MAJOR: true });
 
   const ledgerCategories = useMemo<LedgerCategory[]>(
     () => [
@@ -218,9 +219,9 @@ export function EventsLedgerView({
     if (!activeCategory) return [];
     return events.filter((event) => {
       const categoryKey = event.categoryId ?? 'uncategorized';
-      return categoryKey === activeCategory.id;
+      return categoryKey === activeCategory.id && importanceFilter[event.importance ?? 'MINOR'];
     });
-  }, [events, activeCategory]);
+  }, [events, activeCategory, importanceFilter]);
 
   const sections = useMemo(() => {
     const built = buildLedgerSections(categoryEvents, now, monthLabelFor);
@@ -356,6 +357,13 @@ export function EventsLedgerView({
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex gap-1" aria-label="Importance filter">
+            {(['NOTICE', 'MINOR', 'MAJOR'] as const).map((importance) => (
+              <button key={importance} type="button" onClick={() => setImportanceFilter((current) => ({ ...current, [importance]: !current[importance] }))} className={`rounded-full border px-2 py-1.5 text-[10px] ${importanceFilter[importance] ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted'}`}>
+                {importance[0] + importance.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={handleGoToCurrentDate}

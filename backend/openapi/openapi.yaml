@@ -4272,6 +4272,50 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
+  /api/campaigns/{campaignHandle}/chronology/settings:
+    get:
+      tags: [Chronology]
+      summary: Get campaign chronology settings
+      operationId: get_api_campaigns_campaignHandle_chronology_settings
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Campaign-scoped event defaults
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/ChronologySettings" }
+    put:
+      tags: [Chronology]
+      summary: Update campaign chronology settings
+      operationId: put_api_campaigns_campaignHandle_chronology_settings
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChronologySettingsUpdate" }
+      responses:
+        "200":
+          description: Updated campaign chronology settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/ChronologySettings" }
   /api/campaigns/{campaignHandle}/chronology/categories:
     get:
       tags:
@@ -22824,6 +22868,35 @@ components:
           type: boolean
         requiresAuth:
           type: boolean
+    CalendarEventImportance:
+      type: string
+      description: Narrative notice level; independent of visibility and category.
+      enum: [NOTICE, MINOR, MAJOR]
+    ChronologySettings:
+      type: object
+      required: [manualEventImportance, downtimeEventImportance, progressionEventImportance]
+      properties:
+        id: { type: string }
+        campaignId: { type: string }
+        manualEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        downtimeEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        progressionEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+      description: Campaign-scoped defaults copied only onto newly created chronology events. Defaults are MINOR, NOTICE, and NOTICE respectively.
+    ChronologySettingsUpdate:
+      type: object
+      properties:
+        manualEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        downtimeEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        progressionEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+    CalendarEventCategory:
+      type: object
+      required: [id, campaignId, name]
+      properties:
+        id: { type: string }
+        campaignId: { type: string }
+        name: { type: string }
+        color: { type: string, nullable: true }
+      description: Campaign-scoped event category. Null categoryId means Uncategorized.
     ApiResponse:
       description: Endpoint-specific JSON response. See the operation description and examples.
       oneOf:
@@ -22835,7 +22908,7 @@ components:
         - type: string
     ApiRequest:
       type: object
-      description: Operation-specific request fields. Consult the operation summary and validation errors; unknown fields are not guaranteed to be retained.
+      description: Operation-specific request fields. Chronology event create/update accepts importance NOTICE, MINOR, or MAJOR; omitted importance uses the campaign/source default. Consult the operation summary and validation errors; unknown fields are not guaranteed to be retained.
       additionalProperties: true
     PortfolioDerivedFilter:
       type: string

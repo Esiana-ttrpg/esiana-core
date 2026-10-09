@@ -8,6 +8,15 @@ import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import { convertEpochToCalendarState } from '../lib/timeEngine.js';
 import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
 
+const IMPORTANCES = ['NOTICE', 'MINOR', 'MAJOR'] as const;
+type CalendarEventImportance = (typeof IMPORTANCES)[number];
+
+function parseImportance(value: unknown): CalendarEventImportance | null {
+  return typeof value === 'string' && (IMPORTANCES as readonly string[]).includes(value.toUpperCase())
+    ? value.toUpperCase() as CalendarEventImportance
+    : null;
+}
+
 const REPEAT_UNITS = ['DAYS', 'MONTHS', 'YEARS', 'ERAS'] as const;
 type RepeatUnit = (typeof REPEAT_UNITS)[number];
 
@@ -45,6 +54,7 @@ function serializeEvent(row: {
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: string;
+  importance: CalendarEventImportance;
   duration: number;
   isRepeating: boolean;
   repeatInterval: number | null;
@@ -70,6 +80,7 @@ function serializeEvent(row: {
     categoryId: row.categoryId,
     prerequisiteId: row.prerequisiteId,
     visibility: row.visibility,
+    importance: row.importance,
     duration: row.duration,
     isRepeating: row.isRepeating,
     repeatInterval: row.repeatInterval,
@@ -253,6 +264,12 @@ export async function createCalendarEvent(
     res.status(400).json({ error: 'title is required' });
     return;
   }
+  const explicitImportance = body.importance === undefined ? null : parseImportance(body.importance);
+  if (body.importance !== undefined && !explicitImportance) {
+    res.status(400).json({ error: 'importance must be NOTICE, MINOR, or MAJOR' }); return;
+  }
+  const settings = await prisma.chronologySettings.findUnique({ where: { campaignId } });
+  const importance = explicitImportance ?? settings?.manualEventImportance ?? 'MINOR';
 
   const categoryId = parseOptionalString(body.categoryId);
   if (body.categoryId !== undefined && body.categoryId !== null && categoryId === null) {
@@ -400,6 +417,7 @@ export async function createCalendarEvent(
         categoryId,
         prerequisiteId,
         visibility: visibility ?? 'PARTY',
+        importance,
         duration,
         isRepeating,
         repeatInterval,
@@ -470,6 +488,10 @@ export async function updateCalendarEvent(
     typeof body.title === 'string' && body.title.trim()
       ? body.title.trim()
       : existing.title;
+  const importance = body.importance === undefined ? existing.importance : parseImportance(body.importance);
+  if (!importance) {
+    res.status(400).json({ error: 'importance must be NOTICE, MINOR, or MAJOR' }); return;
+  }
 
   const categoryId =
     body.categoryId === undefined
@@ -601,6 +623,7 @@ export async function updateCalendarEvent(
         categoryId,
         prerequisiteId,
         visibility: parsedVisibility ?? existing.visibility,
+        importance,
         duration,
         isRepeating,
         repeatInterval,

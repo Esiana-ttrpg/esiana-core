@@ -60,6 +60,7 @@ export function WidescreenCalendarView({
   const [expandedOccurrenceId, setExpandedOccurrenceId] = useState<string | null>(null);
   const [viewYear, setViewYear] = useState(1);
   const [viewMonthIndex, setViewMonthIndex] = useState(0);
+  const [importanceFilter, setImportanceFilter] = useState<Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean>>({ NOTICE: false, MINOR: true, MAJOR: true });
   const viewCalendarIdRef = useRef<string | null>(null);
 
   const calendars = timeBundle.calendars;
@@ -182,6 +183,7 @@ export function WidescreenCalendarView({
 
     for (const occurrence of chronologyBundle.occurrences) {
       if (occurrence.calendarId !== selectedCalendar.id) continue;
+      if (!importanceFilter[occurrence.importance ?? 'MINOR']) continue;
       if (occurrence.start.year !== viewYear) continue;
       if (occurrence.start.month !== viewMonthIndex) continue;
       const day = occurrence.start.day;
@@ -196,7 +198,7 @@ export function WidescreenCalendarView({
     }
 
     return map;
-  }, [chronologyBundle.occurrences, selectedCalendar, viewYear, viewMonthIndex]);
+  }, [chronologyBundle.occurrences, selectedCalendar, viewYear, viewMonthIndex, importanceFilter]);
 
   const dayAgenda = useMemo(() => {
     if (selectedDay === null || !selectedCalendar) return [];
@@ -204,6 +206,7 @@ export function WidescreenCalendarView({
       .filter(
         (occurrence) =>
           occurrence.calendarId === selectedCalendar.id &&
+          importanceFilter[occurrence.importance ?? 'MINOR'] &&
           occurrence.start.year === viewYear &&
           occurrence.start.month === viewMonthIndex &&
           occurrence.start.day === selectedDay,
@@ -215,6 +218,7 @@ export function WidescreenCalendarView({
     viewYear,
     viewMonthIndex,
     selectedDay,
+    importanceFilter,
   ]);
 
   const handleDayClick = useCallback((day: number) => {
@@ -280,6 +284,11 @@ export function WidescreenCalendarView({
         </div>
 
         <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
+          {(['NOTICE', 'MINOR', 'MAJOR'] as const).map((importance) => (
+            <button key={importance} type="button" onClick={() => setImportanceFilter((current) => ({ ...current, [importance]: !current[importance] }))} className={`rounded-full border px-2 py-1 text-[10px] ${importanceFilter[importance] ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted'}`}>
+              {importance[0] + importance.slice(1).toLowerCase()}
+            </button>
+          ))}
           <button
             type="button"
             onClick={goToPreviousMonth}

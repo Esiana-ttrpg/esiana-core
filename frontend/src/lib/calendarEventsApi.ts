@@ -6,6 +6,7 @@ export interface CalendarEventRecord {
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: 'PUBLIC' | 'PARTY' | 'DM_ONLY';
+  importance: 'NOTICE' | 'MINOR' | 'MAJOR';
   duration: number;
   isRepeating: boolean;
   repeatInterval: number | null;
@@ -50,6 +51,7 @@ export async function createCalendarEvent(
     categoryId?: string | null;
     prerequisiteId?: string | null;
     visibility?: 'PUBLIC' | 'PARTY' | 'DM_ONLY';
+    importance?: 'NOTICE' | 'MINOR' | 'MAJOR';
     duration?: number;
     isRepeating?: boolean;
     repeatInterval?: number | null;
@@ -85,6 +87,7 @@ export async function updateCalendarEvent(
     categoryId: string | null;
     prerequisiteId: string | null;
     visibility: 'PUBLIC' | 'PARTY' | 'DM_ONLY';
+    importance: 'NOTICE' | 'MINOR' | 'MAJOR';
     duration: number;
     isRepeating: boolean;
     repeatInterval: number | null;

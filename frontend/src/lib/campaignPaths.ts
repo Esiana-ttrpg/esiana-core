@@ -191,6 +191,7 @@ export type CampaignSettingsTab =
   | 'access'
   | 'recruitment'
   | 'scheduling'
+  | 'timeline'
   | 'world-development'
   | 'appearance'
   | 'integrations'

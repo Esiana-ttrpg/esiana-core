@@ -103,6 +103,7 @@ export async function duplicateCampaign(
         include: { events: true },
       },
       calendarEventCategories: true,
+      chronologySettings: true,
       wikiPages: true,
       tags: { include: { pages: { select: { id: true } } } },
       assets: true,
@@ -263,6 +264,17 @@ export async function duplicateCampaign(
     const eventIdMap = new Map<string, string>();
     const categoryIdMap = new Map<string, string>();
 
+    if (source.chronologySettings) {
+      await tx.chronologySettings.create({
+        data: {
+          campaignId: campaign.id,
+          manualEventImportance: source.chronologySettings.manualEventImportance,
+          downtimeEventImportance: source.chronologySettings.downtimeEventImportance,
+          progressionEventImportance: source.chronologySettings.progressionEventImportance,
+        },
+      });
+    }
+
     if (copy.scheduling.calendarStructure) {
       for (const category of source.calendarEventCategories) {
         const createdCategory = await tx.calendarEventCategory.create({
@@ -300,6 +312,7 @@ export async function duplicateCampaign(
                   ? (categoryIdMap.get(event.categoryId) ?? null)
                   : null,
                 visibility: event.visibility,
+                importance: event.importance,
                 title: event.title,
                 description: event.description,
                 duration: event.duration,

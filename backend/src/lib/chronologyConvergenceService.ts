@@ -77,6 +77,7 @@ type BaseEvent = {
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: string;
+  importance: string;
   title: string;
   description: string | null;
   duration: number;
@@ -128,6 +129,7 @@ function expandOccurrences(
   title: string;
   description: string | null;
   visibility: string;
+  importance: string;
   categoryId: string | null;
   prerequisiteBaseEventId: string | null;
   sourceType: string;
@@ -144,6 +146,7 @@ function expandOccurrences(
     title: string;
     description: string | null;
     visibility: string;
+    importance: string;
     categoryId: string | null;
     prerequisiteBaseEventId: string | null;
     sourceType: string;
@@ -202,6 +205,7 @@ function expandOccurrences(
           title: event.title,
           description: event.description,
           visibility: event.visibility,
+          importance: event.importance,
           categoryId: event.categoryId,
           prerequisiteBaseEventId: event.prerequisiteId,
           sourceType: event.isRepeating ? 'REPEATING' : 'STATIC',
@@ -266,6 +270,7 @@ async function collectWorldAnchors(
         categoryId: true,
         prerequisiteId: true,
         visibility: true,
+        importance: true,
         title: true,
         description: true,
         duration: true,
