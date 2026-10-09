@@ -723,18 +723,12 @@ model DowntimeHaven {
   @@index([campaignId, discoveryState])
 }
 
-enum CalendarEventImportance {
-  NOTICE
-  MINOR
-  MAJOR
-}
-
 model ChronologySettings {
   id String @id @default(cuid())
   campaignId String @unique
-  manualEventImportance CalendarEventImportance @default(MINOR)
-  downtimeEventImportance CalendarEventImportance @default(NOTICE)
-  progressionEventImportance CalendarEventImportance @default(NOTICE)
+  manualEventImportance String @default("MINOR")
+  downtimeEventImportance String @default("NOTICE")
+  progressionEventImportance String @default("NOTICE")
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1438,7 +1432,7 @@ model CalendarEvent {
   categoryId     String?
   prerequisiteId String?
   visibility     String @default("PARTY")
-  importance     CalendarEventImportance @default(MINOR)
+  importance     String @default("MINOR")
   title          String
   description    String?
   duration       Int @default(1)

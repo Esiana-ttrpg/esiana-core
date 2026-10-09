@@ -1,13 +1,11 @@
-CREATE TYPE "CalendarEventImportance" AS ENUM ('NOTICE', 'MINOR', 'MAJOR');
-
-ALTER TABLE "CalendarEvent" ADD COLUMN "importance" "CalendarEventImportance" NOT NULL DEFAULT 'MINOR';
+ALTER TABLE "CalendarEvent" ADD COLUMN "importance" TEXT NOT NULL DEFAULT 'MINOR';
 
 CREATE TABLE "ChronologySettings" (
     "id" TEXT NOT NULL,
     "campaignId" TEXT NOT NULL,
-    "manualEventImportance" "CalendarEventImportance" NOT NULL DEFAULT 'MINOR',
-    "downtimeEventImportance" "CalendarEventImportance" NOT NULL DEFAULT 'NOTICE',
-    "progressionEventImportance" "CalendarEventImportance" NOT NULL DEFAULT 'NOTICE',
+    "manualEventImportance" TEXT NOT NULL DEFAULT 'MINOR',
+    "downtimeEventImportance" TEXT NOT NULL DEFAULT 'NOTICE',
+    "progressionEventImportance" TEXT NOT NULL DEFAULT 'NOTICE',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "ChronologySettings_pkey" PRIMARY KEY ("id"),

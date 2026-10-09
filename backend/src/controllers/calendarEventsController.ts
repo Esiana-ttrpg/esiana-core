@@ -7,12 +7,10 @@ import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import { convertEpochToCalendarState } from '../lib/timeEngine.js';
 import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
-
-const IMPORTANCES = ['NOTICE', 'MINOR', 'MAJOR'] as const;
-type CalendarEventImportance = (typeof IMPORTANCES)[number];
+import { CALENDAR_EVENT_IMPORTANCES, type CalendarEventImportance } from '../../../shared/calendarEventImportance.js';
 
 function parseImportance(value: unknown): CalendarEventImportance | null {
-  return typeof value === 'string' && (IMPORTANCES as readonly string[]).includes(value.toUpperCase())
+  return typeof value === 'string' && (CALENDAR_EVENT_IMPORTANCES as readonly string[]).includes(value.toUpperCase())
     ? value.toUpperCase() as CalendarEventImportance
     : null;
 }
@@ -54,7 +52,7 @@ function serializeEvent(row: {
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: string;
-  importance: CalendarEventImportance;
+  importance: string;
   duration: number;
   isRepeating: boolean;
   repeatInterval: number | null;
@@ -80,7 +78,7 @@ function serializeEvent(row: {
     categoryId: row.categoryId,
     prerequisiteId: row.prerequisiteId,
     visibility: row.visibility,
-    importance: row.importance,
+    importance: parseImportance(row.importance) ?? 'MINOR',
     duration: row.duration,
     isRepeating: row.isRepeating,
     repeatInterval: row.repeatInterval,
