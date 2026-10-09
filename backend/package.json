@@ -70,7 +70,7 @@
     "@types/express": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/multer": "^2.2.0",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.15.5",
     "@types/swagger-ui-express": "^4.1.8",
