@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+## [1.8.0] - 2026-10-06
+
+### Added
+
+- **Hirelings** — Characters can now hire and manage NPCs through Downtime, including assignments, compensation, relationship status, and quick access to their character pages.
+- **Character Portfolio** — Keep characters on your user profile outside of an individual campaign and track the campaigns they belong to.
+- **Session Calendar** — View upcoming sessions in a dedicated calendar, manage campaign schedules, skip sessions when needed, and subscribe to your session calendar from external calendar apps.
+- **Timeline Eras** — Organize campaign timelines into named, reorderable eras with their own date ranges.
+- **Character and Location Trajectories** — Track how characters and locations are expected to develop over time alongside existing world-development tools.
+- **Haven Spaces** — Havens now correctly support spaces for organizing and describing the different areas within a party's home or base.
+- **Dashboard Widgets** — Added Description, Text, and Haven/Downtime widgets for more customizable campaign dashboards.
+- **Keyboard Shortcuts** — Optional campaign navigation shortcuts can now be enabled from user settings.
+
+### Improved
+
+- **Global Home** — Fixed layout, sizing, and presentation issues across the redesigned Campaign Home, including artwork previews and campaign content cards.
+- **Session RSVP** — Improved RSVP visibility and behavior so upcoming-session attendance is easier to see and manage.
+- **Session Notes** — Improved session-note presentation, added all-session note aggregation, clearer error handling, and note word counts in the sidebar.
+- **Maps** — Improved timeline date selection, added fullscreen viewing, and refined keyboard behavior while drawing on maps.
+- **World Development** — Expanded trajectories and development tools for characters, locations, and factions, with clearer context and ordering.
+- **Adventure & GM Workspaces** — Refined navigation and organization across Adventure, Progression, and related GM tools.
+- **Command Palette** — Expanded navigation and Workshop integration and improved its behavior alongside keyboard shortcuts.
+- **Session Scheduling** — Improved schedule management, session status displays, game-system and membership context, and handling for skipped sessions.
+- **Plugin Management** — Improved runtime compatibility checks and handling of plugin downloads and redirects.
+
+### Fixed
+
+- Fixed Global Home layout and artwork-preview issues.
+- Fixed map title capitalization and timeline-related map behavior.
+- Fixed several session-note presentation and error-handling issues.
+- Fixed assorted navigation, sizing, and interface regressions.
+
 ## [1.7.0] - 2026-10-01
 
 ### Added
