@@ -297,6 +297,7 @@ import {
   listCalendarEventCategories,
   updateCalendarEventCategory,
 } from '../controllers/calendarEventCategoriesController.js';
+import { getChronologySettings, updateChronologySettings } from '../controllers/chronologySettingsController.js';
 import {
   getCampaignStatus,
   getCampaignCapacityHint,
@@ -593,6 +594,8 @@ campaignScopedRouter.get(
 );
 campaignScopedRouter.get('/narrative-snapshots/:snapshotId', getMilestoneSnapshot);
 campaignScopedRouter.get('/chronology/categories', listCalendarEventCategories);
+campaignScopedRouter.get('/chronology/settings', getChronologySettings);
+campaignScopedRouter.put('/chronology/settings', requireChronologyManager, updateChronologySettings);
 campaignScopedRouter.post(
   '/chronology/categories',
   requireChronologyManager,

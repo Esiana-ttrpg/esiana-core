@@ -117,6 +117,14 @@ export function ChronologyEventManagePanel({
 
       <div className="grid gap-2 md:grid-cols-2">
         <label className="block space-y-1 text-xs">
+          <span className="font-semibold text-muted">Importance</span>
+          <select value={editor.importance} onChange={(event) => editor.setImportance(event.target.value as 'NOTICE' | 'MINOR' | 'MAJOR')} disabled={editor.saving || editor.deleting} className="block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground">
+            <option value="NOTICE">Notice</option>
+            <option value="MINOR">Minor</option>
+            <option value="MAJOR">Major</option>
+          </select>
+        </label>
+        <label className="block space-y-1 text-xs">
           <span className="font-semibold text-muted">Duration (days)</span>
           <input
             type="number"

@@ -561,6 +561,7 @@ model Campaign {
   members            CampaignMember[]
   fantasyCalendars   FantasyCalendar[]
   calendarEventCategories CalendarEventCategory[]
+  chronologySettings ChronologySettings?
   joinRequests       CampaignJoinRequest[]
   wikiPages          WikiPage[]
   characterPageTabs  CharacterPageTab[]
@@ -720,6 +721,17 @@ model DowntimeHaven {
   @@index([campaignId, havenType])
   @@index([campaignId, ownershipType])
   @@index([campaignId, discoveryState])
+}
+
+model ChronologySettings {
+  id String @id @default(cuid())
+  campaignId String @unique
+  manualEventImportance String @default("MINOR")
+  downtimeEventImportance String @default("NOTICE")
+  progressionEventImportance String @default("NOTICE")
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 /// Campaign-scoped operational relationship for a canonical Character page.
@@ -1420,6 +1432,7 @@ model CalendarEvent {
   categoryId     String?
   prerequisiteId String?
   visibility     String @default("PARTY")
+  importance     String @default("MINOR")
   title          String
   description    String?
   duration       Int @default(1)

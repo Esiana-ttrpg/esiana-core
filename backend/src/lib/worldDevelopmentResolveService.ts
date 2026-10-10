@@ -13,7 +13,7 @@ import {
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import { prisma } from './prisma.js';
-import { ensureEventLoreStubPage } from './eventLoreStub.js';
+import { ensureEventLoreStubPage, eventLorePageIdForCalendarEvent } from './eventLoreStub.js';
 import { WORLD_EVENT_PROMPTS_HANDLER_VERSION } from './worldEventSuggestionService.js';
 import { findDefinitionById, getDevelopmentResolveProvider } from './developmentRegistry.js';
 import { DEVELOPMENT_TYPE_LABELS } from '../../../shared/worldDevelopmentPresentation.js';
@@ -87,6 +87,15 @@ export async function resolveWorldDevelopmentSuggestion(
   });
   if (!suggestion) {
     throw new Error('Suggestion not found.');
+  }
+  if (suggestion.status === 'accepted' && suggestion.acceptedCalendarEventId) {
+    return {
+      suggestionId: suggestion.id,
+      status: 'accepted',
+      acceptTarget: 'calendar_event',
+      calendarEventId: suggestion.acceptedCalendarEventId,
+      lorePageId: eventLorePageIdForCalendarEvent(suggestion.acceptedCalendarEventId),
+    };
   }
   if (suggestion.status !== 'pending') {
     throw new Error('Suggestion is no longer pending.');
@@ -203,6 +212,7 @@ export async function resolveWorldDevelopmentSuggestion(
           title,
           description: narrative,
           targetEpochMinute: suggestion.occurredAtEpochMinute,
+          importance: (await tx.chronologySettings.findUnique({ where: { campaignId: input.campaignId }, select: { progressionEventImportance: true } }))?.progressionEventImportance ?? 'NOTICE',
           metadata: metadata as Prisma.InputJsonValue,
         },
       });

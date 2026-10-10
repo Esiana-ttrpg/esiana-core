@@ -12,6 +12,7 @@ import { CampaignWebhooksSettings } from '@/components/campaign/CampaignWebhooks
 import { CampaignDiscordSettings } from '@/components/campaign/CampaignDiscordSettings';
 import { RecruitmentSettingsTab } from '@/components/campaign/RecruitmentSettingsTab';
 import { SchedulingSettingsTab } from '@/components/campaign/SchedulingSettingsTab';
+import { TimelineSettingsTab } from '@/components/campaign/TimelineSettingsTab';
 import { WorldDevelopmentSettingsTab } from '@/components/campaign/WorldDevelopmentSettingsTab';
 import { PageShell } from '@/components/layout/PageShell';
 import { SidebarSettingsTab } from '@/components/campaign/SidebarSettingsTab';
@@ -64,6 +65,7 @@ const SETTINGS_TABS = [
   'access',
   'recruitment',
   'scheduling',
+  'timeline',
   'world-development',
   'appearance',
   'integrations',
@@ -400,6 +402,7 @@ export function CampaignSettingsPage() {
           : []),
         { id: 'recruitment' as const, label: t('campaign.settings.tabRecruitment') },
         { id: 'scheduling' as const, label: t('campaign.settings.tabScheduling') },
+        { id: 'timeline' as const, label: 'Timeline' },
         ...(canManageSidebar
           ? [{ id: 'world-development' as const, label: t('campaign.settings.tabDevelopment') }]
           : []),
@@ -824,6 +827,8 @@ export function CampaignSettingsPage() {
         <RecruitmentSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'scheduling' ? (
         <SchedulingSettingsTab campaignHandle={campaignHandle} />
+      ) : activeTab === 'timeline' ? (
+        <TimelineSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'world-development' ? (
         canManageSidebar ? (
           <WorldDevelopmentSettingsTab campaignHandle={campaignHandle} />

@@ -43,6 +43,7 @@ import {
   resolveWikiPageSlug,
 } from './campaignExport/sovereignKnowledge.js';
 import { bootstrapPackSatelliteRows } from './packSatelliteBootstrap.js';
+import { isCalendarEventImportance } from '../../../shared/calendarEventImportance.js';
 
 const SECTION_SEPARATOR = '\n\n---\n\n';
 const ESiana_BLOCK_REGEX = /```esiana\/block\n([\s\S]*?)\n```/g;
@@ -284,6 +285,36 @@ async function restoreFullCampaignSettings(
         : {}),
     },
   });
+
+  const chronologySettings = row.chronologySettings;
+  if (chronologySettings && typeof chronologySettings === 'object') {
+    const settings = chronologySettings as Record<string, unknown>;
+    const valid = (key: string) =>
+      settings[key] === undefined
+        ? undefined
+        : isCalendarEventImportance(settings[key])
+          ? settings[key]
+          : undefined;
+    const manual = valid('manualEventImportance');
+    const downtime = valid('downtimeEventImportance');
+    const progression = valid('progressionEventImportance');
+    if (manual !== undefined || downtime !== undefined || progression !== undefined) {
+      await prisma.chronologySettings.upsert({
+        where: { campaignId },
+        create: {
+          campaignId,
+          manualEventImportance: manual ?? 'MINOR',
+          downtimeEventImportance: downtime ?? 'NOTICE',
+          progressionEventImportance: progression ?? 'NOTICE',
+        },
+        update: {
+          ...(manual !== undefined ? { manualEventImportance: manual } : {}),
+          ...(downtime !== undefined ? { downtimeEventImportance: downtime } : {}),
+          ...(progression !== undefined ? { progressionEventImportance: progression } : {}),
+        },
+      });
+    }
+  }
 
   const fantasyCalendars = row.fantasyCalendars;
   if (Array.isArray(fantasyCalendars)) {
