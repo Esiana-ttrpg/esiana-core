@@ -834,7 +834,6 @@ export async function createCampaign(
       await tx.chronologySettings.create({ data: { campaignId: created.id } });
       await tx.calendarEventCategory.createMany({
         data: ['Personal', 'Battle', 'Downtime', 'Holidays'].map(name => ({ campaignId: created.id, name })),
-        skipDuplicates: true,
       });
 
       const partyId = await (async () => {
