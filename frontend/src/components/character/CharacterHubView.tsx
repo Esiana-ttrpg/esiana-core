@@ -377,7 +377,7 @@ export function CharacterHubView({
         title={
           <>
             <Users className="size-6 text-primary" strokeWidth={1.25} />
-            Campaign Cast
+            Characters
           </>
         }
         beforeActions={
