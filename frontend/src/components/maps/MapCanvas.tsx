@@ -51,11 +51,20 @@ interface MapCanvasProps {
 
 function MapResizeSync({ fullscreen }: { fullscreen: boolean }) {
   const leafletMap = useMap();
+  const container = leafletMap.getContainer().parentElement;
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => leafletMap.invalidateSize());
-    return () => window.cancelAnimationFrame(frame);
-  }, [fullscreen, leafletMap]);
+    const invalidate = () => leafletMap.invalidateSize({ animate: false });
+    const frame = window.requestAnimationFrame(invalidate);
+    const observer = container ? new ResizeObserver(invalidate) : null;
+    if (observer && container) observer.observe(container);
+    window.addEventListener('resize', invalidate);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('resize', invalidate);
+    };
+  }, [container, fullscreen, leafletMap]);
 
   return null;
 }
@@ -143,11 +152,11 @@ export function MapCanvas({
   }
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
+    <div className={`flex min-h-0 flex-col gap-2 ${className}`}>
       <div
         className={`relative overflow-hidden border border-border bg-[#1a1a1a] ${
           fullscreen
-            ? 'h-[calc(100dvh-11rem)] min-h-[24rem] rounded-lg'
+            ? 'h-full min-h-0 flex-1 rounded-lg'
             : 'min-h-[min(72vh,780px)] rounded-xl'
         }`}
       >

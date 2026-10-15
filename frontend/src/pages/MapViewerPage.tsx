@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Maximize2, Minimize2, Settings } from 'lucide-react';
 import { fetchCampaignMap, fetchCampaignMaps, resolveMapsHubPath } from '@/lib/maps';
@@ -24,6 +24,7 @@ import { isPageUnderOrganizationsCategory } from '@/lib/questHubLayout';
 import { useMapScene } from '@/hooks/useMapScene';
 import { useMapRegionDraw } from '@/hooks/useMapRegionDraw';
 import { useMapPathDraw } from '@/hooks/useMapPathDraw';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { VISIBILITY_ZONES_LAYER_NAME } from '@/lib/mapScene';
 import type {
   CampaignMapAsset,
@@ -57,6 +58,11 @@ export function MapViewerPage() {
   const [mapActionError, setMapActionError] = useState<string | null>(null);
   const [knowledgeFogEnabled, setKnowledgeFogEnabled] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const fullscreenTriggerRef = useRef<HTMLButtonElement>(null);
+  const wasFullscreenRef = useRef(false);
+
+  useBodyScrollLock(fullscreen);
 
   const wikiPages = useMemo(
     () => flattenWikiTree(tree).map((page) => ({ id: page.id, title: page.title })),
@@ -183,13 +189,31 @@ export function MapViewerPage() {
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      if (regionDraw.phase === 'drawing' || pathDraw.phase === 'drawing') return;
+      if (
+        regionDraw.phase === 'drawing' ||
+        pathDraw.phase === 'drawing' ||
+        editingObject ||
+        document.querySelector('[role="dialog"]')
+      ) {
+        return;
+      }
       event.preventDefault();
       setFullscreen(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [fullscreen, pathDraw.phase, regionDraw.phase]);
+  }, [editingObject, fullscreen, pathDraw.phase, regionDraw.phase]);
+
+  useEffect(() => {
+    if (!fullscreen) {
+      if (wasFullscreenRef.current) fullscreenTriggerRef.current?.focus();
+      wasFullscreenRef.current = false;
+      return;
+    }
+    wasFullscreenRef.current = true;
+    const frame = window.requestAnimationFrame(() => fullscreenRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [fullscreen]);
 
   if (loading) {
     return (
@@ -250,14 +274,19 @@ export function MapViewerPage() {
 
   return (
     <div
+      ref={fullscreenRef}
+      tabIndex={fullscreen ? -1 : undefined}
+      role={fullscreen ? 'application' : undefined}
+      aria-modal={fullscreen ? 'true' : undefined}
+      aria-label={fullscreen ? 'Fullscreen map viewer' : undefined}
       className={
         fullscreen
-          ? 'fixed inset-0 z-[1900] w-full min-w-0 space-y-2 overflow-y-auto bg-background p-3'
+          ? 'fixed inset-0 z-[1900] flex min-h-0 w-full min-w-0 flex-col gap-2 overflow-hidden bg-background p-3 [padding-bottom:calc(0.75rem+env(safe-area-inset-bottom))] [padding-left:calc(0.75rem+env(safe-area-inset-left))] [padding-right:calc(0.75rem+env(safe-area-inset-right))] [padding-top:calc(0.75rem+env(safe-area-inset-top))]'
           : 'w-full min-w-0 space-y-3'
       }
     >
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+        <div className={`min-w-0 space-y-1 ${fullscreen ? 'hidden' : ''}`}>
           <Link
             to={mapsHubPath}
             className="inline-block text-sm text-muted hover:text-foreground"
@@ -284,6 +313,7 @@ export function MapViewerPage() {
             }}
           />
           <button
+            ref={fullscreenTriggerRef}
             type="button"
             className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
             onClick={() => setFullscreen((value) => !value)}
@@ -299,7 +329,7 @@ export function MapViewerPage() {
               {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             </span>
           </button>
-          {canEdit ? (
+          {canEdit && !fullscreen ? (
             <Link
               to={campaignPath(campaignHandle, 'maps', assetId, 'settings')}
               className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
@@ -406,8 +436,8 @@ export function MapViewerPage() {
         </p>
       ) : null}
 
-      <div className="lg:flex lg:items-start lg:gap-3">
-        <div className="min-w-0 flex-1">
+      <div className={`${fullscreen ? 'min-h-0 flex-1 overflow-hidden' : ''} lg:flex lg:items-start lg:gap-3`}>
+        <div className={`${fullscreen ? 'flex h-full min-h-0 flex-1 flex-col' : 'min-w-0 flex-1'}`}>
           <MapCanvas
             campaignHandle={campaignHandle}
             map={detail.map}
@@ -439,6 +469,7 @@ export function MapViewerPage() {
             onNavigateWiki={(pageId) =>
               navigate(campaignWikiPath(campaignHandle, pageId, flatPages))
             }
+            className={fullscreen ? 'h-full min-h-0' : undefined}
             onNavigateMap={(nextAssetId, nextTitle) => {
               if (nextTitle) {
                 setBreadcrumbs((current) => [
