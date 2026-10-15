@@ -214,7 +214,7 @@ export function MapCanvas({
           maxZoom={4}
           zoom={0}
           style={{
-            height: '100%',
+            height: fullscreen ? '100%' : 'min(72vh, 780px)',
             width: '100%',
             background: '#111',
           }}
