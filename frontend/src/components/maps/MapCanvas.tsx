@@ -59,10 +59,12 @@ function MapResizeSync({ fullscreen }: { fullscreen: boolean }) {
     const observer = container ? new ResizeObserver(invalidate) : null;
     if (observer && container) observer.observe(container);
     window.addEventListener('resize', invalidate);
+    window.visualViewport?.addEventListener('resize', invalidate);
     return () => {
       window.cancelAnimationFrame(frame);
       observer?.disconnect();
       window.removeEventListener('resize', invalidate);
+      window.visualViewport?.removeEventListener('resize', invalidate);
     };
   }, [container, fullscreen, leafletMap]);
 
@@ -152,12 +154,12 @@ export function MapCanvas({
   }
 
   return (
-    <div className={`flex min-h-0 flex-col gap-2 ${className}`}>
+    <div className={`flex min-h-0 flex-col ${fullscreen ? 'gap-0' : 'gap-2'} ${className}`}>
       <div
-        className={`relative overflow-hidden border border-border bg-[#1a1a1a] ${
+        className={`relative overflow-hidden bg-[#1a1a1a] ${
           fullscreen
-            ? 'h-full min-h-0 flex-1 rounded-lg'
-            : 'min-h-[min(72vh,780px)] rounded-xl'
+            ? 'h-full min-h-0 flex-1'
+            : 'min-h-[min(72vh,780px)] rounded-xl border border-border'
         }`}
       >
         {loading ? (
@@ -172,7 +174,7 @@ export function MapCanvas({
         ) : null}
 
         {canEdit ? (
-          <div className="absolute right-3 top-3 z-[600]">
+          <div className={fullscreen ? 'absolute right-[max(0.75rem,env(safe-area-inset-right))] top-[calc(max(0.75rem,env(safe-area-inset-top))_+_3.5rem)] z-[600] max-w-[calc(100%_-_1.5rem)]' : 'absolute right-3 top-3 z-[600]'}>
             <MapEditorToolbar
               editMode={editMode}
               ghostMode={ghostMode}
@@ -265,9 +267,9 @@ export function MapCanvas({
         </MapContainer>
       </div>
 
-      <ImageCreditDisplay credit={map.imageCredit} className="px-1" />
+      {!fullscreen ? <ImageCreditDisplay credit={map.imageCredit} className="px-1" /> : null}
 
-      {editMode && canEdit ? (
+      {editMode && canEdit && !fullscreen ? (
         <p className="text-xs text-muted">
           {editorTool === 'select'
             ? 'Double-click to add a pin · click objects to edit · drag pins to move'

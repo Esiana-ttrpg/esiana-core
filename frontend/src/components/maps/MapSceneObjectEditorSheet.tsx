@@ -440,7 +440,7 @@ export function MapSceneObjectEditorSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[700] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+    <div className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div
         className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-4 shadow-xl"
         role="dialog"

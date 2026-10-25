@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Maximize2, Minimize2, Settings } from 'lucide-react';
 import { fetchCampaignMap, fetchCampaignMaps, resolveMapsHubPath } from '@/lib/maps';
@@ -61,8 +62,21 @@ export function MapViewerPage() {
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const fullscreenTriggerRef = useRef<HTMLButtonElement>(null);
   const wasFullscreenRef = useRef(false);
+  const viewerAnchorRef = useRef<HTMLDivElement>(null);
+  // The portal target stays the same while its DOM node moves. React and Leaflet
+  // therefore keep the same component and map instances in both presentations.
+  const [viewerHost] = useState(() => document.createElement('div'));
+  const viewerReady = !loading && !error && Boolean(detail);
 
   useBodyScrollLock(fullscreen);
+
+  useLayoutEffect(() => {
+    const parent = fullscreen ? document.body : viewerAnchorRef.current;
+    parent?.appendChild(viewerHost);
+    return () => {
+      viewerHost.remove();
+    };
+  }, [fullscreen, viewerHost, viewerReady]);
 
   const wikiPages = useMemo(
     () => flattenWikiTree(tree).map((page) => ({ id: page.id, title: page.title })),
@@ -272,20 +286,20 @@ export function MapViewerPage() {
       />
     ) : null;
 
-  return (
+  const viewer = (
     <div
       ref={fullscreenRef}
       tabIndex={fullscreen ? -1 : undefined}
-      role={fullscreen ? 'application' : undefined}
+      role={fullscreen ? 'dialog' : undefined}
       aria-modal={fullscreen ? 'true' : undefined}
       aria-label={fullscreen ? 'Fullscreen map viewer' : undefined}
       className={
         fullscreen
-          ? 'fixed inset-0 z-[1900] flex min-h-0 w-full min-w-0 flex-col gap-2 overflow-hidden bg-background p-3 [padding-bottom:calc(0.75rem+env(safe-area-inset-bottom))] [padding-left:calc(0.75rem+env(safe-area-inset-left))] [padding-right:calc(0.75rem+env(safe-area-inset-right))] [padding-top:calc(0.75rem+env(safe-area-inset-top))]'
+          ? 'fixed inset-0 z-[1900] h-[100dvh] w-screen min-w-0 overflow-hidden bg-background'
           : 'w-full min-w-0 space-y-3'
       }
     >
-      <header className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+      <header className={fullscreen ? 'pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-3 px-[max(0.75rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))]' : 'flex shrink-0 flex-wrap items-start justify-between gap-3'}>
         <div className={`min-w-0 space-y-1 ${fullscreen ? 'hidden' : ''}`}>
           <Link
             to={mapsHubPath}
@@ -299,7 +313,8 @@ export function MapViewerPage() {
             px
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+        <div className={`flex shrink-0 flex-wrap items-center justify-end gap-1 ${fullscreen ? 'pointer-events-auto ml-auto max-w-[calc(100%_-_8rem)]' : ''}`}>
+          <div className={fullscreen ? 'absolute left-[max(0.75rem,env(safe-area-inset-left))] top-[max(0.75rem,env(safe-area-inset-top))] max-w-[calc(100%_-_10rem)] rounded-md bg-surface/95 shadow-md' : ''}>
           <MapChronologyBar
             viewEpochMinute={viewEpochMinute}
             campaignEpochMinute={campaignEpochMinute}
@@ -312,10 +327,11 @@ export function MapViewerPage() {
               scene.applyPresentationPreset(preset, setViewEpochMinute);
             }}
           />
+          </div>
           <button
             ref={fullscreenTriggerRef}
             type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-sm shadow-md hover:bg-muted/10"
             onClick={() => setFullscreen((value) => !value)}
             aria-label={fullscreen ? 'Exit fullscreen map' : 'View map fullscreen'}
             title={fullscreen ? 'Exit fullscreen (Esc)' : 'View fullscreen'}
@@ -358,6 +374,7 @@ export function MapViewerPage() {
       ) : null}
 
       {editMode && canEdit ? (
+        <div className={fullscreen ? 'absolute left-[max(0.75rem,env(safe-area-inset-left))] top-[calc(max(0.75rem,env(safe-area-inset-top))_+_3.5rem)] z-[800] max-h-[30dvh] w-[min(24rem,calc(100%_-_1.5rem))] overflow-auto rounded-lg bg-surface/95 shadow-md' : ''}>
         <MapPresentationPresetsPanel
           campaignHandle={campaignHandle}
           assetId={assetId}
@@ -368,8 +385,10 @@ export function MapViewerPage() {
           timeTracking={timeTracking}
           onChanged={() => scene.reloadScene()}
         />
+        </div>
       ) : null}
 
+      <div className={fullscreen ? 'absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] z-[900] max-h-[35dvh] overflow-auto rounded-lg bg-surface/95 px-3 shadow-md' : ''}>
       <MapVisibilityBar
         layers={scene.layers}
         enabledLayerIds={scene.enabledLayerIds}
@@ -411,8 +430,10 @@ export function MapViewerPage() {
         knowledgeFogEnabled={knowledgeFogEnabled}
         onToggleKnowledgeFog={() => setKnowledgeFogEnabled((v) => !v)}
       />
+      </div>
 
       {editMode && canEdit ? (
+        <div className={fullscreen ? 'absolute left-[max(0.75rem,env(safe-area-inset-left))] top-[calc(max(0.75rem,env(safe-area-inset-top))_+_35dvh_+_3.5rem)] z-[800] max-h-[20dvh] w-[min(24rem,calc(100%_-_1.5rem))] overflow-auto rounded-lg bg-surface/95 shadow-md' : ''}>
         <MapGroupsPanel
           campaignHandle={campaignHandle}
           assetId={assetId}
@@ -421,10 +442,11 @@ export function MapViewerPage() {
           onToggleGroupFilter={scene.toggleGroupFilter}
           onGroupsChanged={() => scene.reloadScene()}
         />
+        </div>
       ) : null}
 
       {mapActionError ? (
-        <p className="rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive">
+        <p className={`rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive ${fullscreen ? 'absolute left-3 right-3 top-16 z-[1000] bg-surface' : ''}`}>
           {mapActionError}
           <button
             type="button"
@@ -436,7 +458,7 @@ export function MapViewerPage() {
         </p>
       ) : null}
 
-      <div className={`${fullscreen ? 'min-h-0 flex-1 overflow-hidden' : ''} lg:flex lg:items-start lg:gap-3`}>
+      <div className={`${fullscreen ? 'absolute inset-0 overflow-hidden' : ''} lg:flex lg:items-start lg:gap-3`}>
         <div className={`${fullscreen ? 'flex h-full min-h-0 flex-1 flex-col' : 'min-w-0 flex-1'}`}>
           <MapCanvas
             campaignHandle={campaignHandle}
@@ -497,10 +519,12 @@ export function MapViewerPage() {
             wikiPages={wikiPages}
             onClose={() => setEditingObject(null)}
             onUpdated={() => scene.reloadScene()}
-            variant="panel"
+            variant={fullscreen ? 'modal' : 'panel'}
           />
         ) : null}
       </div>
     </div>
   );
+
+  return <div ref={viewerAnchorRef}>{createPortal(viewer, viewerHost)}</div>;
 }
