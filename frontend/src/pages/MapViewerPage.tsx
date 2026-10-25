@@ -203,11 +203,13 @@ export function MapViewerPage() {
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      const otherDialogOpen = Array.from(document.querySelectorAll('[role="dialog"]'))
+        .some((dialog) => dialog !== fullscreenRef.current);
       if (
         regionDraw.phase === 'drawing' ||
         pathDraw.phase === 'drawing' ||
         editingObject ||
-        document.querySelector('[role="dialog"]')
+        otherDialogOpen
       ) {
         return;
       }
