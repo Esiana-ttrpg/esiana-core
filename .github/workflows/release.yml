@@ -231,6 +231,10 @@ jobs:
               ;;
           esac
 
+          docker run --rm --entrypoint node \
+            --volume "$PWD/scripts/ci/smoke-nginx-image.mjs:/tmp/smoke-nginx-image.mjs:ro" \
+            "$IMAGE" /tmp/smoke-nginx-image.mjs
+
       - uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.artifact_slug }}
