@@ -1,4 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from 'react';
+import { canDiscardMapProperties } from '@/lib/mapWorkspaceInteractions';
 
 export type MapDiscardGuard = MutableRefObject<(() => boolean) | null>;
 
@@ -6,7 +7,7 @@ export type MapDiscardGuard = MutableRefObject<(() => boolean) | null>;
 export function useMapEditorDraft(open: boolean, identity: string | undefined, onClose: () => void, guardRef?: MapDiscardGuard, busy = false) {
   const dirty = useRef(false);
   useEffect(() => { dirty.current = false; }, [identity, open]);
-  const discard = () => !busy && (!dirty.current || window.confirm('Discard unsaved map properties?'));
+  const discard = () => canDiscardMapProperties(busy, dirty.current, () => window.confirm('Discard unsaved map properties?'));
   const close = () => { if (discard()) onClose(); };
   useEffect(() => {
     if (!open) return;

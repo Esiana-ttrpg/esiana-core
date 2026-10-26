@@ -12,9 +12,6 @@ test-out.txt
 .DS_Store
 Thumbs.db
 
-# Browser map verification screenshots
-artifacts/map-workspace/
-
 # Database
 *.db
 *.db-journal

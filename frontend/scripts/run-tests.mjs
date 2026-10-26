@@ -50,6 +50,8 @@ const result = spawnSync(
     'src/lib/locationMetadata.test.ts',
     'src/lib/maps.test.ts',
     'src/lib/mapScene.test.ts',
+    'src/lib/mapWorkspaceInteractions.test.ts',
+    'src/components/maps/MapEditorToolbar.test.tsx',
     '../shared/mapWorkspace.test.ts',
     'src/lib/createEntityConfig.test.ts',
     'src/lib/entityAppearanceProjection.test.ts',

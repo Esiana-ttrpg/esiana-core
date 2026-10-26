@@ -1,6 +1,7 @@
 import { Circle, MousePointer2, MapPin, Pencil, Pentagon, Route, Type } from 'lucide-react';
 import type { MapEditorTool } from '@/types/maps';
 interface MapEditorToolbarProps {
+  canEdit?: boolean;
   editMode: boolean; ghostMode: boolean; editorTool?: MapEditorTool;
   onEditorToolChange?: (tool: MapEditorTool) => void;
   onToggleEditMode: () => void; onToggleGhostMode: () => void;
@@ -14,6 +15,7 @@ const tools = [
   ['drawCircle', 'Circle', Circle], ['drawPath', 'Path', Route],
 ] as const;
 export function MapEditorToolbar(props: MapEditorToolbarProps) {
+  if (props.canEdit === false) return null;
   const drawing = ['drawRegion', 'drawPath', 'drawCircle'].includes(props.editorTool ?? 'select');
   return <div className={`map-edit-dock map-float ${props.className ?? ''}`} role="toolbar" aria-label="Map editing tools">
     {!props.editMode ? <button type="button" onClick={props.onToggleEditMode}><Pencil size={18} />Edit map</button> : <>

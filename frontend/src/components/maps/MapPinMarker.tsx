@@ -7,6 +7,7 @@ import type { MapPinDto, MapPinPreviewDto } from '@/types/maps';
 import { pinTypeColor, pinTypeIcon } from './mapPinIcons';
 import { MapPinPreviewCard } from './MapPinPreviewCard';
 import { fetchMapPinPreview } from '@/lib/maps';
+import { handleMapPinClick } from '@/lib/mapWorkspaceInteractions';
 
 interface MapPinMarkerProps {
   pin: MapPinDto;
@@ -147,23 +148,7 @@ export function MapPinMarker({
           onDragEnd?.(pin, latLng.lng, latLng.lat);
         },
         popupopen: loadPreview,
-        click: () => {
-          if (editMode && onEditPin) {
-            onEditPin(pin);
-            return;
-          }
-          if (onSelect) {
-            onSelect();
-            return;
-          }
-          if (pin.targetAssetId && onNavigateMap) {
-            onNavigateMap(pin.targetAssetId);
-            return;
-          }
-          if (pin.targetPageId && onNavigateWiki) {
-            onNavigateWiki(pin.targetPageId);
-          }
-        },
+        click: () => handleMapPinClick({ pin, editMode, onEditPin, onSelect, onNavigateMap, onNavigateWiki }),
       }}
     >
       <Popup>

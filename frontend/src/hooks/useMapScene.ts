@@ -21,6 +21,7 @@ import {
   WEATHER_CLIMATE_LAYER_NAME,
 } from '@shared/mapOverlayTypes';
 import { readPinTypeFilters, writePinTypeFilters } from '@/components/maps/mapPinIcons';
+import { applyMapPresentationPreset, filterMapSceneObjects, mapLayerSelectionForIdentity } from '@/lib/mapWorkspaceInteractions';
 
 const GROUP_FILTER_PREFIX = 'esiana-map-hidden-groups:';
 
@@ -72,7 +73,7 @@ export function useMapScene({
   const visibilityContext = `${identity}:${canEdit}:${ghostMode}:${viewEpochMinute ?? campaignEpochMinute}`;
   const [resolvedVisibilityContext, setResolvedVisibilityContext] = useState<string | null>(null);
   const [layerSelection, setLayerSelection] = useState<{ identity: string; ids: Set<string> | null }>({ identity, ids: null });
-  const selection = layerSelection.identity === identity ? layerSelection.ids : null;
+  const selection = mapLayerSelectionForIdentity(layerSelection, identity);
   const enabledLayerIds = useMemo(() => selection ?? new Set(layers.filter(l => l.defaultEnabled).map(l => l.id)), [selection, layers]);
   const setEnabledLayerIds = useCallback((update: Set<string> | ((ids: Set<string>) => Set<string>)) => {
     setLayerSelection(current => ({ identity, ids: typeof update === 'function' ? update(current.identity === identity && current.ids !== null ? current.ids : enabledLayerIds) : update }));
@@ -159,12 +160,11 @@ export function useMapScene({
   );
 
   const visibleSceneObjects = useMemo(
-    () => resolvedVisibilityContext !== visibilityContext ? [] : sceneObjects.filter(object =>
-      (!object.layerId || enabledLayerIds.has(object.layerId)) &&
-      passesGroupFilter(object) &&
-      !hiddenAnnotationKinds.has(object.kind) &&
-      (object.kind !== 'pin' || !hiddenTypes.has(object.pinType as MapPinType))),
-    [sceneObjects, passesGroupFilter, hiddenAnnotationKinds, hiddenTypes, enabledLayerIds, resolvedVisibilityContext, visibilityContext],
+    () => filterMapSceneObjects(sceneObjects, {
+      resolvedContext: resolvedVisibilityContext, currentContext: visibilityContext,
+      enabledLayerIds, canEdit, hiddenGroupIds, hiddenAnnotationKinds, hiddenTypes,
+    }),
+    [sceneObjects, canEdit, hiddenGroupIds, hiddenAnnotationKinds, hiddenTypes, enabledLayerIds, resolvedVisibilityContext, visibilityContext],
   );
 
   const visiblePins = useMemo(
@@ -283,10 +283,7 @@ export function useMapScene({
 
   const applyPresentationPreset = useCallback(
     (preset: MapPresentationPresetDto, onEpochChange: (epoch: string) => void) => {
-      onEpochChange(preset.anchorEpochMinute);
-      if (preset.enabledLayerIds.length > 0) {
-        setEnabledLayerIds(new Set(preset.enabledLayerIds));
-      }
+      applyMapPresentationPreset(preset, onEpochChange, setEnabledLayerIds);
     },
     [setEnabledLayerIds],
   );

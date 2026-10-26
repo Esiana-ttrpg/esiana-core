@@ -236,6 +236,7 @@ export function MapCanvas({
         {canEdit ? (
           <div className={fullscreen ? 'map-fullscreen-dock' : 'absolute right-3 top-3 z-[1100] max-w-[calc(100%_-_5rem)]'}>
             <MapEditorToolbar
+              canEdit={canEdit}
               editMode={editMode}
               ghostMode={ghostMode}
               editorTool={editorTool}

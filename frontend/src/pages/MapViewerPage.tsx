@@ -1,5 +1,6 @@
 import '@/styles/map-workspace.css';
 import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
+import { mapEscapeAction, mapFocusTargetIndex, nextMapEditMode } from '@/lib/mapWorkspaceInteractions';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -79,8 +80,7 @@ export function MapViewerPage() {
     setEditingObject(null); setEditorTool(tool);
   };
   const toggleEditMode = () => {
-    if (editMode && !discardProperties()) return;
-    setEditMode(value => !value);
+    setEditMode(nextMapEditMode(editMode, canEdit, discardProperties));
   };
   const fullscreenRef = useRef<HTMLDivElement>(null);
   const fullscreenTriggerRef = useRef<HTMLButtonElement>(null);
@@ -244,18 +244,25 @@ export function MapViewerPage() {
         const root = dialogs.at(-1) ?? fullscreenRef.current;
         const nodes = Array.from(root?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]') ?? []).filter(el => el.getClientRects().length);
         const index = nodes.indexOf(document.activeElement as HTMLElement);
-        if (!nodes.length) { event.preventDefault(); root?.focus(); }
-        else if (event.shiftKey ? index <= 0 : index < 0 || index === nodes.length - 1) {
-          event.preventDefault(); nodes[event.shiftKey ? nodes.length - 1 : 0].focus();
+        const target = mapFocusTargetIndex(index, nodes.length, event.shiftKey);
+        if (target !== null) {
+          event.preventDefault();
+          if (target === -1) root?.focus();
+          else nodes[target].focus();
         }
         return;
       }
-      if (event.key !== 'Escape' || dialogs.length || editingObject) return;
-      if (regionDraw.isPersisting || pathDraw.isPersisting) { event.preventDefault(); return; }
-      if (editMode && editorTool !== 'select') {
+      if (event.key !== 'Escape') return;
+      const action = mapEscapeAction({
+        fullscreen, editMode, editorTool, dialogOpen: dialogs.length > 0,
+        propertiesOpen: Boolean(editingObject), persisting: regionDraw.isPersisting || pathDraw.isPersisting,
+      });
+      if (action === 'delegate' || action === 'none') return;
+      if (action === 'busy') { event.preventDefault(); return; }
+      if (action === 'cancelDrawing') {
         event.preventDefault(); regionDraw.cancel(); pathDraw.cancel(); setEditorTool('select'); return;
       }
-      if (fullscreen) { event.preventDefault(); setFullscreen(false); }
+      if (action === 'exitFullscreen') { event.preventDefault(); setFullscreen(false); }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -332,9 +339,6 @@ export function MapViewerPage() {
   const viewer = (
     <div
       ref={fullscreenRef}
-      data-map-tool={editorTool}
-      data-draw-phase={regionDraw.phase}
-      data-draw-vertices={regionDraw.vertices.length}
       tabIndex={fullscreen ? -1 : undefined}
       role={fullscreen ? 'dialog' : undefined}
       aria-modal={fullscreen ? 'true' : undefined}
