@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { MapLayerDto, MapObjectGroupDto, MapPinDto, MapPinType, MapPresentationPresetDto, MapSceneObjectDto } from '@/types/maps';
 import { createMapPin, updateMapPin } from '@/lib/maps';
 import {
@@ -79,9 +79,11 @@ export function useMapScene({
   }, [identity, enabledLayerIds]);
   const requestSequence = useRef(0);
   const currentIdentity = useRef(identity);
-  currentIdentity.current = identity;
   const currentVisibilityContext = useRef(visibilityContext);
-  currentVisibilityContext.current = visibilityContext;
+  useLayoutEffect(() => {
+    currentIdentity.current = identity;
+    currentVisibilityContext.current = visibilityContext;
+  }, [identity, visibilityContext]);
   const [hiddenAnnotationKinds, setHiddenAnnotationKinds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -282,7 +284,9 @@ export function useMapScene({
   const applyPresentationPreset = useCallback(
     (preset: MapPresentationPresetDto, onEpochChange: (epoch: string) => void) => {
       onEpochChange(preset.anchorEpochMinute);
-      setEnabledLayerIds(new Set(preset.enabledLayerIds));
+      if (preset.enabledLayerIds.length > 0) {
+        setEnabledLayerIds(new Set(preset.enabledLayerIds));
+      }
     },
     [setEnabledLayerIds],
   );

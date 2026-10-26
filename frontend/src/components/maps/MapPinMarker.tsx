@@ -152,7 +152,10 @@ export function MapPinMarker({
             onEditPin(pin);
             return;
           }
-          onSelect?.();
+          if (onSelect) {
+            onSelect();
+            return;
+          }
           if (pin.targetAssetId && onNavigateMap) {
             onNavigateMap(pin.targetAssetId);
             return;

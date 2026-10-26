@@ -135,13 +135,16 @@ try {
   await page.getByRole('link', { name: 'Second map' }).click();
   await page.getByRole('button', { name: 'View map fullscreen' }).waitFor();
   await page.waitForTimeout(200);
-  assert.ok(scenes.filter(url => url.pathname.includes('/second/')).every(url => !url.searchParams.has('layerIds')));
+  const secondMapRequests = scenes.filter(url => url.pathname.includes('/second/'));
+  assert.ok(secondMapRequests.length > 0, 'Expected a scene request for the second map');
+  assert.ok(secondMapRequests.every(url => !url.searchParams.has('layerIds')));
   role = 'PLAYER';
   await page.getByRole('button', { name: 'Edit map', exact: true }).click();
+  const editingToolbar = page.getByRole('toolbar', { name: 'Map editing tools' });
+  await editingToolbar.waitFor({ state: 'visible' });
   await page.getByRole('button', { name: 'Refresh permissions' }).click();
   await page.getByRole('button', { name: 'View map fullscreen' }).click();
-  await page.waitForTimeout(250);
-  assert.equal(await page.getByRole('toolbar', { name: 'Map editing tools' }).count(), 0);
+  await editingToolbar.waitFor({ state: 'hidden' });
   assert.deepEqual(errors, []);
   console.log('Map workspace browser checks passed. Screenshots: artifacts/map-workspace/');
 } catch (error) {
