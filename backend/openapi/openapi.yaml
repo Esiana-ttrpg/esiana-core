@@ -9414,6 +9414,18 @@ paths:
           required: true
           schema:
             type: string
+        - name: layerIds
+          in: query
+          required: false
+          allowEmptyValue: true
+          schema:
+            type: string
+          description: >-
+            Omit to use default layer visibility. An empty value hides all
+            explicitly layered objects; a comma-separated list enables only
+            the selected layers. Unlayered objects retain their existing
+            visibility rules. This filter does not grant authorization or
+            bypass temporal or revelation filtering.
       responses:
         "200":
           description: Successful response

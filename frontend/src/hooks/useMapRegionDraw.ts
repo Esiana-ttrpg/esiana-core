@@ -8,10 +8,12 @@ import {
   type MapLayerKindValue,
 } from '@shared/mapOverlayTypes';
 import { createMapSceneObject } from '@/lib/mapScene';
+import { circleGeometry } from '@shared/mapCircle';
 
 export type RegionDrawPhase = 'idle' | 'drawing' | 'persisting';
 
 export interface UseMapRegionDrawOptions {
+  circle?: boolean;
   active: boolean;
   campaignHandle: string;
   assetId: string;
@@ -26,6 +28,7 @@ export interface UseMapRegionDrawOptions {
 }
 
 export function useMapRegionDraw({
+  circle = false,
   active,
   campaignHandle,
   assetId,
@@ -42,8 +45,12 @@ export function useMapRegionDraw({
   const [cursorDisplay, setCursorDisplay] = useState<[number, number] | null>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const lastClickRef = useRef(0);
+  const autoFinishAttempted = useRef(false);
 
   useEffect(() => {
+    lastClickRef.current = 0;
+    autoFinishAttempted.current = false;
+    setSpaceHeld(false);
     if (!active) {
       setPhase('idle');
       setVertices([]);
@@ -53,7 +60,7 @@ export function useMapRegionDraw({
     setPhase('drawing');
     setVertices([]);
     setCursorDisplay(null);
-  }, [active]);
+  }, [active, circle, campaignHandle, assetId]);
 
   const cancel = useCallback(() => {
     setPhase('idle');
@@ -65,10 +72,7 @@ export function useMapRegionDraw({
     if (phase !== 'drawing') return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Escape') {
-        event.preventDefault();
-        cancel();
-      }
+      if ((event.target as HTMLElement)?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return;
       if (event.code === 'Space') {
         event.preventDefault();
         setSpaceHeld(true);
@@ -94,9 +98,10 @@ export function useMapRegionDraw({
       const now = Date.now();
       if (now - lastClickRef.current < 300) return;
       lastClickRef.current = now;
-      setVertices((current) => [...current, [x, y]]);
+      if (x < 0 || y < 0 || x > width || y > height) return;
+      setVertices((current) => circle && current.length >= 2 ? current : [...current, [x, y]]);
     },
-    [phase, spaceHeld],
+    [phase, spaceHeld, circle, width, height],
   );
 
   const updateCursor = useCallback(
@@ -112,12 +117,11 @@ export function useMapRegionDraw({
   }, [phase]);
 
   const finish = useCallback(async () => {
-    if (phase !== 'drawing' || vertices.length < 3) return;
+    if (phase !== 'drawing' || vertices.length < (circle ? 2 : 3)) return;
+    const geometry = circle ? circleGeometry(vertices[0], vertices[1], width, height) : polygonGeometry(vertices.map(([x, y]) => displayToNormalizedPoint(x, y, width, height)));
+    if (!geometry) { setVertices([]); setCursorDisplay(null); return; }
     setPhase('persisting');
     try {
-      const ring = vertices.map(([x, y]) =>
-        displayToNormalizedPoint(x, y, width, height),
-      );
       const layerKind: MapLayerKindValue = defaultLayerName
         ? inferMapLayerKind({ name: defaultLayerName })
         : MapLayerKind.STANDARD;
@@ -129,7 +133,7 @@ export function useMapRegionDraw({
       };
       await createMapSceneObject(campaignHandle, assetId, {
         kind: 'region',
-        geometry: polygonGeometry(ring),
+        geometry,
         layerId: defaultLayerId,
         revelation: 'REVEALED',
         style: mergeObjectStyleWithOverlay(baseStyle, { layerKind, semanticRole }),
@@ -140,12 +144,11 @@ export function useMapRegionDraw({
       await onPersisted();
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Failed to save region');
-      setPhase('idle');
-      setVertices([]);
-      setCursorDisplay(null);
+      setPhase('drawing');
     }
   }, [
     phase,
+    circle,
     vertices,
     width,
     height,
@@ -157,6 +160,13 @@ export function useMapRegionDraw({
     onPersisted,
     onError,
   ]);
+
+  useEffect(() => {
+    if (circle && vertices.length === 2 && phase === 'drawing' && !autoFinishAttempted.current) {
+      autoFinishAttempted.current = true;
+      void finish();
+    }
+  }, [circle, vertices.length, phase, finish]);
 
   const tryFinishOnDoubleClick = useCallback(() => {
     if (vertices.length >= 3) {
@@ -173,16 +183,19 @@ export function useMapRegionDraw({
   }, [vertices, cursorDisplay]);
 
   const closedPreviewPositions = useCallback((): [number, number][] | null => {
+    if (circle && vertices.length && cursorDisplay) {
+      return circleGeometry(vertices[0], vertices[1] ?? cursorDisplay, width, height)?.coordinates[0].map(([x, y]) => [y * height, x * width]) ?? null;
+    }
     if (vertices.length < 3) return null;
     const ring = vertices.map(([x, y]) => [y, x] as [number, number]);
     return [...ring, ring[0]];
-  }, [vertices]);
+  }, [vertices, circle, cursorDisplay, width, height]);
 
   return {
     phase,
     vertices,
     spaceHeld,
-    canFinish: phase === 'drawing' && vertices.length >= 3,
+    canFinish: phase === 'drawing' && vertices.length >= (circle ? 2 : 3),
     isDrawing: phase === 'drawing',
     isPersisting: phase === 'persisting',
     addVertex,

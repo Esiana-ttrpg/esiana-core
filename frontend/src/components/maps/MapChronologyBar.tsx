@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, ChevronDown, X } from 'lucide-react';
 import type { MapPresentationPresetDto } from '@/types/maps';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
@@ -38,6 +38,12 @@ export function MapChronologyBar({
     datePartsForMapViewing(viewEpochMinute, campaignEpochMinute, timeTracking),
   );
 
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); setPickerOpen(false); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pickerOpen]);
   const viewingLabel = formatMapViewingLabel(
     viewEpochMinute,
     campaignEpochMinute,
@@ -87,7 +93,7 @@ export function MapChronologyBar({
         >
           <div
             className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-4 shadow-xl"
-            role="dialog"
+            role="dialog" data-map-nested-dialog
             aria-modal="true"
             aria-labelledby="map-date-picker-title"
             onClick={(e) => e.stopPropagation()}

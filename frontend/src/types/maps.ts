@@ -132,7 +132,7 @@ export interface MapScenePayload {
   objects: MapSceneObjectDto[];
 }
 
-export type MapEditorTool = 'select' | 'drawRegion' | 'drawPath' | 'placeLabel';
+export type MapEditorTool = 'select' | 'placePin' | 'drawRegion' | 'drawCircle' | 'drawPath' | 'placeLabel';
 
 export interface MapPinPreviewDto {
   title: string;

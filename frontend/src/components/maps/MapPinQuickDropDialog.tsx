@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { CampaignMapAsset, MapPinType } from '@/types/maps';
 import { MAP_PIN_TYPE_VALUES, mapDisplayTitle } from '@/types/maps';
 import { getWikiFolderForMapPinType } from '@/lib/maps';
@@ -9,6 +9,8 @@ interface WikiPageOption {
 }
 
 interface MapPinQuickDropDialogProps {
+  error?: string | null;
+  busy?: boolean;
   open: boolean;
   x: number;
   y: number;
@@ -22,6 +24,8 @@ interface MapPinQuickDropDialogProps {
 }
 
 export function MapPinQuickDropDialog({
+  error,
+  busy = false,
   open,
   x,
   y,
@@ -58,16 +62,24 @@ export function MapPinQuickDropDialog({
       .slice(0, 20);
   }, [campaignMaps, currentAssetId, search]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); event.stopImmediatePropagation(); if (!busy) onClose(); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose, busy]);
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 p-4">
       <div
         className="w-full max-w-md rounded-xl border border-border bg-surface p-4 shadow-xl"
-        role="dialog"
+        role="dialog" data-map-nested-dialog
         aria-modal="true"
         aria-label="Add map pin"
       >
+        {error ? <p role="alert" className="mb-3 text-sm text-destructive">{error}</p> : null}
+        <fieldset disabled={busy}>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold">Add map pin</h3>
@@ -225,6 +237,7 @@ export function MapPinQuickDropDialog({
             </button>
           </div>
         ) : null}
+        </fieldset>
       </div>
     </div>
   );

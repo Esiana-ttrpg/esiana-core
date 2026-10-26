@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { parseMapLayerIds } from '../../../shared/mapLayerSelection.js';
 import { prisma } from '../lib/prisma.js';
 import { canViewMapAsset } from '../lib/mapAssetVisibility.js';
 import {
@@ -45,10 +46,7 @@ async function loadMapContext(req: CampaignScopedRequest, assetId: string) {
 function parseSceneQuery(req: CampaignScopedRequest) {
   const q = req.query as Record<string, string | undefined>;
   // Do not add groupIds — groups are editor-only and must not affect presence.
-  const layerIds =
-    typeof q.layerIds === 'string' && q.layerIds.trim()
-      ? q.layerIds.split(',').map((id) => id.trim()).filter(Boolean)
-      : null;
+  const layerIds = parseMapLayerIds(q.layerIds);
 
   return {
     viewEpochMinute: q.viewEpochMinute ?? null,

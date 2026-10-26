@@ -45,6 +45,8 @@ export function EmbeddedMapSection({
         hiddenPinTypes={scene.hiddenTypes}
         onToggleLayer={scene.toggleLayer}
         onTogglePinType={scene.togglePinType}
+        onEnableAllLayers={scene.enableAllLayers}
+        onDisableAllLayers={scene.disableAllLayers}
       />
       <MapCanvas
         campaignHandle={campaignHandle}

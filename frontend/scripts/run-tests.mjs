@@ -49,6 +49,8 @@ const result = spawnSync(
     'src/lib/hirelingManagedPage.test.ts',
     'src/lib/locationMetadata.test.ts',
     'src/lib/maps.test.ts',
+    'src/lib/mapScene.test.ts',
+    '../shared/mapWorkspace.test.ts',
     'src/lib/createEntityConfig.test.ts',
     'src/lib/entityAppearanceProjection.test.ts',
     'src/lib/characterIdentityProjection.test.ts',

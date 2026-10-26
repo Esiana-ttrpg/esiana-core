@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Lock } from 'lucide-react';
@@ -10,6 +10,8 @@ import { fetchMapPinPreview } from '@/lib/maps';
 
 interface MapPinMarkerProps {
   pin: MapPinDto;
+  selected?: boolean;
+  onSelect?: () => void;
   campaignHandle: string;
   draggable?: boolean;
   editMode?: boolean;
@@ -88,6 +90,8 @@ function stubPreviewFromPin(pin: MapPinDto): MapPinPreviewDto | null {
 
 export function MapPinMarker({
   pin,
+  selected,
+  onSelect,
   campaignHandle,
   draggable = false,
   editMode = false,
@@ -96,6 +100,8 @@ export function MapPinMarker({
   onNavigateWiki,
   onNavigateMap,
 }: MapPinMarkerProps) {
+  const markerRef = useRef<L.Marker>(null);
+  useEffect(() => { if (selected && !editMode) markerRef.current?.openPopup(); }, [selected, editMode]);
   const stubPreview = useMemo(() => stubPreviewFromPin(pin), [pin]);
   const [preview, setPreview] = useState<MapPinPreviewDto | null>(null);
   const [loading, setLoading] = useState(false);
@@ -130,6 +136,7 @@ export function MapPinMarker({
 
   return (
     <Marker
+      ref={markerRef}
       position={[pin.y, pin.x]}
       title={ghostTitle}
       icon={icon}
@@ -145,6 +152,7 @@ export function MapPinMarker({
             onEditPin(pin);
             return;
           }
+          onSelect?.();
           if (pin.targetAssetId && onNavigateMap) {
             onNavigateMap(pin.targetAssetId);
             return;
@@ -161,6 +169,12 @@ export function MapPinMarker({
           loading={loading && !displayPreview}
           error={error}
         />
+        {!editMode && (pin.targetPageId || pin.targetAssetId) ? (
+          <button type="button" className="min-h-11 px-2 text-sm underline" onClick={() => {
+            if (pin.targetAssetId) onNavigateMap?.(pin.targetAssetId);
+            else if (pin.targetPageId) onNavigateWiki?.(pin.targetPageId);
+          }}>Open linked {pin.targetAssetId ? 'map' : 'page'}</button>
+        ) : null}
       </Popup>
     </Marker>
   );

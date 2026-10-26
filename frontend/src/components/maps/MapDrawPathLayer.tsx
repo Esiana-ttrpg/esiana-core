@@ -61,6 +61,7 @@ export function MapDrawPathLayer({
 
   return previewLine.length >= 2 ? (
     <Polyline
+      interactive={false}
       positions={previewLine}
       pathOptions={{ color: '#818cf8', weight: 3, dashArray: '6 4' }}
     />
