@@ -1,3 +1,4 @@
+import { resolveMapLayerIds } from '../../../shared/mapLayerSelection.js';
 import { prisma } from './prisma.js';
 import { refreshClimateOverlaysForMap } from './mapOverlayProjectionService.js';
 import { canViewWikiPage } from './wikiTree.js';
@@ -625,11 +626,7 @@ export async function getMapScenePayload(
     rawObjects.map((row) => row.id),
   );
 
-  if (ctx.enabledLayerIds.size === 0) {
-    for (const layer of layers) {
-      if (layer.defaultEnabled) ctx.enabledLayerIds.add(layer.id);
-    }
-  }
+  ctx.enabledLayerIds = resolveMapLayerIds(options.enabledLayerIds, layers);
 
   const objects: SerializedSceneObject[] = [];
   for (const row of rawObjects) {

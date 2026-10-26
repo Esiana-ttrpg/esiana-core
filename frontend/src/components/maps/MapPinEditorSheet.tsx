@@ -1,3 +1,4 @@
+import { useMapEditorDraft, type MapDiscardGuard } from '@/hooks/useMapEditorDraft';
 import { useEffect, useMemo, useState } from 'react';
 import type {
   CampaignMapAsset,
@@ -12,6 +13,8 @@ import { batchRevealMapObjects, updateMapSceneObject } from '@/lib/mapScene';
 
 interface MapPinEditorSheetProps {
   open: boolean;
+  guardRef?: MapDiscardGuard;
+  floating?: boolean;
   pin: MapPinDto | null;
   campaignHandle: string;
   assetId: string;
@@ -26,6 +29,8 @@ interface MapPinEditorSheetProps {
 
 export function MapPinEditorSheet({
   open,
+  guardRef,
+  floating = false,
   pin,
   campaignHandle,
   assetId,
@@ -63,8 +68,8 @@ export function MapPinEditorSheet({
       : sceneObjects.find((entry) => entry.mapPinId === pin.id);
     setGroupId(object?.groupId ?? '');
     setError(null);
-    setRevelation('REVEALED');
-  }, [pin, sceneObjects]);
+    setRevelation((object?.revelation as 'REVEALED' | 'HIDDEN' | 'DRAFT') ?? 'REVEALED');
+  }, [pin?.id, open]);
 
   const filteredPages = useMemo(() => {
     const q = pageSearch.trim().toLowerCase();
@@ -84,6 +89,8 @@ export function MapPinEditorSheet({
       })
       .slice(0, 20);
   }, [campaignMaps, assetId, mapSearch]);
+
+  const draft = useMapEditorDraft(open, pin?.id, onClose, guardRef, busy);
 
   if (!open || !pin) return null;
 
@@ -131,11 +138,11 @@ export function MapPinEditorSheet({
   };
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+    <div onChangeCapture={draft.markDirty} className={floating ? "map-properties-floating map-float" : "fixed inset-0 z-[2000] flex items-end justify-center bg-black/40 p-4 sm:items-center text-foreground"}>
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-4 shadow-xl"
+        className={floating ? "" : "max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-surface p-4 shadow-xl"}
         role="dialog"
-        aria-modal="true"
+        aria-modal={floating ? undefined : true}
         aria-label="Edit map pin"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -148,7 +155,7 @@ export function MapPinEditorSheet({
           <button
             type="button"
             className="rounded-md px-2 py-1 text-sm text-muted hover:bg-muted/10"
-            onClick={onClose}
+            onClick={draft.close}
           >
             Close
           </button>
@@ -160,13 +167,14 @@ export function MapPinEditorSheet({
 
         <label className="mb-3 block text-sm">
           <span className="mb-1 block font-medium">Label (optional)</span>
-          <input
+          <input autoFocus
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2"
           />
         </label>
 
+        <details className="my-3"><summary className="cursor-pointer text-sm font-medium">Links, groups & visibility</summary>
         <label className="mb-3 block text-sm">
           <span className="mb-1 block font-medium">Pin type</span>
           <select
@@ -239,7 +247,7 @@ export function MapPinEditorSheet({
               <button
                 type="button"
                 className="text-muted hover:underline"
-                onClick={() => setTargetPageId(null)}
+                onClick={() => { draft.markDirty(); setTargetPageId(null); }}
               >
                 Clear
               </button>
@@ -258,7 +266,7 @@ export function MapPinEditorSheet({
                     <button
                       type="button"
                       className="block w-full px-3 py-2 text-left text-sm hover:bg-muted/10"
-                      onClick={() => setTargetPageId(page.id)}
+                      onClick={() => { draft.markDirty(); setTargetPageId(page.id); }}
                     >
                       {page.title}
                     </button>
@@ -283,7 +291,7 @@ export function MapPinEditorSheet({
               <button
                 type="button"
                 className="text-muted hover:underline"
-                onClick={() => setTargetAssetId(null)}
+                onClick={() => { draft.markDirty(); setTargetAssetId(null); }}
               >
                 Clear
               </button>
@@ -302,7 +310,7 @@ export function MapPinEditorSheet({
                     <button
                       type="button"
                       className="block w-full px-3 py-2 text-left text-sm hover:bg-muted/10"
-                      onClick={() => setTargetAssetId(map.id)}
+                      onClick={() => { draft.markDirty(); setTargetAssetId(map.id); }}
                     >
                       {mapDisplayTitle(map)}
                     </button>
@@ -313,6 +321,7 @@ export function MapPinEditorSheet({
           )}
         </div>
 
+        </details>
         <div className="flex flex-wrap justify-between gap-2">
           <button
             type="button"
@@ -327,7 +336,7 @@ export function MapPinEditorSheet({
               type="button"
               className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
               disabled={busy}
-              onClick={onClose}
+              onClick={draft.close}
             >
               Cancel
             </button>
