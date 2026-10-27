@@ -1,9 +1,9 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { open, type Entry, type ZipFile } from 'yauzl';
 import { assertAudio } from './audioCore.js';
+import { env } from '../config/env.js';
 
 class StagedEntry {
   readonly dir = false;
@@ -23,7 +23,9 @@ export class StagedBackupZip {
   async close() { await fs.promises.rm(this.root, { recursive: true, force: true }); }
 }
 export async function stageBackupZip(filename: string, maxTotalBytes = 1099511627776) {
-  const root = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'esiana-backup-'));
+  const stagingDir = path.join(env.uploadsDir, '.backup-staging');
+  await fs.promises.mkdir(stagingDir, { recursive: true });
+  const root = await fs.promises.mkdtemp(path.join(stagingDir, 'esiana-backup-'));
   const result = new StagedBackupZip(root);
   try {
     const zip = await new Promise<ZipFile>((resolve, reject) => open(filename, { lazyEntries: true, validateEntrySizes: true }, (error, value) => error ? reject(error) : resolve(value!)));

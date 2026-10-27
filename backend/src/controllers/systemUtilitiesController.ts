@@ -1,6 +1,5 @@
 import fs from 'node:fs';
-import { prisma } from '../lib/prisma.js';
-import { authorizeAudioBackup } from '../lib/audioCore.js';
+import { authorizeAdminBackup } from '../lib/adminBackupAuthorization.js';
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { appendSystemLog, getRecentSystemLogs } from '../lib/systemLogBuffer.js';
@@ -18,9 +17,8 @@ export async function downloadSystemBackup(
   _req: AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
-  const audioCampaigns = await prisma.sessionRecording.findMany({ distinct: ['campaignId'], select: { campaignId: true } });
-  try { for (const { campaignId } of audioCampaigns) await authorizeAudioBackup(campaignId, _req.user!.id); }
-  catch { res.status(403).json({ error: 'Campaign audio permissions are required for a database backup containing transcripts' }); return; }
+  try { authorizeAdminBackup(_req); }
+  catch { res.status(403).json({ error: 'System administrator permission is required for system backups' }); return; }
   const dbPath = resolveSqliteDatabasePath();
 
   if (!dbPath || !fs.existsSync(dbPath)) {

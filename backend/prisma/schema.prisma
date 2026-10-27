@@ -2372,7 +2372,7 @@ model SessionRecordingFile {
   format String
   mimeType String
   recording SessionRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: NoAction)
   @@index([recordingId, order])
   @@index([assetId])
 }

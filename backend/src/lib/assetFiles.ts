@@ -7,6 +7,7 @@ import { parseStoragePointer, resolveDriverForPointer } from './storage/storageP
  */
 export async function deleteCampaignAssetFiles(
   campaignId: string,
+  preservedPointers: ReadonlySet<string> = new Set(),
 ): Promise<void> {
   const assets = await prisma.asset.findMany({
     where: { campaignId },
@@ -21,6 +22,7 @@ export async function deleteCampaignAssetFiles(
   }
 
   for (const pointer of pointers) {
+    if (preservedPointers.has(pointer)) continue;
     try {
       const resolved = resolveDriverForPointer(pointer);
       if (!resolved) continue;

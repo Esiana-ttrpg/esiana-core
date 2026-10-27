@@ -38,7 +38,7 @@ Credentials require the existing `AUTH_SECRETS_KEY` configuration and are stored
 
 New campaigns have no provider access. Grant selected campaigns explicitly, then enable transcription and choose permitted defaults in Campaign Settings → Audio. Storage limits and processing limits are separate. Processing supports instance-connection and campaign request/audio-duration ceilings per UTC calendar month; campaigns may tighten their allowances.
 
-Only an authorized user request submits audio. Files are sent individually, without automatic conversion or arbitrary encoded-file splitting. Provider limits can therefore be lower than recording upload limits. Generated results arrive as native transcript drafts.
+Only an authorized user request submits audio. Files are sent individually, without automatic conversion or arbitrary encoded-file splitting. Provider limits can therefore be lower than recording upload limits. Generated results arrive as native transcript drafts. Segment ends that exceed the measured file duration are clamped to that duration; segments starting at or beyond the file's end are rejected.
 
 ## Jobs, usage, and revocation
 
@@ -48,7 +48,7 @@ Transient explicit rejections may retry twice within processing limits. Ambiguou
 
 Usage distinguishes quota reservations, submitted requests, and completed audio duration. Completed audio duration describes successfully transcribed source media, not provider CPU/GPU time. Tokens and costs remain unknown unless reported; there is no billing system.
 
-Global administrators can inspect campaign resource totals, sanitized failures, and operational job identifiers, and cancel processing. These privileges do not grant access to recordings, transcripts, drafts, or raw provider responses. Exports containing private audio require campaign content authorization too.
+Global administrators can inspect campaign resource totals, sanitized failures, and operational job identifiers, and cancel processing. Provider administration does not grant access to recordings, transcripts, drafts, or raw provider responses. Ordinary campaign exports require campaign content authorization. The site-admin system-database and full-campaign backup endpoints are explicit disaster-recovery exceptions: a `SYSTEM_ADMIN` can export private content without campaign membership, and every request records the actor and backup scope in the system diagnostic log. This override does not apply to content or asset routes.
 
 Revoking a provider grant denies new requests, prevents queued work from starting, and aborts running requests where possible. Existing recordings, published transcripts, manual edits, revisions, and completed draft results remain. Publishing a retained provider draft requires restored provider authorization and ordinary transcript-publication permission.
 
@@ -62,7 +62,13 @@ Administration → Storage reports recording storage, campaign ownership, larges
 
 Campaign backups include a separate `sovereign/audio.json` manifest and streamed media, while retaining legacy backup support. Restore preserves transcript revisions and annotations and clears provider defaults. Missing media produces protected missing-media placeholders. Recording clones are opt-in, require session history/wiki pages, copy destination-owned media, and never grant provider access.
 
+ZIP extraction uses unique temporary directories under `UPLOADS_DIR/.backup-staging`, keeping large restores on the configured mounted storage. Closing the staged archive or failing extraction removes its temporary directory.
+
+Recording clones check source formats and protected streaming access before creating the destination campaign. If a later audio copy fails, cleanup removes the incomplete campaign and its copied objects while preserving source media. Missing clone prerequisites return a client error (`400`).
+
 Recordings and backup archives share `/api/campaigns/{campaignHandle}/asset-uploads`, persistent upload sessions, resumable chunks, and cleanup. Backup uploads remain available when session audio is disabled and require campaign settings plus asset-upload permission. Their size ceiling is the instance campaign-audio allowance plus 512 MiB for other backup material. The existing multipart restore API remains supported for older clients.
+
+Restore consumes a completed backup upload ID once. Moving its ZIP into restore staging atomically retires the original asset record and marks the upload `consumed`; replay returns `409 backup_upload_consumed`. A failed handoff restores the original file and upload state where possible. A consumed upload cannot be finalized again (`410`) or cancelled.
 
 ## Validation
 

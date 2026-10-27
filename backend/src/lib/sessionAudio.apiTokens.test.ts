@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import test from 'node:test';
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import { defaultJsonBody } from '../middleware/jsonBody.js';
 import { prisma } from './prisma.js';
 import { hashApiToken } from './apiToken.js';
 import { audioSettings, campaignAudioSettings } from './audioCore.js';
@@ -47,7 +48,7 @@ test('external integrations complete the shared lifecycle with scoped bearer tok
   const otherWriter = await issue(colleague.id, ['campaign:read', 'campaign:write']);
   const stranger = await issue(outsider.id, ['campaign:read', 'campaign:write']);
   bootstrapStorageRegistry();
-  const app = express(); app.use(express.json()); app.use(cookieParser());
+  const app = express(); app.use(defaultJsonBody); app.use(cookieParser());
   app.use('/api/campaigns/:campaignHandle', campaignScopedRouter); app.use('/api/assets', assetsRouter);
   const server = createServer(app); await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -118,6 +119,19 @@ test('external integrations complete the shared lifecycle with scoped bearer tok
       const published = await ok(await request(reader.raw, `${audio}/recordings/${recordingId}/transcript`));
       assert.equal(published.current.segments[0].text, 'Neris discovers a letter.');
       assert.deepEqual((await prisma.wikiPage.findUnique({ where: { id: page.id } }))?.blocks, []);
+    });
+    await t.test('large transcript JSON is parsed only after campaign authentication and token authorization', async () => {
+      const path = `${audio}/recordings/${recordingId}/transcript/revisions`;
+      const malformed = (token: string) => fetch(`${origin}${path}`, { method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{invalid' });
+      assert.equal((await malformed(stranger.raw)).status, 403);
+      assert.equal((await malformed(reader.raw)).status, 403);
+      assert.equal((await malformed(writer.raw)).status, 400);
+      const transcript = await ok(await request(writer.raw, `${audio}/recordings/${recordingId}/transcript`));
+      const text = 'A'.repeat(150000);
+      await ok(await request(writer.raw, path, 'POST', { expectedRevision: transcript.revision,
+        segments: [{ startMs: null, endMs: null, text }] }), 201);
+      assert.equal((await request(writer.raw, `${audio}/recordings/${recordingId}/chapters`, 'POST', { title: text, startMs: 0 })).status, 413);
     });
     await t.test('quotas, cross-campaign IDs, session disclosure, and changed permissions remain enforced', async () => {
       const body = { recordingId, name: 'third.wav', sizeBytes: String(wav.length) };

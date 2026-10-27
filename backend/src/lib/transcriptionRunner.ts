@@ -47,7 +47,8 @@ async function dispatch(id: string) {
           await reserveAdditionalProcessing(id, 1, file.durationMs);
         }
       }
-      assertAudio(result.segments.every((s) => s.endMs! <= file.durationMs), 502, 'provider_timestamps_out_of_bounds');
+      assertAudio(result.segments.every((s) => s.startMs! < file.durationMs), 502, 'provider_timestamps_out_of_bounds');
+      result.segments = result.segments.map((segment) => ({ ...segment, endMs: Math.min(segment.endMs!, file.durationMs) }));
       completed.push({ fileId: file.id, language: result.language, segments: result.segments.map((segment) => ({ ...segment,
         startMs: segment.startMs! + file.offsetMs, endMs: segment.endMs! + file.offsetMs,
         fileId: file.id, fileStartMs: segment.startMs, fileEndMs: segment.endMs })) });

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, json } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { audioHandler, audioSettings, campaignAudioSettings, assertAudio, capability, jsonSafe, recordingAccess, sessionAccess, serializable } from '../lib/audioCore.js';
@@ -144,7 +144,7 @@ sessionRecordingsRouter.get('/recordings/:recordingId/transcript', audioHandler(
   res.json({ revision: recording.transcript.revision, publishedRevisionId: recording.transcript.publishedRevisionId, revisions,
     current: current ? { ...current, segments: merged } : null });
 }));
-sessionRecordingsRouter.post('/recordings/:recordingId/transcript/revisions', rateLimitPolicy('expensive'), audioHandler(async (req, res) => {
+sessionRecordingsRouter.post('/recordings/:recordingId/transcript/revisions', rateLimitPolicy('expensive'), json({ limit: '100mb' }), audioHandler(async (req, res) => {
   const recording = await edit(req, 'transcripts');
   const data = z.object({ expectedRevision: z.number().int().nonnegative(), language: z.string().max(40).nullable().optional(),
     sourceJobId: z.string().optional(), baseRevisionId: z.string().optional(),

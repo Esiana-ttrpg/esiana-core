@@ -53,6 +53,7 @@ async function processAsyncCampaignExport(input: {
   userId: string;
   taskId: string;
 }): Promise<void> {
+  let filePath: string | undefined;
   try {
     updateBackgroundTask(input.taskId, { status: 'PROCESSING', progress: 10 });
     await authorizeAudioBackup(input.campaignId, input.userId);
@@ -64,7 +65,7 @@ async function processAsyncCampaignExport(input: {
 
     updateBackgroundTask(input.taskId, { progress: 40 });
     const filename = buildBackupFilename(input.handle);
-    const filePath = path.join(env.uploadsDir, filename);
+    filePath = path.join(env.uploadsDir, filename);
     await pipeline(streamCampaignBackupZip(exportResult.files), createWriteStream(filePath));
 
     const asset = await prisma.asset.create({
@@ -91,6 +92,7 @@ async function processAsyncCampaignExport(input: {
       expiresAt: asset.expiresAt,
     });
   } catch (error) {
+    if (filePath) await fs.unlink(filePath).catch(() => {});
     updateBackgroundTask(input.taskId, {
       status: 'FAILED',
       errorMessage: error instanceof Error ? error.message : 'Export failed',
@@ -144,7 +146,8 @@ export async function downloadCampaignBackup(
       'error',
       `Campaign sovereign backup failed: ${error instanceof Error ? error.message : 'unknown error'}`,
     );
-    res.status(500).json({ error: 'Unable to generate campaign backup' });
+    if (res.headersSent) res.destroy();
+    else res.status(500).json({ error: 'Unable to generate campaign backup' });
   }
 }
 
@@ -230,11 +233,23 @@ export async function restoreCampaignBackup(
   let backupZipFile = Array.isArray(files?.backupZipFile)
     ? files.backupZipFile[0]
     : undefined;
+  let sourceUpload: { id: string; assetId: string } | undefined;
   if (!backupZipFile && typeof req.body?.uploadId === 'string') {
     const upload = await prisma.assetUploadSession.findFirst({ where: { id: req.body.uploadId, campaignId,
-      userId: req.user!.id, purpose: 'campaign_backup', status: 'complete' } });
+      userId: req.user!.id, purpose: 'campaign_backup' } });
+    if (upload && ['restoring', 'consumed'].includes(upload.status)) {
+      res.status(409).json({ error: 'Backup upload is already being restored or has been consumed', code: 'backup_upload_consumed' });
+      return;
+    }
+    if (!upload || upload.status !== 'complete' || upload.expiresAt <= new Date()) {
+      res.status(400).json({ error: 'A completed, unexpired backup upload is required' });
+      return;
+    }
     const asset = upload?.assetId ? await prisma.asset.findFirst({ where: { id: upload.assetId, campaignId, type: 'campaign-backup-zip' } }) : null;
-    if (asset && (!asset.expiresAt || asset.expiresAt > new Date())) backupZipFile = { filename: path.basename(asset.url) } as Express.Multer.File;
+    if (asset && (!asset.expiresAt || asset.expiresAt > new Date())) {
+      backupZipFile = { filename: path.basename(asset.url) } as Express.Multer.File;
+      sourceUpload = { id: upload.id, assetId: asset.id };
+    }
   }
 
   if (!backupZipFile) {
@@ -242,7 +257,19 @@ export async function restoreCampaignBackup(
     return;
   }
 
+  let uploadClaimed = false;
+  let movedPaths: { current: string; next: string } | undefined;
+  let handoffCommitted = false;
   try {
+    if (sourceUpload) {
+      const claimed = await prisma.assetUploadSession.updateMany({ where: { id: sourceUpload.id, status: 'complete', assetId: sourceUpload.assetId },
+        data: { status: 'restoring' } });
+      if (!claimed.count) {
+        res.status(409).json({ error: 'Backup upload is already being restored or has been consumed', code: 'backup_upload_consumed' });
+        return;
+      }
+      uploadClaimed = true;
+    }
     const manifest = await readBackupManifest(path.join(env.uploadsDir, backupZipFile.filename));
     if (manifest.format !== CAMPAIGN_BACKUP_FORMAT) throw new Error('Unsupported campaign backup format');
 
@@ -250,14 +277,20 @@ export async function restoreCampaignBackup(
     const currentPath = path.join(env.uploadsDir, backupZipFile.filename);
     const nextPath = path.join(env.uploadsDir, nextFilename);
     await fs.rename(currentPath, nextPath);
+    movedPaths = { current: currentPath, next: nextPath };
 
-    const asset = await prisma.asset.create({
-      data: buildImportStagingAssetData({
-        campaignId,
-        url: `/uploads/${nextFilename}`,
-        type: 'campaign-backup-zip',
-      }) as never,
+    const asset = await prisma.$transaction(async (tx) => {
+      const created = await tx.asset.create({
+        data: buildImportStagingAssetData({ campaignId, url: `/uploads/${nextFilename}`, type: 'campaign-backup-zip' }),
+      });
+      if (sourceUpload) {
+        const consumed = await tx.assetUploadSession.updateMany({ where: { id: sourceUpload.id, status: 'restoring', assetId: sourceUpload.assetId }, data: { status: 'consumed', assetId: null } });
+        if (!consumed.count) throw new Error('Backup upload changed during restore');
+        await tx.asset.delete({ where: { id: sourceUpload.assetId } });
+      }
+      return created;
     });
+    handoffCommitted = true;
 
     const task = createBackgroundTask({
       taskName: 'Esiana Backup Restore',
@@ -283,6 +316,16 @@ export async function restoreCampaignBackup(
 
     res.status(202).json({ taskId: task.id });
   } catch (error) {
+    if (!handoffCommitted) {
+      let recovered = true;
+      if (movedPaths) {
+        recovered = await fs.rename(movedPaths.next, movedPaths.current).then(() => true, () => false);
+      }
+      if (uploadClaimed && sourceUpload) {
+        await prisma.assetUploadSession.updateMany({ where: { id: sourceUpload.id, status: 'restoring' },
+          data: { status: recovered ? 'complete' : 'failed' } });
+      }
+    }
     res.status(400).json({
       error:
         error instanceof Error ? error.message : 'Invalid campaign backup ZIP',

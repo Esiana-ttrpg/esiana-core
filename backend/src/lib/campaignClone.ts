@@ -3,8 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
-import { cloneSessionAudio } from './sessionAudioBackup.js';
-import { audioContext, capability } from './audioCore.js';
+import { cloneSessionAudio, preflightSessionAudioClone } from './sessionAudioBackup.js';
+import { audioContext, capability, assertAudio, authorizeAudioBackup } from './audioCore.js';
+import { deleteCampaignAssetFiles } from './assetFiles.js';
 import { CampaignCapabilities as AudioCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
 import { createEraOverview, ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
 import { extractDescriptionMarkdown } from './eventLoreWiki.js';
@@ -98,10 +99,13 @@ async function copyAssetFile(sourceUrl: string, newAssetId: string): Promise<str
 export async function duplicateCampaign(
   input: DuplicateCampaignInput,
 ): Promise<DuplicateCampaignResult> {
-  if (input.copy.scheduling.sessionRecordings && (!input.copy.scheduling.sessionEventsLogs || !input.copy.structure.wikiPages)) {
-    throw new Error('Cloning recordings requires session history and wiki pages');
+  assertAudio(!input.copy.scheduling.sessionRecordings || (input.copy.scheduling.sessionEventsLogs && input.copy.structure.wikiPages),
+    400, 'recording_clone_requires_session_history_and_wiki_pages');
+  if (input.copy.scheduling.sessionRecordings) {
+    capability(await audioContext(input.sourceCampaignId, input.ownerUserId), AudioCapabilities.AUDIO_MANAGE);
+    await authorizeAudioBackup(input.sourceCampaignId, input.ownerUserId);
   }
-  if (input.copy.scheduling.sessionRecordings) capability(await audioContext(input.sourceCampaignId, input.ownerUserId), AudioCapabilities.AUDIO_MANAGE);
+  const preparedAudio = input.copy.scheduling.sessionRecordings ? await preflightSessionAudioClone(input.sourceCampaignId) : undefined;
   await ensureChronologyEras(input.sourceCampaignId);
   const source = await prisma.campaign.findUnique({
     where: { id: input.sourceCampaignId },
@@ -606,7 +610,19 @@ export async function duplicateCampaign(
     return campaign;
   });
 
-  if (copy.scheduling.sessionRecordings) await cloneSessionAudio(source.id, created.id, clonedPageIds);
+  if (copy.scheduling.sessionRecordings) {
+    try {
+      await cloneSessionAudio(source.id, created.id, clonedPageIds, preparedAudio);
+    } catch (error) {
+      // Legacy non-audio clones can retain source pointers; never purge those objects.
+      const sourcePointers = new Set(source.assets.flatMap((asset) => [asset.url, asset.displayUrl, asset.thumbnailUrl].filter((url): url is string => !!url)));
+      try { await deleteCampaignAssetFiles(created.id, sourcePointers); }
+      catch (cleanupError) { console.error('Failed to clean up cloned campaign storage', { campaignId: created.id, error: cleanupError }); }
+      try { await prisma.campaign.delete({ where: { id: created.id } }); }
+      catch (cleanupError) { console.error('Failed to remove incomplete cloned campaign', { campaignId: created.id, error: cleanupError }); }
+      throw error;
+    }
+  }
   await rebuildWikiLinksForCampaign(created.id);
   const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');
   await rebuildSearchIndexForCampaign(created.id);

@@ -4911,7 +4911,7 @@ paths:
               properties:
                 uploadId:
                   type: string
-                  description: Completed campaign_backup session from the shared resumable asset-upload API.
+                  description: Completed, unexpired campaign_backup session from the shared resumable asset-upload API. Restore consumes this ID once and retires the original asset when its ZIP moves into restore staging. Replaying a claimed or consumed ID returns 409 backup_upload_consumed.
           multipart/form-data:
             schema:
               type: object
@@ -4936,6 +4936,15 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: Invalid campaign backup ZIP
+        "409":
+          description: Backup upload is already being restored or has been consumed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Backup upload is already being restored or has been consumed
+                code: backup_upload_consumed
       x-esiana-authorization:
         boundary: campaign
         requires:
@@ -5186,7 +5195,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
+      description: "Authorization: Authenticated SYSTEM_ADMIN. This disaster-recovery endpoint explicitly overrides campaign content permissions, including private recordings and transcripts. Every request records the actor and backup scope in the system diagnostic log. No campaign membership is required. This exception does not grant access through ordinary content or asset APIs."
   /api/admin/identity-providers:
     get:
       tags:
@@ -6005,7 +6014,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
+      description: "Authorization: Authenticated SYSTEM_ADMIN. This disaster-recovery endpoint explicitly overrides campaign content permissions, including private recordings and transcripts. Every request records the actor and backup scope in the system diagnostic log. No campaign membership is required. This exception does not grant access through ordinary content or asset APIs."
   /api/admin/system/check-version:
     get:
       tags:

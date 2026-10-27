@@ -1,7 +1,7 @@
 import type { Prisma } from '../lib/prismaClient.js';
 import type { Response } from 'express';
 import { pipeline } from 'node:stream/promises';
-import { authorizeAudioBackup } from '../lib/audioCore.js';
+import { authorizeAdminBackup } from '../lib/adminBackupAuthorization.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { deleteCampaignAssetFiles } from '../lib/assetFiles.js';
@@ -224,8 +224,8 @@ export async function downloadAdminCampaignBackup(
     return;
   }
 
-  try { await authorizeAudioBackup(campaignId, req.user!.id); }
-  catch { res.status(403).json({ error: 'Campaign audio permissions are required to export private recordings' }); return; }
+  try { authorizeAdminBackup(req, campaignId); }
+  catch { res.status(403).json({ error: 'System administrator permission is required for administrative backups' }); return; }
   const sovereignExport = await buildSovereignExport(campaignId, 'full');
   if (!sovereignExport) {
     res.status(404).json({ error: 'Campaign not found' });

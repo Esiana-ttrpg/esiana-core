@@ -55,17 +55,19 @@ export async function createAudioUpload(ctx: CampaignContext, userId: string, re
     const active = { status: { in: ['uploading', 'appending', 'finalizing'] } };
     const concurrency = await tx.assetUploadSession.count({ where: { userId, ...active } });
     assertAudio(concurrency < global.uploadConcurrency, 429, 'upload_concurrency_exceeded');
-    const [files, uploads, assets] = await Promise.all([
-      tx.sessionRecordingFile.findMany({ select: { sizeBytes: true, recording: { select: { campaignId: true, timelineId: true } } } }),
-      tx.assetUploadSession.findMany({ where: { ...active, purpose: 'session_audio' }, select: { sizeBytes: true, campaignId: true, recording: { select: { timelineId: true } } } }),
-      tx.asset.findMany({ where: { type: 'SessionAudio' }, select: { campaignId: true, sizeBytes: true } }),
+    const sumBytes = { _sum: { sizeBytes: true as const } };
+    const audioUploads = { ...active, purpose: 'session_audio' };
+    const [globalAssets, campaignAssets, globalUploads, campaignUploads, sessionFiles, sessionUploads] = await Promise.all([
+      tx.asset.aggregate({ ...sumBytes, where: { type: 'SessionAudio' } }),
+      tx.asset.aggregate({ ...sumBytes, where: { type: 'SessionAudio', campaignId: ctx.campaignId } }),
+      tx.assetUploadSession.aggregate({ ...sumBytes, where: audioUploads }),
+      tx.assetUploadSession.aggregate({ ...sumBytes, where: { ...audioUploads, campaignId: ctx.campaignId } }),
+      tx.sessionRecordingFile.aggregate({ ...sumBytes, where: { recording: { campaignId: ctx.campaignId, timelineId: recording.timelineId } } }),
+      tx.assetUploadSession.aggregate({ ...sumBytes, where: { ...audioUploads, campaignId: ctx.campaignId, recording: { timelineId: recording.timelineId } } }),
     ]);
-    let total = sizeBytes, campaign = sizeBytes, session = sizeBytes;
-    for (const asset of assets) { total += asset.sizeBytes ?? 0n; if (asset.campaignId === ctx.campaignId) campaign += asset.sizeBytes ?? 0n; }
-    for (const f of files) {
-      if (f.recording.timelineId === recording.timelineId) session += f.sizeBytes; }
-    for (const u of uploads) { total += u.sizeBytes; if (u.campaignId === ctx.campaignId) campaign += u.sizeBytes;
-      if (u.recording?.timelineId === recording.timelineId) session += u.sizeBytes; }
+    const total = sizeBytes + (globalAssets._sum.sizeBytes ?? 0n) + (globalUploads._sum.sizeBytes ?? 0n);
+    const campaign = sizeBytes + (campaignAssets._sum.sizeBytes ?? 0n) + (campaignUploads._sum.sizeBytes ?? 0n);
+    const session = sizeBytes + (sessionFiles._sum.sizeBytes ?? 0n) + (sessionUploads._sum.sizeBytes ?? 0n);
     const limit = settings.maxStorageBytes && settings.maxStorageBytes < global.maxCampaignBytes ? settings.maxStorageBytes : global.maxCampaignBytes;
     assertAudio(campaign <= limit && session <= global.maxSessionBytes && (!global.maxGlobalBytes || total <= global.maxGlobalBytes), 413, 'storage_quota_exceeded');
     return tx.assetUploadSession.create({ data: { campaignId: ctx.campaignId, recordingId, userId, name, sizeBytes,
@@ -131,6 +133,7 @@ export async function createBackupUpload(ctx: CampaignContext, userId: string, n
 export async function finalizeBackupUpload(id: string) {
   const upload = await prisma.assetUploadSession.findUnique({ where: { id } });
   assertAudio(upload?.purpose === 'campaign_backup', 404, 'backup_upload_not_found');
+  assertAudio(upload.status !== 'consumed', 410, 'backup_upload_consumed');
   if (upload.status === 'complete') return { assetId: upload.assetId };
   assertAudio(upload.offsetBytes === upload.sizeBytes, 409, 'upload_incomplete');
   const claim = await prisma.assetUploadSession.updateMany({ where: { id, status: 'uploading' }, data: { status: 'finalizing' } });

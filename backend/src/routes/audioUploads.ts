@@ -58,7 +58,7 @@ audioUploadsRouter.post('/:uploadId/finalize', rateLimitPolicy('expensive'), aud
 }));
 audioUploadsRouter.delete('/:uploadId', audioHandler(async (req, res) => {
   const row = await load(req);
-  assertAudio(row.status !== 'complete', 409, 'upload_already_complete');
+  assertAudio(!['complete', 'restoring', 'consumed'].includes(row.status), 409, 'upload_already_complete');
   await prisma.assetUploadSession.update({ where: { id: row.id }, data: { status: 'cancelled' } });
   await fs.promises.unlink(stagingPath(row.id)).catch(() => {}); res.status(204).end();
 }));

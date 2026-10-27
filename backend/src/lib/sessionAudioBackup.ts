@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { resolveDriverForPointer } from './storage/storagePointer.js';
 import { getActiveStorageDriver } from './storage/storageRegistry.js';
 import { buildAssetLocation } from './assetLocation.js';
+import { AUDIO_FORMATS } from '../../../shared/sessionAudio.js';
 export async function buildSessionAudioBackup(campaignId: string) {
   const [recordings, settings] = await Promise.all([
     prisma.sessionRecording.findMany({ where: { campaignId }, include: { timeline: { select: { wikiPageId: true, sequenceOrder: true } },
@@ -83,8 +84,34 @@ export async function restoreSessionAudioBackup(campaignId: string, raw: unknown
   }
 }
 
-export async function cloneSessionAudio(sourceCampaignId: string, campaignId: string, pageIds: Map<string, string>) {
+export async function preflightSessionAudioClone(sourceCampaignId: string) {
   const payload = schema.parse(await buildSessionAudioBackup(sourceCampaignId));
+  assertAudio(getActiveStorageDriver().rangeRead, 503, 'storage_does_not_support_protected_ranges');
+  const ids = [...new Set(payload.recordings.flatMap((recording) => recording.files.map((file) => file.assetId)))];
+  const assets = new Map((await prisma.asset.findMany({ where: { campaignId: sourceCampaignId, id: { in: ids } } })).map((asset) => [asset.id, asset]));
+  const checked = new Set<string>();
+  for (const recording of payload.recordings) for (const file of recording.files) {
+    assertAudio(AUDIO_FORMATS.some((format) => format === file.format), 400, 'unsupported_audio_content');
+    if (checked.has(file.assetId)) continue;
+    const asset = assets.get(file.assetId);
+    const source = asset ? resolveDriverForPointer(asset.url) : null;
+    assertAudio(source, 404, 'media_missing');
+    assertAudio(source.driver.rangeRead, 503, 'storage_does_not_support_protected_ranges');
+    assertAudio(await source.driver.exists(source.key), 404, 'media_missing');
+    const delivery = await source.driver.openRead({ key: source.key, requireStream: true });
+    assertAudio(delivery.type === 'stream', 503, 'protected_stream_required');
+    try {
+      let readable = false;
+      for await (const chunk of delivery.stream) { readable = chunk.length > 0; if (readable) break; }
+      assertAudio(readable, 404, 'media_missing');
+    } finally { delivery.stream.destroy(); }
+    checked.add(file.assetId);
+  }
+  return payload;
+}
+
+export async function cloneSessionAudio(sourceCampaignId: string, campaignId: string, pageIds: Map<string, string>, prepared?: Awaited<ReturnType<typeof preflightSessionAudioClone>>) {
+  const payload = schema.parse(prepared ?? await preflightSessionAudioClone(sourceCampaignId));
   const assetIds = new Map<string, string>();
   const driver = getActiveStorageDriver();
   for (const recording of payload.recordings) {
@@ -99,11 +126,16 @@ export async function cloneSessionAudio(sourceCampaignId: string, campaignId: st
         const delivery = await source.driver.openRead({ key: source.key, requireStream: true });
         assertAudio(delivery.type === 'stream', 503, 'protected_stream_required');
         const key = `${randomUUID()}.${file.format}`;
-        await driver.put({ key, body: delivery.stream, mimeType: file.mimeType });
-        const location = buildAssetLocation({ original: key }, driver);
-        const copied = await prisma.asset.create({ data: { campaignId, url: location.urls.originalUrl,
-          type: 'SessionAudio', sizeBytes: BigInt(file.sizeBytes), uploadedByUserId: asset!.uploadedByUserId } });
-        assetIds.set(file.assetId, copied.id);
+        try {
+          await driver.put({ key, body: delivery.stream, mimeType: file.mimeType });
+          const location = buildAssetLocation({ original: key }, driver);
+          const copied = await prisma.asset.create({ data: { campaignId, url: location.urls.originalUrl,
+            type: 'SessionAudio', sizeBytes: BigInt(file.sizeBytes), uploadedByUserId: asset!.uploadedByUserId } });
+          assetIds.set(file.assetId, copied.id);
+        } catch (error) {
+          await driver.delete(key).catch(() => {});
+          throw error;
+        } finally { delivery.stream.destroy(); }
       }
       file.assetId = assetIds.get(file.assetId)!;
     }

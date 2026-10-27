@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { audioRequest, assetUploadBase, formatAudioTime, type RecordingView, type ChapterView, type NativeTranscript,
   type TranscriptSegmentInput, type AudioSettingsPayload } from '@/lib/sessionAudio';
 import { apiFetch } from '@/lib/api';
+import { getOrCreateUploadRetryKey } from '@/lib/uploadRetryKey';
 import { useWiki } from '@/contexts/WikiContext';
 import { resolveCanonicalPagePath } from '@/lib/campaignPaths';
 
@@ -94,7 +95,7 @@ export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHand
         if (session && ['appending', 'finalizing'].includes(session.status)) throw new Error('This upload is still processing. Retry shortly to resume.');
         if (session && !['uploading', 'complete'].includes(session.status)) localStorage.removeItem(creationKey);
         if (!session || !['uploading', 'complete'].includes(session.status)) {
-          const retryKey = localStorage.getItem(creationKey) ?? crypto.randomUUID(); localStorage.setItem(creationKey, retryKey);
+          const retryKey = getOrCreateUploadRetryKey(creationKey);
           session = await request<Upload>('/uploads', 'POST', { recordingId: recording.id, name: file.name, sizeBytes: String(file.size) }, { 'Idempotency-Key': retryKey });
         }
         localStorage.setItem(key, session.id); setUpload(session);

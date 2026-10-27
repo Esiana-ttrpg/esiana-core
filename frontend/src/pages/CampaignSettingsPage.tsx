@@ -448,7 +448,6 @@ export function CampaignSettingsPage() {
         </div>
       </div>
 
-      {activeTab === 'audio' && <CampaignAudioSettingsTab campaignHandle={campaignHandle} />}
       {activeTab === 'general' ? (
         <div className="rounded-lg border border-border bg-surface p-6">
           <h2 className="mb-4 text-lg font-semibold text-white">
@@ -831,6 +830,8 @@ export function CampaignSettingsPage() {
         <RecruitmentSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'scheduling' ? (
         <SchedulingSettingsTab campaignHandle={campaignHandle} />
+      ) : activeTab === 'audio' ? (
+        <CampaignAudioSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'timeline' ? (
         <TimelineSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'world-development' ? (
@@ -876,7 +877,7 @@ export function CampaignSettingsPage() {
             <p className="text-sm text-muted">Loading campaign…</p>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'advanced' ? (
         <div className="space-y-6">
           <div className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-2 text-lg font-semibold text-white">Advanced</h2>
@@ -895,7 +896,7 @@ export function CampaignSettingsPage() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {wikiCampaign?.id ? (
         <>

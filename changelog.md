@@ -11,6 +11,14 @@
 - Audio governance, protected media range requests, recording storage management, streamed campaign backups, and opt-in recording clones.
 
 
+### Fixed
+
+- Backup ZIP extraction stages files under the configured uploads storage so large restores use the existing data mount instead of the system temporary directory.
+- Audio settings no longer render Advanced tools alongside the audio panel. Backup and recording uploads retain retry keys on plain HTTP, and upload quotas use database aggregates for session, campaign, and instance totals.
+- Recording clones preflight source media and clean up incomplete campaigns after audio-copy failures; missing clone prerequisites return HTTP 400. Transcription clamps segment ends to the measured file duration while rejecting segments that start outside it.
+- Backup streams handle partial failures without a second response, failed asynchronous exports remove partial ZIPs, and restore upload IDs are consumed once. Site-admin recovery backups explicitly audit their private-content override.
+- Campaign deletion now permits cascading recording-file removal while retaining foreign-key protection for referenced assets. Large transcript request bodies are parsed after campaign authentication and rate limiting.
+
 ## [1.8.0] - 2026-10-06
 
 ### Added
