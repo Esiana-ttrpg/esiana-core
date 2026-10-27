@@ -30,6 +30,7 @@ import {
 import { campaignWikiPath, campaignNotePath } from '@/lib/campaignPaths';
 import { hasTimelineSessions } from '@/lib/sessionNotesIndex';
 import { CreateSessionNoteDialog } from '@/components/session/CreateSessionNoteDialog';
+import { formatAudioTime } from '@/lib/sessionAudio';
 import { CreateNewSessionDialog } from '@/components/session/CreateNewSessionDialog';
 import { ScheduleSessionModal } from '@/components/session/ScheduleSessionModal';
 import { SessionNotesAttendanceTab } from '@/components/session/SessionNotesAttendanceTab';
@@ -815,6 +816,7 @@ export function SessionNotesView() {
                         className="min-w-0 truncate text-sm text-foreground hover:text-primary"
                       >
                         {page.title}
+                        {page.audio && <span className="mt-1 block text-xs text-muted">{page.audio.recordingCount} recordings · {formatAudioTime(page.audio.durationMs)}{page.audio.transcriptAvailable ? ' · Transcript' : ''}{page.audio.processing ? ' · Processing' : ''}</span>}
                       </Link>
                     </div>
                   )}
@@ -890,6 +892,7 @@ export function SessionNotesView() {
                       className="block min-w-0 truncate text-sm text-foreground hover:text-primary"
                     >
                       {page.title}
+                      {page.audio && <span className="mt-1 block text-xs text-muted">{page.audio.recordingCount} recordings · {formatAudioTime(page.audio.durationMs)}{page.audio.transcriptAvailable ? ' · Transcript' : ''}{page.audio.processing ? ' · Processing' : ''}</span>}
                     </Link>
                   </div>
                 )}

@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import { campaignAudioRouter } from './audioSettings.js';
+import { sessionRecordingsRouter } from './sessionRecordings.js';
+import { audioUploadsRouter } from './audioUploads.js';
 import { listEras, createEra, updateEra, reorderEras, eraImpact, deleteEra } from '../controllers/chronologyErasController.js';
 import {
   advanceCampaignTime,
@@ -459,6 +462,9 @@ campaignScopedRouter.use(requireCampaignMembership);
 campaignScopedRouter.use(rateLimitPolicy('authenticated'));
 campaignScopedRouter.use(rateLimitPolicy('apiKey'));
 campaignScopedRouter.use(rateLimitPolicy('mutation'));
+campaignScopedRouter.use('/audio', campaignAudioRouter);
+campaignScopedRouter.use('/audio', sessionRecordingsRouter);
+campaignScopedRouter.use('/asset-uploads', audioUploadsRouter);
 
 campaignScopedRouter.get('/', getCampaign);
 campaignScopedRouter.get('/members', listCampaignMembers);

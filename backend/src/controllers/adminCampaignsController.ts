@@ -1,11 +1,13 @@
 import type { Prisma } from '../lib/prismaClient.js';
 import type { Response } from 'express';
+import { pipeline } from 'node:stream/promises';
+import { authorizeAudioBackup } from '../lib/audioCore.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { deleteCampaignAssetFiles } from '../lib/assetFiles.js';
 import { buildFullCampaignBundle } from '../lib/campaignBackup.js';
 import { buildSovereignExport } from '../lib/campaignExport/buildSovereignExport.js';
-import { buildCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
+import { streamCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
 import {
   buildFileSizeFields,
   sumAssetUrlBytes,
@@ -222,6 +224,8 @@ export async function downloadAdminCampaignBackup(
     return;
   }
 
+  try { await authorizeAudioBackup(campaignId, req.user!.id); }
+  catch { res.status(403).json({ error: 'Campaign audio permissions are required to export private recordings' }); return; }
   const sovereignExport = await buildSovereignExport(campaignId, 'full');
   if (!sovereignExport) {
     res.status(404).json({ error: 'Campaign not found' });
@@ -252,11 +256,9 @@ export async function downloadAdminCampaignBackup(
   );
 
   try {
-    const zipBuffer = await buildCampaignBackupZip(files);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', String(zipBuffer.length));
-    res.send(zipBuffer);
+    await pipeline(streamCampaignBackupZip(files), res);
   } catch (err) {
     appendSystemLog(
       'error',

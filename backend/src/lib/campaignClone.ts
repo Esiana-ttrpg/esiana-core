@@ -3,6 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
+import { cloneSessionAudio } from './sessionAudioBackup.js';
+import { audioContext, capability } from './audioCore.js';
+import { CampaignCapabilities as AudioCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
 import { createEraOverview, ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
 import { extractDescriptionMarkdown } from './eventLoreWiki.js';
 import { env } from '../config/env.js';
@@ -95,6 +98,10 @@ async function copyAssetFile(sourceUrl: string, newAssetId: string): Promise<str
 export async function duplicateCampaign(
   input: DuplicateCampaignInput,
 ): Promise<DuplicateCampaignResult> {
+  if (input.copy.scheduling.sessionRecordings && (!input.copy.scheduling.sessionEventsLogs || !input.copy.structure.wikiPages)) {
+    throw new Error('Cloning recordings requires session history and wiki pages');
+  }
+  if (input.copy.scheduling.sessionRecordings) capability(await audioContext(input.sourceCampaignId, input.ownerUserId), AudioCapabilities.AUDIO_MANAGE);
   await ensureChronologyEras(input.sourceCampaignId);
   const source = await prisma.campaign.findUnique({
     where: { id: input.sourceCampaignId },
@@ -123,6 +130,7 @@ export async function duplicateCampaign(
 
   const finalHandle = await resolveUniqueHandle(input.name);
   const copy = input.copy;
+  let clonedPageIds = new Map<string, string>();
 
   const categoryRoots = await prisma.wikiPage.findMany({
     where: {
@@ -337,11 +345,12 @@ export async function duplicateCampaign(
     }
 
     const pageIdMap = new Map<string, string>();
+    clonedPageIds = pageIdMap;
     const assetIdMap = new Map<string, string>();
 
     if (copy.gameplay.mapsAssets) {
       for (const asset of source.assets) {
-        if (asset.type === 'campaign-backup-zip' || asset.type === 'campaign-import-zip') {
+        if (asset.type === 'campaign-backup-zip' || asset.type === 'campaign-import-zip' || asset.type === 'SessionAudio') {
           continue;
         }
         const newId = randomUUID();
@@ -597,6 +606,7 @@ export async function duplicateCampaign(
     return campaign;
   });
 
+  if (copy.scheduling.sessionRecordings) await cloneSessionAudio(source.id, created.id, clonedPageIds);
   await rebuildWikiLinksForCampaign(created.id);
   const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');
   await rebuildSearchIndexForCampaign(created.id);

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Scoped API-token recording uploads with persistent creation retry keys, resumable progress, repeated finalization, and external-client curl examples. Recording uploads now default to enabled; automated transcription remains opt-in.
+
+- Session recordings with resumable multi-file uploads, continuous playback, chapters from the current playback position, and native transcript editing/imports with revision history.
+- Global processing-provider connections, explicit campaign/model grants, content-neutral usage reporting, and optional Whisper-compatible transcription without bundled processing services.
+- Audio governance, protected media range requests, recording storage management, streamed campaign backups, and opt-in recording clones.
+
+
 ## [1.8.0] - 2026-10-06
 
 ### Added

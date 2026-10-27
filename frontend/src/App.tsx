@@ -43,6 +43,8 @@ import { AdminLayout } from '@/layouts/AdminLayout';
 import { AdminGeneralSettingsPage } from '@/pages/AdminGeneralSettingsPage';
 import { AdminAssetsUploadsPage } from '@/pages/AdminAssetsUploadsPage';
 import { AdminStoragePage } from '@/pages/AdminStoragePage';
+import { AdminAudioPage } from '@/pages/AdminAudioPage';
+import { AdminProvidersPage } from '@/pages/AdminProvidersPage';
 import { AdminIdentityProvidersPage } from '@/pages/AdminIdentityProvidersPage';
 import { AdminAppearancePage } from '@/pages/AdminBrandingPage';
 import { AdminPluginsPage } from '@/pages/AdminPluginsPage';
@@ -175,6 +177,8 @@ export default function App() {
             <Route path="settings/general" element={<AdminGeneralSettingsPage />} />
             <Route path="settings/assets" element={<AdminAssetsUploadsPage />} />
             <Route path="settings/storage" element={<AdminStoragePage />} />
+            <Route path="settings/audio" element={<AdminAudioPage />} />
+            <Route path="settings/providers" element={<AdminProvidersPage />} />
             <Route
               path="settings/identity-providers"
               element={<AdminIdentityProvidersPage />}

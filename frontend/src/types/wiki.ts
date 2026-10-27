@@ -363,6 +363,7 @@ export interface PageShortcut {
 }
 
 export interface SessionNotesNotebookPage {
+  audio?: { recordingCount: number; durationMs: number; transcriptAvailable: boolean; processing: boolean };
   id: string;
   title: string;
   content: string;

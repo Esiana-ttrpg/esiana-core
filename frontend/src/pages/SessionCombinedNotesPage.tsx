@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SessionAudioPanel } from '@/components/session/SessionAudioPanel';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronRight, LayoutGrid, FileText } from 'lucide-react';
 import {
@@ -81,7 +82,7 @@ export function SessionCombinedNotesPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
             <LayoutGrid className="size-7 text-primary" aria-hidden />
-            All Notes View
+            {data.session.title}
           </h1>
           <p className="mt-2 text-sm text-muted">
             {data.session.fantasyDateLabel ?? 'Date unknown'} ·{' '}
@@ -117,6 +118,7 @@ export function SessionCombinedNotesPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
+          <SessionAudioPanel campaignHandle={campaignHandle} timelineId={timelinePointId} />
           {viewMode === 'snapshot' ? (
             <SessionSnapshotExporter payload={data} campaignName={campaignName} />
           ) : (

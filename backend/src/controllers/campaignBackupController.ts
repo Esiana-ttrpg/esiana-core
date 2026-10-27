@@ -1,4 +1,6 @@
 import fs from 'node:fs/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { Response } from 'express';
@@ -6,7 +8,9 @@ import JSZip from 'jszip';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { buildSovereignExport } from '../lib/campaignExport/buildSovereignExport.js';
-import { buildCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
+import { streamCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
+import { readBackupManifest } from '../lib/stagedBackupZip.js';
+import { authorizeAudioBackup, authorizeCampaignExport } from '../lib/audioCore.js';
 import { CAMPAIGN_BACKUP_FORMAT } from '../lib/campaignExport/types.js';
 import { appendSystemLog } from '../lib/systemLogBuffer.js';
 import { env } from '../config/env.js';
@@ -51,6 +55,7 @@ async function processAsyncCampaignExport(input: {
 }): Promise<void> {
   try {
     updateBackgroundTask(input.taskId, { status: 'PROCESSING', progress: 10 });
+    await authorizeAudioBackup(input.campaignId, input.userId);
 
     const exportResult = await buildSovereignExport(input.campaignId, 'sovereign');
     if (!exportResult) {
@@ -58,10 +63,9 @@ async function processAsyncCampaignExport(input: {
     }
 
     updateBackgroundTask(input.taskId, { progress: 40 });
-    const zipBuffer = await buildCampaignBackupZip(exportResult.files);
     const filename = buildBackupFilename(input.handle);
     const filePath = path.join(env.uploadsDir, filename);
-    await fs.writeFile(filePath, zipBuffer);
+    await pipeline(streamCampaignBackupZip(exportResult.files), createWriteStream(filePath));
 
     const asset = await prisma.asset.create({
       data: buildImportStagingAssetData({
@@ -116,6 +120,8 @@ export async function downloadCampaignBackup(
     return;
   }
 
+  try { await authorizeAudioBackup(campaignId, req.user!.id); }
+  catch { res.status(403).json({ error: 'campaign_audio_export_forbidden' }); return; }
   const exportResult = await buildSovereignExport(campaignId, 'sovereign');
   if (!exportResult) {
     res.status(404).json({ error: 'Campaign not found' });
@@ -130,11 +136,9 @@ export async function downloadCampaignBackup(
   );
 
   try {
-    const zipBuffer = await buildCampaignBackupZip(exportResult.files);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', String(zipBuffer.length));
-    res.send(zipBuffer);
+    await pipeline(streamCampaignBackupZip(exportResult.files), res);
   } catch (error) {
     appendSystemLog(
       'error',
@@ -151,6 +155,8 @@ export async function startAsyncCampaignBackup(
   const campaignId = req.campaign!.campaignId;
   const handle = req.campaign!.campaignHandle;
   const userId = req.user!.id;
+  try { await authorizeAudioBackup(campaignId, userId); }
+  catch { res.status(403).json({ error: 'campaign_audio_export_forbidden' }); return; }
 
   const task = createBackgroundTask({
     taskName: 'Campaign Export',
@@ -178,6 +184,8 @@ export async function downloadCampaignExportAsset(
 ): Promise<void> {
   const campaignId = req.campaign!.campaignId;
   const assetId = String(req.params.assetId ?? '');
+  try { await authorizeCampaignExport(campaignId, req.user?.id); }
+  catch { res.status(403).json({ error: 'campaign_export_forbidden' }); return; }
 
   const asset = await prisma.asset.findFirst({
     where: {
@@ -201,11 +209,11 @@ export async function downloadCampaignExportAsset(
   const filePath = path.join(env.uploadsDir, filename);
 
   try {
-    const buffer = await fs.readFile(filePath);
+    const stat = await fs.stat(filePath);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', String(buffer.length));
-    res.send(buffer);
+    res.setHeader('Content-Length', String(stat.size));
+    await pipeline(createReadStream(filePath), res);
   } catch {
     res.status(404).json({ error: 'Export file missing on server' });
   }
@@ -219,9 +227,15 @@ export async function restoreCampaignBackup(
   const handle = req.campaign!.campaignHandle ?? 'campaign';
 
   const files = req.files as { backupZipFile?: Express.Multer.File[] } | undefined;
-  const backupZipFile = Array.isArray(files?.backupZipFile)
+  let backupZipFile = Array.isArray(files?.backupZipFile)
     ? files.backupZipFile[0]
     : undefined;
+  if (!backupZipFile && typeof req.body?.uploadId === 'string') {
+    const upload = await prisma.assetUploadSession.findFirst({ where: { id: req.body.uploadId, campaignId,
+      userId: req.user!.id, purpose: 'campaign_backup', status: 'complete' } });
+    const asset = upload?.assetId ? await prisma.asset.findFirst({ where: { id: upload.assetId, campaignId, type: 'campaign-backup-zip' } }) : null;
+    if (asset && (!asset.expiresAt || asset.expiresAt > new Date())) backupZipFile = { filename: path.basename(asset.url) } as Express.Multer.File;
+  }
 
   if (!backupZipFile) {
     res.status(400).json({ error: 'backupZipFile is required' });
@@ -229,10 +243,8 @@ export async function restoreCampaignBackup(
   }
 
   try {
-    const zipBuffer = await fs.readFile(
-      path.join(env.uploadsDir, backupZipFile.filename),
-    );
-    await validateBackupZipBuffer(zipBuffer);
+    const manifest = await readBackupManifest(path.join(env.uploadsDir, backupZipFile.filename));
+    if (manifest.format !== CAMPAIGN_BACKUP_FORMAT) throw new Error('Unsupported campaign backup format');
 
     const nextFilename = `campaign-${campaignId}-restore-${randomUUID()}.zip`;
     const currentPath = path.join(env.uploadsDir, backupZipFile.filename);

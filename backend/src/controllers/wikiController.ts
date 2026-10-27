@@ -1,3 +1,4 @@
+import { sessionAudioSummaries, type AudioSummary } from '../lib/sessionAudioSummaries.js';
 import type { Response } from 'express';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -3837,6 +3838,7 @@ export async function getThreadHubIndex(
 }
 
 type SessionNotesIndexPageShape = {
+  audio?: AudioSummary;
   id: string;
   title: string;
   content: string;
@@ -3912,6 +3914,7 @@ export async function getSessionNotesIndex(
   ]);
 
   const pagesByArc = new Map<string, SessionNotesIndexPageShape[]>();
+  const audioSummaries = await sessionAudioSummaries(ctx, userId);
   const uncategorized: SessionNotesIndexPageShape[] = [];
 
   for (const row of timelineRows as Array<{
@@ -3976,6 +3979,7 @@ export async function getSessionNotesIndex(
       timelinePointId: row.id,
       sequenceOrder: row.sequenceOrder,
       fantasyEpochMinute: anchorMeta.fantasyEpochMinute ?? null,
+      audio: audioSummaries.get(row.id),
     };
 
     if (anchor.notebookArcId) {

@@ -17,6 +17,7 @@ import { WikiTipTapEditor } from '@/components/wiki/WikiTipTapEditor';
 import { WikiMarkdown } from '@/components/wiki/WikiMarkdown';
 import { SessionCombinedInlineView } from '@/components/session/SessionCombinedInlineView';
 import { SessionNotesSidebar } from '@/components/session/SessionNotesSidebar';
+import { SessionAudioPanel } from '@/components/session/SessionAudioPanel';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { WikiWorkspaceShell } from '@/components/layout/WikiWorkspaceShell';
 import { resolveReadableMeasureCh } from '@/lib/codexWorkspaceUx';
@@ -231,7 +232,7 @@ export function SessionNoteEditor({
   const sessionTitle = combined?.session.title ?? title;
 
   const headerTitle = isCombinedView
-    ? `All Players — ${sessionTitle}`
+    ? sessionTitle
     : isViewingOther && activeMember
       ? `${resolveIdentityDisplay(activeMember).primaryLabel}'s notes`
       : title.trim() || sessionTitle || 'Untitled session note';
@@ -385,6 +386,7 @@ export function SessionNoteEditor({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
         <section className="min-w-0 space-y-4">
+          {timelinePointId && <SessionAudioPanel campaignHandle={campaignHandle} timelineId={timelinePointId} />}
           {isCombinedView ? (
             combinedLoading && !combined ? (
               <LoadingSpinner label="Loading combined session notes…" />

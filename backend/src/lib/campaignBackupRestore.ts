@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { stageBackupZip, type StagedBackupZip } from './stagedBackupZip.js';
+import { restoreSessionAudioBackup } from './sessionAudioBackup.js';
+import { getActiveStorageDriver } from './storage/storageRegistry.js';
+import { buildAssetLocation } from './assetLocation.js';
+import { audioSettings } from './audioCore.js';
 import JSZip from 'jszip';
 import { prisma } from './prisma.js';
 import { env } from '../config/env.js';
@@ -394,6 +400,7 @@ export async function processCampaignBackupRestore(
           abortable: false,
         });
 
+  let staged: StagedBackupZip | undefined;
   try {
     updateBackgroundTask(task.id, { status: 'PROCESSING', progress: 5 });
 
@@ -410,8 +417,8 @@ export async function processCampaignBackupRestore(
     }
 
     const zipFilePath = path.join(env.uploadsDir, path.basename(backupAsset.url));
-    const zipBuffer = await fs.readFile(zipFilePath);
-    const zip = await JSZip.loadAsync(zipBuffer);
+    const audioLimits = await audioSettings();
+    const zip = staged = await stageBackupZip(zipFilePath, Number(audioLimits.maxCampaignBytes + 536870912n));
 
     const manifestRaw = await zip.file('manifest.json')?.async('string');
     if (!manifestRaw) throw new Error('Backup manifest.json is missing');
@@ -460,7 +467,6 @@ export async function processCampaignBackupRestore(
       const file = zip.file(zipPath);
       if (!file) continue;
 
-      const buffer = await file.async('nodebuffer');
       const existing = await prisma.asset.findFirst({
         where: { id: assetEntry.id, campaignId },
       });
@@ -469,6 +475,16 @@ export async function processCampaignBackupRestore(
         await prisma.asset.delete({ where: { id: existing.id } });
       }
 
+      if (assetEntry.type === 'SessionAudio') {
+        const driver = getActiveStorageDriver();
+        const key = `${randomUUID()}${path.extname(assetEntry.filename)}`;
+        await driver.put({ key, body: createReadStream(file.sourcePath) });
+        const location = buildAssetLocation({ original: key }, driver);
+        await prisma.asset.create({ data: { id: assetEntry.id, campaignId, url: location.urls.originalUrl, type: 'SessionAudio', sizeBytes: BigInt(file.size) } });
+        mediaFileToAssetId.set(assetEntry.filename, assetEntry.id);
+        continue;
+      }
+      const buffer = await file.async('nodebuffer');
       const result = await importFromPackBuffer({
         campaignId,
         buffer,
@@ -716,6 +732,8 @@ export async function processCampaignBackupRestore(
       }
     }
 
+    const audioRaw = await zip.file('sovereign/audio.json')?.async('string');
+    if (audioRaw) await restoreSessionAudioBackup(campaignId, JSON.parse(audioRaw));
     const linkEdgeCount = await rebuildWikiLinksForCampaign(campaignId);
     const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');
     await rebuildSearchIndexForCampaign(campaignId);
@@ -758,5 +776,5 @@ export async function processCampaignBackupRestore(
       message: error instanceof Error ? error.message : 'Campaign backup restore failed',
     });
     throw error;
-  }
+  } finally { await staged?.close(); }
 }

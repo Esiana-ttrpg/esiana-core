@@ -24,6 +24,10 @@ const OVERRIDE_CAPS = [
   CampaignCapabilities.QUEST_EDIT,
   CampaignCapabilities.THREAD_EDIT,
   CampaignCapabilities.ASSETS_UPLOAD,
+  CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
+  CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
+  CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,
+  CampaignCapabilities.AUDIO_TRANSCRIBE,
 ] as const;
 
 const CAP_LABELS: Record<string, string> = {
@@ -33,6 +37,10 @@ const CAP_LABELS: Record<string, string> = {
   [CampaignCapabilities.QUEST_EDIT]: 'Edit quests',
   [CampaignCapabilities.THREAD_EDIT]: 'Edit threads',
   [CampaignCapabilities.ASSETS_UPLOAD]: 'Upload assets',
+  [CampaignCapabilities.AUDIO_CHAPTERS_EDIT]: 'Edit recording chapters',
+  [CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT]: 'Edit recording transcripts',
+  [CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH]: 'Publish transcript revisions',
+  [CampaignCapabilities.AUDIO_TRANSCRIBE]: 'Request recording transcription',
   [CampaignCapabilities.CHRONOLOGY_EDIT]: 'Manage chronology events',
 };
 

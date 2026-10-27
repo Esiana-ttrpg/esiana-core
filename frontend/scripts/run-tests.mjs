@@ -13,6 +13,7 @@ const result = spawnSync(
     'tsx',
     '--test',
     '../shared/recruitmentSeats.test.ts',
+    '../shared/sessionAudio.test.ts',
     'src/components/recruitment/RecruitmentHostSection.test.tsx',
     'src/components/hub/NewCampaignWizard.layout.test.ts',
     'src/components/chronology/worldAdvanceFeedGrouping.test.ts',
