@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- Processing providers reject mapped IPv4 and literal IPv6 link-local destinations. Transcript editing permissions and configured request-size limits are enforced before parsing, and missing or expired uploads clear stale retry keys without discarding them on transport failures.
 - Backup ZIP extraction stages files under the configured uploads storage so large restores use the existing data mount instead of the system temporary directory.
 - Audio settings no longer render Advanced tools alongside the audio panel. Backup and recording uploads retain retry keys on plain HTTP, and upload quotas use database aggregates for session, campaign, and instance totals.
 - Recording clones preflight source media and clean up incomplete campaigns after audio-copy failures; missing clone prerequisites return HTTP 400. Transcription clamps segment ends to the measured file duration while rejecting segments that start outside it.

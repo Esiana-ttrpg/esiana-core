@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { audioRequest, assetUploadBase, formatAudioTime, type RecordingView, type ChapterView, type NativeTranscript,
   type TranscriptSegmentInput, type AudioSettingsPayload } from '@/lib/sessionAudio';
 import { apiFetch } from '@/lib/api';
-import { getOrCreateUploadRetryKey } from '@/lib/uploadRetryKey';
+import { getOrCreateUploadRetryKey, resumeStoredUpload } from '@/lib/uploadRetryKey';
 import { useWiki } from '@/contexts/WikiContext';
 import { resolveCanonicalPagePath } from '@/lib/campaignPaths';
 
@@ -89,9 +89,7 @@ export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHand
         const file = files[i];
         const key = `esiana-audio:${campaignHandle}:${recording.id}:${file.name}:${file.size}:${file.lastModified}`;
         const creationKey = `${key}:create-key`;
-        let session: Upload | null = null;
-        const previous = localStorage.getItem(key);
-        if (previous) { try { session = await request<Upload>(`/uploads/${previous}`); } catch { localStorage.removeItem(key); } }
+        let session = await resumeStoredUpload(key, (id) => request<Upload>(`/uploads/${id}`));
         if (session && ['appending', 'finalizing'].includes(session.status)) throw new Error('This upload is still processing. Retry shortly to resume.');
         if (session && !['uploading', 'complete'].includes(session.status)) localStorage.removeItem(creationKey);
         if (!session || !['uploading', 'complete'].includes(session.status)) {

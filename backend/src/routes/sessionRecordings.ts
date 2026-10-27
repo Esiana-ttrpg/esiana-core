@@ -1,7 +1,7 @@
 import { Router, json } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { audioHandler, audioSettings, campaignAudioSettings, assertAudio, capability, jsonSafe, recordingAccess, sessionAccess, serializable } from '../lib/audioCore.js';
+import { AudioError, audioHandler, audioSettings, campaignAudioSettings, assertAudio, capability, jsonSafe, recordingAccess, sessionAccess, serializable } from '../lib/audioCore.js';
 import { assetIdempotencyKey, idempotentAssetCreation } from '../lib/assetIdempotency.js';
 import { CampaignCapabilities as C } from '../../../shared/campaignPolicy/capabilities.js';
 import { calculateOffsets, fileAtPosition, parseTranscript, RECORDING_VISIBILITIES, type TranscriptSegmentInput } from '../../../shared/sessionAudio.js';
@@ -23,6 +23,21 @@ async function edit(req: CampaignScopedRequest, kind: 'chapters' | 'transcripts'
   assertAudio(ctx.capabilities.has(C.AUDIO_MANAGE) || (kind === 'chapters' ? settings.allowChapters : settings.allowTranscripts), 403, 'contributions_disabled');
   return recording;
 }
+const authorizeTranscriptRevision = audioHandler(async (req, _res, next) => {
+  await edit(req, 'transcripts');
+  next();
+});
+const parseTranscriptRevision = audioHandler(async (req, res, next) => {
+  const global = await audioSettings();
+  await new Promise<void>((resolve, reject) => {
+    json({ limit: global.maxTranscriptBytes })(req, res, (error) => {
+      if (!error) { resolve(); return; }
+      const status = typeof error.status === 'number' ? error.status : 400;
+      reject(new AudioError(status, status === 413 ? 'transcript_too_large' : 'invalid_transcript'));
+    });
+  });
+  next();
+});
 sessionRecordingsRouter.get('/sessions/:timelineId/recordings', audioHandler(async (req, res) => {
   const ctx = req.campaign!; await sessionAccess(ctx, String(req.params.timelineId));
   const rows = await prisma.sessionRecording.findMany({ where: { campaignId: ctx.campaignId, timelineId: String(req.params.timelineId) }, orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }] });
@@ -144,7 +159,7 @@ sessionRecordingsRouter.get('/recordings/:recordingId/transcript', audioHandler(
   res.json({ revision: recording.transcript.revision, publishedRevisionId: recording.transcript.publishedRevisionId, revisions,
     current: current ? { ...current, segments: merged } : null });
 }));
-sessionRecordingsRouter.post('/recordings/:recordingId/transcript/revisions', rateLimitPolicy('expensive'), json({ limit: '100mb' }), audioHandler(async (req, res) => {
+sessionRecordingsRouter.post('/recordings/:recordingId/transcript/revisions', rateLimitPolicy('expensive'), authorizeTranscriptRevision, parseTranscriptRevision, audioHandler(async (req, res) => {
   const recording = await edit(req, 'transcripts');
   const data = z.object({ expectedRevision: z.number().int().nonnegative(), language: z.string().max(40).nullable().optional(),
     sourceJobId: z.string().optional(), baseRevisionId: z.string().optional(),

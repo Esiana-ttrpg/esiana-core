@@ -36,6 +36,8 @@ Declare capabilities and accepted formats explicitly. An OpenAI-compatible chat 
 
 Credentials require the existing `AUTH_SECRETS_KEY` configuration and are stored encrypted. Local/private endpoints require explicit administrator approval. Requests are DNS-pinned and do not follow redirects. Connection testing sends no campaign audio and reports reachability separately from operation compatibility.
 
+Link-local destinations remain blocked even with private-network approval, including IPv4-mapped IPv6 addresses and IPv6 literals. Transcript revision uploads check recording visibility and editing permissions before parsing JSON; the parser uses the configured transcript byte limit.
+
 New campaigns have no provider access. Grant selected campaigns explicitly, then enable transcription and choose permitted defaults in Campaign Settings → Audio. Storage limits and processing limits are separate. Processing supports instance-connection and campaign request/audio-duration ceilings per UTC calendar month; campaigns may tighten their allowances.
 
 Only an authorized user request submits audio. Files are sent individually, without automatic conversion or arbitrary encoded-file splitting. Provider limits can therefore be lower than recording upload limits. Generated results arrive as native transcript drafts. Segment ends that exceed the measured file duration are clamped to that duration; segments starting at or beyond the file's end are rejected.

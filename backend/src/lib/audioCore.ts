@@ -33,9 +33,9 @@ export function assertAudio(condition: unknown, status: number, code: string): a
 export function jsonSafe<T>(value: T): unknown {
   return JSON.parse(JSON.stringify(value, (_key, v) => typeof v === 'bigint' ? v.toString() : v));
 }
-export const audioHandler = (fn: (req: CampaignScopedRequest, res: Response) => Promise<unknown>) =>
+export const audioHandler = (fn: (req: CampaignScopedRequest, res: Response, next: NextFunction) => Promise<unknown>) =>
   (req: CampaignScopedRequest, res: Response, next: NextFunction) => {
-    void fn(req, res).catch((error: unknown) => {
+    void fn(req, res, next).catch((error: unknown) => {
       if (error instanceof AudioError) res.status(error.status).json({ error: errorMessages[error.code] ?? error.code.replaceAll('_', ' '), code: error.code });
       else if (error && typeof error === 'object' && 'name' in error && error.name === 'ZodError')
         res.status(400).json({ error: 'Invalid request' });

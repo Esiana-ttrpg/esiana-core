@@ -127,11 +127,28 @@ test('external integrations complete the shared lifecycle with scoped bearer tok
       assert.equal((await malformed(stranger.raw)).status, 403);
       assert.equal((await malformed(reader.raw)).status, 403);
       assert.equal((await malformed(writer.raw)).status, 400);
+      await prisma.campaignAudioSettings.update({ where: { campaignId: campaign.id }, data: { allowTranscripts: false } });
+      try { assert.equal((await malformed(writer.raw)).status, 403); }
+      finally { await prisma.campaignAudioSettings.update({ where: { campaignId: campaign.id }, data: { allowTranscripts: true } }); }
+      await prisma.wikiPage.update({ where: { id: page.id }, data: { visibility: WikiVisibility.DM_ONLY } });
+      try { assert.equal((await malformed(writer.raw)).status, 404); }
+      finally { await prisma.wikiPage.update({ where: { id: page.id }, data: { visibility: WikiVisibility.PARTY } }); }
       const transcript = await ok(await request(writer.raw, `${audio}/recordings/${recordingId}/transcript`));
       const text = 'A'.repeat(150000);
       await ok(await request(writer.raw, path, 'POST', { expectedRevision: transcript.revision,
         segments: [{ startMs: null, endMs: null, text }] }), 201);
       assert.equal((await request(writer.raw, `${audio}/recordings/${recordingId}/chapters`, 'POST', { title: text, startMs: 0 })).status, 413);
+      const settings = await audioSettings();
+      const bounded = { expectedRevision: transcript.revision + 1, segments: [{ startMs: null, endMs: null, text: 'An exact-size draft.' }] };
+      const wire = JSON.stringify(bounded);
+      await prisma.audioSettings.update({ where: { id: 'GLOBAL_AUDIO' }, data: { maxTranscriptBytes: Buffer.byteLength(wire) } });
+      try {
+        await ok(await request(writer.raw, path, 'POST', bounded), 201);
+        const oversized = await fetch(`${origin}${path}`, { method: 'POST',
+          headers: { Authorization: `Bearer ${writer.raw}`, 'Content-Type': 'application/json' }, body: `${wire} ` });
+        assert.equal(oversized.status, 413);
+        assert.equal((await oversized.json()).code, 'transcript_too_large');
+      } finally { await prisma.audioSettings.update({ where: { id: 'GLOBAL_AUDIO' }, data: { maxTranscriptBytes: settings.maxTranscriptBytes } }); }
     });
     await t.test('quotas, cross-campaign IDs, session disclosure, and changed permissions remain enforced', async () => {
       const body = { recordingId, name: 'third.wav', sizeBytes: String(wav.length) };

@@ -1,6 +1,6 @@
 import { apiFetch } from './api';
 import { assetUploadBase } from './sessionAudio';
-import { getOrCreateUploadRetryKey } from './uploadRetryKey';
+import { getOrCreateUploadRetryKey, resumeStoredUpload } from './uploadRetryKey';
 const API_BASE = '/api';
 
 export async function downloadCampaignBackup(
@@ -44,9 +44,7 @@ export async function restoreCampaignBackup(
   const base = assetUploadBase(campaignHandle);
   const key = `esiana-backup:${campaignHandle}:${backupZipFile.name}:${backupZipFile.size}:${backupZipFile.lastModified}`;
   const creationKey = `${key}:create-key`;
-  let upload: { id: string; offsetBytes: string; status: string } | null = null;
-  const previous = localStorage.getItem(key);
-  if (previous) { try { upload = await apiFetch(`${base}/${previous}`); } catch { localStorage.removeItem(key); } }
+  let upload = await resumeStoredUpload(key, (id) => apiFetch<{ id: string; offsetBytes: string; status: string }>(`${base}/${id}`));
   if (upload && ['appending', 'finalizing'].includes(upload.status)) throw new Error('This backup upload is still processing. Retry shortly to resume.');
   if (upload && !['uploading', 'complete'].includes(upload.status)) localStorage.removeItem(creationKey);
   if (!upload || !['uploading', 'complete'].includes(upload.status)) {
