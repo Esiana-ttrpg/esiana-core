@@ -6,6 +6,7 @@
  * fetch() runs only inside guarded branches (sync guard + async resolve on same url).
  */
 import fs from 'node:fs';
+import { lookup } from 'node:dns/promises';
 import { createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { finished } from 'node:stream/promises';
@@ -106,6 +107,48 @@ async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: 
   } catch (error) {
     await dispatcher.close().catch(() => {});
     throw error;
+  }
+}
+
+/** Core processing connections may explicitly approve LAN access; redirects stay disabled.
+ * Consume the response inside the callback so the pinned dispatcher always closes afterward.
+ */
+export async function withProcessingRemoteResponse<T>(
+  endpoint: string,
+  options: {
+    allowPrivateNetwork: boolean;
+    method: 'HEAD' | 'POST';
+    headers: Record<string, string>;
+    body?: NonNullable<Parameters<typeof undiciFetch>[1]>['body'];
+    signal: AbortSignal;
+  },
+  consume: (response: globalThis.Response) => Promise<T>,
+): Promise<T> {
+  const url = new URL(endpoint);
+  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) {
+    throw new NetworkFetchError('invalid_endpoint');
+  }
+  let addresses: ValidatedRemoteAddress[];
+  if (options.allowPrivateNetwork) {
+    const hostname = url.hostname.replace(/^\[|\]$/g, '');
+    addresses = (await lookup(hostname, { all: true })).map(({ address, family }) => ({ address, family: family as 4 | 6 }));
+    // Explicit LAN approval still excludes link-local metadata destinations.
+    if (!addresses.length || addresses.some(({ address }) => address.startsWith('169.254.') || address.toLowerCase().startsWith('fe80:') || address === '0.0.0.0')) {
+      throw new NetworkFetchError('provider_destination_forbidden');
+    }
+  } else {
+    if (url.protocol !== 'https:') throw new NetworkFetchError('provider_requires_https');
+    addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false });
+  }
+  const { response, dispatcher } = await fetchPinned(url, addresses, {
+    method: options.method, headers: options.headers, body: options.body,
+    ...(options.body === undefined ? {} : { duplex: 'half' as const }), signal: options.signal,
+  });
+  try {
+    return await consume(response);
+  } finally {
+    await response.body?.cancel().catch(() => {});
+    await dispatcher.close();
   }
 }
 

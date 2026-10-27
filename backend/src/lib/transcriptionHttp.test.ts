@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
 import test from 'node:test';
-import { normalizeProviderResult, transcribeHttp } from './transcriptionHttp.js';
+import { normalizeProviderResult, testProviderConnection, transcribeHttp } from './transcriptionHttp.js';
 import type { ProcessingConnection } from './prismaClient.js';
 test('Whisper response profiles normalize seconds and millisecond offsets', () => {
   assert.deepEqual(normalizeProviderResult({ language: 'en', segments: [{ start: 0.1, end: 1.25, text: 'A map' }] }).segments[0],
@@ -34,4 +34,28 @@ test('both HTTP profiles stream multipart media and request timestamped results'
     assert.equal(requests.length, 2); assert.match(requests[0].body, /verbose_json/); assert.match(requests[0].body, /audio-fixture/);
     assert.match(requests[1].body, /timestamp_granularities/); assert.match(requests[1].body, /whisper-model/);
   } finally { server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); }
+});
+
+test('connection probes use the guarded transport and never follow redirects', async () => {
+  const requests: string[] = [];
+  const server = createServer((req, res) => {
+    requests.push(`${req.method} ${req.url}`);
+    if (req.url === '/redirect') {
+      res.writeHead(302, { Location: '/unexpected' });
+    } else res.writeHead(405);
+    res.end();
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as { port: number }).port;
+  const connection = { endpoint: `http://127.0.0.1:${port}/inference`, allowPrivateNetwork: true,
+    encryptedCredential: null } as ProcessingConnection;
+  try {
+    assert.deepEqual(await testProviderConnection(connection), { status: 'reachable', capabilitiesVerified: false });
+    await assert.rejects(() => testProviderConnection({ ...connection, endpoint: `http://127.0.0.1:${port}/redirect` }));
+    await assert.rejects(() => testProviderConnection({ ...connection, allowPrivateNetwork: false }), /provider_requires_https/);
+    assert.deepEqual(requests, ['HEAD /inference', 'HEAD /redirect']);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
 });
