@@ -24903,9 +24903,11 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:read (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       responses:
         "200":
           description: Successful response
@@ -24925,7 +24927,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user session."
+      description: "Authorization: Authenticated application user session or API token."
   /api/user/schedule/preferences:
     patch:
       tags:
@@ -24935,9 +24937,11 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       requestBody:
         required: false
         description: JSON fields accepted by this operation. Action endpoints may not require a body.
@@ -24964,7 +24968,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user session."
+      description: "Authorization: Authenticated application user session or API token."
   /api/campaigns/{campaignHandle}/wiki/{pageId}/add-to-portfolio:
     post:
       tags:
@@ -25028,13 +25032,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Explicit lifecycle transition from CURRENT to PAST (meaningful history — not staleness).
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - name: adventureId
           in: path
@@ -25069,13 +25075,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:read (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - name: filter
           in: query
@@ -25126,13 +25134,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       requestBody:
         required: true
         content:
@@ -25161,13 +25171,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Deletes the user-owned portfolio character. Related campaign wiki pages are not cascade-deleted; adventure provenance detaches instead.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - &a7
           name: id
@@ -25197,13 +25209,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:read (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       responses:
@@ -25227,13 +25241,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -25264,13 +25280,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Explicit clone/transform: creates a new campaign-scoped WikiPage character and a CURRENT PortfolioCharacterAdventure provenance row. The portfolio and campaign records remain independently owned and are never synchronized afterward. Favorite/showcase/archive are not copied.
 
-        Authorization: Authenticated application user session; caller must be a member of the target campaign.
+        Authorization: Authenticated application user session or API token; caller must be a member of the target campaign.
       parameters:
         - *a7
       requestBody:
@@ -25301,13 +25319,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Personal organization only. Archive is orthogonal to provenance-derived Past.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -25338,13 +25358,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Creates another independent portfolio character. Adventures are not copied. Favorite/showcase/archive are reset.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -25375,13 +25397,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -25413,13 +25437,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -25450,13 +25476,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -25500,13 +25528,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
         - name: mediaId
@@ -25536,13 +25566,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Explicit showcase membership change. Public profile exposure requires isShowcased=true. Removing from showcase clears membership and order together — not an ordering-only mutation.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -25573,13 +25605,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Batch favorite/archive/showcase mutations for Manage Portfolio / Manage Showcase flows.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       requestBody:
         required: true
         content:
@@ -25608,13 +25642,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Reorders an already-showcased set. Does not add/remove showcase membership; use the showcase endpoint for membership.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       requestBody:
         required: true
         content:
@@ -25643,6 +25679,11 @@ paths:
       x-esiana-authorization:
         boundary: public-or-resource-conditional
         requires: []
+      security:
+        - {}
+        - cookieAuth: []
+        - bearerAuth: []
+      x-esiana-token-scopes: ['campaign:read']
       parameters:
         - name: id
           in: path
@@ -25679,6 +25720,11 @@ paths:
       x-esiana-authorization:
         boundary: public-or-resource-conditional
         requires: []
+      security:
+        - {}
+        - cookieAuth: []
+        - bearerAuth: []
+      x-esiana-token-scopes: ['campaign:read']
       parameters:
         - name: assetId
           in: path
