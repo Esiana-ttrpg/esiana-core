@@ -105,6 +105,28 @@ test('CodeQL-flagged operations include expected policies', () => {
       pathIncludes: '/uploads',
       expect: ['authenticated', 'expensive'],
     },
+    {
+      method: 'POST',
+      pathIncludes: '/asset-uploads',
+      expect: ['authenticated', 'apiKey', 'mutation', 'expensive'],
+    },
+    {
+      method: 'PATCH',
+      pathIncludes: '/asset-uploads/:uploadId',
+      expect: ['authenticated', 'apiKey', 'mutation'],
+      forbid: ['expensive'],
+    },
+    {
+      method: 'DELETE',
+      pathIncludes: '/asset-uploads/:uploadId',
+      expect: ['authenticated', 'apiKey', 'mutation'],
+      forbid: ['expensive'],
+    },
+    {
+      method: 'POST',
+      pathIncludes: '/asset-uploads/:uploadId/finalize',
+      expect: ['authenticated', 'apiKey', 'mutation', 'expensive'],
+    },
   ];
 
   for (const c of cases) {

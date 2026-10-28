@@ -273,6 +273,16 @@ test('session audio: resumable uploads, private ranges, chapters, transcripts, p
         assert.ok(getRecentSystemLogs().some((log) => log.message.includes('Campaign sovereign backup failed: backup-stream-fixture')));
       }
     });
+    await t.test('restore rejects paths outside configured upload storage before reading or renaming', async () => {
+      for (const filename of ['../outside-backup.zip', path.resolve(env.uploadsDir, '..', 'outside-backup.zip'), '.']) {
+        let status = 0, message = '';
+        await restoreCampaignBackup({ campaign: { campaignId: campaign.id, campaignHandle: campaign.handle }, user: owner,
+          files: { backupZipFile: [{ filename }] } } as unknown as CampaignScopedRequest & AuthenticatedRequest,
+        { status(code: number) { status = code; return this; }, json(body: { error: string }) { message = body.error; } } as unknown as Response);
+        assert.equal(status, 400);
+        assert.equal(message, 'Uploaded file path is invalid');
+      }
+    });
     await t.test('site-admin recovery backups audit their override without granting normal content access', async () => {
       assert.equal((await api(owner.id, '/admin/system/backup')).status, 403);
       const system = await api(admin.id, '/admin/system/backup');

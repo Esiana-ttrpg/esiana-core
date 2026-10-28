@@ -11,6 +11,9 @@ import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { assetIdempotencyKey } from '../lib/assetIdempotency.js';
 export const audioUploadsRouter = Object.assign(Router({ mergeParams: true }), { rateLimitMountPath: '/asset-uploads' });
+// campaignScopedRouter applies authenticated, apiKey, and mutation limits before this router.
+// Chunks and cancellation use those budgets; expensive is reserved for creation/finalization
+// so an ordinary large upload does not consume the default 20/minute expensive-operation budget per chunk.
 audioUploadsRouter.use((req, res, next) => requireTokenScopes([req.method === 'GET' ? 'campaign:read' : 'campaign:write'])(req, res, next));
 async function load(req: CampaignScopedRequest) {
   const row = await prisma.assetUploadSession.findFirst({ where: { id: String(req.params.uploadId), campaignId: req.campaign!.campaignId, userId: req.user!.id } });

@@ -26,6 +26,7 @@ import {
 import { NotificationType } from '../lib/notifications/types.js';
 import { campaignSettingsPath } from '../lib/notifications/deepLinks.js';
 import { enqueueCampaignBackupRestore } from '../lib/importQueue.js';
+import { resolveSafeUploadPath } from '../lib/uploadValidation.js';
 
 function buildBackupFilename(handle: string): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -270,12 +271,12 @@ export async function restoreCampaignBackup(
       }
       uploadClaimed = true;
     }
-    const manifest = await readBackupManifest(path.join(env.uploadsDir, backupZipFile.filename));
+    const currentPath = resolveSafeUploadPath(backupZipFile.filename);
+    const manifest = await readBackupManifest(currentPath);
     if (manifest.format !== CAMPAIGN_BACKUP_FORMAT) throw new Error('Unsupported campaign backup format');
 
-    const nextFilename = `campaign-${campaignId}-restore-${randomUUID()}.zip`;
-    const currentPath = path.join(env.uploadsDir, backupZipFile.filename);
-    const nextPath = path.join(env.uploadsDir, nextFilename);
+    const nextFilename = `campaign-restore-${randomUUID()}.zip`;
+    const nextPath = resolveSafeUploadPath(nextFilename);
     await fs.rename(currentPath, nextPath);
     movedPaths = { current: currentPath, next: nextPath };
 
@@ -319,7 +320,7 @@ export async function restoreCampaignBackup(
     if (!handoffCommitted) {
       let recovered = true;
       if (movedPaths) {
-        recovered = await fs.rename(movedPaths.next, movedPaths.current).then(() => true, () => false);
+        recovered = await fs.rename(resolveSafeUploadPath(movedPaths.next), resolveSafeUploadPath(movedPaths.current)).then(() => true, () => false);
       }
       if (uploadClaimed && sourceUpload) {
         await prisma.assetUploadSession.updateMany({ where: { id: sourceUpload.id, status: 'restoring' },
