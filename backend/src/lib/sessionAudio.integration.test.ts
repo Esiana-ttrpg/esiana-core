@@ -67,7 +67,7 @@ test('session audio: resumable uploads, private ranges, chapters, transcripts, p
   const audio = `/campaigns/${campaign.handle}/audio`;
   const uploads = `/campaigns/${campaign.handle}/asset-uploads`;
   const ok = async (response: Response, expected = 200) => { const body = await response.json(); assert.equal(response.status, expected, JSON.stringify(body)); return body; };
-  let recording: { id: string; revision: number };
+  let recording: { id: string; revision: number; consentAcknowledgedAt?: string | Date | null };
   try {
     await t.test('uploads are governed before enabling; global admin does not gain membership', async () => {
       assert.equal((await audioSettings()).enabled, true);
@@ -77,7 +77,11 @@ test('session audio: resumable uploads, private ranges, chapters, transcripts, p
       assert.equal((await api(admin.id, `${audio}/sessions/${timeline.id}/recordings`)).status, 403);
       await ok(await api(admin.id, '/admin/audio', 'PATCH', { enabled: true, transcriptionEnabled: true }));
       await ok(await api(owner.id, `${audio}/settings`, 'PATCH', { enabled: true, allowPov: true, transcriptionEnabled: true }));
-      recording = await ok(await api(owner.id, `${audio}/sessions/${timeline.id}/recordings`, 'POST', { title: 'A discovery', visibility: 'uploader_and_managers' }), 201);
+      for (const consentAcknowledged of [undefined, false, 'true']) {
+        assert.equal((await api(owner.id, `${audio}/sessions/${timeline.id}/recordings`, 'POST', { title: 'A discovery', consentAcknowledged })).status, 400);
+      }
+      recording = await ok(await api(owner.id, `${audio}/sessions/${timeline.id}/recordings`, 'POST', { title: 'A discovery', consentAcknowledged: true, visibility: 'uploader_and_managers' }), 201);
+      assert.ok(recording.consentAcknowledgedAt);
       assert.equal((await api(owner.id, `/campaigns/${other.handle}/audio/recordings/${recording.id}`)).status, 404);
     });
     const wav = Buffer.alloc(32044); wav.write('RIFF'); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8);
@@ -384,6 +388,7 @@ test('session audio: resumable uploads, private ranges, chapters, transcripts, p
       try {
         const audioClone = await prisma.sessionRecording.findFirstOrThrow({ where: { campaignId: cloned.campaignId }, include: { files: true } });
         assert.equal(audioClone.files.length, 2);
+        assert.equal(audioClone.consentAcknowledgedAt?.toISOString(), recording.consentAcknowledgedAt);
         assert.ok(audioClone.files.every((entry) => entry.assetId !== file.assetId));
         assert.equal(await prisma.processingCampaignGrant.count({ where: { campaignId: cloned.campaignId } }), 0);
       } finally {
@@ -417,6 +422,7 @@ test('session audio: resumable uploads, private ranges, chapters, transcripts, p
       await cloneSessionAudio(campaign.id, other.id, new Map([[page.id, targetPage.id]]));
       const cloned = await prisma.sessionRecording.findFirst({ where: { campaignId: other.id }, include: { files: true, transcript: true } });
       assert.ok(cloned); assert.notEqual(cloned.files[0].assetId, file.assetId);
+      assert.equal(cloned.consentAcknowledgedAt?.toISOString(), recording.consentAcknowledgedAt);
       assert.equal(await prisma.processingCampaignGrant.count({ where: { campaignId: other.id } }), 0);
       const asset = await prisma.asset.findUnique({ where: { id: cloned.files[0].assetId } }); assert.equal(asset?.campaignId, other.id);
       const exported = await buildSovereignExport(campaign.id);

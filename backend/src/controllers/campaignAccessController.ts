@@ -630,6 +630,7 @@ export async function removeCampaignMember(
   }
 
   await prisma.$transaction([
+    prisma.safetyPrivacyEligibility.upsert({ where: { campaignId_userId: { campaignId, userId: targetUserId } }, create: { campaignId, userId: targetUserId }, update: {} }),
     prisma.campaignMember.delete({ where: { userId_campaignId: { userId: targetUserId, campaignId } } }),
   ]);
   revokeCampaignEventStreams(campaignId, targetUserId);
@@ -682,6 +683,7 @@ export async function leaveCampaign(
   }
 
   await prisma.$transaction([
+    prisma.safetyPrivacyEligibility.upsert({ where: { campaignId_userId: { campaignId, userId: userId } }, create: { campaignId, userId: userId }, update: {} }),
     prisma.campaignMember.delete({ where: { userId_campaignId: { userId, campaignId } } }),
   ]);
   revokeCampaignEventStreams(campaignId, userId);
@@ -703,6 +705,7 @@ export async function leaveCampaign(
 }
 
 const COLLABORATIVE_OVERRIDE_CAPS = [
+  CampaignCapabilities.SAFETY_SUBMIT,
   CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,
@@ -719,6 +722,7 @@ const COLLABORATIVE_OVERRIDE_CAPS = [
 ] as const;
 
 const OPERATIONAL_OVERRIDE_CAPS = [
+  CampaignCapabilities.SAFETY_MANAGE,
   CampaignCapabilities.AUDIO_MANAGE,
   CampaignCapabilities.PAGE_EDIT_ANY,
   CampaignCapabilities.PAGE_VISIBILITY_EDIT,

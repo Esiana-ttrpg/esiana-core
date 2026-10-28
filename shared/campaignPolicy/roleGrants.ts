@@ -53,12 +53,14 @@ const PARTICIPANT_COLLABORATIVE: readonly CampaignCapability[] = [
 ];
 
 const PARTICIPANT_BASE: readonly CampaignCapability[] = [
+  CampaignCapabilities.SAFETY_SUBMIT,
   CampaignCapabilities.CAMPAIGN_VIEW,
   CampaignCapabilities.WIKI_VIEW_PARTY,
   ...PARTICIPANT_COLLABORATIVE,
 ];
 
 const OBSERVER_BASE: readonly CampaignCapability[] = [
+  CampaignCapabilities.SAFETY_SUBMIT,
   CampaignCapabilities.CAMPAIGN_VIEW,
   CampaignCapabilities.WIKI_VIEW_PARTY,
   CampaignCapabilities.ASSETS_VIEW,
@@ -76,6 +78,7 @@ export function roleCapabilitiesFor(
   const caps = new Set<CampaignCapability>();
 
   if (!role) return caps;
+  caps.add(CampaignCapabilities.SAFETY_SUBMIT);
 
   switch (role) {
     case MembershipRoles.GAMEMASTER:
@@ -105,11 +108,13 @@ export function roleCapabilitiesFor(
 
 export const ROLE_GRANTS: Record<MembershipRole, readonly CampaignCapability[]> = {
   [MembershipRoles.GAMEMASTER]: [
+    CampaignCapabilities.SAFETY_SUBMIT,
     CampaignCapabilities.CAMPAIGN_VIEW,
     CampaignCapabilities.CAMPAIGN_SETTINGS_EDIT,
     ...GM_WRITER_OPERATIONAL,
   ],
   [MembershipRoles.WRITER]: [
+    CampaignCapabilities.SAFETY_SUBMIT,
     CampaignCapabilities.CAMPAIGN_VIEW,
     ...GM_WRITER_OPERATIONAL,
   ],

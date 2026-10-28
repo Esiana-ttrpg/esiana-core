@@ -39,7 +39,7 @@ operation(`${base}/settings`, 'patch', 'Update campaign audio configuration', ca
 operation(`${base}/providers`, 'get', 'List permitted provider names, capabilities, and models', null, array(object({ id: string, name: string, capabilities: array(string) })));
 operation(`${base}/usage`, 'get', 'Read campaign processing usage');
 operation(`${base}/sessions/{timelineId}/recordings`, 'get', 'List visible session recordings', null, array(recording));
-operation(`${base}/sessions/{timelineId}/recordings`, 'post', 'Create a session recording', object({ title: string, visibility: recording.properties.visibility }, ['title']), recording, '201');
+operation(`${base}/sessions/{timelineId}/recordings`, 'post', 'Create a session recording', object({ title: string, visibility: recording.properties.visibility, consentAcknowledged: { const: true, description: 'Uploader confirms participants were informed and permission was obtained to upload and share this recording.' } }, ['title', 'consentAcknowledged']), recording, '201');
 const rec = `${base}/recordings/{recordingId}`;
 operation(rec, 'get', 'Read an authorized recording', null, recording);
 operation(rec, 'patch', 'Update recording metadata', object({ expectedRevision: integer, title: string, visibility: recording.properties.visibility, isPrimary: boolean, status: { enum: ['ready', 'archived'] } }, ['expectedRevision']), recording);
@@ -99,7 +99,7 @@ const curl = (path, method, source) => {
 };
 curl(`${base}/sessions/{timelineId}/recordings`, 'post', `curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \\
   -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \\
-  -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording"}'`);
+  -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording","consentAcknowledged":true}'`);
 curl(`${base}/sessions/{timelineId}/recordings`, 'get', `curl --fail-with-body "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \\
   -H "Authorization: Bearer $ESIANA_TOKEN"`);
 curl(uploads, 'post', `curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads" \\

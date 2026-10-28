@@ -57,7 +57,7 @@ campaignAudioRouter.get('/settings', audioHandler(async (req, res) => {
   const usage = await prisma.asset.aggregate({ where: { campaignId: ctx.campaignId, type: 'SessionAudio' }, _sum: { sizeBytes: true }, _count: true });
   res.json(jsonSafe({ settings, usage: { storageBytes: usage._sum.sizeBytes ?? 0n, fileCount: usage._count }, global: { enabled: global.enabled, transcriptionEnabled: global.transcriptionEnabled,
     maxFileBytes: global.maxFileBytes, maxSessionBytes: global.maxSessionBytes, maxCampaignBytes: global.maxCampaignBytes,
-    chunkBytes: 8388608 }, capabilities: [...ctx.capabilities] }));
+    allowedFormats: global.allowedFormats, chunkBytes: 8388608 }, capabilities: [...ctx.capabilities] }));
 }));
 campaignAudioRouter.patch('/settings', audioHandler(async (req, res) => {
   const ctx = req.campaign!; capability(ctx, C.CAMPAIGN_SETTINGS_EDIT);

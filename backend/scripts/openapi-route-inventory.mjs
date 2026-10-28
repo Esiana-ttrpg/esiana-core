@@ -6,6 +6,7 @@ import YAML from 'yaml';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'options', 'head']);
 
 export const CORE_ROUTER_MOUNTS = Object.freeze({
+  safetyPrivacyRouter: ['/api/safety-privacy', 'src/routes/safetyPrivacy.ts'],
   healthRouter: ['/api/health', 'src/routes/health.ts'],
   publicDirectoryRouter: ['/api/public-directory', 'src/routes/publicDirectory.ts'],
   recruitmentRouter: ['/api/recruitment', 'src/routes/recruitment.ts'],

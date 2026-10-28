@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { audioRequest, type AudioSettingsPayload, type ProviderConnection } from '@/lib/sessionAudio';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 export function CampaignAudioSettingsTab({ campaignHandle }: { campaignHandle: string }) {
   const [data, setData] = useState<AudioSettingsPayload | null>(null), [providers, setProviders] = useState<ProviderConnection[]>([]);
   const [error, setError] = useState(''), [message, setMessage] = useState('');
@@ -12,6 +13,7 @@ export function CampaignAudioSettingsTab({ campaignHandle }: { campaignHandle: s
     const { enabled, transcriptionEnabled, allowContributors, allowChapters, allowTranscripts, allowPov, defaultVisibility, defaultConnectionId, defaultModelId, maxStorageBytes, monthlyRequests, monthlyDurationMs } = settings;
     void audioRequest(campaignHandle, '/settings', 'PATCH', { enabled, transcriptionEnabled, allowContributors, allowChapters, allowTranscripts, allowPov, defaultVisibility, defaultConnectionId, defaultModelId, maxStorageBytes, monthlyRequests, monthlyDurationMs }).then(() => setMessage('Audio settings saved.')).catch((e) => setError(e.message)); }}>
     <h2 className="text-xl font-medium">Campaign Audio</h2><p className="text-sm text-muted">Configure session recordings, chapter contributions, and transcripts within instance limits.</p>
+    <DocsLearnMoreLink doc="sessionRecordingsPrivacy" label="Recording privacy and consent" />
     {!data.global.enabled && <p className="text-sm text-muted">New audio uploads are disabled by the instance administrator. Existing recordings remain available.</p>}
     {data.usage && <p className="text-sm text-muted">Campaign audio: {(Number(data.usage.storageBytes) / 1073741824).toFixed(2)} GiB of {(Number(settings.maxStorageBytes ?? data.global.maxCampaignBytes) / 1073741824).toFixed(2)} GiB · {data.usage.fileCount} files</p>}
     {error && <p role="alert" className="text-red-400">{error}</p>}{message && <p role="status">{message}</p>}

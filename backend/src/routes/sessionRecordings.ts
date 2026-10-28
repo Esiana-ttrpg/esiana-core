@@ -54,17 +54,18 @@ sessionRecordingsRouter.post('/sessions/:timelineId/recordings', audioHandler(as
   const [global, settings] = await Promise.all([audioSettings(), campaignAudioSettings(ctx.campaignId)]);
   assertAudio(global.enabled && settings.enabled, 403, 'uploads_disabled');
   assertAudio(ctx.capabilities.has(C.AUDIO_MANAGE) || settings.allowContributors, 403, 'uploads_forbidden');
-  const data = z.object({ title: z.string().trim().min(1).max(200), visibility: z.enum(RECORDING_VISIBILITIES).optional() }).strict().parse(req.body);
+  const data = z.object({ title: z.string().trim().min(1).max(200), visibility: z.enum(RECORDING_VISIBILITIES).optional(),
+    consentAcknowledged: z.literal(true) }).strict().parse(req.body);
   const visibility = data.visibility ?? settings.defaultVisibility;
   assertAudio(visibility !== 'uploader_and_managers' || settings.allowPov, 403, 'pov_disabled');
   assertAudio(visibility !== 'staff' || ctx.capabilities.has(C.NARRATIVE_ELEVATED_VIEW), 403, 'staff_visibility_forbidden');
   const timelineId = String(req.params.timelineId);
   const row = await serializable((tx) => idempotentAssetCreation(tx,
     { campaignId: ctx.campaignId, userId, operation: 'recording.create' }, assetIdempotencyKey(req),
-    { timelineId, title: data.title, visibility: data.visibility ?? null },
+    { timelineId, title: data.title, visibility: data.visibility ?? null, consentAcknowledged: data.consentAcknowledged },
     (id) => tx.sessionRecording.findFirst({ where: { id, campaignId: ctx.campaignId, uploadedByUserId: userId } }),
     () => tx.sessionRecording.create({ data: { campaignId: ctx.campaignId, timelineId,
-      uploadedByUserId: userId, title: data.title, visibility } })));
+      uploadedByUserId: userId, title: data.title, visibility, consentAcknowledgedAt: new Date() } })));
   await recordingAccess(ctx, userId, row.id);
   res.status(201).json(jsonSafe(row));
 }));

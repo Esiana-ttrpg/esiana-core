@@ -67,20 +67,26 @@ test('external integrations complete the shared lifecycle with scoped bearer tok
   let recordingId = '', uploadId = '';
   try {
     await t.test('normal campaign members create/select recordings; concurrent creation retries return one recording', async () => {
-      const path = `${audio}/sessions/${timeline.id}/recordings`, body = { title: 'Bot recording' };
+      const path = `${audio}/sessions/${timeline.id}/recordings`, body = { title: 'Bot recording', consentAcknowledged: true };
+      for (const consentAcknowledged of [undefined, false, 'true']) {
+        assert.equal((await request(writer.raw, path, 'POST', { title: 'Missing consent', consentAcknowledged })).status, 400);
+      }
+      assert.equal(await prisma.sessionRecording.count({ where: { campaignId: campaign.id } }), 0);
       assert.equal((await request(reader.raw, path, 'POST', body)).status, 403);
       assert.equal((await request(wrongScope.raw, path, 'POST', body)).status, 403);
       assert.equal((await request(stranger.raw, path, 'POST', body)).status, 403);
       const responses = await Promise.all([0, 1].map(() => request(writer.raw, path, 'POST', body, { 'Idempotency-Key': 'recording-creation-1' })));
       const records = await Promise.all(responses.map((res) => ok(res, 201)));
       assert.equal(records[0].id, records[1].id); recordingId = records[0].id;
+      assert.ok(records[0].consentAcknowledgedAt);
+      assert.equal(records[0].consentAcknowledgedAt, records[1].consentAcknowledgedAt);
       assert.equal(await prisma.sessionRecording.count({ where: { campaignId: campaign.id } }), 1);
       const listing = await ok(await request(writer.raw, path)); assert.equal(listing[0].id, recordingId);
-      assert.equal((await request(writer.raw, path, 'POST', { title: 'Changed request' }, { 'Idempotency-Key': 'recording-creation-1' })).status, 409);
+      assert.equal((await request(writer.raw, path, 'POST', { title: 'Changed request', consentAcknowledged: true }, { 'Idempotency-Key': 'recording-creation-1' })).status, 409);
       assert.equal((await request(writer.raw, path, 'POST', body, { 'Idempotency-Key': 'invalid key with spaces' })).status, 400);
-      const removed = await ok(await request(writer.raw, path, 'POST', { title: 'Removed recording' }, { 'Idempotency-Key': 'deleted-recording' }), 201);
+      const removed = await ok(await request(writer.raw, path, 'POST', { title: 'Removed recording', consentAcknowledged: true }, { 'Idempotency-Key': 'deleted-recording' }), 201);
       await prisma.sessionRecording.delete({ where: { id: removed.id } });
-      assert.equal((await request(writer.raw, path, 'POST', { title: 'Removed recording' }, { 'Idempotency-Key': 'deleted-recording' })).status, 410);
+      assert.equal((await request(writer.raw, path, 'POST', { title: 'Removed recording', consentAcknowledged: true }, { 'Idempotency-Key': 'deleted-recording' })).status, 410);
     });
     await t.test('upload creation is idempotent and byte progress survives lost replies without another quota reservation', async () => {
       const body = { purpose: 'session_audio', recordingId, name: 'part-one.wav', sizeBytes: String(wav.length) };

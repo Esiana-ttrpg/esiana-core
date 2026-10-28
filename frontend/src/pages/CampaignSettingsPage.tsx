@@ -1,3 +1,6 @@
+import { SafetyPrivacySection } from '@/components/settings/SafetyPrivacySection';
+import { CampaignCapabilities as C } from '@shared/campaignPolicy/capabilities';
+import { apiFetch } from '@/lib/api';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
 import { Copy, RefreshCw, Settings } from 'lucide-react';
@@ -62,6 +65,7 @@ import { isElevatedMembershipRole } from '@/types/domain';
 import { isCharacterWikiPage } from '@/lib/isCharacterWikiPage';
 
 const SETTINGS_TABS = [
+  'safety-privacy',
   'general',
   'access',
   'recruitment',
@@ -103,13 +107,21 @@ export function CampaignSettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { campaign: wikiCampaign, flatPages, refresh: refreshWiki } = useWiki();
+  const { can } = useWiki();
+  const canReviewSafety = can(C.SAFETY_MANAGE);
+  const [safetyUnread, setSafetyUnread] = useState(0);
+  useEffect(() => {
+    if (!canReviewSafety) return;
+    void apiFetch<{ unread: boolean }[]>('/safety-privacy/requests?campaign=' + encodeURIComponent(campaignHandle))
+      .then(rows => setSafetyUnread(rows.filter(r => r.unread).length)).catch(() => {});
+  }, [campaignHandle, canReviewSafety]);
   const canManageSidebar =
     wikiCampaign?.role === 'GAMEMASTER' || wikiCampaign?.role === 'WRITER';
   const canManageAccess = wikiCampaign?.isCampaignOwner === true;
   const canManageMemberIdentity =
     wikiCampaign?.role === 'GAMEMASTER' || wikiCampaign?.role === 'WRITER';
   const canAccessCampaignSettings =
-    wikiCampaign?.role != null && isElevatedMembershipRole(wikiCampaign.role);
+    canReviewSafety || (wikiCampaign?.role != null && isElevatedMembershipRole(wikiCampaign.role));
 
   const characterPages = useMemo(
     () => flatPages.filter((page) => isCharacterWikiPage(page, flatPages)),
@@ -397,6 +409,7 @@ export function CampaignSettingsPage() {
   const settingsTabs = useMemo(
     () =>
       [
+        ...(canReviewSafety ? [{ id: 'safety-privacy' as const, label: t('profile.safety.title') + (safetyUnread ? ' (' + safetyUnread + ')' : '') }] : []),
         { id: 'general' as const, label: t('campaign.settings.tabGeneral') },
         { id: 'access' as const, label: t('campaign.settings.tabAccess') },
         ...(canManageSidebar
@@ -411,9 +424,13 @@ export function CampaignSettingsPage() {
           : []),
         { id: 'integrations' as const, label: t('campaign.settings.tabIntegrations') },
         { id: 'advanced' as const, label: t('campaign.settings.tabAdvanced') },
-      ],
-    [canManageSidebar, t],
+      ].filter(tab => canManageSidebar || tab.id === 'safety-privacy'),
+    [canManageSidebar, canReviewSafety, safetyUnread, t],
   );
+
+  if (canReviewSafety && !canManageSidebar && activeTab !== 'safety-privacy') {
+    return <Navigate to={campaignSettingsPath(campaignHandle, 'safety-privacy')} replace />;
+  }
 
   if (wikiCampaign && !canAccessCampaignSettings) {
     return <Navigate to={campaignDashboardPath(campaignHandle)} replace />;
@@ -448,7 +465,9 @@ export function CampaignSettingsPage() {
         </div>
       </div>
 
-      {activeTab === 'general' ? (
+      {activeTab === 'safety-privacy' ? (
+        canReviewSafety ? <SafetyPrivacySection campaignHandle={campaignHandle} onUnreadChange={setSafetyUnread} /> : null
+      ) : activeTab === 'general' ? (
         <div className="rounded-lg border border-border bg-surface p-6">
           <h2 className="mb-4 text-lg font-semibold text-white">
             {t('campaign.settings.generalHeading')}

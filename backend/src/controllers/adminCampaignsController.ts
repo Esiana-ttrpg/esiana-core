@@ -301,6 +301,11 @@ export async function deleteAdminCampaign(
     return;
   }
 
+  // Retained requests must not be erased indirectly through campaign deletion.
+  if (await prisma.safetyPrivacyRequest.count({ where: { campaignId } })) {
+    res.status(409).json({ error: 'This campaign has retained Safety & Privacy requests. Archive it instead; request erasure is not available.' });
+    return;
+  }
   await deleteCampaignAssetFiles(campaignId);
   await prisma.campaign.delete({ where: { id: campaignId } });
 

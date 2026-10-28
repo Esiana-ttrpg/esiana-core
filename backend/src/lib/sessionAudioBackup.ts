@@ -23,6 +23,7 @@ const settingsSchema = z.object({ enabled: z.boolean(), allowContributors: z.boo
   monthlyRequests: z.number().int().nonnegative().nullable(), monthlyDurationMs: z.string().regex(/^\d+$/).nullable() });
 const schema = z.object({ version: z.literal(1), settings: settingsSchema.nullable().optional(), recordings: z.array(z.object({ id: z.string(), title: z.string(), uploadedByUserId: z.string(),
   visibility: z.enum(['campaign', 'staff', 'uploader_and_managers']), status: z.string(), durationMs: z.number().int().nonnegative(), isPrimary: z.boolean(),
+  consentAcknowledgedAt: z.string().datetime().nullable().optional(),
   timeline: z.object({ wikiPageId: z.string(), sequenceOrder: z.number().int() }),
   files: z.array(z.object({ id: z.string(), assetId: z.string(), name: z.string(), order: z.number().int(), durationMs: z.number().int().positive(),
     offsetMs: z.number().int().nonnegative(), sizeBytes: z.string().regex(/^\d+$/), format: z.string(), mimeType: z.string(),
@@ -46,7 +47,8 @@ export async function restoreSessionAudioBackup(campaignId: string, raw: unknown
       assertAudio(timeline.campaignId === campaignId, 403, 'cross_campaign_restore_forbidden');
       const recording = await tx.sessionRecording.create({ data: { campaignId, timelineId: timeline.id, title: source.title,
         uploadedByUserId: source.uploadedByUserId, visibility: source.visibility, status: source.status,
-        durationMs: source.durationMs, isPrimary: source.isPrimary } });
+        durationMs: source.durationMs, isPrimary: source.isPrimary,
+        consentAcknowledgedAt: source.consentAcknowledgedAt ? new Date(source.consentAcknowledgedAt) : null } });
       const fileIds = new Map<string, string>();
       for (const file of source.files) {
         let asset = await tx.asset.findFirst({ where: { id: file.assetId, campaignId, type: 'SessionAudio' } });

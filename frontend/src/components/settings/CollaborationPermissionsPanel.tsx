@@ -192,9 +192,12 @@ export function CollaborationPermissionsPanel({
         OVERRIDE_CAPS,
       );
 
+      const preserved = overrides.filter(row => !COLLAB_ROLES.includes(row.role as typeof COLLAB_ROLES[number]) ||
+        ![...OVERRIDE_CAPS, CampaignCapabilities.CHRONOLOGY_EDIT].includes(row.capability as typeof OVERRIDE_CAPS[number]));
+
       await apiFetch(`/campaigns/${campaignHandle}/capability-overrides`, {
         method: 'PUT',
-        body: JSON.stringify({ overrides: normalized }),
+        body: JSON.stringify({ overrides: [...preserved, ...normalized] }),
       });
 
       if (allowPlayerChronologyManagement !== savedChronologyFlag) {
@@ -205,7 +208,7 @@ export function CollaborationPermissionsPanel({
         setSavedChronologyFlag(allowPlayerChronologyManagement);
       }
 
-      setOverrides(normalized);
+      setOverrides([...preserved, ...normalized]);
       onSaved?.();
     } catch {
       setError('Could not save collaboration permissions.');

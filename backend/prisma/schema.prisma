@@ -19,6 +19,7 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
+  safetyEligibility SafetyPrivacyEligibility[]
   id           String  @id @default(cuid())
   email        String  @unique
   displayName  String?
@@ -481,6 +482,8 @@ model PluginConnectionAuthState {
 }
 
 model Campaign {
+  safetyRequests SafetyPrivacyRequest[]
+  safetyEligibility SafetyPrivacyEligibility[]
   assetOperationIdempotency AssetOperationIdempotency[]
   audioSettings CampaignAudioSettings?
   sessionRecordings SessionRecording[]
@@ -2343,6 +2346,7 @@ model SessionRecording {
   timelineId String
   uploadedByUserId String
   title String
+  consentAcknowledgedAt DateTime?
   visibility String @default("campaign")
   status String @default("uploading")
   isPrimary Boolean @default(false)
@@ -3069,4 +3073,66 @@ model PortfolioCharacterAdventure {
   @@index([portfolioCharacterId, status])
   @@index([campaignId])
   @@index([campaignCharacterPageId])
+}
+
+// Private operational records: excluded from wiki search, feeds and campaign exports.
+model SafetyPrivacyEligibility {
+  campaignId String
+  userId String
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([campaignId, userId])
+}
+
+model SafetyPrivacyRequest {
+  id String @id @default(cuid())
+  campaignId String
+  requesterId String
+  category String
+  status String @default("open")
+  relatedContentType String?
+  relatedContentId String?
+  description String
+  resolution String?
+  resolvedAt DateTime?
+  resolverId String?
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  messages SafetyPrivacyRequestMessage[]
+  events SafetyPrivacyRequestEvent[]
+  reads SafetyPrivacyRequestRead[]
+  @@index([campaignId, status, updatedAt])
+  @@index([requesterId, updatedAt])
+}
+
+model SafetyPrivacyRequestMessage {
+  id String @id @default(cuid())
+  requestId String
+  authorId String
+  body String
+  createdAt DateTime @default(now())
+  request SafetyPrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([requestId, createdAt])
+}
+
+model SafetyPrivacyRequestEvent {
+  id String @id @default(cuid())
+  requestId String
+  actorId String
+  previousStatus String?
+  newStatus String
+  reason String?
+  createdAt DateTime @default(now())
+  request SafetyPrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([requestId, createdAt])
+}
+
+model SafetyPrivacyRequestRead {
+  requestId String
+  userId String
+  revision Int
+  request SafetyPrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@id([requestId, userId])
 }
