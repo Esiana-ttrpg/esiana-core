@@ -119,7 +119,7 @@ export function WikiPageEditorHeader({
       </div>
 
       <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
           {!characterMasthead && showTitleEditor ? (
             <input
               id="character-field-name"
@@ -182,21 +182,23 @@ export function WikiPageEditorHeader({
       ) : null}
 
       {showSectionSubviews ? (
-        <div className="flex items-end gap-1" data-print-hide>
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end" data-print-hide>
           <EntitySubviewNav
             subviews={subviews}
             activeSubview={activeSubview}
             onSubviewChange={onSubviewChange}
             isDMUser={isDMUser}
           />
-          {onAddSubview ? (
-            <button type="button" className="mb-0.5 rounded-md p-1.5 text-muted hover:bg-elevated hover:text-foreground" onClick={onAddSubview} aria-label="Add character page" title="Add character page">
-              <Plus className="size-3.5" aria-hidden />
-            </button>
-          ) : null}
-          {onManageSubviews ? (
-            <button type="button" className="mb-0.5 rounded-md px-2 py-1.5 text-xs font-medium text-muted hover:bg-elevated hover:text-foreground" onClick={onManageSubviews}>Manage pages</button>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-1 self-start sm:self-auto">
+            {onAddSubview ? (
+              <button type="button" className="mb-0.5 rounded-md p-1.5 text-muted hover:bg-elevated hover:text-foreground" onClick={onAddSubview} aria-label="Add character page" title="Add character page">
+                <Plus className="size-3.5" aria-hidden />
+              </button>
+            ) : null}
+            {onManageSubviews ? (
+              <button type="button" className="mb-0.5 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium text-muted hover:bg-elevated hover:text-foreground" onClick={onManageSubviews}>Manage pages</button>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

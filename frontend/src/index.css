@@ -1515,6 +1515,7 @@ html[data-scene='quiet_reading_room'] .narrative-layout--scene-quiet_reading_roo
 
 .narrative-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   gap: var(--space-section, 1.5rem);
@@ -1533,21 +1534,21 @@ html[data-scene='quiet_reading_room'] .narrative-layout--scene-quiet_reading_roo
 .narrative-layout[data-composition-stance='hero_dominant'].narrative-layout--workspace,
 .narrative-layout[data-composition-stance='hero_dominant'].narrative-layout--inline {
   grid-template-columns:
-    minmax(0, calc(1fr * var(--data-focal-column-ratio, 1.45)))
+    minmax(0, 1fr)
     minmax(220px, min(320px, calc(20vw * var(--data-contextual-recess, 0.82))));
 }
 
 .narrative-layout[data-composition-stance='editorial_stream'].narrative-layout--workspace,
 .narrative-layout[data-composition-stance='editorial_stream'].narrative-layout--inline {
   grid-template-columns:
-    minmax(0, calc(1fr * var(--data-focal-column-ratio, 1.35)))
+    minmax(0, 1fr)
     minmax(220px, min(340px, 21vw));
 }
 
 .narrative-layout[data-composition-stance='entity_workspace'].narrative-layout--workspace,
 .narrative-layout[data-composition-stance='entity_workspace'].narrative-layout--inline {
   grid-template-columns:
-    minmax(0, calc(1fr * var(--data-focal-column-ratio, 1.42)))
+    minmax(0, 1fr)
     minmax(220px, min(340px, calc(21vw * var(--data-contextual-recess, 0.8))));
 }
 
@@ -1718,9 +1719,15 @@ html[data-scene='quiet_reading_room'] .narrative-layout--scene-quiet_reading_roo
   min-width: 0;
 }
 
+/* Workspace presets describe composition, but a stacked layout has no rail
+   column. Match the stance selectors' specificity so they cannot reserve one. */
+.narrative-layout.narrative-layout--workspace[data-narrative-layout='stacked'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 @media (max-width: 1023px) {
-  .narrative-layout--inline,
-  .narrative-layout--workspace {
+  .narrative-layout.narrative-layout--inline[data-narrative-layout],
+  .narrative-layout.narrative-layout--workspace[data-narrative-layout] {
     grid-template-columns: minmax(0, 1fr);
   }
 

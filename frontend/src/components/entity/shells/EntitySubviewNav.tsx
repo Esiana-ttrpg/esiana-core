@@ -69,7 +69,7 @@ export function EntitySubviewNav({
     const selected = activeSubview === tab.id;
     const base = inMenu
       ? 'flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-xs font-medium transition-colors'
-      : 'rounded-md px-3 py-1.5 text-xs font-medium transition-colors';
+      : 'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors';
     const state = selected
       ? 'bg-primary/15 text-primary'
       : 'text-muted hover:text-foreground';
@@ -99,13 +99,13 @@ export function EntitySubviewNav({
   return (
     <div
       ref={containerRef}
-      className="mt-1 flex flex-wrap items-center gap-0.5 border-t border-border/40 pt-1"
+      className="relative mt-1 flex min-w-0 flex-1 items-center gap-0.5 border-t border-border/40 pt-1"
       role="tablist"
       aria-label="Page sections"
     >
-      <div ref={measurementRef} className="pointer-events-none absolute invisible flex gap-0.5" aria-hidden="true">
+      <div ref={measurementRef} className="pointer-events-none absolute invisible flex h-0 w-0 overflow-hidden gap-0.5" aria-hidden="true">
         {sorted.map((tab) => (
-          <span key={tab.id} className="whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium">
+          <span key={tab.id} className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium">
             {tab.label}{tab.dmOnly ? ' DM' : ''}
           </span>
         ))}
@@ -113,7 +113,7 @@ export function EntitySubviewNav({
       {inlineTabs.map((tab) => renderTab(tab))}
 
       {overflowTabs.length > 0 ? (
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             type="button"
             className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
