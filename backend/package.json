@@ -13,7 +13,7 @@
     "test:realtime": "node --import tsx --test --test-concurrency=1 src/lib/domainEvents/domainEvents.test.ts src/lib/campaignEventStreams.test.ts src/controllers/campaignEventsController.test.ts src/lib/campaignEventVisibility.test.ts src/lib/campaignWebSocketServer.test.ts",
     "test:webhooks": "node --import tsx --test --test-concurrency=1 src/lib/webhooks/webhooks.test.ts src/lib/ssrfGuard.test.ts src/lib/networkFetch.test.ts",
     "test:discord": "node --import tsx --test --test-concurrency=1 src/lib/discord/discord.test.ts src/lib/webhooks/webhooks.test.ts src/lib/ssrfGuard.test.ts src/lib/networkFetch.test.ts",
-    "test:rate-limit": "node --import tsx --test --test-concurrency=1 src/middleware/rateLimit.test.ts src/lib/rateLimit/policies.test.ts src/lib/rateLimit/coverage.test.ts",
+    "test:rate-limit": "node --import tsx --test --test-concurrency=1 src/middleware/rateLimit.test.ts src/lib/rateLimit/policies.test.ts src/lib/rateLimit/coverage.test.ts src/routes/audioUploads.rateLimit.test.ts",
     "rate-limit:audit": "tsx scripts/rate-limit-audit.ts",
     "build": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsc && node scripts/copy-openapi.mjs",
     "start": "node dist/backend/src/index.js",

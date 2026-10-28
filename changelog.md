@@ -13,6 +13,7 @@
 
 ### Fixed
 
+- Upload chunk and cancellation routes now mount native rate-limit guards that CodeQL recognizes, reusing the configured mutation ceiling without charging requests twice when the parent router already enforces it.
 - Backup restore and rollback paths explicitly stay within uploads storage. Regression coverage verifies inherited rate limits on chunk-upload and cancellation routes without charging the expensive-operation budget per chunk.
 - Processing providers reject mapped IPv4 and literal IPv6 link-local destinations. Transcript editing permissions and configured request-size limits are enforced before parsing, and missing or expired uploads clear stale retry keys without discarding them on transport failures.
 - Backup ZIP extraction stages files under the configured uploads storage so large restores use the existing data mount instead of the system temporary directory.

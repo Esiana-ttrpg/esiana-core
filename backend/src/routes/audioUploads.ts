@@ -1,4 +1,5 @@
 import { Router, raw } from 'express';
+import rateLimit from 'express-rate-limit';
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
@@ -7,13 +8,25 @@ import { audioHandler, assertAudio, jsonSafe, recordingAccess, campaignAudioSett
 import { CampaignCapabilities as C } from '../../../shared/campaignPolicy/capabilities.js';
 import { createAudioUpload, finalizeAudioUpload, createBackupUpload, finalizeBackupUpload, stagingPath } from '../lib/audioUploads.js';
 import { requireTokenScopes } from '../middleware/auth.js';
-import { rateLimitPolicy } from '../lib/rateLimit/index.js';
+import { createRateLimitHandler, rateLimitPolicy, resolveRateLimitActor } from '../lib/rateLimit/index.js';
+import { env } from '../config/env.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { assetIdempotencyKey } from '../lib/assetIdempotency.js';
 export const audioUploadsRouter = Object.assign(Router({ mergeParams: true }), { rateLimitMountPath: '/asset-uploads' });
-// campaignScopedRouter applies authenticated, apiKey, and mutation limits before this router.
-// Chunks and cancellation use those budgets; expensive is reserved for creation/finalization
-// so an ordinary large upload does not consume the default 20/minute expensive-operation budget per chunk.
+// Keep a native limiter at the filesystem routes so CodeQL can recognize the guard.
+// The parent router normally applies the account-wide mutation budget already;
+// skip a second charge there, but enforce the same configured limit on standalone mounts.
+const uploadMutationLimiter = rateLimit({
+  windowMs: env.rateLimit.mutationWindowMs,
+  max: env.rateLimit.mutationMax,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => resolveRateLimitActor(req).accountKey,
+  skip: (req, res) => !env.rateLimit.enabled || ['GET', 'HEAD', 'OPTIONS'].includes(req.method) ||
+    res.locals.rateLimitPolicies?.includes('mutation') === true,
+  handler: createRateLimitHandler({ policy: 'mutation', scope: 'account' }),
+});
+Object.assign(uploadMutationLimiter, { rateLimitPolicy: 'mutation', rateLimitScope: 'account' });
 audioUploadsRouter.use((req, res, next) => requireTokenScopes([req.method === 'GET' ? 'campaign:read' : 'campaign:write'])(req, res, next));
 async function load(req: CampaignScopedRequest) {
   const row = await prisma.assetUploadSession.findFirst({ where: { id: String(req.params.uploadId), campaignId: req.campaign!.campaignId, userId: req.user!.id } });
@@ -35,7 +48,7 @@ audioUploadsRouter.post('/', rateLimitPolicy('expensive'), audioHandler(async (r
   res.status(201).json(jsonSafe(await createAudioUpload(req.campaign!, req.user!.id, data.recordingId, path.basename(data.name), BigInt(data.sizeBytes), key)));
 }));
 audioUploadsRouter.get('/:uploadId', audioHandler(async (req, res) => res.json(jsonSafe(await load(req)))));
-audioUploadsRouter.patch('/:uploadId', raw({ type: 'application/octet-stream', limit: '8mb' }), audioHandler(async (req, res) => {
+audioUploadsRouter.patch('/:uploadId', uploadMutationLimiter, raw({ type: 'application/octet-stream', limit: '8mb' }), audioHandler(async (req, res) => {
   const row = await load(req), offset = String(req.headers['upload-offset'] ?? '');
   assertAudio(/^\d+$/.test(offset) && BigInt(offset) === row.offsetBytes, 409, 'upload_offset_conflict');
   assertAudio(Buffer.isBuffer(req.body) && req.body.length > 0 && row.offsetBytes + BigInt(req.body.length) <= row.sizeBytes, 400, 'invalid_chunk');
@@ -59,7 +72,7 @@ audioUploadsRouter.patch('/:uploadId', raw({ type: 'application/octet-stream', l
 audioUploadsRouter.post('/:uploadId/finalize', rateLimitPolicy('expensive'), audioHandler(async (req, res) => {
   const row = await load(req); res.json(jsonSafe(row.purpose === 'campaign_backup' ? await finalizeBackupUpload(row.id) : await finalizeAudioUpload(row.id)));
 }));
-audioUploadsRouter.delete('/:uploadId', audioHandler(async (req, res) => {
+audioUploadsRouter.delete('/:uploadId', uploadMutationLimiter, audioHandler(async (req, res) => {
   const row = await load(req);
   assertAudio(!['complete', 'restoring', 'consumed'].includes(row.status), 409, 'upload_already_complete');
   await prisma.assetUploadSession.update({ where: { id: row.id }, data: { status: 'cancelled' } });
