@@ -135,7 +135,13 @@ export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHand
     <div className="flex items-center justify-between gap-3">
       <h2 className="text-sm font-medium text-muted">Recordings</h2>
       {canUpload && <button className={button} disabled={busy || creating} onClick={() => {
-        setNewTitle('Session recording'); setNewVisibility(settings?.settings.defaultVisibility === 'staff' && !caps.includes('narrative.elevated_view') ? 'campaign' : settings?.settings.defaultVisibility ?? 'campaign');
+        setNewTitle('Session recording');
+        const defaultVisibility = settings?.settings.defaultVisibility ?? 'campaign';
+        setNewVisibility(
+          (defaultVisibility === 'staff' && !caps.includes('narrative.elevated_view')) ||
+          (defaultVisibility === 'uploader_and_managers' && !settings?.settings.allowPov)
+            ? 'campaign' : defaultVisibility,
+        );
         setNewFiles([]); setConsent(false); createKey.current = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join(''); setError(''); setCreateOpen(true);
       }}>Add recording</button>}
     </div>
