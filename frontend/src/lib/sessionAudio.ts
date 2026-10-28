@@ -15,7 +15,7 @@ export interface AudioConfiguration {
 export interface AudioSettingsPayload {
   usage?: { storageBytes: string; fileCount: number };
   settings: AudioConfiguration; capabilities: string[];
-  global: { enabled: boolean; transcriptionEnabled: boolean; maxFileBytes: string; maxSessionBytes: string; maxCampaignBytes: string; chunkBytes: number };
+  global: { enabled: boolean; transcriptionEnabled: boolean; allowedFormats: string[]; maxFileBytes: string; maxSessionBytes: string; maxCampaignBytes: string; chunkBytes: number };
 }
 export interface ProviderModel { id: string; key: string; name: string; enabled: boolean; capabilities: string[] }
 export interface ProviderConnection {

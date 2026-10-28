@@ -484,7 +484,7 @@ paths:
 
         curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \
           -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
-          -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording"}'
+          -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording","consentAcknowledged":true}'
         ```
       security:
         - cookieAuth: []
@@ -637,15 +637,20 @@ paths:
                     - campaign
                     - staff
                     - uploader_and_managers
+                consentAcknowledged:
+                  const: true
+                  description: Uploader confirms participants were informed and permission was obtained to upload and share this
+                    recording.
               required:
                 - title
+                - consentAcknowledged
       x-codeSamples:
         - lang: Shell
           label: curl
-          source: |-
+          source: >-
             curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \
               -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
-              -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording"}'
+              -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording","consentAcknowledged":true}'
   /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}:
     get:
       tags:

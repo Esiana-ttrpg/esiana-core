@@ -3,6 +3,7 @@ const DOCS_REPO = 'https://github.com/Esiana-ttrpg/docs/blob/main';
 /** Canonical documentation wiki URLs (docs repo on `main`). */
 export const docsLinks = {
   home: `${DOCS_REPO}/README.md`,
+  sessionRecordingsPrivacy: `${DOCS_REPO}/features/session-recordings-privacy.md`,
   importFormats: `${DOCS_REPO}/import_formats.md`,
   narrativeThreads: `${DOCS_REPO}/features/narrative-threads.md`,
   campaignHistorySnapshots: `${DOCS_REPO}/features/campaign-history-and-snapshots.md`,
