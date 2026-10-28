@@ -22,6 +22,7 @@ async function sweepExpiredAssetsOnce(): Promise<void> {
   const expired = await prisma.asset.findMany(
     {
       where: {
+        type: { not: 'SessionAudio' },
         expiresAt: {
           lte: now,
         },

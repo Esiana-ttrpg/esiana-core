@@ -187,6 +187,7 @@ export function campaignCategoryChildPath(
 }
 
 export type CampaignSettingsTab =
+  | 'audio'
   | 'general'
   | 'access'
   | 'recruitment'

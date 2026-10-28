@@ -1,4 +1,6 @@
 import fs from 'node:fs/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { Response } from 'express';
@@ -6,7 +8,9 @@ import JSZip from 'jszip';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { buildSovereignExport } from '../lib/campaignExport/buildSovereignExport.js';
-import { buildCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
+import { streamCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
+import { readBackupManifest } from '../lib/stagedBackupZip.js';
+import { authorizeAudioBackup, authorizeCampaignExport } from '../lib/audioCore.js';
 import { CAMPAIGN_BACKUP_FORMAT } from '../lib/campaignExport/types.js';
 import { appendSystemLog } from '../lib/systemLogBuffer.js';
 import { env } from '../config/env.js';
@@ -22,6 +26,7 @@ import {
 import { NotificationType } from '../lib/notifications/types.js';
 import { campaignSettingsPath } from '../lib/notifications/deepLinks.js';
 import { enqueueCampaignBackupRestore } from '../lib/importQueue.js';
+import { resolveSafeUploadPath } from '../lib/uploadValidation.js';
 
 function buildBackupFilename(handle: string): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -49,8 +54,10 @@ async function processAsyncCampaignExport(input: {
   userId: string;
   taskId: string;
 }): Promise<void> {
+  let filePath: string | undefined;
   try {
     updateBackgroundTask(input.taskId, { status: 'PROCESSING', progress: 10 });
+    await authorizeAudioBackup(input.campaignId, input.userId);
 
     const exportResult = await buildSovereignExport(input.campaignId, 'sovereign');
     if (!exportResult) {
@@ -58,10 +65,9 @@ async function processAsyncCampaignExport(input: {
     }
 
     updateBackgroundTask(input.taskId, { progress: 40 });
-    const zipBuffer = await buildCampaignBackupZip(exportResult.files);
     const filename = buildBackupFilename(input.handle);
-    const filePath = path.join(env.uploadsDir, filename);
-    await fs.writeFile(filePath, zipBuffer);
+    filePath = path.join(env.uploadsDir, filename);
+    await pipeline(streamCampaignBackupZip(exportResult.files), createWriteStream(filePath));
 
     const asset = await prisma.asset.create({
       data: buildImportStagingAssetData({
@@ -87,6 +93,7 @@ async function processAsyncCampaignExport(input: {
       expiresAt: asset.expiresAt,
     });
   } catch (error) {
+    if (filePath) await fs.unlink(filePath).catch(() => {});
     updateBackgroundTask(input.taskId, {
       status: 'FAILED',
       errorMessage: error instanceof Error ? error.message : 'Export failed',
@@ -116,6 +123,8 @@ export async function downloadCampaignBackup(
     return;
   }
 
+  try { await authorizeAudioBackup(campaignId, req.user!.id); }
+  catch { res.status(403).json({ error: 'campaign_audio_export_forbidden' }); return; }
   const exportResult = await buildSovereignExport(campaignId, 'sovereign');
   if (!exportResult) {
     res.status(404).json({ error: 'Campaign not found' });
@@ -130,17 +139,16 @@ export async function downloadCampaignBackup(
   );
 
   try {
-    const zipBuffer = await buildCampaignBackupZip(exportResult.files);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', String(zipBuffer.length));
-    res.send(zipBuffer);
+    await pipeline(streamCampaignBackupZip(exportResult.files), res);
   } catch (error) {
     appendSystemLog(
       'error',
       `Campaign sovereign backup failed: ${error instanceof Error ? error.message : 'unknown error'}`,
     );
-    res.status(500).json({ error: 'Unable to generate campaign backup' });
+    if (res.headersSent) res.destroy();
+    else res.status(500).json({ error: 'Unable to generate campaign backup' });
   }
 }
 
@@ -151,6 +159,8 @@ export async function startAsyncCampaignBackup(
   const campaignId = req.campaign!.campaignId;
   const handle = req.campaign!.campaignHandle;
   const userId = req.user!.id;
+  try { await authorizeAudioBackup(campaignId, userId); }
+  catch { res.status(403).json({ error: 'campaign_audio_export_forbidden' }); return; }
 
   const task = createBackgroundTask({
     taskName: 'Campaign Export',
@@ -178,6 +188,8 @@ export async function downloadCampaignExportAsset(
 ): Promise<void> {
   const campaignId = req.campaign!.campaignId;
   const assetId = String(req.params.assetId ?? '');
+  try { await authorizeCampaignExport(campaignId, req.user?.id); }
+  catch { res.status(403).json({ error: 'campaign_export_forbidden' }); return; }
 
   const asset = await prisma.asset.findFirst({
     where: {
@@ -201,11 +213,11 @@ export async function downloadCampaignExportAsset(
   const filePath = path.join(env.uploadsDir, filename);
 
   try {
-    const buffer = await fs.readFile(filePath);
+    const stat = await fs.stat(filePath);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', String(buffer.length));
-    res.send(buffer);
+    res.setHeader('Content-Length', String(stat.size));
+    await pipeline(createReadStream(filePath), res);
   } catch {
     res.status(404).json({ error: 'Export file missing on server' });
   }
@@ -219,33 +231,67 @@ export async function restoreCampaignBackup(
   const handle = req.campaign!.campaignHandle ?? 'campaign';
 
   const files = req.files as { backupZipFile?: Express.Multer.File[] } | undefined;
-  const backupZipFile = Array.isArray(files?.backupZipFile)
+  let backupZipFile = Array.isArray(files?.backupZipFile)
     ? files.backupZipFile[0]
     : undefined;
+  let sourceUpload: { id: string; assetId: string } | undefined;
+  if (!backupZipFile && typeof req.body?.uploadId === 'string') {
+    const upload = await prisma.assetUploadSession.findFirst({ where: { id: req.body.uploadId, campaignId,
+      userId: req.user!.id, purpose: 'campaign_backup' } });
+    if (upload && ['restoring', 'consumed'].includes(upload.status)) {
+      res.status(409).json({ error: 'Backup upload is already being restored or has been consumed', code: 'backup_upload_consumed' });
+      return;
+    }
+    if (!upload || upload.status !== 'complete' || upload.expiresAt <= new Date()) {
+      res.status(400).json({ error: 'A completed, unexpired backup upload is required' });
+      return;
+    }
+    const asset = upload?.assetId ? await prisma.asset.findFirst({ where: { id: upload.assetId, campaignId, type: 'campaign-backup-zip' } }) : null;
+    if (asset && (!asset.expiresAt || asset.expiresAt > new Date())) {
+      backupZipFile = { filename: path.basename(asset.url) } as Express.Multer.File;
+      sourceUpload = { id: upload.id, assetId: asset.id };
+    }
+  }
 
   if (!backupZipFile) {
     res.status(400).json({ error: 'backupZipFile is required' });
     return;
   }
 
+  let uploadClaimed = false;
+  let movedPaths: { current: string; next: string } | undefined;
+  let handoffCommitted = false;
   try {
-    const zipBuffer = await fs.readFile(
-      path.join(env.uploadsDir, backupZipFile.filename),
-    );
-    await validateBackupZipBuffer(zipBuffer);
+    if (sourceUpload) {
+      const claimed = await prisma.assetUploadSession.updateMany({ where: { id: sourceUpload.id, status: 'complete', assetId: sourceUpload.assetId },
+        data: { status: 'restoring' } });
+      if (!claimed.count) {
+        res.status(409).json({ error: 'Backup upload is already being restored or has been consumed', code: 'backup_upload_consumed' });
+        return;
+      }
+      uploadClaimed = true;
+    }
+    const currentPath = resolveSafeUploadPath(backupZipFile.filename);
+    const manifest = await readBackupManifest(currentPath);
+    if (manifest.format !== CAMPAIGN_BACKUP_FORMAT) throw new Error('Unsupported campaign backup format');
 
-    const nextFilename = `campaign-${campaignId}-restore-${randomUUID()}.zip`;
-    const currentPath = path.join(env.uploadsDir, backupZipFile.filename);
-    const nextPath = path.join(env.uploadsDir, nextFilename);
+    const nextFilename = `campaign-restore-${randomUUID()}.zip`;
+    const nextPath = resolveSafeUploadPath(nextFilename);
     await fs.rename(currentPath, nextPath);
+    movedPaths = { current: currentPath, next: nextPath };
 
-    const asset = await prisma.asset.create({
-      data: buildImportStagingAssetData({
-        campaignId,
-        url: `/uploads/${nextFilename}`,
-        type: 'campaign-backup-zip',
-      }) as never,
+    const asset = await prisma.$transaction(async (tx) => {
+      const created = await tx.asset.create({
+        data: buildImportStagingAssetData({ campaignId, url: `/uploads/${nextFilename}`, type: 'campaign-backup-zip' }),
+      });
+      if (sourceUpload) {
+        const consumed = await tx.assetUploadSession.updateMany({ where: { id: sourceUpload.id, status: 'restoring', assetId: sourceUpload.assetId }, data: { status: 'consumed', assetId: null } });
+        if (!consumed.count) throw new Error('Backup upload changed during restore');
+        await tx.asset.delete({ where: { id: sourceUpload.assetId } });
+      }
+      return created;
     });
+    handoffCommitted = true;
 
     const task = createBackgroundTask({
       taskName: 'Esiana Backup Restore',
@@ -271,6 +317,16 @@ export async function restoreCampaignBackup(
 
     res.status(202).json({ taskId: task.id });
   } catch (error) {
+    if (!handoffCommitted) {
+      let recovered = true;
+      if (movedPaths) {
+        recovered = await fs.rename(resolveSafeUploadPath(movedPaths.next), resolveSafeUploadPath(movedPaths.current)).then(() => true, () => false);
+      }
+      if (uploadClaimed && sourceUpload) {
+        await prisma.assetUploadSession.updateMany({ where: { id: sourceUpload.id, status: 'restoring' },
+          data: { status: recovered ? 'complete' : 'failed' } });
+      }
+    }
     res.status(400).json({
       error:
         error instanceof Error ? error.message : 'Invalid campaign backup ZIP',

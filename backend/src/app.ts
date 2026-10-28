@@ -33,6 +33,8 @@ import { migrateWebhookUrlsAtRest } from './lib/webhooks/migrateWebhookUrls.js';
 import { csrfProtection } from './middleware/csrfProtection.js';
 import { configureTrustProxy } from './lib/rateLimit/index.js';
 import { mountRouters } from './mountRouters.js';
+import { startTranscriptionRunner } from './lib/transcriptionRunner.js';
+import { defaultJsonBody } from './middleware/jsonBody.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -47,7 +49,7 @@ export async function createApp(): Promise<Express> {
       exposedHeaders: ['Retry-After'],
     }),
   );
-  app.use(express.json());
+  app.use(defaultJsonBody);
   // Unsafe cookie-authenticated requests are origin-checked by the next middleware.
   // codeql[js/missing-token-validation]
   app.use(cookieParser());
@@ -83,6 +85,7 @@ export async function createApp(): Promise<Express> {
   // Kick off asynchronous, daily asset-retention garbage collection.
   startAssetRetentionSweep();
   startNotificationSweep();
+  await startTranscriptionRunner();
 
   app.use(
     (

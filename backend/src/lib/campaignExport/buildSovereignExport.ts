@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { prisma } from '../prisma.js';
+import { buildSessionAudioBackup } from '../sessionAudioBackup.js';
+import { resolveDriverForPointer } from '../storage/storagePointer.js';
+import type { Readable } from 'node:stream';
 import { ensureChronologyEras } from '../chronologyEraService.js';
 import { env } from '../../config/env.js';
 import { uploadFilenameFromUrl } from '../campaignMediaSize.js';
@@ -26,7 +29,7 @@ import {
   SOVEREIGN_KNOWLEDGE_PATH,
 } from './sovereignKnowledge.js';
 
-const SKIP_ASSET_TYPES = new Set(['campaign-import-zip', 'campaign-backup-zip']);
+const SKIP_ASSET_TYPES = new Set(['campaign-import-zip', 'campaign-backup-zip', 'campaign-export-zip']);
 
 function mediaFilenameForAsset(assetId: string, originalUrl: string): string {
   const ext = path.extname(uploadFilenameFromUrl(originalUrl) ?? originalUrl) || '.bin';
@@ -97,12 +100,26 @@ export async function buildSovereignExport(
   );
 
   const mediaEntries: SovereignMediaAssetEntry[] = [];
-  const mediaBuffers = new Map<string, Buffer>();
+  const mediaBuffers = new Map<string, string>();
+  const mediaStreams = new Map<string, () => Promise<Readable>>();
   const assetIdToMediaFile = new Map<string, string>();
   const uploadNameToMediaFile = new Map<string, string>();
 
   for (const asset of assets) {
     if (SKIP_ASSET_TYPES.has(asset.type)) continue;
+    if (asset.type === 'SessionAudio') {
+      const storage = resolveDriverForPointer(asset.url);
+      if (!storage || !await storage.driver.exists(storage.key)) continue;
+      const filename = mediaFilenameForAsset(asset.id, asset.url);
+      mediaEntries.push({ id: asset.id, filename, type: asset.type, originalUrl: asset.url });
+      mediaStreams.set(filename, async () => {
+        const delivery = await storage.driver.openRead({ key: storage.key, requireStream: true });
+        if (delivery.type !== 'stream') throw new Error('Protected media stream required for backup');
+        return delivery.stream;
+      });
+      assetIdToMediaFile.set(asset.id, filename);
+      continue;
+    }
     const uploadName = uploadFilenameFromUrl(asset.url);
     if (!uploadName) continue;
     const filePath = path.join(env.uploadsDir, uploadName);
@@ -115,7 +132,7 @@ export async function buildSovereignExport(
       type: asset.type,
       originalUrl: asset.url,
     });
-    mediaBuffers.set(filename, fs.readFileSync(filePath));
+    mediaBuffers.set(filename, filePath);
     assetIdToMediaFile.set(asset.id, filename);
     uploadNameToMediaFile.set(uploadName, filename);
   }
@@ -229,11 +246,13 @@ export async function buildSovereignExport(
   for (const [filename, buffer] of mediaBuffers) {
     files.push({
       path: `sovereign/media/${filename}`,
-      content: buffer,
+      content: '', sourcePath: buffer,
     });
   }
+  for (const [filename, openStream] of mediaStreams) files.push({ path: `sovereign/media/${filename}`, content: '', openStream });
 
   const manifest = {
+    // Audio metadata is a separate, additive manifest entry for legacy backup compatibility.
     format: CAMPAIGN_BACKUP_FORMAT,
     exportKind,
     exportedAt: new Date().toISOString(),
@@ -253,6 +272,7 @@ export async function buildSovereignExport(
       : {}),
   };
 
+  files.push({ path: 'sovereign/audio.json', content: JSON.stringify(await buildSessionAudioBackup(campaignId)) });
   files.unshift({
     path: 'manifest.json',
     content: JSON.stringify(manifest, null, 2),

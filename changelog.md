@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Added
+
+- Scoped API-token recording uploads with persistent creation retry keys, resumable progress, repeated finalization, and external-client curl examples. Recording uploads now default to enabled; automated transcription remains opt-in.
+
+- Session recordings with resumable multi-file uploads, continuous playback, chapters from the current playback position, and native transcript editing/imports with revision history.
+- Global processing-provider connections, explicit campaign/model grants, content-neutral usage reporting, and optional Whisper-compatible transcription without bundled processing services.
+- Audio governance, protected media range requests, recording storage management, streamed campaign backups, and opt-in recording clones.
+
+
+### Fixed
+
+- Upload chunk and cancellation routes now mount native rate-limit guards that CodeQL recognizes, reusing the configured mutation ceiling without charging requests twice when the parent router already enforces it.
+- Backup restore and rollback paths explicitly stay within uploads storage. Regression coverage verifies inherited rate limits on chunk-upload and cancellation routes without charging the expensive-operation budget per chunk.
+- Processing providers reject mapped IPv4 and literal IPv6 link-local destinations. Transcript editing permissions and configured request-size limits are enforced before parsing, and missing or expired uploads clear stale retry keys without discarding them on transport failures.
+- Backup ZIP extraction stages files under the configured uploads storage so large restores use the existing data mount instead of the system temporary directory.
+- Audio settings no longer render Advanced tools alongside the audio panel. Backup and recording uploads retain retry keys on plain HTTP, and upload quotas use database aggregates for session, campaign, and instance totals.
+- Recording clones preflight source media and clean up incomplete campaigns after audio-copy failures; missing clone prerequisites return HTTP 400. Transcription clamps segment ends to the measured file duration while rejecting segments that start outside it.
+- Backup streams handle partial failures without a second response, failed asynchronous exports remove partial ZIPs, and restore upload IDs are consumed once. Site-admin recovery backups explicitly audit their private-content override.
+- Campaign deletion now permits cascading recording-file removal while retaining foreign-key protection for referenced assets. Large transcript request bodies are parsed after campaign authentication and rate limiting.
+
 ## [1.8.0] - 2026-10-06
 
 ### Added

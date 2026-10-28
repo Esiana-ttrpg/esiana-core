@@ -1,4 +1,7 @@
 import type { Response } from 'express';
+import { authorizeAudioAsset, authorizeCampaignExport, AudioError } from '../lib/audioCore.js';
+import { tokenGrantsScope } from '../lib/apiToken.js';
+import { streamAudio } from '../lib/audioStreaming.js';
 import { env } from '../config/env.js';
 import {
   evaluateAssetAccess,
@@ -52,6 +55,23 @@ async function streamAssetRecord(
   res: Response,
   asset: NonNullable<Awaited<ReturnType<typeof findAssetById>>>,
 ): Promise<void> {
+  if (asset.type === 'SessionAudio') {
+    try {
+      if (req.authMethod === 'apiToken' && !tokenGrantsScope(req.apiTokenScopes ?? [], 'campaign:read')) {
+        res.status(403).json({ error: 'API token requires campaign:read' }); return;
+      }
+      const file = await authorizeAudioAsset(asset.id, req.user?.id);
+      await streamAudio(req, res, asset.url, file.mimeType, Number(file.sizeBytes));
+    } catch (error) {
+      if (error instanceof AudioError) res.status(error.status).json({ error: error.code });
+      else res.status(404).json({ error: 'media_missing' });
+    }
+    return;
+  }
+  if (asset.type === 'campaign-export-zip' || asset.type === 'campaign-backup-zip') {
+    try { await authorizeCampaignExport(asset.campaignId, req.user?.id); }
+    catch { res.status(403).json({ error: 'campaign_export_forbidden' }); return; }
+  }
   const role = await loadCampaignRoleForUser(req.user?.id, asset.campaignId);
   const access = evaluateAssetAccess(asset, role, req.query.variant, req.user?.id);
   if (!access.ok) {

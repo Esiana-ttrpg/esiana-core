@@ -52,6 +52,7 @@ import { ArchiveCampaignModal } from '@/components/campaign/ArchiveCampaignModal
 import { useCampaignInviteLink } from '@/hooks/useCampaignInviteLink';
 import { CampaignInviteEmailForm } from '@/components/campaign/CampaignInviteEmailForm';
 import { CollaborationPermissionsPanel } from '@/components/settings/CollaborationPermissionsPanel';
+import { CampaignAudioSettingsTab } from '@/components/campaign/CampaignAudioSettingsTab';
 import {
   campaignDashboardPath,
   campaignSettingsPath,
@@ -65,6 +66,7 @@ const SETTINGS_TABS = [
   'access',
   'recruitment',
   'scheduling',
+  'audio',
   'timeline',
   'world-development',
   'appearance',
@@ -402,6 +404,7 @@ export function CampaignSettingsPage() {
           : []),
         { id: 'recruitment' as const, label: t('campaign.settings.tabRecruitment') },
         { id: 'scheduling' as const, label: t('campaign.settings.tabScheduling') },
+        { id: 'audio' as const, label: 'Audio' },
         { id: 'timeline' as const, label: 'Timeline' },
         ...(canManageSidebar
           ? [{ id: 'world-development' as const, label: t('campaign.settings.tabDevelopment') }]
@@ -827,6 +830,8 @@ export function CampaignSettingsPage() {
         <RecruitmentSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'scheduling' ? (
         <SchedulingSettingsTab campaignHandle={campaignHandle} />
+      ) : activeTab === 'audio' ? (
+        <CampaignAudioSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'timeline' ? (
         <TimelineSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'world-development' ? (
@@ -872,7 +877,7 @@ export function CampaignSettingsPage() {
             <p className="text-sm text-muted">Loading campaign…</p>
           )}
         </div>
-      ) : (
+      ) : activeTab === 'advanced' ? (
         <div className="space-y-6">
           <div className="rounded-lg border border-border bg-surface p-6">
             <h2 className="mb-2 text-lg font-semibold text-white">Advanced</h2>
@@ -891,7 +896,7 @@ export function CampaignSettingsPage() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {wikiCampaign?.id ? (
         <>

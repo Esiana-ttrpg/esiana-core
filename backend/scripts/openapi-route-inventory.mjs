@@ -29,6 +29,15 @@ export const CORE_ROUTER_MOUNTS = Object.freeze({
   importProvidersRouter: ['/api/import-providers', 'src/routes/importProviders.ts'],
 });
 
+/** Campaign/admin subrouters inherit their parent's authentication and rate policies. */
+const NESTED_ROUTER_MOUNTS = Object.freeze({
+  processingAdminRouter: ['/api/admin/providers', 'src/routes/processingProviders.ts'],
+  audioAdminRouter: ['/api/admin/audio', 'src/routes/audioSettings.ts'],
+  campaignAudioRouter: ['/api/campaigns/:campaignHandle/audio', 'src/routes/audioSettings.ts'],
+  sessionRecordingsRouter: ['/api/campaigns/:campaignHandle/audio', 'src/routes/sessionRecordings.ts'],
+  audioUploadsRouter: ['/api/campaigns/:campaignHandle/asset-uploads', 'src/routes/audioUploads.ts'],
+});
+
 function literalText(node) {
   return ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)
     ? node.text
@@ -67,7 +76,7 @@ export function extractRouterRoutes(source, routerName, filename = 'route.ts') {
 
 export function inventoryCoreRoutes(backendRoot) {
   const routes = [{ method: 'get', path: '/uploads/{filename}', source: 'src/mountRouters.ts', line: 1 }];
-  for (const [routerName, [mountPath, relativeFile]] of Object.entries(CORE_ROUTER_MOUNTS)) {
+  for (const [routerName, [mountPath, relativeFile]] of Object.entries({ ...CORE_ROUTER_MOUNTS, ...NESTED_ROUTER_MOUNTS })) {
     const filename = path.join(backendRoot, relativeFile);
     const source = fs.readFileSync(filename, 'utf8');
     for (const route of extractRouterRoutes(source, routerName, filename)) {

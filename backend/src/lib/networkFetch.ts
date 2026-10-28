@@ -6,6 +6,8 @@
  * fetch() runs only inside guarded branches (sync guard + async resolve on same url).
  */
 import fs from 'node:fs';
+import { lookup } from 'node:dns/promises';
+import { BlockList, isIP } from 'node:net';
 import { createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { finished } from 'node:stream/promises';
@@ -106,6 +108,58 @@ async function fetchPinned(url: URL, addresses: ValidatedRemoteAddress[], init: 
   } catch (error) {
     await dispatcher.close().catch(() => {});
     throw error;
+  }
+}
+
+// BlockList normalizes IPv4-mapped IPv6 addresses when checking IPv4 ranges.
+const forbiddenProcessingAddresses = new BlockList();
+forbiddenProcessingAddresses.addSubnet('169.254.0.0', 16, 'ipv4');
+forbiddenProcessingAddresses.addAddress('0.0.0.0', 'ipv4');
+forbiddenProcessingAddresses.addSubnet('fe80::', 10, 'ipv6');
+
+/** Core processing connections may explicitly approve LAN access; redirects stay disabled.
+ * Consume the response inside the callback so the pinned dispatcher always closes afterward.
+ */
+export async function withProcessingRemoteResponse<T>(
+  endpoint: string,
+  options: {
+    allowPrivateNetwork: boolean;
+    method: 'HEAD' | 'POST';
+    headers: Record<string, string>;
+    body?: NonNullable<Parameters<typeof undiciFetch>[1]>['body'];
+    signal: AbortSignal;
+  },
+  consume: (response: globalThis.Response) => Promise<T>,
+): Promise<T> {
+  const url = new URL(endpoint);
+  if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) {
+    throw new NetworkFetchError('invalid_endpoint');
+  }
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  const literalFamily = isIP(hostname);
+  if (literalFamily && forbiddenProcessingAddresses.check(hostname, literalFamily === 6 ? 'ipv6' : 'ipv4')) {
+    throw new NetworkFetchError('provider_destination_forbidden');
+  }
+  let addresses: ValidatedRemoteAddress[];
+  if (options.allowPrivateNetwork) {
+    addresses = (await lookup(hostname, { all: true })).map(({ address, family }) => ({ address, family: family as 4 | 6 }));
+  } else {
+    if (url.protocol !== 'https:') throw new NetworkFetchError('provider_requires_https');
+    addresses = await resolveUrlAddressesForRemoteFetch(url, { allowHttp: false });
+  }
+  // DNS answers and IP literals share the same restriction, even with LAN approval.
+  if (!addresses.length || addresses.some(({ address, family }) => forbiddenProcessingAddresses.check(address, family === 6 ? 'ipv6' : 'ipv4'))) {
+    throw new NetworkFetchError('provider_destination_forbidden');
+  }
+  const { response, dispatcher } = await fetchPinned(url, addresses, {
+    method: options.method, headers: options.headers, body: options.body,
+    ...(options.body === undefined ? {} : { duplex: 'half' as const }), signal: options.signal,
+  });
+  try {
+    return await consume(response);
+  } finally {
+    await response.body?.cancel().catch(() => {});
+    await dispatcher.close();
   }
 }
 

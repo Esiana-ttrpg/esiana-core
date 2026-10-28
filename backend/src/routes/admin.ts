@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { processingAdminRouter } from './processingProviders.js';
+import { audioAdminRouter } from './audioSettings.js';
 import { requireAuth } from '../middleware/auth.js';
 import { verifySystemAdmin } from '../middleware/systemAdmin.js';
 import {
@@ -64,6 +66,8 @@ export const adminRouter = Router();
 /** Shared admin gate + default rate policy. Preserves requireAuth → verifySystemAdmin order. */
 const adminGate = [requireAuth, verifySystemAdmin, rateLimitPolicy('admin')] as const;
 const adminExpensive = rateLimitPolicy('expensive');
+adminRouter.use('/providers', ...adminGate, processingAdminRouter);
+adminRouter.use('/audio', ...adminGate, audioAdminRouter);
 
 adminRouter.get(
   '/system/backup',

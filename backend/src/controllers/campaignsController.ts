@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { AudioError } from '../lib/audioCore.js';
 import { Prisma, type FantasyCalendar } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
@@ -1563,8 +1564,9 @@ export async function duplicateCampaignHandler(
     });
   } catch (error) {
     console.error('Error duplicating campaign:', error);
-    res.status(500).json({
+    res.status(error instanceof AudioError ? error.status : 500).json({
       error: error instanceof Error ? error.message : 'Failed to duplicate campaign',
+      ...(error instanceof AudioError ? { code: error.code } : {}),
     });
   }
 }

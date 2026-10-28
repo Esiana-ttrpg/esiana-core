@@ -1,3 +1,6 @@
+import { apiFetch } from './api';
+import { assetUploadBase } from './sessionAudio';
+import { getOrCreateUploadRetryKey, resumeStoredUpload } from './uploadRetryKey';
 const API_BASE = '/api';
 
 export async function downloadCampaignBackup(
@@ -36,16 +39,34 @@ export async function downloadCampaignBackup(
 export async function restoreCampaignBackup(
   campaignHandle: string,
   backupZipFile: File,
+  onProgress?: (percent: number) => void,
 ): Promise<{ taskId: string }> {
-  const formData = new FormData();
-  formData.append('backupZipFile', backupZipFile);
+  const base = assetUploadBase(campaignHandle);
+  const key = `esiana-backup:${campaignHandle}:${backupZipFile.name}:${backupZipFile.size}:${backupZipFile.lastModified}`;
+  const creationKey = `${key}:create-key`;
+  let upload = await resumeStoredUpload(key, (id) => apiFetch<{ id: string; offsetBytes: string; status: string }>(`${base}/${id}`));
+  if (upload && ['appending', 'finalizing'].includes(upload.status)) throw new Error('This backup upload is still processing. Retry shortly to resume.');
+  if (upload && !['uploading', 'complete'].includes(upload.status)) localStorage.removeItem(creationKey);
+  if (!upload || !['uploading', 'complete'].includes(upload.status)) {
+    const retryKey = getOrCreateUploadRetryKey(creationKey);
+    upload = await apiFetch(base, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': retryKey }, body: JSON.stringify({ purpose: 'campaign_backup', name: backupZipFile.name, sizeBytes: String(backupZipFile.size) }) });
+  }
+  localStorage.setItem(key, upload!.id);
+  let offset = Number(upload!.offsetBytes);
+  while (offset < backupZipFile.size) {
+    const result = await apiFetch<{ offsetBytes: string }>(`${base}/${upload!.id}`, { method: 'PATCH',
+      headers: { 'Content-Type': 'application/octet-stream', 'Upload-Offset': String(offset) }, body: backupZipFile.slice(offset, offset + 8388608) });
+    offset = Number(result.offsetBytes); onProgress?.(Math.round(offset / backupZipFile.size * 100));
+  }
+  await apiFetch(`${base}/${upload!.id}/finalize`, { method: 'POST', body: '{}' });
 
   const res = await fetch(
     `${API_BASE}/campaigns/${encodeURIComponent(campaignHandle)}/backup/restore`,
     {
       method: 'POST',
       credentials: 'include',
-      body: formData,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadId: upload!.id }),
     },
   );
 
@@ -60,5 +81,7 @@ export async function restoreCampaignBackup(
     throw new Error(message);
   }
 
+  localStorage.removeItem(key);
+  localStorage.removeItem(creationKey);
   return (await res.json()) as { taskId: string };
 }

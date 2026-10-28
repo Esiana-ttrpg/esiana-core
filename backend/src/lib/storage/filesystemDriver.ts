@@ -26,6 +26,7 @@ function assertSafeKey(key: string): void {
 export function createFilesystemDriver(rootDir: string): StorageDriver {
   return {
     providerId: FILESYSTEM_PROVIDER_ID,
+    rangeRead: true,
 
     async put(input: StoragePutInput): Promise<StorageObjectMetadata> {
       assertSafeKey(input.key);
@@ -55,8 +56,8 @@ export function createFilesystemDriver(rootDir: string): StorageDriver {
       const stat = await fs.promises.stat(filePath);
       return {
         type: 'stream',
-        stream: fs.createReadStream(filePath),
-        sizeBytes: stat.size,
+        stream: fs.createReadStream(filePath, options.range),
+        sizeBytes: options.range ? options.range.end - options.range.start + 1 : stat.size,
       };
     },
 

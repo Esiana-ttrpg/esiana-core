@@ -703,6 +703,10 @@ export async function leaveCampaign(
 }
 
 const COLLABORATIVE_OVERRIDE_CAPS = [
+  CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
+  CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
+  CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,
+  CampaignCapabilities.AUDIO_TRANSCRIBE,
   CampaignCapabilities.PAGE_CREATE,
   CampaignCapabilities.PAGE_EDIT_OWNED,
   CampaignCapabilities.PAGE_EDIT_PARTY,
@@ -715,6 +719,7 @@ const COLLABORATIVE_OVERRIDE_CAPS = [
 ] as const;
 
 const OPERATIONAL_OVERRIDE_CAPS = [
+  CampaignCapabilities.AUDIO_MANAGE,
   CampaignCapabilities.PAGE_EDIT_ANY,
   CampaignCapabilities.PAGE_VISIBILITY_EDIT,
   CampaignCapabilities.MAPS_EDIT,

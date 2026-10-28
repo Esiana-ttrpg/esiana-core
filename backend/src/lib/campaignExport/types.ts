@@ -90,6 +90,9 @@ export interface SovereignOperational {
 export interface SovereignExportFile {
   path: string;
   content: string | Buffer;
+  /** Stream this local file instead of buffering media into content. */
+  sourcePath?: string;
+  openStream?: () => Promise<import('node:stream').Readable>;
 }
 
 export interface SovereignExportResult {

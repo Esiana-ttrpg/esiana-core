@@ -97,7 +97,7 @@ export function CampaignBackupTab({ campaignHandle }: CampaignBackupTabProps) {
 
   async function handleRestoreFile(file: File) {
     const confirmed = window.confirm(
-      'Restore from this backup ZIP?\n\nThis replaces wiki pages, links, tags, downtime/plugin operational data, and media bindings in this campaign. Members and session history are not restored.\n\nThis cannot be undone.',
+      'Restore from this backup ZIP?\n\nThis replaces wiki pages, links, tags, downtime/plugin operational data, media bindings, and included recordings/transcripts. Campaign members, session scheduling/attendance, and provider access grants are not restored.\n\nThis cannot be undone.',
     );
     if (!confirmed) return;
 
@@ -106,7 +106,7 @@ export function CampaignBackupTab({ campaignHandle }: CampaignBackupTabProps) {
     setMessage(null);
 
     try {
-      await restoreCampaignBackup(campaignHandle, file);
+      await restoreCampaignBackup(campaignHandle, file, (percent) => setMessage(`Uploading backup: ${percent}%`));
       setMessage(
         'Restore started in the background. You will get an in-app notification when it completes.',
       );

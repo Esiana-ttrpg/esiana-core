@@ -7,7 +7,20 @@ import {
   fetchPluginRemoteText,
   summarizeErrorCauseChain,
   unreachableUrlError,
+  withProcessingRemoteResponse,
 } from './networkFetch.js';
+
+test('processing connections reject link-local literals including mapped IPv4 forms before dispatch', async () => {
+  for (const host of ['169.254.169.254', '[::ffff:169.254.169.254]', '[::ffff:a9fe:a9fe]',
+    '[0:0:0:0:0:ffff:a9fe:a9fe]', '[fe80::1]', '[fe90::1]', '[febf:ffff::1]', '[::ffff:0.0.0.0]']) {
+    for (const allowPrivateNetwork of [false, true]) {
+      await assert.rejects(() => withProcessingRemoteResponse(`https://${host}/inference`, {
+        allowPrivateNetwork, method: 'HEAD', headers: {}, signal: AbortSignal.abort(),
+      }, async () => { throw new Error('Blocked destination reached the consumer'); }),
+      (error: unknown) => error instanceof NetworkFetchError && error.message === 'provider_destination_forbidden', host);
+    }
+  }
+});
 
 test('pinned lookup returns the validated address instead of resolving the hostname again', async () => {
   const lookup = createPinnedLookup([{ address: '203.0.113.20', family: 4 }]);

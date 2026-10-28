@@ -28,6 +28,10 @@ export type StorageReadDelivery =
 
 export interface StorageOpenReadOptions {
   key: string;
+  /** Inclusive byte bounds. Drivers must reject ranges unless rangeRead is declared. */
+  range?: { start: number; end: number };
+  /** Protected media must never be delivered through a redirect. */
+  requireStream?: boolean;
   /** When object size exceeds this threshold, prefer redirect delivery if supported. */
   preferRedirectAboveBytes?: number;
 }
@@ -86,6 +90,7 @@ export interface StorageProviderSnapshot {
 }
 
 export interface StorageDriverCapabilities {
+  rangeRead?: boolean;
   upload: boolean;
   read: boolean;
   delete: boolean;
@@ -114,6 +119,7 @@ export interface StorageHealthCheckResult {
  * Technology-neutral storage contract. Implementations register via StorageRegistry.
  */
 export interface StorageDriver {
+  readonly rangeRead?: boolean;
   readonly providerId: string;
   put(input: StoragePutInput): Promise<StorageObjectMetadata>;
   openRead(options: StorageOpenReadOptions): Promise<StorageReadDelivery>;

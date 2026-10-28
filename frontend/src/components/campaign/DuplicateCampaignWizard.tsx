@@ -115,12 +115,13 @@ function CloneOptionsEditor({
                   ['calendarStructure', 'Calendar structure'],
                   ['sessionCadence', 'Session cadence'],
                   ['sessionEventsLogs', 'Session events / logs'],
+                  ['sessionRecordings', 'Session recordings (requires session history and wiki pages)'],
                 ] as const
               ).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-muted">
                   <input
                     type="checkbox"
-                    checked={options.scheduling[key]}
+                    checked={options.scheduling[key] ?? false}
                     onChange={(e) => patchSection('scheduling', key, e.target.checked)}
                   />
                   {label}
