@@ -31,7 +31,7 @@ export async function safetyEligible(handle: string, userId: string) {
 }
 
 export async function safetyRequest(id: string, userId: string) {
-  const request = await prisma.safetyPrivacyRequest.findUnique({ where: { id }, include: { campaign: { select: { handle: true, name: true } } } });
+  const request = await prisma.safetyPrivacyRequest.findUnique({ where: { id }, include: { campaign: { select: { id: true, handle: true, name: true } } } });
   if (!request) throw new AudioError(404, 'request_not_found');
   const context = await safetyCampaign(request.campaign.handle, userId);
   if (request.requesterId !== userId && !context.manager) throw new AudioError(404, 'request_not_found');

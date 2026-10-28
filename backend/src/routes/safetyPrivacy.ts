@@ -1,4 +1,3 @@
-import { resolveUserDisplayName } from '../lib/userDisplay.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
@@ -12,6 +11,7 @@ export const safetyPrivacyRouter = Router();
 safetyPrivacyRouter.use(requireAuth, rateLimitPolicy('authenticated'), rateLimitPolicy('mutation'));
 const text = z.string().trim().min(1).max(10000);
 const campaignSelect = { id: true, handle: true, name: true } as const;
+const safetyDisplayName = (user: { displayName: string | null }) => user.displayName?.trim() || 'Campaign participant';
 
 safetyPrivacyRouter.get('/campaigns', audioHandler(async (req, res) => {
   const userId = req.user!.id;
@@ -25,8 +25,8 @@ safetyPrivacyRouter.get('/campaigns', audioHandler(async (req, res) => {
 safetyPrivacyRouter.get('/recipients/:handle', audioHandler(async (req, res) => {
   const ctx = await safetyEligible(String(req.params.handle), req.user!.id);
   assertAudio(ctx.eligible, 404, 'campaign_not_found');
-  const users = await prisma.user.findMany({ where: { id: { in: ctx.reviewers.map(m => m.userId) } }, select: { id: true, displayName: true, email: true } });
-  res.json(users.map(u => ({ id: u.id, displayName: resolveUserDisplayName(u) })));
+  const users = await prisma.user.findMany({ where: { id: { in: ctx.reviewers.map(m => m.userId) } }, select: { id: true, displayName: true } });
+  res.json(users.map(u => ({ id: u.id, displayName: safetyDisplayName(u) })));
 }));
 safetyPrivacyRouter.get('/recordings', audioHandler(async (req, res) => {
   const userId = req.user!.id;
@@ -34,9 +34,15 @@ safetyPrivacyRouter.get('/recordings', audioHandler(async (req, res) => {
     { timeline: { attendance: { some: { userId, status: { in: ['ATTENDING', 'LATE'] } } } } } ] },
     include: { campaign: { select: campaignSelect }, timeline: { include: { wikiPage: { select: { title: true, id: true } } } } }, orderBy: [{ campaignId: 'asc' }, { timelineId: 'asc' }, { createdAt: 'desc' }] });
   const visible = [];
+  const contexts = new Map<string, ReturnType<typeof audioContext>>();
   for (const row of rows) {
     try {
-      const ctx = await audioContext(row.campaignId, userId);
+      let context = contexts.get(row.campaignId);
+      if (!context) {
+        context = audioContext(row.campaignId, userId);
+        contexts.set(row.campaignId, context);
+      }
+      const ctx = await context;
       await recordingAccess(ctx, userId, row.id);
       visible.push({ id: row.id, title: row.title, campaign: row.campaign, sessionId: row.timelineId, sessionTitle: row.timeline.wikiPage.title });
     } catch (error) { if (!(error instanceof AudioError && [403,404].includes(error.status))) throw error; }
@@ -77,9 +83,9 @@ safetyPrivacyRouter.get('/requests/:id', audioHandler(async (req, res) => {
   await prisma.safetyPrivacyRequestRead.upsert({ where: { requestId_userId: { requestId: row.id, userId } },
     create: { requestId: row.id, userId, revision: row.revision }, update: { revision: row.revision } });
   const reviewerIds = context.reviewers.map(m => m.userId);
-  const people = await prisma.user.findMany({ where: { id: { in: [...reviewerIds, row.requesterId, ...row.messages.map(m => m.authorId), ...row.events.map(e => e.actorId)] } }, select: { id: true, displayName: true, email: true } });
+  const people = await prisma.user.findMany({ where: { id: { in: [...reviewerIds, row.requesterId, ...row.messages.map(m => m.authorId), ...row.events.map(e => e.actorId)] } }, select: { id: true, displayName: true } });
   // No content is hydrated here: links go through the normal permission-checked APIs.
-  res.json({ ...row, manager: context.manager, campaign: request.campaign, reviewerIds, people: people.map(u => ({ id: u.id, displayName: resolveUserDisplayName(u) })) });
+  res.json({ ...row, manager: context.manager, campaign: request.campaign, reviewerIds, people: people.map(u => ({ id: u.id, displayName: safetyDisplayName(u) })) });
 }));
 safetyPrivacyRouter.post('/requests/:id/messages', audioHandler(async (req, res) => {
   const { body } = z.object({ body: text }).strict().parse(req.body);

@@ -30,6 +30,7 @@ test('private request lifecycle, notifications, former members and recording dis
  try {
   const recipients = await call(player.id, '/recipients/' + campaign.handle);
   assert.deepEqual(recipients.data.map((u: any) => u.id), [owner.id]);
+  assert.equal(recipients.data[0].displayName, owner.displayName);
   const payload = { campaign: campaign.handle, category: 'recording_privacy', description: 'Sensitive private description', relatedContentType: 'recording', relatedContentId: 'unlisted-reference', recipientIds: [owner.id] };
   assert.equal((await call(player.id,'/requests','POST',{...payload,recipientIds:[]})).status,409);
   const created = await call(player.id,'/requests','POST',payload); assert.equal(created.status,201);
@@ -44,6 +45,22 @@ test('private request lifecycle, notifications, former members and recording dis
   }
   let inbox = await call(owner.id,'/requests?campaign=' + campaign.handle); assert.equal(inbox.data[0].unread,true);
   let detail = await call(owner.id,path); assert.equal(detail.status,200);
+  assert.deepEqual(detail.data.campaign, { id: campaign.id, handle: campaign.handle, name: campaign.name });
+  assert.equal(detail.data.people.find((p: any) => p.id === player.id).displayName, player.displayName);
+  for (const displayName of [null, '', '   ']) {
+   await prisma.user.update({ where: { id: owner.id }, data: { displayName } });
+   await prisma.user.update({ where: { id: player.id }, data: { displayName } });
+   const neutralRecipients = await call(player.id, '/recipients/' + campaign.handle);
+   assert.deepEqual(neutralRecipients.data, [{ id: owner.id, displayName: 'Campaign participant' }]);
+   const neutralDetail = await call(owner.id, path);
+   assert.equal(neutralDetail.status, 200);
+   for (const person of neutralDetail.data.people) {
+    assert.deepEqual(person, { id: person.id, displayName: 'Campaign participant' });
+   }
+   assert.ok(!JSON.stringify(neutralDetail.data.people).includes(stamp));
+  }
+  await prisma.user.update({ where: { id: owner.id }, data: { displayName: owner.displayName } });
+  await prisma.user.update({ where: { id: player.id }, data: { displayName: player.displayName } });
   inbox = await call(owner.id,'/requests?campaign=' + campaign.handle); assert.equal(inbox.data[0].unread,false);
   assert.equal((await call(owner.id,path + '/status','PATCH',{status:'declined',expectedRevision:0})).status,400);
   assert.equal((await call(owner.id,path + '/status','PATCH',{status:'in_review',expectedRevision:0})).status,200);

@@ -8,7 +8,7 @@
   "profile.safety.noReviewers": "No eligible reviewers available",
   "profile.safety.reviewers": "People who can review this request",
   "profile.safety.failed": "Unable to complete this action.",
-  "profile.safety.loading": "Loading requests?",
+  "profile.safety.loading": "Loading requests…",
   "profile.safety.back": "Back to requests",
   "profile.safety.recordingPrivacy": "Recording privacy",
   "profile.safety.content": "Content concern",

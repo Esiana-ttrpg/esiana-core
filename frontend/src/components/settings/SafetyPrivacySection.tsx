@@ -81,13 +81,13 @@ export function SafetyPrivacySection({ campaignHandle, onUnreadChange }: { campa
     {loading && <p role="status">{label('loading')}</p>}
     {detail ? <article className="space-y-4">
       <button className={secondaryButtonClasses} onClick={() => choose(null)}>{label('back')}</button>
-      <h3 className="text-lg font-semibold">{label(detail.category)} ? {detail.campaign.name}</h3>
-      <p className="text-sm text-muted">{label(detail.status)} ? {date(detail.createdAt)} ? {name(detail.requesterId)}</p>
+      <h3 className="text-lg font-semibold">{label(detail.category)} · {detail.campaign.name}</h3>
+      <p className="text-sm text-muted">{label(detail.status)} · {date(detail.createdAt)} · {name(detail.requesterId)}</p>
       <p className="whitespace-pre-wrap break-words">{detail.description}</p>
       {detail.relatedContentId && <p className="text-sm text-muted break-all">{label(detail.relatedContentType!)}: {detail.relatedContentId}</p>}
       <p className="text-sm text-muted">{label('reviewers')}: {detail.reviewerIds.map(name).join(', ') || label('noReviewers')}</p>
       <h4 className="font-semibold">{label('conversation')}</h4>
-      {detail.messages.map(m => <div key={m.id} className="border-l border-border/40 pl-3 space-y-1"><p className="text-sm text-muted">{name(m.authorId)} ? {date(m.createdAt)}</p><p className="whitespace-pre-wrap break-words">{m.body}</p></div>)}
+      {detail.messages.map(m => <div key={m.id} className="border-l border-border/40 pl-3 space-y-1"><p className="text-sm text-muted">{name(m.authorId)} · {date(m.createdAt)}</p><p className="whitespace-pre-wrap break-words">{m.body}</p></div>)}
       <form className="space-y-2" onSubmit={e => { e.preventDefault(); void run(async () => { await apiFetch(base + '/requests/' + detail.id + '/messages', { method: 'POST', body: JSON.stringify({ body }) }); setBody(''); await openDetail(detail.id); }); }}>
         <label className="block">{label('reply')}<textarea required maxLength={10000} className={textareaClasses + ' w-full'} value={body} onChange={e => setBody(e.target.value)} /></label>
         <button disabled={busy || !body.trim()} className={primaryButtonClasses}>{label('send')}</button>
@@ -98,12 +98,12 @@ export function SafetyPrivacySection({ campaignHandle, onUnreadChange }: { campa
         <button disabled={busy || status === detail.status} className={secondaryButtonClasses}>{label('updateStatus')}</button>
       </form>}
       {!detail.manager && ['resolved','declined'].includes(detail.status) && <button disabled={busy} className={secondaryButtonClasses} onClick={() => void run(async () => { await apiFetch(base + '/requests/' + detail.id + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'open', expectedRevision: detail.revision }) }); await openDetail(detail.id); })}>{label('reopen')}</button>}
-      <details><summary>{label('history')}</summary><ol className="space-y-2 mt-2">{detail.events.map(e => <li key={e.id}><p className="text-sm text-muted">{date(e.createdAt)} ? {name(e.actorId)} ? {label(e.newStatus)}</p>{e.reason && <p className="whitespace-pre-wrap break-words">{e.reason}</p>}</li>)}</ol></details>
+      <details><summary>{label('history')}</summary><ol className="space-y-2 mt-2">{detail.events.map(e => <li key={e.id}><p className="text-sm text-muted">{date(e.createdAt)} · {name(e.actorId)} · {label(e.newStatus)}</p>{e.reason && <p className="whitespace-pre-wrap break-words">{e.reason}</p>}</li>)}</ol></details>
     </article> : <div className="space-y-3">
-      <h3 className="font-semibold">{label(campaignHandle ? 'inbox' : 'myRequests')} ? {rows.filter(r => ['open','in_review'].includes(r.status)).length} {label('active')}</h3>
+      <h3 className="font-semibold">{label(campaignHandle ? 'inbox' : 'myRequests')} · {rows.filter(r => ['open','in_review'].includes(r.status)).length} {label('active')}</h3>
       {campaignHandle && <label>{label('filter')} <select className={controlClasses} value={filter} onChange={e => setFilter(e.target.value)}>{['all',...SAFETY_STATUSES].map(s => <option key={s} value={s}>{label(s)}</option>)}</select></label>}
       {!loading && rows.length === 0 && <p className="text-sm text-muted">{label('empty')}</p>}
-      {rows.filter(r => filter === 'all' || r.status === filter).map(r => <button key={r.id} className="block w-full text-left border-b border-border/40 py-3 space-y-1" onClick={() => choose(r.id)}><span className="font-medium">{label(r.category)}{r.unread ? ' ? ' + label('unread') : ''}</span><span className="block text-sm text-muted">{r.campaign.name} ? {label(r.status)} ? {date(r.updatedAt)}</span></button>)}
+      {rows.filter(r => filter === 'all' || r.status === filter).map(r => <button key={r.id} className="block w-full text-left border-b border-border/40 py-3 space-y-1" onClick={() => choose(r.id)}><span className="font-medium">{label(r.category)}{r.unread ? ' · ' + label('unread') : ''}</span><span className="block text-sm text-muted">{r.campaign.name} · {label(r.status)} · {date(r.updatedAt)}</span></button>)}
     </div>}
     {!campaignHandle && <details><summary className="font-semibold">{label('recordings')} ({recordings.length})</summary><p className="text-sm text-muted my-3">{label('discovery')}</p>
       {Array.from(new Set(recordings.map(r => r.campaign.id))).map(id => <section key={id} className="space-y-3 mt-4"><h3 className="font-semibold">{recordings.find(r => r.campaign.id === id)!.campaign.name}</h3>{Array.from(new Set(recordings.filter(r => r.campaign.id === id).map(r => r.sessionId))).map(sid => <div key={sid}><h4>{recordings.find(r => r.sessionId === sid)!.sessionTitle}</h4>{recordings.filter(r => r.campaign.id === id && r.sessionId === sid).map(r => <div key={r.id} className="flex flex-wrap gap-3 py-2"><a className="text-primary" href={'/campaigns/' + encodeURIComponent(r.campaign.handle) + '/notes/' + r.sessionId}>{r.title}</a><button className={secondaryButtonClasses} onClick={() => { setCampaign(r.campaign.handle); setCategory('recording_privacy'); setRelatedType('recording'); setRelatedId(r.id); setCreating(true); }}>{label('requestChange')}</button></div>)}</div>)}</section>)}
