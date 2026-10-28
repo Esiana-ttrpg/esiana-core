@@ -1,3 +1,4 @@
+import { SafetyPrivacySection } from '@/components/settings/SafetyPrivacySection';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Bell, BookOpen, KeyRound, Keyboard, Palette, Shield, UserCircle } from 'lucide-react';
@@ -28,6 +29,7 @@ import { SettingsPageLayout } from '@/components/settings/SettingsPageLayout';
 import { UserKeyboardShortcutsSection } from '@/components/settings/UserKeyboardShortcutsSection';
 
 type SettingsTab =
+  | 'safety-privacy'
   | 'profile'
   | 'appearance'
   | 'interface'
@@ -45,12 +47,14 @@ const SETTINGS_TAB_META: Array<{ id: SettingsTab; labelKey: string; icon: Lucide
     labelKey: 'profile.profile.tabCampaignDefaults',
     icon: BookOpen,
   },
+  { id: 'safety-privacy', labelKey: 'profile.safety.title', icon: Shield },
   { id: 'notifications', labelKey: 'profile.profile.tabNotifications', icon: Bell },
   { id: 'developer', labelKey: 'profile.profile.tabDeveloper', icon: KeyRound },
   { id: 'account', labelKey: 'profile.profile.tabAccount', icon: Shield },
 ];
 
 const TAB_DESCRIPTION_KEYS: Record<SettingsTab, string> = {
+  'safety-privacy': 'profile.safety.intro',
   profile: 'profile.profile.descProfile',
   appearance: 'profile.profile.descAppearance',
   interface: 'profile.profile.descInterface',
@@ -445,6 +449,7 @@ export function UserSettings() {
 
       {activeTab === 'campaignDefaults' && <UserCampaignDefaultsSection />}
 
+      {activeTab === 'safety-privacy' && <SafetyPrivacySection />}
       {activeTab === 'notifications' && <UserNotificationsSection />}
 
       {profile && activeTab === 'developer' && (

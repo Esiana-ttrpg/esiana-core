@@ -194,7 +194,11 @@ export function CollaborationPermissionsPanel({
 
       await apiFetch(`/campaigns/${campaignHandle}/capability-overrides`, {
         method: 'PUT',
-        body: JSON.stringify({ overrides: normalized }),
+        body: JSON.stringify({ overrides: [
+          ...overrides.filter(row => !COLLAB_ROLES.includes(row.role as typeof COLLAB_ROLES[number]) ||
+            ![...OVERRIDE_CAPS, CampaignCapabilities.CHRONOLOGY_EDIT].includes(row.capability as typeof OVERRIDE_CAPS[number])),
+          ...normalized,
+        ] }),
       });
 
       if (allowPlayerChronologyManagement !== savedChronologyFlag) {

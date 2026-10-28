@@ -2,6 +2,7 @@ import { CampaignCapabilities, type CampaignCapability } from './capabilities.js
 
 /** Grants when actor.userId === campaign.campaignOwnerUserId */
 export const CAMPAIGN_ADMIN_CAPABILITIES: readonly CampaignCapability[] = [
+  CampaignCapabilities.SAFETY_MANAGE,
   CampaignCapabilities.CAMPAIGN_DELETE,
   CampaignCapabilities.CAMPAIGN_TRANSFER_OWNERSHIP,
   CampaignCapabilities.CAMPAIGN_MANAGE_ROLES,

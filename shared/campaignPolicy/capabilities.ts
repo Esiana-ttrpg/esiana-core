@@ -4,6 +4,8 @@
  */
 
 export const CampaignCapabilities = {
+  SAFETY_SUBMIT: 'safety.submit',
+  SAFETY_MANAGE: 'safety.manage',
   CAMPAIGN_VIEW: 'campaign.view',
   CAMPAIGN_DELETE: 'campaign.delete',
   CAMPAIGN_TRANSFER_OWNERSHIP: 'campaign.transfer_ownership',

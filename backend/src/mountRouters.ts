@@ -1,3 +1,4 @@
+import { safetyPrivacyRouter } from './routes/safetyPrivacy.js';
 import type { Express, Router as ExpressRouter } from 'express';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
@@ -55,6 +56,7 @@ export function listRouterMounts(): RouterMount[] {
         getUploadByFilename,
       ],
     },
+    { path: '/api/safety-privacy', router: safetyPrivacyRouter },
     { path: '/api/health', router: healthRouter },
     { path: '/api/public-directory', router: publicDirectoryRouter },
     { path: '/api/recruitment', router: recruitmentRouter },

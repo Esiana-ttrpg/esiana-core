@@ -187,6 +187,7 @@ export function campaignCategoryChildPath(
 }
 
 export type CampaignSettingsTab =
+  | 'safety-privacy'
   | 'audio'
   | 'general'
   | 'access'

@@ -1,3 +1,4 @@
+import { CampaignCapabilities as C } from '@shared/campaignPolicy/capabilities';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -375,6 +376,7 @@ export function Sidebar({
     resolvePageId,
     resolvePageIdBySystemKey,
     sidebarConfig,
+    can,
   } = useWiki();
   const location = useLocation();
   const { plugins } = usePluginRuntime();
@@ -528,11 +530,11 @@ export function Sidebar({
     }
 
     if (meta.route === 'settings') {
-      if (!canManageTemplates) return null;
+      if (!canManageTemplates && !can(C.SAFETY_MANAGE)) return null;
       return (
         <NavItem
           key={sectionId}
-          to={campaignSettingsPath(campaignHandle)}
+          to={campaignSettingsPath(campaignHandle, canManageTemplates ? undefined : 'safety-privacy')}
           label={translateSidebarSectionLabel(sectionId)}
           sectionId={sectionId}
           config={sidebarConfig}
