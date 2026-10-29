@@ -62,14 +62,7 @@ if (/type:\s*Gin/.test(sqliteSchema)) {
 
 const dbFile = `deploy-test-${Date.now()}.db`;
 const dbPath = path.join(prismaRoot, dbFile);
-const prismaDirEnvPath = path.join(prismaRoot, '.env');
-const prismaDirEnvBackup = fs.existsSync(prismaDirEnvPath)
-  ? fs.readFileSync(prismaDirEnvPath, 'utf8')
-  : null;
-
 try {
-  if (fs.existsSync(prismaDirEnvPath)) fs.unlinkSync(prismaDirEnvPath);
-
   execSync(
     `node prisma/scripts/deploy-sqlite-migrations.mjs --reset`,
     {
@@ -85,5 +78,4 @@ try {
   // deploy script writes under prisma/; also clean if created there
   const alt = path.join(backendRoot, dbFile);
   if (fs.existsSync(alt)) fs.unlinkSync(alt);
-  if (prismaDirEnvBackup != null) fs.writeFileSync(prismaDirEnvPath, prismaDirEnvBackup);
 }
