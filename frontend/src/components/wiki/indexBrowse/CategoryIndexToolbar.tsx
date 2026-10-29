@@ -33,7 +33,6 @@ export function CategoryIndexToolbar({
   createLabel,
   onCreate,
   createAction,
-  resultCountLabel = null,
   refineControl,
   sortControl,
   viewMode,
@@ -66,7 +65,6 @@ export function CategoryIndexToolbar({
 
   return (
     <WorkspaceActionBar
-      resultHint={resultCountLabel}
       refine={refineControl}
       sort={sortControl}
       view={viewSlot}
