@@ -13,6 +13,8 @@
 
 ### Fixed
 
+- SQLite migration deployment now uses disposable normalized copies so failed cleanup preserves repository migrations and schema files. Portfolio import recovery uses a JSON lookup compatible with both database providers.
+
 - API tokens now authenticate Character Portfolio, Character Profile/media, and My Sessions schedule requests using existing read/write scopes and ownership checks. Account security routes remain session-only.
 - Upload chunk and cancellation routes now mount native rate-limit guards that CodeQL recognizes, reusing the configured mutation ceiling without charging requests twice when the parent router already enforces it.
 - Backup restore and rollback paths explicitly stay within uploads storage. Regression coverage verifies inherited rate limits on chunk-upload and cancellation routes without charging the expensive-operation budget per chunk.

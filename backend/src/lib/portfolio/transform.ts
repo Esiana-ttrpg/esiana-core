@@ -87,23 +87,8 @@ async function findPortfolioImportPage(
   campaignId: string,
   portfolioCharacterId: string,
 ): Promise<{ id: string } | null> {
-  try {
-    const matched = await prisma.wikiPage.findFirst({
-      where: {
-        campaignId,
-        deletedAt: null,
-        metadata: {
-          path: ['importedFromPortfolioCharacterId'],
-          equals: portfolioCharacterId,
-        },
-      },
-      select: { id: true },
-    });
-    if (matched) return matched;
-  } catch {
-    // Engines without JSON path filters fall through to a scoped scan.
-  }
-
+  // JSON-path filter types differ between Prisma providers. Use the same
+  // campaign-scoped recovery lookup for SQLite and PostgreSQL.
   const candidates = await prisma.wikiPage.findMany({
     where: {
       campaignId,

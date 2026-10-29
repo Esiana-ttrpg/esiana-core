@@ -1,101 +1,89 @@
 #!/usr/bin/env node
-/**
- * Apply Prisma migrations to SQLite with Postgres-normalized SQL patched for runtime.
- * Baseline migration uses TIMESTAMP(3) + JSONB for Postgres deploy; Prisma SQLite
- * client requires DATETIME + TEXT column declarations. SearchIndexDocument uses
- * tsvector + GIN on Postgres; those become TEXT / no-op on SQLite.
- */
+/** Deploy normalized SQLite copies without modifying canonical Prisma sources. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   normalizeMigrationSqlForSqlite,
   normalizeSchemaPrismaForSqlite,
 } from './sqliteSchema.mjs';
 
-const backendRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const prismaRoot = path.join(backendRoot, 'prisma');
-const migrationsRoot = path.join(prismaRoot, 'migrations');
-const schemaPath = path.join(prismaRoot, 'schema.prisma');
-const lockPath = path.join(migrationsRoot, 'migration_lock.toml');
-
+const defaultBackendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export { normalizeMigrationSqlForSqlite, normalizeSchemaPrismaForSqlite };
 
-function writeNormalizedMigrations(outDir) {
-  fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, 'migration_lock.toml'), 'provider = "sqlite"\n');
+export function deploySqliteMigrations({
+  backendRoot = defaultBackendRoot,
+  reset = process.argv.includes('--reset') || process.env.SQLITE_DB_RESET === '1',
+  databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db',
+  runCommand = execFileSync,
+} = {}) {
+  const prismaRoot = path.join(backendRoot, 'prisma');
+  const migrationsRoot = path.join(prismaRoot, 'migrations');
+  const schemaPath = path.join(prismaRoot, 'schema.prisma');
+  const dbUrl = databaseUrl.startsWith('file:') ? databaseUrl : 'file:./dev.db';
+  if (dbUrl !== databaseUrl) {
+    console.warn('SQLite deploy: ignoring non-file DATABASE_URL; using file:./dev.db');
+  }
+  // Keep reset aligned with the URL resolved by prisma.config.ts.
+  let dbFile = dbUrl.slice('file:'.length);
+  if (dbFile.startsWith('///')) dbFile = dbFile.slice(2);
+  const dbPath = path.resolve(prismaRoot, dbFile);
+  const schema = fs.readFileSync(schemaPath, 'utf8');
 
-  const dirs = fs
-    .readdirSync(migrationsRoot, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
-    .map((d) => d.name)
-    .sort();
+  // Unique per invocation. Existing staging directories and backups are untouched.
+  // Keeping the config under backend also preserves prisma/config module resolution.
+  const workspace = fs.mkdtempSync(path.join(backendRoot, '.sqlite-deploy-'));
+  try {
+    const stagedMigrations = path.join(workspace, 'migrations');
+    fs.mkdirSync(stagedMigrations);
+    fs.writeFileSync(path.join(stagedMigrations, 'migration_lock.toml'), 'provider = "sqlite"\n');
+    const dirs = fs.readdirSync(migrationsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    for (const dir of dirs) {
+      const destination = path.join(stagedMigrations, dir);
+      fs.mkdirSync(destination);
+      fs.writeFileSync(
+        path.join(destination, 'migration.sql'),
+        normalizeMigrationSqlForSqlite(fs.readFileSync(path.join(migrationsRoot, dir, 'migration.sql'), 'utf8')),
+      );
+    }
 
-  for (const dir of dirs) {
-    const src = path.join(migrationsRoot, dir, 'migration.sql');
-    const destDir = path.join(outDir, dir);
-    fs.mkdirSync(destDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(destDir, 'migration.sql'),
-      normalizeMigrationSqlForSqlite(fs.readFileSync(src, 'utf8')),
+    // Generator outputs are relative to the schema, so preserve their original location.
+    const sqliteSchema = normalizeSchemaPrismaForSqlite(schema).replace(
+      /^(\s*output\s*=\s*)"([^"]+)"/gm,
+      (_, prefix, output) => `${prefix}${JSON.stringify(path.resolve(prismaRoot, output).replaceAll('\\', '/'))}`,
     );
+    const stagedSchema = path.join(workspace, 'schema.prisma');
+    fs.writeFileSync(stagedSchema, sqliteSchema);
+    const configPath = path.join(workspace, 'prisma.config.ts');
+    fs.writeFileSync(configPath, [
+      `import base from ${JSON.stringify(pathToFileURL(path.join(backendRoot, 'prisma.config.ts')).href)};`,
+      `export default { ...base, schema: ${JSON.stringify(stagedSchema)}, migrations: { ...base.migrations, path: ${JSON.stringify(stagedMigrations)} } };`,
+    ].join('\n'));
+
+    // Only reset the requested database after staging has completed successfully.
+    if (reset && fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    const require = createRequire(import.meta.url);
+    const prismaCli = path.join(path.dirname(require.resolve('prisma/package.json')), 'build/index.js');
+    const options = { cwd: backendRoot, stdio: 'inherit', env: { ...process.env, DATABASE_URL: dbUrl } };
+    runCommand(process.execPath, [prismaCli, 'migrate', 'deploy', '--config', configPath], options);
+    runCommand(process.execPath, [prismaCli, 'generate', '--config', configPath], options);
+    console.log(`SQLite migrations applied to ${dbUrl}`);
+    console.log('Prisma Client generated for SQLite.');
+  } finally {
+    // workspace is the exact absolute directory created by this invocation.
+    const relative = path.relative(path.resolve(backendRoot), workspace);
+    if (path.dirname(relative) !== '.' || !path.basename(relative).startsWith('.sqlite-deploy-')) {
+      throw new Error('Refusing cleanup outside the SQLite deploy workspace');
+    }
+    fs.rmSync(workspace, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 }
 
-function swapDir(from, to, backup) {
-  if (fs.existsSync(backup)) fs.rmSync(backup, { recursive: true, force: true });
-  if (fs.existsSync(to)) fs.renameSync(to, backup);
-  fs.cpSync(from, to, { recursive: true });
-}
-
-function restoreDir(backup, to) {
-  if (fs.existsSync(to)) fs.rmSync(to, { recursive: true, force: true });
-  if (fs.existsSync(backup)) fs.renameSync(backup, to);
-}
-
-const reset = process.argv.includes('--reset') || process.env.SQLITE_DB_RESET === '1';
-const envDbUrl = process.env.DATABASE_URL ?? 'file:./dev.db';
-const dbUrl = envDbUrl.startsWith('file:') ? envDbUrl : 'file:./dev.db';
-if (dbUrl !== envDbUrl) {
-  console.warn(
-    `SQLite deploy: ignoring non-file DATABASE_URL (${envDbUrl}); using ${dbUrl}`,
-  );
-}
-const dbFile = dbUrl.replace(/^file:\.\//, '');
-const dbPath = path.join(prismaRoot, dbFile);
-
-const stagingRoot = path.join(backendRoot, '.sqlite-migrations-staging');
-const migrationsBackup = path.join(backendRoot, '.sqlite-migrations-backup');
-
-const schema = fs.readFileSync(schemaPath, 'utf8');
-
-try {
-  if (reset && fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-  if (fs.existsSync(stagingRoot)) fs.rmSync(stagingRoot, { recursive: true, force: true });
-
-  writeNormalizedMigrations(stagingRoot);
-
-  fs.writeFileSync(schemaPath, normalizeSchemaPrismaForSqlite(schema));
-  swapDir(stagingRoot, migrationsRoot, migrationsBackup);
-
-  execSync('npx prisma migrate deploy', {
-    cwd: backendRoot,
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: dbUrl },
-  });
-
-  execSync('npx prisma generate', {
-    cwd: backendRoot,
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: dbUrl },
-  });
-
-  console.log(`SQLite migrations applied to ${dbUrl}`);
-  console.log('Prisma Client generated for SQLite.');
-} finally {
-  fs.writeFileSync(schemaPath, schema);
-  restoreDir(migrationsBackup, migrationsRoot);
-  if (fs.existsSync(stagingRoot)) fs.rmSync(stagingRoot, { recursive: true, force: true });
-  if (fs.existsSync(migrationsBackup)) fs.rmSync(migrationsBackup, { recursive: true, force: true });
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  deploySqliteMigrations();
 }
