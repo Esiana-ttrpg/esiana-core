@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { parse } from '@babel/parser';
 import YAML from 'yaml';
 
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'options', 'head']);
@@ -40,9 +40,46 @@ const NESTED_ROUTER_MOUNTS = Object.freeze({
 });
 
 function literalText(node) {
-  return ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)
-    ? node.text
-    : undefined;
+  if (node?.type === 'StringLiteral') return node.value;
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis[0].value.cooked;
+  }
+  return undefined;
+}
+
+function parseSource(source, filename) {
+  return parse(source, {
+    sourceType: 'module',
+    sourceFilename: filename,
+    plugins: ['typescript'],
+    createParenthesizedExpressions: true,
+    errorRecovery: false,
+  });
+}
+
+function walk(node, visit) {
+  visit(node);
+  // Inspect child nodes rather than a fixed visitor-key table so TypeScript
+  // containers do not hide route calls. Metadata and comments are not AST children.
+  const children = [];
+  for (const [key, value] of Object.entries(node)) {
+    if (['loc', 'extra', 'comments', 'leadingComments', 'innerComments', 'trailingComments'].includes(key)) continue;
+    for (const child of Array.isArray(value) ? value : [value]) {
+      if (child && typeof child.type === 'string' && typeof child.start === 'number') children.push(child);
+    }
+  }
+  children.sort((a, b) => a.start - b.start || a.end - b.end);
+  for (const child of children) walk(child, visit);
+}
+
+function memberCall(node) {
+  if (!['CallExpression', 'OptionalCallExpression'].includes(node.type)) return undefined;
+  const member = node.callee;
+  if (
+    !['MemberExpression', 'OptionalMemberExpression'].includes(member.type) ||
+    member.computed || member.object.type !== 'Identifier' || member.property.type !== 'Identifier'
+  ) return undefined;
+  return { target: member.object.name, method: member.property.name };
 }
 
 function openApiPath(expressPath) {
@@ -52,26 +89,24 @@ function openApiPath(expressPath) {
 }
 
 export function extractRouterRoutes(source, routerName, filename = 'route.ts') {
-  const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const sourceFile = parseSource(source, filename);
   const routes = [];
 
-  function visit(node) {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
-      const target = node.expression.expression;
-      const method = node.expression.name.text.toLowerCase();
-      if (ts.isIdentifier(target) && target.text === routerName && HTTP_METHODS.has(method)) {
+  walk(sourceFile, (node) => {
+    const call = memberCall(node);
+    if (call) {
+      const method = call.method.toLowerCase();
+      if (call.target === routerName && HTTP_METHODS.has(method)) {
         const routePath = literalText(node.arguments[0]);
         if (routePath !== undefined) routes.push({
           method,
           routePath,
-          line: sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1,
-          middlewareSource: node.arguments.slice(1, -1).map((argument) => argument.getText(sourceFile)).join(' '),
+          line: node.loc.start.line,
+          middlewareSource: node.arguments.slice(1, -1).map((argument) => source.slice(argument.start, argument.end)).join(' '),
         });
       }
     }
-    ts.forEachChild(node, visit);
-  }
-  visit(sourceFile);
+  });
   return routes;
 }
 
@@ -105,22 +140,17 @@ export function inventoryStaticAppMounts(backendRoot) {
     const filename = path.join(backendRoot, relativeFile);
     if (!fs.existsSync(filename)) continue;
     const source = fs.readFileSync(filename, 'utf8');
-    const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const sourceFile = parseSource(source, filename);
 
-    function visit(node) {
+    walk(sourceFile, (node) => {
       // app.use('/api/...', router)
-      if (
-        ts.isCallExpression(node) &&
-        ts.isPropertyAccessExpression(node.expression) &&
-        ts.isIdentifier(node.expression.expression) &&
-        node.expression.expression.text === 'app' &&
-        node.expression.name.text === 'use'
-      ) {
+      const call = memberCall(node);
+      if (call?.target === 'app' && call.method === 'use') {
         const mountPath = literalText(node.arguments[0]);
         if (mountPath?.startsWith('/api/') && node.arguments[1]) {
           mounts.push({
             path: mountPath,
-            routerExpression: node.arguments[1].getText(sourceFile),
+            routerExpression: source.slice(node.arguments[1].start, node.arguments[1].end),
             source: relativeFile,
           });
         }
@@ -128,11 +158,10 @@ export function inventoryStaticAppMounts(backendRoot) {
 
       // listRouterMounts entries: { path: '/api/...', router: ... }
       if (
-        ts.isPropertyAssignment(node) &&
-        ts.isIdentifier(node.name) &&
-        node.name.text === 'path'
+        node.type === 'ObjectProperty' && !node.computed && !node.shorthand &&
+        node.key.type === 'Identifier' && node.key.name === 'path'
       ) {
-        const mountPath = literalText(node.initializer);
+        const mountPath = literalText(node.value);
         if (mountPath?.startsWith('/api/')) {
           mounts.push({
             path: mountPath,
@@ -141,10 +170,7 @@ export function inventoryStaticAppMounts(backendRoot) {
           });
         }
       }
-
-      ts.forEachChild(node, visit);
-    }
-    visit(sourceFile);
+    });
   }
   return mounts;
 }

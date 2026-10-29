@@ -104,6 +104,9 @@ importers:
         specifier: ^4.6.6
         version: 4.6.6
     devDependencies:
+      '@babel/parser':
+        specifier: 7.29.8
+        version: 7.29.8
       '@types/bcryptjs':
         specifier: ^3.0.0
         version: 3.0.0
