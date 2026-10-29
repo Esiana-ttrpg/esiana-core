@@ -37,6 +37,7 @@ describe('locationBrowseProjection', () => {
   const categoryPageId = 'cat-locations';
   const flatPages = [
     { id: categoryPageId, title: 'Locations' },
+    { id: 'parent', title: 'Silverwood' },
     { id: 'region-n', title: 'Northern Reach' },
     { id: 'map-1', title: 'Coast Chart' },
     { id: 'rel-1', title: 'Sister Port' },
