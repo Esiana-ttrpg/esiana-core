@@ -96,6 +96,8 @@ const result = spawnSync(
     'src/lib/entityIdentityStripAdapter.test.ts',
     'src/lib/entityWorkspaceEmphasis.test.ts',
     'src/lib/workspaceComposition.test.ts',
+    'src/lib/entitySubviewNavLayout.test.ts',
+    'src/components/entity/shells/EntitySubviewNav.test.tsx',
     'src/components/IndexGridView.characters.test.ts',
     'src/lib/hierarchyExpansionState.test.ts',
     'src/lib/entityBrowserProjection.test.ts',

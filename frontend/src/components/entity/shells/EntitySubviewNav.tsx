@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { EntitySubviewDef, EntitySubviewNavProps } from '@/lib/entityPageShells/types';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
+import { fitEntitySubviewTabs } from '@/lib/entitySubviewNavLayout';
 
 function visibleTabs(
   subviews: EntitySubviewDef[],
@@ -23,40 +24,30 @@ export function EntitySubviewNav({
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
 
   const tabs = useMemo(() => visibleTabs(subviews, isDMUser), [subviews, isDMUser]);
+  const sorted = useMemo(
+    () => [...tabs].sort((a, b) => a.navPriority - b.navPriority),
+    [tabs],
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
+    const measurement = measurementRef.current;
+    if (!el || !measurement) return;
+    const controls = Array.from(measurement.children);
 
     function measure() {
-      const width = el?.offsetWidth ?? 0;
-      const measured = measurementRef.current
-        ? Array.from(measurementRef.current.children).map((child) => (child as HTMLElement).offsetWidth)
-        : [];
-      const total = measured.reduce((sum, tabWidth) => sum + tabWidth + 2, 0);
-      if (total <= width) return setSplitIndex(null);
-      // Reserve the real width of the More control only when overflow exists.
-      const moreWidth = 72;
-      let used = moreWidth;
-      let count = 0;
-      for (const tabWidth of measured) {
-        if (count > 0 && used + tabWidth + 2 > width) break;
-        used += tabWidth + 2;
-        count += 1;
-      }
-      setSplitIndex(Math.max(1, count));
+      const widths = controls.map((control) => control.getBoundingClientRect().width);
+      const moreWidth = widths.pop() ?? 0;
+      const gap = parseFloat(getComputedStyle(el!).columnGap) || 0;
+      setSplitIndex(fitEntitySubviewTabs(widths, el!.clientWidth, moreWidth, gap));
     }
 
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
+    controls.forEach((control) => ro.observe(control));
     return () => ro.disconnect();
-  }, [tabs]);
-
-  const sorted = useMemo(
-    () => [...tabs].sort((a, b) => a.navPriority - b.navPriority),
-    [tabs],
-  );
+  }, [sorted]);
 
   const inlineTabs =
     splitIndex == null ? sorted : sorted.slice(0, splitIndex);
@@ -86,12 +77,28 @@ export function EntitySubviewNav({
         }}
         className={`${base} ${state}`}
       >
-        <span>{tab.label}</span>
+        <span className={inMenu ? 'min-w-0 [overflow-wrap:anywhere]' : undefined}>{tab.label}</span>
         {tab.dmOnly ? (
-          <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+          <span className="shrink-0 rounded bg-amber-500/15 px-1 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
             DM
           </span>
         ) : null}
+      </button>
+    );
+  }
+
+  function renderMoreButton() {
+    return (
+      <button
+        type="button"
+        className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+          activeInOverflow ? 'bg-primary/15 text-primary' : 'text-muted hover:text-foreground'
+        }`}
+        aria-expanded={overflowOpen}
+        onClick={() => setOverflowOpen((open) => !open)}
+      >
+        More
+        <ChevronDown className="size-3" />
       </button>
     );
   }
@@ -103,30 +110,15 @@ export function EntitySubviewNav({
       role="tablist"
       aria-label="Page sections"
     >
-      <div ref={measurementRef} className="pointer-events-none absolute invisible flex h-0 w-0 overflow-hidden gap-0.5" aria-hidden="true">
-        {sorted.map((tab) => (
-          <span key={tab.id} className="shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium">
-            {tab.label}{tab.dmOnly ? ' DM' : ''}
-          </span>
-        ))}
+      <div ref={measurementRef} className="pointer-events-none absolute invisible flex h-0 w-0 overflow-hidden gap-0.5" aria-hidden="true" inert>
+        {sorted.map((tab) => renderTab(tab))}
+        {renderMoreButton()}
       </div>
       {inlineTabs.map((tab) => renderTab(tab))}
 
       {overflowTabs.length > 0 ? (
         <div className="relative shrink-0">
-          <button
-            type="button"
-            className={`inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeInOverflow
-                ? 'bg-primary/15 text-primary'
-                : 'text-muted hover:text-foreground'
-            }`}
-            aria-expanded={overflowOpen}
-            onClick={() => setOverflowOpen((o) => !o)}
-          >
-            More
-            <ChevronDown className="size-3" />
-          </button>
+          {renderMoreButton()}
           {overflowOpen ? (
             <>
               <button
@@ -136,7 +128,7 @@ export function EntitySubviewNav({
                 onClick={() => setOverflowOpen(false)}
               />
               <div
-                className="absolute right-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-border bg-surface p-1 shadow-lg"
+                className={`absolute ${inlineTabs.length === 0 ? 'left-0' : 'right-0'} top-full z-50 mt-1 min-w-[10rem] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg`}
                 role="menu"
               >
                 {overflowTabs.map((tab) => renderTab(tab, true))}
