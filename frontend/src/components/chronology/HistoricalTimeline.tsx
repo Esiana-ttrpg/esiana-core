@@ -65,9 +65,11 @@ function HistoricalClockTimeline({ campaignHandle, bundle, timeBundle, canManage
   const initial = useMemo(() => initialHistoricalViewport(axis, calendar.state ? dateParts(calendar.state) : null, filtered, eras), [axis, calendar.state, filtered, eras]);
   const view = views[calendarId] ?? initial;
   const viewRef = useRef(view);
-  viewRef.current = view;
   const frame = useRef<number | null>(null);
   const pending = useRef<TimelineViewport | null>(null);
+  useEffect(() => {
+    if (pending.current === null) viewRef.current = view;
+  }, [view]);
   const updateView = useCallback((next: TimelineViewport) => {
     viewRef.current = next;
     pending.current = next;
