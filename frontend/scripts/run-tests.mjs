@@ -1,143 +1,39 @@
 import { spawnSync } from 'node:child_process';
+import { globSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const frontendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-
 process.env.TSX_TSCONFIG_PATH = 'tsconfig.app.json';
 
-const result = spawnSync(
-  process.execPath,
-  [
-    '--import',
-    'tsx',
-    '--test',
-    '../shared/recruitmentSeats.test.ts',
-    '../shared/sessionAudio.test.ts',
-    'src/components/recruitment/RecruitmentHostSection.test.tsx',
-    'src/components/hub/NewCampaignWizard.layout.test.ts',
-    'src/components/chronology/worldAdvanceFeedGrouping.test.ts',
-    'src/components/chronology/ErasView.test.ts',
-    'src/components/progression/DevelopmentsSection.test.ts',
-    'src/components/progression/ProgressionTrajectoriesSection.test.ts',
-    'src/components/downtime/DowntimeOverviewSection.test.tsx',
-    'src/components/downtime/DowntimePeopleSection.test.tsx',
-    'src/lib/chronologyDates.test.ts',
-    'src/lib/uploadRetryKey.test.ts',
-    'src/lib/wikiHierarchy.test.ts',
-    'src/lib/formatWikiPageKind.test.ts',
-    'src/lib/wikiIndexEntry.test.ts',
-    'src/lib/wikiAutoLink.test.ts',
-    'src/lib/campaignPaths.test.ts',
-    'src/lib/campaignNavigationShortcuts.test.ts',
-    'src/lib/campaignDashboardNavigationState.test.ts',
-    'src/lib/sessionSnapshotFormat.test.ts',
-    'src/lib/sessionAggregateEnrichment.test.ts',
-    'src/hooks/useIdentityDisplay.test.ts',
-    'src/utils/sessionNoteConstants.test.ts',
-    'src/lib/configSchemaParser.test.ts',
-    'src/lib/questHubLayout.test.ts',
-    'src/lib/questHubFilters.test.ts',
-    'src/lib/questLifecycleDisplay.test.ts',
-    'src/lib/threadHubFilters.test.ts',
-    'src/lib/questBoardOrder.test.ts',
-    'src/lib/projectionProvenance.test.ts',
-    'src/lib/entityProjectionDebug.test.ts',
-    'src/lib/stanceVisuals.test.ts',
-    'src/lib/temporalStatusBadge.test.ts',
-    'src/lib/entityProjectionQueries.test.ts',
-    'src/lib/organizationMetadata.test.ts',
-    'src/lib/characterMetadata.test.ts',
-    'src/lib/hirelingManagedPage.test.ts',
-    'src/lib/locationMetadata.test.ts',
-    'src/lib/maps.test.ts',
-    'src/lib/mapScene.test.ts',
-    'src/lib/mapWorkspaceInteractions.test.ts',
-    'src/components/maps/MapEditorToolbar.test.tsx',
-    '../shared/mapWorkspace.test.ts',
-    'src/lib/createEntityConfig.test.ts',
-    'src/lib/entityAppearanceProjection.test.ts',
-    'src/lib/characterIdentityProjection.test.ts',
-    'src/lib/bestiaryIdentityProjection.test.ts',
-    'src/lib/bestiaryBrowseProjection.test.ts',
-    'src/lib/bestiaryHubGrouping.test.ts',
-    'src/lib/organizationIdentityProjection.test.ts',
-    'src/lib/familyIdentityProjection.test.ts',
-    'src/lib/entitySurfaceProfile.test.ts',
-    'src/lib/pass2EntitySurfaces.test.ts',
-    'src/lib/buildPartyProjection.test.ts',
-    'src/lib/characterConnectionProjection.test.ts',
-    'src/lib/categoryIndexBrowse.test.ts',
-    'src/lib/campaignHeaderSubtitle.test.ts',
-    'src/lib/campaignRecency.test.ts',
-    'src/lib/globalSearchKeyboard.test.ts',
-    'src/lib/commands/overlayMode.test.ts',
-    'src/lib/commands/commandFilter.test.ts',
-    'src/lib/commands/commandRegistry.test.ts',
-    'src/lib/commands/resolveCommandContext.test.ts',
-    'src/lib/commands/providers/coreCreateCommands.test.ts',
-    'src/lib/commands/providers/coreNavigationCommands.test.ts',
-    'src/lib/commands/providers/corePageCommands.test.ts',
-    '../shared/creatableCodexPageTypes.test.ts',
-    '../shared/globalSearchQuery.test.ts',
-    'src/lib/globalSearchQueryState.test.ts',
-    'src/lib/globalSearchOperatorSuggest.test.ts',
-    'src/components/search/GlobalSearchFilterChips.test.tsx',
-    'src/lib/highlightMatch.test.ts',
-    'src/lib/searchRecency.test.ts',
-    'src/components/search/GlobalSearchResultRow.test.tsx',
-    'src/components/search/GlobalSearchSections.test.tsx',
-    'src/lib/characterHubGrouping.test.ts',
-    'src/lib/characterHubRailWidthPreference.test.ts',
-    'src/lib/codexHierarchy.test.ts',
-    'src/lib/codexMeasure.test.ts',
-    'src/lib/contentPriorityCollapse.test.ts',
-    'src/lib/entityWorkspaceSlots.test.ts',
-    'src/lib/entityIdentityStripAdapter.test.ts',
-    'src/lib/entityWorkspaceEmphasis.test.ts',
-    'src/lib/workspaceComposition.test.ts',
-    'src/lib/entitySubviewNavLayout.test.ts',
-    'src/components/entity/shells/EntitySubviewNav.test.tsx',
-    'src/components/IndexGridView.characters.test.ts',
-    'src/lib/hierarchyExpansionState.test.ts',
-    'src/lib/entityBrowserProjection.test.ts',
-    'src/utils/wikiLayoutRuntime.test.ts',
-    'src/lib/blockCapabilities.test.ts',
-    'src/lib/blockSemanticIndex.test.ts',
-    'src/components/wiki/extensions/wikiReferenceInsertion.test.ts',
-    'src/components/wiki/extensions/wikiLinkKeyboard.test.ts',
-    'src/components/wiki/extensions/slashSuggestionPlugin.test.ts',
-    'src/components/wiki/extensions/EditorHighlightExtension.test.ts',
-    'src/components/wiki/extensions/AdmonitionExtension.test.ts',
-    'src/components/wiki/extensions/EditorTextColorExtension.test.ts',
-    'src/components/wiki/extensions/WikiFormattingCommands.test.ts',
-    'src/lib/editor/editorColorTokens.test.ts',
-    'src/hooks/useBlockDraft.test.ts',
-    'src/lib/loreSemanticBundle.test.ts',
-    'src/lib/wikiPageSubviews.test.ts',
-    'src/lib/entityPageShells/genericWikiShell.test.ts',
-    'src/lib/entityPageShells/loreWritingUx.test.ts',
-    'src/lib/prosePrimarySubview.test.ts',
-    'src/lib/theme/atmosphericDerivation.test.ts',
-    'src/lib/theme/sceneComposition.test.ts',
-    'src/lib/theme/sidebarNavDerivation.test.ts',
-    'src/lib/theme/luminanceEcology.test.ts',
-    'src/lib/theme/themeStack.test.ts',
-    'src/lib/hubAmbientTheme.test.ts',
-    'src/lib/buildCampaignWorldPresentation.test.ts',
-    'src/lib/workshopNavigation.test.ts',
-    'src/lib/workshopLaunchGuard.test.ts',
-    'src/lib/workshopFieldSchema.test.ts',
-    'src/hooks/useProgressionRoute.test.ts',
-    'src/lib/adminVersionUi.test.ts',
-    'src/lib/adminPlugins.test.ts',
-    'src/lib/apiTokenDisplay.test.ts',
-    'src/lib/pageExport/buildPageMarkdown.test.ts',
-    'src/lib/pageExport/buildPageAsciiGuide.test.ts',
-    'src/lib/pageExport/pageExportRegistry.test.ts',
-    'src/lib/pageExport/downloadTextFile.test.ts',
-  ],
-  { cwd: frontendRoot, stdio: 'inherit', env: process.env },
-);
+// Include every frontend test while retaining the shared suites used by the frontend.
+// Vitest suites need their own runner; importing them via node:test is unsupported.
+const frontendTests = globSync('src/**/*.test.{ts,tsx}', { cwd: frontendRoot }).sort();
+const nodeTests = [];
+const vitestTests = [];
+for (const file of frontendTests) {
+  const source = readFileSync(path.join(frontendRoot, file), 'utf8');
+  (/from\s+['"]vitest['"]/.test(source) ? vitestTests : nodeTests).push(file);
+}
 
-process.exit(result.status ?? 1);
+const options = { cwd: frontendRoot, stdio: 'inherit', env: process.env };
+const nodeResult = spawnSync(process.execPath, [
+  '--import', 'tsx', '--test',
+  '../shared/recruitmentSeats.test.ts',
+  '../shared/sessionAudio.test.ts',
+  '../shared/mapWorkspace.test.ts',
+  '../shared/creatableCodexPageTypes.test.ts',
+  '../shared/globalSearchQuery.test.ts',
+  ...nodeTests,
+], options);
+
+let failed = nodeResult.status !== 0;
+if (nodeResult.error) console.error(nodeResult.error);
+if (vitestTests.length > 0) {
+  const vitestCli = fileURLToPath(new URL('./vitest.mjs', import.meta.resolve('vitest/package.json')));
+  const vitestResult = spawnSync(process.execPath, [vitestCli, 'run', ...vitestTests], options);
+  if (vitestResult.error) console.error(vitestResult.error);
+  failed ||= vitestResult.status !== 0;
+}
+
+process.exit(failed ? 1 : 0);
