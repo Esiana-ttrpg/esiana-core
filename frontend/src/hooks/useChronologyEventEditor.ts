@@ -55,7 +55,9 @@ export function useChronologyEventEditor({
   const persistedCreateId = useRef<string | null>(null);
   const [title, setTitle] = useState(baseEvent.title);
   const [categoryId, setCategoryId] = useState<string | 'none'>('none');
-  const [description, setDescription] = useState('');
+  // Mount the shared rich-text editor with persisted content so hydration does
+  // not emit an update that makes an untouched inspection/edit flow dirty.
+  const [description, setDescription] = useState(baseEvent.description ?? '');
   const [prerequisiteId, setPrerequisiteId] = useState<string | 'none'>('none');
   const [visibility, setVisibility] = useState<'PUBLIC' | 'PARTY' | 'DM_ONLY'>(
     'PARTY',
@@ -277,6 +279,7 @@ export function useChronologyEventEditor({
     },
     description,
     setDescription: (value: string) => {
+      if (value === description) return;
       setDescription(value);
       markDirty();
     },

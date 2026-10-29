@@ -1,5 +1,6 @@
+import { ChronologyInspector } from './ChronologyInspector';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CalendarMonthGrid } from '@/components/chronology/CalendarMonthGrid';
 import {
   calendarMonthDays,
@@ -404,31 +405,14 @@ export function WidescreenCalendarView({
         </div>
       </div>
 
-      <aside
-        ref={agendaRef}
-        hidden={selectedDay === null}
-        aria-label="Selected day details"
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') closeAgenda();
-        }}
-        className="shrink-0 border-t border-border bg-background md:absolute md:right-0 md:top-0 md:z-30 md:flex md:h-full md:w-[min(360px,90vw)] md:flex-col md:border-l md:border-t-0 md:shadow-xl"
-        style={selectedDay === null ? { display: 'none' } : undefined}
+      {selectedDay !== null && <ChronologyInspector
+        surfaceRef={agendaRef}
+        label="Selected day details"
+        closeLabel="Close agenda"
+        title={`${viewMonthName} ${selectedDay}`}
+        onClose={closeAgenda}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="text-sm font-semibold text-foreground">
-            {viewMonthName} {selectedDay ?? ''}
-          </h2>
-          <button
-            type="button"
-            onClick={closeAgenda}
-            aria-label="Close agenda"
-            className="rounded p-1 text-muted hover:bg-elevated hover:text-foreground"
-            title="Close agenda"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
+
           {selectedDay !== null &&
             monthContext?.days
               .get(selectedDay)
@@ -470,8 +454,7 @@ export function WidescreenCalendarView({
               ))}
             </ul>
           )}
-        </div>
-      </aside>
+      </ChronologyInspector>}
     </div>
   );
 }

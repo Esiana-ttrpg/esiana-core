@@ -208,8 +208,11 @@ try {
     .getByRole('button', { name: 'Returning 10, today, 4 events', exact: true })
     .click();
   const tableBox = await page.getByRole('table').boundingBox();
-  const asideBox = await page.getByRole('complementary').boundingBox();
-  assert.ok(asideBox.y >= tableBox.y + tableBox.height);
+  const asideBox = await page.getByRole('dialog', { name: 'Selected day details' }).boundingBox();
+  assert.ok(asideBox.y >= 0 && asideBox.y + asideBox.height <= 845);
+  assert.ok(asideBox.height <= 844 * .75 + 1);
+  await page.getByRole('button', { name: 'Close agenda' }).click();
+  await page.getByRole('button', { name: 'Returning 10, today, 4 events', exact: true }).click();
   await page.screenshot({
     path: 'node_modules/.chronology-verification/calendar-mobile.png',
     fullPage: true,
@@ -220,6 +223,7 @@ try {
     ),
     true,
   );
+  await page.getByRole('button', { name: 'Close agenda', exact: true }).click();
   await page.getByRole('button', { name: 'New event', exact: true }).click();
   const dialogBox = await page.getByRole('dialog').boundingBox();
   assert.equal(dialogBox.width, 390);
@@ -282,9 +286,143 @@ try {
   page.once('dialog', (d) => d.accept());
   await page.getByRole('dialog').evaluate((el) => el.close());
   await page.getByRole('dialog').waitFor({ state: 'detached' });
+
+  console.log('Calendar inspector and editor checks passed.');
+  await page.goto('http://localhost:5199/__chronology?timeline&truncated');
+  await page.locator('[data-historical-timeline]').waitFor();
+  await visible(page.getByRole('button', { name: 'Fit to Loaded Events', exact: true }));
+  await visible(page.getByRole('status'));
+  const axisText = () => page.locator('[data-timeline-axis]').textContent();
+  const beforeAxis = await axisText();
+  const canvasWidth = await page.locator('[data-timeline-axis]').evaluate(el => el.clientWidth);
+  const journey = page.locator('[data-timeline-event="occ_0"]');
+  await journey.focus();
+  await page.keyboard.press('Enter');
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  assert.equal(await page.locator('[data-timeline-axis]').evaluate(el => el.clientWidth), canvasWidth);
+  await page.locator('[data-timeline-event="extra1"]').focus();
+  await page.keyboard.press('Enter');
+  await visible(page.getByRole('complementary').getByText('Milestone 1', { exact: true }));
+  assert.equal(await axisText(), beforeAxis);
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  assert.equal(await page.locator('[data-timeline-event="extra1"]').evaluate(el => el === document.activeElement), true);
+  await journey.focus();
+  await page.keyboard.press('Enter');
+  await visible(page.getByRole('complementary', { name: 'Event details' }).getByText(/Before 25.*After 4/));
+  await page.getByRole('button', { name: 'Edit event', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Timeline dirty guard');
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('textbox', { name: 'Title', exact: true }).inputValue(), 'Timeline dirty guard');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('dialog', { name: 'Edit event', exact: true }).getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Edit event', exact: true }).waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  assert.equal(await axisText(), beforeAxis);
+  assert.equal(await journey.evaluate(el => el === document.activeElement), true);
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  await page.waitForFunction(before => document.querySelector('[data-timeline-axis]').textContent !== before, beforeAxis);
+  assert.notEqual(await axisText(), beforeAxis);
+  await page.getByRole('button', { name: 'Fit to Loaded Events', exact: true }).click();
+  await page.screenshot({ path: 'node_modules/.chronology-verification/timeline-desktop.png', fullPage: true });
+
+  await page.getByText('Navigation & filters', { exact: true }).click();
+  const filteredBefore = await axisText();
+  await page.getByRole('button', { name: 'Minor', exact: true }).click();
+  assert.equal(await page.locator('[data-timeline-event^="extra"]').count(), 0);
+  assert.equal(await page.locator('[data-timeline-event="occ_0"]').count(), 1);
+  assert.equal(await axisText(), filteredBefore);
+  await page.getByRole('button', { name: 'Notice', exact: true }).click();
+  assert.equal(await page.locator('[data-timeline-event="extra0"]').count(), 1);
+  await page.getByRole('combobox', { name: 'Category', exact: true }).selectOption('uncategorized');
+  assert.equal(await page.locator('[data-timeline-event]').count(), 0);
+  assert.equal(await axisText(), filteredBefore);
+
+  await page.goto('http://localhost:5199/__chronology?timeline&twoClocks');
+  await page.locator('[data-historical-timeline]').waitFor();
+  const clockInitial = await axisText();
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  await page.waitForFunction(before => document.querySelector('[data-timeline-axis]').textContent !== before, clockInitial);
+  const clockViewport = await axisText();
+  await page.getByRole('combobox', { name: 'Clock', exact: true }).selectOption('other');
+  await page.waitForFunction(before => document.querySelector('[data-timeline-axis]').textContent !== before, clockViewport);
+  await page.getByRole('combobox', { name: 'Clock', exact: true }).selectOption('clock');
+  await page.waitForFunction(before => document.querySelector('[data-timeline-axis]').textContent === before, clockViewport);
+
+  await page.goto('http://localhost:5199/__chronology?timeline&dense');
+  await page.getByRole('button', { name: /overlapping events; open complete list/ }).click();
+  const cluster = page.getByRole('complementary');
+  assert.equal(await cluster.locator('li').count(), 34);
+  await cluster.locator('li button').first().click();
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  await page.screenshot({ path: 'node_modules/.chronology-verification/timeline-dense.png', fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('http://localhost:5199/__chronology?timeline');
+  await page.locator('[data-timeline-event="occ_0"]').focus();
+  await page.keyboard.press('Enter');
+  const sheet = page.getByRole('dialog', { name: 'Event details', exact: true });
+  await visible(sheet);
+  const sheetBox = await sheet.boundingBox();
+  assert.ok(sheetBox.y + sheetBox.height <= 845 && sheetBox.height <= 844 * .75 + 1);
+  await sheet.getByRole('button', { name: 'Edit event', exact: true }).click();
+  const mobileEditor = page.getByRole('dialog', { name: 'Edit event', exact: true });
+  await visible(mobileEditor);
+  assert.equal((await mobileEditor.boundingBox()).width, 390);
+  assert.equal(await mobileEditor.getByText('Unsaved changes', { exact: true }).count(), 0);
+  await mobileEditor.getByRole('button', { name: 'Close', exact: true }).click();
+  await mobileEditor.waitFor({ state: 'detached' });
+  await visible(sheet);
+  await page.keyboard.press('Escape');
+  await sheet.waitFor({ state: 'detached' });
+  await page.locator('[data-timeline-event="occ_0"]').focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Dismiss inspector', exact: true }).click({ position: { x: 10, y: 50 } });
+  await sheet.waitFor({ state: 'detached' });
+  const canvas = page.getByRole('region', { name: /Historical timeline/ });
+  await canvas.focus();
+  const mobileAxis = await axisText();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(50);
+  assert.notEqual(await axisText(), mobileAxis);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByText('Navigation & filters', { exact: true }).click();
+  const menuBox = await page.getByRole('combobox', { name: 'Category', exact: true }).boundingBox();
+  assert.ok(menuBox.x >= 0 && menuBox.x + menuBox.width <= 390);
+  await page.getByText('Navigation & filters', { exact: true }).click();
+  const touch = await page.context().newCDPSession(page);
+  await touch.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 2 });
+  const touchBefore = await axisText();
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 220, y: 430, id: 1 }] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 100, y: 430, id: 1 }] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForFunction(before => document.querySelector('[data-timeline-axis]').textContent !== before, touchBefore);
+  assert.equal(await page.getByRole('dialog').count(), 0);
+  const pinchBefore = await axisText();
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 100, y: 430, id: 1 }, { x: 240, y: 430, id: 2 }] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 60, y: 430, id: 1 }, { x: 290, y: 430, id: 2 }] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForFunction(before => document.querySelector('[data-timeline-axis]').textContent !== before, pinchBefore);
+  assert.equal(await page.getByRole('dialog').count(), 0);
+  await touch.detach();
+  await page.screenshot({ path: 'node_modules/.chronology-verification/timeline-mobile.png', fullPage: true });
+
+  await page.goto('http://localhost:5199/__chronology?timeline&player');
+  await page.locator('[data-timeline-event="occ_0"]').focus();
+  await page.keyboard.press('Enter');
+  await visible(page.getByRole('dialog', { name: 'Event details', exact: true }));
+  assert.equal(await page.getByRole('button', { name: 'Edit event', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'New event', exact: true }).count(), 0);
+  await page.setViewportSize({ width: 2560, height: 1440 });
+  await page.goto('http://localhost:5199/__chronology?timeline');
+  await page.locator('[data-historical-timeline]').waitFor();
+  assert.equal(await page.locator('[data-historical-timeline]').count(), 1);
+  assert.equal(await page.getByRole('complementary').count(), 0);
+  await page.screenshot({ path: 'node_modules/.chronology-verification/timeline-ultrawide.png', fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    'Chronology browser verification passed: grid, climate, durations, overflow, modal save/error/dirty guards, rich text, mobile and player permissions.',
+    'Chronology browser verification passed: Calendar, Timeline geometry and clusters, inspector switching/focus, viewport preservation, dirty/clean editor dismissal, mobile sheet and touch pan/pinch, and player permissions.',
   );
 } finally {
   await page.screenshot({
