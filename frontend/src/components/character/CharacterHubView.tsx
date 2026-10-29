@@ -366,7 +366,7 @@ export function CharacterHubView({
           showInlineRail ? 'narrative-layout--character-hub-inline' : ''
         }
         narrativeLayoutStyle={narrativeLayoutStyle}
-        catalogGridClass="space-y-8"
+        catalogGridClass="space-y-2"
         breadcrumbs={
           <WikiPageBreadcrumbs
             crumbs={indexBreadcrumbs}

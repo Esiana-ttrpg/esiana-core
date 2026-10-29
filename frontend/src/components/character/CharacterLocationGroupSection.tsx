@@ -1,4 +1,3 @@
-import { MapPin } from 'lucide-react';
 import type { CharacterLocationGroup } from '@/lib/characterHubGrouping';
 import { CharacterCastEntry } from '@/components/character/CharacterCastEntry';
 import { projectCastEntryProps } from '@/lib/characterCastProjection';
@@ -18,22 +17,10 @@ export function CharacterLocationGroupSection({
   onSelectCharacter,
 }: CharacterLocationGroupSectionProps) {
   return (
-    <section className="min-w-0 space-y-3">
-      <div className="flex items-center gap-2 border-b border-border/60 pb-2">
-        <MapPin className="size-4 shrink-0 text-primary/80" />
-        <h2 className="min-w-0 truncate text-sm font-semibold text-focal-foreground">
-          {group.locationTitle}
-        </h2>
-        <span className="shrink-0 text-xs text-muted">
-          {group.characters.length}
-        </span>
-        {group.isLatestSessionLocation ? (
-          <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-            Latest Session
-          </span>
-        ) : null}
-      </div>
-
+    <section className="min-w-0 space-y-3" aria-label={group.locationTitle}>
+      <h2 className="border-b border-border/60 pb-2 text-sm font-medium text-muted">
+        {group.locationTitle}
+      </h2>
       <div className="grid gap-2">
         {group.characters.map((entry) => {
           const identity = parseCharacterMetadata(entry.child.metadata);
