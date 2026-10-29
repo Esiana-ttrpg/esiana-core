@@ -86,6 +86,6 @@
     "@types/yazl": "^3.3.1",
     "prisma": "7.10.1",
     "tsx": "^4.23.15",
-    "typescript": "^5.8.3"
+    "typescript": "^7.0.2"
   }
 }
