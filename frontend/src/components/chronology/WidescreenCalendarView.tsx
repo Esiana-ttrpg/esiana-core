@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CalendarMonthGrid } from '@/components/chronology/CalendarMonthGrid';
 import {
-  CalendarMonthGrid,
-  type DayCellOverlay,
-} from '@/components/chronology/CalendarMonthGrid';
+  calendarMonthDays,
+  compareCalendarEvents,
+  eventDayState,
+} from '@/lib/calendarPresentation';
+import { CalendarClimateContext } from './CalendarClimateContext';
 import { ChronologyEventInlineDetail } from '@/components/chronology/ChronologyEventInlineDetail';
 import type {
   ChronologyTimelineBundle,
@@ -29,7 +32,10 @@ interface WidescreenCalendarViewProps {
   baseEvents: TimelineBaseEventRecord[];
   categories: TimelineCategoryRecord[];
   canManage: boolean;
-  onBrowseAnchorChange?: (anchor: ChronologyDateParts) => void;
+  onBrowseAnchorChange?: (
+    anchor: ChronologyDateParts,
+    calendarId?: string,
+  ) => void;
   onEventMutated?: () => void | Promise<void>;
 }
 
@@ -54,13 +60,18 @@ export function WidescreenCalendarView({
   onBrowseAnchorChange,
   onEventMutated,
 }: WidescreenCalendarViewProps) {
-  const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(
+    null,
+  );
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [expandedOccurrenceId, setExpandedOccurrenceId] = useState<string | null>(null);
+  const [expandedOccurrenceId, setExpandedOccurrenceId] = useState<
+    string | null
+  >(null);
   const [viewYear, setViewYear] = useState(1);
   const [viewMonthIndex, setViewMonthIndex] = useState(0);
-  const [importanceFilter, setImportanceFilter] = useState<Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean>>({ NOTICE: false, MINOR: true, MAJOR: true });
+  const [importanceFilter, setImportanceFilter] = useState<
+    Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean>
+  >({ NOTICE: false, MINOR: true, MAJOR: true });
   const viewCalendarIdRef = useRef<string | null>(null);
 
   const calendars = timeBundle.calendars;
@@ -75,7 +86,10 @@ export function WidescreenCalendarView({
   }, [calendars]);
 
   const selectedCalendar = useMemo(
-    () => calendars.find((calendar) => calendar.id === selectedCalendarId) ?? calendars[0] ?? null,
+    () =>
+      calendars.find((calendar) => calendar.id === selectedCalendarId) ??
+      calendars[0] ??
+      null,
     [calendars, selectedCalendarId],
   );
 
@@ -111,26 +125,44 @@ export function WidescreenCalendarView({
   }, [calendarLike, viewYear, viewMonthIndex]);
 
   const campaignToday = selectedCalendar?.state;
+  const monthContext = useMemo(
+    () =>
+      calendarLike
+        ? calendarMonthDays(calendarLike, viewYear, viewMonthIndex)
+        : null,
+    [calendarLike, viewYear, viewMonthIndex],
+  );
+  const agendaRef = useRef<HTMLElement>(null);
+  const lastDayButton = useRef<HTMLElement | null>(null);
+  const closeAgenda = () => {
+    setSelectedDay(null);
+    setExpandedOccurrenceId(null);
+    lastDayButton.current?.focus();
+  };
 
   useEffect(() => {
     if (!onBrowseAnchorChange || !campaignToday) return;
 
     const viewingToday =
-      viewYear === campaignToday.year && viewMonthIndex === campaignToday.monthIndex;
-    const day =
-      selectedDay ?? (viewingToday ? campaignToday.day : 1);
+      viewYear === campaignToday.year &&
+      viewMonthIndex === campaignToday.monthIndex;
+    const day = selectedDay ?? (viewingToday ? campaignToday.day : 1);
 
-    onBrowseAnchorChange({
-      year: viewYear,
-      month: viewMonthIndex,
-      day,
-    });
+    onBrowseAnchorChange(
+      {
+        year: viewYear,
+        month: viewMonthIndex,
+        day,
+      },
+      selectedCalendar?.id,
+    );
   }, [
     onBrowseAnchorChange,
     campaignToday,
     viewYear,
     viewMonthIndex,
     selectedDay,
+    selectedCalendar?.id,
   ]);
 
   const goToPreviousMonth = useCallback(() => {
@@ -140,7 +172,9 @@ export function WidescreenCalendarView({
     } else if (viewYear > 1) {
       const priorYear = viewYear - 1;
       setViewYear(priorYear);
-      setViewMonthIndex(Math.max(0, getYearMonthCount(calendarLike, priorYear) - 1));
+      setViewMonthIndex(
+        Math.max(0, getYearMonthCount(calendarLike, priorYear) - 1),
+      );
     }
     setSelectedDay(null);
     setExpandedOccurrenceId(null);
@@ -148,7 +182,10 @@ export function WidescreenCalendarView({
 
   const goToNextMonth = useCallback(() => {
     if (!calendarLike) return;
-    const lastIndex = Math.max(0, getYearMonthCount(calendarLike, viewYear) - 1);
+    const lastIndex = Math.max(
+      0,
+      getYearMonthCount(calendarLike, viewYear) - 1,
+    );
     if (viewMonthIndex < lastIndex) {
       setViewMonthIndex(viewMonthIndex + 1);
     } else {
@@ -173,12 +210,18 @@ export function WidescreenCalendarView({
   );
 
   const categoryNameById = useMemo(
-    () => new Map(chronologyBundle.categories.map((category) => [category.id, category.name])),
+    () =>
+      new Map(
+        chronologyBundle.categories.map((category) => [
+          category.id,
+          category.name,
+        ]),
+      ),
     [chronologyBundle.categories],
   );
 
   const eventsByDay = useMemo(() => {
-    const map = new Map<number, DayCellOverlay>();
+    const map = new Map<number, TimelineOccurrenceRecord[]>();
     if (!selectedCalendar) return map;
 
     for (const occurrence of chronologyBundle.occurrences) {
@@ -189,16 +232,19 @@ export function WidescreenCalendarView({
       const day = occurrence.start.day;
       if (day === null) continue;
 
-      const existing = map.get(day) ?? { count: 0, hasContinuation: false };
-      existing.count += 1;
-      if (occurrence.isContinuation) {
-        existing.hasContinuation = true;
-      }
+      const existing = map.get(day) ?? [];
+      existing.push(occurrence);
       map.set(day, existing);
     }
 
     return map;
-  }, [chronologyBundle.occurrences, selectedCalendar, viewYear, viewMonthIndex, importanceFilter]);
+  }, [
+    chronologyBundle.occurrences,
+    selectedCalendar,
+    viewYear,
+    viewMonthIndex,
+    importanceFilter,
+  ]);
 
   const dayAgenda = useMemo(() => {
     if (selectedDay === null || !selectedCalendar) return [];
@@ -211,7 +257,7 @@ export function WidescreenCalendarView({
           occurrence.start.month === viewMonthIndex &&
           occurrence.start.day === selectedDay,
       )
-      .sort((a, b) => a.title.localeCompare(b.title));
+      .sort(compareCalendarEvents);
   }, [
     chronologyBundle.occurrences,
     selectedCalendar,
@@ -222,12 +268,25 @@ export function WidescreenCalendarView({
   ]);
 
   const handleDayClick = useCallback((day: number) => {
+    lastDayButton.current = document.activeElement as HTMLElement;
     setSelectedDay(day);
+    requestAnimationFrame(() => {
+      agendaRef.current
+        ?.querySelector('button')
+        ?.focus({ preventScroll: true });
+      if (window.matchMedia('(max-width: 767px)').matches)
+        agendaRef.current?.scrollIntoView({
+          block: 'nearest',
+          behavior: 'smooth',
+        });
+    });
     setExpandedOccurrenceId(null);
   }, []);
 
   const toggleAgendaItem = useCallback((occurrenceId: string) => {
-    setExpandedOccurrenceId((current) => (current === occurrenceId ? null : occurrenceId));
+    setExpandedOccurrenceId((current) =>
+      current === occurrenceId ? null : occurrenceId,
+    );
   }, []);
 
   if (!selectedCalendar || !viewport || !campaignToday) {
@@ -239,53 +298,42 @@ export function WidescreenCalendarView({
   }
 
   return (
-    <div className="relative flex h-full min-h-0 overflow-hidden">
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-3">
-        <div className="relative mb-3 w-full max-w-xs">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-left text-sm text-foreground hover:border-primary/40"
+    <div className="relative flex h-full min-h-0 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+      <div className="flex min-w-0 shrink-0 flex-col p-3 md:min-h-0 md:flex-1 md:overflow-hidden">
+        <label className="mb-3 block w-full max-w-xs text-xs text-muted">
+          Calendar track
+          <select
+            value={selectedCalendar.id}
+            onChange={(event) => {
+              setSelectedCalendarId(event.target.value);
+              setSelectedDay(null);
+              setExpandedOccurrenceId(null);
+            }}
+            className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
           >
-            <span className="truncate font-medium">{selectedCalendar.name}</span>
-            <ChevronDown
-              className={`size-4 shrink-0 text-muted transition-transform ${menuOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-          {menuOpen && calendars.length > 0 && (
-            <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-auto rounded-lg border border-border bg-background py-1 shadow-xl">
-              {calendars.map((calendar) => (
-                <li key={calendar.id}>
-                  <button
-                    type="button"
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-elevated ${
-                      calendar.id === selectedCalendar.id
-                        ? 'bg-elevated/80 text-primary'
-                        : 'text-foreground'
-                    }`}
-                    onClick={() => {
-                      setSelectedCalendarId(calendar.id);
-                      setMenuOpen(false);
-                      setSelectedDay(null);
-                      setExpandedOccurrenceId(null);
-                    }}
-                  >
-                    {calendar.name}
-                    {calendar.isMasterTime && (
-                      <span className="ml-auto text-[10px] uppercase tracking-wide text-muted">
-                        master
-                      </span>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+            {calendars.map((calendar) => (
+              <option key={calendar.id} value={calendar.id}>
+                {calendar.name}
+                {calendar.isMasterTime ? ' (master)' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
           {(['NOTICE', 'MINOR', 'MAJOR'] as const).map((importance) => (
-            <button key={importance} type="button" onClick={() => setImportanceFilter((current) => ({ ...current, [importance]: !current[importance] }))} className={`rounded-full border px-2 py-1 text-[10px] ${importanceFilter[importance] ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted'}`}>
+            <button
+              key={importance}
+              type="button"
+              aria-pressed={importanceFilter[importance]}
+              onClick={() =>
+                setImportanceFilter((current) => ({
+                  ...current,
+                  [importance]: !current[importance],
+                }))
+              }
+              className={`rounded-full border px-2 py-1 text-[10px] ${importanceFilter[importance] ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted'}`}
+            >
               {importance[0] + importance.slice(1).toLowerCase()}
             </button>
           ))}
@@ -293,6 +341,8 @@ export function WidescreenCalendarView({
             type="button"
             onClick={goToPreviousMonth}
             className="rounded-lg border border-border p-1.5 text-muted hover:bg-elevated hover:text-foreground"
+            aria-label="Previous month"
+            disabled={viewYear === 1 && viewMonthIndex === 0}
             title="Previous month"
           >
             <ChevronLeft className="size-4" />
@@ -304,6 +354,7 @@ export function WidescreenCalendarView({
             type="button"
             onClick={goToNextMonth}
             className="rounded-lg border border-border p-1.5 text-muted hover:bg-elevated hover:text-foreground"
+            aria-label="Next month"
             title="Next month"
           >
             <ChevronRight className="size-4" />
@@ -317,14 +368,36 @@ export function WidescreenCalendarView({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto">
+        {chronologyBundle.expansionMetadata.generated.truncated && (
+          <p role="status" className="mb-2 text-xs text-muted">
+            Some event occurrences are omitted because expansion limits were
+            reached.
+          </p>
+        )}
+        <CalendarClimateContext
+          climateAspect={monthContext?.climateAspect}
+          days={monthContext?.days}
+        />
+        <div className="min-h-0 md:flex-1 md:overflow-auto">
           <CalendarMonthGrid
             columnLabels={viewport.columnLabels}
             monthTitle={viewport.monthTitle}
             climateAspect={viewport.climateAspect}
             rows={viewport.rows}
             isIntercalaryMonth={viewport.isIntercalaryMonth}
-            eventsByDay={eventsByDay}
+            presentation="expanded"
+            occurrencesByDay={eventsByDay}
+            dayStates={monthContext?.days}
+            todayDay={
+              campaignToday.year === viewYear &&
+              campaignToday.monthIndex === viewMonthIndex
+                ? campaignToday.day
+                : null
+            }
+            onEventClick={(event) => {
+              handleDayClick(event.start.day!);
+              setExpandedOccurrenceId(event.occurrenceId);
+            }}
             selectedDay={selectedDay}
             onDayClick={handleDayClick}
           />
@@ -332,9 +405,14 @@ export function WidescreenCalendarView({
       </div>
 
       <aside
-        className={`absolute right-0 top-0 z-30 flex h-full w-[min(360px,90vw)] flex-col border-l border-border bg-background shadow-xl transition-transform duration-300 ${
-          selectedDay !== null ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        ref={agendaRef}
+        hidden={selectedDay === null}
+        aria-label="Selected day details"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') closeAgenda();
+        }}
+        className="shrink-0 border-t border-border bg-background md:absolute md:right-0 md:top-0 md:z-30 md:flex md:h-full md:w-[min(360px,90vw)] md:flex-col md:border-l md:border-t-0 md:shadow-xl"
+        style={selectedDay === null ? { display: 'none' } : undefined}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 className="text-sm font-semibold text-foreground">
@@ -342,10 +420,8 @@ export function WidescreenCalendarView({
           </h2>
           <button
             type="button"
-            onClick={() => {
-              setSelectedDay(null);
-              setExpandedOccurrenceId(null);
-            }}
+            onClick={closeAgenda}
+            aria-label="Close agenda"
             className="rounded p-1 text-muted hover:bg-elevated hover:text-foreground"
             title="Close agenda"
           >
@@ -353,6 +429,14 @@ export function WidescreenCalendarView({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
+          {selectedDay !== null &&
+            monthContext?.days
+              .get(selectedDay)
+              ?.activeMoonPhases.map((moon, index) => (
+                <p key={index} className="mb-1 text-xs text-muted">
+                  {moon.name}: {moon.phase}
+                </p>
+              ))}
           {selectedDay === null ? (
             <p className="text-xs text-muted">Select a day on the calendar.</p>
           ) : dayAgenda.length === 0 ? (
@@ -372,7 +456,8 @@ export function WidescreenCalendarView({
                   canManage={canManage}
                   categoryName={
                     occurrence.categoryId
-                      ? categoryNameById.get(occurrence.categoryId) ?? 'Unknown'
+                      ? (categoryNameById.get(occurrence.categoryId) ??
+                        'Unknown')
                       : 'Uncategorized'
                   }
                   expanded={expandedOccurrenceId === occurrence.occurrenceId}
@@ -434,17 +519,28 @@ function AgendaItem({
           <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">{occurrence.title}</p>
-          {!!occurrence.eraNames?.length && <p className="text-xs text-muted-foreground">{occurrence.eraNames.join(' · ')}</p>}
-          <p className="mt-1 text-[11px] text-muted">{categoryName}</p>
-          {occurrence.duration > 1 && (
-            <p className="mt-1 text-[10px] text-muted">
-              Day {occurrence.dayOffset + 1} of {occurrence.duration}
+          <p className="text-sm font-medium text-foreground">
+            {occurrence.title}
+          </p>
+          {!!occurrence.eraNames?.length && (
+            <p className="text-xs text-muted-foreground">
+              {occurrence.eraNames.join(' · ')}
             </p>
           )}
+          <p className="mt-1 text-[11px] text-muted">{categoryName}</p>
+          <p className="mt-1 text-xs text-muted">
+            {eventDayState(occurrence)}
+            {occurrence.duration > 1 && (
+              <>
+                {' '}
+                · Day {occurrence.dayOffset + 1} of {occurrence.duration}
+              </>
+            )}
+          </p>
         </div>
       </button>
       <div
+        inert={!expanded}
         className={`grid transition-[grid-template-rows] duration-300 ease-out ${
           expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
         }`}

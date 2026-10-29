@@ -8,7 +8,10 @@ import { ChronologyEventManagePanel } from '@/components/chronology/ChronologyEv
 import { ChronologyLoreLink } from '@/components/chronology/ChronologyLoreLink';
 import { ConditionTreeReadOnly } from '@/components/chronology/ConditionTreeReadOnly';
 import { campaignEventLorePath } from '@/lib/campaignPaths';
-import type { TimelineBaseEventRecord, TimelineCategoryRecord } from '@/lib/chronologyApi';
+import type {
+  TimelineBaseEventRecord,
+  TimelineCategoryRecord,
+} from '@/lib/chronologyApi';
 import type { ChronologyDateParts } from '@/lib/chronologyDates';
 import { truncateChronologyDescription } from '@/lib/chronologyText';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
@@ -40,7 +43,9 @@ export function ChronologyEventInlineDetail({
   onMutated,
   onDeleted,
 }: ChronologyEventInlineDetailProps) {
-  const descriptionPreview = truncateChronologyDescription(baseEvent.description);
+  const descriptionPreview = truncateChronologyDescription(
+    baseEvent.description,
+  );
   const visibilityTier = resolveVisibilityTierLabel({
     pageVisibility: baseEvent.visibility,
   });
@@ -48,7 +53,10 @@ export function ChronologyEventInlineDetail({
     canManage && shouldShowVisibilityTierChip(visibilityTier);
 
   return (
-    <div className="space-y-3 border-t border-border pt-3" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="space-y-3 border-t border-border pt-3"
+      onClick={(event) => event.stopPropagation()}
+    >
       <ChronologyLoreLink
         campaignHandle={campaignHandle}
         baseEventId={baseEvent.id}
@@ -56,7 +64,7 @@ export function ChronologyEventInlineDetail({
         className="w-full"
       />
 
-      {!canManage && descriptionPreview ? (
+      {descriptionPreview ? (
         <p className="text-xs text-foreground whitespace-pre-wrap">
           {descriptionPreview.text}
           {descriptionPreview.isTruncated ? (
@@ -71,9 +79,9 @@ export function ChronologyEventInlineDetail({
             </>
           ) : null}
         </p>
-      ) : !canManage ? (
+      ) : (
         <p className="text-xs text-muted">No description.</p>
-      ) : null}
+      )}
 
       <p className="text-[11px] text-muted">
         Tags: {baseEvent.tags.length ? baseEvent.tags.join(' ') : '—'}
@@ -93,6 +101,15 @@ export function ChronologyEventInlineDetail({
       ) : null}
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+        <dt className="text-muted">Category</dt>
+        <dd className="text-foreground">
+          {categories.find((category) => category.id === baseEvent.categoryId)
+            ?.name ?? 'Uncategorized'}
+        </dd>
+        <dt className="text-muted">Importance</dt>
+        <dd className="capitalize text-foreground">
+          {baseEvent.importance.toLowerCase()}
+        </dd>
         <dt className="text-muted">Duration</dt>
         <dd className="text-foreground">{baseEvent.duration} day(s)</dd>
         {calendarName && (
@@ -105,13 +122,14 @@ export function ChronologyEventInlineDetail({
           <>
             <dt className="text-muted">Repeats</dt>
             <dd className="text-foreground">
-              every {baseEvent.repeatInterval ?? '?'} {baseEvent.repeatUnit ?? 'DAYS'}
+              every {baseEvent.repeatInterval ?? '?'}{' '}
+              {baseEvent.repeatUnit ?? 'DAYS'}
             </dd>
           </>
         )}
       </dl>
 
-      {showConditions && !canManage && <ConditionTreeReadOnly value={baseEvent.conditions} />}
+      {showConditions && <ConditionTreeReadOnly value={baseEvent.conditions} />}
 
       {canManage && calendarLike ? (
         <ChronologyEventManagePanel

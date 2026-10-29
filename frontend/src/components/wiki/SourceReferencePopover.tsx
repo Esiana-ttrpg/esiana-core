@@ -54,5 +54,5 @@ export function SourceReferencePopover({ campaignId, interaction, onClose }: { c
       {interaction.editor.isEditable ? <><button type="button" className="text-muted hover:text-foreground" onClick={() => { const label = window.prompt('Source locator', reference.locator?.label ?? ''); if (label !== null) update({ ...reference, ...(label.trim() ? { locator: { label: label.trim(), data: reference.locator?.data } } : { locator: undefined }) }); }}>Edit locator</button><button type="button" className="text-muted hover:text-destructive" onClick={remove}>Remove</button></> : null}
       <button type="button" className="ml-auto text-muted hover:text-foreground" onClick={onClose}>Close</button>
     </div>
-  </div>, document.body);
+  </div>, interaction.editor.view.dom.closest('dialog[open]') ?? document.body);
 }

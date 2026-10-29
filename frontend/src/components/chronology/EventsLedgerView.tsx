@@ -475,7 +475,7 @@ export function EventsLedgerView({
                             </p>
                           </span>
                         </button>
-                        <div
+                        <div inert={!expanded}
                           className={`grid transition-[grid-template-rows] duration-300 ease-out ${
                             expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                           }`}

@@ -1,7 +1,9 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { ChronologyEventManagePanel } from '@/components/chronology/ChronologyEventManagePanel';
-import { ChronologyLoreLink } from '@/components/chronology/ChronologyLoreLink';
-import type { TimelineBaseEventRecord, TimelineCategoryRecord } from '@/lib/chronologyApi';
+import { ChronologyEventInlineDetail } from '@/components/chronology/ChronologyEventInlineDetail';
+import type {
+  TimelineBaseEventRecord,
+  TimelineCategoryRecord,
+} from '@/lib/chronologyApi';
 import type { ChronologyDateParts } from '@/lib/chronologyDates';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 
@@ -39,6 +41,7 @@ export function ChronologyEventSidebar({
   return (
     <aside className="relative h-full border-l border-border bg-surface/20">
       <div
+        inert={!open || !baseEvent}
         className={`absolute inset-0 flex flex-col transition-transform duration-300 ${
           open && baseEvent ? 'translate-x-0' : 'translate-x-full'
         }`}
@@ -47,9 +50,7 @@ export function ChronologyEventSidebar({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="flex-1 space-y-3 overflow-y-auto p-4 text-sm">
               <div className="flex items-center justify-between">
-                <h2 className={META_SECTION_LABEL_CLASS}>
-                  Event Details
-                </h2>
+                <h2 className={META_SECTION_LABEL_CLASS}>Event Details</h2>
                 <button
                   type="button"
                   onClick={onClose}
@@ -59,16 +60,8 @@ export function ChronologyEventSidebar({
                 </button>
               </div>
 
-              <ChronologyLoreLink
-                campaignHandle={campaignHandle}
-                baseEventId={baseEvent.id}
-                title={baseEvent.title}
-                className="w-full"
-              />
-
-              <p className="text-base font-semibold text-foreground">{baseEvent.title}</p>
-              <p className="mb-1 text-xs text-muted">
-                Tags: {baseEvent.tags.length ? baseEvent.tags.join(' ') : '—'}
+              <p className="text-base font-semibold text-foreground">
+                {baseEvent.title}
               </p>
               {canManage ? (
                 <button
@@ -81,7 +74,7 @@ export function ChronologyEventSidebar({
               ) : null}
 
               {calendarLike ? (
-                <ChronologyEventManagePanel
+                <ChronologyEventInlineDetail
                   campaignHandle={campaignHandle}
                   baseEvent={baseEvent}
                   categories={categories}
@@ -91,15 +84,18 @@ export function ChronologyEventSidebar({
                   dateSeed={dateSeed}
                   onMutated={onMutated}
                   onDeleted={onDeleted}
-                  variant="sidebar"
                 />
               ) : (
-                <p className="text-xs text-muted">Calendar profile unavailable for editing.</p>
+                <p className="text-xs text-muted">
+                  Calendar profile unavailable for editing.
+                </p>
               )}
             </div>
 
             {categoryFooter ? (
-              <div className="shrink-0 border-t border-border bg-background/90 p-3">{categoryFooter}</div>
+              <div className="shrink-0 border-t border-border bg-background/90 p-3">
+                {categoryFooter}
+              </div>
             ) : null}
           </div>
         ) : null}
