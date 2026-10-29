@@ -3,7 +3,7 @@ const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR;
 
 import {
   DEFAULT_CLIMATE_ASPECT,
-  normalizeClimateAspect,
+  configuredClimateAspect,
   type ClimateAspect,
 } from './climateAspect';
 
@@ -135,7 +135,7 @@ export function parseMonths(value: unknown): CalendarMonth[] {
       name,
       length,
       type,
-      climateAspect: normalizeClimateAspect(row.climateAspect),
+      climateAspect: configuredClimateAspect(row.climateAspect),
     });
   }
   return months;
@@ -176,7 +176,7 @@ function parseMonthEntry(value: unknown): CalendarMonth | null {
   const typeRaw = asString(row.type, 'standard');
   const type = typeRaw === 'intercalary' ? 'intercalary' : 'standard';
   if (!name) return null;
-  return { name, length, type };
+  return { name, length, type, climateAspect: configuredClimateAspect(row.climateAspect) };
 }
 
 export function parseLeapRules(value: unknown): LeapDayRule[] {

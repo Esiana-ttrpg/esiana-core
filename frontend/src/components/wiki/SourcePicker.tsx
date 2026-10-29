@@ -82,6 +82,6 @@ export function SourcePicker({ campaignId, request, onClose }: { campaignId: str
           {results.map((result) => <button key={`${result.identity.providerId}:${result.identity.sourceId}`} type="button" onClick={() => choose(result)} className="flex w-full items-start gap-3 px-4 py-2 text-left hover:bg-muted/20"><ProviderIcon provider={providers.find((provider) => provider.id === result.identity.providerId)} /><span><span className="block text-sm text-foreground">{result.metadata.title}</span><span className="block text-xs text-muted">{[result.metadata.authors?.join(', '), result.metadata.publisher, result.metadata.year].filter(Boolean).join(' · ') || result.identity.providerId}</span></span></button>)}
         </div>
       </div>
-    </div>, document.body,
+    </div>, request.editor.view.dom.closest('dialog[open]') ?? document.body,
   );
 }

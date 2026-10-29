@@ -1,13 +1,10 @@
-import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { useSearchParams } from 'react-router-dom';
-import { Loader2, Plus, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChronologyEventSidebar } from '@/components/chronology/ChronologyEventSidebar';
-import { FantasyDatePicker } from '@/components/chronology/FantasyDatePicker';
-import { ConditionTreeBuilder } from '@/components/chronology/ConditionTreeBuilder';
+import { ChronologyCreateEventDialog } from '@/components/chronology/ChronologyCreateEventDialog';
 import { ErasView } from '@/components/chronology/ErasView';
-import { MoonOverridesEditor } from '@/components/chronology/MoonOverridesEditor';
 import { TechTreeTimeline } from '@/components/chronology/TechTreeTimeline';
 import {
   UniverseHeader,
@@ -20,21 +17,17 @@ import { WidescreenCalendarView } from '@/components/chronology/WidescreenCalend
 import { useWiki } from '@/contexts/WikiContext';
 import { campaignTimeTrackingPath } from '@/lib/campaignPaths';
 import {
-  type ConditionNode,
   fetchChronologyTimeline,
   type ChronologyTimelineBundle,
-  type MoonOverride,
   type TimelineBaseEventRecord,
   type TimelineOccurrenceRecord,
 } from '@/lib/chronologyApi';
-import { createCalendarEvent } from '@/lib/calendarEventsApi';
 import { createChronologyCategory } from '@/lib/chronologyCategoriesApi';
 import {
-  clampChronologyDate,
   nowFromCalendarState,
   type ChronologyDateParts,
 } from '@/lib/chronologyDates';
-import { calendarEpochMinuteForDate, type FantasyCalendarLike } from '@/lib/timeEngine';
+import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import {
   fetchTimeTracking,
   type FantasyCalendarApiRow,
@@ -60,7 +53,12 @@ function calendarApiRowToLike(row: FantasyCalendarApiRow): FantasyCalendarLike {
 
 function parseActiveView(raw: string | null): ChronologyView {
   if (raw === 'events') return 'eras';
-  if (raw === 'timeline' || raw === 'eras' || raw === 'calendar' || raw === 'feed') {
+  if (
+    raw === 'timeline' ||
+    raw === 'eras' ||
+    raw === 'calendar' ||
+    raw === 'feed'
+  ) {
     return raw;
   }
   return 'calendar';
@@ -68,7 +66,7 @@ function parseActiveView(raw: string | null): ChronologyView {
 
 export function ChronologyPage() {
   const { t } = useTranslation();
-  const { campaignHandle, campaign, can } = useWiki();
+  const { campaignHandle, can } = useWiki();
   const [searchParams] = useSearchParams();
   const requestedView = searchParams.get('view');
   const windowMode = searchParams.get('windowMode') ?? 'YEAR_RANGE';
@@ -77,7 +75,8 @@ export function ChronologyPage() {
   const domainsParam = searchParams.get('domains');
 
   const [bundle, setBundle] = useState<ChronologyTimelineBundle | null>(null);
-  const [overlayBundle, setOverlayBundle] = useState<ConvergenceOverlayBundle | null>(null);
+  const [overlayBundle, setOverlayBundle] =
+    useState<ConvergenceOverlayBundle | null>(null);
   const [timeBundle, setTimeBundle] = useState<TimeTrackingBundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -89,34 +88,28 @@ export function ChronologyPage() {
       .filter(Boolean);
   });
   const [sessionLinkedOnly, setSessionLinkedOnly] = useState(false);
-  const [selectedOccurrence, setSelectedOccurrence] = useState<TimelineOccurrenceRecord | null>(null);
+  const [selectedOccurrence, setSelectedOccurrence] =
+    useState<TimelineOccurrenceRecord | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const [createTitle, setCreateTitle] = useState('');
-  const [createDescription, setCreateDescription] = useState('');
-  const [createCalendarId, setCreateCalendarId] = useState<string>('default');
-  const [createCategoryId, setCreateCategoryId] = useState<string | 'none'>('none');
-  const [createVisibility, setCreateVisibility] = useState<'PUBLIC' | 'PARTY' | 'DM_ONLY'>('PARTY');
-  const [createDuration, setCreateDuration] = useState(1);
-  const [createIsRepeating, setCreateIsRepeating] = useState(false);
-  const [createRepeatInterval, setCreateRepeatInterval] = useState<number | ''>('');
-  const [createRepeatUnit, setCreateRepeatUnit] = useState<'DAYS' | 'MONTHS' | 'YEARS' | 'ERAS'>('DAYS');
-  const [createLimitRepetitions, setCreateLimitRepetitions] = useState<number | ''>('');
-  const [createConditions, setCreateConditions] = useState<ConditionNode | null>(null);
-  const [createMoonOverrides, setCreateMoonOverrides] = useState<MoonOverride[] | null>(null);
-  const [creating, setCreating] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryColor, setNewCategoryColor] = useState('#a78bfa');
   const [creatingCategory, setCreatingCategory] = useState(false);
-  const [browseAnchor, setBrowseAnchor] = useState<ChronologyDateParts | null>(null);
-  const [createTargetDate, setCreateTargetDate] = useState<ChronologyDateParts>({
-    year: 1,
-    month: 0,
-    day: 1,
-  });
-  const createModalWasOpenRef = useRef(false);
-
-  const activeView = useMemo(() => parseActiveView(requestedView), [requestedView]);
+  const [browseCalendarId, setBrowseCalendarId] = useState<string>();
+  const handleCalendarBrowse = useCallback(
+    (anchor: ChronologyDateParts, calendarId?: string) => {
+      setBrowseAnchor(anchor);
+      setBrowseCalendarId(calendarId);
+    },
+    [],
+  );
+  const [browseAnchor, setBrowseAnchor] = useState<ChronologyDateParts | null>(
+    null,
+  );
+  const activeView = useMemo(
+    () => parseActiveView(requestedView),
+    [requestedView],
+  );
 
   const masterCalendar = useMemo(
     () =>
@@ -126,26 +119,7 @@ export function ChronologyPage() {
     [timeBundle],
   );
 
-  const createCalendarRow = useMemo(() => {
-    if (!timeBundle) return null;
-    const resolvedId =
-      createCalendarId === 'default' && timeBundle.calendars[0]
-        ? timeBundle.calendars[0].id
-        : createCalendarId;
-    return timeBundle.calendars.find((calendar) => calendar.id === resolvedId) ?? masterCalendar;
-  }, [timeBundle, createCalendarId, masterCalendar]);
-
-  const createCalendarLike = useMemo(
-    () => (createCalendarRow ? calendarApiRowToLike(createCalendarRow) : null),
-    [createCalendarRow],
-  );
-
   const canManageChronologyAccess = can(CampaignCapabilities.CHRONOLOGY_EDIT);
-
-  const managedCalendars = useMemo(() => {
-    if (!bundle) return [];
-    return bundle.calendars;
-  }, [bundle]);
 
   const editableEvents = useMemo(() => {
     if (!bundle) return [] as TimelineBaseEventRecord[];
@@ -154,7 +128,11 @@ export function ChronologyPage() {
 
   const selectedBaseEvent = useMemo(() => {
     if (!bundle || !selectedOccurrence) return null;
-    return bundle.baseEvents.find((event) => event.id === selectedOccurrence.baseEventId) ?? null;
+    return (
+      bundle.baseEvents.find(
+        (event) => event.id === selectedOccurrence.baseEventId,
+      ) ?? null
+    );
   }, [bundle, selectedOccurrence]);
 
   const selectedEventCalendarLike = useMemo(() => {
@@ -182,97 +160,100 @@ export function ChronologyPage() {
     }
   }, [activeView, selectedOccurrence, timeBundle, masterCalendar]);
 
-  useEffect(() => {
-    if (!showCreateModal) {
-      createModalWasOpenRef.current = false;
-      return;
-    }
-
-    if (!createModalWasOpenRef.current && timeBundle) {
-      const seed =
-        browseAnchor ??
-        (masterCalendar ? nowFromCalendarState(masterCalendar.state) : { year: 1, month: 0, day: 1 });
-      const calendarLike = createCalendarLike ?? (masterCalendar ? calendarApiRowToLike(masterCalendar) : null);
-      setCreateTargetDate(
-        calendarLike ? clampChronologyDate(calendarLike, seed) : seed,
-      );
-    }
-
-    createModalWasOpenRef.current = true;
-  }, [showCreateModal, browseAnchor, timeBundle, masterCalendar, createCalendarLike]);
-
-  useEffect(() => {
-    if (!showCreateModal || !createCalendarLike) return;
-    setCreateTargetDate((previous) => clampChronologyDate(createCalendarLike, previous));
-  }, [showCreateModal, createCalendarId, createCalendarLike]);
-
   const feedDomainsParam = useMemo(() => {
     if (feedDomains.length === 0) return undefined;
     return feedDomains.join(',');
   }, [feedDomains]);
 
-  const load = useCallback(async () => {
-    if (!campaignHandle) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const needsTimeline = activeView !== 'feed';
-      const needsOverlay = activeView === 'feed';
-      const [data, timeData, overlay] = await Promise.all([
-        needsTimeline
-          ? fetchChronologyTimeline(campaignHandle)
-          : Promise.resolve(null),
-        fetchTimeTracking(campaignHandle),
-        needsOverlay
-          ? fetchChronologyOverlay(campaignHandle, {
-              windowMode,
-              from,
-              to,
-              domains: feedDomainsParam,
-              sessionLinkedOnly,
-            })
-          : Promise.resolve(null),
-      ]);
-      if (data) {
-        setBundle(data);
-      }
-      setTimeBundle(timeData);
-      setOverlayBundle(overlay);
-      if (data) {
-        setSelectedOccurrence((previous) =>
-          previous
-            ? data.occurrences.find((event) => event.occurrenceId === previous.occurrenceId) ??
-              data.occurrences.find((event) => event.baseEventId === previous.baseEventId) ??
-              null
-            : null,
-        );
-        if (data.calendars.length > 0 && createCalendarId === 'default') {
-          setCreateCalendarId(data.calendars[0]?.id ?? 'default');
+  const load = useCallback(
+    async (background = false) => {
+      if (!campaignHandle) return;
+      if (!background) setLoading(true);
+      setError(null);
+      try {
+        const needsTimeline = activeView !== 'feed';
+        const needsOverlay = activeView === 'feed';
+        const [data, timeData, overlay] = await Promise.all([
+          needsTimeline
+            ? fetchChronologyTimeline(campaignHandle)
+            : Promise.resolve(null),
+          fetchTimeTracking(campaignHandle),
+          needsOverlay
+            ? fetchChronologyOverlay(campaignHandle, {
+                windowMode,
+                from,
+                to,
+                domains: feedDomainsParam,
+                sessionLinkedOnly,
+              })
+            : Promise.resolve(null),
+        ]);
+        if (data) {
+          setBundle(data);
         }
+        setTimeBundle(timeData);
+        setOverlayBundle(overlay);
+        if (data) {
+          setSelectedOccurrence((previous) =>
+            previous
+              ? (data.occurrences.find(
+                  (event) => event.occurrenceId === previous.occurrenceId,
+                ) ??
+                data.occurrences.find(
+                  (event) => event.baseEventId === previous.baseEventId,
+                ) ??
+                null)
+              : null,
+          );
+        }
+      } catch (err) {
+        if (background) throw err;
+        setError(
+          err instanceof Error
+            ? err.message
+            : t('campaign.timeline.loadFailed'),
+        );
+        if (!background) {
+          setBundle(null);
+          setTimeBundle(null);
+          setOverlayBundle(null);
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('campaign.timeline.loadFailed'));
-      setBundle(null);
-      setTimeBundle(null);
-      setOverlayBundle(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    campaignHandle,
-    windowMode,
-    from,
-    to,
-    createCalendarId,
-    activeView,
-    feedDomainsParam,
-    sessionLinkedOnly,
-    t,
-  ]);
+    },
+    [
+      campaignHandle,
+      windowMode,
+      from,
+      to,
+      activeView,
+      feedDomainsParam,
+      sessionLinkedOnly,
+      t,
+    ],
+  );
 
   const handleEventMutated = useCallback(async () => {
-    await load();
+    await load(true);
   }, [load]);
+
+  const openCreateEvent = async () => {
+    // A direct visit to Campaign Feed has not loaded the event catalogue yet.
+    if (!bundle) {
+      try {
+        setBundle(await fetchChronologyTimeline(campaignHandle!));
+      } catch (err) {
+        window.alert(
+          err instanceof Error
+            ? err.message
+            : t('campaign.timeline.loadFailed'),
+        );
+        return;
+      }
+    }
+    setShowCreateModal(true);
+  };
 
   const handleEventDeleted = useCallback(() => {
     setSelectedOccurrence(null);
@@ -307,84 +288,6 @@ export function ChronologyPage() {
     }));
   }, [timeBundle]);
 
-  async function handleCreateEvent() {
-    if (!campaignHandle || !bundle) return;
-    if (!createTitle.trim()) {
-      window.alert(t('campaign.timeline.titleRequired'));
-      return;
-    }
-    const calendarId =
-      createCalendarId === 'default' && bundle.calendars[0]
-        ? bundle.calendars[0].id
-        : createCalendarId;
-    if (!calendarId || calendarId === 'default') {
-      window.alert('Please choose a calendar track.');
-      return;
-    }
-    const calendarRow =
-      timeBundle?.calendars.find((calendar) => calendar.id === calendarId) ?? masterCalendar;
-    if (!calendarRow) {
-      window.alert('Calendar profile not found.');
-      return;
-    }
-
-    const calendarLike = calendarApiRowToLike(calendarRow);
-    const targetDate = clampChronologyDate(calendarLike, createTargetDate);
-    if (targetDate.year === null || targetDate.month === null || targetDate.day === null) {
-      window.alert('Please choose a valid event date.');
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const created = await createCalendarEvent(campaignHandle, calendarId, {
-        title: createTitle.trim(),
-        description: createDescription.trim() || undefined,
-        categoryId: createCategoryId === 'none' ? null : createCategoryId,
-        visibility: createVisibility,
-        targetYear: targetDate.year,
-        targetMonth: targetDate.month,
-        targetDay: targetDate.day,
-        targetEpochMinute: calendarEpochMinuteForDate(
-          calendarLike,
-          targetDate.year,
-          targetDate.month,
-          targetDate.day,
-        ).toString(),
-        duration: Math.max(1, createDuration),
-        isRepeating: createIsRepeating,
-        repeatInterval:
-          createIsRepeating && createRepeatInterval !== ''
-            ? Math.max(1, Number(createRepeatInterval))
-            : null,
-        repeatUnit: createIsRepeating ? createRepeatUnit : null,
-        limitRepetitions:
-          createLimitRepetitions === '' ? null : Math.max(1, Number(createLimitRepetitions)),
-        conditions: createConditions,
-        moonOverrides: createMoonOverrides,
-      });
-      await load();
-      setShowCreateModal(false);
-      setCreateTitle('');
-      setCreateDescription('');
-      setCreateCategoryId('none');
-      setCreateVisibility('PARTY');
-      setCreateDuration(1);
-      setCreateIsRepeating(false);
-      setCreateRepeatInterval('');
-      setCreateLimitRepetitions('');
-      setCreateConditions(null);
-      setCreateMoonOverrides(null);
-      setSelectedOccurrence(
-        bundle?.occurrences.find((row) => row.baseEventId === created.id) ?? null,
-      );
-    } catch (err) {
-      window.alert(err instanceof Error ? err.message : t('campaign.timeline.createEventFailed'));
-    } finally {
-      setCreating(false);
-    }
-  }
-
   async function handleCreateCategory() {
     if (!campaignHandle || !newCategoryName.trim()) return;
     setCreatingCategory(true);
@@ -397,53 +300,56 @@ export function ChronologyPage() {
       await load();
     } catch (err) {
       window.alert(
-        err instanceof Error ? err.message : t('campaign.timeline.createCategoryFailed'),
+        err instanceof Error
+          ? err.message
+          : t('campaign.timeline.createCategoryFailed'),
       );
     } finally {
       setCreatingCategory(false);
     }
   }
 
-  const categoryFooter = canManageChronologyAccess && bundle ? (
-    <div className="space-y-2">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-        {t('campaign.timeline.categoriesLabel')}
-      </p>
-      <div className="flex flex-wrap gap-1">
-        {bundle.categories.map((category) => (
-          <span
-            key={category.id}
-            className="rounded-full border border-border px-2 py-0.5 text-[10px]"
-            style={{ backgroundColor: `${category.color ?? '#334155'}22` }}
+  const categoryFooter =
+    canManageChronologyAccess && bundle ? (
+      <div className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+          {t('campaign.timeline.categoriesLabel')}
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {bundle.categories.map((category) => (
+            <span
+              key={category.id}
+              className="rounded-full border border-border px-2 py-0.5 text-[10px]"
+              style={{ backgroundColor: `${category.color ?? '#334155'}22` }}
+            >
+              {category.name}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-[1fr_90px_auto] gap-2">
+          <input
+            value={newCategoryName}
+            onChange={(event) => setNewCategoryName(event.target.value)}
+            placeholder="New category"
+            className="rounded border border-border bg-background px-2 py-1 text-xs"
+          />
+          <input
+            type="color"
+            value={newCategoryColor}
+            onChange={(event) => setNewCategoryColor(event.target.value)}
+            className="h-8 rounded border border-border bg-background"
+          />
+          <button
+            type="button"
+            disabled={creatingCategory || !newCategoryName.trim()}
+            onClick={() => void handleCreateCategory()}
+            className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
           >
-            {category.name}
-          </span>
-        ))}
+            {t('campaign.timeline.addCategory')}
+          </button>
+        </div>
       </div>
-      <div className="grid grid-cols-[1fr_90px_auto] gap-2">
-        <input
-          value={newCategoryName}
-          onChange={(event) => setNewCategoryName(event.target.value)}
-          placeholder="New category"
-          className="rounded border border-border bg-background px-2 py-1 text-xs"
-        />
-        <input
-          type="color"
-          value={newCategoryColor}
-          onChange={(event) => setNewCategoryColor(event.target.value)}
-          className="h-8 rounded border border-border bg-background"
-        />
-        <button
-          type="button"
-          disabled={creatingCategory || !newCategoryName.trim()}
-          onClick={() => void handleCreateCategory()}
-          className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50"
-        >
-          {t('campaign.timeline.addCategory')}
-        </button>
-      </div>
-    </div>
-  ) : null;
+    ) : null;
 
   if (!campaignHandle) {
     return null;
@@ -456,7 +362,7 @@ export function ChronologyPage() {
         activeView={activeView}
         clockPills={calendarClockPills}
         canCreateEvent={canManageChronologyAccess}
-        onCreateEvent={() => setShowCreateModal(true)}
+        onCreateEvent={() => void openCreateEvent()}
         settingsHref={campaignTimeTrackingPath(campaignHandle)}
       />
 
@@ -500,7 +406,7 @@ export function ChronologyPage() {
               baseEvents={bundle.baseEvents}
               categories={bundle.categories}
               canManage={canManageChronologyAccess}
-              onBrowseAnchorChange={setBrowseAnchor}
+              onBrowseAnchorChange={handleCalendarBrowse}
               onEventMutated={handleEventMutated}
             />
           )}
@@ -514,7 +420,9 @@ export function ChronologyPage() {
                   events={bundle.events}
                   selectedBaseEventId={selectedOccurrence?.baseEventId ?? null}
                   onSelectEvent={setSelectedOccurrence}
-                  showElevatedVisibility={can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW)}
+                  showElevatedVisibility={can(
+                    CampaignCapabilities.NARRATIVE_ELEVATED_VIEW,
+                  )}
                 />
               </div>
               <div className="basis-1/5 min-w-0 overflow-hidden">
@@ -548,7 +456,7 @@ export function ChronologyPage() {
           {activeView === 'eras' && bundle && (
             <ErasView
               eras={bundle.eras ?? []}
-              onErasChanged={load}
+              onErasChanged={() => load(true)}
               campaignHandle={campaignHandle}
               categories={bundle.categories}
               calendars={bundle.calendars}
@@ -566,206 +474,19 @@ export function ChronologyPage() {
         </div>
       )}
 
-      {canManageChronologyAccess && showCreateModal && bundle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-xl border border-border bg-background p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className={TYPE_DISPLAY_CLASS}>
-                {t('campaign.timeline.createEventTitle')}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setCreateTitle('');
-                  setCreateDescription('');
-                  setCreateCategoryId('none');
-                }}
-                className="rounded p-1 text-muted hover:bg-surface hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="space-y-3 text-sm">
-              <label className="block space-y-1">
-                <span className="text-xs font-semibold text-muted">
-                  {t('campaign.timeline.fieldTitle')}
-                </span>
-                <input
-                  type="text"
-                  value={createTitle}
-                  onChange={(event) => setCreateTitle(event.target.value)}
-                  className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground"
-                  maxLength={120}
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-xs font-semibold text-muted">
-                  {t('campaign.timeline.fieldDescription')}
-                </span>
-                <textarea
-                  value={createDescription}
-                  onChange={(event) => setCreateDescription(event.target.value)}
-                  rows={3}
-                  className="w-full rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground"
-                />
-              </label>
-              <label className="block space-y-1">
-                <span className="text-xs font-semibold text-muted">Calendar track</span>
-                <select
-                  value={createCalendarId}
-                  onChange={(event) => setCreateCalendarId(event.target.value)}
-                  className="block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-                >
-                  <option value="default">Choose...</option>
-                  {managedCalendars.map((calendar) => (
-                    <option key={calendar.id} value={calendar.id}>
-                      {calendar.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {createCalendarLike && (
-                <FantasyDatePicker
-                  calendar={createCalendarLike}
-                  value={createTargetDate}
-                  onChange={setCreateTargetDate}
-                  disabled={creating}
-                />
-              )}
-              <label className="block space-y-1">
-                <span className="text-xs font-semibold text-muted">Category</span>
-                <select
-                  value={createCategoryId}
-                  onChange={(event) =>
-                    setCreateCategoryId(event.target.value === 'none' ? 'none' : event.target.value)
-                  }
-                  className="block w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-                >
-                  <option value="none">Uncategorized</option>
-                  {bundle.categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="grid gap-2 md:grid-cols-2">
-                <label className="block space-y-1">
-                  <span className="text-xs font-semibold text-muted">Duration (days)</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={createDuration}
-                    onChange={(event) =>
-                      setCreateDuration(Math.max(1, Number(event.target.value) || 1))
-                    }
-                    className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-foreground"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted">
-                  <input
-                    type="checkbox"
-                    checked={createIsRepeating}
-                    onChange={(event) => setCreateIsRepeating(event.target.checked)}
-                  />
-                  Repeating
-                </label>
-              </div>
-              {createIsRepeating && (
-                <div className="grid gap-2 md:grid-cols-3">
-                  <input
-                    type="number"
-                    min={1}
-                    value={createRepeatInterval}
-                    onChange={(event) =>
-                      setCreateRepeatInterval(
-                        event.target.value ? Math.max(1, Number(event.target.value)) : '',
-                      )
-                    }
-                    placeholder="Interval"
-                    className="rounded border border-border bg-background px-2 py-1 text-xs"
-                  />
-                  <select
-                    value={createRepeatUnit}
-                    onChange={(event) =>
-                      setCreateRepeatUnit(
-                        event.target.value as 'DAYS' | 'MONTHS' | 'YEARS' | 'ERAS',
-                      )
-                    }
-                    className="rounded border border-border bg-background px-2 py-1 text-xs"
-                  >
-                    <option value="DAYS">DAYS</option>
-                    <option value="MONTHS">MONTHS</option>
-                    <option value="YEARS">YEARS</option>
-                    <option value="ERAS">ERAS</option>
-                  </select>
-                  <input
-                    type="number"
-                    min={1}
-                    value={createLimitRepetitions}
-                    onChange={(event) =>
-                      setCreateLimitRepetitions(
-                        event.target.value ? Math.max(1, Number(event.target.value)) : '',
-                      )
-                    }
-                    placeholder="Limit repetitions"
-                    className="rounded border border-border bg-background px-2 py-1 text-xs"
-                  />
-                </div>
-              )}
-              <ConditionTreeBuilder value={createConditions} onChange={setCreateConditions} />
-              <MoonOverridesEditor value={createMoonOverrides} onChange={setCreateMoonOverrides} />
-              <fieldset className="space-y-1 text-xs">
-                <legend className="font-semibold text-muted">Visibility</legend>
-                <div className="flex flex-wrap gap-2">
-                  {(['PUBLIC', 'PARTY', 'DM_ONLY'] as const).map((value) => (
-                    <label
-                      key={value}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 ${
-                        createVisibility === value
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border text-muted'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="create-event-visibility"
-                        value={value}
-                        checked={createVisibility === value}
-                        onChange={() => setCreateVisibility(value)}
-                        className="hidden"
-                      />
-                      <span className="text-[11px]">{value}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setCreateTitle('');
-                  setCreateDescription('');
-                }}
-                className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-surface"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={creating}
-                onClick={() => void handleCreateEvent()}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-background hover:bg-primary-hover disabled:opacity-50"
-              >
-                <Plus className="size-4" />
-                {creating ? 'Creating…' : 'Create Event'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {canManageChronologyAccess && showCreateModal && bundle && timeBundle && (
+        <ChronologyCreateEventDialog
+          campaignHandle={campaignHandle}
+          calendars={timeBundle.calendars}
+          categories={bundle.categories}
+          events={bundle.baseEvents}
+          initialDate={browseAnchor}
+          initialCalendarId={
+            activeView === 'calendar' ? browseCalendarId : undefined
+          }
+          onClose={() => setShowCreateModal(false)}
+          onMutated={handleEventMutated}
+        />
       )}
     </div>
   );

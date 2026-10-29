@@ -43,6 +43,16 @@ export function normalizeClimateAspect(value: unknown): ClimateAspect {
   return DEFAULT_CLIMATE_ASPECT;
 }
 
-export function getClimateAspectHeaderIcon(aspect: ClimateAspect): string | null {
+export function getClimateAspectHeaderIcon(
+  aspect: ClimateAspect,
+): string | null {
   return HEADER_ICONS[aspect];
+}
+
+export function configuredClimateAspect(
+  value: unknown,
+): ClimateAspect | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim().toUpperCase();
+  return CLIMATE_ASPECTS.find((aspect) => aspect === normalized);
 }

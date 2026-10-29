@@ -13,6 +13,7 @@ import { WikiCodexSuggestionList } from './WikiCodexSuggestionList';
 type SlashMode = 'default' | 'codex-browse';
 
 interface WikiSlashSuggestionPopoverProps {
+  portalContainer?: Element;
   state: SlashSuggestionState;
   index: WikiLinkIndexEntry[];
   suggestionOptions?: Omit<ResolveWikiSuggestionOptions, 'limit'>;
@@ -25,6 +26,7 @@ interface WikiSlashSuggestionPopoverProps {
 
 export function WikiSlashSuggestionPopover({
   state,
+  portalContainer,
   index,
   suggestionOptions,
   onSelect,
@@ -142,6 +144,6 @@ export function WikiSlashSuggestionPopover({
         </div>
       ) : null}
     </div>,
-    document.body,
+    portalContainer ?? document.body,
   );
 }
