@@ -69,6 +69,7 @@
     "zod": "^4.6.6"
   },
   "devDependencies": {
+    "@babel/parser": "7.29.8",
     "@types/bcryptjs": "^3.0.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cookie-parser": "^1.4.8",
