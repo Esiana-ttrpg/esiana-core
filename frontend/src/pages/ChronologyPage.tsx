@@ -481,7 +481,9 @@ export function ChronologyPage() {
           categories={bundle.categories}
           events={bundle.baseEvents}
           initialDate={browseAnchor}
-          initialCalendarId={browseCalendarId}
+          initialCalendarId={
+            activeView === 'calendar' ? browseCalendarId : undefined
+          }
           onClose={() => setShowCreateModal(false)}
           onMutated={handleEventMutated}
         />

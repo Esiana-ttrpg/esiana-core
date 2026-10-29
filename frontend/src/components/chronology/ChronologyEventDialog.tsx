@@ -17,6 +17,7 @@ export function ChronologyEventDialog({
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const mountedRef = useRef(false);
   const titleId = useId();
   const { navigator } = useContext(UNSAFE_NavigationContext);
   const state = useRef({ dirty, busy, onClose });
@@ -31,6 +32,7 @@ export function ChronologyEventDialog({
   useEffect(() => {
     const dialog = dialogRef.current!;
     const previousFocus = document.activeElement as HTMLElement | null;
+    mountedRef.current = true;
     dialog.showModal();
     const beforeUnload = (event: BeforeUnloadEvent) => {
       if (state.current.dirty || state.current.busy) {
@@ -92,6 +94,7 @@ export function ChronologyEventDialog({
     window.addEventListener('popstate', pop, true);
     document.addEventListener('click', externalLink, true);
     return () => {
+      mountedRef.current = false;
       navigator.push = push;
       navigator.replace = replace;
       window.removeEventListener('beforeunload', beforeUnload);
@@ -110,6 +113,12 @@ export function ChronologyEventDialog({
       onKeyDown={(event) => event.stopPropagation()}
       onCancel={(event) => {
         event.preventDefault();
+        close();
+      }}
+      onClose={(event) => {
+        const dialog = event.currentTarget;
+        if (!mountedRef.current || event.target !== dialog || dialog.open) return;
+        dialog.showModal();
         close();
       }}
       onClick={(event) => {

@@ -131,6 +131,13 @@ try {
   await page.keyboard.press('Escape');
   await visible(page.getByRole('dialog', { name: 'Edit event', exact: true }));
   assert.equal(await title.inputValue(), 'Changed journey');
+  // Native close() must reopen the modal before applying the discard guard.
+  const nativeClosePrompt = page.waitForEvent('dialog');
+  await page.getByRole('dialog').evaluate((el) => el.close());
+  await (await nativeClosePrompt).dismiss();
+  await visible(page.getByRole('dialog', { name: 'Edit event', exact: true }));
+  assert.equal(await page.getByRole('dialog').evaluate((el) => el.open), true);
+  assert.equal(await title.inputValue(), 'Changed journey');
   page.once('dialog', (d) => d.dismiss());
   await page
     .getByRole('dialog')
@@ -217,7 +224,9 @@ try {
   const dialogBox = await page.getByRole('dialog').boundingBox();
   assert.equal(dialogBox.width, 390);
   assert.equal(dialogBox.height, 844);
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  // A clean native close also has to clear the parent's open state.
+  await page.getByRole('dialog').evaluate((el) => el.close());
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
   await page.goto('http://localhost:5199/__chronology?custom&player');
   await page.getByRole('table').waitFor();
   assert.equal(await page.locator('th').count(), 5);
@@ -271,7 +280,7 @@ try {
     );
   }
   page.once('dialog', (d) => d.accept());
-  await page.keyboard.press('Escape');
+  await page.getByRole('dialog').evaluate((el) => el.close());
   await page.getByRole('dialog').waitFor({ state: 'detached' });
   assert.deepEqual(errors, []);
   console.log(
