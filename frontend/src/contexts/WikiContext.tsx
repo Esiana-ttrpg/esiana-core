@@ -84,11 +84,12 @@ export function WikiProvider({ children }: { children: ReactNode }) {
     const generation = ++refreshGenerationRef.current;
     setLoading(true);
     setError(null);
+    void fetchPersonalPins(campaignHandle).then((pins) => {
+      if (generation !== refreshGenerationRef.current) return;
+      setPinnedShortcuts(pins);
+    });
     try {
-      const [data, pins] = await Promise.all([
-        fetchWikiTreePayload(campaignHandle),
-        fetchPersonalPins(campaignHandle),
-      ]);
+      const data = await fetchWikiTreePayload(campaignHandle);
       if (generation !== refreshGenerationRef.current) return;
       setTree(data.tree ?? []);
       setCampaign(data.campaign ?? null);
@@ -97,14 +98,12 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPlayerSessionNotesFolderTitle(
         data.playerSessionNotesFolderTitle ?? PLAYER_SESSION_NOTES_TITLE,
       );
-      setPinnedShortcuts(pins);
     } catch (err) {
       if (generation !== refreshGenerationRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load wiki');
       setTree([]);
       setCampaign(null);
       setPlayers([]);
-      setPinnedShortcuts([]);
       setSidebarConfig(normalizeSidebarConfig(null));
     } finally {
       if (generation === refreshGenerationRef.current) setLoading(false);
