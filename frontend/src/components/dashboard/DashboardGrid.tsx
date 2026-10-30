@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import GridLayout, { type Layout } from 'react-grid-layout';
+import GridLayout from 'react-grid-layout/legacy';
+import type { Layout } from 'react-grid-layout';
 import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { updateDashboardLayout } from '@/lib/dashboard';
@@ -212,7 +213,7 @@ export function DashboardGrid({
   );
 
   const handleLayoutCommit = useCallback(
-    (layout: Layout[]) => {
+    (layout: readonly Layout[]) => {
       if (!customizeMode) return;
       const nextWidgets = config.widgets.map((widget) => {
         if (!widget.enabled) return widget;
