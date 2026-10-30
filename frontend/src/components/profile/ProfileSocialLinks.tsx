@@ -1,11 +1,12 @@
 import {
   Bird,
   ExternalLink,
-  Github,
   MessageCircle,
   Rss,
   Smile,
 } from 'lucide-react';
+import type { IconType } from 'react-icons';
+import { SiGithub } from 'react-icons/si';
 import type { UserSocialLinks } from '@/types/user';
 
 type SocialKey = keyof UserSocialLinks;
@@ -13,11 +14,11 @@ type SocialKey = keyof UserSocialLinks;
 const SOCIAL_CONFIG: Array<{
   key: SocialKey;
   label: string;
-  Icon: typeof Github;
+  Icon: IconType;
 }> = [
   { key: 'bluesky', label: 'Bluesky', Icon: Bird },
   { key: 'discord', label: 'Discord', Icon: MessageCircle },
-  { key: 'github', label: 'GitHub', Icon: Github },
+  { key: 'github', label: 'GitHub', Icon: SiGithub },
   { key: 'reddit', label: 'Reddit', Icon: Smile },
   { key: 'mastodon', label: 'Mastodon', Icon: Rss },
   { key: 'otherLink', label: 'Link', Icon: ExternalLink },
