@@ -4,7 +4,7 @@ import { parseTargetUrl } from './fetchPluginManifest.js';
 import { SsrfGuardError } from './ssrfGuard.js';
 import { fetchAssetRemoteBuffer, NetworkFetchError } from './networkFetch.js';
 import { getUrlImportSettings } from './imageUploadSettings.js';
-import { detectImageFromBuffer, UploadValidationError } from './uploadValidation.js';
+import { detectImageFromBuffer, resolveUploadedFilePath, UploadValidationError } from './uploadValidation.js';
 import {
   ingestBinaryBuffer,
   ingestImageBuffer,
@@ -13,7 +13,6 @@ import {
   ActiveStorageUnavailableError,
 } from './assetIngest.js';
 import { AssetTypes, type AssetType } from '../types/domain.js';
-import { env } from '../config/env.js';
 
 export class UrlImportError extends Error {
   constructor(message: string) {
@@ -46,10 +45,7 @@ async function readFileBuffer(file: Express.Multer.File): Promise<Buffer> {
   if (file.buffer?.length) {
     return file.buffer;
   }
-  const diskPath =
-    file.path && fs.existsSync(file.path)
-      ? file.path
-      : path.join(env.uploadsDir, file.filename);
+  const diskPath = resolveUploadedFilePath(file);
   return fs.promises.readFile(diskPath);
 }
 
