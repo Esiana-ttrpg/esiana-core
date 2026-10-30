@@ -3,7 +3,7 @@ import { CampaignCapabilities as C } from '@shared/campaignPolicy/capabilities';
 import { apiFetch } from '@/lib/api';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, RefreshCw, Settings } from 'lucide-react';
+import { ChevronDown, Copy, RefreshCw, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -437,17 +437,36 @@ export function CampaignSettingsPage() {
   }
 
   return (
-    <PageShell width="standard" className="space-y-6">
+    <PageShell width="standard" className="space-y-4 md:space-y-6">
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <Settings className="h-6 w-6 text-foreground" />
           <div>
             <h1 className="text-2xl font-bold text-white">{t('campaign.settings.pageTitle')}</h1>
-            <p className="text-sm text-muted">{t('campaign.settings.pageSubtitle')}</p>
+            <p className="hidden text-sm text-muted md:block">{t('campaign.settings.pageSubtitle')}</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 rounded-full bg-surface p-2">
+        <div className="relative md:hidden">
+          <select
+            aria-label={t('campaign.settings.pageTitle')}
+            value={activeTab}
+            onChange={(event) => selectTab(parseSettingsTab(event.target.value))}
+            className={`${controlClasses} min-h-11 appearance-none pr-10`}
+          >
+            {settingsTabs.map((tab) => (
+              <option key={tab.id} value={tab.id}>
+                {tab.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            aria-hidden="true"
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+          />
+        </div>
+
+        <div className="hidden flex-wrap gap-2 rounded-full bg-surface p-2 md:flex">
           {settingsTabs.map((tab) => (
             <button
               key={tab.id}
