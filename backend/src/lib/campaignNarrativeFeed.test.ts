@@ -5,6 +5,10 @@ import { prisma } from './prisma.js';
 import { buildCampaignContext } from './campaignScopeContext.js';
 import { buildCampaignNarrativeFeed, type CampaignFeedOptions } from './campaignNarrativeFeed.js';
 import { buildConvergenceOverlay } from './chronologyConvergenceService.js';
+import { getChronologyOverlayBundle } from '../controllers/chronologyController.js';
+import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
+import type { Response } from 'express';
+import type { ConvergenceOverlayBundle } from '../../../shared/chronologyConvergence.js';
 
 if (process.env.CHRONOLOGY_ERA_TEST_DATABASE_URL) {
   process.env.DATABASE_PROVIDER = 'sqlite'; process.env.DATABASE_URL = process.env.CHRONOLOGY_ERA_TEST_DATABASE_URL; process.env.NODE_ENV = 'test';
@@ -66,6 +70,37 @@ test('campaign feed: real sources, authorizations, excerpts, recurrence, progres
   const legacy = await buildConvergenceOverlay({ campaignId: campaign.id, campaignHandle: campaign.handle, role: 'GAMEMASTER', allowPlayerChronologyManagement: false, window: { mode: 'YEAR_RANGE', from: '0', to: '9999' }, domains: ['world_event'], includeSuppressed: false, sessionLinkedOnly: false });
   assert.equal(legacy.feed, undefined);
   assert.ok(legacy.entries.length > elevated.entries.filter(row => row.domain === 'world_event').length);
+  // Explicit invalid source names must never broaden the request to every source.
+  const requestDomains = async (domains?: string) => {
+    let response: ConvergenceOverlayBundle | undefined;
+    await getChronologyOverlayBundle({ campaign: player, query: { order: 'desc', ...(domains === undefined ? {} : { domains }) } } as unknown as CampaignScopedRequest,
+      { json: (value: ConvergenceOverlayBundle) => { response = value; } } as Response);
+    return response!;
+  };
+  assert.ok((await requestDomains()).entries.length > 0);
+  assert.equal((await requestDomains('')).entries.length, 0);
+  assert.equal((await requestDomains('invalid-source')).entries.length, 0);
+  assert.ok((await requestDomains('invalid-source,world_event')).entries.every(row => row.domain === 'world_event'));
+  // The anchor lies before the requested window, but still authorizes the period's recorded outcome within it.
+  const insidePeriod = await buildCampaignNarrativeFeed(player, { ...options, from: String(24n * 1440n + 123n), to: String(30n * 1440n + 123n) });
+  assert.ok(insidePeriod.entries.some(row => row.entryId === `project-outcome:${project.id}`));
+  const authorIds = Array.from({ length: 201 }, (_, index) => `${stamp}-author-${index}`);
+  await prisma.wikiPage.createMany({ data: authorIds.map((id, index) => ({ id, campaignId: campaign.id, title: 'Author-only body', visibility: 'Party',
+    metadata: { isSessionAnchor: index % 2 === 0, isSessionAuthor: true, fantasyEpochMinute: String(19n * 1440n + 123n) },
+    blocks: [{ id: 'session-note-body', content: { markdown: 'AUTHOR NOTES MUST NOT CONSUME SUMMARY BUDGET' } }] })) });
+  await prisma.campaignSessionTimeline.createMany({ data: authorIds.map((wikiPageId, index) => ({ campaignId: campaign.id, wikiPageId, authorId: user.id, sequenceOrder: 10000 + index })) });
+  const authorsExcluded = await buildCampaignNarrativeFeed(player, options);
+  assert.ok(authorsExcluded.entries.some(row => row.domain === 'session_chronicle' && row.source.subEntityId === page.id));
+  assert.ok(!JSON.stringify(authorsExcluded).includes('AUTHOR NOTES'));
+  assert.ok(!authorsExcluded.feed!.sourceWarnings.some(row => row.source === 'session_chronicle' && row.code === 'SOURCE_TRUNCATED'));
+  const anchorIds = Array.from({ length: 201 }, (_, index) => `${stamp}-anchor-${index}`);
+  await prisma.wikiPage.createMany({ data: anchorIds.map(id => ({ id, campaignId: campaign.id, title: 'Canonical summary', visibility: 'Party',
+    metadata: { isSessionAnchor: true, fantasyEpochMinute: String(19n * 1440n + 123n) },
+    blocks: [{ id: 'session-summary', content: { markdown: 'A canonical discovery.' } }] })) });
+  await prisma.campaignSessionTimeline.createMany({ data: anchorIds.map((wikiPageId, index) => ({ campaignId: campaign.id, wikiPageId, authorId: user.id, sequenceOrder: 100 + index })) });
+  const summaryCap = await buildCampaignNarrativeFeed(player, options);
+  assert.equal(summaryCap.entries.filter(row => row.domain === 'session_chronicle').length, 200);
+  assert.ok(summaryCap.feed!.sourceWarnings.some(row => row.source === 'session_chronicle' && row.code === 'SOURCE_TRUNCATED'));
   const ancient = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Ancient recorded discovery', targetEpochMinute: 123n, visibility: 'PARTY' } });
   await prisma.calendarEvent.createMany({ data: Array.from({ length: 2005 }, (_, index) => ({ calendarId: calendar.id, title: `Later record ${index}`, targetEpochMinute: 100n * 1440n + 123n, visibility: 'PARTY' })) });
   const boundedEarlier = await buildCampaignNarrativeFeed(player, { ...options, from: '123', to: '1563' });
@@ -75,4 +110,11 @@ test('campaign feed: real sources, authorizations, excerpts, recurrence, progres
   assert.ok(capped.feed!.sourceWarnings.some(row => row.code === 'SOURCE_TRUNCATED'));
   assert.ok(capped.truncation.capped);
   assert.equal(capped.entries.filter(row => row.instant.epochMinute !== null).length, 2000);
+  // Raw source scans can truncate even when authorization removes every candidate.
+  await prisma.calendarEvent.createMany({ data: Array.from({ length: 2001 }, () => ({ calendarId: calendar.id, title: 'Private scan candidate', targetEpochMinute: 102n * 1440n + 123n, visibility: 'DM_ONLY' })) });
+  await prisma.wikiPage.createMany({ data: Array.from({ length: 2001 }, () => ({ campaignId: campaign.id, title: 'Private page scan candidate', visibility: 'DM_Only' })) });
+  const rawCap = await buildCampaignNarrativeFeed(player, { ...options, from: String(102n * 1440n), to: String(103n * 1440n), includeFuture: true });
+  for (const source of ['world_event', 'lore_reference']) assert.ok(rawCap.feed!.sourceWarnings.some(row => row.source === source && row.code === 'SOURCE_TRUNCATED'));
+  assert.ok(!JSON.stringify(rawCap).includes('Private scan candidate'));
+  assert.ok(!JSON.stringify(rawCap).includes('Private page scan candidate'));
 });

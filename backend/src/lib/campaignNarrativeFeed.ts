@@ -90,8 +90,8 @@ export async function buildCampaignNarrativeFeed(ctx: CampaignContext, options: 
   const authorizedEvents = eventRows.filter(row => chronologyCanView(ctx, row.visibility)
     && (elevated || isTimelineEventVisible(projectTimelineEventVisibility(row.id, row.visibility, eventPresence, viewer))));
   const visibleEvents = authorizedEvents.slice(0, INVENTORY_LIMIT);
-  if (authorizedEvents.length > INVENTORY_LIMIT) warn('world_event', 'SOURCE_TRUNCATED', 'Authorized chronology inventory exceeded its source limit. Narrow the date window; recurrence expansion limits still apply.');
-  if (authorizedPages.length > INVENTORY_LIMIT) warn('lore_reference', 'SOURCE_TRUNCATED', 'Authorized canonical page inventory exceeded its source limit; some source references and summaries are unavailable.');
+  if (eventRows.length > INVENTORY_LIMIT) warn('world_event', 'SOURCE_TRUNCATED', 'Chronology source query exceeded its scan limit. Narrow the date window; recurrence expansion limits still apply.');
+  if (pageRows.length > INVENTORY_LIMIT) warn('lore_reference', 'SOURCE_TRUNCATED', 'Canonical page source query exceeded its scan limit; some source references and summaries are unavailable.');
   const enabled = (domain: ChronologyDomainKindValue) => options.domains === null || options.domains.includes(domain);
   const entries: ConvergenceTimelineEntry[] = [];
   const dateLabel = (minute: bigint) => {
@@ -164,16 +164,21 @@ export async function buildCampaignNarrativeFeed(ctx: CampaignContext, options: 
     if (entry.domain === 'world_event' && point) entry.sessionLink = { timelinePointId: point.id, sequenceOrder: point.sequenceOrder };
   }
   // Fetch only the authorized canonical anchors in the requested range, never per-author notes or transcripts.
-  const summaryIds = authorizedPoints.filter(row => {
+  const authorizedAnchors = authorizedPoints.filter(row => {
+    const meta = parseSessionNoteMetadata(pageMap.get(row.wikiPageId)!.metadata);
+    return meta.isSessionAnchor && !meta.isSessionAuthor;
+  });
+  const eligibleSummaryAnchors = authorizedAnchors.filter(row => {
     const minute = parseSessionNoteMetadata(pageMap.get(row.wikiPageId)!.metadata).fantasyEpochMinute;
     return !minute || (/^-?\d+$/.test(minute) && BigInt(minute) >= BigInt(from) && BigInt(minute) < BigInt(to));
-  }).slice(0, 200).map(row => row.wikiPageId);
+  });
+  if (eligibleSummaryAnchors.length > 200) warn('session_chronicle', 'SOURCE_TRUNCATED', 'Eligible canonical session anchors exceeded the 200-summary limit. Narrow the date window to load other summaries.');
+  const summaryIds = eligibleSummaryAnchors.slice(0, 200).map(row => row.wikiPageId);
   const summaries = summaryIds.length ? await prisma.wikiPage.findMany({ where: { campaignId, id: { in: summaryIds }, deletedAt: null }, select: { id: true, blocks: true } }) : [];
   const summaryMap = new Map(summaries.map(row => [row.id, sessionSummaryExcerpt(Array.isArray(row.blocks)
     ? row.blocks.filter(block => block && typeof block === 'object' && !Array.isArray(block)
       && canViewWikiPage(typeof block.visibility === 'string' ? block.visibility : pageMap.get(row.id)!.visibility, ctx.role)) : [])]));
   warn('session_chronicle', 'SUMMARY_LIMIT', 'Canonical session excerpts are bounded to 400 characters and 200 authorized anchors per request. Private notes and transcripts are excluded.');
-  const sessionEpochs: { timelinePointId: string; sequenceOrder: number; epochMinute: string }[] = [];
   for (const point of authorizedPoints) {
     const page = pageMap.get(point.wikiPageId)!;
     const meta = parseSessionNoteMetadata(page.metadata);
@@ -182,7 +187,6 @@ export async function buildCampaignNarrativeFeed(ctx: CampaignContext, options: 
     const summary = summaryMap.get(page.id) ?? null;
     // Empty scheduled placeholders are not evidence that a session occurred.
     if (!summary) continue;
-    if (minute !== null && BigInt(minute) <= now) sessionEpochs.push({ timelinePointId: point.id, sequenceOrder: point.sequenceOrder, epochMinute: minute });
     add(anchorFromSessionTimelinePoint({ timelinePointId: point.id, wikiPageId: page.id, sequenceOrder: point.sequenceOrder, title: page.title, summary, fantasyEpochMinute: minute, plannedStartAt: null }),
       { datePrecision: minute === null ? 'undated' : 'minute', provenance: [`session_note:${page.id}`] }, [{ hrefKind: 'session_note', path: asPublicPagePath(`/campaigns/${handle}/notes/${point.id}`) }]);
   }
@@ -231,7 +235,7 @@ export async function buildCampaignNarrativeFeed(ctx: CampaignContext, options: 
     return meta.fantasyEpochMinute && /^-?\d+$/.test(meta.fantasyEpochMinute) && BigInt(meta.fantasyEpochMinute) <= now
       ? [{ timelinePointId: point.id, sequenceOrder: point.sequenceOrder, epochMinute: meta.fantasyEpochMinute }] : [];
   });
-  const authorizedSessionIds = new Set(sessionEpochs.map(row => row.timelinePointId));
+  const authorizedSessionIds = new Set(authorizedAnchors.map(row => row.id));
   const gaps = deriveDowntimePeriodGapsFromSessionEpochs({ sessionEpochs: allSessionEpochs, fallbackStartEpochMinute: null, currentEpochMinute: String(now) })
     .filter(gap => (!gap.sessionBeforeId || authorizedSessionIds.has(gap.sessionBeforeId)) && (!gap.sessionAfterId || authorizedSessionIds.has(gap.sessionAfterId)));
   const projects = await prisma.downtimeProject.findMany({ where: { campaignId, wikiPageId: { in: [...pageMap.keys()] }, completedAtEpochMinute: { not: null }, status: { in: ['COMPLETED', 'FAILED'] } }, take: INVENTORY_LIMIT + 1 });

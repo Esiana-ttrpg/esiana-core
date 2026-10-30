@@ -232,7 +232,7 @@ export async function getChronologyOverlayBundle(
       res.json(await buildCampaignNarrativeFeed(req.campaign!, {
         order: order as 'asc' | 'desc', importance: importance as FeedImportance[], includeFuture: req.query.includeFuture === 'true',
         from: req.query.from === undefined ? undefined : String(req.query.from), to: req.query.to === undefined ? undefined : String(req.query.to),
-        domains: req.query.domains === undefined ? null : String(req.query.domains) === '' ? [] : parseDomainsQuery(String(req.query.domains)), sessionLinkedOnly: req.query.sessionLinkedOnly === 'true',
+        domains: req.query.domains === undefined ? null : String(req.query.domains) === '' ? [] : parseDomainsQuery(String(req.query.domains)) ?? [], sessionLinkedOnly: req.query.sessionLinkedOnly === 'true',
       }));
     } catch (error) {
       if (error instanceof Error && error.message === 'INVALID_FEED_RANGE') res.status(400).json({ error: 'Choose a valid half-open epoch range.' });
