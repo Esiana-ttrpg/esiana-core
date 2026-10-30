@@ -332,7 +332,6 @@ export function WikiPage() {
     DEFAULT_BLOCK_DISPLAY_STATE,
   );
   const [showGridLines, setShowGridLines] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pageTags, setPageTags] = useState<WikiTagInput[]>([]);
   const [savedPageTags, setSavedPageTags] = useState<WikiTagInput[]>([]);
   const [allCampaignTags, setAllCampaignTags] = useState<WikiTag[]>([]);
@@ -1120,7 +1119,6 @@ export function WikiPage() {
     setFocusBlockType(null);
     setShowGridLines(false);
     setPageSettingsOpen(false);
-    setIsSearchOpen(false);
     setBlockDisplayState(DEFAULT_BLOCK_DISPLAY_STATE);
     setPageFetchState('loading');
     setPageData(null);
@@ -1468,10 +1466,6 @@ export function WikiPage() {
     applyWorkspaceOrchestration(workspaceMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial orchestration per page/mode
   }, [pageData, blocks.length, pageId, workspaceMode]);
-
-  function handleToggleSearch() {
-    setIsSearchOpen((prev) => !prev);
-  }
 
   function openEditFromStrip(fieldKey: string) {
     setInspectorFocusField(fieldKey);
@@ -2163,13 +2157,11 @@ export function WikiPage() {
             isSaving={isSaving}
             onSavePage={handleSavePage}
             isPinned={isPinned}
-            isSearchOpen={isSearchOpen}
             isEditingPage={isEditingPage}
             showGridLines={showGridLines}
             canDeleteWikiPage={canDeleteWikiPage}
             widgetOptions={widgetOptions}
             onTogglePin={handleTogglePin}
-            onToggleSearch={handleToggleSearch}
             onToggleEditPage={handleToggleEditPage}
             onToggleGridLines={() => setShowGridLines((prev) => !prev)}
             onOpenPageSettings={() => setPageSettingsOpen(true)}

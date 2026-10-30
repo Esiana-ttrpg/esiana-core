@@ -39,13 +39,11 @@ interface WikiPageEditorHeaderProps {
   isSaving: boolean;
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;
-  isSearchOpen: boolean;
   isEditingPage: boolean;
   showGridLines: boolean;
   canDeleteWikiPage: boolean;
   widgetOptions: Array<{ value: string; label: string; group?: string }>;
   onTogglePin: () => void;
-  onToggleSearch: () => void;
   onToggleEditPage: () => void;
   onToggleGridLines: () => void;
   onOpenPageSettings?: () => void;
@@ -166,17 +164,6 @@ export function WikiPageEditorHeader({
         >
           {havenBackLink.label}
         </Link>
-      ) : null}
-
-      {toolbarProps.isSearchOpen && !isTagsHub ? (
-        <div className="mt-2" data-print-hide>
-          <input
-            type="search"
-            placeholder="Search this page…"
-            className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60"
-            aria-label="Search this page"
-          />
-        </div>
       ) : null}
 
       {showSectionSubviews ? (

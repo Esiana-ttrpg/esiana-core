@@ -1,4 +1,4 @@
-import { LayoutGrid, PenLine, Pencil, Plus, Save, Search } from 'lucide-react';
+import { LayoutGrid, PenLine, Pencil, Plus, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePageBlockDraftRegistry } from '@/contexts/PageBlockDraftRegistry';
 import type { WikiPageBlock } from '@/types/wiki';
@@ -32,13 +32,11 @@ interface WikiPageRuntimeToolbarProps {
   isSaving: boolean;
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;
-  isSearchOpen: boolean;
   isEditingPage: boolean;
   showGridLines: boolean;
   canDeleteWikiPage: boolean;
   widgetOptions: Array<{ value: string; label: string; group?: string }>;
   onTogglePin: () => void;
-  onToggleSearch: () => void;
   onToggleEditPage: () => void;
   onToggleGridLines: () => void;
   onOpenPageSettings?: () => void;
@@ -60,13 +58,11 @@ export function WikiPageRuntimeToolbar({
   isSaving,
   onSavePage,
   isPinned,
-  isSearchOpen,
   isEditingPage,
   showGridLines,
   canDeleteWikiPage,
   widgetOptions,
   onTogglePin,
-  onToggleSearch,
   onToggleEditPage,
   onToggleGridLines,
   onOpenPageSettings,
@@ -119,19 +115,6 @@ export function WikiPageRuntimeToolbar({
       >
         {!isTagsHub && getExportContext ? (
           <WikiPageExportMenu isTagsHub={isTagsHub} getExportContext={getExportContext} />
-        ) : null}
-
-        {!isTagsHub ? (
-          <button
-            type="button"
-            onClick={onToggleSearch}
-            aria-pressed={isSearchOpen}
-            title="Search page"
-            className={toolbarButtonClass(isSearchOpen)}
-          >
-            <Search className="size-3.5 shrink-0" aria-hidden />
-            <span>Search</span>
-          </button>
         ) : null}
 
         {isDMUser && !isTagsHub ? (
