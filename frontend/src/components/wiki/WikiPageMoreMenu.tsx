@@ -1,3 +1,4 @@
+import { AddToPortfolioButton } from '@/components/portfolio/AddToPortfolioButton';
 import { useMemo, useState } from 'react';
 import { MoreHorizontal, Pin, Settings, Trash2 } from 'lucide-react';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
@@ -20,6 +21,7 @@ function menuItemClass(danger = false): string {
 }
 
 interface WikiPageMoreMenuProps {
+  portfolioCharacter?: { pageId: string; characterName: string };
   isDMUser?: boolean;
   isTagsHub: boolean;
   isPinned: boolean;
@@ -40,6 +42,7 @@ export function WikiPageMoreMenu({
   onOpenPageSettings,
   onDeletePage,
   pageTarget,
+  portfolioCharacter,
 }: WikiPageMoreMenuProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const [open, setOpen] = useState(false);
@@ -58,7 +61,7 @@ export function WikiPageMoreMenu({
   }, [pageTarget, plugins, isAuthenticated, wiki?.campaign?.role]);
 
   if (isTagsHub) return null;
-  if (!isDMUser && !hasPluginActions) return null;
+  if (!isDMUser && !hasPluginActions && !portfolioCharacter) return null;
 
   return (
     <div className="relative">
@@ -86,6 +89,7 @@ export function WikiPageMoreMenu({
             className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-lg border border-border bg-surface p-1 shadow-lg"
             role="menu"
           >
+            {portfolioCharacter ? <AddToPortfolioButton {...portfolioCharacter} menuItem /> : null}
             {isDMUser ? (
               <>
                 <button

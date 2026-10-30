@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  CORE_CHARACTER_PAGE_ORDER,
   isValidOriginRenderMode,
   normalizeCharacterPageBlocks,
   normalizeCharacterPageTitle,
@@ -24,4 +25,11 @@ test('page input normalization rejects invalid titles and block payloads', () =>
     { id: 'a', type: 'text-tiptap' },
   ]);
   assert.equal(normalizeCharacterPageBlocks('bad'), null);
+});
+
+test('trajectory fits between existing discovery and continuity positions', () => {
+  assert.equal(CORE_CHARACTER_PAGE_ORDER.get('discovery'), 40);
+  assert.equal(CORE_CHARACTER_PAGE_ORDER.get('continuity'), 50);
+  assert.ok(CORE_CHARACTER_PAGE_ORDER.get('trajectory')! > 40);
+  assert.ok(CORE_CHARACTER_PAGE_ORDER.get('trajectory')! < 50);
 });

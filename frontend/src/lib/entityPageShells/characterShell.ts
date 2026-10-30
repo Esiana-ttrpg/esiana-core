@@ -7,7 +7,8 @@ export const CHARACTER_SUBVIEWS: EntitySubviewDef[] = [
   { id: 'relationships', label: 'Relationships', navPriority: 3, collapseGroup: 'secondary' },
   { id: 'timeline', label: 'Timeline', navPriority: 4, collapseGroup: 'secondary' },
   { id: 'discovery', label: 'Discovery', navPriority: 5, collapseGroup: 'dm', dmOnly: true },
-  { id: 'continuity', label: 'Continuity', navPriority: 6, collapseGroup: 'dm', dmOnly: true },
+  { id: 'trajectory', label: 'Trajectory', navPriority: 6, collapseGroup: 'dm', dmOnly: true },
+  { id: 'continuity', label: 'Continuity', navPriority: 7, collapseGroup: 'dm', dmOnly: true },
 ];
 
 const CONTENT_TAB_BLOCKS: Record<string, WikiPageBlockType[]> = {

@@ -25,6 +25,7 @@ interface WikiPageRuntimeToolbarProps {
   pageId?: string;
   canOpenWorkshop?: boolean;
   confirmWorkshopLeave?: boolean;
+  portfolioCharacter?: { pageId: string; characterName: string };
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;
@@ -74,6 +75,7 @@ export function WikiPageRuntimeToolbar({
   getExportContext,
   allowCanvasTools = true,
   pageTarget,
+  portfolioCharacter,
 }: WikiPageRuntimeToolbarProps) {
   const navigate = useNavigate();
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
@@ -146,7 +148,7 @@ export function WikiPageRuntimeToolbar({
           </button>
         ) : null}
 
-        {(isDMUser || hasPluginActions) && !isTagsHub ? (
+        {(isDMUser || hasPluginActions || portfolioCharacter) && !isTagsHub ? (
           <WikiPageMoreMenu
             isDMUser={isDMUser}
             isTagsHub={isTagsHub}
@@ -156,6 +158,7 @@ export function WikiPageRuntimeToolbar({
             onOpenPageSettings={onOpenPageSettings}
             onDeletePage={onDeletePage}
             pageTarget={pageTarget}
+            portfolioCharacter={portfolioCharacter}
           />
         ) : null}
       </div>

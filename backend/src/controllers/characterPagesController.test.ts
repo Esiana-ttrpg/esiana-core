@@ -22,3 +22,11 @@ test('DM-only status is resolved within the entity shell', () => {
     'GAMEMASTER',
   ), true);
 });
+
+test('character trajectory is restricted to elevated narrative access', () => {
+  const row = { hidden: false, visibility: 'Public', coreKey: 'trajectory' };
+  assert.equal(canReadCharacterPageTab(row,
+    { canEdit: true, canViewDmOnly: false, shell: 'character' }, 'PARTICIPANT'), false);
+  assert.equal(canReadCharacterPageTab(row,
+    { canEdit: true, canViewDmOnly: true, shell: 'character' }, 'GAMEMASTER'), true);
+});

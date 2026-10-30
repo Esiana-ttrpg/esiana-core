@@ -1,3 +1,4 @@
+import { CharacterTrajectoryPage } from './CharacterTrajectoryPage';
 import { CharacterOverviewDashboard } from './CharacterOverviewDashboard';
 import { EntityPageShellView } from './EntityPageShellView';
 import type { EntityPageShellViewProps } from '@/lib/entityPageShells/types';
@@ -61,7 +62,12 @@ export function CharacterPageShellView({
     <EntityPageShellView
       pageSubview={pageSubview}
       displayBlocks={shellProps.displayBlocks}
-      wikiPageRenderer={shellProps.wikiPageRenderer}
+      wikiPageRenderer={pageSubview === 'trajectory' ? (
+        <>
+          <CharacterTrajectoryPage campaignHandle={campaignHandle} pageId={pageId} pageMetadata={pageData.metadata} isDMUser={isDMUser} isEditingPage={isEditingPage} onMetadataSaved={metadataSaved} />
+          {shellProps.wikiPageRenderer}
+        </>
+      ) : shellProps.wikiPageRenderer}
       continuityPanel={shellProps.continuityPanel}
       hero={null}
       overview={

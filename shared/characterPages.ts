@@ -4,6 +4,7 @@ export const CHARACTER_CORE_PAGE_KEYS = [
   'relationships',
   'timeline',
   'discovery',
+  'trajectory',
   'continuity',
 ] as const;
 
@@ -135,7 +136,7 @@ export const ENTITY_SHELL_CORE_PAGES: Record<string, ReadonlyArray<{ key: string
   character: CHARACTER_CORE_PAGE_KEYS.map((key) => ({
     key,
     title: key.charAt(0).toUpperCase() + key.slice(1),
-    dmOnly: key === 'discovery' || key === 'continuity',
+    dmOnly: key === 'discovery' || key === 'trajectory' || key === 'continuity',
   })),
   location: [
     ['overview', 'Overview'], ['people', 'People'], ['places', 'Places'], ['organizations', 'Organizations'],

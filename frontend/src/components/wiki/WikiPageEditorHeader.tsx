@@ -33,6 +33,7 @@ interface WikiPageEditorHeaderProps {
   subviews: EntitySubviewDef[];
   activeSubview: EntitySubviewId;
   onSubviewChange: (id: EntitySubviewId) => void;
+  portfolioCharacter?: { pageId: string; characterName: string };
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;

@@ -1,14 +1,16 @@
+import { FolderPlus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { addCampaignCharacterToPortfolio } from '@/lib/portfolio';
 
 type Props = {
+  menuItem?: boolean;
   pageId: string;
   characterName: string;
 };
 
 /** Explicit clone: campaign character → independent portfolio character. */
-export function AddToPortfolioButton({ pageId, characterName }: Props) {
+export function AddToPortfolioButton({ pageId, characterName, menuItem = false }: Props) {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -31,14 +33,16 @@ export function AddToPortfolioButton({ pageId, characterName }: Props) {
     <div className="flex flex-col items-end gap-1">
       <button
         type="button"
+        role={menuItem ? 'menuitem' : undefined}
         disabled={busy}
         onClick={() => void onClick()}
-        className="rounded-md border border-border/60 px-2.5 py-1.5 text-xs text-muted hover:bg-elevated hover:text-foreground disabled:opacity-50"
+        className={menuItem ? "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs text-foreground hover:bg-surface/80 disabled:opacity-50" : "rounded-md border border-border/60 px-2.5 py-1.5 text-xs text-muted hover:bg-elevated hover:text-foreground disabled:opacity-50"}
         title={`Clone ${characterName} into your Character Portfolio`}
       >
+        {menuItem ? <FolderPlus className="size-3.5" /> : null}
         {busy ? 'Adding…' : 'Add to Portfolio'}
       </button>
-      {error ? <p className="max-w-[14rem] text-right text-[11px] text-destructive">{error}</p> : null}
+      {error ? <p role="alert" className="max-w-[14rem] text-right text-[11px] text-destructive">{error}</p> : null}
     </div>
   );
 }

@@ -76,7 +76,6 @@ import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageSh
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { CharacterMasthead } from '@/components/entity/shells/CharacterMasthead';
-import { AddToPortfolioButton } from '@/components/portfolio/AddToPortfolioButton';
 import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
 import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
 import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVisibilityBadge';
@@ -506,7 +505,7 @@ export function WikiPage() {
             id: page.key,
             label: page.title,
             navPriority: page.displayOrder,
-            dmOnly: page.coreKey === 'discovery' || page.coreKey === 'continuity',
+            dmOnly: page.coreKey === 'discovery' || page.coreKey === 'trajectory' || page.coreKey === 'continuity',
           }))
         : entityPageShell.subviews,
     [characterPages, entityPageShell.subviews],
@@ -2079,6 +2078,10 @@ export function WikiPage() {
           <WikiPageEditorHeader
             campaignHandle={campaignHandle}
             pageId={pageId}
+            portfolioCharacter={entitySurfaceProfile.key === 'character' && pageId ? {
+              pageId,
+              characterName: characterIdentityProjection?.displayName ?? pageData?.title ?? 'Character',
+            } : undefined}
             canOpenWorkshop={canOpenWorkshop}
             confirmWorkshopLeave={confirmWorkshopLeave}
             crumbs={wikiBreadcrumbs}
@@ -2133,16 +2136,6 @@ export function WikiPage() {
                       isEditingPage={isEditingPage}
                       onVisibilityChange={handleVisibilityChange}
                     />
-                    {pageId ? (
-                      <AddToPortfolioButton
-                        pageId={pageId}
-                        characterName={
-                          characterIdentityProjection?.displayName ??
-                          pageData?.title ??
-                          'Character'
-                        }
-                      />
-                    ) : null}
                   </div>
                 }
               />

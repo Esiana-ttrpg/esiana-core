@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { CORE_CHARACTER_PAGE_ORDER } from '../lib/characterPages.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { prisma } from '../lib/prisma.js';
@@ -57,7 +58,7 @@ async function resolveFieldPageTab(
   if (existing) return canReadCharacterPageTab(existing, access, role) ? existing.id : undefined;
   const row = await fieldsDb.characterPageTab.create({ data: {
     campaignId, characterPageId: entityPageId, origin: 'CORE', renderMode: 'CORE',
-    coreKey, title: definition.title, displayOrder: coreDefinitions.findIndex((candidate) => candidate.key === coreKey) * 10,
+    coreKey, title: definition.title, displayOrder: shell === 'character' ? CORE_CHARACTER_PAGE_ORDER.get(coreKey)! : coreDefinitions.findIndex((candidate) => candidate.key === coreKey) * 10,
     blocks: [],
   }, select: { id: true } });
   return row.id;

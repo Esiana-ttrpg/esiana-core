@@ -414,7 +414,9 @@ export async function updateCharacterPage(req: CampaignScopedRequest, res: Respo
         renderMode: 'CORE',
         coreKey,
         title: definition.title,
-        displayOrder: ENTITY_SHELL_CORE_PAGES[access.shell]!.findIndex((page) => page.key === coreKey) * 10,
+        displayOrder: access.shell === 'character'
+          ? CORE_CHARACTER_PAGE_ORDER.get(coreKey)!
+          : ENTITY_SHELL_CORE_PAGES[access.shell]!.findIndex((page) => page.key === coreKey) * 10,
         hidden: req.body.hidden,
       },
       update: { hidden: req.body.hidden },
