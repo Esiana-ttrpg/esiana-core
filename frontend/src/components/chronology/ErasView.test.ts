@@ -10,8 +10,8 @@ test('Chronology navigation owns the era workspace without an event ledger', () 
   assert.match(header, /'calendar'.*'timeline'.*'eras'.*'feed'/);
   assert.doesNotMatch(header, /label: 'Events'/);
   assert.doesNotMatch(eras, /EventsLedgerView/);
-  assert.match(eras, /Selected major events/);
-  assert.match(eras, /HistoricalEraStrip/);
+  assert.match(eras, /Events in this era/);
+  assert.match(eras, /aria-label="Historical context"/);
   assert.match(eras, /ChronologyEventSidebar/);
 });
 
@@ -19,8 +19,7 @@ test('era editing uses calendar dates and the normal rich-text editor', () => {
   assert.match(eras, /<FantasyDatePicker/);
   assert.match(eras, /<WikiTipTapEditor/);
   assert.match(eras, /End date \(inclusive\)/);
-  assert.match(eras, /Start unspecified/);
-  assert.match(eras, /End unspecified/);
+  assert.doesNotMatch(eras, /Start unspecified|End unspecified|Display position|Browse eras|Manage era|loaded matching/);
   // Internal calendar definitions may carry offsets; no visible copy names them.
   assert.doesNotMatch(eras, /(?:placeholder|aria-label|title)="[^"]*(?:epoch|minute)/i);
   assert.doesNotMatch(read('../progression/CampaignEraEditor.tsx'), /epoch|minute|input/i);

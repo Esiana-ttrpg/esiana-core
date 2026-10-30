@@ -1,4 +1,4 @@
-import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
+import { ChevronLeft, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
 import { ChronologyImportance } from './ChronologyImportance';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { chronologyTargetSignature, intervalOccurrence } from '@/lib/chronologyNavigation';
@@ -8,11 +8,10 @@ import { useWiki } from '@/contexts/WikiContext';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { compareEraDates, eraContainsDate, type ChronologyEra, type EraDate, type EraInput, type EraDeletionImpact } from '@shared/chronologyEras';
 import { saveEra, deleteEra, fetchEraImpact, reorderEras } from '@/lib/chronologyErasApi';
-import { HistoricalEraStrip, type ComparisonEraBand } from './HistoricalTrack';
 import { ChronologyEventSidebar } from './ChronologyEventSidebar';
 import { comparisonDateLabel, useComparisonText } from './comparisonText';
-import { comparisonEraGeometry, historicalClock, sharedHistoricalIntervals, viewportDay } from '@/lib/historicalTimeline';
-import { eraBounds, eraContext, selectedEraEvents, selectWorkspaceEra } from '@/lib/eraWorkspace';
+import { historicalClock, sharedHistoricalIntervals } from '@/lib/historicalTimeline';
+import { eraBounds, eraDateSummary, selectedEraEvents, selectWorkspaceEra } from '@/lib/eraWorkspace';
 import { campaignWikiPath } from '@/lib/campaignPaths';
 import type { ChronologyTimelineBundle, TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
@@ -64,7 +63,6 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
   const selected = bundle.calendars.some(row => row.id === track) ? selectWorkspaceEra(trackEras, requestedEra, today) : undefined;
   const eraId = selected?.id ?? '';
   const selectedTrackEras = trackEras;
-  const [navigationOpen, setNavigationOpen] = useState(false);
   const [importance, setImportance] = useState(session?.snapshot?.importance ?? { MAJOR: true, MINOR: false, NOTICE: false });
   useLayoutEffect(() => {
     if (session) { session.signature = signature; session.snapshot = { track, era: requestedEra ?? selected?.id ?? null, importance }; }
@@ -74,22 +72,14 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
     const bases = new Set(bundle.baseEvents.filter(row => row.calendarId === track).map(row => row.id));
     return axis ? sharedHistoricalIntervals(bundle.occurrences.filter(row => row.calendarId === track && bases.has(row.baseEventId)), axis) : [];
   }, [axis, bundle.occurrences, bundle.baseEvents, track]);
-  const events = useMemo(() => axis && selected ? selectedEraEvents(intervals, selected, axis, importance) : [], [axis, intervals, selected, importance]);
+  const matchingEvents = useMemo(() => axis && selected ? selectedEraEvents(intervals, selected, axis, importance) : [], [axis, intervals, selected, importance]);
+  const events = matchingEvents.slice(0, 5);
   const inspection = events.find(row => row.key === selectedKey);
   useEffect(() => { if (!inspection) setSelectedKey(null); }, [inspection]);
-  const context = useMemo(() => axis && selected ? eraContext(trackEras, selected, axis, today) : null, [axis, selected, trackEras, today]);
+  const selectedIndex = trackEras.findIndex(era => era.id === selected?.id);
+  const previous = trackEras[selectedIndex - 1];
+  const nextEra = selectedIndex >= 0 ? trackEras[selectedIndex + 1] : undefined;
   const bounds = useMemo(() => axis && selected ? eraBounds(selected, axis) : null, [axis, selected]);
-  const stripRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(600);
-  useEffect(() => {
-    const element = stripRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver(entries => setWidth(Math.max(1, entries[0]!.contentRect.width)));
-    observer.observe(element); return () => observer.disconnect();
-  }, [selected?.id]);
-  const bands = useMemo(() => axis && context ? trackEras.map(era => comparisonEraGeometry(era, axis, context.view, width))
-    .filter((band): band is ComparisonEraBand => !!band && band.width > 0)
-    .sort((a, b) => a.x - b.x || a.era.id.localeCompare(b.era.id)) : [], [axis, context, trackEras, width]);
   const masterDefinition = ledger.timeBundle.calendars.find(row => row.id === defaultTrack);
   const masterClock = useMemo(() => masterDefinition ? historicalClock(masterDefinition) : null, [masterDefinition]);
   const canCompare = track !== defaultTrack && clock?.aligned && masterClock?.aligned && masterClock.axis;
@@ -107,8 +97,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
   }, [bundle.eras, ledger.canManage, draft, editing, impact]);
   const calendar = ledger.timeBundle.calendars.find(row => row.id === (draft?.calendarId ?? selected?.calendarId ?? track));
   const like = useMemo(() => calendar ? historicalClock(calendar).axis?.calendar ?? null : null, [calendar]);
-  const dateLabel = (date: EraDate | null, fallback: string) => date
-    ? `Year ${date.year}, ${axis ? resolveMonthName(axis.calendar, date.year, date.month) : `Month ${date.month + 1}`} ${date.day}` : fallback;
+  const dateLabel = (date: EraDate) => `${axis ? resolveMonthName(axis.calendar, date.year, date.month) : `Month ${date.month + 1}`} ${date.day}, Year ${date.year}`;
   function filter(key: string, value: string) {
     const next = new URLSearchParams(params); if (value) next.set(key, value); else next.delete(key);
     if (key === 'track') next.delete('era');
@@ -133,98 +122,103 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
     await perform(() => reorderEras(ledger.campaignHandle, selected.calendarId, ids));
   }
   return <div className="relative flex h-full min-w-0 flex-col gap-4 overflow-y-auto p-4 [&_select]:rounded [&_select]:border [&_select]:border-border [&_select]:bg-background [&_select]:px-2 [&_select]:py-1 [&_input:not([type=checkbox])]:rounded [&_input:not([type=checkbox])]:border [&_input:not([type=checkbox])]:border-border [&_input:not([type=checkbox])]:bg-background [&_input:not([type=checkbox])]:px-2 [&_input:not([type=checkbox])]:py-1 [&_button]:disabled:opacity-50">
-    <div className="flex flex-wrap items-center gap-3">
-      <label>Calendar <select value={track} onChange={e => filter('track', e.target.value)}>
-        {!bundle.calendars.some(row => row.id === track) && <option value={track}>Calendar unavailable</option>}
-        {bundle.calendars.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
-      </select></label>
-      <button className="hidden min-h-11 px-3 lg:block" aria-expanded={navigationOpen} aria-controls="era-navigation" onClick={() => setNavigationOpen(value => !value)}>Browse eras</button>
-      <label className="lg:hidden">Era <select value={eraId} onChange={e => filter('era', e.target.value)}>
-        {!selected && <option value="">Select an era</option>}
-        {trackEras.map(era => <option key={era.id} value={era.id}>{era.name}{era.isCurrent ? ' - Current' : ''}</option>)}
-      </select></label>
-      {ledger.canManage && <button className="min-h-11 px-3" disabled={!definition || !bundle.calendars.some(row => row.id === track)} onClick={() => open()}>Create era</button>}
+    <div className="flex min-w-0 flex-wrap items-end gap-3 border-b border-border/40 pb-4 text-sm">
+      <label className="flex min-w-0 max-w-full flex-col gap-1 text-muted">Calendar
+        <select className="min-h-11 max-w-full text-foreground" value={track} onChange={e => filter('track', e.target.value)}>
+          {!bundle.calendars.some(row => row.id === track) && <option value={track}>Calendar unavailable</option>}
+          {bundle.calendars.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
+        </select>
+      </label>
+      <label className="flex min-w-0 max-w-full flex-col gap-1 text-muted">Era
+        <select className="min-h-11 max-w-full text-foreground" value={eraId} onChange={e => filter('era', e.target.value)}>
+          {!selected && <option value="">Select an era</option>}
+          {trackEras.map(era => <option key={era.id} value={era.id}>{era.name}{era.isCurrent ? ' - Current' : ''}</option>)}
+        </select>
+      </label>
+      {ledger.canManage && <button className="inline-flex min-h-11 items-center gap-2 rounded border border-border px-3 hover:bg-elevated sm:ml-auto" disabled={busy || !definition || !bundle.calendars.some(row => row.id === track)} onClick={() => open()}><Plus className="size-4" aria-hidden />Create era</button>}
     </div>
     {error && <p role="alert" className="text-red-500">{error}</p>}
-    <div className="flex min-w-0 items-start gap-8">
-      {navigationOpen && <nav id="era-navigation" aria-label="Eras in configured display order" className="hidden w-72 shrink-0 space-y-2 lg:block">
-        <p className="text-xs text-muted">Configured display order; historical positions follow dates.</p>
-        {trackEras.map(era => <button key={era.id} aria-current={era.id === eraId ? 'true' : undefined}
-          className={era.id === eraId ? 'block min-h-11 w-full rounded bg-primary/10 px-3 py-2 text-left' : 'block min-h-11 w-full rounded px-3 py-2 text-left hover:bg-elevated'} onClick={() => filter('era', era.id)}>
-          <span className="block text-sm">{era.name}</span>
-          <span className="block text-xs text-muted">{dateLabel(era.startDate, 'Start unspecified')} - {dateLabel(era.endDate, 'End unspecified')}</span>
-          <span className="block text-xs text-muted">{era.isCurrent && 'Current - '}{today && eraContainsDate(era, today) && 'Contains today'}</span>
-        </button>)}
-      </nav>}
-      {selected ? <article className="min-w-0 flex-1 space-y-8">
-        <header className="space-y-2">
-          <h2 className={TYPE_DISPLAY_CLASS}>{selected.name}</h2>
-          <p className="text-sm text-muted">{selected.calendarName} - {dateLabel(selected.startDate, 'Start unspecified')} - {dateLabel(selected.endDate, 'End unspecified')}</p>
-          <p className="text-xs text-muted">{selected.isCurrent && 'Configured Current - '}{today && eraContainsDate(selected, today) && 'Contains today - '}
-            {bounds?.start != null && bounds.end != null && String((bounds.end - bounds.start) / 1440n) + ' days - '}{selected.visibility === 'DM_ONLY' && 'Restricted - '}Display position {trackEras.indexOf(selected) + 1} of {trackEras.length}</p>
-        </header>
-        <div className="type-prose max-w-[80ch]">
-          <WikiMarkdown content={selected.overview} emptyLabel="No overview yet." />
-          {flatPages.some(page => page.id === selected.overviewPageId) && <Link className="inline-flex min-h-11 items-center text-sm underline" to={campaignWikiPath(ledger.campaignHandle, selected.overviewPageId, flatPages)}>Open Wiki overview</Link>}
-          {!selected.overview.trim() && selected.canManage && <button className="min-h-11 px-3 text-sm underline" onClick={() => open(selected)}>Edit era</button>}
+    {selected ? <article className="min-w-0 space-y-8 pt-2">
+      <header className="space-y-2">
+        <div className="relative flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h2 className={TYPE_DISPLAY_CLASS + ' min-w-0 break-words'}>{selected.name}</h2>
+          {selected.canManage && <div className="flex items-center gap-1 text-sm">
+            <button className="min-h-11 rounded px-3 hover:bg-elevated" disabled={busy} onClick={() => open(selected)}>Edit era</button>
+            <details key={selected.id} onKeyDown={e => {
+              if (e.key === 'Escape') { e.currentTarget.open = false; e.currentTarget.querySelector('summary')?.focus(); }
+            }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) e.currentTarget.open = false; }}>
+              <summary aria-label="More era actions" className="flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded hover:bg-elevated [&::-webkit-details-marker]:hidden"><MoreHorizontal className="size-5" aria-hidden /></summary>
+              <div className="absolute right-0 top-full z-20 w-56 max-w-full rounded-lg border border-border bg-background p-1 shadow-lg [&_button]:min-h-11 [&_button]:w-full [&_button]:rounded [&_button]:px-3 [&_button]:text-left [&_button:hover]:bg-elevated" onClick={e => {
+                if ((e.target as HTMLElement).closest('button, a')) e.currentTarget.closest('details')?.removeAttribute('open');
+              }}>
+                <button disabled={busy || !definition} onClick={() => open(selected, true)}>Close era...</button>
+                {!selected.isCurrent && <button disabled={busy} onClick={() => void perform(() => saveEra(ledger.campaignHandle, { ...selected, isCurrent: true }, selected.id))}>Make current</button>}
+                <button disabled={busy || !previous} onClick={() => void move(-1)}>Move up</button>
+                <button disabled={busy || !nextEra} onClick={() => void move(1)}>Move down</button>
+                {flatPages.some(page => page.id === selected.overviewPageId) && <Link className="flex min-h-11 items-center rounded px-3 hover:bg-elevated" to={campaignWikiPath(ledger.campaignHandle, selected.overviewPageId, flatPages)}>Open overview</Link>}
+                <button className="text-red-500" disabled={busy} onClick={() => void perform(async () => setImpact({ era: selected, details: await fetchEraImpact(ledger.campaignHandle, selected.id) }), false)}>Delete era...</button>
+              </div>
+            </details>
+          </div>}
         </div>
-        <section className="min-w-0 space-y-3" aria-label="Historical context">
-          <h3 className={META_SECTION_LABEL_CLASS}>Historical context</h3>
-          <div ref={stripRef} className="min-w-0">
-            {context && bands.length ? <HistoricalEraStrip bands={bands} name={selected.calendarName} selectedId={selected.id} onFocus={id => onTimeline(track, id)} />
-              : <p className="text-sm text-muted">Historical position unavailable for this calendar or its configured boundaries.</p>}
-          </div>
-          {context && axis && <p className="flex justify-between gap-3 text-xs text-muted" aria-label="Context date range">
-            <span>{comparisonDateLabel(axis, viewportDay(context.view), text)}</span>
-            <span>{comparisonDateLabel(axis, viewportDay(context.view, 1), text)}</span>
-          </p>}
-          {context && <p className="text-xs text-muted">{context.preceding && 'Preceding: ' + context.preceding.name + '. '}{context.following && 'Following: ' + context.following.name + '.'}</p>}
-          {canCompare && bounds && <p className="text-xs text-muted">{masterDefinition?.name}: {bounds.start === null ? 'Start unspecified' : comparisonDateLabel(masterClock.axis!, bounds.start, text, true)} - {bounds.end === null ? 'End unspecified' : comparisonDateLabel(masterClock.axis!, bounds.end - 1n, text, true)}</p>}
-          <div className="flex flex-wrap gap-3 text-sm">
-            <button className="min-h-11 underline" onClick={() => onTimeline(track, selected.id)}>View on Timeline</button>
-            {canCompare && <button className="min-h-11 underline" onClick={() => onTimeline(track, selected.id, true)}>Compare on Timeline</button>}
-          </div>
-        </section>
-        <section className="space-y-3" aria-label="Defining historical events">
-          <h3 className={META_SECTION_LABEL_CLASS}>{importance.MINOR || importance.NOTICE ? 'Selected historical events' : 'Selected major events'}</h3>
-          <div className="flex flex-wrap gap-4 text-sm">{(['MAJOR', 'MINOR', 'NOTICE'] as const).map(level => <label key={level} className="inline-flex min-h-11 items-center gap-2">
-            <input type="checkbox" checked={importance[level]} onChange={e => setImportance(value => ({ ...value, [level]: e.target.checked }))} />{level === 'MAJOR' ? 'Major' : level === 'MINOR' ? 'Minor' : 'Notice'}
-          </label>)}</div>
-          <p className="text-xs text-muted">A sample of up to five loaded matching occurrences.</p>
-          <ChronologyCoverageNotice metadata={bundle.expansionMetadata} />
-          {!events.length && <p className="text-sm text-muted">{!axis || !bounds ? 'Events cannot be positioned reliably.' : 'No loaded matching events in this period.'}</p>}
-          <ul className="divide-y divide-border/40">{events.map(row => <li key={row.key}>
-            <button className="min-h-11 w-full py-3 text-left" onClick={() => setSelectedKey(row.key)}>
-              <span className="block text-sm font-medium">{row.representative.title}</span>
-              <span className="block text-xs text-muted">{comparisonDateLabel(axis!, row.start, text)}{row.end - row.start > 1440n && ' - ' + comparisonDateLabel(axis!, row.end - 1440n, text) + ' - ' + String((row.end - row.start) / 1440n) + ' days'}
-                {' · '}<ChronologyImportance value={row.representative.importance} />
+        <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
+          <span>{selected.calendarName}</span><span aria-hidden>·</span>
+          <button className="min-h-11 text-left underline decoration-border underline-offset-4 hover:text-foreground" aria-label={'Open ' + selected.name + ' on Timeline'} onClick={() => onTimeline(track, selected.id)}>{eraDateSummary(selected, dateLabel)}</button>
+          {bounds?.start != null && bounds.end != null && <><span aria-hidden>·</span><span>{String((bounds.end - bounds.start) / 1440n)} {(bounds.end - bounds.start) / 1440n === 1n ? 'day' : 'days'}</span></>}
+          <span aria-hidden>·</span><span>{selected.visibility === 'DM_ONLY' ? 'DM only' : selected.visibility === 'PARTY' ? 'Party' : 'Public'}</span>
+        </p>
+        {(selected.isCurrent || (today && eraContainsDate(selected, today))) && <p className="text-xs text-muted">
+          {selected.isCurrent && <span>Current era</span>}
+          {today && eraContainsDate(selected, today) && <span>{selected.isCurrent && ' · '}Contains campaign today</span>}
+        </p>}
+      </header>
+      <section className="type-prose max-w-[80ch]" aria-label="Era overview">
+        {selected.overview.trim() ? <WikiMarkdown content={selected.overview} /> : selected.canManage ? <div className="space-y-1 border-l-2 border-border/60 pl-4">
+          <p className="text-sm text-muted">Tell the story of this era.</p>
+          <button className="min-h-11 text-sm underline underline-offset-4" disabled={busy} onClick={() => open(selected)}>Add overview</button>
+        </div> : <p className="text-sm text-muted">No overview yet.</p>}
+      </section>
+      <nav className="space-y-2 border-y border-border/40 py-4" aria-label="Historical context">
+        <h3 className={META_SECTION_LABEL_CLASS}>Historical context</h3>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+          {previous ? <button className="flex min-h-11 min-w-0 items-center gap-2 text-left hover:underline" onClick={() => filter('era', previous.id)}>
+            <ChevronLeft className="size-4 shrink-0 text-muted" aria-hidden /><span className="min-w-0 break-words"><span className="block text-xs text-muted">Previous era</span>{previous.name}</span>
+          </button> : <span className="text-xs text-muted">No previous era</span>}
+          <span aria-current="true" className="min-w-0 border-l-2 border-primary pl-3"><span className="block text-xs text-muted">Selected era</span><span className="break-words font-medium">{selected.name}</span></span>
+          {nextEra ? <button className="flex min-h-11 min-w-0 items-center gap-2 text-left hover:underline" onClick={() => filter('era', nextEra.id)}>
+            <span className="min-w-0 break-words"><span className="block text-xs text-muted">Next era</span>{nextEra.name}</span><ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
+          </button> : <span className="text-xs text-muted">No next era</span>}
+        </div>
+        {canCompare && <button className="min-h-11 text-xs text-muted underline" onClick={() => onTimeline(track, selected.id, true)}>Compare on Timeline</button>}
+      </nav>
+      <section className="space-y-3" aria-label="Events in this era">
+        <h3 className={META_SECTION_LABEL_CLASS}>Events in this era</h3>
+        <div className="flex flex-wrap gap-4 text-sm">{(['MAJOR', 'MINOR', 'NOTICE'] as const).map(level => <label key={level} className="inline-flex min-h-11 items-center gap-2">
+          <input type="checkbox" checked={importance[level]} onChange={e => setImportance(value => ({ ...value, [level]: e.target.checked }))} />{level === 'MAJOR' ? 'Major' : level === 'MINOR' ? 'Minor' : 'Notice'}
+        </label>)}</div>
+        {!events.length && <p className="py-3 text-sm text-muted">No matching events in this era.</p>}
+        <ul className="divide-y divide-border/40">{events.map(row => <li key={row.key}>
+          <button className="flex min-h-11 w-full flex-wrap items-center justify-between gap-x-6 gap-y-1 rounded px-2 py-3 text-left hover:bg-elevated" aria-expanded={selectedKey === row.key} onClick={() => setSelectedKey(row.key)}>
+            <span className="min-w-0 space-y-1">
+              <span className="block break-words text-sm font-medium">{row.representative.title}</span>
+              <span className="block text-xs text-muted"><ChronologyImportance value={row.representative.importance} />
                 {' · '}{bundle.categories.find(category => category.id === row.representative.categoryId)?.name ?? 'Uncategorized'}
-                {bounds?.start != null && row.start < bounds.start && ' - Began before this era'}{bounds?.end != null && row.end > bounds.end && ' - Continues beyond this era'}</span>
-            </button>
-          </li>)}</ul>
-          <button className="min-h-11 text-sm underline" onClick={() => onTimeline(track, selected.id)}>View all on Timeline</button>
-        </section>
-        {selected.canManage && <details className="text-sm">
-          <summary className="min-h-11 cursor-pointer py-3">Manage era</summary>
-          <div className="flex flex-wrap gap-3 [&_button]:min-h-11">
-            <button disabled={busy} onClick={() => open(selected)}>Edit era</button>
-            <button disabled={busy || !definition} onClick={() => open(selected, true)}>Close era...</button>
-            {!selected.isCurrent && <button disabled={busy} onClick={() => void perform(() => saveEra(ledger.campaignHandle, { ...selected, isCurrent: true }, selected.id))}>Make current</button>}
-            <button disabled={busy || selectedTrackEras[0]?.id === selected.id} onClick={() => void move(-1)}>Move up</button>
-            <button disabled={busy || selectedTrackEras.at(-1)?.id === selected.id} onClick={() => void move(1)}>Move down</button>
-            <button disabled={busy} onClick={() => void perform(async () => setImpact({ era: selected, details: await fetchEraImpact(ledger.campaignHandle, selected.id) }), false)}>Delete era...</button>
-          </div><p className="text-xs text-muted">Reordering changes display order, not historical dates.</p>
-        </details>}
-      </article> : <p className="text-sm text-muted">{!bundle.calendars.length ? 'No calendars available.' : params.has('era') || !bundle.calendars.some(row => row.id === track) ? 'This era or calendar is unavailable. Select an available period.' : 'No eras configured for this calendar.'}</p>}
-    </div>
+                {bounds?.start != null && row.start < bounds.start && ' · Began before this era'}{bounds?.end != null && row.end > bounds.end && ' · Continues beyond this era'}</span>
+            </span>
+            <span className="text-xs text-muted">{comparisonDateLabel(axis!, row.start, text)}{row.end - row.start > 1440n && ' – ' + comparisonDateLabel(axis!, row.end - 1440n, text)}</span>
+          </button>
+        </li>)}</ul>
+        {matchingEvents.length > events.length && <button className="min-h-11 text-sm underline underline-offset-4" onClick={() => onTimeline(track, selected.id)}>Show all events</button>}
+      </section>
+    </article> : <p className="text-sm text-muted">{!bundle.calendars.length ? 'No calendars available.' : params.has('era') || !bundle.calendars.some(row => row.id === track) ? 'This era or calendar is unavailable. Select an available period.' : 'No eras configured for this calendar.'}</p>}
     <ChronologyEventSidebar campaignHandle={ledger.campaignHandle} timeBundle={ledger.timeBundle} baseEvent={bundle.baseEvents.find(base => base.id === inspection?.baseEventId) ?? null}
       calendarName={definition?.name} categories={bundle.categories} editableEvents={bundle.baseEvents} calendarLike={axis?.calendar ?? null} canManage={ledger.canManage}
       open={!!inspection} occurrence={occurrence} dateSeed={occurrence?.start} onClose={() => setSelectedKey(null)}
       onMutated={ledger.onEventMutated} onDeleted={async () => { setSelectedKey(null); await ledger.onEventDeleted(); }} onRevealEvent={ledger.onRevealEvent} />
-    {draft && like && <EraDialog title={editing ? 'Edit era' : 'Add era'} busy={busy} onClose={() => setDraft(null)}>
+    {draft && like && <EraDialog title={editing ? 'Edit era' : 'Create era'} busy={busy} onClose={() => setDraft(null)}>
       <form className="space-y-4" onSubmit={e => { e.preventDefault(); void perform(async () => { const result = await saveEra(ledger.campaignHandle, draft, editing); setDraft(null); const next = new URLSearchParams(params); next.set('track', result.era.calendarId); next.set('era', result.era.id); setParams(next); setSelectedKey(null); }); }}>
-        <h2 className={TYPE_DISPLAY_CLASS}>{editing ? 'Edit era' : 'Add era'}</h2>
-        <label className="block">Timeline <select disabled={!!editing} value={draft.calendarId} onChange={e => setDraft({ ...draft, calendarId: e.target.value, startDate: null, endDate: null })}>{bundle.calendars.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <h2 className={TYPE_DISPLAY_CLASS}>{editing ? 'Edit era' : 'Create era'}</h2>
+        <label className="block">Calendar <select disabled={!!editing} value={draft.calendarId} onChange={e => setDraft({ ...draft, calendarId: e.target.value, startDate: null, endDate: null })}>{bundle.calendars.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
         <label className="block">Name <input required maxLength={120} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label>
         {(['startDate', 'endDate'] as const).map(key => <fieldset key={key}><legend>{key === 'startDate' ? 'Start date' : 'End date (inclusive)'}</legend>
           <label><input type="checkbox" checked={draft[key] != null} onChange={e => setDraft({ ...draft, [key]: e.target.checked ? { year: calendar!.state.year, month: calendar!.state.monthIndex, day: calendar!.state.day } : null })} />{key === 'startDate' ? 'Set a start date' : 'Set an end date'}</label>
