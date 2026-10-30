@@ -8330,6 +8330,43 @@ paths:
           required: true
           schema:
             type: string
+        - name: order
+          in: query
+          description: Opts into the read-only campaign feed projection. Omit all feed parameters for legacy convergence behavior.
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: importance
+          in: query
+          description: Comma-separated MAJOR, MINOR, NOTICE. Empty selects no chronology importance levels. Other sources are unaffected.
+          schema:
+            type: string
+        - name: includeFuture
+          in: query
+          description: Include authorized future records. Feed defaults to false; omitted legacy calls retain their existing behavior.
+          schema:
+            type: boolean
+        - name: from
+          in: query
+          description: Inclusive signed epoch-minute boundary in feed mode. Defaults to a 30-day master-calendar window.
+          schema:
+            type: string
+            pattern: '^-?[0-9]+$'
+        - name: to
+          in: query
+          description: Exclusive signed epoch-minute boundary in feed mode. Defaults to after the current master-calendar day.
+          schema:
+            type: string
+            pattern: '^-?[0-9]+$'
+        - name: domains
+          in: query
+          description: Comma-separated existing chronology domains. An empty value selects no sources in feed mode.
+          schema:
+            type: string
+        - name: sessionLinkedOnly
+          in: query
+          schema:
+            type: boolean
       responses:
         "200":
           description: Successful response

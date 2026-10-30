@@ -1,5 +1,8 @@
 # Historical Timeline
 
+Campaign Feed provides a separate [campaign narrative history](./campaign-feed.md),
+with bounded date-window navigation and links to authoritative source content.
+
 Chronology's Timeline is a visual historical workspace with selectable clock tracks,
 calendar-aware date ticks, era regions, duration bars, milestones, and dense-event
 clusters. The campaign master clock is selected initially. Existing `track` and `era`
