@@ -23,7 +23,7 @@ const era = (id: string, sortOrder: number): ChronologyEra => ({
 const restore: (() => void)[] = [];
 afterEach(() => { for (const cleanup of restore.splice(0).reverse()) cleanup(); vi.restoreAllMocks(); });
 
-async function mount(manage = true, count = 6) {
+async function mount(manage = true, count = 6, truncated = false) {
   const { window } = parseHTML('<html><body><div id="root"></div></body></html>');
   for (const [key, value] of Object.entries({ window, document: window.document, HTMLElement: window.HTMLElement,
     Event: window.Event, IS_REACT_ACT_ENVIRONMENT: true })) {
@@ -45,7 +45,7 @@ async function mount(manage = true, count = 6) {
       occurrences: Array.from({ length: count }, (_, i) => ({ occurrenceId: `occ-${i}`, baseEventId: 'journey', occurrenceIndex: i,
         calendarId: 'world', title: `Discovery ${i + 1}`, importance: 'MAJOR', start: date(i + 1), end: date(i + 1),
         duration: 1, dayOffset: 0, isStart: true, isContinuation: false })),
-      expansionMetadata: { generated: { truncated: false } },
+      expansionMetadata: { generated: { truncated }, warnings: [] },
     },
   } as unknown as ComponentProps<typeof ErasView>;
   const container = window.document.getElementById('root')!;
@@ -106,5 +106,20 @@ test('readers get browsing and empty states without management or unnecessary ev
     expect(ui.container.textContent).toContain('No matching events in this era.');
     for (const label of ['Create era', 'Edit era', 'Add overview', 'Show all events']) expect(ui.button(label)).toBeUndefined();
     expect(ui.container.querySelector('details')).toBeNull();
+    expect(ui.container.querySelector('[role="status"]')).toBeNull();
+  } finally { await ui.unmount(); }
+});
+
+test.each([0, 6])('truncated expansion shows coverage alongside an empty result only (%i matches)', async (count) => {
+  const ui = await mount(false, count, true);
+  try {
+    const events = ui.container.querySelector('[aria-label="Events in this era"]')!;
+    if (count === 0) {
+      expect(events.textContent).toContain('No matching events in this era.');
+      expect(events.querySelector('[role="status"]')?.textContent).toContain('occurrence expansion limits apply');
+    } else {
+      expect(events.querySelector('[role="status"]')).toBeNull();
+      expect(ui.button('Show all events')).toBeTruthy();
+    }
   } finally { await ui.unmount(); }
 });

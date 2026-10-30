@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
 import { ChronologyImportance } from './ChronologyImportance';
+import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { chronologyTargetSignature, intervalOccurrence } from '@/lib/chronologyNavigation';
 import { createPortal } from 'react-dom';
@@ -197,6 +198,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
           <input type="checkbox" checked={importance[level]} onChange={e => setImportance(value => ({ ...value, [level]: e.target.checked }))} />{level === 'MAJOR' ? 'Major' : level === 'MINOR' ? 'Minor' : 'Notice'}
         </label>)}</div>
         {!events.length && <p className="py-3 text-sm text-muted">No matching events in this era.</p>}
+        {!matchingEvents.length && bundle.expansionMetadata.generated.truncated && <ChronologyCoverageNotice metadata={bundle.expansionMetadata} />}
         <ul className="divide-y divide-border/40">{events.map(row => <li key={row.key}>
           <button className="flex min-h-11 w-full flex-wrap items-center justify-between gap-x-6 gap-y-1 rounded px-2 py-3 text-left hover:bg-elevated" aria-expanded={selectedKey === row.key} onClick={() => setSelectedKey(row.key)}>
             <span className="min-w-0 space-y-1">
