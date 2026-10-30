@@ -16,8 +16,9 @@ export function ChronologyCoverageNotice({ metadata, className = '' }: {
   metadata: ChronologyTimelineBundle['expansionMetadata']; className?: string;
 }) {
   const coverage = historicalCoverage(metadata);
+  if (!coverage.message && !coverage.warnings.length) return null;
   return <div className={'text-xs text-muted ' + className}>
-    <p role="status">{coverage.message}{metadata.generated.truncated && <span> Some event occurrences are omitted because expansion limits were reached.</span>}</p>
+    {coverage.message && <p role="status">{coverage.message}{metadata.generated.truncated && <span> Some event occurrences are omitted because expansion limits were reached.</span>}</p>}
     {coverage.warnings.length > 0 && <details><summary className="min-h-11 cursor-pointer py-3">Occurrence coverage details</summary>
       <ul className="list-disc space-y-1 pl-4">{coverage.warnings.map(code => <li key={code}>{warningLabels[code]}</li>)}</ul>
     </details>}

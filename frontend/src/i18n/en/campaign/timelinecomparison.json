@@ -39,7 +39,6 @@
   "campaign.timelinecomparison.openEras": "Open Eras workspace",
   "campaign.timelinecomparison.eraOverview": "{{name}}: read overview",
   "campaign.timelinecomparison.dismissEra": "Dismiss era focus",
-  "campaign.timelinecomparison.coverage": "Loaded occurrences only; historical coverage is not guaranteed.",
   "campaign.timelinecomparison.capped": "Loaded history is incomplete: occurrence expansion limits apply.",
   "campaign.timelinecomparison.empty": "No loaded events in this range and filter.",
   "campaign.timelinecomparison.selectTracks": "Select clocks to view their history.",

@@ -207,7 +207,7 @@ export function historicalCoverage(metadata: ChronologyTimelineBundle['expansion
   // The existing endpoint reports but does not enforce its requested query window.
   return { incomplete: true, label: 'Fit to Loaded Events', message: limited
     ? 'Loaded history is incomplete: occurrence expansion limits apply.'
-    : 'Loaded occurrences only; historical coverage is not guaranteed.', warnings: metadata.warnings };
+    : '', warnings: metadata.warnings };
 }
 
 /** These calendars use FantasyCalendar.epochOffset: minutes from the campaign master epoch.

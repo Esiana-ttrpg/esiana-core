@@ -72,7 +72,7 @@ export const HistoricalTrack = memo(function HistoricalTrack({ id, name, axis, i
     </div>
     <p className="px-4 pb-2 text-xs text-muted" data-track-coverage={capped ? 'capped' : 'loaded'}>
       <span className="block">{comparisonDateLabel(axis, viewportDay(view), text)} — {comparisonDateLabel(axis, viewportDay(view, 1), text)}</span>
-      {text(capped ? 'capped' : 'coverage')}
+      {capped && text('capped')}
     </p>
     <div id={`historical-track-${id}`} hidden={collapsed}>
       {showEras && <HistoricalEraStrip bands={bands} name={name} onFocus={onEra} />}
