@@ -1,408 +1,154 @@
-import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import type {
-  ConvergenceOverlayBundle,
-  ConvergenceTimelineEntry,
-} from '@/lib/chronologyOverlayApi';
-import {
-  formatConvergenceFeedTitle,
-  formatConvergenceLinkLabel,
-  formatWorldEventFeedSummary,
-  shouldShowConvergenceVisibilityBadge,
-} from '@shared/convergenceFeedDisplay';
-import { visibilityTierLabelFromProjection } from '@shared/visibilityTier';
-import { VisibilityTierChip } from '@/components/narrative/VisibilityTierChip';
-import { ChronologyDomainKind } from '@shared/chronologyDomainKinds';
-import { campaignWorldAdvanceBatchPath, readCampaignHandle } from '@/lib/campaignPaths';
-import {
-  groupDomainFeedItems,
-  type FeedListItem,
-} from '@/components/chronology/worldAdvanceFeedGrouping';
-import {
-  DowntimePeriodAffectedList,
-  parseDowntimePeriodPayload,
-  shouldShowDowntimeAffectedInline,
-} from '@/components/chronology/DowntimePeriodAffectedList';
-import { DowntimeGapOverlayEditor } from '@/components/chronology/DowntimeGapOverlayEditor';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { TYPE_DISPLAY_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
+import type { ConvergenceOverlayBundle, ConvergenceTimelineEntry } from '@/lib/chronologyOverlayApi';
+import { fetchChronologyTimeline, type ChronologyTimelineBundle, type TimelineOccurrenceRecord } from '@/lib/chronologyApi';
+import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
+import { historicalClock, historicalNativeState } from '@/lib/historicalTimeline';
+import { calendarEpochMinuteForDate } from '@/lib/timeEngine';
+import { narrowFeedRange, shiftFeedRange } from '@shared/campaignFeed';
+import { FEED_SOURCES, groupCampaignFeed, groupFeedDevelopments } from '@/lib/campaignFeedPresentation';
+import { formatConvergenceLinkLabel } from '@shared/convergenceFeedDisplay';
+import { ChronologyEventSidebar } from './ChronologyEventSidebar';
+import { ChronologyEventDialog } from './ChronologyEventDialog';
+import { CampaignHistoryPanel } from './CampaignHistoryPanel';
+import { DowntimeGapOverlayEditor } from './DowntimeGapOverlayEditor';
+import { FantasyDatePicker } from './FantasyDatePicker';
 
-const DOMAIN_LABELS: Record<string, string> = {
-  [ChronologyDomainKind.WORLD_EVENT]: 'World events',
-  [ChronologyDomainKind.SESSION_CHRONICLE]: 'Sessions',
-  [ChronologyDomainKind.MAP_KEYFRAME]: 'Maps',
-  [ChronologyDomainKind.ORG_RELATION]: 'Factions',
-  [ChronologyDomainKind.LORE_REFERENCE]: 'Lore',
-  [ChronologyDomainKind.QUEST_TRANSITION]: 'Quests',
-  [ChronologyDomainKind.FACTION_CONTROL]: 'Territory',
-  [ChronologyDomainKind.WORLD_ADVANCE]: 'World advance',
-  [ChronologyDomainKind.DOWNTIME_PERIOD]: 'Downtime',
-};
-
-const DOMAIN_CHIP_OPTIONS = [
-  ChronologyDomainKind.WORLD_EVENT,
-  ChronologyDomainKind.SESSION_CHRONICLE,
-  ChronologyDomainKind.DOWNTIME_PERIOD,
-  ChronologyDomainKind.MAP_KEYFRAME,
-  ChronologyDomainKind.ORG_RELATION,
-  ChronologyDomainKind.WORLD_ADVANCE,
-  ChronologyDomainKind.LORE_REFERENCE,
-] as const;
-
-const DEFAULT_COLLAPSED = new Set<string>([
-  ChronologyDomainKind.MAP_KEYFRAME,
-  ChronologyDomainKind.LORE_REFERENCE,
-]);
-
-type DateGroup = {
-  dateLabel: string;
-  byDomain: Map<string, ConvergenceTimelineEntry[]>;
-};
-
-interface CampaignFeedViewProps {
-  bundle: ConvergenceOverlayBundle;
-  selectedDomains: string[];
-  sessionLinkedOnly: boolean;
-  onDomainsChange: (domains: string[]) => void;
-  onSessionLinkedOnlyChange: (value: boolean) => void;
-  canManageChronology?: boolean;
-  onOverlaySaved?: () => void;
+interface Props {
+  campaignHandle: string; bundle: ConvergenceOverlayBundle; timeBundle: TimeTrackingBundle;
+  chronologyBundle?: ChronologyTimelineBundle | null; canManageChronology?: boolean;
+  onOverlaySaved: () => void | Promise<void>;
 }
-
-function groupEntries(entries: ConvergenceTimelineEntry[]): DateGroup[] {
-  const byDate = new Map<string, DateGroup>();
-  for (const entry of entries) {
-    const dateLabel = entry.display.dateLabel ?? 'Undated';
-    let group = byDate.get(dateLabel);
-    if (!group) {
-      group = { dateLabel, byDomain: new Map() };
-      byDate.set(dateLabel, group);
-    }
-    const list = group.byDomain.get(entry.domain) ?? [];
-    list.push(entry);
-    group.byDomain.set(entry.domain, list);
+const control = 'min-h-11 rounded border border-border/40 px-3 py-2 text-sm';
+export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronologyBundle, canManageChronology = false, onOverlaySaved }: Props) {
+  const [params, setParams] = useSearchParams();
+  const [manage, setManage] = useState(false);
+  const [gapId, setGapId] = useState<string | null>(null);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const [selection, setSelection] = useState<ConvergenceTimelineEntry | null>(null);
+  const [catalogue, setCatalogue] = useState<ChronologyTimelineBundle | null>(null);
+  const [inspectionError, setInspectionError] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState(false);
+  const coverage = bundle.feed;
+  const range = coverage?.requestedRange ?? bundle.window;
+  const importance = (params.get('importance') ?? 'MAJOR,MINOR,NOTICE').split(',');
+  const domains = params.get('domains')?.split(',');
+  const groups = useMemo(() => groupCampaignFeed(bundle.entries.filter(row => row.projection.visible), params.get('group') === 'session'), [bundle.entries, params]);
+  const master = timeBundle.calendars.find(row => row.isMasterTime) ?? timeBundle.calendars[0];
+  const axis = useMemo(() => master ? historicalClock(master).axis : null, [master]);
+  const label = (minute: string) => {
+    const state = axis ? historicalNativeState(axis, BigInt(minute)) : null;
+    return state ? `${state.monthName} ${state.day}, Year ${state.year}` : 'Date unavailable';
+  };
+  function filter(key: string, value: string) {
+    const next = new URLSearchParams(params); next.set(key, value); setParams(next);
   }
-  return [...byDate.values()].sort((a, b) => a.dateLabel.localeCompare(b.dateLabel));
-}
-
-function DowntimePeriodRow({
-  entry,
-  campaignHandle,
-  canManageChronology,
-  onOverlaySaved,
-}: {
-  entry: ConvergenceTimelineEntry;
-  campaignHandle: string;
-  canManageChronology: boolean;
-  onOverlaySaved?: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const payload = parseDowntimePeriodPayload(entry);
-  const showAffectedInline =
-    payload != null && shouldShowDowntimeAffectedInline(payload, expanded);
-
-  return (
-    <li className="text-sm">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <button
-          type="button"
-          className="font-medium text-foreground hover:underline"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {formatConvergenceFeedTitle(entry.display.title)}
-        </button>
-        {payload?.isOpen ? (
-          <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-            Current
-          </span>
-        ) : null}
-      </div>
-      {entry.display.summary ? (
-        <p className="text-xs text-muted line-clamp-2">{entry.display.summary}</p>
-      ) : null}
-      {showAffectedInline && payload ? (
-        <DowntimePeriodAffectedList
-          campaignHandle={campaignHandle}
-          payload={payload}
-          compact
-        />
-      ) : null}
-      {expanded && payload ? (
-        <ul className="mt-1 space-y-0.5 border-l border-border pl-3 text-xs text-muted">
-          {payload.advanceRunCount > 0 ? (
-            <li>
-              {payload.advanceRunCount} time advance
-              {payload.advanceRunCount === 1 ? '' : 's'}
-            </li>
-          ) : null}
-          {payload.projectCompletions > 0 ? (
-            <li>
-              {payload.projectCompletions} project
-              {payload.projectCompletions === 1 ? '' : 's'} completed
-            </li>
-          ) : null}
-          {payload.projectFailures > 0 ? (
-            <li>
-              {payload.projectFailures} project
-              {payload.projectFailures === 1 ? '' : 's'} failed
-            </li>
-          ) : null}
-          {payload.advanceRunCount === 0 &&
-          payload.projectCompletions === 0 &&
-          payload.projectFailures === 0 ? (
-            <li>Quiet stretch — no recorded simulation activity.</li>
-          ) : null}
-        </ul>
-      ) : null}
-      {expanded && payload && !showAffectedInline ? (
-        <DowntimePeriodAffectedList campaignHandle={campaignHandle} payload={payload} />
-      ) : null}
-      {expanded && canManageChronology && payload ? (
-        <DowntimeGapOverlayEditor
-          campaignHandle={campaignHandle}
-          gapId={payload.gapId}
-          onSaved={onOverlaySaved}
-        />
-      ) : null}
-      {entry.links.length > 0 && (
-        <div className="mt-0.5 flex flex-wrap gap-2">
-          {entry.links.map((link) => (
-            <Link
-              key={`${entry.entryId}-${link.hrefKind}`}
-              to={link.path}
-              className="text-xs text-primary hover:underline"
-            >
-              {formatConvergenceLinkLabel(link.hrefKind)}
-            </Link>
-          ))}
-        </div>
-      )}
-    </li>
-  );
-}
-
-function WorldAdvanceBatchRow({
-  item,
-  campaignHandle,
-}: {
-  item: Extract<FeedListItem, { kind: 'world_advance_batch' }>;
-  campaignHandle: string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const effectCount = item.entries.length;
-  return (
-    <li className="text-sm">
-      <div className="flex flex-wrap items-baseline gap-2">
-        <button
-          type="button"
-          className="font-medium text-foreground hover:underline"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {item.headline}
-        </button>
-        <span className="text-xs text-muted">
-          {effectCount} effect{effectCount === 1 ? '' : 's'}
-        </span>
-        <Link
-          to={campaignWorldAdvanceBatchPath(campaignHandle, item.batchEventId)}
-          className="text-xs text-primary hover:underline"
-        >
-          Provenance
-        </Link>
-      </div>
-      {expanded ? (
-        <ul className="mt-1 space-y-0.5 border-l border-border pl-3 text-xs text-muted">
-          {item.entries.map((entry) => (
-            <li key={entry.entryId}>{entry.display.title}</li>
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  );
-}
-
-export function CampaignFeedView({
-  bundle,
-  selectedDomains,
-  sessionLinkedOnly,
-  onDomainsChange,
-  onSessionLinkedOnlyChange,
-  canManageChronology = false,
-  onOverlaySaved,
-}: CampaignFeedViewProps) {
-  const params = useParams<{ campaignHandle?: string }>();
-  const campaignHandle = readCampaignHandle(params);
-  const [collapsedDomains, setCollapsedDomains] = useState<Set<string>>(
-    () => new Set(DEFAULT_COLLAPSED),
-  );
-  const visibleEntries = useMemo(
-    () => bundle.entries.filter((e) => e.projection.visible),
-    [bundle.entries],
-  );
-
-  const dateGroups = useMemo(() => groupEntries(visibleEntries), [visibleEntries]);
-
-  function toggleDomainChip(domain: string) {
-    const all = [...DOMAIN_CHIP_OPTIONS];
-    let next: string[];
-    if (selectedDomains.length === 0) {
-      next = all.filter((d) => d !== domain);
-    } else if (selectedDomains.includes(domain)) {
-      next = selectedDomains.filter((d) => d !== domain);
-    } else {
-      next = [...selectedDomains, domain];
-      if (next.length >= all.length) next = [];
-    }
-    onDomainsChange(next);
+  function navigate(nextRange: { from: string; to: string }) {
+    const next = new URLSearchParams(params);
+    next.set('windowMode', 'EPOCH_RANGE'); next.set('from', nextRange.from); next.set('to', nextRange.to);
+    setParams(next); setRangeOpen(false);
   }
-
-  function toggleDomainSection(domain: string) {
-    setCollapsedDomains((prev) => {
-      const next = new Set(prev);
-      if (next.has(domain)) next.delete(domain);
-      else next.add(domain);
-      return next;
-    });
+  async function inspect(entry: ConvergenceTimelineEntry) {
+    setInspectionError(null); setInspecting(true);
+    try {
+      const loaded = catalogue ?? chronologyBundle ?? await fetchChronologyTimeline(campaignHandle);
+      setCatalogue(loaded);
+      if (!loaded.baseEvents.some(row => row.id === entry.source.entityId)) throw new Error('This event is no longer available.');
+      setSelection(entry);
+    } catch (error) { setInspectionError(error instanceof Error ? error.message : 'Unable to inspect this event.'); }
+    finally { setInspecting(false); }
   }
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 space-y-2 border-b border-border px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-muted">Domains</span>
-          {DOMAIN_CHIP_OPTIONS.map((domain) => {
-            const active =
-              selectedDomains.length === 0 || selectedDomains.includes(domain);
-            return (
-              <button
-                key={domain}
-                type="button"
-                onClick={() => toggleDomainChip(domain)}
-                className={`rounded-full border px-2.5 py-0.5 text-xs ${
-                  active
-                    ? 'border-primary bg-primary/15 text-foreground'
-                    : 'border-border text-muted hover:text-foreground'
-                }`}
-              >
-                {DOMAIN_LABELS[domain] ?? domain}
-              </button>
-            );
-          })}
-        </div>
-        <label className="flex items-center gap-2 text-xs text-muted">
-          <input
-            type="checkbox"
-            checked={sessionLinkedOnly}
-            onChange={(e) => onSessionLinkedOnlyChange(e.target.checked)}
-            className="rounded border-border"
-          />
-          Session-linked only
-        </label>
-        {bundle.truncation.capped && (
-          <p className="text-xs text-amber-200/90">
-            Showing first {bundle.truncation.maxEntries} of {bundle.truncation.totalCollected}{' '}
-            entries. Narrow the chronology window or domain filters.
-          </p>
-        )}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
-        {visibleEntries.length === 0 ? (
-          <p className="text-sm text-muted">No entries match the current filters.</p>
-        ) : (
-          <div className="space-y-4">
-            {dateGroups.map((group) => (
-              <section key={group.dateLabel}>
-                <h3 className="sticky top-0 z-10 bg-background/95 py-1 META_SECTION_LABEL_CLASS">
-                  {group.dateLabel}
-                </h3>
-                <div className="space-y-2 pl-1">
-                  {[...group.byDomain.entries()].map(([domain, entries]) => {
-                    const collapsed = collapsedDomains.has(domain);
-                    return (
-                      <div key={`${group.dateLabel}-${domain}`}>
-                        <button
-                          type="button"
-                          onClick={() => toggleDomainSection(domain)}
-                          className="flex w-full items-center gap-1 text-left text-xs font-medium text-foreground"
-                        >
-                          {collapsed ? (
-                            <ChevronRight className="size-3.5 shrink-0" />
-                          ) : (
-                            <ChevronDown className="size-3.5 shrink-0" />
-                          )}
-                          {DOMAIN_LABELS[domain] ?? domain}
-                          <span className="text-muted">({entries.length})</span>
-                        </button>
-                        {!collapsed && (
-                          <ul className="mt-1 space-y-1 border-l border-border pl-3">
-                            {groupDomainFeedItems(domain, entries).map((item) =>
-                              item.kind === 'world_advance_batch' ? (
-                                <WorldAdvanceBatchRow
-                                  key={item.batchEventId}
-                                  item={item}
-                                  campaignHandle={campaignHandle}
-                                />
-                              ) : item.entry.domain === ChronologyDomainKind.DOWNTIME_PERIOD ? (
-                                <DowntimePeriodRow
-                                  key={item.entry.entryId}
-                                  entry={item.entry}
-                                  campaignHandle={campaignHandle}
-                                  canManageChronology={canManageChronology}
-                                  onOverlaySaved={onOverlaySaved}
-                                />
-                              ) : (
-                                <li key={item.entry.entryId} className="text-sm">
-                                  <div className="flex flex-wrap items-baseline gap-2">
-                                    <span className="font-medium text-foreground">
-                                      {formatConvergenceFeedTitle(item.entry.display.title)}
-                                    </span>
-                                    {shouldShowConvergenceVisibilityBadge(
-                                      item.entry.projection.visibilityTier,
-                                    ) ? (
-                                      <VisibilityTierChip
-                                        tier={visibilityTierLabelFromProjection(
-                                          item.entry.projection.visibilityTier,
-                                        )}
-                                        compact
-                                      />
-                                    ) : null}
-                                  </div>
-                                  {(() => {
-                                    const summary = formatWorldEventFeedSummary(
-                                      item.entry.display.summary,
-                                    );
-                                    return summary ? (
-                                      <p className="text-xs text-muted line-clamp-2">{summary}</p>
-                                    ) : null;
-                                  })()}
-                                  {item.entry.links.length > 0 && (
-                                    <div className="mt-0.5 flex flex-wrap gap-2">
-                                      {item.entry.links.map((link) => (
-                                        <Link
-                                          key={`${item.entry.entryId}-${link.hrefKind}`}
-                                          to={link.path}
-                                          className="text-xs text-primary hover:underline"
-                                        >
-                                          {formatConvergenceLinkLabel(link.hrefKind)}
-                                        </Link>
-                                      ))}
-                                    </div>
-                                  )}
-                                </li>
-                              ),
-                            )}
-                          </ul>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
-      </div>
+  const details = catalogue ?? chronologyBundle;
+  const baseEvent = details?.baseEvents.find(row => row.id === selection?.source.entityId) ?? null;
+  const occurrence: TimelineOccurrenceRecord | null = selection?.feed?.nativeStart && baseEvent ? {
+    ...baseEvent, baseEventId: baseEvent.id, occurrenceId: selection.feed.occurrenceId ?? selection.entryId,
+    occurrenceIndex: selection.feed.occurrenceIndex ?? 0,
+    start: { ...selection.feed.nativeStart, epochMinute: selection.instant.epochMinute },
+    end: { ...(selection.feed.nativeEnd ?? selection.feed.nativeStart), epochMinute: selection.feed.endEpochMinute ?? null },
+    duration: selection.feed.duration ?? baseEvent.duration, dayOffset: 0, isStart: true, isContinuation: false,
+    sourceType: baseEvent.isRepeating ? 'REPEATING' : 'STATIC', prerequisiteBaseEventId: baseEvent.prerequisiteId,
+  } : details?.occurrences.find(row => row.occurrenceId === selection?.feed?.occurrenceId) ?? null;
+  const sourceClock = timeBundle.calendars.find(row => row.id === selection?.feed?.calendarId);
+  const sourceAxis = useMemo(() => sourceClock ? historicalClock(sourceClock).axis : null, [sourceClock]);
+  const renderEntry = (entry: ConvergenceTimelineEntry) => <li key={entry.entryId} className="space-y-1 py-3" data-feed-entry={entry.entryId}>
+    {entry.domain === 'world_event' ? <button className="min-h-11 text-left font-medium" disabled={inspecting} onClick={() => void inspect(entry)}>{entry.display.title}</button> : <p className="font-medium">{entry.display.title}</p>}
+    {entry.display.summary && <p className="type-prose max-w-[80ch] text-sm">{entry.display.summary}</p>}
+    <p className="text-xs text-muted">{FEED_SOURCES[entry.domain as keyof typeof FEED_SOURCES] ?? entry.domain}
+      {entry.feed?.originLabel && ` · ${entry.feed.originLabel}`}
+      {entry.feed?.importance && ` · ${entry.feed.importance.toLowerCase()}`}{entry.feed?.calendarName && ` · ${entry.feed.calendarName}`}
+      {entry.feed?.nativeDateLabel && ` · ${entry.feed.nativeDateLabel}`}{entry.feed?.duration && entry.feed.duration > 1 ? ` · ${entry.feed.duration} days` : ''}</p>
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+      {entry.links.map(link => <Link key={`${link.hrefKind}:${link.path}`} className="inline-flex min-h-11 items-center underline" to={link.path}>{formatConvergenceLinkLabel(link.hrefKind)}</Link>)}
+      {canManageChronology && entry.domain === 'downtime_period' && <button className="min-h-11 underline" onClick={() => setGapId((entry.domainPayload as { payload: { gapId: string } }).payload.gapId)}>Edit period</button>}
     </div>
-  );
+  </li>;
+  return <div className="relative h-full min-w-0 overflow-y-auto p-4" data-campaign-feed>
+    <header className="mb-8 space-y-3">
+      <h2 className={TYPE_DISPLAY_CLASS}>Campaign history</h2>
+      <p className="type-prose max-w-[80ch] text-sm text-muted">Recorded developments, sessions, and discoveries across your campaign.</p>
+      <div className="flex flex-wrap items-center gap-2" aria-label="Historical navigation">
+        <button className={control} onClick={() => navigate(shiftFeedRange(range.from, range.to, -1))}>Earlier</button>
+        <button className={control} aria-label="Choose historical range" onClick={() => setRangeOpen(true)}>{label(range.from)} – {label(String(BigInt(range.to) - 1n))}</button>
+        <button className={control} disabled={!coverage?.includeFuture && BigInt(range.to) >= BigInt(coverage?.todayEndEpochMinute ?? range.to)} onClick={() => navigate(shiftFeedRange(range.from, range.to, 1))}>Later</button>
+        <button className={control} onClick={() => { const next = new URLSearchParams(params); next.delete('from'); next.delete('to'); next.delete('windowMode'); setParams(next); }}>Latest history</button>
+      </div>
+      <details><summary className="min-h-11 cursor-pointer py-3 text-sm">Filter and group history</summary>
+        <div className="space-y-3 text-sm">
+          <fieldset className="flex flex-wrap gap-4"><legend className={META_SECTION_LABEL_CLASS}>Sources</legend>
+            {Object.entries(FEED_SOURCES).map(([id, title]) => <label className="inline-flex min-h-11 items-center gap-2" key={id}><input type="checkbox" checked={domains === undefined || domains.includes(id)} onChange={e => {
+              const selected = domains ?? Object.keys(FEED_SOURCES); filter('domains', (e.target.checked ? [...selected, id] : selected.filter(value => value !== id)).join(','));
+            }} />{title}</label>)}
+          </fieldset>
+          <fieldset className="flex flex-wrap gap-4"><legend className={META_SECTION_LABEL_CLASS}>Chronology importance</legend>
+            {['MAJOR', 'MINOR', 'NOTICE'].map(level => <label className="inline-flex min-h-11 items-center gap-2" key={level}><input type="checkbox" checked={importance.includes(level)} onChange={e => filter('importance', (e.target.checked ? [...importance, level] : importance.filter(value => value !== level)).join(','))} />{level === 'MAJOR' ? 'Major' : level === 'MINOR' ? 'Minor' : 'Notice'}</label>)}
+          </fieldset>
+          <div className="flex flex-wrap gap-4">
+            <label className="inline-flex min-h-11 items-center gap-2"><input type="checkbox" checked={params.get('sessionLinkedOnly') === 'true'} onChange={e => filter('sessionLinkedOnly', String(e.target.checked))} />Session-linked only</label>
+            <label className="inline-flex min-h-11 items-center gap-2"><input type="checkbox" checked={coverage?.includeFuture ?? false} onChange={e => filter('includeFuture', String(e.target.checked))} />Include future</label>
+            <label className="inline-flex min-h-11 items-center gap-2">Group by <select className={control} value={params.get('group') ?? 'date'} onChange={e => filter('group', e.target.value)}><option value="date">In-world date</option><option value="session">Session</option></select></label>
+          </div>
+        </div>
+      </details>
+      <p className="text-xs text-muted">Loaded recorded history only; coverage is not guaranteed. Use Earlier or choose a range to explore older history.</p>
+      {bundle.truncation.capped && <div role="status" className="text-sm"><p>This window is incomplete: the response limit was reached.</p><button className={control} disabled={BigInt(range.to) - BigInt(range.from) <= 1n} onClick={() => navigate(narrowFeedRange(range.from, range.to))}>Narrow range</button></div>}
+      <details className="text-xs text-muted"><summary className="min-h-11 cursor-pointer py-3">Coverage and source limitations</summary><ul className="list-disc space-y-2 pl-4">
+        {coverage?.sourceWarnings.map(row => <li key={`${row.source}:${row.code}`}>{row.source}: {row.message}</li>)}{coverage?.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul></details>
+      {canManageChronology && <button className="min-h-11 text-sm underline" onClick={() => setManage(true)}>Manage history</button>}
+      {inspectionError && <p role="alert">{inspectionError}</p>}
+    </header>
+    {!groups.length && <p className="type-prose">No loaded recorded developments match this window and its filters.</p>}
+    <div className="space-y-8">{groups.map(group => {
+      const content = <><h3 className={META_SECTION_LABEL_CLASS}>{group.title}</h3>
+        {group.key === 'undated' && <p className="text-xs text-muted">Undated records are separate from this date window. {coverage?.undated.capped ? 'This section is capped.' : ''}</p>}
+        {group.key.startsWith('native:') && <p className="text-xs text-muted">These dates cannot be aligned reliably with other clocks. {coverage?.unaligned.capped ? 'This section is capped.' : ''}</p>}
+        {groupFeedDevelopments(group.entries).map(development => development.title && development.entries.length > 1
+          ? <details key={development.key} className="mt-3"><summary className="min-h-11 cursor-pointer py-3 text-sm">{development.title} · {development.entries.length} recorded developments</summary><ul className="divide-y divide-border/40 pl-3">{development.entries.map(renderEntry)}</ul></details>
+          : <ul key={development.key} className="divide-y divide-border/40">{development.entries.map(renderEntry)}</ul>)}
+      </>;
+      return group.key === 'undated' || group.key.startsWith('native:') ? <details key={group.key}><summary className="min-h-11 cursor-pointer py-3 text-sm">{group.title} ({group.entries.length})</summary>{content}</details>
+        : <section key={group.key} aria-label={group.title}>{content}</section>;
+    })}</div>
+    {selection && <ChronologyEventSidebar campaignHandle={campaignHandle} baseEvent={baseEvent} editableEvents={details?.baseEvents ?? []} categories={details?.categories ?? []}
+      calendarLike={sourceAxis?.calendar ?? null} open={!!baseEvent} canManage={canManageChronology} occurrence={occurrence} onClose={() => setSelection(null)}
+      onMutated={async () => { await onOverlaySaved(); setCatalogue(await fetchChronologyTimeline(campaignHandle)); }} onDeleted={() => setSelection(null)} />}
+    {manage && canManageChronology && <HistoryDialog title="Manage history" onClose={() => setManage(false)}><CampaignHistoryPanel campaignHandle={campaignHandle} /></HistoryDialog>}
+    {gapId && canManageChronology && <HistoryDialog title="Edit downtime period" onClose={() => setGapId(null)}><DowntimeGapOverlayEditor campaignHandle={campaignHandle} gapId={gapId} onSaved={() => { setGapId(null); void onOverlaySaved(); }} /></HistoryDialog>}
+    {rangeOpen && <HistoryDialog title="Choose historical range" onClose={() => setRangeOpen(false)}>{axis ? <FeedRangeEditor axis={axis} from={range.from} to={range.to} onApply={navigate} /> : <p>Calendar unavailable. Use Earlier and Later to navigate bounded history.</p>}</HistoryDialog>}
+  </div>;
+}
+function HistoryDialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return <ChronologyEventDialog title={title} dirty={false} busy={false} onClose={onClose}>{children}</ChronologyEventDialog>;
+}
+function FeedRangeEditor({ axis, from, to, onApply }: { axis: NonNullable<ReturnType<typeof historicalClock>['axis']>; from: string; to: string; onApply: (range: { from: string; to: string }) => void }) {
+  const first = historicalNativeState(axis, BigInt(from)), last = historicalNativeState(axis, BigInt(to) - 1n);
+  const [start, setStart] = useState({ year: first?.year ?? 1, month: first?.monthIndex ?? 0, day: first?.day ?? 1 });
+  const [end, setEnd] = useState({ year: last?.year ?? 1, month: last?.monthIndex ?? 0, day: last?.day ?? 1 });
+  const fromMinute = calendarEpochMinuteForDate(axis.calendar, start.year, start.month, start.day);
+  const toMinute = calendarEpochMinuteForDate(axis.calendar, end.year, end.month, end.day) + 1440n;
+  return <div className="space-y-4"><p>Dates use the campaign reference calendar. The last selected day is included.</p>
+    <fieldset><legend>First day</legend><FantasyDatePicker calendar={axis.calendar} value={start} onChange={parts => setStart({ year: parts.year ?? 1, month: parts.month ?? 0, day: parts.day ?? 1 })} /></fieldset>
+    <fieldset><legend>Last day</legend><FantasyDatePicker calendar={axis.calendar} value={end} onChange={parts => setEnd({ year: parts.year ?? 1, month: parts.month ?? 0, day: parts.day ?? 1 })} /></fieldset>
+    {fromMinute >= toMinute && <p role="alert">The last day must follow or equal the first day.</p>}
+    <button className={control} disabled={fromMinute >= toMinute} onClick={() => onApply({ from: String(fromMinute), to: String(toMinute) })}>Apply range</button></div>;
 }

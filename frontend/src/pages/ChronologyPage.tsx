@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HistoricalTimeline, type TimelineSession, type EraTimelineRequest } from '@/components/chronology/HistoricalTimeline';
 import { ChronologyCreateEventDialog } from '@/components/chronology/ChronologyCreateEventDialog';
@@ -11,7 +11,6 @@ import {
   type UniverseClockPill,
 } from '@/components/chronology/UniverseHeader';
 import { CampaignFeedView } from '@/components/chronology/CampaignFeedView';
-import { CampaignHistoryPanel } from '@/components/chronology/CampaignHistoryPanel';
 import { WidescreenCalendarView } from '@/components/chronology/WidescreenCalendarView';
 import { useWiki } from '@/contexts/WikiContext';
 import { campaignTimeTrackingPath } from '@/lib/campaignPaths';
@@ -63,14 +62,10 @@ export function ChronologyPage() {
   const [timeBundle, setTimeBundle] = useState<TimeTrackingBundle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [feedDomains, setFeedDomains] = useState<string[]>(() => {
-    if (!domainsParam?.trim()) return [];
-    return domainsParam
-      .split(',')
-      .map((domain) => domain.trim())
-      .filter(Boolean);
-  });
-  const [sessionLinkedOnly, setSessionLinkedOnly] = useState(false);
+  const feedDomains = useMemo(() => domainsParam === null ? [] : domainsParam.split(',').filter(Boolean), [domainsParam]);
+  const sessionLinkedOnly = searchParams.get('sessionLinkedOnly') === 'true';
+  const feedImportance = searchParams.get('importance') ?? 'MAJOR,MINOR,NOTICE';
+  const includeFuture = searchParams.get('includeFuture') === 'true';
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -93,16 +88,20 @@ export function ChronologyPage() {
   );
 
   const canManageChronologyAccess = can(CampaignCapabilities.CHRONOLOGY_EDIT);
+  const loadVersion = useRef(0);
+  const loadedFeedScope = useRef('');
 
   const feedDomainsParam = useMemo(() => {
-    if (feedDomains.length === 0) return undefined;
+    if (domainsParam === null) return undefined;
     return feedDomains.join(',');
-  }, [feedDomains]);
+  }, [feedDomains, domainsParam]);
 
   const load = useCallback(
     async (background = false) => {
       if (!campaignHandle) return;
-      if (!background) setLoading(true);
+      const version = ++loadVersion.current;
+      const scope = `${campaignHandle}:${activeView}`;
+      if (!background && !(activeView === 'feed' && loadedFeedScope.current === scope)) setLoading(true);
       setError(null);
       try {
         const needsTimeline = activeView !== 'feed';
@@ -114,20 +113,24 @@ export function ChronologyPage() {
           fetchTimeTracking(campaignHandle),
           needsOverlay
             ? fetchChronologyOverlay(campaignHandle, {
-                windowMode,
-                from,
-                to,
+                order: 'desc', importance: feedImportance, includeFuture,
+                windowMode: 'EPOCH_RANGE',
+                from: windowMode === 'EPOCH_RANGE' ? from : undefined,
+                to: windowMode === 'EPOCH_RANGE' ? to : undefined,
                 domains: feedDomainsParam,
                 sessionLinkedOnly,
               })
             : Promise.resolve(null),
         ]);
+        if (version !== loadVersion.current) return;
         if (data) {
           setBundle(data);
         }
         setTimeBundle(timeData);
         setOverlayBundle(overlay);
+        if (overlay) loadedFeedScope.current = scope;
       } catch (err) {
+        if (version !== loadVersion.current) return;
         if (background) throw err;
         setError(
           err instanceof Error
@@ -140,7 +143,7 @@ export function ChronologyPage() {
           setOverlayBundle(null);
         }
       } finally {
-        setLoading(false);
+        if (version === loadVersion.current) setLoading(false);
       }
     },
     [
@@ -150,6 +153,8 @@ export function ChronologyPage() {
       to,
       activeView,
       feedDomainsParam,
+      feedImportance,
+      includeFuture,
       sessionLinkedOnly,
       t,
     ],
@@ -297,20 +302,8 @@ export function ChronologyPage() {
       {!loading && !error && timeBundle && (bundle || overlayBundle) && (
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background">
           {activeView === 'feed' && overlayBundle && (
-            <div className="flex h-full flex-col gap-4 overflow-auto p-4">
-              <CampaignFeedView
-                bundle={overlayBundle}
-                selectedDomains={feedDomains}
-                sessionLinkedOnly={sessionLinkedOnly}
-                onDomainsChange={setFeedDomains}
-                onSessionLinkedOnlyChange={setSessionLinkedOnly}
-                canManageChronology={canManageChronologyAccess}
-                onOverlaySaved={() => void load()}
-              />
-              {canManageChronologyAccess ? (
-                <CampaignHistoryPanel campaignHandle={campaignHandle} />
-              ) : null}
-            </div>
+            <CampaignFeedView bundle={overlayBundle} campaignHandle={campaignHandle} timeBundle={timeBundle}
+              chronologyBundle={bundle} canManageChronology={canManageChronologyAccess} onOverlaySaved={() => load(true)} />
           )}
 
           {activeView === 'calendar' && bundle && (

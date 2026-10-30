@@ -1,6 +1,8 @@
 // Isolated browser fixture: real chronology components and editor, mocked campaign API/context.
 
 import { useCallback, useMemo, useState } from 'react';
+import { CampaignFeedView } from '../../src/components/chronology/CampaignFeedView';
+import { feedRange } from '../../../shared/campaignFeed';
 import { ErasView } from '../../src/components/chronology/ErasView';
 import { HistoricalTimeline } from '../../src/components/chronology/HistoricalTimeline';
 import { createRoot } from 'react-dom/client';
@@ -177,7 +179,7 @@ function App() {
         {manage && <button onClick={() => setCreate(true)}>New event</button>}
       </div>
       <main style={{ minHeight: 0, flex: 1 }}>
-        {query.has('eras') && params.get('view') !== 'timeline' ? <ErasView campaignHandle="test" bundle={activeBundle}
+        {query.has('feed') ? <FeedFixture manage={manage} mutated={mutated} /> : query.has('eras') && params.get('view') !== 'timeline' ? <ErasView campaignHandle="test" bundle={activeBundle}
           timeBundle={{ calendars }} canManage={manage} onErasChanged={eraMutation} onEventMutated={mutated} onEventDeleted={() => {}} onRevealEvent={async () => {}}
           onTimeline={openTimeline} /> : query.has('timeline') || query.has('eras') ? <HistoricalTimeline campaignHandle="test" bundle={activeBundle} session={session} navigationRequest={navigationRequest}
           timeBundle={{ calendars: [...calendars, { ...calendar, id: 'unauthorized', name: 'Unauthorized clock' }], currentEpochMinute: '56283' }} canManage={manage} onBrowseAnchorChange={browse}
@@ -219,6 +221,35 @@ function App() {
       )}
     </div>
   );
+}
+function FeedFixture({ manage, mutated }) {
+  const [params] = useSearchParams();
+  const range = feedRange(56283n, 123n);
+  const from = params.get('from') ?? range.from, to = params.get('to') ?? range.to;
+  const data = (id, title, minute, domain = 'world_event', importance = 'NOTICE', groupId) => ({
+    entryId: id, sortOrdinal: id, instant: { epochMinute: minute, dateParts: null },
+    display: { title, summary: 'Mira followed the coast and discovered the archive.', dateLabel: minute === null ? null : 'Returning 10, Year 1' },
+    source: { domain, entityType: 'timeline_event', entityId: domain === 'world_event' ? 'journey' : id, subEntityId: id },
+    domain, domainPayload: { domain, payload: { gapId: 'gap' } },
+    projection: { visible: true }, links: [{ hrefKind: 'wiki_page', path: '/campaigns/test/archive' }],
+    sessionLink: domain === 'session_chronicle' ? { timelinePointId: 'session', sequenceOrder: 1 } : null,
+    feed: { datePrecision: minute === null ? 'undated' : 'day', importance: domain === 'world_event' ? importance : undefined,
+      referenceDay: '39', calendarId: 'clock', calendarName: 'World', occurrenceId: 'occ_0', duration: 40, groupId, groupTitle: groupId ? 'A season of discovery' : undefined },
+  });
+  const all = [data('notice', 'The long journey', '56283'), data('major', 'The archive opens', '56282', 'world_event', 'MAJOR'),
+    data('minor', 'Sable reaches the coast', '56281', 'world_event', 'MINOR'), data('session', 'Session discoveries', '56280', 'session_chronicle'),
+    data('effect-one', 'Neri settled by the river', '56279', 'world_advance', undefined, 'batch'), data('effect-two', 'Trade resumed', '56278', 'world_advance', undefined, 'batch'),
+    data('unknown', 'An undated discovery', null, 'session_chronicle')];
+  const entries = all.filter(row => (row.instant.epochMinute === null || BigInt(row.instant.epochMinute) >= BigInt(from) && BigInt(row.instant.epochMinute) < BigInt(to))
+    && (!row.feed.importance || (params.get('importance') ?? 'MAJOR,MINOR,NOTICE').split(',').includes(row.feed.importance))
+    && (!params.has('domains') || params.get('domains').split(',').includes(row.domain))
+    && (params.get('sessionLinkedOnly') !== 'true' || row.sessionLink));
+  return <CampaignFeedView campaignHandle="test" bundle={{ entries, campaignNowEpochMinute: '56283', window: { mode: 'EPOCH_RANGE', from, to },
+    truncation: { capped: query.has('capped'), maxEntries: 2000, totalCollected: entries.length },
+    feed: { requestedRange: { mode: 'EPOCH_RANGE', from, to }, todayEndEpochMinute: range.to, includeFuture: params.get('includeFuture') === 'true',
+      undated: { limit: 100, capped: false, returned: 1 }, unaligned: { limit: 100, capped: false, returned: 0 },
+      sourceWarnings: [{ source: 'world_event', code: 'CAP', message: 'Recurrence expansion is bounded.' }], gaps: ['Non-event progression artifacts require source adapters.'] } }}
+    chronologyBundle={timelineBundle} timeBundle={{ calendars: [calendar], currentEpochMinute: '56283' }} canManageChronology={manage} onOverlaySaved={mutated} />;
 }
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>

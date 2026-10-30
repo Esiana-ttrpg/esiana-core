@@ -66,6 +66,7 @@ let failSave = false;
 const requests = [];
 await page.route('**/api/**', async (route) => {
   const req = route.request();
+  if (req.url().includes('/narrative-snapshots') && req.method() === 'GET') return route.fulfill({ json: { snapshots: [] } });
   if (req.url().includes('/chronology/eras')) {
     if (req.method() === 'GET') return route.fulfill({ json: { events: 1, trajectories: 2, recurringRules: 1, overviewWords: 2 } });
     const payload = req.postDataJSON();
@@ -631,9 +632,62 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Compare on Timeline' }).count(), 0);
   await page.goto('http://localhost:5199/__chronology?eras&era=unavailable');
   await visible(page.getByText(/This era or calendar is unavailable/));
+  // Pass 5: bounded reading feed, grouping without deduplication, navigation and source inspection.
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('http://localhost:5199/__chronology?feed&capped');
+  await visible(page.getByRole('heading', { name: 'Campaign history', exact: true }));
+  assert.equal(await page.locator('[data-feed-entry]').count(), 7); // Grouping retains both effects and the separately collapsed undated record.
+  await page.getByText('A season of discovery', { exact: false }).click();
+  assert.equal(await page.locator('[data-feed-entry="effect-one"]').count(), 1);
+  assert.equal(await page.locator('[data-feed-entry="effect-two"]').count(), 1);
+  await page.getByRole('button', { name: 'The long journey', exact: true }).click();
+  await visible(page.getByRole('complementary', { name: 'Event details', exact: true }));
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  assert.equal(await page.getByRole('button', { name: 'The long journey', exact: true }).evaluate(el => el === document.activeElement), true);
+  await page.getByText('Filter and group history', { exact: true }).click();
+  await page.getByRole('checkbox', { name: 'Notice', exact: true }).uncheck();
+  assert.equal(await page.locator('[data-feed-entry="notice"]').count(), 0);
+  await page.getByRole('checkbox', { name: 'Notice', exact: true }).check();
+  await page.getByRole('combobox', { name: 'Group by', exact: true }).selectOption('session');
+  await visible(page.getByRole('heading', { name: 'Session 1', exact: true }));
+  await page.getByRole('combobox', { name: 'Group by', exact: true }).selectOption('date');
+  await page.getByRole('button', { name: 'Earlier', exact: true }).click();
+  const earlierRange = new URL(page.url()).searchParams;
+  assert.equal(BigInt(earlierRange.get('to')) - BigInt(earlierRange.get('from')), 30n * 1440n);
+  assert.equal(await page.locator('[data-feed-entry="notice"]').count(), 0);
+  await page.getByRole('button', { name: 'Later', exact: true }).click();
+  assert.equal(await page.locator('[data-feed-entry="notice"]').count(), 1);
+  await page.getByRole('button', { name: 'Narrow range', exact: true }).click();
+  assert.equal(BigInt(new URL(page.url()).searchParams.get('to')) - BigInt(new URL(page.url()).searchParams.get('from')), 15n * 1440n);
+  await page.getByRole('button', { name: 'Choose historical range', exact: true }).click();
+  await visible(page.getByRole('dialog', { name: 'Choose historical range', exact: true }));
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('button', { name: 'Choose historical range' }).evaluate(el => el === document.activeElement), true);
+  await page.getByText('Coverage and source limitations', { exact: true }).click();
+  await visible(page.getByText('Non-event progression artifacts require source adapters.', { exact: true }));
+  await page.getByRole('button', { name: 'Manage history', exact: true }).click();
+  await visible(page.getByRole('dialog', { name: 'Manage history', exact: true }));
+  await page.keyboard.press('Escape');
+  await page.getByText('Filter and group history', { exact: true }).click();
+  await page.getByText('Coverage and source limitations', { exact: true }).click();
+  await page.locator('[data-campaign-feed]').evaluate(el => { el.scrollTop = 0; });
+  await page.screenshot({ path: 'node_modules/.chronology-verification/feed-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('http://localhost:5199/__chronology?feed&player');
+  await visible(page.getByRole('heading', { name: 'Campaign history', exact: true }));
+  assert.equal(await page.getByRole('button', { name: 'Manage history' }).count(), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByRole('button', { name: 'The long journey', exact: true }).click();
+  await visible(page.getByRole('dialog', { name: 'Event details', exact: true }));
+  assert.equal(await page.getByRole('button', { name: 'Edit event', exact: true }).count(), 0);
+  await page.keyboard.press('Escape');
+  await page.getByText('Undated (1)', { exact: true }).click();
+  await visible(page.getByText('An undated discovery', { exact: true }));
+  await page.locator('[data-campaign-feed]').evaluate(el => { el.scrollTop = 0; });
+  await page.screenshot({ path: 'node_modules/.chronology-verification/feed-mobile.png', fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    'Chronology browser verification passed: Calendar, multi-clock Timeline, Eras, canonical Wiki editing and management, restored tracks/filters/viewports, repeated era navigation, shared inspectors/editors, keyboard focus, mobile layouts, and read-only permissions.',
+    'Chronology browser verification passed: Calendar, multi-clock Timeline, Eras, Campaign Feed filtering/grouping/coverage and bounded navigation, canonical editing and management, restored tracks/filters/viewports, shared inspectors/editors, keyboard focus, mobile layouts, and read-only permissions.',
   );
 } finally {
   await page.screenshot({
