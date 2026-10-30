@@ -18,22 +18,28 @@ const SOCIAL_LINK_KEYS = [
 
 export type SocialLinkKey = (typeof SOCIAL_LINK_KEYS)[number];
 
-// Text normalization is not URL or HTML sanitization. Render text through React
-// escaping and Markdown through its default safe URL transform (no raw HTML).
-export function sanitizeStatusBlurb(raw: unknown): string | null {
-  if (raw === null || raw === undefined) return null;
+// All profile text, including provider/plugin-supplied values, is untrusted text.
+// Keep markup and entities literal: deleting/decoding them can create new markup.
+// These legacy sanitize* APIs normalize storage; they do not produce safe HTML.
+// Consumers must use React text escaping, or Markdown with no raw HTML and its
+// default safe URL transform. Never interpolate these values into HTML.
+function normalizeProfileText(
+  raw: unknown,
+  maxLength: number,
+  whitespace: 'single-line' | 'multiline' | 'preserve',
+): string | null {
   if (typeof raw !== 'string') return null;
+  const value = whitespace === 'single-line'
+    ? raw.replace(/\s+/g, ' ')
+    : whitespace === 'multiline'
+      ? raw.replace(/\r\n/g, '\n')
+      : raw;
+  // Trim after truncation too, so normalizing a stored value is idempotent.
+  return value.trim().slice(0, maxLength).trim() || null;
+}
 
-  let value = raw.replace(/\s+/g, ' ').trim();
-  if (!value) return null;
-
-  value = value.replace(/<[^>]+>/g, '');
-
-  if (value.length > STATUS_BLURB_MAX_LENGTH) {
-    value = value.slice(0, STATUS_BLURB_MAX_LENGTH);
-  }
-
-  return value;
+export function sanitizeStatusBlurb(raw: unknown): string | null {
+  return normalizeProfileText(raw, STATUS_BLURB_MAX_LENGTH, 'single-line');
 }
 
 export function sanitizeSocialLink(raw: unknown): string | null {
@@ -67,37 +73,11 @@ export function isSocialLinkKey(key: string): key is SocialLinkKey {
 export const USER_SOCIAL_LINK_KEYS = SOCIAL_LINK_KEYS;
 
 export function sanitizeDefaultPitch(raw: unknown): string | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== 'string') return null;
-
-  let value = raw.replace(/\r\n/g, '\n').trim();
-  if (!value) return null;
-
-  value = value.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-  value = value.replace(/<script\b[^>]*\/?>/gi, '');
-
-  if (value.length > DEFAULT_PITCH_MAX_LENGTH) {
-    value = value.slice(0, DEFAULT_PITCH_MAX_LENGTH);
-  }
-
-  return value;
+  return normalizeProfileText(raw, DEFAULT_PITCH_MAX_LENGTH, 'multiline');
 }
 
 export function sanitizePublicBio(raw: unknown): string | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== 'string') return null;
-
-  let value = raw.replace(/\r\n/g, '\n').trim();
-  if (!value) return null;
-
-  value = value.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-  value = value.replace(/<script\b[^>]*\/?>/gi, '');
-
-  if (value.length > PUBLIC_BIO_MAX_LENGTH) {
-    value = value.slice(0, PUBLIC_BIO_MAX_LENGTH);
-  }
-
-  return value;
+  return normalizeProfileText(raw, PUBLIC_BIO_MAX_LENGTH, 'multiline');
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -114,41 +94,13 @@ export function deriveUsername(email: string): string {
   return local && local.length > 0 ? local : email;
 }
 
-/** Normalizes pronoun text and removes HTML tags. */
+/** Normalizes pronoun text for escaped text rendering. */
 export function sanitizePronouns(raw: unknown): string | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== 'string') return null;
-
-  let value = raw.replace(/\s+/g, ' ').trim();
-  if (!value) return null;
-
-  value = value.replace(/<[^>]+>/g, '');
-
-  if (value.length > PRONOUNS_MAX_LENGTH) {
-    value = value.slice(0, PRONOUNS_MAX_LENGTH);
-  }
-
-  return value;
+  return normalizeProfileText(raw, PRONOUNS_MAX_LENGTH, 'single-line');
 }
 
 export function sanitizeDisplayName(raw: unknown): string | null {
-  if (raw === null || raw === undefined) return null;
-  if (typeof raw !== 'string') return null;
-
-  let value = raw.trim();
-  if (!value) return null;
-
-  value = value.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
-  value = value.replace(/<script\b[^>]*\/?>/gi, '');
-  value = value.replace(/<[^>]+>/g, '');
-  value = value.trim();
-
-  if (!value) return null;
-  if (value.length > DISPLAY_NAME_MAX_LENGTH) {
-    value = value.slice(0, DISPLAY_NAME_MAX_LENGTH);
-  }
-
-  return value;
+  return normalizeProfileText(raw, DISPLAY_NAME_MAX_LENGTH, 'preserve');
 }
 
 export function resolveUserDisplayName(user: {

@@ -9,6 +9,14 @@ import {
   sanitizePronouns,
   sanitizeDisplayName,
   SOCIAL_LINK_MAX_LENGTH,
+  DISPLAY_NAME_MAX_LENGTH,
+  PRONOUNS_MAX_LENGTH,
+  STATUS_BLURB_MAX_LENGTH,
+  PUBLIC_BIO_MAX_LENGTH,
+  DEFAULT_PITCH_MAX_LENGTH,
+  deriveUsername,
+  resolveUserDisplayName,
+  formatPlayerLabel,
 } from './userDisplay.js';
 
 const baseUser = {
@@ -68,5 +76,82 @@ test('profile text preserves literal scheme names rather than attempting URL san
   }
   assert.equal(sanitizePublicBio(text), text);
   assert.equal(sanitizePublicBio('[notes](javascript:alert%281%29)'), '[notes](javascript:alert%281%29)');
-  assert.equal(sanitizeDisplayName('<b>Mira</b>'), 'Mira');
+  assert.equal(sanitizeDisplayName('<b>Mira</b>'), '<b>Mira</b>');
+});
+
+const profileFields = [
+  { normalize: sanitizeDisplayName, limit: DISPLAY_NAME_MAX_LENGTH },
+  { normalize: sanitizePronouns, limit: PRONOUNS_MAX_LENGTH },
+  { normalize: sanitizeStatusBlurb, limit: STATUS_BLURB_MAX_LENGTH },
+  { normalize: sanitizePublicBio, limit: PUBLIC_BIO_MAX_LENGTH },
+  { normalize: sanitizeDefaultPitch, limit: DEFAULT_PITCH_MAX_LENGTH },
+];
+
+for (const { normalize, limit } of profileFields) {
+  test(`${normalize.name} preserves adversarial markup as literal text`, () => {
+    for (const input of [
+      '<b>Mira</b>', '<script>alert(1)</script>',
+      '<ScRiPt src=x/>Mira', '<scr<script>ipt>x</scr</script>ipt>',
+      '<<b>script>alert(1)<</b>/script>', '<img src=x onerror=alert(1)>',
+      '<!-->Mira', '<script', '<b title=">">Mira</b>',
+      '&lt;script&gt;x&lt;/script&gt;', '&#60;img src=x&#62;',
+      'javajavascript:script:', '<>'.repeat(100),
+    ]) {
+      const result = normalize(input);
+      assert.equal(result, input.slice(0, limit), input);
+      assert.equal(normalize(result), result, input);
+    }
+  });
+
+  test(`${normalize.name} handles empty values, limits and truncation idempotently`, () => {
+    for (const input of [null, undefined, {}, [], true, 123, '', '\t\r\n\u00a0']) {
+      assert.equal(normalize(input), null);
+    }
+    const atLimit = 'x'.repeat(limit);
+    assert.equal(normalize(atLimit), atLimit);
+    assert.equal(normalize(atLimit + 'x'), atLimit);
+    const result = normalize('x'.repeat(limit - 1) + ' y');
+    assert.equal(result, 'x'.repeat(limit - 1));
+    assert.equal(normalize(result), result);
+  });
+
+  test(`${normalize.name} handles long unmatched tag prefixes without regex backtracking`, () => {
+    for (const input of ['<'.repeat(200_000), '<script '.repeat(25_000)]) {
+      const result = normalize(input);
+      assert.equal(result, input.slice(0, limit).trim());
+      assert.equal(normalize(result), result);
+    }
+  });
+}
+
+test('single-line profile fields collapse Unicode whitespace and preserve punctuation', () => {
+  for (const normalize of [sanitizePronouns, sanitizeStatusBlurb]) {
+    assert.equal(normalize(' \t她 / they\n\u00a0elle  '), '她 / they elle');
+    assert.equal(normalize('Míra & Ren — “探索” <3'), 'Míra & Ren — “探索” <3');
+  }
+});
+
+test('display names retain interior whitespace and Unicode names', () => {
+  assert.equal(sanitizeDisplayName(' \tMíra  星\nRen’s\t '), 'Míra  星\nRen’s');
+});
+
+test('multiline fields retain Markdown and normalize CRLF', () => {
+  for (const normalize of [sanitizePublicBio, sanitizeDefaultPitch]) {
+    const text = '**Míra**\n\n- 探索 & discovery\n- [notes](https://example.com)';
+    assert.equal(normalize(' \r\n' + text.replace(/\n/g, '\r\n') + '\r\n '), text);
+    assert.equal(normalize('Míra  &  Ren'), 'Míra  &  Ren');
+  }
+});
+
+test('identity helpers retain display-name, username and player fallback distinctions', () => {
+  const user = { email: 'mira@example.com', displayName: ' Ren 星 ' };
+  assert.equal(resolveUserDisplayName(user), 'Ren 星');
+  assert.equal(formatPlayerLabel(user, 0), 'Ren 星');
+  assert.equal(deriveUsername(user.email), 'mira');
+  assert.equal(resolveUserDisplayName({ ...user, displayName: ' ' }), 'mira');
+  assert.equal(formatPlayerLabel({ ...user, displayName: null }, 0), 'Mira');
+  assert.equal(formatPlayerLabel({ email: '' }, 2), 'Player 3');
+  // Provider/plugin values remain untrusted literal text, including legacy data.
+  assert.equal(resolveUserDisplayName({ ...user, displayName: '<b>Ren</b>' }), '<b>Ren</b>');
+  assert.equal(serializeUserIdentity({ ...baseUser, displayName: '<b>Ren</b>' }).displayName, '<b>Ren</b>');
 });
