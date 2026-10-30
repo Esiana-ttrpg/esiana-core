@@ -91,7 +91,8 @@ export function WikiPageMoreMenu({
                 <button
                   type="button"
                   role="menuitem"
-                  className={menuItemClass()}
+                  disabled={wiki?.pinsLoading ?? true}
+                  className={`${menuItemClass()} disabled:cursor-not-allowed disabled:opacity-50`}
                   onClick={() => {
                     onTogglePin();
                     setOpen(false);
