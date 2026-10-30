@@ -47,12 +47,14 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
   const eras = bundle.eras ?? [];
   const defaultTrack = bundle.calendars.find(row => row.isMasterTime)?.id ?? bundle.calendars[0]?.id ?? '';
   const signature = chronologyTargetSignature(params);
-  const restore = useRef(params.get('focus') !== 'eras' && session?.snapshot ? session.snapshot : undefined);
-  const applied = useRef(signature);
-  if (applied.current !== signature) { restore.current = undefined; applied.current = signature; }
-  const requestedEra = restore.current?.era ?? params.get('era');
+  const [pendingRestore, setPendingRestore] = useState(() => ({
+    signature, snapshot: params.get('focus') !== 'eras' ? session?.snapshot : undefined,
+  }));
+  if (pendingRestore.signature !== signature) setPendingRestore({ signature, snapshot: undefined });
+  const restore = pendingRestore.signature === signature ? pendingRestore.snapshot : undefined;
+  const requestedEra = restore?.era ?? params.get('era');
   const linkedEra = eras.find(row => row.id === requestedEra);
-  const track = restore.current?.track ?? params.get('track') ?? linkedEra?.calendarId ?? defaultTrack;
+  const track = restore?.track ?? params.get('track') ?? linkedEra?.calendarId ?? defaultTrack;
   const trackEras = useMemo(() => (bundle.eras ?? []).filter(era => era.calendarId === track)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)), [bundle.eras, track]);
   const definition = ledger.timeBundle.calendars.find(row => row.id === track);

@@ -64,8 +64,10 @@ const errors = [];
 page.on('pageerror', (e) => { errors.push(e.message); console.error(e.message); });
 let failSave = false;
 const requests = [];
+const chronologyLoads = [];
 await page.route('**/api/**', async (route) => {
   const req = route.request();
+  if (req.method() === 'GET' && /\/(chronology\/timeline|time-tracking)(?:\?|$)/.test(req.url())) chronologyLoads.push(req.url());
   if (req.url().includes('/chronology/timeline') && req.method() === 'GET') return route.fulfill({ json: await page.evaluate(() => {
     const bundle = window.__chronologyBundle;
     return new URLSearchParams(location.search).has('hidden') ? { ...bundle, baseEvents: bundle.baseEvents.filter(row => row.id !== 'journey'), occurrences: bundle.occurrences.filter(row => row.baseEventId !== 'journey') } : bundle;
@@ -709,6 +711,24 @@ try {
   await visible(page.getByText('An undated discovery', { exact: true }));
   await page.locator('[data-campaign-feed]').evaluate(el => { el.scrollTop = 0; });
   await page.screenshot({ path: 'node_modules/.chronology-verification/feed-mobile.png', fullPage: true });
+  // Era selections stay mounted and retain local filters without reloading campaign data.
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('http://localhost:5199/__chronology?workspace&eras&twoClocks&view=eras');
+  const eraHeading = page.getByRole('heading', { name: 'World history', exact: true });
+  await visible(eraHeading);
+  const mountedHeading = await eraHeading.elementHandle();
+  const loadsBeforeSelection = chronologyLoads.length;
+  await page.getByRole('checkbox', { name: 'Minor', exact: true }).check();
+  await page.getByRole('button', { name: 'Browse eras', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Eras in configured display order' }).getByRole('button', { name: /^Early discoveries/ }).click();
+  await visible(page.getByRole('heading', { name: 'Early discoveries', exact: true }));
+  await page.getByRole('combobox', { name: 'Calendar', exact: true }).selectOption('other');
+  await visible(page.getByRole('heading', { name: 'Age of discovery', exact: true }));
+  assert.equal(await mountedHeading.evaluate(el => el.isConnected), true);
+  assert.equal(await page.getByRole('checkbox', { name: 'Minor', exact: true }).isChecked(), true);
+  assert.equal(await page.getByRole('button', { name: 'Browse eras', exact: true }).getAttribute('aria-expanded'), 'true');
+  assert.equal(chronologyLoads.length, loadsBeforeSelection);
+  await mountedHeading.dispose();
   // Pass 6: exercise the real page owner, URL history, restored sessions and authorized deep links.
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.goto('http://localhost:5199/__chronology?workspace&view=calendar&keep=value');

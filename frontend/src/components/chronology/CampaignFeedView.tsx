@@ -4,7 +4,7 @@ import { TYPE_DISPLAY_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayou
 import type { ConvergenceOverlayBundle, ConvergenceTimelineEntry } from '@/lib/chronologyOverlayApi';
 import { fetchChronologyTimeline, type ChronologyTimelineBundle, type TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
-import { historicalClock, historicalNativeState, sharedHistoricalIntervals } from '@/lib/historicalTimeline';
+import { historicalClock, historicalNativeState, sharedHistoricalIntervals, type HistoricalInterval } from '@/lib/historicalTimeline';
 import { intervalOccurrence, linkedInterval, nativeDateMinute } from '@/lib/chronologyNavigation';
 import { ChronologyNavigationLinks } from './ChronologyNavigationLinks';
 import { ChronologyImportance } from './ChronologyImportance';
@@ -39,15 +39,16 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
   useEffect(() => { setCatalogue(null); }, [chronologyBundle]);
   useEffect(() => { setShowTarget(params.get('focus') === 'feed' && bundle.entries.some(row => row.projection.visible && row.domain === 'world_event' &&
     row.source.entityId === params.get('event') && row.feed?.calendarId === params.get('track') && String(row.feed?.occurrenceIndex) === params.get('occurrence'))); },
-  [params.get('event'), params.get('occurrence'), params.get('at'), params.get('focus')]);
+  [bundle.entries, params.get('track'), params.get('event'), params.get('occurrence'), params.get('focus')]);
   useEffect(() => () => { inspectionVersion.current++; }, []);
   const coverage = bundle.feed;
   const range = coverage?.requestedRange ?? bundle.window;
   const importance = (params.get('importance') ?? 'MAJOR,MINOR,NOTICE').split(',');
   const domains = params.get('domains')?.split(',');
   const groups = useMemo(() => groupCampaignFeed(bundle.entries.filter(row => row.projection.visible), params.get('group') === 'session'), [bundle.entries, params]);
+  const axes = useMemo(() => new Map(timeBundle.calendars.map(calendar => [calendar.id, historicalClock(calendar).axis])), [timeBundle.calendars]);
   const master = timeBundle.calendars.find(row => row.isMasterTime) ?? timeBundle.calendars[0];
-  const axis = useMemo(() => master ? historicalClock(master).axis : null, [master]);
+  const axis = master ? axes.get(master.id) ?? null : null;
   const label = (minute: string) => {
     const state = axis ? historicalNativeState(axis, BigInt(minute)) : null;
     return state ? `${state.monthName} ${state.day}, Year ${state.year}` : 'Date unavailable';
@@ -75,27 +76,34 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
   }
   const details = chronologyBundle ?? catalogue;
   const intervals = useMemo(() => timeBundle.calendars.flatMap(calendar => {
-    const axis = historicalClock(calendar).axis;
+    const axis = axes.get(calendar.id);
     return axis && details?.calendars.some(row => row.id === calendar.id) ? sharedHistoricalIntervals(details.occurrences.filter(row =>
       row.calendarId === calendar.id && details.baseEvents.some(base => base.id === row.baseEventId && base.calendarId === row.calendarId)), axis) : [];
-  }), [timeBundle, details]);
+  }), [timeBundle.calendars, axes, details]);
+  const intervalIndex = useMemo(() => {
+    const index = new Map<string, HistoricalInterval>();
+    for (const row of intervals) {
+      const key = JSON.stringify([row.calendarId, row.baseEventId, row.recurrenceIndex, String(row.start)]);
+      if (!index.has(key)) index.set(key, row);
+    }
+    return index;
+  }, [intervals]);
   function entryOccurrence(entry: ConvergenceTimelineEntry): TimelineOccurrenceRecord | null {
-    const calendar = timeBundle.calendars.find(row => row.id === entry.feed?.calendarId);
-    const axis = calendar ? historicalClock(calendar).axis : null;
+    const axis = entry.feed?.calendarId ? axes.get(entry.feed.calendarId) : null;
     const minute = axis && entry.feed?.nativeStart ? nativeDateMinute(axis, entry.feed.nativeStart) : null;
-    const interval = intervals.find(row => row.calendarId === entry.feed?.calendarId && row.baseEventId === entry.source.entityId &&
-      row.recurrenceIndex === entry.feed?.occurrenceIndex && row.start === minute);
+    if (!axis || minute === null || entry.feed?.occurrenceIndex === undefined) return null;
+    const interval = intervalIndex.get(JSON.stringify([entry.feed.calendarId, entry.source.entityId, entry.feed.occurrenceIndex, String(minute)]));
     return interval && axis ? intervalOccurrence(interval, axis) : null;
   }
   const linked = linkedInterval(params, intervals);
   const linkedClock = timeBundle.calendars.find(row => row.id === linked?.calendarId);
-  const linkedAxis = linkedClock ? historicalClock(linkedClock).axis : null;
+  const linkedAxis = linkedClock ? axes.get(linkedClock.id) : null;
   const linkedOccurrence = linked && linkedAxis ? intervalOccurrence(linked, linkedAxis) : null;
   const occurrence = selection ? entryOccurrence(selection) : showTarget ? linkedOccurrence : null;
   useEffect(() => { onInspectionChange?.(occurrence); }, [occurrence, onInspectionChange]);
   const baseEvent = details?.baseEvents.find(row => row.id === occurrence?.baseEventId) ?? null;
   const sourceClock = timeBundle.calendars.find(row => row.id === occurrence?.calendarId);
-  const sourceAxis = useMemo(() => sourceClock ? historicalClock(sourceClock).axis : null, [sourceClock]);
+  const sourceAxis = sourceClock ? axes.get(sourceClock.id) : null;
   useEffect(() => {
     if (selection && !occurrence) { setSelection(null); setInspectionError('This occurrence is unavailable in the loaded authorized history.'); }
   }, [selection, occurrence]);

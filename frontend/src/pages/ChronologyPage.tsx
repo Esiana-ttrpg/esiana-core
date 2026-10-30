@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HistoricalTimeline, type TimelineSession, type EraTimelineRequest } from '@/components/chronology/HistoricalTimeline';
 import { ChronologyCreateEventDialog } from '@/components/chronology/ChronologyCreateEventDialog';
@@ -57,6 +57,12 @@ function ChronologyWorkspace() {
   const { t } = useTranslation();
   const { campaignHandle, can } = useWiki();
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsRef = useRef(searchParams);
+  const setSearchParamsRef = useRef(setSearchParams);
+  useLayoutEffect(() => {
+    searchParamsRef.current = searchParams;
+    setSearchParamsRef.current = setSearchParams;
+  }, [searchParams, setSearchParams]);
   const timelineSession = useMemo<TimelineSession>(() => ({}), [campaignHandle]);
   const calendarSession = useMemo<CalendarSession>(() => ({}), [campaignHandle]);
   const erasSession = useMemo<ErasSession>(() => ({}), [campaignHandle]);
@@ -105,6 +111,9 @@ function ChronologyWorkspace() {
     () => parseActiveView(requestedView),
     [requestedView],
   );
+  const feedTargetSignature = activeView === 'feed'
+    ? JSON.stringify(['track', 'event', 'occurrence', 'at', 'focus'].map(key => searchParams.get(key)))
+    : null;
 
   const canManageChronologyAccess = can(CampaignCapabilities.CHRONOLOGY_EDIT);
   const elevatedView = can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW);
@@ -129,9 +138,10 @@ function ChronologyWorkspace() {
           fetchChronologyTimeline(campaignHandle),
           fetchTimeTracking(campaignHandle),
         ]);
-        const source = timeData.calendars.find(row => row.id === searchParams.get('track'));
+        const targetParams = searchParamsRef.current;
+        const source = needsOverlay ? timeData.calendars.find(row => row.id === targetParams.get('track')) : undefined;
         const clock = source ? historicalClock(source) : null;
-        const target = clock?.axis && clock.aligned ? linkedInterval(searchParams,
+        const target = clock?.axis && clock.aligned ? linkedInterval(targetParams,
           sharedHistoricalIntervals(data.occurrences.filter(row => row.calendarId === source?.id &&
             data.baseEvents.some(base => base.id === row.baseEventId && base.calendarId === row.calendarId)), clock.axis)) : undefined;
         const overlay = needsOverlay
@@ -153,11 +163,12 @@ function ChronologyWorkspace() {
         if (overlay) loadedFeedScope.current = scope;
         // Retain an explicitly focused window for normal tab returns as well as refresh.
         const range = overlay?.feed?.requestedRange;
-        if (target && range && searchParams.get('focus') === 'feed' &&
-          (searchParams.get('from') !== range.from || searchParams.get('to') !== range.to || searchParams.get('windowMode') !== 'EPOCH_RANGE')) {
-          const next = new URLSearchParams(searchParams);
+        const latestParams = searchParamsRef.current;
+        if (target && range && latestParams.get('focus') === 'feed' &&
+          (latestParams.get('from') !== range.from || latestParams.get('to') !== range.to || latestParams.get('windowMode') !== 'EPOCH_RANGE')) {
+          const next = new URLSearchParams(latestParams);
           next.set('windowMode', 'EPOCH_RANGE'); next.set('from', range.from); next.set('to', range.to);
-          setSearchParams(next, { replace: true });
+          setSearchParamsRef.current(next, { replace: true });
         }
       } catch (err) {
         if (version !== loadVersion.current) return;
@@ -186,8 +197,7 @@ function ChronologyWorkspace() {
       feedImportance,
       includeFuture,
       sessionLinkedOnly,
-      searchParams,
-      setSearchParams,
+      feedTargetSignature,
       canManageChronologyAccess,
       elevatedView,
       t,
