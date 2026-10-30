@@ -2,6 +2,18 @@ import type { Response, NextFunction } from 'express';
 import fs from 'node:fs';
 import type { Request } from 'express';
 import { getMaxUploadSizeBytes, getMapMaxUploadSizeBytes } from '../lib/systemSettings.js';
+import { resolveUploadedFilePath, UploadValidationError } from '../lib/uploadValidation.js';
+
+function removeRejectedUpload(file: Express.Multer.File): void {
+  if (!file.path) return; // Memory uploads have no disk file to remove.
+  try {
+    const diskPath = resolveUploadedFilePath(file);
+    fs.unlink(diskPath, () => {});
+  } catch (error) {
+    // Still reject the upload, but never delete a path outside the upload root.
+    if (!(error instanceof UploadValidationError)) throw error;
+  }
+}
 
 /**
  * Enforces platform max upload size from SystemSetting after multer parses the file.
@@ -28,9 +40,7 @@ export async function enforceSystemUploadLimit(
     return;
   }
 
-  if ('path' in file && typeof file.path === 'string') {
-    fs.unlink(file.path, () => {});
-  }
+  removeRejectedUpload(file);
 
   const maxMb = Math.round(maxBytes / (1024 * 1024));
   res.status(400).json({
@@ -58,9 +68,7 @@ export async function enforceWizardUploadLimits(
     if (!list) continue;
     for (const file of list) {
       if (file.size <= maxBytes) continue;
-      if (file.path) {
-        fs.unlink(file.path, () => {});
-      }
+      removeRejectedUpload(file);
       res.status(400).json({
         error: `File exceeds the maximum upload size of ${maxMb} MB.`,
       });

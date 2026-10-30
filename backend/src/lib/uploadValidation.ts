@@ -143,6 +143,9 @@ export function assertDocumentFile(buffer: Buffer, ext: string): void {
  * Rejects path traversal (e.g. `../`, absolute escapes) before any filesystem read.
  */
 export function resolveSafeUploadPath(candidate: string): string {
+  if (!candidate || candidate.includes('\0')) {
+    throw new UploadValidationError('Uploaded file path is invalid');
+  }
   const root = path.resolve(env.uploadsDir);
   const resolved = path.isAbsolute(candidate)
     ? path.resolve(candidate)
@@ -205,12 +208,13 @@ export function logUploadAttempt(entry: {
   console.info('[upload]', JSON.stringify(entry));
 }
 
+/** Validate Multer metadata before any filesystem access, including existence checks. */
+export function resolveUploadedFilePath(file: Express.Multer.File): string {
+  return resolveSafeUploadPath(file.path || file.filename);
+}
+
 function resolveDiskPath(file: Express.Multer.File): string {
-  const candidate =
-    file.path && fs.existsSync(file.path)
-      ? file.path
-      : path.join(env.uploadsDir, path.basename(file.filename));
-  const resolved = resolveSafeUploadPath(candidate);
+  const resolved = resolveUploadedFilePath(file);
   if (!fs.existsSync(resolved)) {
     throw new UploadValidationError('Uploaded file is missing on disk');
   }
