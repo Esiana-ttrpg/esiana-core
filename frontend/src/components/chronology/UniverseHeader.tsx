@@ -96,6 +96,7 @@ export function UniverseHeader({
             className="inline-flex items-center justify-center rounded-lg bg-primary p-2 text-background hover:bg-primary-hover"
           >
             <Plus className="size-4" />
+            <span className="ml-1 text-xs">Create Event</span>
           </button>
         )}
         <Link

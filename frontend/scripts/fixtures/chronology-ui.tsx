@@ -1,6 +1,7 @@
 // Isolated browser fixture: real chronology components and editor, mocked campaign API/context.
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { HistoricalTimeline } from '../../src/components/chronology/HistoricalTimeline';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, useLocation } from 'react-router-dom';
 import { WidescreenCalendarView } from '../../src/components/chronology/WidescreenCalendarView';
@@ -42,6 +43,10 @@ const calendar = {
     seasonName: 'Rain season',
   },
 };
+const calendars = query.has('twoClocks') ? [calendar, {
+  ...calendar, id: 'other', name: 'Other', isMasterTime: false, epochOffset: '5000',
+  state: { ...calendar.state, year: 3 },
+}] : [calendar];
 const base = {
   id: 'journey',
   calendarId: 'clock',
@@ -112,10 +117,27 @@ const bundle = {
     warnings: [],
   },
 };
+const timelineRows = query.has('dense') ? Array.from({ length: 45 }, (_, index) => ({
+  ...occurrences[9], baseEventId: 'dense-' + index, occurrenceId: 'dense-' + index,
+  title: 'Discovery ' + String(index).padStart(2, '0'), occurrenceIndex: index,
+  start: { year: 1, month: 1, day: 10, epochMinute: null },
+  end: { year: 1, month: 1, day: 10, epochMinute: null },
+  dayOffset: 0, duration: 1, importance: index < 3 ? 'MAJOR' : 'MINOR',
+})) : occurrences;
+const timelineBundle = {
+  ...bundle, occurrences: timelineRows,
+  baseEvents: [base, ...timelineRows.filter(row => row.baseEventId !== base.id).map(row => ({ ...base, id: row.baseEventId, title: row.title, duration: row.duration }))],
+  eras: [{ id: 'era', calendarId: 'clock', name: 'World history', calendarName: 'World',
+    isMasterTime: true, sortOrder: 0, isCurrent: true, status: 'PRESENT', visibility: 'PARTY',
+    startDate: { year: 1, month: 0, day: 15 }, endDate: null, overview: 'The crossing',
+    overviewPageId: 'era-page', canManage: true }],
+};
 function App() {
   const [create, setCreate] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const loc = useLocation();
+  const [anchor, setAnchor] = useState({ year: 1, month: 1, day: 10 });
+  const browse = useCallback(date => setAnchor(date), []);
   const manage = !query.has('player');
   const mutated = async () => {
     await new Promise((r) => setTimeout(r, 100));
@@ -128,7 +150,9 @@ function App() {
         {manage && <button onClick={() => setCreate(true)}>New event</button>}
       </div>
       <main style={{ minHeight: 0, flex: 1 }}>
-        <WidescreenCalendarView
+        {query.has('timeline') ? <HistoricalTimeline campaignHandle="test" bundle={timelineBundle}
+          timeBundle={{ calendars }} canManage={manage} onBrowseAnchorChange={browse}
+          onMutated={mutated} onDeleted={() => {}} onRevealEvent={async () => {}} /> : <WidescreenCalendarView
           campaignHandle="test"
           timeBundle={{ calendars: [calendar] }}
           chronologyBundle={bundle}
@@ -136,7 +160,7 @@ function App() {
           categories={[category]}
           canManage={manage}
           onEventMutated={mutated}
-        />
+        />}
       </main>
       {create && (
         <ChronologyCreateEventDialog
@@ -144,7 +168,7 @@ function App() {
           calendars={[calendar]}
           categories={[category]}
           events={[base]}
-          initialDate={{ year: 1, month: 1, day: 10 }}
+          initialDate={anchor}
           onClose={() => setCreate(false)}
           onMutated={mutated}
         />

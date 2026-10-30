@@ -2,10 +2,9 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChronologyEventSidebar } from '@/components/chronology/ChronologyEventSidebar';
+import { HistoricalTimeline } from '@/components/chronology/HistoricalTimeline';
 import { ChronologyCreateEventDialog } from '@/components/chronology/ChronologyCreateEventDialog';
 import { ErasView } from '@/components/chronology/ErasView';
-import { TechTreeTimeline } from '@/components/chronology/TechTreeTimeline';
 import {
   UniverseHeader,
   type ChronologyView,
@@ -19,18 +18,12 @@ import { campaignTimeTrackingPath } from '@/lib/campaignPaths';
 import {
   fetchChronologyTimeline,
   type ChronologyTimelineBundle,
-  type TimelineBaseEventRecord,
   type TimelineOccurrenceRecord,
 } from '@/lib/chronologyApi';
 import { createChronologyCategory } from '@/lib/chronologyCategoriesApi';
-import {
-  nowFromCalendarState,
-  type ChronologyDateParts,
-} from '@/lib/chronologyDates';
-import type { FantasyCalendarLike } from '@/lib/timeEngine';
+import type { ChronologyDateParts } from '@/lib/chronologyDates';
 import {
   fetchTimeTracking,
-  type FantasyCalendarApiRow,
   type TimeTrackingBundle,
 } from '@/lib/timeTrackingApi';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
@@ -39,17 +32,6 @@ import {
   fetchChronologyOverlay,
   type ConvergenceOverlayBundle,
 } from '@/lib/chronologyOverlayApi';
-
-function calendarApiRowToLike(row: FantasyCalendarApiRow): FantasyCalendarLike {
-  return {
-    epochOffset: BigInt(row.epochOffset),
-    weekdays: row.weekdays,
-    months: row.months,
-    seasons: row.seasons,
-    moons: row.moons,
-    leapDays: row.leapDays,
-  };
-}
 
 function parseActiveView(raw: string | null): ChronologyView {
   if (raw === 'events') return 'eras';
@@ -111,54 +93,7 @@ export function ChronologyPage() {
     [requestedView],
   );
 
-  const masterCalendar = useMemo(
-    () =>
-      timeBundle?.calendars.find((calendar) => calendar.isMasterTime) ??
-      timeBundle?.calendars[0] ??
-      null,
-    [timeBundle],
-  );
-
   const canManageChronologyAccess = can(CampaignCapabilities.CHRONOLOGY_EDIT);
-
-  const editableEvents = useMemo(() => {
-    if (!bundle) return [] as TimelineBaseEventRecord[];
-    return bundle.baseEvents;
-  }, [bundle]);
-
-  const selectedBaseEvent = useMemo(() => {
-    if (!bundle || !selectedOccurrence) return null;
-    return (
-      bundle.baseEvents.find(
-        (event) => event.id === selectedOccurrence.baseEventId,
-      ) ?? null
-    );
-  }, [bundle, selectedOccurrence]);
-
-  const selectedEventCalendarLike = useMemo(() => {
-    if (!timeBundle || !selectedBaseEvent) return null;
-    const row = timeBundle.calendars.find(
-      (calendar) => calendar.id === selectedBaseEvent.calendarId,
-    );
-    return row ? calendarApiRowToLike(row) : null;
-  }, [timeBundle, selectedBaseEvent]);
-
-  useEffect(() => {
-    if (activeView !== 'timeline' || !timeBundle) return;
-
-    if (selectedOccurrence) {
-      setBrowseAnchor({
-        year: selectedOccurrence.start.year,
-        month: selectedOccurrence.start.month,
-        day: selectedOccurrence.start.day,
-      });
-      return;
-    }
-
-    if (masterCalendar) {
-      setBrowseAnchor(nowFromCalendarState(masterCalendar.state));
-    }
-  }, [activeView, selectedOccurrence, timeBundle, masterCalendar]);
 
   const feedDomainsParam = useMemo(() => {
     if (feedDomains.length === 0) return undefined;
@@ -265,7 +200,7 @@ export function ChronologyPage() {
       await bulkRevealContentPresence(campaignHandle, [
         { entityType: 'timeline_event', entityId: baseEventId },
       ]);
-      await load();
+      await load(true);
     },
     [campaignHandle, load],
   );
@@ -312,7 +247,7 @@ export function ChronologyPage() {
   const categoryFooter =
     canManageChronologyAccess && bundle ? (
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+        <p className="text-xs font-medium text-muted">
           {t('campaign.timeline.categoriesLabel')}
         </p>
         <div className="flex flex-wrap gap-1">
@@ -412,45 +347,10 @@ export function ChronologyPage() {
           )}
 
           {activeView === 'timeline' && bundle && (
-            <div className="flex h-full overflow-hidden">
-              <div className="min-w-0 basis-4/5 overflow-hidden">
-                <TechTreeTimeline
-                  categories={bundle.categories}
-                  calendars={bundle.calendars}
-                  events={bundle.events}
-                  selectedBaseEventId={selectedOccurrence?.baseEventId ?? null}
-                  onSelectEvent={setSelectedOccurrence}
-                  showElevatedVisibility={can(
-                    CampaignCapabilities.NARRATIVE_ELEVATED_VIEW,
-                  )}
-                />
-              </div>
-              <div className="basis-1/5 min-w-0 overflow-hidden">
-                <ChronologyEventSidebar
-                  campaignHandle={campaignHandle}
-                  baseEvent={selectedBaseEvent}
-                  categories={bundle.categories}
-                  editableEvents={editableEvents}
-                  calendarLike={selectedEventCalendarLike}
-                  canManage={canManageChronologyAccess}
-                  dateSeed={
-                    selectedOccurrence
-                      ? {
-                          year: selectedOccurrence.start.year,
-                          month: selectedOccurrence.start.month,
-                          day: selectedOccurrence.start.day,
-                        }
-                      : null
-                  }
-                  open={selectedBaseEvent !== null}
-                  onClose={() => setSelectedOccurrence(null)}
-                  onMutated={handleEventMutated}
-                  onDeleted={handleEventDeleted}
-                  onRevealEvent={handleRevealEvent}
-                  categoryFooter={categoryFooter}
-                />
-              </div>
-            </div>
+            <HistoricalTimeline campaignHandle={campaignHandle} bundle={bundle} timeBundle={timeBundle}
+              canManage={canManageChronologyAccess} onBrowseAnchorChange={handleCalendarBrowse}
+              onMutated={handleEventMutated} onDeleted={handleEventDeleted}
+              onRevealEvent={handleRevealEvent} categoryFooter={categoryFooter} />
           )}
 
           {activeView === 'eras' && bundle && (
@@ -482,7 +382,7 @@ export function ChronologyPage() {
           events={bundle.baseEvents}
           initialDate={browseAnchor}
           initialCalendarId={
-            activeView === 'calendar' ? browseCalendarId : undefined
+            activeView === 'calendar' || activeView === 'timeline' ? browseCalendarId : undefined
           }
           onClose={() => setShowCreateModal(false)}
           onMutated={handleEventMutated}
