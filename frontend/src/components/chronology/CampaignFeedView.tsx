@@ -1,10 +1,13 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { TYPE_DISPLAY_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import type { ConvergenceOverlayBundle, ConvergenceTimelineEntry } from '@/lib/chronologyOverlayApi';
 import { fetchChronologyTimeline, type ChronologyTimelineBundle, type TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
-import { historicalClock, historicalNativeState } from '@/lib/historicalTimeline';
+import { historicalClock, historicalNativeState, sharedHistoricalIntervals } from '@/lib/historicalTimeline';
+import { intervalOccurrence, linkedInterval, nativeDateMinute } from '@/lib/chronologyNavigation';
+import { ChronologyNavigationLinks } from './ChronologyNavigationLinks';
+import { ChronologyImportance } from './ChronologyImportance';
 import { calendarEpochMinuteForDate } from '@/lib/timeEngine';
 import { narrowFeedRange, shiftFeedRange } from '@shared/campaignFeed';
 import { FEED_SOURCES, groupCampaignFeed, groupFeedDevelopments } from '@/lib/campaignFeedPresentation';
@@ -16,12 +19,13 @@ import { DowntimeGapOverlayEditor } from './DowntimeGapOverlayEditor';
 import { FantasyDatePicker } from './FantasyDatePicker';
 
 interface Props {
+  onInspectionChange?: (occurrence: TimelineOccurrenceRecord | null) => void;
   campaignHandle: string; bundle: ConvergenceOverlayBundle; timeBundle: TimeTrackingBundle;
   chronologyBundle?: ChronologyTimelineBundle | null; canManageChronology?: boolean;
   onOverlaySaved: () => void | Promise<void>;
 }
 const control = 'min-h-11 rounded border border-border/40 px-3 py-2 text-sm';
-export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronologyBundle, canManageChronology = false, onOverlaySaved }: Props) {
+export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronologyBundle, canManageChronology = false, onOverlaySaved, onInspectionChange }: Props) {
   const [params, setParams] = useSearchParams();
   const [manage, setManage] = useState(false);
   const [gapId, setGapId] = useState<string | null>(null);
@@ -30,6 +34,13 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
   const [catalogue, setCatalogue] = useState<ChronologyTimelineBundle | null>(null);
   const [inspectionError, setInspectionError] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState(false);
+  const [showTarget, setShowTarget] = useState(false);
+  const inspectionVersion = useRef(0);
+  useEffect(() => { setCatalogue(null); }, [chronologyBundle]);
+  useEffect(() => { setShowTarget(params.get('focus') === 'feed' && bundle.entries.some(row => row.projection.visible && row.domain === 'world_event' &&
+    row.source.entityId === params.get('event') && row.feed?.calendarId === params.get('track') && String(row.feed?.occurrenceIndex) === params.get('occurrence'))); },
+  [params.get('event'), params.get('occurrence'), params.get('at'), params.get('focus')]);
+  useEffect(() => () => { inspectionVersion.current++; }, []);
   const coverage = bundle.feed;
   const range = coverage?.requestedRange ?? bundle.window;
   const importance = (params.get('importance') ?? 'MAJOR,MINOR,NOTICE').split(',');
@@ -46,40 +57,58 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
   }
   function navigate(nextRange: { from: string; to: string }) {
     const next = new URLSearchParams(params);
+    for (const key of ['event', 'occurrence', 'at', 'date']) next.delete(key);
     next.set('windowMode', 'EPOCH_RANGE'); next.set('from', nextRange.from); next.set('to', nextRange.to);
     setParams(next); setRangeOpen(false);
   }
   async function inspect(entry: ConvergenceTimelineEntry) {
+    const version = ++inspectionVersion.current;
     setInspectionError(null); setInspecting(true);
     try {
-      const loaded = catalogue ?? chronologyBundle ?? await fetchChronologyTimeline(campaignHandle);
+      const loaded = await fetchChronologyTimeline(campaignHandle);
+      if (version !== inspectionVersion.current) return;
       setCatalogue(loaded);
       if (!loaded.baseEvents.some(row => row.id === entry.source.entityId)) throw new Error('This event is no longer available.');
       setSelection(entry);
-    } catch (error) { setInspectionError(error instanceof Error ? error.message : 'Unable to inspect this event.'); }
-    finally { setInspecting(false); }
+    } catch (error) { if (version === inspectionVersion.current) setInspectionError(error instanceof Error ? error.message : 'Unable to inspect this event.'); }
+    finally { if (version === inspectionVersion.current) setInspecting(false); }
   }
-  const details = catalogue ?? chronologyBundle;
-  const baseEvent = details?.baseEvents.find(row => row.id === selection?.source.entityId) ?? null;
-  const occurrence: TimelineOccurrenceRecord | null = selection?.feed?.nativeStart && baseEvent ? {
-    ...baseEvent, baseEventId: baseEvent.id, occurrenceId: selection.feed.occurrenceId ?? selection.entryId,
-    occurrenceIndex: selection.feed.occurrenceIndex ?? 0,
-    start: { ...selection.feed.nativeStart, epochMinute: selection.instant.epochMinute },
-    end: { ...(selection.feed.nativeEnd ?? selection.feed.nativeStart), epochMinute: selection.feed.endEpochMinute ?? null },
-    duration: selection.feed.duration ?? baseEvent.duration, dayOffset: 0, isStart: true, isContinuation: false,
-    sourceType: baseEvent.isRepeating ? 'REPEATING' : 'STATIC', prerequisiteBaseEventId: baseEvent.prerequisiteId,
-  } : details?.occurrences.find(row => row.occurrenceId === selection?.feed?.occurrenceId) ?? null;
-  const sourceClock = timeBundle.calendars.find(row => row.id === selection?.feed?.calendarId);
+  const details = chronologyBundle ?? catalogue;
+  const intervals = useMemo(() => timeBundle.calendars.flatMap(calendar => {
+    const axis = historicalClock(calendar).axis;
+    return axis && details?.calendars.some(row => row.id === calendar.id) ? sharedHistoricalIntervals(details.occurrences.filter(row =>
+      row.calendarId === calendar.id && details.baseEvents.some(base => base.id === row.baseEventId && base.calendarId === row.calendarId)), axis) : [];
+  }), [timeBundle, details]);
+  function entryOccurrence(entry: ConvergenceTimelineEntry): TimelineOccurrenceRecord | null {
+    const calendar = timeBundle.calendars.find(row => row.id === entry.feed?.calendarId);
+    const axis = calendar ? historicalClock(calendar).axis : null;
+    const minute = axis && entry.feed?.nativeStart ? nativeDateMinute(axis, entry.feed.nativeStart) : null;
+    const interval = intervals.find(row => row.calendarId === entry.feed?.calendarId && row.baseEventId === entry.source.entityId &&
+      row.recurrenceIndex === entry.feed?.occurrenceIndex && row.start === minute);
+    return interval && axis ? intervalOccurrence(interval, axis) : null;
+  }
+  const linked = linkedInterval(params, intervals);
+  const linkedClock = timeBundle.calendars.find(row => row.id === linked?.calendarId);
+  const linkedAxis = linkedClock ? historicalClock(linkedClock).axis : null;
+  const linkedOccurrence = linked && linkedAxis ? intervalOccurrence(linked, linkedAxis) : null;
+  const occurrence = selection ? entryOccurrence(selection) : showTarget ? linkedOccurrence : null;
+  useEffect(() => { onInspectionChange?.(occurrence); }, [occurrence, onInspectionChange]);
+  const baseEvent = details?.baseEvents.find(row => row.id === occurrence?.baseEventId) ?? null;
+  const sourceClock = timeBundle.calendars.find(row => row.id === occurrence?.calendarId);
   const sourceAxis = useMemo(() => sourceClock ? historicalClock(sourceClock).axis : null, [sourceClock]);
+  useEffect(() => {
+    if (selection && !occurrence) { setSelection(null); setInspectionError('This occurrence is unavailable in the loaded authorized history.'); }
+  }, [selection, occurrence]);
   const renderEntry = (entry: ConvergenceTimelineEntry) => <li key={entry.entryId} className="space-y-1 py-3" data-feed-entry={entry.entryId}>
-    {entry.domain === 'world_event' ? <button className="min-h-11 text-left font-medium" disabled={inspecting} onClick={() => void inspect(entry)}>{entry.display.title}</button> : <p className="font-medium">{entry.display.title}</p>}
+    {entry.domain === 'world_event' ? <button className="min-h-11 text-left font-medium" aria-busy={inspecting || undefined} onClick={() => void inspect(entry)}>{entry.display.title}</button> : <p className="font-medium">{entry.display.title}</p>}
     {entry.display.summary && <p className="type-prose max-w-[80ch] text-sm">{entry.display.summary}</p>}
     <p className="text-xs text-muted">{FEED_SOURCES[entry.domain as keyof typeof FEED_SOURCES] ?? entry.domain}
       {entry.feed?.originLabel && ` · ${entry.feed.originLabel}`}
-      {entry.feed?.importance && ` · ${entry.feed.importance.toLowerCase()}`}{entry.feed?.calendarName && ` · ${entry.feed.calendarName}`}
+      {entry.feed?.importance && <> · <ChronologyImportance value={entry.feed.importance} /></>}{entry.feed?.calendarName && ` · ${entry.feed.calendarName}`}
       {entry.feed?.nativeDateLabel && ` · ${entry.feed.nativeDateLabel}`}{entry.feed?.duration && entry.feed.duration > 1 ? ` · ${entry.feed.duration} days` : ''}</p>
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-      {entry.links.map(link => <Link key={`${link.hrefKind}:${link.path}`} className="inline-flex min-h-11 items-center underline" to={link.path}>{formatConvergenceLinkLabel(link.hrefKind)}</Link>)}
+      {entry.domain === 'world_event' && (() => { const occurrence = entryOccurrence(entry); return occurrence ? <ChronologyNavigationLinks campaignHandle={campaignHandle} occurrence={occurrence} /> : null; })()}
+      {entry.links.filter(link => entry.domain !== 'world_event' || link.hrefKind !== 'chronology_events').map(link => <Link key={`${link.hrefKind}:${link.path}`} className="inline-flex min-h-11 items-center underline" to={link.path}>{formatConvergenceLinkLabel(link.hrefKind)}</Link>)}
       {canManageChronology && entry.domain === 'downtime_period' && <button className="min-h-11 underline" onClick={() => setGapId((entry.domainPayload as { payload: { gapId: string } }).payload.gapId)}>Edit period</button>}
     </div>
   </li>;
@@ -91,7 +120,7 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
         <button className={control} onClick={() => navigate(shiftFeedRange(range.from, range.to, -1))}>Earlier</button>
         <button className={control} aria-label="Choose historical range" onClick={() => setRangeOpen(true)}>{label(range.from)} – {label(String(BigInt(range.to) - 1n))}</button>
         <button className={control} disabled={!coverage?.includeFuture && BigInt(range.to) >= BigInt(coverage?.todayEndEpochMinute ?? range.to)} onClick={() => navigate(shiftFeedRange(range.from, range.to, 1))}>Later</button>
-        <button className={control} onClick={() => { const next = new URLSearchParams(params); next.delete('from'); next.delete('to'); next.delete('windowMode'); setParams(next); }}>Latest history</button>
+        <button className={control} onClick={() => { const next = new URLSearchParams(params); next.delete('from'); next.delete('to'); next.delete('windowMode'); for (const key of ['event', 'occurrence', 'at', 'date']) next.delete(key); setParams(next); }}>Latest history</button>
       </div>
       <details><summary className="min-h-11 cursor-pointer py-3 text-sm">Filter and group history</summary>
         <div className="space-y-3 text-sm">
@@ -116,6 +145,9 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
         {coverage?.sourceWarnings.map(row => <li key={`${row.source}:${row.code}`}>{row.source}: {row.message}</li>)}{coverage?.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul></details>
       {canManageChronology && <button className="min-h-11 text-sm underline" onClick={() => setManage(true)}>Manage history</button>}
       {inspectionError && <p role="alert">{inspectionError}</p>}
+      {params.has('event') && (!linkedOccurrence
+        ? <p role="status">This historical target is unavailable in the loaded authorized history.</p>
+        : <p role="status">{linkedClock && historicalClock(linkedClock).aligned ? "Showing the event's historical window." : 'Reference date unavailable; the native date is retained.'} Existing source, importance, session and future filters still apply. <button className={control} onClick={() => { setSelection(null); setShowTarget(true); }}>Show this event</button></p>)}
     </header>
     {!groups.length && <p className="type-prose">No loaded recorded developments match this window and its filters.</p>}
     <div className="space-y-8">{groups.map(group => {
@@ -129,9 +161,9 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
       return group.key === 'undated' || group.key.startsWith('native:') ? <details key={group.key}><summary className="min-h-11 cursor-pointer py-3 text-sm">{group.title} ({group.entries.length})</summary>{content}</details>
         : <section key={group.key} aria-label={group.title}>{content}</section>;
     })}</div>
-    {selection && <ChronologyEventSidebar campaignHandle={campaignHandle} baseEvent={baseEvent} editableEvents={details?.baseEvents ?? []} categories={details?.categories ?? []}
-      calendarLike={sourceAxis?.calendar ?? null} open={!!baseEvent} canManage={canManageChronology} occurrence={occurrence} onClose={() => setSelection(null)}
-      onMutated={async () => { await onOverlaySaved(); setCatalogue(await fetchChronologyTimeline(campaignHandle)); }} onDeleted={() => setSelection(null)} />}
+    {(selection || showTarget) && <ChronologyEventSidebar campaignHandle={campaignHandle} timeBundle={timeBundle} baseEvent={baseEvent} editableEvents={details?.baseEvents ?? []} categories={details?.categories ?? []}
+      calendarName={sourceClock?.name} calendarLike={sourceAxis?.calendar ?? null} open={!!baseEvent} canManage={canManageChronology} occurrence={occurrence} onClose={() => { setSelection(null); setShowTarget(false); }}
+      onMutated={async () => { await onOverlaySaved(); setCatalogue(await fetchChronologyTimeline(campaignHandle)); }} onDeleted={() => { setSelection(null); setShowTarget(false); }} />}
     {manage && canManageChronology && <HistoryDialog title="Manage history" onClose={() => setManage(false)}><CampaignHistoryPanel campaignHandle={campaignHandle} /></HistoryDialog>}
     {gapId && canManageChronology && <HistoryDialog title="Edit downtime period" onClose={() => setGapId(null)}><DowntimeGapOverlayEditor campaignHandle={campaignHandle} gapId={gapId} onSaved={() => { setGapId(null); void onOverlaySaved(); }} /></HistoryDialog>}
     {rangeOpen && <HistoryDialog title="Choose historical range" onClose={() => setRangeOpen(false)}>{axis ? <FeedRangeEditor axis={axis} from={range.from} to={range.to} onApply={navigate} /> : <p>Calendar unavailable. Use Earlier and Later to navigate bounded history.</p>}</HistoryDialog>}

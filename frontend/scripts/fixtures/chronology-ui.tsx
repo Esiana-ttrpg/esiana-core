@@ -1,3 +1,4 @@
+import { ChronologyPage } from '../../src/pages/ChronologyPage';
 // Isolated browser fixture: real chronology components and editor, mocked campaign API/context.
 
 import { useCallback, useMemo, useState } from 'react';
@@ -115,7 +116,7 @@ const category = {
 const bundle = {
   calendars: [calendar],
   categories: [category],
-  baseEvents: [base],
+  baseEvents: [base, ...occurrences.filter(row => row.baseEventId !== base.id).map(row => ({ ...base, id: row.baseEventId, title: row.title, importance: row.importance, duration: row.duration }))],
   occurrences,
   events: occurrences,
   expansionMetadata: {
@@ -151,6 +152,8 @@ function App() {
   const [navigationRequest, setNavigationRequest] = useState();
   const [eraRows, setEraRows] = useState(timelineBundle.eras);
   const activeBundle = { ...timelineBundle, eras: eraRows };
+  window.__chronologyBundle = activeBundle;
+  window.__chronologyTime = { calendars, currentEpochMinute: '56283' };
   const eraMutation = async () => {
     if (window.__savedEra) setEraRows(rows => [...rows.filter(row => row.id !== window.__savedEra.id), window.__savedEra]);
     if (window.__deletedEra) setEraRows(rows => rows.filter(row => row.id !== window.__deletedEra));
@@ -170,6 +173,7 @@ function App() {
     await new Promise((r) => setTimeout(r, 100));
     setRefresh((n) => n + 1);
   };
+  if (query.has('workspace')) return <ChronologyPage />;
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div>
@@ -187,7 +191,7 @@ function App() {
           campaignHandle="test"
           timeBundle={{ calendars: [calendar] }}
           chronologyBundle={bundle}
-          baseEvents={[base]}
+          baseEvents={bundle.baseEvents}
           categories={[category]}
           canManage={manage}
           onEventMutated={mutated}
@@ -234,7 +238,7 @@ function FeedFixture({ manage, mutated }) {
     projection: { visible: true }, links: [{ hrefKind: 'wiki_page', path: '/campaigns/test/archive' }],
     sessionLink: domain === 'session_chronicle' ? { timelinePointId: 'session', sequenceOrder: 1 } : null,
     feed: { datePrecision: minute === null ? 'undated' : 'day', importance: domain === 'world_event' ? importance : undefined,
-      referenceDay: '39', calendarId: 'clock', calendarName: 'World', occurrenceId: 'occ_0', duration: 40, groupId, groupTitle: groupId ? 'A season of discovery' : undefined },
+      referenceDay: '39', calendarId: 'clock', calendarName: 'World', occurrenceId: 'occ_0', occurrenceIndex: 0, nativeStart: { year: 1, month: 0, day: 25 }, duration: 40, groupId, groupTitle: groupId ? 'A season of discovery' : undefined },
   });
   const all = [data('notice', 'The long journey', '56283'), data('major', 'The archive opens', '56282', 'world_event', 'MAJOR'),
     data('minor', 'Sable reaches the coast', '56281', 'world_event', 'MINOR'), data('session', 'Session discoveries', '56280', 'session_chronicle'),

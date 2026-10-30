@@ -1,11 +1,13 @@
+import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
 import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { chronologyViewParams, intervalOccurrence, linkedInterval, linkedNativeDate, nativeDateMinute } from '@/lib/chronologyNavigation';
 import { ChronologyEventSidebar } from './ChronologyEventSidebar';
 import { ChronologyInspector } from './ChronologyInspector';
 import { FantasyDatePicker } from './FantasyDatePicker';
 import { HistoricalEraStrip, HistoricalTrack, type ComparisonEraBand } from './HistoricalTrack';
 import { comparisonDateLabel, comparisonIntervalLabel, useComparisonText } from './comparisonText';
-import type { ChronologyTimelineBundle } from '@/lib/chronologyApi';
+import type { ChronologyTimelineBundle, TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 import type { TimeTrackingBundle, FantasyCalendarApiRow } from '@/lib/timeTrackingApi';
 import type { ChronologyEra } from '@shared/chronologyEras';
 import type { ChronologyDateParts } from '@/lib/chronologyDates';
@@ -46,6 +48,7 @@ export interface TimelineSession {
 export interface EraTimelineRequest { id: number; calendarId: string; eraId: string; compare?: boolean }
 
 interface HistoricalTimelineProps {
+  onInspectionChange?: (occurrence: TimelineOccurrenceRecord | null) => void;
   session?: TimelineSession;
   navigationRequest?: EraTimelineRequest;
   campaignHandle: string;
@@ -64,7 +67,7 @@ export function HistoricalTimeline(props: HistoricalTimelineProps) {
 }
 
 function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, onBrowseAnchorChange,
-  onMutated, onDeleted, onRevealEvent, categoryFooter, session, navigationRequest }: HistoricalTimelineProps) {
+  onMutated, onDeleted, onRevealEvent, categoryFooter, session, navigationRequest, onInspectionChange }: HistoricalTimelineProps) {
   const text = useComparisonText();
   const [params] = useSearchParams();
   const trackCache = useRef({ entries: new Map<string, { signature: string; value: ReturnType<typeof buildTrack> }>(), list: [] as ReturnType<typeof buildTrack>[] });
@@ -112,20 +115,22 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
   const [focusedEraId, setFocusedEraId] = useState<string | null>(session?.snapshot?.focusedEraId ?? null);
   const [jumpDate, setJumpDate] = useState<ChronologyDateParts>({ year: 1, month: 0, day: 1 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const targetInterval = linkedInterval(params, tracks.flatMap(track => track.intervals));
   const filterCache = useRef(new Map<string, { input: HistoricalInterval[]; key: string; rows: HistoricalInterval[] }>());
   const filtered = useMemo(() => {
-    const key = JSON.stringify([importance, category]);
+    const key = JSON.stringify([importance, category, revealedKey]);
     const result = new Map<string, HistoricalInterval[]>();
     for (const track of tracks) {
       const cached = filterCache.current.get(track.id);
       const rows = cached?.input === track.intervals && cached.key === key ? cached.rows : track.intervals.filter(row =>
-        importance[row.representative.importance] && (category === 'all' || (row.representative.categoryId ?? 'uncategorized') === category));
+        row.key === revealedKey || (importance[row.representative.importance] && (category === 'all' || (row.representative.categoryId ?? 'uncategorized') === category)));
       filterCache.current.set(track.id, { input: track.intervals, key, rows });
       result.set(track.id, rows);
     }
     for (const id of filterCache.current.keys()) if (!result.has(id)) filterCache.current.delete(id);
     return result;
-  }, [tracks, importance, category]);
+  }, [tracks, importance, category, revealedKey]);
   const activeId = workspace.independent ?? workspace.reference;
   const active = tracks.find(track => track.id === activeId);
   const axis = active?.axis ?? null;
@@ -226,13 +231,13 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
   }, [tracks, native, width, minimum, updateView, move]);
   // A normal tab return restores its view even if Eras changed its own URL selection.
   // Fresh explicit requests (including the same era again) always take precedence.
-  const deepLink = useRef(session?.snapshot && (!navigationRequest || session.appliedRequestId === navigationRequest.id)
-    ? JSON.stringify([params.get('track'), params.get('era'), navigationRequest?.calendarId === params.get('track')
+  const deepLink = useRef(session?.snapshot && params.get('focus') !== 'timeline' && (!navigationRequest || session.appliedRequestId === navigationRequest.id)
+    ? JSON.stringify([params.get('track'), params.get('era'), params.get('event'), params.get('occurrence'), params.get('at'), params.get('date'), navigationRequest?.calendarId === params.get('track')
       && navigationRequest.eraId === params.get('era') ? navigationRequest.id : undefined]) : '');
   useEffect(() => {
     const track = params.get('track'), era = params.get('era');
     const request = navigationRequest?.calendarId === track && navigationRequest.eraId === era ? navigationRequest : undefined;
-    const signature = JSON.stringify([track, era, request?.id]);
+    const signature = JSON.stringify([track, era, params.get('event'), params.get('occurrence'), params.get('at'), params.get('date'), request?.id]);
     if (signature === deepLink.current) return;
     const target = tracks.find(row => row.id === track) ?? (!track ? tracks.find(row => row.eras.some(value => value.id === era)) : undefined);
     const reference = request?.compare && target?.aligned && master ? master : target?.aligned ? target.id : workspace.reference;
@@ -243,12 +248,22 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
         reference, independent }));
       return; // Focus only after the target axis and viewport are active.
     }
-    if (era && target) focusEra(era);
+    setSelectedKey(null);
+    if (params.has('event')) {
+      if (targetInterval) {
+        fit([targetInterval]);
+        if ((filtered.get(targetInterval.calendarId) ?? []).some(row => row.key === targetInterval.key)) setSelectedKey(targetInterval.key);
+      }
+    } else if (params.has('date') && target?.axis) {
+      const date = linkedNativeDate(params, target.axis);
+      const minute = date ? nativeDateMinute(target.axis, date) : null;
+      if (minute !== null) fit([{ start: minute, end: minute + 1440n } as HistoricalInterval]);
+    } else if (era && target) focusEra(era);
     deepLink.current = signature;
     if (session) {
       session.appliedRequestId = request?.id;
     }
-  }, [params, tracks, activeId, workspace, master, focusEra, session, navigationRequest]);
+  }, [params, tracks, activeId, workspace, master, focusEra, session, navigationRequest, targetInterval, filtered]);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{ x: number; y: number; view: TimelineViewport; distance?: number } | null>(null);
   const moved = useRef(false);
@@ -274,21 +289,23 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
     setState(initialHistoricalWorkspace(ids, master)); setSelectedKey(null); setClusterKeys(null); setFocusedEraId(null);
     setViews({});
   };
-  const capped = bundle.expansionMetadata.generated.truncated || bundle.expansionMetadata.warnings.some(warning =>
-    ['CAP_APPLIED_TOTAL', 'CAP_APPLIED_PER_EVENT', 'UNBOUNDED_RULE_FORCED_CAP'].includes(warning));
-  const eraHref = `${campaignChronologyPath(campaignHandle)}?view=eras&track=${encodeURIComponent(activeId ?? '')}`;
-  const occurrence = selected && source?.axis ? (() => {
-    const start = historicalNativeState(source.axis, selected.start), end = historicalNativeState(source.axis, selected.end - 1440n);
-    return start && end ? { ...selected.representative,
-      start: { ...dateParts(start), monthName: start.monthName, epochMinute: selected.start.toString() },
-      end: { ...dateParts(end), monthName: end.monthName, epochMinute: (selected.end - 1440n).toString() } } : null;
-  })() : null;
+  const eraHref = `${campaignChronologyPath(campaignHandle)}?${chronologyViewParams(params, 'eras', { calendarId: activeId ?? '' })}`;
+  const occurrence = selected && source?.axis ? intervalOccurrence(selected, source.axis) : null;
+  useEffect(() => { onInspectionChange?.(occurrence); }, [occurrence, onInspectionChange]);
+  const linkTrack = tracks.find(row => row.id === params.get('track'));
+  const unavailableTarget = (params.has('event') && !targetInterval) ||
+    (params.has('date') && (!linkTrack?.axis || !linkedNativeDate(params, linkTrack.axis))) ||
+    (params.has('era') && !tracks.some(row => row.eras.some(era => era.id === params.get('era')))) ||
+    (params.has('track') && !linkTrack);
+  const filteredTarget = targetInterval && !(filtered.get(targetInterval.calendarId) ?? []).some(row => row.key === targetInterval.key);
   const context = selected && source ? <>
     <p>{text('source', { name: source.name })}</p>
     {!native && source.aligned && axis && <p>{text('referenceDate', { name: active?.name ?? '',
       start: comparisonDateLabel(axis, selected.start, text, true), end: comparisonDateLabel(axis, selected.end - 1n, text, true) })}</p>}
   </> : null;
   return <div className="relative flex h-full min-h-0 min-w-0 flex-col" data-historical-timeline>
+    {unavailableTarget && <p role="status" className="px-3 text-sm text-muted">This historical target is unavailable in the loaded authorized history.</p>}
+    {filteredTarget && <p role="status" className="px-3 text-sm text-muted">This event is hidden by Timeline filters. <button className={control} onClick={() => { setRevealedKey(targetInterval.key); setSelectedKey(targetInterval.key); }}>Show this event</button></p>}
     <div className="relative flex shrink-0 flex-wrap items-center gap-2 border-b border-border/40 p-2">
       <span className="text-sm font-semibold">{text('title')}</span>
       <button className={control} aria-expanded={sidebarOpen} aria-controls="historical-tracks" onClick={() => setSidebarOpen(value => !value)}>{text('tracks', { count: workspace.visible.length })}</button>
@@ -321,7 +338,7 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
             const day = axis?.date(jumpDate);
             if (day !== null && day !== undefined && axis) updateView(move({ ...view, origin: historicalMinute(axis, day), offset: 0 }, -view.span / 2));
           }}>{text('jumpDate')}</button>
-          <a className="block text-xs underline" href={eraHref}>{text('openEras')}</a>{categoryFooter}
+          <Link className="block text-xs underline" to={eraHref}>{text('openEras')}</Link>{categoryFooter}
         </div>
       </details>
     </div>
@@ -330,9 +347,9 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
       {axis && <> · {comparisonDateLabel(axis, viewportDay(view), text)} — {comparisonDateLabel(axis, viewportDay(view, 1), text)}</>}
       {native && <button className="ml-2 min-h-11 underline" onClick={() => setState(previous => ({ ...previous, independent: null }))}>{text('compare')}</button>}
     </div>
-    <p role="status" className="shrink-0 px-3 pb-2 text-xs text-muted" title={bundle.expansionMetadata.warnings.join(', ')}>{text(capped ? 'capped' : 'coverage')}</p>
+    <ChronologyCoverageNotice metadata={bundle.expansionMetadata} className="shrink-0 px-3 pb-2" />
     {focusedEra && <div className="flex shrink-0 items-center gap-2 px-3 pb-2 text-xs">
-      <a className="underline" href={`${campaignChronologyPath(campaignHandle)}?view=eras&track=${encodeURIComponent(focusedEra.calendarId)}&era=${encodeURIComponent(focusedEra.id)}`}>{text('eraOverview', { name: focusedEra.name })}</a>
+      <Link className="underline" to={campaignChronologyPath(campaignHandle) + '?' + chronologyViewParams(params, 'eras', { calendarId: focusedEra.calendarId, eraId: focusedEra.id })}>{text('eraOverview', { name: focusedEra.name })}</Link>
       <button className="min-h-11 p-2" onClick={() => setFocusedEraId(null)} aria-label={text('dismissEra')}>×</button>
     </div>}
     <div className="relative flex min-h-0 min-w-0 flex-1">
@@ -415,7 +432,7 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
         return <li key={row.key}><button className="w-full rounded p-2 text-left text-sm hover:bg-elevated" onClick={() => select(row)}>{comparisonIntervalLabel(row, track.axis!, text)}</button></li>;
       })}</ul>
     </ChronologyInspector>}
-    <ChronologyEventSidebar campaignHandle={campaignHandle} baseEvent={selectedBase} categories={bundle.categories}
+    <ChronologyEventSidebar campaignHandle={campaignHandle} timeBundle={native ? timeBundle : undefined} baseEvent={selectedBase} calendarName={source?.name} categories={bundle.categories}
       editableEvents={bundle.baseEvents} calendarLike={source?.axis?.calendar ?? null} canManage={canManage}
       open={!!selectedBase && !clusterKeys} occurrence={occurrence} dateSeed={occurrence?.start ?? null} comparisonContext={context}
       onClose={() => setSelectedKey(null)} onMutated={onMutated} onDeleted={async () => { setSelectedKey(null); await onDeleted(); }} onRevealEvent={onRevealEvent} />

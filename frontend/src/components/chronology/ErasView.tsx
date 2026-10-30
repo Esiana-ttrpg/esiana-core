@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
+import { ChronologyImportance } from './ChronologyImportance';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { chronologyTargetSignature, intervalOccurrence } from '@/lib/chronologyNavigation';
 import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
@@ -8,10 +11,10 @@ import { saveEra, deleteEra, fetchEraImpact, reorderEras } from '@/lib/chronolog
 import { HistoricalEraStrip, type ComparisonEraBand } from './HistoricalTrack';
 import { ChronologyEventSidebar } from './ChronologyEventSidebar';
 import { comparisonDateLabel, useComparisonText } from './comparisonText';
-import { comparisonEraGeometry, historicalClock, historicalCoverage, historicalNativeState, sharedHistoricalIntervals, viewportDay, type HistoricalInterval } from '@/lib/historicalTimeline';
+import { comparisonEraGeometry, historicalClock, sharedHistoricalIntervals, viewportDay } from '@/lib/historicalTimeline';
 import { eraBounds, eraContext, selectedEraEvents, selectWorkspaceEra } from '@/lib/eraWorkspace';
 import { campaignWikiPath } from '@/lib/campaignPaths';
-import type { ChronologyTimelineBundle } from '@/lib/chronologyApi';
+import type { ChronologyTimelineBundle, TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 import { FantasyDatePicker } from './FantasyDatePicker';
 import { WikiTipTapEditor } from '@/components/wiki/WikiTipTapEditor';
@@ -19,7 +22,13 @@ import { WikiMarkdown } from '@/components/wiki/WikiMarkdown';
 import { TYPE_DISPLAY_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { resolveMonthName } from '@/lib/timeEngine';
 
+export interface ErasSession {
+  signature?: string;
+  snapshot?: { track: string; era: string | null; importance: Record<'MAJOR' | 'MINOR' | 'NOTICE', boolean> };
+}
 interface Props {
+  onInspectionChange?: (occurrence: TimelineOccurrenceRecord | null) => void;
+  session?: ErasSession;
   campaignHandle: string;
   bundle: ChronologyTimelineBundle;
   timeBundle: TimeTrackingBundle;
@@ -30,26 +39,34 @@ interface Props {
   onRevealEvent: (id: string) => void | Promise<void>;
   onTimeline: (calendarId: string, eraId: string, compare?: boolean) => void;
 }
-export function ErasView({ bundle, onErasChanged, onTimeline, ...ledger }: Props) {
+export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspectionChange, ...ledger }: Props) {
   const { can, flatPages } = useWiki();
   const elevated = can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW);
   const text = useComparisonText();
   const [params, setParams] = useSearchParams();
   const eras = bundle.eras ?? [];
   const defaultTrack = bundle.calendars.find(row => row.isMasterTime)?.id ?? bundle.calendars[0]?.id ?? '';
-  const linkedEra = eras.find(row => row.id === params.get('era'));
-  const track = params.get('track') ?? linkedEra?.calendarId ?? defaultTrack;
+  const signature = chronologyTargetSignature(params);
+  const restore = useRef(params.get('focus') !== 'eras' && session?.snapshot ? session.snapshot : undefined);
+  const applied = useRef(signature);
+  if (applied.current !== signature) { restore.current = undefined; applied.current = signature; }
+  const requestedEra = restore.current?.era ?? params.get('era');
+  const linkedEra = eras.find(row => row.id === requestedEra);
+  const track = restore.current?.track ?? params.get('track') ?? linkedEra?.calendarId ?? defaultTrack;
   const trackEras = useMemo(() => (bundle.eras ?? []).filter(era => era.calendarId === track)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)), [bundle.eras, track]);
   const definition = ledger.timeBundle.calendars.find(row => row.id === track);
   const clock = useMemo(() => definition ? historicalClock(definition) : null, [definition]);
   const axis = clock?.axis;
   const today = useMemo(() => definition ? { year: definition.state.year, month: definition.state.monthIndex, day: definition.state.day } : undefined, [definition]);
-  const selected = bundle.calendars.some(row => row.id === track) ? selectWorkspaceEra(trackEras, params.get('era'), today) : undefined;
+  const selected = bundle.calendars.some(row => row.id === track) ? selectWorkspaceEra(trackEras, requestedEra, today) : undefined;
   const eraId = selected?.id ?? '';
   const selectedTrackEras = trackEras;
   const [navigationOpen, setNavigationOpen] = useState(false);
-  const [importance, setImportance] = useState({ MAJOR: true, MINOR: false, NOTICE: false });
+  const [importance, setImportance] = useState(session?.snapshot?.importance ?? { MAJOR: true, MINOR: false, NOTICE: false });
+  useLayoutEffect(() => {
+    if (session) { session.signature = signature; session.snapshot = { track, era: requestedEra ?? selected?.id ?? null, importance }; }
+  }, [session, signature, track, requestedEra, selected?.id, importance]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const intervals = useMemo(() => {
     const bases = new Set(bundle.baseEvents.filter(row => row.calendarId === track).map(row => row.id));
@@ -74,8 +91,8 @@ export function ErasView({ bundle, onErasChanged, onTimeline, ...ledger }: Props
   const masterDefinition = ledger.timeBundle.calendars.find(row => row.id === defaultTrack);
   const masterClock = useMemo(() => masterDefinition ? historicalClock(masterDefinition) : null, [masterDefinition]);
   const canCompare = track !== defaultTrack && clock?.aligned && masterClock?.aligned && masterClock.axis;
-  const coverage = historicalCoverage(bundle.expansionMetadata);
-  const occurrence = inspection && axis ? inspectionOccurrence(inspection, axis) : null;
+  const occurrence = inspection && axis ? intervalOccurrence(inspection, axis) : null;
+  useEffect(() => { onInspectionChange?.(occurrence); }, [occurrence, onInspectionChange]);
   const [draft, setDraft] = useState<EraInput | null>(null);
   const [editing, setEditing] = useState<string | undefined>();
   const [visibilityTouched, setVisibilityTouched] = useState(false);
@@ -171,14 +188,15 @@ export function ErasView({ bundle, onErasChanged, onTimeline, ...ledger }: Props
           <div className="flex flex-wrap gap-4 text-sm">{(['MAJOR', 'MINOR', 'NOTICE'] as const).map(level => <label key={level} className="inline-flex min-h-11 items-center gap-2">
             <input type="checkbox" checked={importance[level]} onChange={e => setImportance(value => ({ ...value, [level]: e.target.checked }))} />{level === 'MAJOR' ? 'Major' : level === 'MINOR' ? 'Minor' : 'Notice'}
           </label>)}</div>
-          <p className="text-xs text-muted">A sample of up to five loaded matching occurrences. {coverage.message}</p>
-          {coverage.warnings.length > 0 && <p className="text-xs text-muted" role="status">Expansion warnings: {coverage.warnings.join(', ')}</p>}
+          <p className="text-xs text-muted">A sample of up to five loaded matching occurrences.</p>
+          <ChronologyCoverageNotice metadata={bundle.expansionMetadata} />
           {!events.length && <p className="text-sm text-muted">{!axis || !bounds ? 'Events cannot be positioned reliably.' : 'No loaded matching events in this period.'}</p>}
           <ul className="divide-y divide-border/40">{events.map(row => <li key={row.key}>
             <button className="min-h-11 w-full py-3 text-left" onClick={() => setSelectedKey(row.key)}>
               <span className="block text-sm font-medium">{row.representative.title}</span>
               <span className="block text-xs text-muted">{comparisonDateLabel(axis!, row.start, text)}{row.end - row.start > 1440n && ' - ' + comparisonDateLabel(axis!, row.end - 1440n, text) + ' - ' + String((row.end - row.start) / 1440n) + ' days'}
-                {row.representative.categoryId && ' - ' + (bundle.categories.find(category => category.id === row.representative.categoryId)?.name ?? '')}
+                {' · '}<ChronologyImportance value={row.representative.importance} />
+                {' · '}{bundle.categories.find(category => category.id === row.representative.categoryId)?.name ?? 'Uncategorized'}
                 {bounds?.start != null && row.start < bounds.start && ' - Began before this era'}{bounds?.end != null && row.end > bounds.end && ' - Continues beyond this era'}</span>
             </button>
           </li>)}</ul>
@@ -197,8 +215,8 @@ export function ErasView({ bundle, onErasChanged, onTimeline, ...ledger }: Props
         </details>}
       </article> : <p className="text-sm text-muted">{!bundle.calendars.length ? 'No calendars available.' : params.has('era') || !bundle.calendars.some(row => row.id === track) ? 'This era or calendar is unavailable. Select an available period.' : 'No eras configured for this calendar.'}</p>}
     </div>
-    <ChronologyEventSidebar campaignHandle={ledger.campaignHandle} baseEvent={bundle.baseEvents.find(base => base.id === inspection?.baseEventId) ?? null}
-      categories={bundle.categories} editableEvents={bundle.baseEvents} calendarLike={axis?.calendar ?? null} canManage={ledger.canManage}
+    <ChronologyEventSidebar campaignHandle={ledger.campaignHandle} timeBundle={ledger.timeBundle} baseEvent={bundle.baseEvents.find(base => base.id === inspection?.baseEventId) ?? null}
+      calendarName={definition?.name} categories={bundle.categories} editableEvents={bundle.baseEvents} calendarLike={axis?.calendar ?? null} canManage={ledger.canManage}
       open={!!inspection} occurrence={occurrence} dateSeed={occurrence?.start} onClose={() => setSelectedKey(null)}
       onMutated={ledger.onEventMutated} onDeleted={async () => { setSelectedKey(null); await ledger.onEventDeleted(); }} onRevealEvent={ledger.onRevealEvent} />
     {draft && like && <EraDialog title={editing ? 'Edit era' : 'Add era'} busy={busy} onClose={() => setDraft(null)}>
@@ -229,13 +247,6 @@ export function ErasView({ bundle, onErasChanged, onTimeline, ...ledger }: Props
       <button disabled={busy} onClick={() => setImpact(null)}>Cancel</button>{' '}<button disabled={busy} onClick={() => void perform(async () => { await deleteEra(ledger.campaignHandle, impact.era.id); setImpact(null); if (selected?.id === impact.era.id) filter('era', ''); })}>Delete era and Overview</button>
     </div></EraDialog>}
   </div>;
-}
-
-function inspectionOccurrence(row: HistoricalInterval, axis: NonNullable<ReturnType<typeof historicalClock>['axis']>) {
-  const start = historicalNativeState(axis, row.start), end = historicalNativeState(axis, row.end - 1440n);
-  return start && end ? { ...row.representative,
-    start: { year: start.year, month: start.monthIndex, day: start.day, monthName: start.monthName, epochMinute: String(row.start) },
-    end: { year: end.year, month: end.monthIndex, day: end.day, monthName: end.monthName, epochMinute: String(row.end - 1440n) } } : null;
 }
 
 /** Native modal preserves focus containment and restoration without another editor. */

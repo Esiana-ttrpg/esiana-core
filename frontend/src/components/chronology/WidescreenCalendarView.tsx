@@ -1,5 +1,11 @@
+import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
+import { ChronologyImportance } from './ChronologyImportance';
 import { ChronologyInspector } from './ChronologyInspector';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { chronologyTargetSignature, chronologyViewParams, intervalOccurrence, linkedInterval, linkedNativeDate } from '@/lib/chronologyNavigation';
+import { historicalClock, sharedHistoricalIntervals } from '@/lib/historicalTimeline';
+import { campaignChronologyPath } from '@/lib/campaignPaths';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { CalendarMonthGrid } from '@/components/chronology/CalendarMonthGrid';
 import {
@@ -24,9 +30,15 @@ import {
   resolveMonthName,
   type FantasyCalendarLike,
 } from '@/lib/timeEngine';
-import type { FantasyCalendarApiRow } from '@/lib/timeTrackingApi';
 
+export interface CalendarSession {
+  signature?: string;
+  snapshot?: { calendarId: string | null; year: number; month: number; day: number | null;
+    occurrenceId: string | null; importance: Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean> };
+}
 interface WidescreenCalendarViewProps {
+  onInspectionChange?: (occurrence: TimelineOccurrenceRecord | null) => void;
+  session?: CalendarSession;
   campaignHandle: string;
   timeBundle: TimeTrackingBundle;
   chronologyBundle: ChronologyTimelineBundle;
@@ -40,17 +52,6 @@ interface WidescreenCalendarViewProps {
   onEventMutated?: () => void | Promise<void>;
 }
 
-function calendarRowToLike(row: FantasyCalendarApiRow): FantasyCalendarLike {
-  return {
-    epochOffset: BigInt(row.epochOffset),
-    weekdays: row.weekdays,
-    months: row.months,
-    seasons: row.seasons,
-    moons: row.moons,
-    leapDays: row.leapDays,
-  };
-}
-
 export function WidescreenCalendarView({
   campaignHandle,
   timeBundle,
@@ -60,22 +61,43 @@ export function WidescreenCalendarView({
   canManage,
   onBrowseAnchorChange,
   onEventMutated,
+  session,
+  onInspectionChange,
 }: WidescreenCalendarViewProps) {
+  const [params] = useSearchParams();
   const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(
-    null,
+    session?.snapshot?.calendarId ?? null,
   );
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(session?.snapshot?.day ?? null);
   const [expandedOccurrenceId, setExpandedOccurrenceId] = useState<
     string | null
-  >(null);
-  const [viewYear, setViewYear] = useState(1);
-  const [viewMonthIndex, setViewMonthIndex] = useState(0);
+  >(session?.snapshot?.occurrenceId ?? null);
+  const [viewYear, setViewYear] = useState(session?.snapshot?.year ?? 1);
+  const [viewMonthIndex, setViewMonthIndex] = useState(session?.snapshot?.month ?? 0);
   const [importanceFilter, setImportanceFilter] = useState<
     Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean>
-  >({ NOTICE: false, MINOR: true, MAJOR: true });
-  const viewCalendarIdRef = useRef<string | null>(null);
-
-  const calendars = timeBundle.calendars;
+  >(session?.snapshot?.importance ?? { NOTICE: false, MINOR: true, MAJOR: true });
+  const viewCalendarIdRef = useRef<string | null>(session?.snapshot?.calendarId ?? null);
+  useLayoutEffect(() => {
+    if (session) session.snapshot = { calendarId: selectedCalendarId, year: viewYear, month: viewMonthIndex,
+      day: selectedDay, occurrenceId: expandedOccurrenceId, importance: importanceFilter };
+  }, [session, selectedCalendarId, viewYear, viewMonthIndex, selectedDay, expandedOccurrenceId, importanceFilter]);
+  const signature = chronologyTargetSignature(params);
+  const appliedLink = useRef(params.get('focus') === 'calendar' ? undefined : session?.snapshot ? signature : undefined);
+  const [revealedTarget, setRevealedTarget] = useState<string | null>(null);
+  const targetClock = timeBundle.calendars.find(row => row.id === params.get('track') && chronologyBundle.calendars.some(track => track.id === row.id));
+  const targetAxis = useMemo(() => targetClock ? historicalClock(targetClock).axis : null, [targetClock]);
+  const targetIntervals = useMemo(() => targetAxis ? sharedHistoricalIntervals(chronologyBundle.occurrences.filter(row =>
+    row.calendarId === targetClock?.id && baseEvents.some(base => base.id === row.baseEventId && base.calendarId === row.calendarId)), targetAxis) : [],
+  [targetAxis, targetClock, chronologyBundle.occurrences, baseEvents]);
+  const targetInterval = linkedInterval(params, targetIntervals);
+  const target = targetInterval && targetAxis ? intervalOccurrence(targetInterval, targetAxis) : null;
+  const linkedDate = target?.start ?? (targetAxis ? linkedNativeDate(params, targetAxis) : null) ??
+    (!params.has('event') && !params.has('date') && targetClock ? { year: targetClock.state.year, month: targetClock.state.monthIndex, day: targetClock.state.day } : null);
+  const hasTarget = params.has('event') || params.has('date') || params.has('track');
+  const unavailable = hasTarget && (!targetClock || !linkedDate || (params.has('event') && !target));
+  const filteredTarget = target && !importanceFilter[target.importance] && revealedTarget !== signature;
+  const calendars = useMemo(() => timeBundle.calendars.filter(row => chronologyBundle.calendars.some(track => track.id === row.id)), [timeBundle.calendars, chronologyBundle.calendars]);
 
   useEffect(() => {
     setSelectedCalendarId((previous) => {
@@ -95,7 +117,7 @@ export function WidescreenCalendarView({
   );
 
   const calendarLike = useMemo(
-    () => (selectedCalendar ? calendarRowToLike(selectedCalendar) : null),
+    () => (selectedCalendar ? historicalClock(selectedCalendar).axis?.calendar ?? null : null),
     [selectedCalendar],
   );
 
@@ -108,6 +130,20 @@ export function WidescreenCalendarView({
     setSelectedDay(null);
     setExpandedOccurrenceId(null);
   }, [selectedCalendar]);
+
+  useEffect(() => {
+    if (appliedLink.current === signature) return;
+    appliedLink.current = signature;
+    if (session) session.signature = signature;
+    setRevealedTarget(null);
+    if (!hasTarget) return;
+    setExpandedOccurrenceId(null); setSelectedDay(null);
+    if (unavailable || !targetClock || !linkedDate) return;
+    viewCalendarIdRef.current = targetClock.id;
+    setSelectedCalendarId(targetClock.id);
+    setViewYear(linkedDate.year!); setViewMonthIndex(linkedDate.month!); setSelectedDay(linkedDate.day);
+    if (target && !filteredTarget) setExpandedOccurrenceId(target.occurrenceId);
+  }, [signature, session, hasTarget, unavailable, targetClock, linkedDate, target, filteredTarget]);
 
   const viewMonthName = useMemo(() => {
     if (!calendarLike) return 'Month';
@@ -221,13 +257,18 @@ export function WidescreenCalendarView({
     [chronologyBundle.categories],
   );
 
+  // Bounded bundles may contain only continuation days; inspection still opens the actual start.
+  const calendarOccurrences = useMemo(() => target && !chronologyBundle.occurrences.some(row =>
+    row.baseEventId === target.baseEventId && row.occurrenceIndex === target.occurrenceIndex && row.calendarId === target.calendarId && row.dayOffset === 0)
+    ? [...chronologyBundle.occurrences, target] : chronologyBundle.occurrences, [chronologyBundle.occurrences, target]);
   const eventsByDay = useMemo(() => {
     const map = new Map<number, TimelineOccurrenceRecord[]>();
     if (!selectedCalendar) return map;
 
-    for (const occurrence of chronologyBundle.occurrences) {
+    for (const occurrence of calendarOccurrences) {
       if (occurrence.calendarId !== selectedCalendar.id) continue;
-      if (!importanceFilter[occurrence.importance ?? 'MINOR']) continue;
+      if (!importanceFilter[occurrence.importance ?? 'MINOR'] && !(revealedTarget === signature && occurrence.baseEventId === target?.baseEventId && occurrence.occurrenceIndex === target.occurrenceIndex)) continue;
+      if (!baseEventById.has(occurrence.baseEventId)) continue;
       if (occurrence.start.year !== viewYear) continue;
       if (occurrence.start.month !== viewMonthIndex) continue;
       const day = occurrence.start.day;
@@ -240,32 +281,35 @@ export function WidescreenCalendarView({
 
     return map;
   }, [
-    chronologyBundle.occurrences,
+    calendarOccurrences,
     selectedCalendar,
     viewYear,
     viewMonthIndex,
     importanceFilter,
+    revealedTarget, signature, target, baseEventById,
   ]);
 
   const dayAgenda = useMemo(() => {
     if (selectedDay === null || !selectedCalendar) return [];
-    return chronologyBundle.occurrences
+    return calendarOccurrences
       .filter(
         (occurrence) =>
           occurrence.calendarId === selectedCalendar.id &&
-          importanceFilter[occurrence.importance ?? 'MINOR'] &&
+          baseEventById.has(occurrence.baseEventId) &&
+          (importanceFilter[occurrence.importance ?? 'MINOR'] || (revealedTarget === signature && occurrence.baseEventId === target?.baseEventId && occurrence.occurrenceIndex === target.occurrenceIndex)) &&
           occurrence.start.year === viewYear &&
           occurrence.start.month === viewMonthIndex &&
           occurrence.start.day === selectedDay,
       )
       .sort(compareCalendarEvents);
   }, [
-    chronologyBundle.occurrences,
+    calendarOccurrences,
     selectedCalendar,
     viewYear,
     viewMonthIndex,
     selectedDay,
     importanceFilter,
+    revealedTarget, signature, target, baseEventById,
   ]);
 
   const handleDayClick = useCallback((day: number) => {
@@ -278,11 +322,18 @@ export function WidescreenCalendarView({
       if (window.matchMedia('(max-width: 767px)').matches)
         agendaRef.current?.scrollIntoView({
           block: 'nearest',
-          behavior: 'smooth',
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
         });
     });
     setExpandedOccurrenceId(null);
   }, []);
+
+  const inspected = dayAgenda.find(row => row.occurrenceId === expandedOccurrenceId);
+  const inspectionAxis = useMemo(() => selectedCalendar ? historicalClock(selectedCalendar).axis : null, [selectedCalendar]);
+  useEffect(() => {
+    const row = inspected && inspectionAxis ? sharedHistoricalIntervals([inspected], inspectionAxis)[0] : null;
+    onInspectionChange?.(row && inspectionAxis ? intervalOccurrence(row, inspectionAxis) : null);
+  }, [inspected, inspectionAxis, onInspectionChange]);
 
   const toggleAgendaItem = useCallback((occurrenceId: string) => {
     setExpandedOccurrenceId((current) =>
@@ -293,7 +344,7 @@ export function WidescreenCalendarView({
   if (!selectedCalendar || !viewport || !campaignToday) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted">
-        No fantasy calendars configured for this campaign.
+        {calendars.length ? 'Calendar definition unavailable or invalid.' : 'No fantasy calendars configured for this campaign.'}
       </div>
     );
   }
@@ -301,6 +352,8 @@ export function WidescreenCalendarView({
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       <div className="flex min-w-0 shrink-0 flex-col p-3 md:min-h-0 md:flex-1 md:overflow-hidden">
+        {unavailable && <p role="status" className="text-sm text-muted">This historical target is unavailable in the loaded authorized history.</p>}
+        {filteredTarget && <p role="status" className="text-sm text-muted">This event is hidden by Calendar filters. <button className="min-h-11 underline" onClick={() => { setRevealedTarget(signature); setExpandedOccurrenceId(target.occurrenceId); }}>Show this event</button></p>}
         <label className="mb-3 block w-full max-w-xs text-xs text-muted">
           Calendar track
           <select
@@ -365,16 +418,11 @@ export function WidescreenCalendarView({
             onClick={goToToday}
             className="rounded-lg border border-border px-2 py-1 text-[11px] font-medium text-foreground hover:bg-elevated"
           >
-            Today
+            Campaign Today
           </button>
         </div>
 
-        {chronologyBundle.expansionMetadata.generated.truncated && (
-          <p role="status" className="mb-2 text-xs text-muted">
-            Some event occurrences are omitted because expansion limits were
-            reached.
-          </p>
-        )}
+        <ChronologyCoverageNotice metadata={chronologyBundle.expansionMetadata} className="mb-2" />
         <CalendarClimateContext
           climateAspect={monthContext?.climateAspect}
           days={monthContext?.days}
@@ -412,7 +460,7 @@ export function WidescreenCalendarView({
         title={`${viewMonthName} ${selectedDay}`}
         onClose={closeAgenda}
       >
-
+          <Link className="inline-flex min-h-11 items-center text-sm underline" to={`${campaignChronologyPath(campaignHandle)}?${chronologyViewParams(params, 'timeline', { calendarId: selectedCalendar.id, date: { year: viewYear, month: viewMonthIndex, day: selectedDay } })}`}>View date on Timeline</Link>
           {selectedDay !== null &&
             monthContext?.days
               .get(selectedDay)
@@ -424,7 +472,7 @@ export function WidescreenCalendarView({
           {selectedDay === null ? (
             <p className="text-xs text-muted">Select a day on the calendar.</p>
           ) : dayAgenda.length === 0 ? (
-            <p className="text-xs text-muted">No events on this day.</p>
+            <p className="text-xs text-muted">No loaded occurrences match this day and its filters. Historical coverage may be incomplete.</p>
           ) : (
             <ul className="space-y-2">
               {dayAgenda.map((occurrence) => (
@@ -432,6 +480,13 @@ export function WidescreenCalendarView({
                   key={occurrence.occurrenceId}
                   campaignHandle={campaignHandle}
                   occurrence={occurrence}
+                  timeBundle={timeBundle}
+                  fullOccurrence={(() => {
+                    const clock = historicalClock(selectedCalendar);
+                    if (!clock.axis) return null;
+                    const row = sharedHistoricalIntervals([occurrence], clock.axis)[0];
+                    return row ? intervalOccurrence(row, clock.axis) : null;
+                  })()}
                   baseEvent={baseEventById.get(occurrence.baseEventId) ?? null}
                   calendarName={selectedCalendar.name}
                   calendarLike={calendarLike}
@@ -462,6 +517,8 @@ export function WidescreenCalendarView({
 function AgendaItem({
   campaignHandle,
   occurrence,
+  fullOccurrence,
+  timeBundle,
   baseEvent,
   calendarName,
   calendarLike,
@@ -476,6 +533,8 @@ function AgendaItem({
 }: {
   campaignHandle: string;
   occurrence: TimelineOccurrenceRecord;
+  fullOccurrence: TimelineOccurrenceRecord | null;
+  timeBundle: TimeTrackingBundle;
   baseEvent: TimelineBaseEventRecord | null;
   calendarName: string;
   calendarLike: FantasyCalendarLike | null;
@@ -510,7 +569,7 @@ function AgendaItem({
               {occurrence.eraNames.join(' · ')}
             </p>
           )}
-          <p className="mt-1 text-[11px] text-muted">{categoryName}</p>
+          <p className="mt-1 text-[11px] text-muted">{categoryName} · <ChronologyImportance value={occurrence.importance} /></p>
           <p className="mt-1 text-xs text-muted">
             {eventDayState(occurrence)}
             {occurrence.duration > 1 && (
@@ -524,16 +583,18 @@ function AgendaItem({
       </button>
       <div
         inert={!expanded}
-        className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+        className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${
           expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
         }`}
       >
         <div className="overflow-hidden">
           <div className="px-3 pb-3">
-            {baseEvent ? (
+            {baseEvent && expanded ? (
               <ChronologyEventInlineDetail
                 campaignHandle={campaignHandle}
                 baseEvent={baseEvent}
+                occurrence={fullOccurrence}
+                timeBundle={timeBundle}
                 calendarName={calendarName}
                 showConditions={false}
                 canManage={canManage}

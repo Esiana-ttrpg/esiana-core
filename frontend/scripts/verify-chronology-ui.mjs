@@ -33,11 +33,11 @@ const server = await createServer({
       },
       load(id) {
         if (id === '\0mock-wiki')
-          return 'export const useWiki=()=>({flatPages:[{id:"era-page",title:"World history",workspace:"pages",pathKey:"world-history"}],can:()=>!new URLSearchParams(location.search).has("player")});export const useOptionalWiki=()=>null;';
+          return 'export const useWiki=()=>({campaignHandle:"test",flatPages:[{id:"era-page",title:"World history",workspace:"pages",pathKey:"world-history"}],can:()=>!new URLSearchParams(location.search).has("player")});export const useOptionalWiki=()=>null;';
       },
       configureServer(vite) {
         vite.middlewares.use(async (req, res, next) => {
-          if (!req.url?.startsWith('/__chronology')) return next();
+          if (!req.url?.startsWith('/__chronology') && !req.url?.startsWith('/campaigns/test/chronology')) return next();
           res.setHeader('Content-Type', 'text/html');
           res.end(
             await vite.transformIndexHtml(
@@ -66,6 +66,27 @@ let failSave = false;
 const requests = [];
 await page.route('**/api/**', async (route) => {
   const req = route.request();
+  if (req.url().includes('/chronology/timeline') && req.method() === 'GET') return route.fulfill({ json: await page.evaluate(() => {
+    const bundle = window.__chronologyBundle;
+    return new URLSearchParams(location.search).has('hidden') ? { ...bundle, baseEvents: bundle.baseEvents.filter(row => row.id !== 'journey'), occurrences: bundle.occurrences.filter(row => row.baseEventId !== 'journey') } : bundle;
+  }) });
+  if (req.url().includes('/time-tracking') && req.method() === 'GET') return route.fulfill({ json: await page.evaluate(() => window.__chronologyTime) });
+  if (req.url().includes('/chronology/overlay') && req.method() === 'GET') {
+    const params = new URL(req.url()).searchParams;
+    const from = params.get('from') ?? '0', to = params.get('to') ?? '100000';
+    const entry = { entryId: 'linked-journey', sortOrdinal: '1', instant: { epochMinute: '34683', dateParts: null },
+      display: { title: 'The long journey', summary: 'Mira found the coast.', dateLabel: 'Before 25, Year 1' },
+      source: { domain: 'world_event', entityType: 'timeline_event', entityId: 'journey', subEntityId: 'occ_0' }, domain: 'world_event',
+      domainPayload: {}, projection: { visible: true }, links: [], sessionLink: null,
+      feed: { datePrecision: 'day', importance: 'MAJOR', referenceDay: '24', calendarId: 'clock', calendarName: 'World',
+        occurrenceId: 'occ_0', occurrenceIndex: 0, nativeStart: { year: 1, month: 0, day: 25 }, duration: 40 } };
+    const entries = (!params.has('domains') || params.get('domains').split(',').includes('world_event')) &&
+      (params.get('importance') ?? 'MAJOR,MINOR,NOTICE').split(',').includes('MAJOR') ? [entry] : [];
+    return route.fulfill({ json: { entries, campaignNowEpochMinute: '56283', window: { mode: 'EPOCH_RANGE', from, to },
+      truncation: { capped: false, maxEntries: 2000, totalCollected: entries.length },
+      feed: { requestedRange: { mode: 'EPOCH_RANGE', from, to }, todayEndEpochMinute: '57723', includeFuture: params.get('includeFuture') === 'true',
+        undated: { capped: false }, unaligned: { capped: false }, sourceWarnings: [], gaps: [] } } });
+  }
   if (req.url().includes('/narrative-snapshots') && req.method() === 'GET') return route.fulfill({ json: { snapshots: [] } });
   if (req.url().includes('/chronology/eras')) {
     if (req.method() === 'GET') return route.fulfill({ json: { events: 1, trajectories: 2, recurringRules: 1, overviewWords: 2 } });
@@ -398,6 +419,9 @@ try {
   await tracksToggle().click();
   await page.getByRole('button', { name: 'Inspect Other independently', exact: true }).click();
   await visible(page.getByText('Native inspection: Other', { exact: false }));
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.screenshot({ path: 'node_modules/.chronology-verification/workspace-ultrawide.png', fullPage: true });
   assert.equal(await page.locator('[data-comparison-guide]').count(), 0);
   const nativeBefore = await viewport();
   await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
@@ -685,9 +709,95 @@ try {
   await visible(page.getByText('An undated discovery', { exact: true }));
   await page.locator('[data-campaign-feed]').evaluate(el => { el.scrollTop = 0; });
   await page.screenshot({ path: 'node_modules/.chronology-verification/feed-mobile.png', fullPage: true });
+  // Pass 6: exercise the real page owner, URL history, restored sessions and authorized deep links.
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('http://localhost:5199/__chronology?workspace&view=calendar&keep=value');
+  await page.getByRole('table', { name: 'Returning' }).waitFor();
+  await page.getByRole('button', { name: 'Returning 10, today, 4 events', exact: true }).click();
+  await page.getByRole('button', { name: /The long journey World history/ }).click();
+  await page.getByRole('link', { name: 'Open on Timeline', exact: true }).click();
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  const targetUrl = new URL(page.url());
+  assert.equal(targetUrl.searchParams.get('event'), 'journey');
+  assert.equal(targetUrl.searchParams.get('occurrence'), '0');
+  assert.equal(targetUrl.searchParams.get('at'), '34683');
+  assert.equal(targetUrl.searchParams.get('keep'), 'value');
+  await page.getByRole('link', { name: 'Open in Calendar', exact: true }).click();
+  await page.getByRole('table', { name: 'Before' }).waitFor();
+  await visible(page.getByRole('complementary').getByText('40 day(s)', { exact: true }));
+  await page.reload();
+  await page.getByRole('table', { name: 'Before' }).waitFor();
+  await visible(page.getByRole('link', { name: 'Open on Timeline', exact: true }));
+  await page.goBack();
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  await page.goForward();
+  await page.getByRole('table', { name: 'Before' }).waitFor();
+  // Header tabs carry an actively inspected occurrence into compatible representations.
+  await page.getByRole('navigation', { name: 'Chronology views' }).getByRole('link', { name: 'Timeline', exact: true }).click();
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  const realViewport = () => page.locator('[data-timeline-axis]').evaluate(el => [el.dataset.viewportOrigin, el.dataset.viewportSpan]);
+  const realBefore = await realViewport();
+  await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+  await page.waitForFunction(before => document.querySelector('[data-timeline-axis]').dataset.viewportSpan !== before[1], realBefore);
+  const realZoomed = await realViewport();
+  const tabs = page.getByRole('navigation', { name: 'Chronology views' });
+  await tabs.getByRole('link', { name: 'Calendar', exact: true }).click();
+  await page.getByRole('table', { name: 'Before' }).waitFor();
+  await tabs.getByRole('link', { name: 'Timeline', exact: true }).click();
+  await page.locator('[data-timeline-axis]').waitFor();
+  assert.deepEqual(await realViewport(), realZoomed);
+  await tabs.getByRole('link', { name: 'Eras', exact: true }).click();
+  await visible(page.getByRole('heading', { name: 'World history', exact: true }));
+  await page.getByRole('button', { name: 'View on Timeline', exact: true }).click();
+  await page.locator('[data-timeline-axis]').waitFor();
+  await page.getByRole('link', { name: 'World history: read overview', exact: true }).click();
+  await visible(page.getByRole('heading', { name: 'World history', exact: true }));
+  await page.getByRole('button', { name: /The long journey.*Before 25/s }).click();
+  await page.getByRole('link', { name: 'Open in Calendar', exact: true }).click();
+  await page.getByRole('table', { name: 'Before' }).waitFor();
+  await page.getByRole('link', { name: 'Open in Campaign Feed', exact: true }).click();
+  await visible(page.getByRole('heading', { name: 'Campaign history', exact: true }));
+  await page.waitForFunction(() => new URLSearchParams(location.search).get('from') === '34683');
+  await page.getByRole('button', { name: 'Show this event', exact: true }).click();
+  await page.getByRole('complementary', { name: 'Event details' }).getByRole('link', { name: 'Open on Timeline', exact: true }).click();
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  await page.goto('http://localhost:5199/__chronology?workspace&view=timeline&focus=timeline&track=clock&event=extra0&occurrence=0&at=56283');
+  await visible(page.getByText('This event is hidden by Timeline filters.', { exact: false }));
+  await page.getByRole('button', { name: 'Show this event', exact: true }).click();
+  await visible(page.getByRole('complementary').getByText('Milestone 0', { exact: true }));
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  await page.getByText('Navigation & filters', { exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Notice', exact: true }).getAttribute('aria-pressed'), 'false');
+  await page.goto('http://localhost:5199/__chronology?workspace&view=calendar&focus=calendar&track=clock&event=extra0&occurrence=0&at=56283');
+  await visible(page.getByText('This event is hidden by Calendar filters.', { exact: false }));
+  await page.getByRole('button', { name: 'Show this event', exact: true }).click();
+  await visible(page.getByRole('link', { name: 'Open on Timeline', exact: true }));
+  await page.goto('http://localhost:5199/__chronology?workspace&view=timeline&track=clock&event=journey&occurrence=999&at=34683');
+  await visible(page.getByText('This historical target is unavailable in the loaded authorized history.', { exact: true }));
+  assert.equal(await page.getByRole('complementary', { name: 'Event details' }).count(), 0);
+  await page.goto('http://localhost:5199/__chronology?workspace&hidden&view=timeline&track=clock&event=journey&occurrence=0&at=34683');
+  await visible(page.getByText('This historical target is unavailable in the loaded authorized history.', { exact: true }));
+  assert.equal(await page.getByText('The long journey', { exact: true }).count(), 0);
+  await page.goto('http://localhost:5199/__chronology?workspace&twoClocks&unaligned&view=calendar&track=other&date=1:0:30');
+  await page.getByRole('table', { name: 'Long rain' }).waitFor();
+  await page.getByRole('button', { name: /Neri discovers the archive/ }).last().click();
+  await visible(page.getByText('Reference date unavailable; native dates are retained.', { exact: true }));
+  await page.getByRole('link', { name: 'Open on Timeline', exact: true }).click();
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  await visible(page.getByText('Native inspection: Other', { exact: false }));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('http://localhost:5199/__chronology?workspace&view=calendar&track=clock&event=journey&occurrence=0&at=34683&player');
+  await visible(page.getByRole('dialog', { name: 'Selected day details' }));
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  assert.equal(await page.getByRole('button', { name: 'Edit event', exact: true }).count(), 0);
+  await page.keyboard.press('Escape');
+  assert.equal(await tabs.getByRole('link', { name: 'Calendar', exact: true }).evaluate(el => el === document.activeElement), true);
+  await page.screenshot({ path: 'node_modules/.chronology-verification/workspace-mobile.png', fullPage: true });
   assert.deepEqual(errors, []);
   console.log(
-    'Chronology browser verification passed: Calendar, multi-clock Timeline, Eras, Campaign Feed filtering/grouping/coverage and bounded navigation, canonical editing and management, restored tracks/filters/viewports, shared inspectors/editors, keyboard focus, mobile layouts, and read-only permissions.',
+    'Chronology browser verification passed: Calendar, multi-clock Timeline, Eras, Campaign Feed, real workspace round trips, refresh and Back/Forward, exact occurrence targets, retained viewports, filter-aware reveal, unavailable/hidden targets, native-only clocks, shared inspectors/editors, keyboard focus, mobile/ultrawide layouts, and read-only permissions.',
   );
 } finally {
   await page.screenshot({
