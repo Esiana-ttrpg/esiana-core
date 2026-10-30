@@ -225,6 +225,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, ...ledger }: Props
       <p>{impact.details.events} chronology events · {impact.details.trajectories} progression references · {impact.details.recurringRules} recurring rules · Overview ({impact.details.overviewWords} words)</p>
       <p>Events and progression content will remain. Era references will be removed, preserving the former name. Future repeating events will use the remaining eras.</p>
       <p>The era Overview will be deleted. Links to it will become broken links.</p>
+      {error && <p role="alert">{error}</p>}
       <button disabled={busy} onClick={() => setImpact(null)}>Cancel</button>{' '}<button disabled={busy} onClick={() => void perform(async () => { await deleteEra(ledger.campaignHandle, impact.era.id); setImpact(null); if (selected?.id === impact.era.id) filter('era', ''); })}>Delete era and Overview</button>
     </div></EraDialog>}
   </div>;
