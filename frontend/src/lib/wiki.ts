@@ -98,7 +98,7 @@ export async function updateEntityField(
 export async function createCustomCharacterField(
   campaignHandle: string,
   characterPageId: string,
-  input: { label: string; type: CharacterFieldType; value?: unknown; validation?: CharacterFieldValidation; pageId?: string },
+  input: { label: string; type: CharacterFieldType; value?: unknown; validation?: CharacterFieldValidation; pageId?: string | null; defaultSheetName?: string; sourceKey?: string },
 ): Promise<CharacterFieldDescriptor> {
   const result = await apiFetch<{ field: CharacterFieldDescriptor }>(
     `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields`,

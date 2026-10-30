@@ -11,11 +11,16 @@ export const CORE_CHARACTER_PAGE_TITLES: Record<CharacterCorePageKey, string> = 
   relationships: 'Relationships',
   timeline: 'Timeline',
   discovery: 'Discovery',
+  trajectory: 'Trajectory',
   continuity: 'Continuity',
 };
 
 export const CORE_CHARACTER_PAGE_ORDER = new Map<string, number>(
-  CHARACTER_CORE_PAGE_KEYS.map((key, index) => [key, index * 10]),
+  // Keep existing page positions stable while inserting Trajectory between Discovery and Continuity.
+  CHARACTER_CORE_PAGE_KEYS.map((key, index) => [
+    key,
+    key === 'trajectory' ? 45 : (index - (key === 'continuity' ? 1 : 0)) * 10,
+  ]),
 );
 
 export function isCharacterPageOrigin(value: unknown): value is CharacterPageOrigin {

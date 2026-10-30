@@ -16,10 +16,12 @@ test('measures the same rendered tabs, including the padded DM badge', () => {
   const buttons = [...html.matchAll(/<button\b[^>]*>[\s\S]*?<\/button>/g)].map(([button]) => button);
   // Hidden measurement controls: Overview, Secrets + badge, More.
   // Visible controls initially: Overview, Secrets + badge.
-  assert.equal(buttons.length, 5);
-  assert.equal(buttons[0], buttons[3]);
-  assert.equal(buttons[1], buttons[4]);
-  assert.match(buttons[1], />DM<\/span>/);
-  assert.match(buttons[2], /More/);
+  assert.equal(buttons.length, 6);
+  const desktopButtons = buttons.slice(1);
+  assert.match(buttons[0], /Page sections: Overview/);
+  assert.equal(desktopButtons[0], desktopButtons[3]);
+  assert.equal(desktopButtons[1], desktopButtons[4]);
+  assert.match(desktopButtons[1], />DM<\/span>/);
+  assert.match(desktopButtons[2], /More/);
   assert.match(html, /aria-hidden="true" inert=""/);
 });
