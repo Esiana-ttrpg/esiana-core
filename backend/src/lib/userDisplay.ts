@@ -18,6 +18,8 @@ const SOCIAL_LINK_KEYS = [
 
 export type SocialLinkKey = (typeof SOCIAL_LINK_KEYS)[number];
 
+// Text normalization is not URL or HTML sanitization. Render text through React
+// escaping and Markdown through its default safe URL transform (no raw HTML).
 export function sanitizeStatusBlurb(raw: unknown): string | null {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== 'string') return null;
@@ -26,7 +28,6 @@ export function sanitizeStatusBlurb(raw: unknown): string | null {
   if (!value) return null;
 
   value = value.replace(/<[^>]+>/g, '');
-  value = value.replace(/javascript:/gi, '');
 
   if (value.length > STATUS_BLURB_MAX_LENGTH) {
     value = value.slice(0, STATUS_BLURB_MAX_LENGTH);
@@ -39,31 +40,24 @@ export function sanitizeSocialLink(raw: unknown): string | null {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== 'string') return null;
 
-  let value = raw.trim();
+  const value = raw.trim();
   if (!value) return null;
 
-  value = value.replace(/<[^>]+>/g, '');
-  value = value.replace(/javascript:/gi, '');
-
-  if (!/^https?:\/\//i.test(value)) {
-    value = `https://${value}`;
-  }
+  // Reject markup and controls rather than rewriting an untrusted URL.
+  if (/[\u0000-\u001f\u007f<>]/.test(value)) return null;
+  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(value);
 
   try {
-    const parsed = new URL(value);
+    const parsed = new URL(hasScheme ? value : `https://${value}`);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       return null;
     }
-    value = parsed.toString();
+    const normalized = parsed.toString();
+    // Truncation could change the destination or leave a malformed URL.
+    return normalized.length <= SOCIAL_LINK_MAX_LENGTH ? normalized : null;
   } catch {
     return null;
   }
-
-  if (value.length > SOCIAL_LINK_MAX_LENGTH) {
-    value = value.slice(0, SOCIAL_LINK_MAX_LENGTH);
-  }
-
-  return value;
 }
 
 export function isSocialLinkKey(key: string): key is SocialLinkKey {
@@ -81,7 +75,6 @@ export function sanitizeDefaultPitch(raw: unknown): string | null {
 
   value = value.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
   value = value.replace(/<script\b[^>]*\/?>/gi, '');
-  value = value.replace(/javascript:/gi, '');
 
   if (value.length > DEFAULT_PITCH_MAX_LENGTH) {
     value = value.slice(0, DEFAULT_PITCH_MAX_LENGTH);
@@ -99,7 +92,6 @@ export function sanitizePublicBio(raw: unknown): string | null {
 
   value = value.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
   value = value.replace(/<script\b[^>]*\/?>/gi, '');
-  value = value.replace(/javascript:/gi, '');
 
   if (value.length > PUBLIC_BIO_MAX_LENGTH) {
     value = value.slice(0, PUBLIC_BIO_MAX_LENGTH);
@@ -122,7 +114,7 @@ export function deriveUsername(email: string): string {
   return local && local.length > 0 ? local : email;
 }
 
-/** Strips script tags and other HTML from a public display name. */
+/** Normalizes pronoun text and removes HTML tags. */
 export function sanitizePronouns(raw: unknown): string | null {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== 'string') return null;
@@ -131,7 +123,6 @@ export function sanitizePronouns(raw: unknown): string | null {
   if (!value) return null;
 
   value = value.replace(/<[^>]+>/g, '');
-  value = value.replace(/javascript:/gi, '');
 
   if (value.length > PRONOUNS_MAX_LENGTH) {
     value = value.slice(0, PRONOUNS_MAX_LENGTH);
@@ -150,7 +141,6 @@ export function sanitizeDisplayName(raw: unknown): string | null {
   value = value.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
   value = value.replace(/<script\b[^>]*\/?>/gi, '');
   value = value.replace(/<[^>]+>/g, '');
-  value = value.replace(/javascript:/gi, '');
   value = value.trim();
 
   if (!value) return null;
