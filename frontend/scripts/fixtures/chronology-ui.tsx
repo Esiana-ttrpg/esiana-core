@@ -1,9 +1,10 @@
 // Isolated browser fixture: real chronology components and editor, mocked campaign API/context.
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { ErasView } from '../../src/components/chronology/ErasView';
 import { HistoricalTimeline } from '../../src/components/chronology/HistoricalTimeline';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, useLocation } from 'react-router-dom';
+import { BrowserRouter, useLocation, useSearchParams } from 'react-router-dom';
 import { WidescreenCalendarView } from '../../src/components/chronology/WidescreenCalendarView';
 import { ChronologyCreateEventDialog } from '../../src/components/chronology/ChronologyCreateEventDialog';
 import { ChronologyEventSidebar } from '../../src/components/chronology/ChronologyEventSidebar';
@@ -136,13 +137,27 @@ const timelineBundle = {
   eras: [{ id: 'era', calendarId: 'clock', name: 'World history', calendarName: 'World',
     isMasterTime: true, sortOrder: 0, isCurrent: true, status: 'PRESENT', visibility: 'PARTY',
     startDate: { year: 1, month: 0, day: 15 }, endDate: null, overview: 'The crossing',
-    overviewPageId: 'era-page', canManage: true }, ...(query.has('twoClocks') ? [{
+    overviewPageId: 'era-page', canManage: !query.has('player') }, ...(query.has('eras') ? [{ id: 'earlier-era', calendarId: 'clock', name: 'Early discoveries', calendarName: 'World', isMasterTime: true, sortOrder: 1, isCurrent: false, status: 'PAST', visibility: 'PARTY', startDate: { year: 1, month: 0, day: 1 }, endDate: { year: 1, month: 0, day: 10 }, overview: '**Mira** mapped the coast.', overviewPageId: 'early-page', canManage: !query.has('player') }] : []), ...(query.has('twoClocks') ? [{
       id: 'other-era', calendarId: 'other', name: 'Age of discovery', calendarName: 'Other', isMasterTime: false,
       sortOrder: 0, isCurrent: true, status: 'PRESENT', visibility: 'PARTY', startDate: { year: 1, month: 0, day: 20 },
-      endDate: { year: 1, month: 0, day: 40 }, overview: '', overviewPageId: null, canManage: true,
+      endDate: { year: 1, month: 0, day: 40 }, overview: '', overviewPageId: 'other-era-page', canManage: !query.has('player'),
     }] : [])],
 };
 function App() {
+  const [params, setParams] = useSearchParams();
+  const session = useMemo(() => ({}), []);
+  const [navigationRequest, setNavigationRequest] = useState();
+  const [eraRows, setEraRows] = useState(timelineBundle.eras);
+  const activeBundle = { ...timelineBundle, eras: eraRows };
+  const eraMutation = async () => {
+    if (window.__savedEra) setEraRows(rows => [...rows.filter(row => row.id !== window.__savedEra.id), window.__savedEra]);
+    if (window.__deletedEra) setEraRows(rows => rows.filter(row => row.id !== window.__deletedEra));
+    setRefresh(n => n + 1);
+  };
+  const openTimeline = (calendarId, eraId, compare) => {
+    setNavigationRequest(previous => ({ id: (previous?.id ?? 0) + 1, calendarId, eraId, compare }));
+    const next = new URLSearchParams(params); next.set('view', 'timeline'); next.set('track', calendarId); next.set('era', eraId); setParams(next);
+  };
   const [create, setCreate] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const loc = useLocation();
@@ -156,11 +171,15 @@ function App() {
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <div>
-        Path: {loc.pathname} <span id="refresh">Refresh {refresh}</span>{' '}
+        Path: {loc.pathname}
+        {query.has('eras') && <><button onClick={() => { const next = new URLSearchParams(params); next.set('view', 'eras'); setParams(next); }}>Eras tab</button>
+          <button onClick={() => { const next = new URLSearchParams(params); next.set('view', 'timeline'); setParams(next); }}>Timeline tab</button></>} <span id="refresh">Refresh {refresh}</span>{' '}
         {manage && <button onClick={() => setCreate(true)}>New event</button>}
       </div>
       <main style={{ minHeight: 0, flex: 1 }}>
-        {query.has('timeline') ? <HistoricalTimeline campaignHandle="test" bundle={timelineBundle}
+        {query.has('eras') && params.get('view') !== 'timeline' ? <ErasView campaignHandle="test" bundle={activeBundle}
+          timeBundle={{ calendars }} canManage={manage} onErasChanged={eraMutation} onEventMutated={mutated} onEventDeleted={() => {}} onRevealEvent={async () => {}}
+          onTimeline={openTimeline} /> : query.has('timeline') || query.has('eras') ? <HistoricalTimeline campaignHandle="test" bundle={activeBundle} session={session} navigationRequest={navigationRequest}
           timeBundle={{ calendars: [...calendars, { ...calendar, id: 'unauthorized', name: 'Unauthorized clock' }], currentEpochMinute: '56283' }} canManage={manage} onBrowseAnchorChange={browse}
           onMutated={mutated} onDeleted={() => {}} onRevealEvent={async () => {}} /> : <WidescreenCalendarView
           campaignHandle="test"

@@ -8,8 +8,8 @@ import {
 import { comparisonDateLabel, comparisonIntervalLabel, useComparisonText } from './comparisonText';
 
 export type ComparisonEraBand = NonNullable<ReturnType<typeof comparisonEraGeometry>>;
-export function HistoricalEraStrip({ bands, name, onFocus }: {
-  bands: ComparisonEraBand[]; name: string; onFocus: (id: string) => void;
+export function HistoricalEraStrip({ bands, name, onFocus, selectedId }: {
+  bands: ComparisonEraBand[]; name: string; onFocus: (id: string) => void; selectedId?: string;
 }) {
   const text = useComparisonText();
   // Overlapping definitions get separate label rows; their configured order is retained.
@@ -24,7 +24,8 @@ export function HistoricalEraStrip({ bands, name, onFocus }: {
   return <div className="relative overflow-hidden border-y border-border/40" style={{ height: Math.max(1, ends.length) * 44 }}
     aria-label={text('eras', { name })}>
     {rows.map(({ band, lane }) => <button key={band.era.id} type="button"
-      className="absolute truncate border-l border-border/40 bg-primary/10 px-2 text-left text-xs"
+      aria-pressed={selectedId ? band.era.id === selectedId : undefined}
+      className={`absolute truncate border-l border-border/40 px-2 text-left text-xs ${band.era.id === selectedId ? 'bg-primary/25 font-semibold' : 'bg-primary/10'}`}
       style={{ left: band.x, width: band.width, top: lane * 44, height: 44 }}
       title={band.era.name} onClick={() => onFocus(band.era.id)}>
       {band.openStart ? '← ' : ''}{band.era.name}{band.openEnd ? ' →' : ''}

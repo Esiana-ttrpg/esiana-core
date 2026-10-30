@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChronologyEventSidebar } from './ChronologyEventSidebar';
 import { ChronologyInspector } from './ChronologyInspector';
@@ -14,7 +14,7 @@ import {
   comparisonEraGeometry, comparisonTicks, fitComparisonIntervals, historicalClock, historicalMinute,
   historicalNativeState, historicalTrackCoverage, initialComparisonViewport, initialHistoricalWorkspace,
   moveComparisonViewport, reconcileHistoricalWorkspace, reorderHistoricalTrack, sharedHistoricalIntervals,
-  viewportDay, zoomComparisonViewport, type HistoricalInterval, type TimelineViewport,
+  viewportDay, zoomComparisonViewport, type HistoricalInterval, type TimelineViewport, type HistoricalWorkspaceState,
 } from '@/lib/historicalTimeline';
 
 const control = 'min-h-11 rounded border border-border bg-background px-3 py-2 text-xs';
@@ -31,7 +31,23 @@ function buildTrack(calendar: ChronologyTimelineBundle['calendars'][number], def
     intervals: clock.axis ? sharedHistoricalIntervals(rows, clock.axis) : emptyIntervals, capped };
 }
 
+export interface TimelineSession {
+  snapshot?: {
+    workspace: HistoricalWorkspaceState;
+    importance: Record<'MAJOR' | 'MINOR' | 'NOTICE', boolean>;
+    category: string;
+    showEras: boolean;
+    selectedKey: string | null;
+    focusedEraId: string | null;
+    views: Record<string, TimelineViewport>;
+  };
+  appliedRequestId?: number;
+}
+export interface EraTimelineRequest { id: number; calendarId: string; eraId: string; compare?: boolean }
+
 interface HistoricalTimelineProps {
+  session?: TimelineSession;
+  navigationRequest?: EraTimelineRequest;
   campaignHandle: string;
   bundle: ChronologyTimelineBundle;
   timeBundle: TimeTrackingBundle;
@@ -48,7 +64,7 @@ export function HistoricalTimeline(props: HistoricalTimelineProps) {
 }
 
 function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, onBrowseAnchorChange,
-  onMutated, onDeleted, onRevealEvent, categoryFooter }: HistoricalTimelineProps) {
+  onMutated, onDeleted, onRevealEvent, categoryFooter, session, navigationRequest }: HistoricalTimelineProps) {
   const text = useComparisonText();
   const [params] = useSearchParams();
   const trackCache = useRef({ entries: new Map<string, { signature: string; value: ReturnType<typeof buildTrack> }>(), list: [] as ReturnType<typeof buildTrack>[] });
@@ -82,18 +98,18 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
   const ids = useMemo(() => tracks.map(track => track.id), [tracks]);
   const aligned = useMemo(() => tracks.filter(track => track.aligned).map(track => track.id), [tracks]);
   const master = tracks.find(track => track.isMasterTime && track.axis)?.id ?? tracks.find(track => track.axis)?.id ?? tracks[0]?.id ?? null;
-  const [state, setState] = useState(() => initialHistoricalWorkspace(ids,
+  const [state, setState] = useState(() => session?.snapshot?.workspace ?? initialHistoricalWorkspace(ids,
     ids.includes(params.get('track') ?? '') ? params.get('track') : master));
   const workspace = useMemo(() => reconcileHistoricalWorkspace(state, ids, aligned, master), [state, ids, aligned, master]);
   useEffect(() => {
     if (JSON.stringify(state) !== JSON.stringify(workspace)) setState(workspace);
   }, [state, workspace]);
-  const [importance, setImportance] = useState({ MAJOR: true, MINOR: true, NOTICE: false });
-  const [category, setCategory] = useState('all');
-  const [showEras, setShowEras] = useState(true);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [importance, setImportance] = useState(session?.snapshot?.importance ?? { MAJOR: true, MINOR: true, NOTICE: false });
+  const [category, setCategory] = useState(session?.snapshot?.category ?? 'all');
+  const [showEras, setShowEras] = useState(session?.snapshot?.showEras ?? true);
+  const [selectedKey, setSelectedKey] = useState<string | null>(session?.snapshot?.selectedKey ?? null);
   const [clusterKeys, setClusterKeys] = useState<string[] | null>(null);
-  const [focusedEraId, setFocusedEraId] = useState<string | null>(null);
+  const [focusedEraId, setFocusedEraId] = useState<string | null>(session?.snapshot?.focusedEraId ?? null);
   const [jumpDate, setJumpDate] = useState<ChronologyDateParts>({ year: 1, month: 0, day: 1 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const filterCache = useRef(new Map<string, { input: HistoricalInterval[]; key: string; rows: HistoricalInterval[] }>());
@@ -116,7 +132,16 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
   const native = workspace.independent !== null;
   const viewKey = native ? `native:${activeId}` : 'shared';
   const minimum = native ? axis?.calendar.epochOffset : undefined;
-  const [views, setViews] = useState<Record<string, TimelineViewport>>({});
+  const [views, setViews] = useState<Record<string, TimelineViewport>>(session?.snapshot?.views ?? {});
+  useEffect(() => {
+    setViews(previous => {
+      const kept = Object.fromEntries(Object.entries(previous).filter(([key]) => key === 'shared' || ids.includes(key.slice('native:'.length))));
+      return Object.keys(kept).length === Object.keys(previous).length ? previous : kept;
+    });
+  }, [ids]);
+  useLayoutEffect(() => {
+    if (session) session.snapshot = { workspace, importance, category, showEras, selectedKey, focusedEraId, views };
+  }, [session, workspace, importance, category, showEras, selectedKey, focusedEraId, views]);
   const initial = useMemo(() => axis && active ? initialComparisonViewport(axis,
     active.definition?.state ? dateParts(active.definition.state) : null, active.intervals, active.eras) :
     { origin: 0n, offset: 0, span: 365 * 1440 }, [axis, active]);
@@ -142,8 +167,11 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
     const value = pending.current; pending.current = null;
-    if (value) setViews(previous => ({ ...previous, [value.key]: value.view }));
-  }, [viewKey]);
+    if (value) {
+      if (session?.snapshot) session.snapshot.views = { ...session.snapshot.views, [value.key]: value.view };
+      setViews(previous => ({ ...previous, [value.key]: value.view }));
+    }
+  }, [viewKey, session]);
   const move = useCallback((value: TimelineViewport, delta: number, span = value.span) =>
     moveComparisonViewport(value, delta, span, minimum), [minimum]);
   const zoom = useCallback((value: TimelineViewport, factor: number, anchor = .5) =>
@@ -182,6 +210,7 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
   const referenceBands = useMemo(() => axis && active ? active.eras.map(era => comparisonEraGeometry(era, axis, view, width))
     .filter((band): band is ComparisonEraBand => !!band && band.width > 0) : emptyBands, [active, axis, view, width]);
   const focusedEra = tracks.flatMap(track => track.eras).find(era => era.id === focusedEraId);
+  useEffect(() => { if (focusedEraId && !focusedEra) setFocusedEraId(null); }, [focusedEraId, focusedEra]);
   const focusEra = useCallback((id: string) => {
     const track = tracks.find(track => track.eras.some(era => era.id === id));
     const era = track?.eras.find(era => era.id === id);
@@ -195,16 +224,31 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
     } else if (band.start !== null || band.end !== null) updateView(move({ ...viewRef.current,
       origin: band.start ?? band.end!, offset: 0 }, -viewRef.current.span / 2));
   }, [tracks, native, width, minimum, updateView, move]);
-  const deepLink = useRef('');
+  // A normal tab return restores its view even if Eras changed its own URL selection.
+  // Fresh explicit requests (including the same era again) always take precedence.
+  const deepLink = useRef(session?.snapshot && (!navigationRequest || session.appliedRequestId === navigationRequest.id)
+    ? JSON.stringify([params.get('track'), params.get('era'), navigationRequest?.calendarId === params.get('track')
+      && navigationRequest.eraId === params.get('era') ? navigationRequest.id : undefined]) : '');
   useEffect(() => {
-    const track = params.get('track'), era = params.get('era'), signature = `${track}:${era}`;
+    const track = params.get('track'), era = params.get('era');
+    const request = navigationRequest?.calendarId === track && navigationRequest.eraId === era ? navigationRequest : undefined;
+    const signature = JSON.stringify([track, era, request?.id]);
     if (signature === deepLink.current) return;
+    const target = tracks.find(row => row.id === track) ?? (!track ? tracks.find(row => row.eras.some(value => value.id === era)) : undefined);
+    const reference = request?.compare && target?.aligned && master ? master : target?.aligned ? target.id : workspace.reference;
+    const independent = target && !target.aligned ? target.id : null;
+    if (target && (workspace.independent !== independent || workspace.reference !== reference || !workspace.visible.includes(target.id)
+      || (request?.compare && master && !workspace.visible.includes(master)))) {
+      setState(previous => ({ ...previous, visible: [...new Set([...previous.visible, target.id, ...(request?.compare && master ? [master] : [])])],
+        reference, independent }));
+      return; // Focus only after the target axis and viewport are active.
+    }
+    if (era && target) focusEra(era);
     deepLink.current = signature;
-    if (track && ids.includes(track)) setState(previous => ({ ...previous, visible: [...new Set([...previous.visible, track])],
-      reference: aligned.includes(track) ? track : previous.reference, independent: aligned.includes(track) ? null : track }));
-    if (era && (!track || track === activeId)) focusEra(era);
-    else if (era) deepLink.current = ''; // Apply after the requested clock becomes active.
-  }, [params, ids, aligned, activeId, focusEra]);
+    if (session) {
+      session.appliedRequestId = request?.id;
+    }
+  }, [params, tracks, activeId, workspace, master, focusEra, session, navigationRequest]);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{ x: number; y: number; view: TimelineViewport; distance?: number } | null>(null);
   const moved = useRef(false);
