@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import GridLayout, { type Layout } from 'react-grid-layout';
+import GridLayout from 'react-grid-layout/legacy';
+import type { Layout } from 'react-grid-layout';
 import {
   computeGridContainerHeightPx,
   WIKI_LAYOUT_MARGIN_Y,
@@ -43,7 +44,7 @@ export function WikiLayoutGrid({
         width={gridWidth}
         isDraggable={showLayoutChrome && !isExpandedLayout}
         isResizable={false}
-        onLayoutChange={onLayoutChange}
+        onLayoutChange={(nextLayout) => onLayoutChange([...nextLayout])}
         margin={[12, WIKI_LAYOUT_MARGIN_Y]}
         useCSSTransforms
         draggableHandle={showLayoutChrome ? '.widget-drag-handle' : undefined}
