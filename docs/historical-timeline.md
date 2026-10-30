@@ -1,5 +1,8 @@
 # Historical Timeline
 
+See [Chronology workspace](./chronology-workspace.md) for shared navigation,
+exact occurrence links, mounted state, inspection, and coverage conventions.
+
 Campaign Feed provides a separate [campaign narrative history](./campaign-feed.md),
 with bounded date-window navigation and links to authoritative source content.
 

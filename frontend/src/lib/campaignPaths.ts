@@ -50,7 +50,7 @@ export function campaignPartyPath(handle: string): string {
 
 export function campaignChronologyPath(
   handle: string,
-  view?: 'calendar' | 'timeline' | 'events' | 'feed',
+  view?: 'calendar' | 'timeline' | 'eras' | 'events' | 'feed',
 ): string {
   const base = campaignPath(handle, 'chronology');
   return view ? `${base}?view=${view}` : base;

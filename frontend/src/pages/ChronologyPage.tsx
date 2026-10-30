@@ -1,25 +1,29 @@
 import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HistoricalTimeline, type TimelineSession, type EraTimelineRequest } from '@/components/chronology/HistoricalTimeline';
 import { ChronologyCreateEventDialog } from '@/components/chronology/ChronologyCreateEventDialog';
-import { ErasView } from '@/components/chronology/ErasView';
+import { ErasView, type ErasSession } from '@/components/chronology/ErasView';
 import {
   UniverseHeader,
   type ChronologyView,
   type UniverseClockPill,
 } from '@/components/chronology/UniverseHeader';
 import { CampaignFeedView } from '@/components/chronology/CampaignFeedView';
-import { WidescreenCalendarView } from '@/components/chronology/WidescreenCalendarView';
+import { WidescreenCalendarView, type CalendarSession } from '@/components/chronology/WidescreenCalendarView';
+import { chronologyViewParams, linkedInterval } from '@/lib/chronologyNavigation';
+import { historicalClock, sharedHistoricalIntervals } from '@/lib/historicalTimeline';
 import { useWiki } from '@/contexts/WikiContext';
 import { campaignTimeTrackingPath } from '@/lib/campaignPaths';
 import {
   fetchChronologyTimeline,
   type ChronologyTimelineBundle,
+  type TimelineOccurrenceRecord,
 } from '@/lib/chronologyApi';
 import { createChronologyCategory } from '@/lib/chronologyCategoriesApi';
-import type { ChronologyDateParts } from '@/lib/chronologyDates';
+import { formatOccurrenceDateLabel, type ChronologyDateParts } from '@/lib/chronologyDates';
+import { resolveMonthName } from '@/lib/timeEngine';
 import {
   fetchTimeTracking,
   type TimeTrackingBundle,
@@ -45,11 +49,32 @@ function parseActiveView(raw: string | null): ChronologyView {
 }
 
 export function ChronologyPage() {
+  const { campaignHandle } = useWiki();
+  return <ChronologyWorkspace key={campaignHandle} />;
+}
+
+function ChronologyWorkspace() {
   const { t } = useTranslation();
   const { campaignHandle, can } = useWiki();
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamsRef = useRef(searchParams);
+  const setSearchParamsRef = useRef(setSearchParams);
+  useLayoutEffect(() => {
+    searchParamsRef.current = searchParams;
+    setSearchParamsRef.current = setSearchParams;
+  }, [searchParams, setSearchParams]);
   const timelineSession = useMemo<TimelineSession>(() => ({}), [campaignHandle]);
+  const calendarSession = useMemo<CalendarSession>(() => ({}), [campaignHandle]);
+  const erasSession = useMemo<ErasSession>(() => ({}), [campaignHandle]);
   const [eraNavigation, setEraNavigation] = useState<EraTimelineRequest>();
+  const [inspectedOccurrence, setInspectedOccurrence] = useState<TimelineOccurrenceRecord | null>(null);
+  const handleInspection = useCallback((occurrence: TimelineOccurrenceRecord | null) => {
+    if (!occurrence) {
+      if (calendarSession.snapshot) calendarSession.snapshot.occurrenceId = null;
+      if (timelineSession.snapshot) timelineSession.snapshot.selectedKey = null;
+    }
+    setInspectedOccurrence(previous => JSON.stringify(previous) === JSON.stringify(occurrence) ? previous : occurrence);
+  }, [calendarSession, timelineSession]);
   const requestedView = searchParams.get('view');
   const windowMode = searchParams.get('windowMode') ?? 'YEAR_RANGE';
   const from = searchParams.get('from') ?? '0';
@@ -86,8 +111,12 @@ export function ChronologyPage() {
     () => parseActiveView(requestedView),
     [requestedView],
   );
+  const feedTargetSignature = activeView === 'feed'
+    ? JSON.stringify(['track', 'event', 'occurrence', 'at', 'focus'].map(key => searchParams.get(key)))
+    : null;
 
   const canManageChronologyAccess = can(CampaignCapabilities.CHRONOLOGY_EDIT);
+  const elevatedView = can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW);
   const loadVersion = useRef(0);
   const loadedFeedScope = useRef('');
 
@@ -104,24 +133,27 @@ export function ChronologyPage() {
       if (!background && !(activeView === 'feed' && loadedFeedScope.current === scope)) setLoading(true);
       setError(null);
       try {
-        const needsTimeline = activeView !== 'feed';
         const needsOverlay = activeView === 'feed';
-        const [data, timeData, overlay] = await Promise.all([
-          needsTimeline
-            ? fetchChronologyTimeline(campaignHandle)
-            : Promise.resolve(null),
+        const [data, timeData] = await Promise.all([
+          fetchChronologyTimeline(campaignHandle),
           fetchTimeTracking(campaignHandle),
-          needsOverlay
-            ? fetchChronologyOverlay(campaignHandle, {
+        ]);
+        const targetParams = searchParamsRef.current;
+        const source = needsOverlay ? timeData.calendars.find(row => row.id === targetParams.get('track')) : undefined;
+        const clock = source ? historicalClock(source) : null;
+        const target = clock?.axis && clock.aligned ? linkedInterval(targetParams,
+          sharedHistoricalIntervals(data.occurrences.filter(row => row.calendarId === source?.id &&
+            data.baseEvents.some(base => base.id === row.baseEventId && base.calendarId === row.calendarId)), clock.axis)) : undefined;
+        const overlay = needsOverlay
+            ? await fetchChronologyOverlay(campaignHandle, {
                 order: 'desc', importance: feedImportance, includeFuture,
                 windowMode: 'EPOCH_RANGE',
-                from: windowMode === 'EPOCH_RANGE' ? from : undefined,
-                to: windowMode === 'EPOCH_RANGE' ? to : undefined,
+                from: target ? String(target.start) : windowMode === 'EPOCH_RANGE' ? from : undefined,
+                to: target ? String(target.end) : windowMode === 'EPOCH_RANGE' ? to : undefined,
                 domains: feedDomainsParam,
                 sessionLinkedOnly,
               })
-            : Promise.resolve(null),
-        ]);
+            : null;
         if (version !== loadVersion.current) return;
         if (data) {
           setBundle(data);
@@ -129,6 +161,15 @@ export function ChronologyPage() {
         setTimeBundle(timeData);
         setOverlayBundle(overlay);
         if (overlay) loadedFeedScope.current = scope;
+        // Retain an explicitly focused window for normal tab returns as well as refresh.
+        const range = overlay?.feed?.requestedRange;
+        const latestParams = searchParamsRef.current;
+        if (target && range && latestParams.get('focus') === 'feed' &&
+          (latestParams.get('from') !== range.from || latestParams.get('to') !== range.to || latestParams.get('windowMode') !== 'EPOCH_RANGE')) {
+          const next = new URLSearchParams(latestParams);
+          next.set('windowMode', 'EPOCH_RANGE'); next.set('from', range.from); next.set('to', range.to);
+          setSearchParamsRef.current(next, { replace: true });
+        }
       } catch (err) {
         if (version !== loadVersion.current) return;
         if (background) throw err;
@@ -156,6 +197,9 @@ export function ChronologyPage() {
       feedImportance,
       includeFuture,
       sessionLinkedOnly,
+      feedTargetSignature,
+      canManageChronologyAccess,
+      elevatedView,
       t,
     ],
   );
@@ -199,6 +243,14 @@ export function ChronologyPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const contextLabel = useMemo(() => {
+    if ((activeView !== 'calendar' && activeView !== 'timeline') || !browseAnchor) return undefined;
+    const definition = timeBundle?.calendars.find(row => row.id === browseCalendarId);
+    const axis = definition ? historicalClock(definition).axis : null;
+    if (!axis || axis.date(browseAnchor) === null) return undefined;
+    return 'Viewing ' + formatOccurrenceDateLabel(browseAnchor, resolveMonthName(axis.calendar, browseAnchor.year!, browseAnchor.month!));
+  }, [activeView, browseAnchor, browseCalendarId, timeBundle]);
 
   const calendarClockPills = useMemo((): UniverseClockPill[] => {
     if (!timeBundle) return [];
@@ -280,7 +332,11 @@ export function ChronologyPage() {
       <UniverseHeader
         campaignHandle={campaignHandle}
         activeView={activeView}
+        occurrence={inspectedOccurrence}
         clockPills={calendarClockPills}
+        activeCalendarId={activeView === 'feed' ? timeBundle?.calendars.find(row => row.isMasterTime)?.id
+          : activeView === 'eras' ? erasSession.snapshot?.track ?? searchParams.get('track') ?? undefined : browseCalendarId}
+        contextLabel={contextLabel}
         canCreateEvent={canManageChronologyAccess}
         onCreateEvent={() => void openCreateEvent()}
         settingsHref={campaignTimeTrackingPath(campaignHandle)}
@@ -303,11 +359,14 @@ export function ChronologyPage() {
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background">
           {activeView === 'feed' && overlayBundle && (
             <CampaignFeedView bundle={overlayBundle} campaignHandle={campaignHandle} timeBundle={timeBundle}
+              onInspectionChange={handleInspection}
               chronologyBundle={bundle} canManageChronology={canManageChronologyAccess} onOverlaySaved={() => load(true)} />
           )}
 
           {activeView === 'calendar' && bundle && (
             <WidescreenCalendarView
+              onInspectionChange={handleInspection}
+              session={calendarSession}
               campaignHandle={campaignHandle}
               timeBundle={timeBundle}
               chronologyBundle={bundle}
@@ -321,6 +380,7 @@ export function ChronologyPage() {
 
           {activeView === 'timeline' && bundle && (
             <HistoricalTimeline campaignHandle={campaignHandle} bundle={bundle} timeBundle={timeBundle}
+              onInspectionChange={handleInspection}
               session={timelineSession} navigationRequest={eraNavigation}
               canManage={canManageChronologyAccess} onBrowseAnchorChange={handleCalendarBrowse}
               onMutated={handleEventMutated} onDeleted={handleEventDeleted}
@@ -329,6 +389,8 @@ export function ChronologyPage() {
 
           {activeView === 'eras' && bundle && (
             <ErasView
+              onInspectionChange={handleInspection}
+              session={erasSession}
               bundle={bundle}
               onErasChanged={() => load(true)}
               campaignHandle={campaignHandle}
@@ -339,8 +401,7 @@ export function ChronologyPage() {
               onRevealEvent={handleRevealEvent}
               onTimeline={(calendarId, eraId, compare) => {
                 setEraNavigation(previous => ({ id: (previous?.id ?? 0) + 1, calendarId, eraId, compare }));
-                const next = new URLSearchParams(searchParams);
-                next.set('view', 'timeline'); next.set('track', calendarId); next.set('era', eraId);
+                const next = chronologyViewParams(searchParams, 'timeline', { calendarId, eraId });
                 setSearchParams(next);
               }}
             />

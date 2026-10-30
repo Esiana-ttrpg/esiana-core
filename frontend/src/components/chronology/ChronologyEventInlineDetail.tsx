@@ -1,4 +1,10 @@
 import { Link } from 'react-router-dom';
+import { ChronologyNavigationLinks } from './ChronologyNavigationLinks';
+import type { TimelineOccurrenceRecord } from '@/lib/chronologyApi';
+import { formatOccurrenceDateLabel } from '@/lib/chronologyDates';
+import { OccurrenceReferenceDate } from './OccurrenceReferenceDate';
+import { ChronologyImportance } from './ChronologyImportance';
+import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 import {
   resolveVisibilityTierLabel,
@@ -20,6 +26,8 @@ interface ChronologyEventInlineDetailProps {
   campaignHandle: string;
   baseEvent: TimelineBaseEventRecord;
   calendarName?: string;
+  occurrence?: TimelineOccurrenceRecord | null;
+  timeBundle?: TimeTrackingBundle;
   showConditions?: boolean;
   canManage?: boolean;
   categories?: TimelineCategoryRecord[];
@@ -34,6 +42,8 @@ export function ChronologyEventInlineDetail({
   campaignHandle,
   baseEvent,
   calendarName,
+  occurrence,
+  timeBundle,
   showConditions = true,
   canManage = false,
   categories = [],
@@ -57,6 +67,12 @@ export function ChronologyEventInlineDetail({
       className="space-y-3 border-t border-border pt-3"
       onClick={(event) => event.stopPropagation()}
     >
+      {occurrence && <>
+        <p className="text-xs text-muted">{formatOccurrenceDateLabel(occurrence.start)} to {formatOccurrenceDateLabel(occurrence.end)} · {occurrence.duration} day(s)
+          {baseEvent.isRepeating && ` · Occurrence ${occurrence.occurrenceIndex + 1}`}</p>
+        {timeBundle && <OccurrenceReferenceDate occurrence={occurrence} timeBundle={timeBundle} />}
+        <ChronologyNavigationLinks campaignHandle={campaignHandle} occurrence={occurrence} />
+      </>}
       <ChronologyLoreLink
         campaignHandle={campaignHandle}
         baseEventId={baseEvent.id}
@@ -108,10 +124,10 @@ export function ChronologyEventInlineDetail({
         </dd>
         <dt className="text-muted">Importance</dt>
         <dd className="capitalize text-foreground">
-          {baseEvent.importance.toLowerCase()}
+          <ChronologyImportance value={baseEvent.importance} />
         </dd>
         <dt className="text-muted">Duration</dt>
-        <dd className="text-foreground">{baseEvent.duration} day(s)</dd>
+        <dd className="text-foreground">{occurrence?.duration ?? baseEvent.duration} day(s)</dd>
         {calendarName && (
           <>
             <dt className="text-muted">Calendar</dt>

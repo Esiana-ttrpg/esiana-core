@@ -26,8 +26,21 @@ export function ChronologyInspector({ title, onClose, children, surfaceRef, labe
   }, [selectionId]);
   useEffect(() => {
     closeRef.current?.focus({ preventScroll: true });
-    return () => { if (restoreFocus.current?.isConnected) restoreFocus.current.focus({ preventScroll: true }); };
+    return () => {
+      const target = restoreFocus.current?.isConnected && restoreFocus.current !== document.body ? restoreFocus.current
+        : document.querySelector<HTMLElement>('nav[aria-label="Chronology views"] [aria-current="page"]');
+      target?.focus({ preventScroll: true });
+    };
   }, []);
+  useEffect(() => {
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented && !document.querySelector('dialog[open]')) {
+        event.preventDefault(); onClose();
+      }
+    };
+    document.addEventListener('keydown', dismiss);
+    return () => document.removeEventListener('keydown', dismiss);
+  }, [onClose]);
   return (
     <>
       <button type="button" tabIndex={-1} aria-label="Dismiss inspector" onClick={onClose}
@@ -49,7 +62,7 @@ export function ChronologyInspector({ title, onClose, children, surfaceRef, labe
           <button ref={closeRef} type="button" onClick={onClose} aria-label={closeLabel}
             className="min-h-11 rounded border border-border px-3 text-sm">Close</button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto break-words p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</div>
       </aside>
     </>
   );

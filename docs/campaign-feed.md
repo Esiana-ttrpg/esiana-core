@@ -1,5 +1,8 @@
 # Campaign narrative feed
 
+See [Chronology workspace](./chronology-workspace.md) for cross-view occurrence
+navigation, inspector behavior, independent filters, and unavailable target handling.
+
 Campaign Feed reads existing records as a campaign history. It starts with newest
 in-world developments first, grouped by campaign-master date. Major, Minor, and
 Notice chronology events are enabled. Future records are excluded initially;

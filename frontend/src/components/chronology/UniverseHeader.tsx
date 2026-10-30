@@ -1,6 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Settings } from 'lucide-react';
 import { campaignChronologyPath } from '@/lib/campaignPaths';
+import { chronologyViewParams } from '@/lib/chronologyNavigation';
+import type { TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 
 export type ChronologyView = 'calendar' | 'timeline' | 'eras' | 'feed';
 
@@ -13,6 +15,9 @@ interface UniverseHeaderProps {
   campaignHandle: string;
   activeView: ChronologyView;
   clockPills: UniverseClockPill[];
+  activeCalendarId?: string;
+  contextLabel?: string;
+  occurrence?: TimelineOccurrenceRecord | null;
   canCreateEvent?: boolean;
   onCreateEvent: () => void;
   settingsHref: string;
@@ -30,8 +35,7 @@ function buildViewHref(
   view: ChronologyView,
   searchParams: URLSearchParams,
 ): string {
-  const next = new URLSearchParams(searchParams);
-  next.set('view', view);
+  const next = chronologyViewParams(searchParams, view);
   const query = next.toString();
   const base = campaignChronologyPath(campaignHandle);
   return query ? `${base}?${query}` : base;
@@ -41,6 +45,9 @@ export function UniverseHeader({
   campaignHandle,
   activeView,
   clockPills,
+  activeCalendarId,
+  contextLabel,
+  occurrence,
   canCreateEvent = true,
   onCreateEvent,
   settingsHref,
@@ -48,15 +55,18 @@ export function UniverseHeader({
   const [searchParams] = useSearchParams();
 
   return (
-    <header className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">
       <div className="flex min-w-0 flex-wrap items-center gap-3">
         <h1 className="text-base font-semibold text-foreground">Chronology</h1>
-        <nav className="inline-flex rounded-md border border-border/40 bg-background/80 p-0.5 text-xs">
+        <nav aria-label="Chronology views" className="inline-flex flex-wrap rounded-md border border-border/40 bg-background/80 p-0.5 text-xs">
           {VIEW_TABS.map((tab) => (
             <Link
               key={tab.id}
-              to={buildViewHref(campaignHandle, tab.id, searchParams)}
-              className={`inline-flex items-center rounded px-2.5 py-1 ${
+              aria-current={activeView === tab.id ? 'page' : undefined}
+              to={occurrence && tab.id !== 'eras' && tab.id !== activeView
+                ? `${campaignChronologyPath(campaignHandle)}?${chronologyViewParams(searchParams, tab.id, { calendarId: occurrence.calendarId, occurrence })}`
+                : buildViewHref(campaignHandle, tab.id, searchParams)}
+              className={`inline-flex min-h-11 items-center rounded px-2.5 py-1 ${
                 activeView === tab.id
                   ? 'bg-primary text-background'
                   : 'text-foreground hover:bg-elevated'
@@ -75,17 +85,18 @@ export function UniverseHeader({
               No active calendars
             </span>
           ) : (
-            clockPills.map((pill) => (
+            (clockPills.filter(pill => pill.id === activeCalendarId).length ? clockPills.filter(pill => pill.id === activeCalendarId) : clockPills.slice(0, 1)).map((pill) => (
               <span
                 key={pill.id}
                 className="rounded-full border border-border bg-background px-2 py-1 text-[11px] text-muted whitespace-nowrap"
               >
-                {pill.label}
+                Campaign Today · {pill.label}
               </span>
             ))
           )}
         </div>
       </div>
+      {contextLabel && <p className="text-xs text-muted">{contextLabel}</p>}
 
       <div className="flex items-center gap-2">
         {canCreateEvent && (
@@ -102,6 +113,7 @@ export function UniverseHeader({
         <Link
           to={settingsHref}
           title="Chronology Engine Settings"
+          aria-label="Chronology Engine Settings"
           className="inline-flex items-center justify-center rounded-lg border border-border bg-background p-2 text-muted hover:text-foreground"
         >
           <Settings className="size-4" />

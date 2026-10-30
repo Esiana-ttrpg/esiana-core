@@ -8,6 +8,7 @@ import type {
 } from '@/lib/chronologyApi';
 import type { ChronologyDateParts } from '@/lib/chronologyDates';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
+import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 
 interface ChronologyEventSidebarProps {
   campaignHandle: string;
@@ -24,6 +25,8 @@ interface ChronologyEventSidebarProps {
   onDeleted?: () => void | Promise<void>;
   categoryFooter?: import('react').ReactNode;
   onRevealEvent?: (baseEventId: string) => void | Promise<void>;
+  calendarName?: string;
+  timeBundle?: TimeTrackingBundle;
   comparisonContext?: import('react').ReactNode;
 }
 
@@ -43,18 +46,14 @@ export function ChronologyEventSidebar({
   categoryFooter,
   onRevealEvent,
   comparisonContext,
+  calendarName,
+  timeBundle,
 }: ChronologyEventSidebarProps) {
   if (!open || !baseEvent) return null;
   return (
     <ChronologyInspector title="Event details" selectionId={occurrence?.occurrenceId ?? baseEvent.id} onClose={onClose}>
       <div className="space-y-3 text-sm">
         {comparisonContext && <div className="space-y-1 text-xs text-muted">{comparisonContext}</div>}
-        {occurrence && (
-          <p className="text-xs text-muted">
-            {formatOccurrenceDateLabel(occurrence.start)} to {formatOccurrenceDateLabel(occurrence.end)};
-            {' '}{occurrence.duration} day(s)
-          </p>
-        )}
         <p className="text-base font-semibold text-foreground">{baseEvent.title}</p>
         {canManage && onRevealEvent && (
           <button type="button" onClick={() => void onRevealEvent(baseEvent.id)}
@@ -62,10 +61,12 @@ export function ChronologyEventSidebar({
             Reveal To Party
           </button>
         )}
-        {calendarLike ? (
           <ChronologyEventInlineDetail
             campaignHandle={campaignHandle}
             baseEvent={baseEvent}
+            occurrence={occurrence}
+            timeBundle={timeBundle}
+            calendarName={calendarName}
             categories={categories}
             editableEvents={editableEvents}
             calendarLike={calendarLike}
@@ -74,9 +75,7 @@ export function ChronologyEventSidebar({
             onMutated={onMutated}
             onDeleted={onDeleted}
           />
-        ) : (
-          <p className="text-xs text-muted">Calendar profile unavailable.</p>
-        )}
+        {!calendarLike && <p className="text-xs text-muted">Calendar profile unavailable.</p>}
       </div>
       {categoryFooter && <div className="mt-4 border-t border-border pt-3">{categoryFooter}</div>}
     </ChronologyInspector>
