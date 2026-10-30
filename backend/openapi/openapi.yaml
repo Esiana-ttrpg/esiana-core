@@ -23242,13 +23242,15 @@ paths:
           schema:
             type: string
       requestBody:
-        required: false
-        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        required: true
+        description: Register a field. API callers may provide a stable sourceKey and defaultSheetName; creation defaults never overwrite an existing registration's placement or value.
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ApiRequest"
+              $ref: "#/components/schemas/EntityFieldRegistrationRequest"
       responses:
+        "201":
+          description: Field created on its selected or app-default sheet
         "200":
           description: Successful response
           content:
@@ -24800,13 +24802,15 @@ paths:
           schema:
             type: string
       requestBody:
-        required: false
-        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        required: true
+        description: Register a field. API callers may provide a stable sourceKey and defaultSheetName; creation defaults never overwrite an existing registration's placement or value.
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ApiRequest"
+              $ref: "#/components/schemas/EntityFieldRegistrationRequest"
       responses:
+        "201":
+          description: Field created on its selected or app-default sheet
         "200":
           description: Successful response
           content:
@@ -26215,6 +26219,35 @@ components:
         type: string
       example: port-haven
   schemas:
+    EntityFieldRegistrationRequest:
+      type: object
+      required: [label, type]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        type:
+          type: string
+          enum: [STRING, NUMBER, BOOLEAN, JSON, DATE, ENUM]
+        value:
+          description: Initial value; existing stable registrations preserve their stored value. Use PUT to synchronize values.
+        validation:
+          type: object
+          description: Existing field validation rules (required, min, max, maxLength, options).
+        pageId:
+          type: [string, "null"]
+          description: Existing entity sheet ID or core ID; explicit null means Overview. Omit to use the API app's default sheet.
+        defaultSheetName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Creation default for API fields without pageId. Falls back to the authenticated API token's display name. Sheets are scoped by campaign, entity, and API source.
+        sourceKey:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Optional stable API field key within the token and entity. Re-registration preserves identity, value, ordering, and user placement overrides.
     SafetyPrivacyCampaign:
       type: object
       required:

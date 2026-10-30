@@ -258,6 +258,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.1.2(vite@8.3.5(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+      linkedom:
+        specifier: ^0.18.13
+        version: 0.18.13
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3

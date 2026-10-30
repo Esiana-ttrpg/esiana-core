@@ -216,6 +216,21 @@ test('Wiki and integration operations retain distinct paths and authorization', 
   }
 });
 
+test('field registration aliases document app defaults and stable registration identity', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  for (const route of ['entity-fields', 'character-fields']) {
+    const operation = spec.paths?.[`/api/campaigns/{campaignHandle}/wiki/{pageId}/${route}`]?.post as any;
+    assert.equal(operation.requestBody.content['application/json'].schema.$ref, '#/components/schemas/EntityFieldRegistrationRequest');
+    assert.ok(operation.responses['201']);
+    assert.ok(operation.responses['200']);
+  }
+  const registration = (spec as any).components.schemas.EntityFieldRegistrationRequest;
+  assert.deepEqual(registration.required, ['label', 'type']);
+  assert.equal(registration.properties.defaultSheetName.maxLength, 100);
+  assert.equal(registration.properties.sourceKey.maxLength, 100);
+  assert.deepEqual(registration.properties.pageId.type, ['string', 'null']);
+});
+
 test('Discord and webhook creation document their 201 responses', () => {
   const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
   for (const pathKey of [

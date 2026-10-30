@@ -1630,8 +1630,7 @@ export function WikiPage() {
         confirmWorkshopLeave={confirmWorkshopLeave}
       />
     );
-    if (!managesEntityPages || activeCharacterPage?.renderMode === 'PLUGIN') return renderer;
-    return <>{renderer}<EntityCustomFieldsPanel campaignHandle={campaignHandle} entityPageId={pageId} activePageId={activeCharacterPage?.coreKey === 'overview' ? null : activeCharacterPage?.id ?? null} canEdit={pageCanEdit} /></>;
+    return renderer;
   }, [
     pageData,
     activeCharacterPage,
@@ -2191,7 +2190,18 @@ export function WikiPage() {
           />
         }
       >
-        {renderWikiPageBody()}
+        {managesEntityPages ? (
+          <EntityCustomFieldsPanel
+            key={pageId + ':' + pageSubview}
+            campaignHandle={campaignHandle}
+            entityPageId={pageId}
+            activePageId={pageSubview === 'overview' ? null : activeCharacterPage?.id ?? 'core:' + pageSubview}
+            canEdit={pageCanEdit && isEditingPage}
+            refreshKey={characterPageManagerOpen}
+          >
+            {renderWikiPageBody()}
+          </EntityCustomFieldsPanel>
+        ) : renderWikiPageBody()}
         {isThreadDetailPage && pageId ? (
           <ThreadHistoryPanel
             campaignHandle={campaignHandle}
@@ -2204,6 +2214,7 @@ export function WikiPage() {
           campaignHandle={campaignHandle}
           characterPageId={pageId}
           pages={characterPages}
+          activePageId={pageSubview === 'overview' ? null : activeCharacterPage?.id ?? 'core:' + pageSubview}
           onAddPage={
             managesEntityPages && pageCanEdit
               ? () => {
@@ -2220,7 +2231,10 @@ export function WikiPage() {
               : undefined
           }
           onPagesChange={setCharacterPages}
-          onClose={() => setCharacterPageManagerOpen(false)}
+          onClose={() => {
+            setCharacterPageManagerOpen(false);
+            void fetchCharacterPages(campaignHandle, pageId, entityPageShell.key).then((result) => setCharacterPages(result.pages)).catch(() => {});
+          }}
         />
       ) : null}
 

@@ -15,6 +15,7 @@ interface CharacterPageManagerProps {
   campaignHandle: string;
   characterPageId: string;
   pages: CharacterPageDescriptor[];
+  activePageId?: string | null;
   onPagesChange: (pages: CharacterPageDescriptor[]) => void;
   onAddPage?: () => void;
   onClose: () => void;
@@ -24,6 +25,7 @@ export function CharacterPageManager({
   campaignHandle,
   characterPageId,
   pages,
+  activePageId,
   onPagesChange,
   onAddPage,
   onClose,
@@ -88,7 +90,7 @@ export function CharacterPageManager({
   };
 
   if (fieldsOpen) {
-    return <EntityFieldManager campaignHandle={campaignHandle} entityPageId={characterPageId} pages={pages} onClose={() => {
+    return <EntityFieldManager campaignHandle={campaignHandle} entityPageId={characterPageId} pages={pages} activePageId={activePageId} onClose={() => {
       setFieldsOpen(false);
       window.requestAnimationFrame(() => manageFieldsButtonRef.current?.focus());
     }} />;

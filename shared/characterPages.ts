@@ -29,6 +29,20 @@ export interface CharacterFieldCapabilities {
   readable: boolean;
   writable: boolean;
   deletable: boolean;
+  /** Sheet placement/order can be managed independently of value writability. */
+  placeable?: boolean;
+}
+
+/** Overview has historically used both a null destination and a materialized core tab. */
+export function normalizeFieldPageId(pageId: string | null | undefined): string | null {
+  return !pageId || pageId === 'core:overview' ? null : pageId;
+}
+
+export function formatCustomFieldValue(value: unknown): string {
+  if (value == null || value === '') return 'Not set';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
 }
 
 export interface PluginCharacterFieldDefinition {
