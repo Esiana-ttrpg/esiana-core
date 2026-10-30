@@ -147,7 +147,7 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
           </div>
         </div>
       </details>
-      <p className="text-xs text-muted">Loaded recorded history only; coverage is not guaranteed. Use Earlier or choose a range to explore older history.</p>
+      <p className="text-xs text-muted">Use Earlier or choose a range to explore older history.</p>
       {bundle.truncation.capped && <div role="status" className="text-sm"><p>This window is incomplete: the response limit was reached.</p><button className={control} disabled={BigInt(range.to) - BigInt(range.from) <= 1n} onClick={() => navigate(narrowFeedRange(range.from, range.to))}>Narrow range</button></div>}
       <details className="text-xs text-muted"><summary className="min-h-11 cursor-pointer py-3">Coverage and source limitations</summary><ul className="list-disc space-y-2 pl-4">
         {coverage?.sourceWarnings.map(row => <li key={`${row.source}:${row.code}`}>{row.source}: {row.message}</li>)}{coverage?.gaps.map(gap => <li key={gap}>{gap}</li>)}</ul></details>

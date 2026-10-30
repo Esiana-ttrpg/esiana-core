@@ -14,15 +14,22 @@ export function eraBounds(era: ChronologyEra, axis: HistoricalAxis) {
   return comparisonEraGeometry(era, axis, { origin: 0n, offset: 0, span: 1440 }, 1);
 }
 
-/** Sample the entire loaded matching history, retaining recurrence identity. */
+/** Match and order era events, retaining recurrence identity for previews and inspection. */
 export function selectedEraEvents(rows: HistoricalInterval[], era: ChronologyEra, axis: HistoricalAxis,
   importance: Record<'MAJOR' | 'MINOR' | 'NOTICE', boolean>) {
   const bounds = eraBounds(era, axis);
   if (!bounds) return [];
-  const matching = rows.filter(row => row.calendarId === era.calendarId && importance[row.representative.importance]
+  return rows.filter(row => row.calendarId === era.calendarId && importance[row.representative.importance]
     && (bounds.start === null || row.end > bounds.start) && (bounds.end === null || row.start < bounds.end))
     .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0) || a.key.localeCompare(b.key));
-  return matching.length <= 5 ? matching : Array.from({ length: 5 }, (_, i) => matching[Math.round(i * (matching.length - 1) / 4)]!);
+}
+
+/** Missing dates describe open bounds; Current remains an independent designation. */
+export function eraDateSummary(era: ChronologyEra, format: (date: EraDate) => string) {
+  if (era.startDate && era.endDate) return `${format(era.startDate)} – ${format(era.endDate)}`;
+  if (era.startDate) return `From ${format(era.startDate)}`;
+  if (era.endDate) return `Until ${format(era.endDate)}`;
+  return 'Dates not set';
 }
 
 /** Frame real boundaries, not configured navigation order. Open ends stay open. */

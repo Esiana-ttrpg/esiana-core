@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ChronologyEra } from '../../../shared/chronologyEras';
 import type { TimelineOccurrenceRecord } from './chronologyApi';
-import { eraBounds, eraContext, selectedEraEvents, selectWorkspaceEra } from './eraWorkspace';
+import { eraBounds, eraContext, eraDateSummary, selectedEraEvents, selectWorkspaceEra } from './eraWorkspace';
 import { comparisonEraGeometry, createHistoricalAxis, historicalNativeState, sharedHistoricalIntervals } from './historicalTimeline';
 
 const axis = createHistoricalAxis({
@@ -34,17 +34,27 @@ test('selection honors explicit links and configured current before date contain
   assert.equal(selectWorkspaceEra([], null), undefined);
 });
 
-test('five deterministic samples span loaded history, sort chronologically, and preserve recurrence identity', () => {
+test('matching history is chronological and retains every recurrence for preview overflow', () => {
   const rows = sharedHistoricalIntervals(Array.from({ length: 17 }, (_, i) => occurrence(i + 1)), axis);
   const all = { ...era(), startDate: null, endDate: null };
   const selected = selectedEraEvents([...rows].reverse(), all, axis, major);
-  assert.deepEqual(selected.map(row => row.recurrenceIndex), [1, 5, 9, 13, 17]);
-  assert.equal(new Set(selected.map(row => row.key)).size, 5);
+  assert.deepEqual(selected.map(row => row.recurrenceIndex), Array.from({ length: 17 }, (_, i) => i + 1));
+  assert.equal(new Set(selected.map(row => row.key)).size, 17);
   for (let length = 0; length <= 5; length++) {
     assert.equal(selectedEraEvents(rows.slice(0, length), all, axis, major).length, length);
   }
   const tied = rows.slice(0, 2).map(row => ({ ...row, start: rows[0]!.start, end: rows[0]!.end }));
   assert.deepEqual(selectedEraEvents(tied, all, axis, major), selectedEraEvents([...tied].reverse(), all, axis, major));
+});
+
+test('date summaries preserve open ends without inferring bounds from the current designation', () => {
+  const format = (value: { day: number }) => `Day ${value.day}`;
+  assert.equal(eraDateSummary(era(), format), 'Day 5 – Day 10');
+  assert.equal(eraDateSummary({ ...era(), endDate: null }, format), 'From Day 5');
+  assert.equal(eraDateSummary({ ...era(), startDate: null }, format), 'Until Day 10');
+  for (const isCurrent of [false, true]) {
+    assert.equal(eraDateSummary({ ...era(), startDate: null, endDate: null, isCurrent }, format), 'Dates not set');
+  }
 });
 
 test('era overlap includes crossings but excludes touching exclusive boundaries and unrelated clocks', () => {

@@ -472,7 +472,7 @@ export function WidescreenCalendarView({
           {selectedDay === null ? (
             <p className="text-xs text-muted">Select a day on the calendar.</p>
           ) : dayAgenda.length === 0 ? (
-            <p className="text-xs text-muted">No loaded occurrences match this day and its filters. Historical coverage may be incomplete.</p>
+            <p className="text-xs text-muted">No loaded occurrences match this day and its filters.</p>
           ) : (
             <ul className="space-y-2">
               {dayAgenda.map((occurrence) => (
