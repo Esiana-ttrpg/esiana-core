@@ -2,7 +2,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HistoricalTimeline } from '@/components/chronology/HistoricalTimeline';
+import { HistoricalTimeline, type TimelineSession, type EraTimelineRequest } from '@/components/chronology/HistoricalTimeline';
 import { ChronologyCreateEventDialog } from '@/components/chronology/ChronologyCreateEventDialog';
 import { ErasView } from '@/components/chronology/ErasView';
 import {
@@ -18,7 +18,6 @@ import { campaignTimeTrackingPath } from '@/lib/campaignPaths';
 import {
   fetchChronologyTimeline,
   type ChronologyTimelineBundle,
-  type TimelineOccurrenceRecord,
 } from '@/lib/chronologyApi';
 import { createChronologyCategory } from '@/lib/chronologyCategoriesApi';
 import type { ChronologyDateParts } from '@/lib/chronologyDates';
@@ -49,7 +48,9 @@ function parseActiveView(raw: string | null): ChronologyView {
 export function ChronologyPage() {
   const { t } = useTranslation();
   const { campaignHandle, can } = useWiki();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const timelineSession = useMemo<TimelineSession>(() => ({}), [campaignHandle]);
+  const [eraNavigation, setEraNavigation] = useState<EraTimelineRequest>();
   const requestedView = searchParams.get('view');
   const windowMode = searchParams.get('windowMode') ?? 'YEAR_RANGE';
   const from = searchParams.get('from') ?? '0';
@@ -70,8 +71,6 @@ export function ChronologyPage() {
       .filter(Boolean);
   });
   const [sessionLinkedOnly, setSessionLinkedOnly] = useState(false);
-  const [selectedOccurrence, setSelectedOccurrence] =
-    useState<TimelineOccurrenceRecord | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -128,19 +127,6 @@ export function ChronologyPage() {
         }
         setTimeBundle(timeData);
         setOverlayBundle(overlay);
-        if (data) {
-          setSelectedOccurrence((previous) =>
-            previous
-              ? (data.occurrences.find(
-                  (event) => event.occurrenceId === previous.occurrenceId,
-                ) ??
-                data.occurrences.find(
-                  (event) => event.baseEventId === previous.baseEventId,
-                ) ??
-                null)
-              : null,
-          );
-        }
       } catch (err) {
         if (background) throw err;
         setError(
@@ -191,8 +177,8 @@ export function ChronologyPage() {
   };
 
   const handleEventDeleted = useCallback(() => {
-    setSelectedOccurrence(null);
-  }, []);
+    if (timelineSession.snapshot) timelineSession.snapshot.selectedKey = null;
+  }, [timelineSession]);
 
   const handleRevealEvent = useCallback(
     async (baseEventId: string) => {
@@ -208,12 +194,6 @@ export function ChronologyPage() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (activeView === 'calendar') {
-      setSelectedOccurrence(null);
-    }
-  }, [activeView]);
 
   const calendarClockPills = useMemo((): UniverseClockPill[] => {
     if (!timeBundle) return [];
@@ -348,6 +328,7 @@ export function ChronologyPage() {
 
           {activeView === 'timeline' && bundle && (
             <HistoricalTimeline campaignHandle={campaignHandle} bundle={bundle} timeBundle={timeBundle}
+              session={timelineSession} navigationRequest={eraNavigation}
               canManage={canManageChronologyAccess} onBrowseAnchorChange={handleCalendarBrowse}
               onMutated={handleEventMutated} onDeleted={handleEventDeleted}
               onRevealEvent={handleRevealEvent} categoryFooter={categoryFooter} />
@@ -355,20 +336,20 @@ export function ChronologyPage() {
 
           {activeView === 'eras' && bundle && (
             <ErasView
-              eras={bundle.eras ?? []}
+              bundle={bundle}
               onErasChanged={() => load(true)}
               campaignHandle={campaignHandle}
-              categories={bundle.categories}
-              calendars={bundle.calendars}
-              events={bundle.events}
-              baseEvents={bundle.baseEvents}
               timeBundle={timeBundle}
               canManage={canManageChronologyAccess}
-              selectedEventId={selectedOccurrence?.occurrenceId ?? null}
-              onSelectEvent={setSelectedOccurrence}
-              onBrowseAnchorChange={setBrowseAnchor}
               onEventMutated={handleEventMutated}
               onEventDeleted={handleEventDeleted}
+              onRevealEvent={handleRevealEvent}
+              onTimeline={(calendarId, eraId, compare) => {
+                setEraNavigation(previous => ({ id: (previous?.id ?? 0) + 1, calendarId, eraId, compare }));
+                const next = new URLSearchParams(searchParams);
+                next.set('view', 'timeline'); next.set('track', calendarId); next.set('era', eraId);
+                setSearchParams(next);
+              }}
             />
           )}
         </div>

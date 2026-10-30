@@ -29,6 +29,47 @@ Any selected usable clock can be inspected independently. One viewport is retain
 shared comparison and one for each native view, while the workspace remains mounted.
 Native inspection does not draw cross-clock comparison guides.
 
+## Eras workspace
+
+Eras browses historical periods one calendar at a time. The campaign master is the
+default; authorized `track` and `era` links select another calendar or period. Without
+an explicit era, selection prefers the configured Current era, then one containing
+the calendar's current date, then the first era in configured display order. Invalid
+explicit links show an unavailable state rather than silently choosing another era.
+
+The era's canonical Wiki overview is its primary content. The existing era dialog
+edits that same Wiki-backed content; Open Wiki overview is available when the page
+is in the authorized Wiki inventory. No additional narrative document is stored.
+Management retains existing capabilities, visibility defaults, impact review, and
+non-destructive deletion snapshots. Move up/down changes display order only.
+
+Desktop navigation is collapsible; mobile uses a compact selector. Native boundaries
+remain authoritative. Unspecified boundaries are independent of configured Current
+status and date containment. Exact inclusive durations appear only when both dates
+are usable. The context strip reuses Timeline geometry: proportional periods,
+overlapping rows, gaps, open-end arrows, selected highlighting, and actual date labels.
+
+Selected major events starts with Major enabled; Minor and Notice are optional.
+Up to five occurrences sample the entire loaded matching history deterministically:
+sort chronologically with stable identity ties, then choose indices
+`round(i * (n - 1) / 4)` for `i = 0..4` when more than five match. Continuation rows
+are deduplicated while separate repetitions retain their identities. Interval overlap
+includes events beginning before or continuing beyond the era. This is a sample of
+loaded history, never a completeness claim; coverage and expansion warnings remain
+visible. Event selection uses the shared inspector and event editor.
+
+View on Timeline and View all on Timeline focus the selected calendar and era.
+Compare on Timeline is available for reliably aligned secondary clocks and shows the
+native clock alongside the campaign master reference. Equivalent master dates are
+supporting context; unavailable conversions never fabricate dates.
+
+While Chronology remains mounted, it retains a small Timeline session snapshot:
+tracks, reference/native mode, filters, era visibility, stable selection, and viewports.
+Geometry, caches, gestures, and transient UI remain inside Timeline. Normal tab returns
+restore the saved viewport; explicit era actions, including repeated requests for the
+same era, override it while retaining unrelated comparison settings. Campaign changes
+reset the snapshot, and authorization changes reconcile it against the loaded inventory.
+
 ## Tracks and interactions
 
 Tracks opens a collapsible desktop sidebar or a compact mobile overlay. It provides

@@ -33,7 +33,7 @@ const server = await createServer({
       },
       load(id) {
         if (id === '\0mock-wiki')
-          return 'export const useWiki=()=>({flatPages:[],can:()=>!new URLSearchParams(location.search).has("player")});export const useOptionalWiki=()=>null;';
+          return 'export const useWiki=()=>({flatPages:[{id:"era-page",title:"World history",workspace:"pages",pathKey:"world-history"}],can:()=>!new URLSearchParams(location.search).has("player")});export const useOptionalWiki=()=>null;';
       },
       configureServer(vite) {
         vite.middlewares.use(async (req, res, next) => {
@@ -66,6 +66,20 @@ let failSave = false;
 const requests = [];
 await page.route('**/api/**', async (route) => {
   const req = route.request();
+  if (req.url().includes('/chronology/eras')) {
+    if (req.method() === 'GET') return route.fulfill({ json: { events: 1, trajectories: 2, recurringRules: 1, overviewWords: 2 } });
+    const payload = req.postDataJSON();
+    requests.push({ method: req.method(), url: req.url(), payload });
+    if (failSave) return route.fulfill({ status: 500, json: { error: 'Simulated era save failure' } });
+    if (req.method() === 'DELETE') {
+      await page.evaluate(id => { window.__deletedEra = id; }, req.url().split('/').at(-1));
+      return route.fulfill({ status: 204 });
+    }
+    if (req.url().endsWith('/order')) return route.fulfill({ json: {} });
+    const era = { ...payload, id: req.method() === 'POST' ? 'new-era' : req.url().split('/').at(-1), calendarName: 'World', isMasterTime: true, sortOrder: 2, overviewPageId: 'era-page', canManage: true, status: 'PRESENT' };
+    await page.evaluate(value => { window.__savedEra = value; }, era);
+    return route.fulfill({ json: { era } });
+  }
   if (['POST', 'PATCH', 'DELETE'].includes(req.method())) {
     requests.push({
       method: req.method(),
@@ -507,9 +521,119 @@ try {
   assert.equal(await page.locator('[data-historical-timeline]').count(), 1);
   assert.equal(await page.getByRole('complementary').count(), 0);
   await page.screenshot({ path: 'node_modules/.chronology-verification/timeline-ultrawide.png', fullPage: true });
+  // Pass 4: real Eras workspace, canonical editing, interval inspection and tab restoration.
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.goto('http://localhost:5199/__chronology?eras&twoClocks&truncated');
+  await visible(page.getByRole('heading', { name: 'World history', exact: true }));
+  await visible(page.getByRole('link', { name: 'Open Wiki overview' }));
+  await visible(page.getByText('The crossing', { exact: true }));
+  await visible(page.getByText(/historical coverage|history is incomplete/));
+  assert.equal(await page.getByRole('heading', { name: 'Selected major events' }).count(), 1);
+  const eraJourney = page.getByRole('button', { name: /The long journey.*Before 25/s });
+  await eraJourney.click();
+  await visible(page.getByRole('complementary', { name: 'Event details' }));
+  await visible(page.getByRole('button', { name: 'Edit event', exact: true }));
+  await page.getByRole('button', { name: 'Close inspector' }).click();
+  assert.equal(await eraJourney.evaluate(el => el === document.activeElement), true);
+  await page.getByRole('button', { name: 'Browse eras' }).click();
+  await page.getByRole('button', { name: /Early discoveries.*Start|Early discoveries.*Year/s }).click();
+  await visible(page.getByRole('heading', { name: 'Early discoveries' }));
+  await visible(page.getByText('Mira', { exact: true }));
+  await visible(page.getByText(/10 days/));
+  await page.getByRole('button', { name: 'View on Timeline', exact: true }).click();
+  await visible(page.locator('[data-historical-timeline]'));
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  const eraViewport = () => page.locator('[data-timeline-axis]').evaluate(el => [el.dataset.viewportOrigin, el.dataset.viewportSpan]);
+  await page.waitForTimeout(100);
+  const savedView = await eraViewport();
+  await page.getByRole('button', { name: 'Tracks (1)', exact: true }).click();
+  await page.getByRole('button', { name: 'Show All', exact: true }).click();
+  await page.getByRole('button', { name: 'Move Other up', exact: true }).click();
+  await page.getByRole('button', { name: 'Collapse Other', exact: true }).click();
+  await page.getByText('Navigation & filters', { exact: true }).click();
+  await page.getByRole('button', { name: 'Notice', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Category', exact: true }).selectOption('uncategorized');
+  await page.getByRole('button', { name: 'Eras tab', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Calendar', exact: true }).selectOption('other');
+  await visible(page.getByRole('heading', { name: 'Age of discovery' }));
+  await page.getByRole('button', { name: 'Timeline tab', exact: true }).click();
+  await visible(page.locator('[data-historical-timeline]'));
+  assert.deepEqual(await eraViewport(), savedView);
+  assert.equal(await page.getByRole('button', { name: 'Expand Other', exact: true }).count(), 1);
+  assert.deepEqual(await page.locator('[data-timeline-track]').evaluateAll(els => els.map(el => el.dataset.timelineTrack)), ['other', 'clock']);
+  await page.getByText('Navigation & filters', { exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Notice', exact: true }).getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.getByRole('combobox', { name: 'Category', exact: true }).inputValue(), 'uncategorized');
+  await page.getByRole('button', { name: 'Eras tab', exact: true }).click();
+  await page.getByRole('button', { name: 'Compare on Timeline', exact: true }).click();
+  await visible(page.locator('[data-timeline-track="other"]'));
+  assert.equal(await page.getByRole('combobox', { name: /Reference/ }).inputValue(), 'clock');
+  await page.waitForTimeout(100);
+  const focused = await eraViewport();
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await page.waitForTimeout(100);
+  assert.notDeepEqual(await eraViewport(), focused);
+  await page.getByRole('button', { name: 'Eras tab', exact: true }).click();
+  await page.getByRole('button', { name: 'Compare on Timeline', exact: true }).click();
+  await page.waitForTimeout(100);
+  assert.deepEqual(await eraViewport(), focused);
+  await page.getByRole('button', { name: 'Eras tab', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Calendar', exact: true }).selectOption('clock');
+  await page.locator('details').filter({ hasText: 'Manage era' }).evaluate(el => { el.open = true; });
+  await page.getByRole('button', { name: 'Edit era', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Age of shared stories');
+  assert.match(await page.locator('[contenteditable="true"]').innerText(), /The crossing/);
+  failSave = true;
+  await page.getByRole('button', { name: 'Save era', exact: true }).click();
+  await visible(page.getByRole('dialog').getByRole('alert'));
+  failSave = false;
+  await page.getByRole('button', { name: 'Save era', exact: true }).click();
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
+  await visible(page.getByRole('heading', { name: 'Age of shared stories' }));
+  assert.equal(requests.at(-1).payload.overview, 'The crossing');
+  await page.getByRole('button', { name: 'Create era', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Unbounded discoveries');
+  await page.getByRole('button', { name: 'Save era', exact: true }).click();
+  await visible(page.getByRole('heading', { name: 'Unbounded discoveries' }));
+  await page.locator('details').filter({ hasText: 'Manage era' }).evaluate(el => { el.open = true; });
+  await page.getByRole('button', { name: 'Delete era...', exact: true }).click();
+  await visible(page.getByRole('dialog', { name: 'Delete era', exact: true }));
+  await visible(page.getByText('Events and progression content will remain.', { exact: false }));
+  await page.getByRole('button', { name: 'Delete era and Overview', exact: true }).click();
+  await page.getByRole('dialog').waitFor({ state: 'detached' });
+  assert.notEqual(await page.getByRole('heading', { name: 'Unbounded discoveries' }).count(), 1);
+  assert.equal(requests.at(-1).payload.confirmed, true);
+  await page.screenshot({ path: 'node_modules/.chronology-verification/eras-desktop.png', fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('http://localhost:5199/__chronology?eras&player');
+  await visible(page.getByRole('heading', { name: 'World history', exact: true }));
+  await visible(page.getByRole('combobox', { name: 'Era', exact: true }));
+  assert.equal(await page.getByRole('button', { name: 'Create era' }).count(), 0);
+  assert.equal(await page.getByText('Manage era', { exact: true }).count(), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByRole('button', { name: /The long journey.*Before 25/s }).click();
+  await visible(page.getByRole('dialog', { name: 'Event details', exact: true }));
+  assert.equal(await page.getByRole('button', { name: 'Edit event', exact: true }).count(), 0);
+  await page.keyboard.press('Escape');
+  await page.getByRole('combobox', { name: 'Era', exact: true }).selectOption('earlier-era');
+  await visible(page.getByRole('heading', { name: 'Early discoveries' }));
+  await page.screenshot({ path: 'node_modules/.chronology-verification/eras-mobile.png', fullPage: true });
+  await page.goto('http://localhost:5199/__chronology?eras');
+  await page.getByRole('button', { name: 'Create era', exact: true }).click();
+  const mobileDialog = page.getByRole('dialog', { name: 'Add era', exact: true });
+  await visible(mobileDialog);
+  assert.equal(await mobileDialog.evaluate(el => Math.round(el.getBoundingClientRect().width)), 390);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.getByRole('button', { name: 'Create era' }).evaluate(el => el === document.activeElement), true);
+  await page.goto('http://localhost:5199/__chronology?eras&twoClocks&unaligned&track=other&era=other-era');
+  await visible(page.getByRole('heading', { name: 'Age of discovery' }));
+  assert.equal(await page.getByRole('button', { name: 'Compare on Timeline' }).count(), 0);
+  await page.goto('http://localhost:5199/__chronology?eras&era=unavailable');
+  await visible(page.getByText(/This era or calendar is unavailable/));
   assert.deepEqual(errors, []);
   console.log(
-    'Chronology browser verification passed: Calendar, Timeline geometry and clusters, inspector switching/focus, viewport preservation, dirty/clean editor dismissal, mobile sheet and touch pan/pinch, and player permissions.',
+    'Chronology browser verification passed: Calendar, multi-clock Timeline, Eras, canonical Wiki editing and management, restored tracks/filters/viewports, repeated era navigation, shared inspectors/editors, keyboard focus, mobile layouts, and read-only permissions.',
   );
 } finally {
   await page.screenshot({
