@@ -12,7 +12,6 @@ import { WikiPageBreadcrumbs } from '@/components/wiki/WikiPageBreadcrumbs';
 import { WikiPageRuntimeToolbar } from '@/components/wiki/WikiPageRuntimeToolbar';
 import { EntitySubviewNav } from '@/components/entity/shells/EntitySubviewNav';
 import type { WikiPageBlock } from '@/types/wiki';
-import { Plus } from 'lucide-react';
 import { resolvePluginPageTarget } from '@/lib/pluginContributions';
 
 interface WikiBreadcrumb {
@@ -61,7 +60,6 @@ interface WikiPageEditorHeaderProps {
   onPageTitleForEditChange?: (value: string) => void;
   onPageTitleForEditBlur?: () => void | Promise<void>;
   titleFocusField?: string | null;
-  onAddSubview?: () => void;
   onManageSubviews?: () => void;
   characterMasthead?: (nameControl: ReactNode) => ReactNode;
 }
@@ -89,7 +87,6 @@ export function WikiPageEditorHeader({
   onPageTitleForEditChange,
   onPageTitleForEditBlur,
   titleFocusField,
-  onAddSubview,
   onManageSubviews,
   characterMasthead,
   ...toolbarProps
@@ -188,14 +185,10 @@ export function WikiPageEditorHeader({
             subviews={subviews}
             activeSubview={activeSubview}
             onSubviewChange={onSubviewChange}
+            onManagePages={onManageSubviews}
             isDMUser={isDMUser}
           />
-          <div className="flex shrink-0 items-center gap-1 self-start sm:self-auto">
-            {onAddSubview ? (
-              <button type="button" className="mb-0.5 rounded-md p-1.5 text-muted hover:bg-elevated hover:text-foreground" onClick={onAddSubview} aria-label="Add character page" title="Add character page">
-                <Plus className="size-3.5" aria-hidden />
-              </button>
-            ) : null}
+          <div className="hidden shrink-0 items-center gap-1 sm:flex sm:self-auto">
             {onManageSubviews ? (
               <button type="button" className="mb-0.5 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium text-muted hover:bg-elevated hover:text-foreground" onClick={onManageSubviews}>Manage pages</button>
             ) : null}

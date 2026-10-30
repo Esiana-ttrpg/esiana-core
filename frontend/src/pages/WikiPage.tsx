@@ -2152,20 +2152,6 @@ export function WikiPage() {
                 ? handleCharacterSubviewChange
                 : setPageSubview
             }
-            onAddSubview={
-              managesEntityPages && pageCanEdit
-                ? () => {
-                    const title = window.prompt('Page name');
-                    if (!title?.trim()) return;
-                    void createCustomCharacterPage(campaignHandle, pageId, title).then((page) => {
-                      setCharacterPages((previous) => [...previous, page].sort((a, b) => a.displayOrder - b.displayOrder));
-                      setPageSubview(page.key);
-                    }).catch((error: unknown) => {
-                      window.alert(error instanceof Error ? error.message : 'Unable to create page');
-                    });
-                  }
-                : undefined
-            }
             onManageSubviews={
               managesEntityPages && pageCanEdit
                 ? () => setCharacterPageManagerOpen(true)
@@ -2226,6 +2212,21 @@ export function WikiPage() {
           campaignHandle={campaignHandle}
           characterPageId={pageId}
           pages={characterPages}
+          onAddPage={
+            managesEntityPages && pageCanEdit
+              ? () => {
+                  const title = window.prompt('Page name');
+                  if (!title?.trim()) return;
+                  void createCustomCharacterPage(campaignHandle, pageId, title).then((page) => {
+                    setCharacterPages((previous) => [...previous, page].sort((a, b) => a.displayOrder - b.displayOrder));
+                    setPageSubview(page.key);
+                    setCharacterPageManagerOpen(false);
+                  }).catch((error: unknown) => {
+                    window.alert(error instanceof Error ? error.message : 'Unable to create page');
+                  });
+                }
+              : undefined
+          }
           onPagesChange={setCharacterPages}
           onClose={() => setCharacterPageManagerOpen(false)}
         />

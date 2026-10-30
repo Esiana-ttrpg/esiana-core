@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react';
 import type { CharacterPageDescriptor, PluginPageRemovalMode } from '@shared/characterPages';
 import {
   deleteCustomCharacterPage,
@@ -16,6 +16,7 @@ interface CharacterPageManagerProps {
   characterPageId: string;
   pages: CharacterPageDescriptor[];
   onPagesChange: (pages: CharacterPageDescriptor[]) => void;
+  onAddPage?: () => void;
   onClose: () => void;
 }
 
@@ -24,6 +25,7 @@ export function CharacterPageManager({
   characterPageId,
   pages,
   onPagesChange,
+  onAddPage,
   onClose,
 }: CharacterPageManagerProps) {
   const [fieldsOpen, setFieldsOpen] = useState(false);
@@ -99,6 +101,12 @@ export function CharacterPageManager({
           <h2 id="manage-character-pages-title" className="text-lg font-semibold text-foreground">Manage pages</h2>
           <div className="flex items-center gap-2"><button ref={manageFieldsButtonRef} type="button" className="rounded-md border border-border/50 px-2 py-1 text-xs text-muted hover:text-foreground" onClick={() => setFieldsOpen(true)}>Manage fields</button><button type="button" onClick={onClose} className="rounded p-1 text-muted hover:text-foreground" aria-label="Close manage pages"><X className="size-4" /></button></div>
         </div>
+        {onAddPage ? (
+          <button type="button" onClick={onAddPage} className="mb-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-foreground hover:bg-elevated">
+            <Plus className="size-4" aria-hidden />
+            Add page
+          </button>
+        ) : null}
         <div className="space-y-1">
           {ordered.map((page, index) => (
             <div key={page.key} className="flex items-center gap-2 rounded-lg border border-border/40 px-3 py-2">

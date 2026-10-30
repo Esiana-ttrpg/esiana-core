@@ -1,3 +1,4 @@
+import { MobileSectionSelector } from '@/components/ui/MobileSectionSelector';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { EntitySubviewDef, EntitySubviewNavProps } from '@/lib/entityPageShells/types';
@@ -15,6 +16,7 @@ export function EntitySubviewNav({
   subviews,
   activeSubview,
   onSubviewChange,
+  onManagePages,
   isDMUser: isDMUserProp,
 }: EntitySubviewNavProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
@@ -104,39 +106,50 @@ export function EntitySubviewNav({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative mt-1 flex min-w-0 flex-1 items-center gap-0.5 border-t border-border/40 pt-1"
-      role="tablist"
-      aria-label="Page sections"
-    >
-      <div ref={measurementRef} className="pointer-events-none absolute invisible flex h-0 w-0 overflow-hidden gap-0.5" aria-hidden="true" inert>
-        {sorted.map((tab) => renderTab(tab))}
-        {renderMoreButton()}
+    <>
+      <div className="mt-1 w-full sm:hidden">
+        <MobileSectionSelector
+          sections={sorted.map((tab) => ({ id: tab.id, label: tab.label, badge: tab.dmOnly ? <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">DM</span> : undefined }))}
+          activeId={activeSubview}
+          onChange={onSubviewChange}
+          actions={onManagePages ? [{ label: 'Manage pages', onClick: onManagePages }] : []}
+          ariaLabel="Page sections"
+        />
       </div>
-      {inlineTabs.map((tab) => renderTab(tab))}
-
-      {overflowTabs.length > 0 ? (
-        <div className="relative shrink-0">
+      <div
+        ref={containerRef}
+        className="relative mt-1 hidden min-w-0 flex-1 sm:flex items-center gap-0.5 border-t border-border/40 pt-1"
+        role="tablist"
+        aria-label="Page sections"
+      >
+        <div ref={measurementRef} className="pointer-events-none absolute invisible flex h-0 w-0 overflow-hidden gap-0.5" aria-hidden="true" inert>
+          {sorted.map((tab) => renderTab(tab))}
           {renderMoreButton()}
-          {overflowOpen ? (
-            <>
-              <button
-                type="button"
-                className="fixed inset-0 z-40 cursor-default"
-                aria-label="Close menu"
-                onClick={() => setOverflowOpen(false)}
-              />
-              <div
-                className={`absolute ${inlineTabs.length === 0 ? 'left-0' : 'right-0'} top-full z-50 mt-1 min-w-[10rem] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg`}
-                role="menu"
-              >
-                {overflowTabs.map((tab) => renderTab(tab, true))}
-              </div>
-            </>
-          ) : null}
         </div>
-      ) : null}
-    </div>
+        {inlineTabs.map((tab) => renderTab(tab))}
+
+        {overflowTabs.length > 0 ? (
+          <div className="relative shrink-0">
+            {renderMoreButton()}
+            {overflowOpen ? (
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-40 cursor-default"
+                  aria-label="Close menu"
+                  onClick={() => setOverflowOpen(false)}
+                />
+                <div
+                  className={`absolute ${inlineTabs.length === 0 ? 'left-0' : 'right-0'} top-full z-50 mt-1 min-w-[10rem] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface p-1 shadow-lg`}
+                  role="menu"
+                >
+                  {overflowTabs.map((tab) => renderTab(tab, true))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }
