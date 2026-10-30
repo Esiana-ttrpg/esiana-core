@@ -1,61 +1,96 @@
 # Historical Timeline
 
-Chronology's Timeline displays one configured clock at a time. Its primary surface
-is a historical canvas, with calendar-aware date ticks, era background regions,
-duration bars, and milestones. Era labels occupy a separate strip, not event lanes.
+Chronology's Timeline is a visual historical workspace with selectable clock tracks,
+calendar-aware date ticks, era regions, duration bars, milestones, and dense-event
+clusters. The campaign master clock is selected initially. Existing `track` and `era`
+links can open another authorized clock or focus an era.
 
-Major and Minor events are enabled initially; Notices can be enabled in Navigation
-& filters. Category and importance changes preserve the viewport. Each clock keeps
-its viewport while the Timeline remains mounted. A new clock view centers on campaign
-time at approximately an annual scale, falling back to loaded occurrences, an
-applicable era, or the first supported year.
+## Comparison and native inspection
 
-Drag horizontally, use horizontal trackpad scrolling or Shift+wheel, or use the
-zoom controls. Ctrl/Cmd+wheel zooms around the pointer. Touch supports horizontal
-panning and two-finger pinch zoom while retaining vertical scrolling. With the canvas
-focused, arrow keys pan and plus/minus zoom. Event and cluster controls support
-keyboard activation.
+The existing FantasyCalendar model defines `epochOffset` in minutes from the campaign
+master epoch. Valid configured calendars therefore share a supported absolute time
+reference, even when their month structures, year lengths, or epoch offsets differ.
+The selected reference clock supplies the shared axis labels. Changing the reference
+preserves the absolute visible range. Each track displays its own native date context.
 
-The layout has at most twelve event lanes. When overlapping events exceed that
-budget, eleven lanes contain individual events and the final lane contains clusters.
-Major events receive priority. Cluster choosers retain complete membership in stable
-importance/date/identity order and support individual inspection or zooming to the
-period. Labels and enlarged hit targets participate in packing to avoid collisions.
+Shared coordinates retain signed bigint epoch minutes until viewport-relative SVG
+conversion. Partial-day offsets are preserved. Occurrences normalize from native date
+parts, continuation offsets, and duration before projection; repeated legacy epoch
+values do not determine recurrence positions. Half-open occurrence boundaries preserve
+base event, recurrence index, and representative occurrence identity.
 
-Timeline and Calendar share the responsive inspection container: an overlay on
-desktop and a dismissible bottom sheet on mobile. The existing read-only details,
-Lore Page actions, authorization, and shared editing dialog remain authoritative.
-Editing uses the existing full-screen mobile dialog and its dirty-form guards.
-Opening or closing Timeline inspection does not resize or reset the canvas.
+Calendars without a supported mapping are explicitly unaligned and cannot appear on
+the shared axis. They can be inspected on their native axis when their native definition
+is usable. Missing or invalid definitions display an unavailable state. No manual
+synchronization or additional relationship model is provided. Dates before a calendar's
+supported year-one boundary display an unavailable label rather than a fabricated date.
 
-## Data coverage and calendar limits
+Any selected usable clock can be inspected independently. One viewport is retained for
+shared comparison and one for each native view, while the workspace remains mounted.
+Native inspection does not draw cross-clock comparison guides.
 
-The existing campaign-scoped chronology endpoint returns capped recurrence results
-and daily duration-continuation records. It reports a requested window but does not
-apply that window to occurrence generation. Timeline consumes that existing bounded
-response; panning does not request unlimited history or imply that unloaded regions
-contain no events. A compact coverage notice remains visible and the fit action is
-labeled **Fit to Loaded Events**, including when the server does not report truncation.
-Expansion warnings remain available in the coverage notice's tooltip.
+## Tracks and interactions
 
-Daily continuations normalize to one interval per calendar, base event, and recurrence
-index. The original representative occurrence identity is retained separately from
-the full occurrence boundaries. Geometry uses date parts, day offsets, duration,
-and the existing custom-calendar arithmetic; repeated epoch values in legacy
-occurrence records do not determine recurrence positions. All labels, eras, and
-cluster membership derive from the authorized API response.
+Tracks opens a collapsible desktop sidebar or a compact mobile overlay. It provides
+visibility toggles, move-up/down controls, Show All, per-clock Hide Others, independent
+inspection, and Reset View. Each track can be collapsed without losing its selected
+event. Track selection, order, collapse, filters, and native viewports are in-memory
+state; no preferences are persisted. Reset restores the master-only default and clears
+stored viewports. Hiding the reference falls back to a selected master clock, then the
+first selected aligned clock, without moving the shared viewport.
 
-Coordinates use calendar-local absolute days with bigint epoch arithmetic and
-viewport-relative pixel conversion. The existing calendar engine supports years
-starting at 1; Timeline does not add negative-year semantics. Calendar definitions,
-models, recurrence generation, and public API contracts are unchanged.
+Major and Minor events are enabled initially; Notices can be enabled in Navigation &
+filters. All categories are initially selected. Filters apply consistently to all tracks
+and preserve the viewport. Fit to Loaded Events includes filtered occurrences in all
+selected aligned tracks, including collapsed tracks; native inspection fits its clock.
+Today and date/era navigation use the active axis.
+
+Drag horizontally, use horizontal trackpad scrolling or Shift+wheel, or use the zoom
+controls. Ctrl/Cmd+wheel zooms around the pointer. Touch supports horizontal panning and
+two-finger pinch zoom while retaining vertical scrolling. With the canvas focused,
+arrow keys pan and plus/minus zoom. The shared axis stays visible while tracks scroll.
+
+Each track packs independently into at most twelve event lanes. When overlaps exceed
+that budget, eleven lanes contain individual events and the final lane contains
+clusters, with Major events prioritized. Cluster choosers retain complete membership in
+stable importance/date/identity order. Labels and enlarged hit targets participate in
+packing. Offscreen intervals are culled, and vertically offscreen event canvases retain
+their height while deferring lane rendering. Unchanged per-clock data reuses normalized
+intervals; opening inspection does not repack lanes.
+
+The reference clock's eras provide background context across aligned tracks. Additional
+clocks have their own era strips. Overlapping labels occupy separate rows, gaps remain
+gaps, and open boundaries remain open. This does not change era management or ordering.
+
+Selecting an event marks its interval across aligned tracks and emphasizes intersecting
+occurrences. Single-day occurrences use a vertical date marker. Unrelated events remain
+visible, and cluster labels report simultaneous member counts. Selection opens the shared
+desktop inspector overlay or mobile bottom sheet, preserving the viewport. Details show
+the source clock, native duration/dates, and reliably converted reference dates. Lore Page
+actions, permissions, the shared editor, and mobile full-screen editing remain authoritative.
+Selection survives collapse/reordering and mode switches; hiding its track, filtering it
+out, deletion, or authorization removal clears it.
+
+## Data coverage and authorization
+
+The existing campaign-scoped endpoint returns a campaign-wide bounded occurrence bundle.
+Tracks are restricted to that authorized inventory and joined to time-tracking definitions.
+Events and eras derive only from authorized responses; the frontend adds no authorization
+model. No per-event requests or additional historical queries are issued when navigating.
+
+The endpoint reports a requested window but does not enforce it during generation.
+Loaded history therefore never implies complete coverage, even when no cap is reported.
+A visible workspace notice retains expansion warnings; track notices identify capped
+base-event IDs where attributable and always retain the loaded-history qualification.
+Empty regions mean no loaded matching events, not definitive absence of history.
 
 ## Validation
 
-Run the frontend suite, frontend production build (including TypeScript), and i18n
-validation. Focused geometry/layout coverage is in `historicalTimeline.test.ts`.
-The existing optional `frontend/scripts/verify-chronology-ui.mjs` browser harness
-covers Calendar and Timeline inspection, editing/dirty guards, clusters, focus,
-viewport preservation, mobile sheets, touch navigation, and read-only permissions.
-It uses existing optional browser tooling; no browser or visualization dependency
-is added to the application.
+Run the frontend suite, production build (including TypeScript), i18n validation, and
+relevant chronology occurrence, era, and time-engine suites. Focused helper coverage is
+in `historicalTimeline.test.ts`. The existing optional
+`frontend/scripts/verify-chronology-ui.mjs` browser harness exercises Calendar and Timeline
+inspection/editing, clusters, multi-clock reference changes, independent viewport
+restoration, track order/collapse/reset, authorization inventory, and mobile sheets and
+touch navigation. It uses existing optional browser tooling; no new application browser,
+database, or visualization dependency is introduced.
