@@ -24,6 +24,7 @@ interface ChronologyEventSidebarProps {
   onDeleted?: () => void | Promise<void>;
   categoryFooter?: import('react').ReactNode;
   onRevealEvent?: (baseEventId: string) => void | Promise<void>;
+  comparisonContext?: import('react').ReactNode;
 }
 
 export function ChronologyEventSidebar({
@@ -41,11 +42,13 @@ export function ChronologyEventSidebar({
   onDeleted,
   categoryFooter,
   onRevealEvent,
+  comparisonContext,
 }: ChronologyEventSidebarProps) {
   if (!open || !baseEvent) return null;
   return (
     <ChronologyInspector title="Event details" selectionId={occurrence?.occurrenceId ?? baseEvent.id} onClose={onClose}>
       <div className="space-y-3 text-sm">
+        {comparisonContext && <div className="space-y-1 text-xs text-muted">{comparisonContext}</div>}
         {occurrence && (
           <p className="text-xs text-muted">
             {formatOccurrenceDateLabel(occurrence.start)} to {formatOccurrenceDateLabel(occurrence.end)};

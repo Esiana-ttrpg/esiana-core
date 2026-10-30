@@ -4,6 +4,10 @@ import {
   createHistoricalAxis, dayX, fitTimeline, historicalCoverage, historicalEraGeometry,
   historicalTicks, initialHistoricalViewport, moveViewport, normalizeHistoricalOccurrences,
   packHistoricalIntervals, viewportDay, zoomViewport, type HistoricalInterval,
+  historicalClock, historicalMinute, historicalNativeState, sharedHistoricalIntervals,
+  intersectHistoricalIntervals, moveComparisonViewport, zoomComparisonViewport, fitComparisonIntervals,
+  initialComparisonViewport, comparisonTicks, comparisonEraGeometry, initialHistoricalWorkspace,
+  reconcileHistoricalWorkspace, reorderHistoricalTrack, historicalTrackCoverage,
 } from './historicalTimeline';
 import { calendarEpochMinuteForDate, type FantasyCalendarLike } from './timeEngine';
 import type { ChronologyEra } from '@shared/chronologyEras';
@@ -23,6 +27,116 @@ const occurrence = (id: string, importance: 'MAJOR' | 'MINOR' | 'NOTICE' = 'MINO
   end: { year: 2, month: 2, day: 2, epochMinute: '0' }, duration: 7,
   dayOffset: offset, isStart: offset === 0, isContinuation: offset > 0,
   sourceType: 'REPEATING', prerequisiteBaseEventId: null,
+});
+
+describe('multiple historical clocks', () => {
+  it('uses the explicit campaign epoch contract and distinguishes unusable definitions from unsupported mappings', () => {
+    const input = { ...calendar, epochOffset: '0' };
+    assert.equal(historicalClock(input).aligned, true);
+    assert.equal(historicalClock(input, false).reason, 'mappingUnavailable');
+    assert.equal(historicalClock(input, false).aligned, false);
+    assert.ok(historicalClock(input, false).axis);
+    for (const epochOffset of [undefined, '', 'not an epoch']) {
+      const result = historicalClock({ ...input, epochOffset });
+      assert.equal(result.aligned, false); assert.ok(result.axis);
+    }
+    for (const months of [[], null, [{ name: 'Invalid', length: 0 }]]) {
+      assert.equal(historicalClock({ ...input, months }).reason, 'calendarUnavailable');
+      assert.equal(historicalClock({ ...input, months }).axis, null);
+    }
+  });
+  it('maps distinct calendars with partial-day, negative and huge offsets without rounding', () => {
+    for (const epochOffset of [-90071992547409934567n, -123n, 0n, 67n, 90071992547409934567n]) {
+      const first = createHistoricalAxis({ ...calendar, epochOffset });
+      const second = createHistoricalAxis({ ...calendar, epochOffset: epochOffset + 1440n * 20n + 123n,
+        months: [{ name: 'Long rains', length: 51 }], leapDays: [] });
+      const firstRows = sharedHistoricalIntervals([occurrence('Mira')], first);
+      const secondRows = sharedHistoricalIntervals([{ ...occurrence('Neri'), calendarId: 'other', start: { year: 1, month: 0, day: 10, epochMinute: '0' } }], second);
+      assert.equal(firstRows[0]!.start, calendarEpochMinuteForDate(first.calendar, 2, 0, 16));
+      assert.equal(secondRows[0]!.start, epochOffset + 29n * 1440n + 123n);
+      assert.equal(firstRows[0]!.end - firstRows[0]!.start, 7n * 1440n);
+      assert.equal(secondRows[0]!.end - secondRows[0]!.start, 7n * 1440n);
+      const view = { origin: epochOffset, offset: 0, span: 100 * 1440 };
+      assert.equal(dayX(secondRows[0]!.start, view, 1000), Number(29n * 1440n + 123n) / (100 * 1440) * 1000);
+      assert.equal(historicalNativeState(second, epochOffset), null);
+      assert.equal(historicalNativeState(second, secondRows[0]!.start)!.day, 10);
+    }
+  });
+  it('retains continuation and recurrence identity separately for each authoritative clock', () => {
+    const axis = createHistoricalAxis(calendar);
+    const rows = [occurrence('Mira'), occurrence('Mira', 'MINOR', 0, 1), { ...occurrence('Mira', 'MINOR', 1), start: { year: 3, month: 0, day: 1, epochMinute: '0' } }];
+    const intervals = sharedHistoricalIntervals(rows, axis);
+    assert.equal(intervals.length, 2);
+    assert.equal(intervals[0]!.representative.occurrenceId, rows[0]!.occurrenceId);
+    assert.equal(intervals[0]!.start, historicalMinute(axis, axis.date(rows[0]!.start)!));
+    const other = sharedHistoricalIntervals(rows.map(row => ({ ...row, calendarId: 'other' })), axis);
+    assert.equal(new Set([...intervals, ...other].map(row => row.key)).size, 4);
+    assert.equal(sharedHistoricalIntervals([rows[1]!], axis)[0]!.start, intervals[0]!.start);
+  });
+  it('preserves signed shared viewports, anchored zoom and independent year-one bounds', () => {
+    const view = { origin: -90071992547409934567n, offset: .25, span: 144000 };
+    const zoomed = zoomComparisonViewport(view, .5, .3);
+    assert.equal(view.offset + view.span * .3, Number(zoomed.origin - view.origin) + zoomed.offset + zoomed.span * .3);
+    assert.deepEqual(moveComparisonViewport(moveComparisonViewport(view, 21.5), -21.5), view);
+    assert.equal(moveComparisonViewport(view, -1000, view.span, view.origin).origin, view.origin);
+    const fit = fitComparisonIntervals([{ start: -12345n, end: -12000n }])!;
+    assert.ok(fit.origin < -12345n);
+    assert.equal(fitComparisonIntervals([]), null);
+    const axis = createHistoricalAxis(calendar), now = { year: 3, month: 0, day: 1 };
+    const initial = initialComparisonViewport(axis, now, [], []);
+    assert.equal(viewportDay(initial, .5), historicalMinute(axis, axis.date(now)!));
+  });
+  it('positions calendar ticks and open/overlapping era bands in shared minutes', () => {
+    const axis = createHistoricalAxis({ ...calendar, epochOffset: -123n });
+    const view = { origin: -123n, offset: 0, span: 100 * 1440 };
+    const ticks = comparisonTicks(axis, view, 900);
+    assert.ok(ticks.length > 1);
+    for (const tick of ticks) {
+      assert.equal(tick.x, dayX(tick.day, view, 900));
+      assert.equal((tick.day + 123n) % 1440n, 0n);
+    }
+    const era = { id: 'a', startDate: { year: 1, month: 0, day: 5 }, endDate: { year: 1, month: 1, day: 2 } } as ChronologyEra;
+    const band = comparisonEraGeometry(era, axis, view, 1000)!;
+    assert.equal(band.x, 40); assert.equal(band.width, 150);
+    assert.equal(band.end! - band.start!, 15n * 1440n);
+    const open = comparisonEraGeometry({ ...era, startDate: null, endDate: null }, axis, view, 1000)!;
+    assert.equal(open.width, 1000); assert.ok(open.openStart && open.openEnd);
+    const overlap = comparisonEraGeometry({ ...era, id: 'b', startDate: { year: 1, month: 0, day: 6 } }, axis, view, 1000)!;
+    assert.ok(overlap.x < band.x + band.width);
+    assert.equal(comparisonEraGeometry({ ...era, startDate: { year: -1, month: 0, day: 1 } }, axis, view, 1000), null);
+  });
+  it('highlights intersections without including touching half-open boundaries', () => {
+    const selected = { start: 123n, end: 3003n };
+    assert.equal(intersectHistoricalIntervals(selected, { start: 100n, end: 124n }), true);
+    assert.equal(intersectHistoricalIntervals(selected, selected), true);
+    assert.equal(intersectHistoricalIntervals(selected, { start: 0n, end: 123n }), false);
+    assert.equal(intersectHistoricalIntervals(selected, { start: 3003n, end: 5000n }), false);
+  });
+  it('reconciles visibility, reorders stably, preserves collapse, and removes unauthorized clocks', () => {
+    const initial = initialHistoricalWorkspace(['world', 'other', 'unknown'], 'world');
+    assert.deepEqual(initial.visible, ['world']);
+    const state = { ...initial, order: reorderHistoricalTrack(initial.order, 'other', -1), visible: ['world', 'other', 'unknown'],
+      collapsed: ['other'], reference: 'other', independent: 'other' };
+    const reconciled = reconcileHistoricalWorkspace(state, ['world', 'other'], ['world', 'other'], 'world');
+    assert.deepEqual(reconciled.order, ['other', 'world']);
+    assert.deepEqual(reconciled.collapsed, ['other']);
+    assert.equal(reconciled.independent, 'other');
+    const hidden = reconcileHistoricalWorkspace({ ...state, visible: ['world'] }, ['world', 'other'], ['world', 'other'], 'world');
+    assert.equal(hidden.reference, 'world'); assert.equal(hidden.independent, null);
+    const revoked = reconcileHistoricalWorkspace(state, ['world'], ['world'], 'world');
+    assert.deepEqual(revoked.visible, ['world']); assert.deepEqual(revoked.collapsed, []);
+    assert.equal(revoked.reference, 'world'); assert.equal(revoked.independent, null);
+    assert.equal(reconcileHistoricalWorkspace({ ...state, visible: [] }, ['world'], ['world'], 'world').reference, null);
+    assert.deepEqual(reorderHistoricalTrack(initial.order, 'world', -1), initial.order);
+  });
+  it('attributes capped history to the correct clock without claiming completeness elsewhere', () => {
+    const bundle = { baseEvents: [{ id: 'capped', calendarId: 'other' }], expansionMetadata: {
+      generated: { truncated: true, truncatedBaseEventIds: ['capped'] }, warnings: ['CAP_APPLIED_TOTAL'],
+    } } as ChronologyTimelineBundle;
+    assert.equal(historicalTrackCoverage(bundle, 'world'), false);
+    assert.equal(historicalTrackCoverage(bundle, 'other'), true);
+    assert.equal(historicalCoverage(bundle.expansionMetadata).incomplete, true);
+  });
 });
 describe('historical timeline calendar geometry', () => {
   it('matches existing arithmetic across custom segments and leap years without losing epoch precision', () => {

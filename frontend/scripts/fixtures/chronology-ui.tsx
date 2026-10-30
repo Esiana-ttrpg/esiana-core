@@ -9,6 +9,8 @@ import { ChronologyCreateEventDialog } from '../../src/components/chronology/Chr
 import { ChronologyEventSidebar } from '../../src/components/chronology/ChronologyEventSidebar';
 import { calendarRowToLike } from '../../src/lib/chronologyCalendar';
 import '../../src/index.css';
+import { initI18n } from '../../src/i18n/initI18n';
+initI18n();
 const query = new URLSearchParams(location.search);
 const calendar = {
   id: 'clock',
@@ -44,8 +46,9 @@ const calendar = {
   },
 };
 const calendars = query.has('twoClocks') ? [calendar, {
-  ...calendar, id: 'other', name: 'Other', isMasterTime: false, epochOffset: '5000',
-  state: { ...calendar.state, year: 3 },
+  ...calendar, id: 'other', name: 'Other', isMasterTime: false, epochOffset: query.has('unaligned') ? 'unsupported' : '5000',
+  months: [{ name: 'Long rain', length: 51 }],
+  state: { ...calendar.state, year: 1, monthIndex: 0, monthName: 'Long rain', day: 36 },
 }] : [calendar];
 const base = {
   id: 'journey',
@@ -113,7 +116,7 @@ const bundle = {
   occurrences,
   events: occurrences,
   expansionMetadata: {
-    generated: { truncated: query.has('truncated') },
+    generated: { truncated: query.has('truncated'), truncatedBaseEventIds: query.has('truncated') ? ['journey'] : [] },
     warnings: [],
   },
 };
@@ -124,13 +127,20 @@ const timelineRows = query.has('dense') ? Array.from({ length: 45 }, (_, index) 
   end: { year: 1, month: 1, day: 10, epochMinute: null },
   dayOffset: 0, duration: 1, importance: index < 3 ? 'MAJOR' : 'MINOR',
 })) : occurrences;
+if (query.has('twoClocks')) timelineRows.push({ ...occurrences[9], calendarId: 'other', baseEventId: 'other-event',
+  occurrenceId: 'other-event', title: 'Neri discovers the archive', dayOffset: 0, duration: 8,
+  start: { year: 1, month: 0, day: 30, epochMinute: '0' }, end: { year: 1, month: 0, day: 37, epochMinute: '0' } });
 const timelineBundle = {
-  ...bundle, occurrences: timelineRows,
-  baseEvents: [base, ...timelineRows.filter(row => row.baseEventId !== base.id).map(row => ({ ...base, id: row.baseEventId, title: row.title, duration: row.duration }))],
+  ...bundle, calendars, occurrences: timelineRows,
+  baseEvents: [base, ...timelineRows.filter(row => row.baseEventId !== base.id).map(row => ({ ...base, id: row.baseEventId, calendarId: row.calendarId, title: row.title, duration: row.duration }))],
   eras: [{ id: 'era', calendarId: 'clock', name: 'World history', calendarName: 'World',
     isMasterTime: true, sortOrder: 0, isCurrent: true, status: 'PRESENT', visibility: 'PARTY',
     startDate: { year: 1, month: 0, day: 15 }, endDate: null, overview: 'The crossing',
-    overviewPageId: 'era-page', canManage: true }],
+    overviewPageId: 'era-page', canManage: true }, ...(query.has('twoClocks') ? [{
+      id: 'other-era', calendarId: 'other', name: 'Age of discovery', calendarName: 'Other', isMasterTime: false,
+      sortOrder: 0, isCurrent: true, status: 'PRESENT', visibility: 'PARTY', startDate: { year: 1, month: 0, day: 20 },
+      endDate: { year: 1, month: 0, day: 40 }, overview: '', overviewPageId: null, canManage: true,
+    }] : [])],
 };
 function App() {
   const [create, setCreate] = useState(false);
@@ -151,7 +161,7 @@ function App() {
       </div>
       <main style={{ minHeight: 0, flex: 1 }}>
         {query.has('timeline') ? <HistoricalTimeline campaignHandle="test" bundle={timelineBundle}
-          timeBundle={{ calendars }} canManage={manage} onBrowseAnchorChange={browse}
+          timeBundle={{ calendars: [...calendars, { ...calendar, id: 'unauthorized', name: 'Unauthorized clock' }], currentEpochMinute: '56283' }} canManage={manage} onBrowseAnchorChange={browse}
           onMutated={mutated} onDeleted={() => {}} onRevealEvent={async () => {}} /> : <WidescreenCalendarView
           campaignHandle="test"
           timeBundle={{ calendars: [calendar] }}

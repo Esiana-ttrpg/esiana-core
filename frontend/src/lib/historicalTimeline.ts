@@ -209,3 +209,107 @@ export function historicalCoverage(metadata: ChronologyTimelineBundle['expansion
     ? 'Loaded history is incomplete: occurrence expansion limits apply.'
     : 'Loaded occurrences only; historical coverage is not guaranteed.', warnings: metadata.warnings };
 }
+
+/** These calendars use FantasyCalendar.epochOffset: minutes from the campaign master epoch.
+ * Callers must establish campaign authorization before constructing a comparison clock.
+ * An absent mapping is deliberately different from an explicit zero offset.
+ */
+export function historicalClock(calendar: Omit<FantasyCalendarLike, 'epochOffset'> & { epochOffset?: string | bigint }, commonEpoch = true) {
+  const usable = Array.isArray(calendar.months) && calendar.months.length > 0 && calendar.months.every(month =>
+    month && typeof month === 'object' && Number.isSafeInteger(month.length) && month.length > 0);
+  if (!usable) return { axis: null, aligned: false, reason: 'calendarUnavailable' as const };
+  let offset: bigint | null = null;
+  try {
+    if (calendar.epochOffset !== undefined && String(calendar.epochOffset).trim() !== '') offset = BigInt(calendar.epochOffset);
+  } catch { /* A usable native calendar can still be inspected without a mapping. */ }
+  return { axis: createHistoricalAxis({ ...calendar, epochOffset: offset ?? 0n }),
+    aligned: commonEpoch && offset !== null,
+    reason: commonEpoch && offset !== null ? null : 'mappingUnavailable' as const };
+}
+
+export const HISTORICAL_DAY_MINUTES = 1440n;
+export function historicalMinute(axis: HistoricalAxis, day: bigint) {
+  return axis.calendar.epochOffset + day * HISTORICAL_DAY_MINUTES;
+}
+export function historicalNativeState(axis: HistoricalAxis, minute: bigint) {
+  return minute < axis.calendar.epochOffset ? null : convertEpochToCalendarState(minute, axis.calendar);
+}
+export function sharedHistoricalIntervals(rows: TimelineOccurrenceRecord[], axis: HistoricalAxis) {
+  return normalizeHistoricalOccurrences(rows, axis).map(row => ({ ...row,
+    start: historicalMinute(axis, row.start), end: historicalMinute(axis, row.end) }));
+}
+export function intersectHistoricalIntervals(a: Pick<HistoricalInterval, 'start' | 'end'>, b: Pick<HistoricalInterval, 'start' | 'end'>) {
+  return a.start < b.end && b.start < a.end;
+}
+/** Signed shared coordinates must not inherit Pass 2's local year-one clamp. */
+export function moveComparisonViewport(view: TimelineViewport, delta: number, span = view.span, minimum?: bigint): TimelineViewport {
+  const raw = view.offset + delta, whole = Math.floor(raw), origin = view.origin + BigInt(whole);
+  return minimum !== undefined && origin < minimum ? { origin: minimum, offset: 0, span } : { origin, offset: raw - whole, span };
+}
+export function zoomComparisonViewport(view: TimelineViewport, factor: number, anchor = .5, minimum?: bigint) {
+  const span = Math.min(4_000_000 * 1440, Math.max(2 * 1440, view.span * factor));
+  return moveComparisonViewport(view, (view.span - span) * anchor, span, minimum);
+}
+export function fitComparisonIntervals(rows: Pick<HistoricalInterval, 'start' | 'end'>[], minimum?: bigint): TimelineViewport | null {
+  if (!rows.length) return null;
+  const start = rows.reduce((value, row) => row.start < value ? row.start : value, rows[0]!.start);
+  const end = rows.reduce((value, row) => row.end > value ? row.end : value, rows[0]!.end);
+  const span = Math.max(2880, Number(end - start));
+  return moveComparisonViewport({ origin: start, offset: 0, span: span * 1.2 }, -span * .1, span * 1.2, minimum);
+}
+export function initialComparisonViewport(axis: HistoricalAxis, now: ChronologyDateParts | null, rows: HistoricalInterval[], eras: ChronologyEra[]) {
+  const local = initialHistoricalViewport(axis, now, rows.map(row => ({ ...row,
+    start: (row.start - axis.calendar.epochOffset) / 1440n, end: (row.end - axis.calendar.epochOffset) / 1440n })), eras);
+  return { origin: historicalMinute(axis, local.origin), offset: local.offset * 1440, span: local.span * 1440 };
+}
+export function comparisonTicks(axis: HistoricalAxis, view: TimelineViewport, width: number) {
+  // Floor division matters for negative and partial-day offsets.
+  const delta = view.origin - axis.calendar.epochOffset;
+  const day = delta / 1440n - (delta < 0n && delta % 1440n !== 0n ? 1n : 0n);
+  const local = { origin: day, offset: Number(delta - day * 1440n) / 1440 + view.offset / 1440, span: view.span / 1440 };
+  const ticks = historicalTicks(axis, { ...local, origin: day < 0n ? 0n : day,
+    offset: day < 0n ? 0 : local.offset }, width);
+  return ticks.map(tick => ({ ...tick, day: historicalMinute(axis, tick.day),
+    x: dayX(historicalMinute(axis, tick.day), view, width) })).filter(tick => tick.x >= -120 && tick.x <= width + 120);
+}
+export function comparisonEraGeometry(era: ChronologyEra, axis: HistoricalAxis, view: TimelineViewport, width: number) {
+  const nativeStart = era.startDate ? axis.date(era.startDate) : null;
+  const nativeEnd = era.endDate ? axis.date(era.endDate) : null;
+  // Invalid configured boundaries are not open boundaries.
+  if ((era.startDate && nativeStart === null) || (era.endDate && nativeEnd === null)) return null;
+  const start = nativeStart === null ? null : historicalMinute(axis, nativeStart);
+  const end = nativeEnd === null ? null : historicalMinute(axis, nativeEnd + 1n);
+  const x = start === null ? 0 : Math.max(0, dayX(start, view, width));
+  const endX = end === null ? width : Math.min(width, dayX(end, view, width));
+  return { era, start, end, x, width: Math.max(0, endX - x), openStart: start === null, openEnd: end === null };
+}
+
+export interface HistoricalWorkspaceState {
+  order: string[];
+  visible: string[];
+  collapsed: string[];
+  reference: string | null;
+  independent: string | null;
+}
+export function initialHistoricalWorkspace(ids: string[], defaultId: string | null): HistoricalWorkspaceState {
+  return { order: ids, visible: defaultId ? [defaultId] : [], collapsed: [], reference: defaultId, independent: null };
+}
+export function reconcileHistoricalWorkspace(state: HistoricalWorkspaceState, ids: string[], aligned: string[], master: string | null): HistoricalWorkspaceState {
+  const visible = state.visible.filter(id => ids.includes(id));
+  const reference = state.reference && visible.includes(state.reference) && aligned.includes(state.reference) ? state.reference :
+    master && visible.includes(master) && aligned.includes(master) ? master : visible.find(id => aligned.includes(id)) ?? null;
+  return { order: [...state.order.filter(id => ids.includes(id)), ...ids.filter(id => !state.order.includes(id))], visible,
+    collapsed: state.collapsed.filter(id => ids.includes(id)), reference,
+    independent: state.independent && visible.includes(state.independent) ? state.independent : null };
+}
+export function reorderHistoricalTrack(order: string[], id: string, direction: -1 | 1) {
+  const index = order.indexOf(id), target = index + direction;
+  if (index < 0 || target < 0 || target >= order.length) return order;
+  const next = [...order];
+  [next[index], next[target]] = [next[target]!, next[index]!];
+  return next;
+}
+export function historicalTrackCoverage(bundle: ChronologyTimelineBundle, calendarId: string) {
+  const ids = new Set(bundle.baseEvents.filter(row => row.calendarId === calendarId).map(row => row.id));
+  return bundle.expansionMetadata.generated.truncatedBaseEventIds.some(id => ids.has(id));
+}
