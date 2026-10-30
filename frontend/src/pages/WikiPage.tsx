@@ -259,6 +259,7 @@ export function WikiPage() {
     loading,
     refresh,
     pinnedShortcuts,
+    pinsLoading,
     pageIdByTitle,
     players,
     can: wikiCan,
@@ -1358,6 +1359,7 @@ export function WikiPage() {
   }
 
   function handleTogglePin() {
+    if (pinsLoading) return;
     void (async () => {
       try {
         await togglePinnedShortcut(campaignHandle, pageId);

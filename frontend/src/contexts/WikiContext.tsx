@@ -47,6 +47,7 @@ interface WikiContextValue {
   playerSessionNotesFolderTitle: string;
   sessionPages: WikiTreeNode[];
   pinnedShortcuts: PageShortcut[];
+  pinsLoading: boolean;
   sidebarConfig: SidebarConfig;
   loading: boolean;
   error: string | null;
@@ -72,6 +73,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   const [playerSessionNotesFolderTitle, setPlayerSessionNotesFolderTitle] =
     useState(PLAYER_SESSION_NOTES_TITLE);
   const [pinnedShortcuts, setPinnedShortcuts] = useState<PageShortcut[]>([]);
+  const [pinsLoading, setPinsLoading] = useState(true);
   const [sidebarConfig, setSidebarConfig] = useState<SidebarConfig>(() =>
     normalizeSidebarConfig(null),
   );
@@ -84,9 +86,11 @@ export function WikiProvider({ children }: { children: ReactNode }) {
     const generation = ++refreshGenerationRef.current;
     setLoading(true);
     setError(null);
+    setPinsLoading(true);
     void fetchPersonalPins(campaignHandle).then((pins) => {
       if (generation !== refreshGenerationRef.current) return;
       setPinnedShortcuts(pins);
+      setPinsLoading(false);
     });
     try {
       const data = await fetchWikiTreePayload(campaignHandle);
@@ -216,6 +220,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       playerSessionNotesFolderTitle,
       sessionPages,
       pinnedShortcuts,
+      pinsLoading,
       sidebarConfig,
       loading,
       error,
@@ -237,6 +242,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       playerSessionNotesFolderTitle,
       sessionPages,
       pinnedShortcuts,
+      pinsLoading,
       sidebarConfig,
       loading,
       error,
