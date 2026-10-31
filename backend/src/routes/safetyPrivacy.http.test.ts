@@ -51,9 +51,11 @@ test('private request lifecycle, notifications, former members and recording dis
    await prisma.user.update({ where: { id: owner.id }, data: { displayName } });
    await prisma.user.update({ where: { id: player.id }, data: { displayName } });
    const neutralRecipients = await call(player.id, '/recipients/' + campaign.handle);
-   assert.deepEqual(neutralRecipients.data, [{ id: owner.id, displayName: 'Campaign participant' }]);
+   assert.deepEqual(neutralRecipients.data, [{ id: owner.id, displayName: 'Campaign participant', isCampaignOwner: true }]);
    const neutralDetail = await call(owner.id, path);
    assert.equal(neutralDetail.status, 200);
+   assert.deepEqual(neutralDetail.data.reviewers, neutralRecipients.data);
+   assert.equal(neutralDetail.data.relatedRecording, null);
    for (const person of neutralDetail.data.people) {
     assert.deepEqual(person, { id: person.id, displayName: 'Campaign participant' });
    }
@@ -87,13 +89,40 @@ test('private request lifecycle, notifications, former members and recording dis
   const timeline = await prisma.campaignSessionTimeline.create({ data: { campaignId:campaign.id,wikiPageId:page.id,authorId:owner.id,sequenceOrder:1,attendance:{create:{userId:observer.id,status:'ATTENDING'}} } });
   const recording = await prisma.sessionRecording.create({ data: { campaignId:campaign.id,timelineId:timeline.id,uploadedByUserId:owner.id,title:'Shared voices',visibility:'campaign' } });
   const hidden = await prisma.sessionRecording.create({ data: { campaignId:campaign.id,timelineId:timeline.id,uploadedByUserId:owner.id,title:'Private voices',visibility:'uploader_and_managers' } });
+  const report = await call(observer.id, '/requests', 'POST', { ...payload, relatedContentId: recording.id });
+  const reportPath = '/requests/' + report.data.id;
+  for (const reader of [observer, owner]) {
+   const visibleDetail = await call(reader.id, reportPath);
+   assert.equal(visibleDetail.status, 200);
+   assert.deepEqual(visibleDetail.data.relatedRecording, { title: recording.title, sessionId: timeline.id });
+   assert.equal(visibleDetail.data.relatedContentId, recording.id);
+  }
+  const privateReport = await call(observer.id, '/requests', 'POST', { ...payload, relatedContentId: hidden.id });
+  assert.equal((await call(observer.id, '/requests/' + privateReport.data.id)).data.relatedRecording, null);
+  // Explicit safety review rights do not grant recording metadata access.
+  await prisma.campaignRoleCapabilityOverride.create({ data: { campaignId: campaign.id, role: 'OBSERVER', capability: C.SAFETY_MANAGE, effect: 'GRANT' } });
+  const privateDetail = await call(observer.id, '/requests/' + privateReport.data.id);
+  assert.equal(privateDetail.data.manager, true);
+  assert.equal(privateDetail.data.relatedRecording, null);
+  assert.ok(!JSON.stringify(privateDetail.data).includes(hidden.title));
+  // References must stay inside the request's campaign.
+  const foreignReport = await call(globalAdmin.id, '/requests', 'POST', { ...payload, campaign: other.handle, recipientIds: [globalAdmin.id], relatedContentId: recording.id });
+  assert.equal((await call(globalAdmin.id, '/requests/' + foreignReport.data.id)).data.relatedRecording, null);
+  await prisma.safetyPrivacyRequest.delete({ where: { id: foreignReport.data.id } });
+  await prisma.campaignRoleCapabilityOverride.deleteMany({ where: { campaignId: campaign.id } });
   let found = await call(observer.id,'/recordings'); assert.equal(found.status,200); assert.deepEqual(found.data.map((r:any)=>r.id),[recording.id]);
   await prisma.wikiPage.update({where:{id:page.id},data:{visibility:'DMOnly'}});
   found = await call(observer.id,'/recordings'); assert.deepEqual(found.data,[]);
+  assert.equal((await call(observer.id, reportPath)).data.relatedRecording, null);
+  const removed = await prisma.sessionRecording.create({ data: { campaignId: campaign.id, timelineId: timeline.id, uploadedByUserId: owner.id, title: 'Removed voices', visibility: 'campaign' } });
+  const removedReport = await call(observer.id, '/requests', 'POST', { ...payload, relatedContentId: removed.id });
+  await prisma.sessionRecording.delete({ where: { id: removed.id } });
+  assert.equal((await call(owner.id, '/requests/' + removedReport.data.id)).data.relatedRecording, null);
   assert.equal((await prisma.sessionRecording.findUniqueOrThrow({where:{id:hidden.id}})).visibility,'uploader_and_managers');
   const notes = await prisma.notification.findMany({where:{campaignId:campaign.id}});
   assert.ok(notes.some(n=>n.userId===player.id)); assert.ok(notes.every(n=>!JSON.stringify(n).includes('Private administrator reply') && !JSON.stringify(n).includes('Former member follow-up')));
   await removeCampaignMember({ campaign: { campaignId: campaign.id, campaignHandle: campaign.handle, campaignOwnerUserId: owner.id }, params: {userId:observer.id} } as any, response as any);
+  assert.equal((await call(observer.id, reportPath)).data.relatedRecording, null);
   assert.equal((await call(observer.id,'/requests','POST',payload)).status,201);
   assert.equal((await call(owner.id,path,'DELETE')).status,404);
   let deletionStatus = 0;

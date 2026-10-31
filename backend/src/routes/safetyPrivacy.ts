@@ -26,7 +26,7 @@ safetyPrivacyRouter.get('/recipients/:handle', audioHandler(async (req, res) => 
   const ctx = await safetyEligible(String(req.params.handle), req.user!.id);
   assertAudio(ctx.eligible, 404, 'campaign_not_found');
   const users = await prisma.user.findMany({ where: { id: { in: ctx.reviewers.map(m => m.userId) } }, select: { id: true, displayName: true } });
-  res.json(users.map(u => ({ id: u.id, displayName: safetyDisplayName(u) })));
+  res.json(users.map(u => ({ id: u.id, displayName: safetyDisplayName(u), isCampaignOwner: u.id === ctx.campaign.campaignOwnerUserId })));
 }));
 safetyPrivacyRouter.get('/recordings', audioHandler(async (req, res) => {
   const userId = req.user!.id;
@@ -84,8 +84,18 @@ safetyPrivacyRouter.get('/requests/:id', audioHandler(async (req, res) => {
     create: { requestId: row.id, userId, revision: row.revision }, update: { revision: row.revision } });
   const reviewerIds = context.reviewers.map(m => m.userId);
   const people = await prisma.user.findMany({ where: { id: { in: [...reviewerIds, row.requesterId, ...row.messages.map(m => m.authorId), ...row.events.map(e => e.actorId)] } }, select: { id: true, displayName: true } });
-  // No content is hydrated here: links go through the normal permission-checked APIs.
-  res.json({ ...row, manager: context.manager, campaign: request.campaign, reviewerIds, people: people.map(u => ({ id: u.id, displayName: safetyDisplayName(u) })) });
+  let relatedRecording: { title: string; sessionId: string } | null = null;
+  if (row.relatedContentType === 'recording' && row.relatedContentId) {
+    try {
+      // Request review access never grants access to the referenced media or its title.
+      const ctx = await audioContext(row.campaignId, userId);
+      const recording = await recordingAccess(ctx, userId, row.relatedContentId);
+      relatedRecording = { title: recording.title, sessionId: recording.timelineId };
+    } catch (error) { if (!(error instanceof AudioError && [403, 404].includes(error.status))) throw error; }
+  }
+  const reviewers = people.filter(u => reviewerIds.includes(u.id)).map(u => ({ id: u.id,
+    displayName: safetyDisplayName(u), isCampaignOwner: u.id === context.campaign.campaignOwnerUserId }));
+  res.json({ ...row, relatedRecording, reviewers, manager: context.manager, campaign: request.campaign, reviewerIds, people: people.map(u => ({ id: u.id, displayName: safetyDisplayName(u) })) });
 }));
 safetyPrivacyRouter.post('/requests/:id/messages', audioHandler(async (req, res) => {
   const { body } = z.object({ body: text }).strict().parse(req.body);
