@@ -87,6 +87,21 @@ test('validatePluginGithubSource accepts pinned github source', () => {
   assert.equal(result.source?.repo, 'Esiana-ttrpg/community-plugins');
 });
 
+test('github source paths retain interior delimiters and Unicode while trimming long boundary runs', () => {
+  for (const [path, expected] of [
+    [' /plugins//Éowyn/北/ ', 'plugins//Éowyn/北'],
+    ['plugins/archive' + '/'.repeat(100_000), 'plugins/archive'],
+    ['/'.repeat(100_000), undefined], ['', undefined], ['  ', undefined],
+  ]) {
+    const result = validatePluginGithubSource({
+      type: 'github', repo: 'Esiana-ttrpg/community-plugins',
+      commitSha: 'abcdef0123456789abcdef0123456789abcdef01', path,
+    });
+    assert.equal(result.source?.path, expected);
+    assert.equal(result.errors.length === 0, expected !== undefined);
+  }
+});
+
 test('parsePluginRegistryIndex accepts inline manifests and lightweight entries', () => {
   const parsed = parsePluginRegistryIndex({
     plugins: [

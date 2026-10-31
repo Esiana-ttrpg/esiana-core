@@ -8,12 +8,23 @@ export function sanitizeRecruitmentText(
   if (typeof raw !== 'string') return null;
   let value = raw.trim();
   if (!value) return null;
-  // Removing a tag can join its neighbours into another tag.
-  let previous: string;
-  do {
-    previous = value;
-    value = value.replace(/<[^<>]+>/g, '');
-  } while (value !== previous);
+  // Equivalent to repeatedly removing innermost nonempty tags, in one pass.
+  const text: string[] = [];
+  const openings: number[] = [];
+  let lastLiteralClose = -1;
+  for (const char of value) {
+    const opening = openings.at(-1);
+    if (char === '>' && opening !== undefined &&
+        opening > lastLiteralClose && text.length > opening + 1) {
+      text.length = opening;
+      openings.pop();
+      continue;
+    }
+    if (char === '<') openings.push(text.length);
+    if (char === '>') lastLiteralClose = text.length;
+    text.push(char);
+  }
+  value = text.join('');
   if (value.length > maxLength) {
     value = value.slice(0, maxLength);
   }

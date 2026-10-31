@@ -80,12 +80,13 @@ export function sanitizePublicBio(raw: unknown): string | null {
   return normalizeProfileText(raw, PUBLIC_BIO_MAX_LENGTH, 'multiline');
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function normalizeEmail(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const email = raw.trim().toLowerCase();
-  if (!email || !EMAIL_PATTERN.test(email)) return null;
+  const at = email.indexOf('@');
+  // Preserve the existing permissive email grammar without retrying every dot.
+  if (at <= 0 || at !== email.lastIndexOf('@') || /\s/.test(email) ||
+      email.lastIndexOf('.', email.length - 2) <= at + 1) return null;
   return email;
 }
 

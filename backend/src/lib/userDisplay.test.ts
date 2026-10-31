@@ -17,7 +17,18 @@ import {
   deriveUsername,
   resolveUserDisplayName,
   formatPlayerLabel,
+  normalizeEmail,
 } from './userDisplay.js';
+
+test('email normalization preserves the permissive grammar without retrying domain dots', () => {
+  for (const input of ['a@b.c', 'Éowyn@北.世界', 'a@..b', 'a@b..', 'a@b.c.']) {
+    assert.equal(normalizeEmail(input), input.toLowerCase());
+  }
+  for (const input of ['', '  ', 'a@.b', 'a@b.', 'a@@b.c', 'a@b c.d', 'a@' + '.'.repeat(100_000) + '\u2003x']) {
+    assert.equal(normalizeEmail(input), null);
+  }
+  assert.equal(normalizeEmail(' Mira@Archive.Example '), 'mira@archive.example');
+});
 
 const baseUser = {
   id: 'user-1', email: 'navigator@example.com', role: 'USER', passwordHash: null,
