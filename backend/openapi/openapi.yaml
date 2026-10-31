@@ -21,9 +21,9 @@ info:
 
     ## Human documentation
 
-    API guides and architecture explainers live in the [Esiana docs wiki](https://github.com/Esiana-ttrpg/docs):
-    [API overview](../../docs/api/overview.md), [campaign model](../../docs/architecture/campaign-model.md),
-    [plugin development](../../docs/plugin-development/getting-started.md).
+    API guides and architecture explainers live in the [Esiana docs wiki](https://esiana-ttrpg.github.io/docs/):
+    [API overview](https://esiana-ttrpg.github.io/docs/api/overview/), [campaign model](https://esiana-ttrpg.github.io/docs/architecture/campaign-model/),
+    [plugin development](https://esiana-ttrpg.github.io/docs/plugin-development/getting-started/).
 
     **Interactive explorer:** open `/api/docs` on your running Esiana instance (version-locked to this release).
 servers:

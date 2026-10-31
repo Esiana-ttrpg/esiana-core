@@ -57,8 +57,8 @@ Requirements: Docker and .env file
 </details>
 1. Download the Docker Compose template and environment file:
 
-- [`docker-compose.yml`](https://github.com/Esiana-ttrpg/docs/blob/main/options/compose.docker.example.yml)
-- [`.env.example`](https://github.com/Esiana-ttrpg/docs/blob/main/options/compose.env.example)
+- [`docker-compose.yml`](https://esiana-ttrpg.github.io/docs/options/compose.docker.example.yml)
+- [`.env.example`](https://esiana-ttrpg.github.io/docs/options/compose.env.example)
 
 2. Copy the environment file:
 
@@ -90,8 +90,8 @@ For production deployments, reverse proxies, HTTPS, OIDC, object storage, and pl
 
 ## Documentation
 
-- [Documentation wiki](https://github.com/Esiana-ttrpg/docs) — operators, GMs, integrators, plugin authors
-- [Self-hosting installation](https://github.com/Esiana-ttrpg/docs/blob/main/self-hosting/installation.md)
-- [Plugin development](https://github.com/Esiana-ttrpg/docs/blob/main/plugin-development/getting-started.md)
-- [API guides](https://github.com/Esiana-ttrpg/docs/blob/main/api/overview.md) — live reference at `/api/docs` on your instance
+- [Documentation wiki](https://esiana-ttrpg.github.io/docs/) — operators, GMs, integrators, plugin authors
+- [Self-hosting installation](https://esiana-ttrpg.github.io/docs/self-hosting/installation/)
+- [Plugin development](https://esiana-ttrpg.github.io/docs/plugin-development/getting-started/)
+- [API guides](https://esiana-ttrpg.github.io/docs/api/overview/) — live reference at `/api/docs` on your instance
 - [Roadmap](https://github.com/Esiana-ttrpg/esiana-core/issues) · [Discussions](https://github.com/Esiana-ttrpg/esiana-core/discussions)
