@@ -6,7 +6,7 @@
   "scripts": {
     "test:api-token-content": "node scripts/test-api-token-content.mjs",
     "test:audio": "node scripts/test-session-audio.mjs",
-    "test:eras": "node scripts/test-chronology-eras.mjs",
+    "test:eras": "pnpm --filter @esiana/ssrf-guard build && pnpm --filter @esiana/plugin-source-policy build && node scripts/test-chronology-eras.mjs",
     "dev": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsx watch src/index.ts",
     "test:assets": "node --import tsx --test --test-concurrency=1 src/routes/assets.http.test.ts src/lib/assetAccess.test.ts",
     "test:wiki-updated-at": "node --import tsx --test --test-concurrency=1 src/routes/wikiPageUpdatedAt.http.test.ts",

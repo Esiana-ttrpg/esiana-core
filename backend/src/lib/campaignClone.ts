@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readEventConsequencesFromMetadata, mergeEventConsequenceSetIntoMetadata } from '../../../shared/eventConsequence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from './prismaClient.js';
@@ -589,9 +590,17 @@ export async function duplicateCampaign(
     if (calendarIdMap.size) {
       const sourceEvents = new Map(source.fantasyCalendars.flatMap(calendar => calendar.events.map(event => [event.id, event] as const)));
       for (const [sourceEventId, targetEventId] of eventIdMap) {
-        const sourcePageId = sourceEvents.get(sourceEventId)?.wikiPageId;
+        const sourceEvent = sourceEvents.get(sourceEventId)!;
+        const sourcePageId = sourceEvent.wikiPageId;
         const targetPageId = sourcePageId ? pageIdMap.get(sourcePageId) : undefined;
-        if (targetPageId) await tx.calendarEvent.update({ where: { id: targetEventId }, data: { wikiPageId: targetPageId } });
+        const consequences = readEventConsequencesFromMetadata(sourceEvent.metadata);
+        const metadata = consequences.length ? mergeEventConsequenceSetIntoMetadata(sourceEvent.metadata as Record<string, unknown>, consequences.map(consequence => ({
+          ...consequence,
+          targets: consequence.targets && Object.fromEntries(Object.entries(consequence.targets).map(([key, ids]) => [key,
+            ids.flatMap(id => { const mapped = pageIdMap.get(id); return mapped ? [mapped] : []; }),
+          ])),
+        }))) as Prisma.InputJsonValue : undefined;
+        if (targetPageId || metadata) await tx.calendarEvent.update({ where: { id: targetEventId }, data: { ...(targetPageId ? { wikiPageId: targetPageId } : {}), ...(metadata ? { metadata } : {}) } });
       }
       const sourceEras = await tx.campaignEra.findMany({ where: { campaignId: source.id }, include: { overview: true } });
       for (const era of sourceEras) {

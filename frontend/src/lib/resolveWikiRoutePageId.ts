@@ -4,6 +4,17 @@ import { CampaignWorkspace } from '@shared/campaignWorkspace';
 import { isEventLorePageId } from '@/lib/wiki';
 import type { WikiTreeNode } from '@/types/wiki';
 
+/** Current location values take precedence over canonical defaults. */
+export function mergeWikiRouteSearch(path: string, search: string): string {
+  const [pathname, canonicalSearch = ''] = path.split('?');
+  const params = new URLSearchParams(search);
+  const currentKeys = new Set(params.keys());
+  const canonical = new URLSearchParams(canonicalSearch);
+  for (const [key, value] of canonical) if (!currentKeys.has(key)) params.append(key, value);
+  const query = params.toString();
+  return pathname + (query ? `?${query}` : '');
+}
+
 export function workspaceSegmentFromCampaignPath(
   pathname: string,
   campaignHandle: string,

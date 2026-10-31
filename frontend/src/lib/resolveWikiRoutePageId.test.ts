@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  mergeWikiRouteSearch,
   resolveWikiRoutePageId,
   resolveWikiNavigation,
   shouldBlockFreeformRoute,
@@ -7,6 +8,22 @@ import {
 import { CampaignWorkspace } from '@shared/campaignWorkspace';
 import type { WikiTreeNode } from '@/types/wiki';
 import { campaignWikiPath } from '@/lib/campaignPaths';
+import { resolveWorkspaceForPage } from '@shared/wikiWorkspaceResolve';
+
+it('merges canonical query defaults with current parameters without extra question marks', () => {
+  const url = new URL(mergeWikiRouteSearch('/campaigns/archive/pages/note?view=lore&tag=a&tag=b', '?view=history&focus=title&focus=body'), 'https://example.test');
+  expect(url.searchParams.get('view')).toBe('history');
+  expect(url.searchParams.getAll('focus')).toEqual(['title', 'body']);
+  expect(url.searchParams.getAll('tag')).toEqual(['a', 'b']);
+  expect(url.search).not.toContain('?view=lore?');
+});
+
+it.each(['Events', 'Eras'])('does not assign chronology ownership through an ordinary %s folder title', title => {
+  const folder = { id: 'folder', title, templateType: 'DEFAULT', parentId: null };
+  const child = { id: 'child', title: 'Field notes', templateType: 'DEFAULT', parentId: folder.id };
+  expect(resolveWorkspaceForPage(child, [folder, child])).toBe(CampaignWorkspace.PAGES);
+  expect(resolveWorkspaceForPage(child, [{ ...folder, metadata: { systemCategoryKey: title === 'Events' ? 'chronology_events' : 'chronology_eras' } }, child])).toBe(title === 'Events' ? CampaignWorkspace.EVENTS : CampaignWorkspace.ERAS);
+});
 
 const flatPages: WikiTreeNode[] = [
   {

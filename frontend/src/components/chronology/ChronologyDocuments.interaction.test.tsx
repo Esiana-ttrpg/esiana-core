@@ -17,6 +17,18 @@ vi.mock('@/contexts/WikiContext', () => ({ useWiki: () => ({
   flatPages: [{ id: 'page-1', title: 'The Fall of Florence', workspace: 'PAGES', pathKey: 'the-fall-of-florence' }],
 }) }));
 const cleanup: (() => void)[] = [];
+
+test('chronology link request failures show an error and can be retried', async () => {
+  mocks.chronology.mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce({ baseEvents: [{ id: 'event', slug: 'riverlight', title: 'Riverlight', wikiPageId: 'page-1' }], eras: [] });
+  const ui = await mount(<ChronologyDocumentNavigation pageId="page-1" kind="event" />);
+  try {
+    expect(ui.container.querySelector('[role="alert"]')?.textContent).toContain('Unable to load chronology links');
+    await ui.click(ui.container.querySelector('button')!);
+    expect(mocks.chronology).toHaveBeenCalledTimes(2);
+    expect(ui.container.querySelector('[role="alert"]')).toBeNull();
+    expect(ui.container.textContent).toContain('Event: Riverlight');
+  } finally { await ui.unmount(); }
+});
 afterEach(() => { for (const restore of cleanup.splice(0).reverse()) restore(); vi.clearAllMocks(); });
 function Location() { return <output>{useLocation().pathname}</output>; }
 async function mount(children: ReactNode) {

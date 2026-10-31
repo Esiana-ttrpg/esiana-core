@@ -1,5 +1,6 @@
 import { ensureChronologyWikiWorkspaces, ChronologyWorkspaceError } from '../lib/chronologyWikiWorkspace.js';
 import { linkChronologyPage } from './chronologyPagesController.js';
+import { chronologyCanManage, chronologyCanView } from '../lib/chronologyAccess.js';
 import { EraError } from '../lib/chronologyEraService.js';
 import { sessionAudioSummaries, type AudioSummary } from '../lib/sessionAudioSummaries.js';
 import type { Response } from 'express';
@@ -1009,6 +1010,15 @@ export async function createWikiPage(
   if ((req.body.chronologyEventId || lorePageId) && req.body.chronologyEraId) {
     res.status(400).json({ error: 'Create a page for one chronology record at a time.' }); return;
   }
+  const eventId = typeof req.body.chronologyEventId === 'string' ? req.body.chronologyEventId : lorePageId?.slice('event-'.length);
+  if (lorePageId && eventId !== lorePageId.slice('event-'.length)) {
+    res.status(400).json({ error: 'Event lore page id does not match the chronology event.' }); return;
+  }
+  if (eventId) {
+    if (!chronologyCanManage(ctx)) { res.status(403).json({ error: 'Chronology management is not permitted.' }); return; }
+    const event = await prisma.calendarEvent.findFirst({ where: { id: eventId, calendar: { campaignId: ctx.campaignId } }, select: { visibility: true } });
+    if (!event || !chronologyCanView(ctx, event.visibility)) { res.status(404).json({ error: 'Chronology record not found.' }); return; }
+  }
   if (lorePageId) {
     const existingLorePage = await prisma.wikiPage.findFirst({
       where: { id: lorePageId, campaignId: ctx.campaignId },
@@ -1212,7 +1222,6 @@ export async function createWikiPage(
         },
         select: wikiPageSelect,
       });
-      const eventId = typeof req.body.chronologyEventId === 'string' ? req.body.chronologyEventId : lorePageId?.slice('event-'.length);
       const eraId = typeof req.body.chronologyEraId === 'string' ? req.body.chronologyEraId : null;
       if (eventId) await linkChronologyPage(tx, ctx, 'events', eventId, createdPage.id, true);
       if (eraId) await linkChronologyPage(tx, ctx, 'eras', eraId, createdPage.id, true);

@@ -7,6 +7,7 @@ import type { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
 import { chronologyCanManage, chronologyCanView } from '../lib/chronologyAccess.js';
 import { canViewWikiPage } from '../lib/wikiTree.js';
+import { canEditPage, type PageOwnershipFields } from '../../../shared/campaignPolicy/pageOwnership.js';
 import { EraError } from '../lib/chronologyEraService.js';
 
 export async function linkChronologyPage(db: Prisma.TransactionClient, ctx: CampaignContext,
@@ -32,10 +33,14 @@ export async function linkChronologyPage(db: Prisma.TransactionClient, ctx: Camp
   if (pageId) {
     const page = await db.wikiPage.findFirst({ where: { id: pageId, campaignId: ctx.campaignId, deletedAt: null } });
     if (!page || !canViewWikiPage(page.visibility, ctx.role)) throw new EraError('Page not found.', 404);
+    if (!canEditPage(ctx.actor, page as PageOwnershipFields)) throw new EraError('Forbidden: cannot edit this page', 403);
     if (initialize) await db.wikiPage.update({ where: { id: page.id }, data: { visibility: record.visibility === 'DM_ONLY' ? 'DM_Only' : record.visibility === 'PUBLIC' ? 'Public' : 'Party' } });
     await ownChronologyWikiPage(db, ctx.campaignId, type === 'events' ? 'event' : 'era', page.id);
   }
-  if (!pageId && previousId) await ownChronologyWikiPage(db, ctx.campaignId, type === 'events' ? 'event' : 'era', previousId);
+  if (!pageId && previous) {
+    if (!canEditPage(ctx.actor, previous as PageOwnershipFields)) throw new EraError('Forbidden: cannot edit this page', 403);
+    await ownChronologyWikiPage(db, ctx.campaignId, type === 'events' ? 'event' : 'era', previous.id);
+  }
   if (type === 'events') await db.calendarEvent.update({ where: { id }, data: { wikiPageId: pageId } });
   else await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id } }, data: { overviewPageId: pageId } });
 }

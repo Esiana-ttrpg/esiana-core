@@ -148,7 +148,7 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
       if (current && !chronologyCanView(ctx, current.visibility)) throw new EraError('The current era cannot be changed with your access.', 403);
       await db.campaignEra.updateMany({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true }, data: { isCurrent: false } });
     }
-    const data = { name, description: input.description === undefined ? existing?.description ?? null : input.description, calendarId: calendar.id, isCurrent: input.isCurrent, visibility: input.visibility,
+    const data = { name, description: input.description === undefined ? existing?.description ?? null : input.description?.trim() || null, calendarId: calendar.id, isCurrent: input.isCurrent, visibility: input.visibility,
       epochStartMinute: start, epochEndMinute: end, updatedByUserId: userId };
     const era = existing
       ? await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id: existing.id } }, data })

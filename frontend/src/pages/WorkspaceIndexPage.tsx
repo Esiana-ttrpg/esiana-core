@@ -1,4 +1,6 @@
-import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
+import { campaignWikiPath } from '@/lib/campaignPaths';
+import { CampaignWorkspace } from '@shared/campaignWorkspace';
 import { useTranslation } from 'react-i18next';
 import { workspaceSegmentFromCampaignPath } from '@/lib/resolveWikiRoutePageId';
 import { readCampaignHandle, campaignDashboardPath } from '@/lib/campaignPaths';
@@ -118,6 +120,13 @@ export function WorkspaceIndexPage() {
     );
   }
 
-  if (segment === 'event-pages' || segment === 'era-pages') return <p className="p-6 text-muted">No authored {segment === 'event-pages' ? 'event' : 'era'} pages available.</p>;
+  if (segment === 'event-pages' || segment === 'era-pages') {
+    const workspace = segment === 'event-pages' ? CampaignWorkspace.EVENTS : CampaignWorkspace.ERAS;
+    // flatPages comes from the authorized tree; never fetch hidden ancestors.
+    const pages = flatPages.filter(page => page.workspace === workspace && page.pathKey);
+    return <div className="p-6"><h1>{route.title}</h1>{pages.length
+      ? <ul>{pages.map(page => <li key={page.id}><Link className="inline-flex min-h-11 items-center underline" to={campaignWikiPath(campaignHandle, page.id, flatPages)}>{page.title}</Link></li>)}</ul>
+      : <p className="text-muted">No authored {segment === 'event-pages' ? 'event' : 'era'} pages available.</p>}</div>;
+  }
   return <Navigate to={campaignDashboardPath(campaignHandle)} replace />;
 }

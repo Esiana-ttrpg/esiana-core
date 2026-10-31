@@ -145,6 +145,21 @@ test('chronology URLs and optional documents preserve identity, isolation and pe
     assert.equal((await listChronologyEras(player)).find(era => era.id === id)?.overview, '');
     await saveChronologyEra(gm, { ...input, description: 'Explicit new description.' }, undefined, id);
     assert.equal((await stored()).description, 'Explicit new description.');
+    await saveChronologyEra(gm, { ...input, description: '  Trimmed description.  ' }, undefined, id);
+    assert.equal((await stored()).description, 'Trimmed description.');
+    await saveChronologyEra(gm, { ...input, description: ' \n ' }, undefined, id);
+    assert.equal((await stored()).description, null);
+  });
+
+  await t.test('chronology managers need page edit authority to link or move authored documents', async () => {
+    const manager = await context('PARTICIPANT', true);
+    const document = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'Staff account', visibility: 'Public', ownerType: 'STAFF' } });
+    const event = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Staff history', visibility: 'PUBLIC' } });
+    await assert.rejects(prisma.$transaction(tx => linkChronologyPage(tx, manager, 'events', event.id, document.id, true)), /Forbidden: cannot edit/);
+    assert.equal((await prisma.wikiPage.findUniqueOrThrow({ where: { id: document.id } })).workspace, null);
+    await prisma.$transaction(tx => linkChronologyPage(tx, gm, 'events', event.id, document.id));
+    await assert.rejects(prisma.$transaction(tx => linkChronologyPage(tx, manager, 'events', event.id, null)), /Forbidden: cannot edit/);
+    assert.equal((await prisma.calendarEvent.findUniqueOrThrow({ where: { id: event.id } })).wikiPageId, document.id);
   });
 
   await t.test('PUT consequences returns the same authorized linked-page state as GET', async () => {

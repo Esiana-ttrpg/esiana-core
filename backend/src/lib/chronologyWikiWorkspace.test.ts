@@ -75,6 +75,15 @@ test('authored chronology documents use the existing wiki workspaces and survive
 
   let returned: any, status = 200;
   const response = { status(code: number) { status = code; return this; }, json(value: unknown) { returned = value; return this; } } as any;
+  await createWikiPage({ campaign: gm, user: { id: owner.id }, body: { title: 'Mismatched account', id: `event-${event.id}`, chronologyEventId: unprefixedEvent.id }, params: {} } as any, response);
+  assert.equal(status, 400);
+  status = 200;
+  const restricted = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Restricted', visibility: 'DM_ONLY', description: 'Private history' } });
+  const manager = await buildCampaignContext({ campaignId: campaign.id, campaignHandle: campaign.handle, campaignOwnerUserId: owner.id, discoverability: 'PRIVATE', userId: 'member-player', membershipRole: 'PARTICIPANT', allowPlayerChronologyManagement: true, partyId: null });
+  await createWikiPage({ campaign: manager, user: { id: 'member-player' }, body: { title: 'Restricted account', id: `event-${restricted.id}` }, params: {} } as any, response);
+  assert.equal(status, 404);
+  assert.equal(await prisma.wikiPage.count({ where: { campaignId: campaign.id, id: `event-${restricted.id}` } }), 0);
+  status = 200;
   await getWikiPageByWorkspacePath({ campaign: player, params: { workspaceSegment: 'event-pages', pathKey: migrated.pathKey } } as any, response);
   assert.equal(status, 200); assert.equal(returned.id, legacy.id);
   await getCategoryIndex({ campaign: player, params: { pageId: migrated.parentId }, query: {} } as any, response);

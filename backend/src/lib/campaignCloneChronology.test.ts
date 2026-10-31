@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { prisma } from './prisma.js';
 import { duplicateCampaign } from './campaignClone.js';
+import { mergeEventConsequenceSetIntoMetadata, readEventConsequencesFromMetadata } from '../../../shared/eventConsequence.js';
 import type { CampaignCloneOptions } from './campaignCloneOptions.js';
 
 if (process.env.CHRONOLOGY_ERA_TEST_DATABASE_URL) {
@@ -22,7 +23,11 @@ test('campaign duplication links copied events only to copied wiki documents', a
   });
   const calendar = await prisma.fantasyCalendar.create({ data: { campaignId: source.id, name: 'History', months: [], weekdays: [], seasons: [], moons: [], leapDays: [] } });
   const document = await prisma.wikiPage.create({ data: { campaignId: source.id, title: 'Riverlight Chronicle', visibility: 'Party', metadata: { chronologyDocument: 'event' } } });
-  await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Riverlight Discovery', wikiPageId: document.id } });
+  await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Riverlight Discovery', wikiPageId: document.id,
+    metadata: mergeEventConsequenceSetIntoMetadata({ preserved: true }, [{ id: 'route', kind: 'route_change', payload: { severity: 'minor' }, targets: {
+      pageIds: [document.id, 'missing-page'], havenIds: [document.id], locationIds: [document.id, 'missing-location'],
+    } }]) as any,
+  } });
   await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'A Quiet Anniversary' } });
   const options: CampaignCloneOptions = {
     structure: { wikiPages: true, folderStructure: true, sidebarLayout: false },
@@ -43,9 +48,12 @@ test('campaign duplication links copied events only to copied wiki documents', a
   assert.notEqual(linked.wikiPageId, document.id);
   assert.equal(linked.wikiPage?.campaignId, campaigns[1]);
   assert.equal(linked.wikiPage?.title, document.title);
+  assert.deepEqual(readEventConsequencesFromMetadata(linked.metadata)[0].targets, { pageIds: [linked.wikiPageId], havenIds: [linked.wikiPageId], locationIds: [linked.wikiPageId] });
+  assert.equal((linked.metadata as Record<string, unknown>).preserved, true);
   assert.equal(copied.find(event => event.title === 'A Quiet Anniversary')?.wikiPageId, null);
   const withoutDocuments = await clone({ ...options, structure: { ...options.structure, wikiPages: false } }, 'without-documents');
   assert.equal(withoutDocuments.length, 2);
   assert.ok(withoutDocuments.every(event => event.wikiPageId === null), 'unmapped pages never leave source-campaign links on copied events');
+  assert.equal(readEventConsequencesFromMetadata(withoutDocuments.find(event => event.title === 'Riverlight Discovery')!.metadata)[0].targets, undefined);
   assert.equal((await prisma.wikiPage.findUniqueOrThrow({ where: { id: document.id } })).campaignId, source.id);
 });

@@ -76,9 +76,11 @@ async function ownershipCandidates(db: Db, campaignId: string) {
     return null;
   };
   const candidates = pages.flatMap(page => {
-    const workspace = resolveWorkspaceForPage(page, pages);
-    const kind = chronologyWikiDocumentKind(page) ?? (eventIds.has(page.id) ? 'event' : eraIds.has(page.id) ? 'era' : null)
-      ?? (workspace === CampaignWorkspace.EVENTS ? 'event' : workspace === CampaignWorkspace.ERAS ? 'era' : inheritedKind(page.id));
+    let kind = chronologyWikiDocumentKind(page) ?? (eventIds.has(page.id) ? 'event' : eraIds.has(page.id) ? 'era' : null);
+    if (!kind) {
+      const workspace = resolveWorkspaceForPage(page, pages);
+      kind = workspace === CampaignWorkspace.EVENTS ? 'event' : workspace === CampaignWorkspace.ERAS ? 'era' : inheritedKind(page.id);
+    }
     if (!kind) return [];
     const definition = definitions[kind];
     const root = pages.find(row => metadataOf(row.metadata).systemCategoryKey === definition.key);

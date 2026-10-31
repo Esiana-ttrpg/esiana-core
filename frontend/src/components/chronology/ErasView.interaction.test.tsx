@@ -155,3 +155,22 @@ test('saving an era awaits exactly one refresh before navigation and never edits
     expect(ui.onErasChanged).toHaveBeenCalledOnce();
   } finally { completeRefresh(); await ui.unmount(); }
 });
+
+test('retrying after a create succeeds and refresh fails does not create another era', async () => {
+  const ui = await mount(true, 0);
+  vi.mocked(ui.onErasChanged).mockRejectedValueOnce(new Error('Refresh failed')).mockResolvedValueOnce(undefined);
+  mocks.api.mockResolvedValue({ era: { ...era('saved-era', 1), slug: 'saved-era' } });
+  try {
+    await ui.click(ui.button('Create era'));
+    const form = document.querySelector('dialog form')!;
+    await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(mocks.api).toHaveBeenCalledOnce();
+    expect(mocks.api.mock.calls[0][1].method).toBe('POST');
+    expect(document.querySelector('dialog [role="alert"]')?.textContent).toBe('Refresh failed');
+    expect(ui.container.querySelector('output')?.textContent).toBe('/');
+    await act(async () => { form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(mocks.api).toHaveBeenCalledOnce();
+    expect(ui.onErasChanged).toHaveBeenCalledTimes(2);
+    expect(ui.container.querySelector('output')?.textContent).toBe('/campaigns/archive/eras/saved-era');
+  } finally { await ui.unmount(); }
+});

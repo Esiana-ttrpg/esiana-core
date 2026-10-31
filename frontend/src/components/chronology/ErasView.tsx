@@ -91,6 +91,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
   useEffect(() => { onInspectionChange?.(occurrence); }, [occurrence, onInspectionChange]);
   const [draft, setDraft] = useState<EraInput | null>(null);
   const [editing, setEditing] = useState<string | undefined>();
+  const [savedEraPath, setSavedEraPath] = useState<string | null>(null);
   const [visibilityTouched, setVisibilityTouched] = useState(false);
   const [impact, setImpact] = useState<{ era: ChronologyEra; details: EraDeletionImpact } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -116,6 +117,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
     finally { setBusy(false); }
   }
   function open(era?: ChronologyEra, close = false) {
+    setSavedEraPath(null);
     setEditing(era?.id); setVisibilityTouched(false);
     const state = ledger.timeBundle.calendars.find(row => row.id === era?.calendarId)?.state;
     setDraft(era ? { calendarId: era.calendarId, name: era.name, startDate: era.startDate, endDate: era.endDate, visibility: era.visibility, isCurrent: era.isCurrent, description: era.description, ...(close && state ? { endDate: { year: state.year, month: state.monthIndex, day: state.day } } : {}) } : { calendarId: track || defaultTrack, name: '', startDate: null, endDate: null, visibility: 'PARTY', isCurrent: false, description: null });
@@ -226,7 +228,16 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
       open={!!inspection} occurrence={occurrence} dateSeed={occurrence?.start} onClose={() => setSelectedKey(null)}
       onMutated={ledger.onEventMutated} onDeleted={async () => { setSelectedKey(null); await ledger.onEventDeleted(); }} onRevealEvent={ledger.onRevealEvent} />
     {draft && like && <EraDialog title={editing ? 'Edit era' : 'Create era'} busy={busy} onClose={() => setDraft(null)}>
-      <form className="space-y-4" onSubmit={e => { e.preventDefault(); void perform(async () => { const result = await saveEra(ledger.campaignHandle, draft, editing); await onErasChanged(); setDraft(null); navigate(campaignEraPath(ledger.campaignHandle, result.era.slug ?? result.era.id)); setSelectedKey(null); }, false); }}>
+      <form className="space-y-4" onSubmit={e => { e.preventDefault(); void perform(async () => {
+        let path = savedEraPath;
+        if (!path) {
+          const result = await saveEra(ledger.campaignHandle, draft, editing);
+          path = campaignEraPath(ledger.campaignHandle, result.era.slug ?? result.era.id);
+          setSavedEraPath(path);
+        }
+        await onErasChanged(); setDraft(null); navigate(path); setSelectedKey(null);
+      }, false); }}>
+        <fieldset disabled={busy || !!savedEraPath} className="space-y-4">
         <h2 className={TYPE_DISPLAY_CLASS}>{editing ? 'Edit era' : 'Create era'}</h2>
         <label className="block">Calendar <select disabled={!!editing} value={draft.calendarId} onChange={e => setDraft({ ...draft, calendarId: e.target.value, startDate: null, endDate: null })}>{bundle.calendars.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
         <label className="block">Name <input required maxLength={120} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label>
@@ -240,8 +251,9 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
         <label>Visibility <select value={draft.visibility} onChange={e => { setVisibilityTouched(true); setDraft({ ...draft, visibility: e.target.value as EraInput['visibility'] }); }}><option value="PUBLIC">Public</option><option value="PARTY">Party</option>{elevated && <option value="DM_ONLY">DM only</option>}</select></label>
         <label className="block"><input type="checkbox" checked={draft.isCurrent} onChange={e => setDraft({ ...draft, isCurrent: e.target.checked })} /> Make current</label>
         <p>Description</p><WikiTipTapEditor content={draft.description ?? ''} onChange={description => setDraft({ ...draft, description })} wikiTree={[]} />
+        </fieldset>
         {error && <p role="alert">{error}</p>}
-        <div className="flex gap-3"><button disabled={busy} type="button" onClick={() => setDraft(null)}>Cancel</button><button disabled={busy} type="submit">Save era</button></div>
+        <div className="flex gap-3"><button disabled={busy} type="button" onClick={() => setDraft(null)}>Cancel</button><button disabled={busy} type="submit">{savedEraPath ? 'Retry refresh' : 'Save era'}</button></div>
       </form>
     </EraDialog>}
     {impact && <EraDialog title="Delete era" busy={busy} onClose={() => setImpact(null)}><div className="space-y-4">

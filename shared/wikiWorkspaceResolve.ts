@@ -177,8 +177,8 @@ export function resolveWorkspaceForPage(
   if (!isRoutableWikiPage(page)) return null;
   const chronologyKind = chronologyWikiDocumentKind(page);
   if (chronologyKind) return chronologyKind === 'event' ? CampaignWorkspace.EVENTS : CampaignWorkspace.ERAS;
-  if (isPageUnderSystemCategory(page.id, flatPages, 'chronology_events') || isPageUnderCategoryTitle(page.id, flatPages, 'Events')) return CampaignWorkspace.EVENTS;
-  if (isPageUnderSystemCategory(page.id, flatPages, 'chronology_eras') || isPageUnderCategoryTitle(page.id, flatPages, 'Eras')) return CampaignWorkspace.ERAS;
+  if (isPageUnderSystemCategory(page.id, flatPages, 'chronology_events')) return CampaignWorkspace.EVENTS;
+  if (isPageUnderSystemCategory(page.id, flatPages, 'chronology_eras')) return CampaignWorkspace.ERAS;
 
   if (page.templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE) {
     return CampaignWorkspace.HAVENS;
