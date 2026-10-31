@@ -18,7 +18,8 @@ SELECT "campaignId", "id", "calendarId", "name", "sortOrder", "isCurrent", "epoc
 DROP TABLE "_CampaignEra_documents";
 CREATE UNIQUE INDEX "CampaignEra_overviewPageId_key" ON "CampaignEra"("overviewPageId");
 CREATE INDEX "CampaignEra_campaignId_calendarId_sortOrder_idx" ON "CampaignEra"("campaignId", "calendarId", "sortOrder");
-ALTER TABLE "CalendarEvent" ADD COLUMN "wikiPageId" TEXT;
+ALTER TABLE "CalendarEvent" ADD COLUMN "wikiPageId" TEXT CONSTRAINT "CalendarEvent_wikiPageId_fkey" REFERENCES "WikiPage"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+CREATE INDEX "CalendarEvent_wikiPageId_idx" ON "CalendarEvent"("wikiPageId");
 UPDATE "CalendarEvent" SET "wikiPageId" = (SELECT "id" FROM "WikiPage" WHERE "id" = 'event-' || "CalendarEvent"."id" AND "campaignId" = (SELECT "campaignId" FROM "FantasyCalendar" WHERE "id" = "CalendarEvent"."calendarId") AND "deletedAt" IS NULL);
 CREATE TABLE "ChronologyRoute" (
  "campaignId" TEXT NOT NULL, "entityType" TEXT NOT NULL, "slug" TEXT NOT NULL,

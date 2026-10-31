@@ -1439,6 +1439,7 @@ model CalendarEventCategory {
 }
 
 model CalendarEvent {
+  wikiPage WikiPage? @relation("CalendarEventWikiPage", fields: [wikiPageId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   wikiPageId String?
   id             String  @id @default(uuid())
   calendarId     String
@@ -1481,6 +1482,7 @@ model CalendarEvent {
   @@index([repeatUnit])
   @@index([calendarId, categoryId])
   @@index([targetEpochMinute])
+  @@index([wikiPageId])
   @@index([targetYear, targetMonth, targetDay])
 }
 
@@ -1543,6 +1545,7 @@ model CampaignMember {
 // ---------------------------------------------------------------------------
 
 model WikiPage {
+  calendarEvents CalendarEvent[] @relation("CalendarEventWikiPage")
   ownedEra CampaignEra?
   id              String  @id @default(cuid())
   campaignId      String

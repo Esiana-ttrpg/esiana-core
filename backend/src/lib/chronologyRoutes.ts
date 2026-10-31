@@ -2,10 +2,10 @@ import { prisma } from './prisma.js';
 import type { Prisma, ChronologyRoute } from './prismaClient.js';
 
 export function chronologySlug(title: string): string {
-  const normalized = title.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase().replace(/['’]/g, '').replace(/[^\p{L}\p{N}]+/gu, '-')
+  const normalized = title.normalize('NFKD')
+    .toLowerCase().replace(/['’]/g, '').replace(/[^\p{L}\p{N}\p{M}]+/gu, '-')
     .replace(/^-|-$/g, '');
-  return Array.from(normalized).slice(0, 100).join('').replace(/-$/g, '') || 'untitled';
+  return Array.from(normalized).slice(0, 100).join('').replace(/-$/g, '').normalize('NFC') || 'untitled';
 }
 
 /** Caller holds the campaign row lock. Aliases are never reassigned, even after deletion. */

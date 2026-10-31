@@ -9,9 +9,10 @@ import { linkChronologyPage } from '../controllers/chronologyPagesController.js'
 import { getChronologyTimelineBundle } from '../controllers/chronologyController.js';
 import { loadEventConsequencesForCalendarEvent, saveEventConsequences, listActionableEventConsequencesForCampaign } from './eventConsequenceStore.js';
 import { buildOperationalPayload, restoreOperationalPayload } from './campaignExport/sovereignOperational.js';
-import { getEventConsequences } from '../controllers/eventConsequenceController.js';
+import { getEventConsequences, putEventConsequences } from '../controllers/eventConsequenceController.js';
 import { saveChronologyEra, listChronologyEras } from './chronologyEraService.js';
 import { mergeEventConsequenceSetIntoMetadata, type EventConsequence } from '../../../shared/eventConsequence.js';
+import { updateCalendarEvent } from '../controllers/calendarEventsController.js';
 
 if (process.env.CHRONOLOGY_ERA_TEST_DATABASE_URL) {
   process.env.DATABASE_PROVIDER = process.env.CHRONOLOGY_ERA_TEST_DATABASE_URL.startsWith('file:') ? 'sqlite' : 'postgresql';
@@ -28,8 +29,8 @@ test('chronology URLs and optional documents preserve identity, isolation and pe
     await prisma.campaign.deleteMany({ where: { id: { in: [campaign.id, other.id] } } });
     await prisma.user.delete({ where: { id: owner.id } }); await prisma.$disconnect();
   });
-  const context = (role: 'GAMEMASTER' | 'PARTICIPANT') => buildCampaignContext({ campaignId: campaign.id, campaignHandle: campaign.handle, campaignOwnerUserId: owner.id,
-    discoverability: 'PRIVATE', userId: role === 'GAMEMASTER' ? owner.id : 'member-player', membershipRole: role, allowPlayerChronologyManagement: false, partyId: null });
+  const context = (role: 'GAMEMASTER' | 'PARTICIPANT', manage = false) => buildCampaignContext({ campaignId: campaign.id, campaignHandle: campaign.handle, campaignOwnerUserId: owner.id,
+    discoverability: 'PRIVATE', userId: role === 'GAMEMASTER' ? owner.id : 'member-player', membershipRole: role, allowPlayerChronologyManagement: manage, partyId: null });
   const gm = await context('GAMEMASTER'), player = await context('PARTICIPANT');
   const calendar = await prisma.fantasyCalendar.create({ data: { campaignId: campaign.id, name: 'Florence', isMasterTime: true, epochOffset: 0n,
     weekdays: [], months: [{ name: 'Harvestmoon', length: 30, type: 'standard' }], seasons: [], moons: [], leapDays: [] } });
@@ -37,7 +38,7 @@ test('chronology URLs and optional documents preserve identity, isolation and pe
   const duplicate = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: first.title } });
   const recurring = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Market Day', isRepeating: true, repeatInterval: 7, repeatUnit: 'DAYS', limitRepetitions: 3, targetYear: 1, targetMonth: 0, targetDay: 1 } });
   assert.equal(chronologySlug(first.title), 'a-childs-birthday-party');
-  assert.equal(chronologySlug('Échos & Ashes'), 'echos-ashes');
+  assert.equal(chronologySlug('Échos & Ashes'), 'échos-ashes');
   let routes = await chronologyRouteMap(campaign.id, 'events');
   assert.equal(routes.get(first.id)?.slug, 'a-childs-birthday-party');
   assert.equal(routes.get(duplicate.id)?.slug, 'a-childs-birthday-party-2');
@@ -68,20 +69,106 @@ test('chronology URLs and optional documents preserve identity, isolation and pe
   assert.equal(bundle.baseEvents.find((row: any) => row.id === first.id).wikiPageId, null);
   await prisma.$transaction(tx => linkChronologyPage(tx, gm, 'events', first.id, null));
   assert.equal((await prisma.calendarEvent.findUniqueOrThrow({ where: { id: first.id } })).description, first.description);
+  const authoredDocumentCount = await prisma.wikiPage.count({ where: { campaignId: campaign.id } });
   await prisma.$transaction(tx => saveEventConsequences(tx, { campaignId: campaign.id, calendarEventId: recurring.id, actorUserId: owner.id, consequences: [{ id: 'changed-harbor', kind: 'alter_location', description: 'A new market opens.', payload: {} }] }));
   assert.equal((await loadEventConsequencesForCalendarEvent(prisma, campaign.id, recurring.id)).consequences[0]?.id, 'changed-harbor');
   assert.equal((await listActionableEventConsequencesForCampaign(campaign.id, prisma))[0]?.calendarEventId, recurring.id);
-  assert.equal(await prisma.wikiPage.count({ where: { campaignId: campaign.id } }), 1, 'consequences do not create stub documents');
+  assert.equal(await prisma.wikiPage.count({ where: { campaignId: campaign.id } }), authoredDocumentCount, 'consequences do not create stub documents');
   const suggestion = await prisma.campaignWorldEventSuggestion.create({ data: { campaignId: campaign.id, kind: 'faction_pressure', title: 'Famine in the North', narrative: 'The granaries run low.', occurredAtEpochMinute: 0n, sourceRef: 'fixture', idempotencyKey: stamp } });
   const accepted = await resolveWorldDevelopmentSuggestion({ campaignId: campaign.id, campaignHandle: campaign.handle, role: 'GAMEMASTER', userId: owner.id, suggestionId: suggestion.id, action: 'accept' });
   assert.ok(accepted.calendarEventId);
   assert.equal(accepted.lorePageId, undefined);
   assert.equal((await prisma.calendarEvent.findUniqueOrThrow({ where: { id: accepted.calendarEventId } })).wikiPageId, null);
-  assert.equal(await prisma.wikiPage.count({ where: { campaignId: campaign.id } }), 1, 'generated events do not create stub documents');
+  assert.equal(await prisma.wikiPage.count({ where: { campaignId: campaign.id } }), authoredDocumentCount, 'generated events do not create stub documents');
   const backup = await buildOperationalPayload(campaign.id);
   await prisma.chronologyRoute.deleteMany({ where: { campaignId: campaign.id } });
   await restoreOperationalPayload(campaign.id, backup);
   assert.ok((await chronologyRouteMap(campaign.id, 'events')).get(first.id)?.slugAliases.includes('a-childs-birthday-party'));
+
+  await t.test('the event update API reserves the new title and old alias atomically', async () => {
+    const event = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Before the Discovery', visibility: 'PUBLIC' } });
+    let returned: any;
+    await updateCalendarEvent({ campaign: gm, params: { calendarId: calendar.id, eventId: event.id }, body: { title: 'After the Discovery' } } as any,
+      { status(code: number) { assert.equal(code, 200); return this; }, json(value: unknown) { returned = value; } } as any);
+    assert.equal(returned.event.title, 'After the Discovery');
+    // Inspect the transaction result before any read-side slug backfill can repair it.
+    const rows = await prisma.chronologyRoute.findMany({ where: { campaignId: campaign.id, entityType: 'events', entityId: event.id } });
+    assert.equal(rows.find(row => row.slug === 'before-the-discovery')?.canonical, false);
+    assert.equal(rows.find(row => row.slug === 'after-the-discovery')?.canonical, true);
+  });
+
+  await t.test('the optional page relation cascades page ID changes and clears links on hard deletion', async () => {
+    const document = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'An independent account', visibility: 'Party' } });
+    const event = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Linked to an account', wikiPageId: document.id }, include: { wikiPage: true } });
+    assert.equal(event.wikiPage?.id, document.id);
+    assert.equal((await prisma.wikiPage.findUniqueOrThrow({ where: { id: document.id }, include: { calendarEvents: true } })).calendarEvents[0]?.id, event.id);
+    const changedId = randomUUID();
+    await prisma.wikiPage.update({ where: { id: document.id }, data: { id: changedId } });
+    assert.equal((await prisma.calendarEvent.findUniqueOrThrow({ where: { id: event.id } })).wikiPageId, changedId);
+    await prisma.wikiPage.delete({ where: { id: changedId } });
+    assert.equal((await prisma.calendarEvent.findUniqueOrThrow({ where: { id: event.id } })).wikiPageId, null);
+  });
+
+  await t.test('restoring a canonical route demotes other current routes without removing aliases', async () => {
+    const restored = backup.chronologyRoutes!.find(row => row.entityId === first.id && row.canonical)!;
+    await prisma.chronologyRoute.updateMany({ where: { campaignId: campaign.id, entityType: 'events', entityId: first.id }, data: { canonical: false } });
+    await prisma.chronologyRoute.create({ data: { campaignId: campaign.id, entityType: 'events', entityId: first.id, title: String(restored.title), slug: 'newer-live-bookmark', canonical: true } });
+    const restore = (row: Record<string, unknown>) => restoreOperationalPayload(campaign.id, { chronologyRoutes: [row], downtimeHavens: [], downtimeProjects: [], pluginData: [] });
+    await restore(restored);
+    assert.deepEqual((await prisma.chronologyRoute.findMany({ where: { campaignId: campaign.id, entityType: 'events', entityId: first.id, canonical: true } })).map(row => row.slug), [restored.slug]);
+    assert.equal((await prisma.chronologyRoute.findUniqueOrThrow({ where: { campaignId_entityType_slug: { campaignId: campaign.id, entityType: 'events', slug: 'newer-live-bookmark' } } })).canonical, false);
+    await restore({ ...restored, slug: 'restored-historical-alias', canonical: false });
+    assert.deepEqual((await prisma.chronologyRoute.findMany({ where: { campaignId: campaign.id, entityType: 'events', entityId: first.id, canonical: true } })).map(row => row.slug), [restored.slug]);
+  });
+
+  await t.test('slug normalization preserves marks and unifies canonically equivalent titles', () => {
+    assert.equal(chronologySlug('कथा और खोज'), 'कथा-और-खोज');
+    assert.equal(chronologySlug('حِكايةُ آش'), 'حِكايةُ-آش');
+    assert.equal(chronologySlug('A criança d’Água'), 'a-criança-dágua');
+    assert.equal(chronologySlug('E\u0301chos & Ashes'), chronologySlug('Échos & Ashes'));
+    assert.equal(chronologySlug('Échos & Ashes').normalize('NFC'), chronologySlug('Échos & Ashes'));
+  });
+
+  await t.test('only an explicit description edit changes authored era text', async () => {
+    const input = { calendarId: calendar.id, name: 'A Shared Age', startDate: null, endDate: null, isCurrent: false, visibility: 'PUBLIC' as const };
+    const id = await saveChronologyEra(gm, { ...input, description: 'Authored chronology description.' });
+    await saveChronologyEra(gm, { ...input, name: 'Renamed Shared Age', overview: 'A stale page projection.' } as typeof input, undefined, id);
+    const stored = () => prisma.campaignEra.findUniqueOrThrow({ where: { campaignId_id: { campaignId: campaign.id, id } } });
+    assert.equal((await stored()).description, 'Authored chronology description.');
+    const document = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'Restricted age account', visibility: 'DM_Only', blocks: [{ type: 'text-tiptap', content: { markdown: 'Restricted wiki prose.' } }] } });
+    await prisma.$transaction(tx => linkChronologyPage(tx, gm, 'eras', id, document.id));
+    await saveChronologyEra(gm, { ...input, description: null }, undefined, id);
+    const projected = (await listChronologyEras(gm)).find(era => era.id === id)!;
+    assert.equal(projected.overview, 'Restricted wiki prose.');
+    await saveChronologyEra(gm, { ...input, overview: projected.overview } as typeof input, undefined, id);
+    assert.equal((await stored()).description, null, 'saving a page-derived overview must not author chronology prose');
+    assert.equal((await listChronologyEras(player)).find(era => era.id === id)?.overview, '');
+    await saveChronologyEra(gm, { ...input, description: 'Explicit new description.' }, undefined, id);
+    assert.equal((await stored()).description, 'Explicit new description.');
+  });
+
+  await t.test('PUT consequences returns the same authorized linked-page state as GET', async () => {
+    const contributor = await context('PARTICIPANT', true);
+    const document = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'Shared consequence account', visibility: 'Party' } });
+    const event = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Shared consequences', visibility: 'PARTY', wikiPageId: document.id } });
+    let returned: any;
+    const res = { status(code: number) { assert.equal(code, 200); return this; }, json(value: unknown) { returned = value; } } as any;
+    const req = { campaign: contributor, params: { eventId: event.id }, user: { id: 'member-player' }, body: { consequences: [] } } as any;
+    await putEventConsequences(req, res);
+    assert.equal(returned.lorePageId, document.id);
+    const put = returned;
+    await getEventConsequences(req, res);
+    assert.deepEqual(returned, put);
+    await prisma.wikiPage.update({ where: { id: document.id }, data: { visibility: 'DM_Only' } });
+    await putEventConsequences(req, res);
+    assert.equal(returned.lorePageId, null, 'PUT does not disclose a page that became restricted');
+    await prisma.wikiPage.update({ where: { id: document.id }, data: { visibility: 'Party', deletedAt: new Date() } });
+    await putEventConsequences(req, res);
+    assert.equal(returned.lorePageId, null);
+    await prisma.calendarEvent.update({ where: { id: event.id }, data: { wikiPageId: null } });
+    await putEventConsequences(req, res);
+    assert.equal(returned.lorePageId, null);
+  });
 
   await t.test('historical aliases and deleted reservations cannot be reclaimed', async () => {
     const third = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: first.title } });
@@ -145,7 +232,7 @@ test('chronology URLs and optional documents preserve identity, isolation and pe
     assert.equal((await listActionableEventConsequencesForCampaign(campaign.id, prisma)).find(row => row.calendarEventId === event.id), undefined);
     await prisma.$transaction(tx => linkChronologyPage(tx, gm, 'events', event.id, null));
     assert.deepEqual((await loadEventConsequencesForCalendarEvent(prisma, campaign.id, event.id)).consequences, []);
-    assert.deepEqual((await prisma.wikiPage.findUniqueOrThrow({ where: { id: document.id } })).metadata, document.metadata, 'operational saves do not mutate authored metadata');
+    assert.deepEqual(((await prisma.wikiPage.findUniqueOrThrow({ where: { id: document.id } })).metadata as Record<string, unknown>).eventConsequences, (document.metadata as Record<string, unknown>).eventConsequences, 'operational saves do not mutate authored consequences');
 
     const legacy = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Legacy event', visibility: 'PUBLIC', wikiPageId: document.id } });
     await prisma.wikiPage.update({ where: { id: document.id }, data: { visibility: 'DM_Only' } });

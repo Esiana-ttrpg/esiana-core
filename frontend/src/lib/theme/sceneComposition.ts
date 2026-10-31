@@ -294,7 +294,7 @@ export function isSceneCompositionActive(
   );
 }
 
-// Chronology event/era routes use the studio composition; scene pilots remain scoped to prose workspaces.
+// Chronology records use studio composition; authored event/era wiki routes reuse the codex scene profiles.
 export function resolveSceneComposition(
   input: ResolveSceneCompositionInput,
 ): SceneCompositionProfile | null {

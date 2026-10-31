@@ -110,6 +110,7 @@ export function resolveWorkspaceComposition(pathname: string): WorkspaceComposit
   if (first === 'wiki' && second === 'maintenance') return PRESETS.document;
 
   if (first === 'pages' && second) return PRESETS.codex;
+  if (first === 'event-pages' || first === 'era-pages') return second ? PRESETS.codex : PRESETS.hub;
 
   if (
     [

@@ -26,6 +26,7 @@ export const CATEGORY_INDEX_TITLES = new Set([
   'Calendars',
   'Timelines',
   'Events',
+  'Eras',
   'Quick Access',
   'Bookmarks',
   'Tags',
@@ -45,7 +46,26 @@ export type WikiPageWorkspaceInput = {
   parentId?: string | null;
   templateType: string;
   metadata?: unknown;
+  workspace?: string | null;
 };
+
+/** Exact prior workspace coordinates retained when a document changes workspace. */
+export function wikiPageHasRouteAlias(page: Pick<WikiPageWorkspaceInput, 'metadata'>, workspace: string, pathKey: string): boolean {
+  const metadata = page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {};
+  return Array.isArray(metadata.wikiRouteAliases) && metadata.wikiRouteAliases.some(alias => alias && typeof alias === 'object'
+    && (alias as Record<string, unknown>).workspace === workspace && (alias as Record<string, unknown>).pathKey === pathKey);
+}
+
+export type ChronologyWikiDocumentKind = 'event' | 'era';
+
+/** Durable wiki ownership survives chronology unlinking and deletion. */
+export function chronologyWikiDocumentKind(page: WikiPageWorkspaceInput): ChronologyWikiDocumentKind | null {
+  const metadata = page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {};
+  if (metadata.chronologyDocument === 'event' || metadata.chronologyDocument === 'era') return metadata.chronologyDocument;
+  if (metadata.eraOverview === true || page.workspace === CampaignWorkspace.ERAS) return 'era';
+  if (/^event-[a-zA-Z0-9_-]+$/.test(page.id) || page.workspace === CampaignWorkspace.EVENTS) return 'event';
+  return null;
+}
 
 function parseSystemCategoryKey(metadata: unknown): string | null {
   if (!metadata || typeof metadata !== 'object') return null;
@@ -130,6 +150,8 @@ export function isCategoryIndexPage(title: string | null | undefined): boolean {
 
 /** Whether a page should have workspace+pathKey (routable in public URLs). */
 export function isRoutableWikiPage(page: WikiPageWorkspaceInput): boolean {
+  if (['chronology_events', 'chronology_eras'].includes(parseSystemCategoryKey(page.metadata) ?? '')) return false;
+  if (chronologyWikiDocumentKind(page)) return true;
   if (CATEGORY_INDEX_TITLES.has(page.title.trim())) return false;
   if (page.templateType === 'SESSION_NOTE') return false;
   const systemKey = parseSystemCategoryKey(page.metadata);
@@ -153,6 +175,10 @@ export function resolveWorkspaceForPage(
   flatPages: readonly WikiPageWorkspaceInput[],
 ): CampaignWorkspaceType | null {
   if (!isRoutableWikiPage(page)) return null;
+  const chronologyKind = chronologyWikiDocumentKind(page);
+  if (chronologyKind) return chronologyKind === 'event' ? CampaignWorkspace.EVENTS : CampaignWorkspace.ERAS;
+  if (isPageUnderSystemCategory(page.id, flatPages, 'chronology_events') || isPageUnderCategoryTitle(page.id, flatPages, 'Events')) return CampaignWorkspace.EVENTS;
+  if (isPageUnderSystemCategory(page.id, flatPages, 'chronology_eras') || isPageUnderCategoryTitle(page.id, flatPages, 'Eras')) return CampaignWorkspace.ERAS;
 
   if (page.templateType === DOWNTIME_HAVEN_TEMPLATE_TYPE) {
     return CampaignWorkspace.HAVENS;

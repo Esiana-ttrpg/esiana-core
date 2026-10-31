@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveWikiRoutePageId,
+  resolveWikiNavigation,
   shouldBlockFreeformRoute,
 } from '@/lib/resolveWikiRoutePageId';
 import { CampaignWorkspace } from '@shared/campaignWorkspace';
 import type { WikiTreeNode } from '@/types/wiki';
+import { campaignWikiPath } from '@/lib/campaignPaths';
 
 const flatPages: WikiTreeNode[] = [
   {
@@ -21,6 +23,41 @@ const flatPages: WikiTreeNode[] = [
     updatedAt: '',
   },
 ];
+
+describe('authored chronology workspace routing', () => {
+  const document = { ...flatPages[0], id: 'event-definition-1', title: 'Moonrise Chronicle', parentId: 'events-root', workspace: 'EVENTS', pathKey: 'moonrise-chronicle', metadata: { chronologyDocument: 'event' } } as WikiTreeNode;
+  const handle = 'florence';
+  const route = (pathname: string, params: { pageId?: string; pathKey?: string }, pages = [document]) => resolveWikiNavigation({ campaignHandle: handle, pathname: `/campaigns/${handle}/${pathname}`, flatPages: pages, ...params });
+
+  it('generates a wiki destination for existing workspace-less legacy documents', () => {
+    const old = { ...document, workspace: null, pathKey: null, metadata: {} };
+    expect(campaignWikiPath(handle, old.id, [old])).toBe('/campaigns/florence/event-pages/event-definition-1');
+    expect(route(old.id, { pageId: old.id }, [old]).page?.id).toBe(old.id);
+  });
+  it('resolves existing document ID bookmarks before legacy event links', () => {
+    for (const [path, params] of [[document.id, { pageId: document.id }], [`pages/${document.id}`, { pathKey: document.id }], [`wiki/${document.id}`, { pageId: document.id }]] as const) {
+      expect(route(path, params).path).toBe('/campaigns/florence/event-pages/moonrise-chronicle');
+    }
+    expect(route('event-pages/moonrise-chronicle', { pathKey: 'moonrise-chronicle' }).page?.id).toBe(document.id);
+  });
+  it('uses chronology only for unknown IDs in legacy namespaces', () => {
+    expect(route('event-missing', { pageId: 'event-missing' }).path).toBe('/campaigns/florence/events/missing');
+    expect(route('pages/event-missing', { pathKey: 'event-missing' }).path).toBe('/campaigns/florence/events/missing');
+    expect(route('wiki/event-missing', { pageId: 'event-missing' }).path).toBeUndefined();
+    expect(route('event-pages/event-missing', { pathKey: 'event-missing' }).path).toBeUndefined();
+  });
+  it('keeps era document routing and prior workspace bookmarks separate from chronology', () => {
+    const era = { ...document, id: 'era-document', workspace: 'ERAS', pathKey: 'ember-chronicle', metadata: { eraOverview: true, wikiRouteAliases: [{ workspace: 'PAGES', pathKey: 'ember-chronicle' }] } } as WikiTreeNode;
+    expect(campaignWikiPath(handle, era.id, [era])).toBe('/campaigns/florence/era-pages/ember-chronicle');
+    expect(route('pages/ember-chronicle', { pathKey: 'ember-chronicle' }, [era]).path).toBe('/campaigns/florence/era-pages/ember-chronicle');
+    expect(route('pages/present', { pathKey: 'present' }, []).path).toBe('/campaigns/florence/eras');
+  });
+  it('does not misinterpret authored event-like path keys as chronology links', () => {
+    const ordinary = { ...flatPages[0], workspace: 'PAGES', pathKey: 'event-birthday', id: 'ordinary-page' } as WikiTreeNode;
+    expect(route('pages/event-birthday', { pathKey: 'event-birthday' }, [ordinary]).page?.id).toBe(ordinary.id);
+    expect(route('pages/event-birthday', { pathKey: 'event-birthday' }, [ordinary]).path).toBe('/campaigns/florence/pages/event-birthday');
+  });
+});
 
 describe('resolveWikiRoutePageId', () => {
   it('resolves by workspace pathKey', () => {

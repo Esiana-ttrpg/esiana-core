@@ -4,11 +4,13 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { parseHTML } from 'linkedom';
 import { EventsDirectory } from './EventsDirectory';
+import { ChronologyDocumentNavigation } from './ChronologyDocumentNavigation';
 import { ChronologyPageLink } from './ChronologyPageLink';
 import type { ChronologyTimelineBundle } from '@/lib/chronologyApi';
 
-const mocks = vi.hoisted(() => ({ create: vi.fn(), api: vi.fn(), refresh: vi.fn() }));
+const mocks = vi.hoisted(() => ({ create: vi.fn(), api: vi.fn(), refresh: vi.fn(), chronology: vi.fn() }));
 vi.mock('@/lib/wiki', () => ({ createWikiPage: mocks.create }));
+vi.mock('@/lib/chronologyApi', () => ({ fetchChronologyTimeline: mocks.chronology }));
 vi.mock('@/lib/api', () => ({ apiFetch: mocks.api }));
 vi.mock('@/contexts/WikiContext', () => ({ useWiki: () => ({
   campaignHandle: 'florence', can: () => true, refresh: mocks.refresh,
@@ -39,7 +41,7 @@ test('Events directory distinguishes accessible pages and keeps one row per recu
   const ui = await mount(<EventsDirectory campaignHandle="florence" bundle={bundle} />);
   try {
     expect(ui.container.querySelectorAll('li')).toHaveLength(3);
-    expect(ui.container.querySelector('a')?.getAttribute('href')).toBe('/campaigns/florence/events/fall-of-florence');
+    expect(ui.container.querySelector('li a')?.getAttribute('href')).toBe('/campaigns/florence/events/fall-of-florence');
     expect(ui.container.textContent).toContain('Recurring event');
     const select = ui.container.querySelector('select')!;
     await act(async () => {
@@ -52,7 +54,7 @@ test('Events directory distinguishes accessible pages and keeps one row per recu
 });
 
 test('Create page uses the normal wiki API with an explicit event link and opens its readable page route', async () => {
-  mocks.create.mockResolvedValue({ id: 'new-page', title: 'Juniper’s Celebration', workspace: 'PAGES', pathKey: 'junipers-celebration' });
+  mocks.create.mockResolvedValue({ id: 'new-page', title: 'Juniper’s Celebration', workspace: 'EVENTS', pathKey: 'junipers-celebration' });
   const ui = await mount(<ChronologyPageLink type="events" id="event-definition" title="Juniper’s Celebration" description="A celebration." />);
   try {
     expect(ui.container.textContent).toContain('No event page');
@@ -61,7 +63,7 @@ test('Create page uses the normal wiki API with an explicit event link and opens
     expect(mocks.create).toHaveBeenCalledWith('florence', expect.objectContaining({ chronologyEventId: 'event-definition', title: 'Juniper’s Celebration' }));
     expect(mocks.create.mock.calls[0][1]).not.toHaveProperty('id');
     expect(mocks.refresh).toHaveBeenCalledOnce();
-    expect(ui.container.querySelector('output')?.textContent).toBe('/campaigns/florence/pages/junipers-celebration');
+    expect(ui.container.querySelector('output')?.textContent).toBe('/campaigns/florence/event-pages/junipers-celebration');
   } finally { await ui.unmount(); }
 });
 
@@ -71,5 +73,23 @@ test('view-only chronology details retain Open page and hide page management', a
     expect(ui.container.querySelector('a')?.textContent).toBe('Open page');
     expect(ui.container.querySelector('details')).toBeNull();
     expect(ui.container.querySelector('button')).toBeNull();
+  } finally { await ui.unmount(); }
+});
+
+test('wiki documents expose separate authorized chronology and wiki navigation', async () => {
+  mocks.chronology.mockResolvedValue({ baseEvents: [{ id: 'definition', title: 'Renamed Celebration', slug: 'renamed-celebration', wikiPageId: 'page-1' }], eras: [] });
+  const ui = await mount(<ChronologyDocumentNavigation kind="event" pageId="page-1" />);
+  try {
+    const destinations = [...ui.container.querySelectorAll('a')].map(link => link.getAttribute('href'));
+    expect(destinations).toEqual(['/campaigns/florence/event-pages', '/campaigns/florence/events/renamed-celebration']);
+  } finally { await ui.unmount(); }
+});
+
+test('unlinked wiki documents retain their normal wiki directory without inventing an event link', async () => {
+  mocks.chronology.mockResolvedValue({ baseEvents: [], eras: [] });
+  const ui = await mount(<ChronologyDocumentNavigation kind="event" pageId="page-1" />);
+  try {
+    expect(ui.container.querySelectorAll('a')).toHaveLength(1);
+    expect(ui.container.querySelector('a')?.getAttribute('href')).toBe('/campaigns/florence/event-pages');
   } finally { await ui.unmount(); }
 });

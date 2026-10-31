@@ -1,3 +1,4 @@
+import { ownChronologyWikiPage, ChronologyWorkspaceError } from '../lib/chronologyWikiWorkspace.js';
 import { visibleChronologyPageIds } from '../lib/chronologyPageAccess.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
@@ -32,7 +33,9 @@ export async function linkChronologyPage(db: Prisma.TransactionClient, ctx: Camp
     const page = await db.wikiPage.findFirst({ where: { id: pageId, campaignId: ctx.campaignId, deletedAt: null } });
     if (!page || !canViewWikiPage(page.visibility, ctx.role)) throw new EraError('Page not found.', 404);
     if (initialize) await db.wikiPage.update({ where: { id: page.id }, data: { visibility: record.visibility === 'DM_ONLY' ? 'DM_Only' : record.visibility === 'PUBLIC' ? 'Public' : 'Party' } });
+    await ownChronologyWikiPage(db, ctx.campaignId, type === 'events' ? 'event' : 'era', page.id);
   }
+  if (!pageId && previousId) await ownChronologyWikiPage(db, ctx.campaignId, type === 'events' ? 'event' : 'era', previousId);
   if (type === 'events') await db.calendarEvent.update({ where: { id }, data: { wikiPageId: pageId } });
   else await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id } }, data: { overviewPageId: pageId } });
 }
@@ -52,7 +55,7 @@ export async function setChronologyPage(req: CampaignScopedRequest, res: Respons
     });
     res.json({ pageId });
   } catch (error) {
-    if (error instanceof EraError) res.status(error.status).json({ error: error.message });
+    if (error instanceof EraError || error instanceof ChronologyWorkspaceError) res.status(error.status).json({ error: error.message });
     else throw error;
   }
 }

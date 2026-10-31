@@ -1,3 +1,4 @@
+import { ownChronologyWikiPage } from './chronologyWikiWorkspace.js';
 import { visibleChronologyPageIds, chronologyPageDescriptions } from './chronologyPageAccess.js';
 import { chronologyRouteMap, reserveChronologyRoute } from './chronologyRoutes.js';
 import { randomUUID } from 'node:crypto';
@@ -102,6 +103,7 @@ export async function listChronologyEras(ctx: CampaignContext): Promise<Chronolo
     status: era.epochStartMinute != null && era.epochStartMinute > campaign.currentEpochMinute ? 'FUTURE'
       : era.epochEndMinute != null && era.epochEndMinute <= campaign.currentEpochMinute ? 'PAST' : 'PRESENT',
     visibility: era.visibility as ChronologyEra['visibility'], overviewPageId: era.overviewPageId && visiblePages.has(era.overviewPageId) ? era.overviewPageId : null,
+    description: era.description,
     overview: era.description ?? (era.overviewPageId ? descriptions.get(era.overviewPageId) : null) ?? '', canManage: chronologyCanManage(ctx),
   }));
 }
@@ -139,14 +141,14 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
     const end = lastDay == null ? null : lastDay + DAY;
     if (start != null && end != null && start >= end) throw new EraError('End date must be on or after the start date.');
     if (typeof input.isCurrent !== 'boolean') throw new EraError('Choose whether this era is current.');
-    if (input.overview != null && typeof input.overview !== 'string') throw new EraError('Overview must be text.');
+    if (input.description != null && typeof input.description !== 'string') throw new EraError('Description must be text.');
     // Setting current must not silently mutate a hidden current era.
     if (input.isCurrent) {
       const current = await db.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true } });
       if (current && !chronologyCanView(ctx, current.visibility)) throw new EraError('The current era cannot be changed with your access.', 403);
       await db.campaignEra.updateMany({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true }, data: { isCurrent: false } });
     }
-    const data = { name, description: input.overview ?? existing?.description ?? null, calendarId: calendar.id, isCurrent: input.isCurrent, visibility: input.visibility,
+    const data = { name, description: input.description === undefined ? existing?.description ?? null : input.description, calendarId: calendar.id, isCurrent: input.isCurrent, visibility: input.visibility,
       epochStartMinute: start, epochEndMinute: end, updatedByUserId: userId };
     const era = existing
       ? await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id: existing.id } }, data })
@@ -244,6 +246,7 @@ export async function deleteChronologyEra(
       const detached = visitTrajectories(page.metadata, id, { id, name: era.name, calendarName: era.calendar.name, visibility: era.visibility });
       if (detached.count) await db.wikiPage.update({ where: { id: page.id }, data: { metadata: json(detached.value) } });
     }
+    if (era.overviewPageId) await ownChronologyWikiPage(db, ctx.campaignId, 'era', era.overviewPageId);
     await db.campaignEra.delete({ where: { campaignId_id: { campaignId: ctx.campaignId, id } } });
     // Keep authored pages when the chronology structure is deleted.
     const remaining = await db.campaignEra.findMany({ where: { campaignId: ctx.campaignId, calendarId: era.calendarId }, orderBy: { sortOrder: 'asc' } });

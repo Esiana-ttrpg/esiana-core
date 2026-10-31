@@ -587,9 +587,11 @@ export async function duplicateCampaign(
     }
 
     if (calendarIdMap.size) {
+      const sourceEvents = new Map(source.fantasyCalendars.flatMap(calendar => calendar.events.map(event => [event.id, event] as const)));
       for (const [sourceEventId, targetEventId] of eventIdMap) {
-        const sourceEvent = await tx.calendarEvent.findFirst({ where: { id: sourceEventId, calendar: { campaignId: source.id } }, select: { wikiPageId: true } });
-        if (sourceEvent?.wikiPageId) await tx.calendarEvent.update({ where: { id: targetEventId }, data: { wikiPageId: pageIdMap.get(sourceEvent.wikiPageId) ?? null } });
+        const sourcePageId = sourceEvents.get(sourceEventId)?.wikiPageId;
+        const targetPageId = sourcePageId ? pageIdMap.get(sourcePageId) : undefined;
+        if (targetPageId) await tx.calendarEvent.update({ where: { id: targetEventId }, data: { wikiPageId: targetPageId } });
       }
       const sourceEras = await tx.campaignEra.findMany({ where: { campaignId: source.id }, include: { overview: true } });
       for (const era of sourceEras) {

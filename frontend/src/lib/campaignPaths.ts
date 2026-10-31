@@ -159,7 +159,6 @@ export function campaignEraPath(handle: string, slugOrId: string): string {
 export function campaignEventLorePath(
   handle: string,
   baseEventId: string,
-  options?: { create?: boolean; prefillTitle?: string },
 ): string {
   return campaignEventPath(handle, baseEventId);
 }

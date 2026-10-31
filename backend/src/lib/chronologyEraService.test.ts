@@ -48,7 +48,7 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
   assert.equal(migrated.length, 1);
   assert.equal(migrated[0].id, 'legacy');
   assert.equal(migrated[0].overview, 'The first dawn.');
-  const input: EraInput = { calendarId: calendar.id, name: 'Age of Embers', startDate: { year: 2, month: 0, day: 1 }, endDate: { year: 2, month: 0, day: 30 }, isCurrent: true, visibility: 'DM_ONLY', overview: 'A substantial **Overview**.' };
+  const input: EraInput = { calendarId: calendar.id, name: 'Age of Embers', startDate: { year: 2, month: 0, day: 1 }, endDate: { year: 2, month: 0, day: 30 }, isCurrent: true, visibility: 'DM_ONLY', description: 'A substantial **Overview**.' };
   for (const ctx of [await context('OBSERVER', true), await context('PARTICIPANT')]) {
     await assert.rejects(saveChronologyEra(ctx, { ...input, visibility: 'PARTY' }), /not permitted/);
     await assert.rejects(saveChronologyEra(ctx, { ...input, visibility: 'PARTY' }, undefined, 'legacy'), /not permitted/);

@@ -118,5 +118,6 @@ export function WorkspaceIndexPage() {
     );
   }
 
+  if (segment === 'event-pages' || segment === 'era-pages') return <p className="p-6 text-muted">No authored {segment === 'event-pages' ? 'event' : 'era'} pages available.</p>;
   return <Navigate to={campaignDashboardPath(campaignHandle)} replace />;
 }

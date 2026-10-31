@@ -18,6 +18,7 @@
     "rate-limit:audit": "tsx scripts/rate-limit-audit.ts",
     "build": "node scripts/sync-game-systems.mjs && node scripts/sync-campaign-themes.mjs && tsc && node scripts/copy-openapi.mjs",
     "start": "node dist/backend/src/index.js",
+    "db:migrate:chronology-workspaces": "tsx scripts/migrate-chronology-workspaces.ts",
     "db:generate": "prisma generate",
     "db:generate:sqlite": "node prisma/scripts/generate-sqlite-client.mjs",
     "db:migrate": "prisma migrate dev",

@@ -16,6 +16,8 @@ export interface ChronologyEra {
   slug?: string;
   slugAliases?: string[];
   overviewPageId: string | null;
+  description: string | null;
+  /** Read-only display projection; may include authorized wiki overview text. */
   overview: string;
   canManage: boolean;
 }
@@ -26,7 +28,7 @@ export interface EraInput {
   endDate: EraDate | null;
   visibility: EraVisibility;
   isCurrent: boolean;
-  overview?: string;
+  description?: string | null;
 }
 export interface EraDeletionImpact {
   events: number;

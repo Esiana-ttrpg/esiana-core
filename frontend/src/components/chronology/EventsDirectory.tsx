@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import type { ChronologyTimelineBundle } from '@/lib/chronologyApi';
-import { campaignEventPath } from '@/lib/campaignPaths';
+import { campaignEventPath, campaignWorkspaceIndexPath } from '@/lib/campaignPaths';
 import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import { ChronologyImportance } from './ChronologyImportance';
 
@@ -14,6 +14,7 @@ export function EventsDirectory({ bundle, campaignHandle }: { bundle: Chronology
   const events = bundle.baseEvents.filter(event => (view !== 'pages' || (event.wikiPageId && pages.has(event.wikiPageId))) && event.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <section className="space-y-6 p-6" aria-label="Events directory">
     <h2 className={TYPE_DISPLAY_CLASS}>Events</h2>
+    <Link className="text-sm text-muted underline" to={campaignWorkspaceIndexPath(campaignHandle, 'event-pages')}>Browse authored event pages</Link>
     <div className="flex flex-wrap items-center gap-4 text-sm">
       <label>View <select className="rounded border border-border bg-background p-2" value={view} onChange={e => setView(e.target.value)}><option value="all">All events</option><option value="pages">Event pages</option></select></label>
       <label>Find event <input className="rounded border border-border bg-background p-2" type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>

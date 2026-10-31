@@ -168,7 +168,7 @@ export async function restoreOperationalPayload(
       const calendars = new Set((await tx.fantasyCalendar.findMany({ where: { campaignId }, select: { id: true } })).map(row => row.id));
       const pages = new Set((await tx.wikiPage.findMany({
         where: { campaignId },
-        select: { id: true, metadata: true },
+        select: { id: true },
       })).map(row => row.id));
       for (const row of payload.campaignEras!) {
         if (!row || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 120
@@ -202,6 +202,7 @@ export async function restoreOperationalPayload(
         const key = { campaignId, entityType: String(row.entityType), slug: row.slug };
         const existing = await tx.chronologyRoute.findUnique({ where: { campaignId_entityType_slug: key } });
         if (existing && existing.entityId !== row.entityId) throw new Error('Chronology URL already belongs to another record.');
+        if (row.canonical) await tx.chronologyRoute.updateMany({ where: { campaignId, entityType: key.entityType, entityId: row.entityId, slug: { not: row.slug }, canonical: true }, data: { canonical: false } });
         await tx.chronologyRoute.upsert({ where: { campaignId_entityType_slug: key }, create: { ...key, entityId: row.entityId, title: row.title, canonical: row.canonical }, update: { title: row.title, canonical: row.canonical } });
       }
     });

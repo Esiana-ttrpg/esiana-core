@@ -95,7 +95,7 @@ export async function putEventConsequences(
 
   const consequences = dedupeEventConsequencesById(parsed.consequences);
 
-  const saved = await prisma.$transaction((tx) =>
+  await prisma.$transaction((tx) =>
     saveEventConsequences(tx, {
       campaignId: ctx.campaignId,
       calendarEventId: eventId,
@@ -105,11 +105,8 @@ export async function putEventConsequences(
     }),
   );
 
-  res.json({
-    eventId,
-    lorePageId: null,
-    consequences: saved,
-  });
+  // Use the same current page authorization and canonical event state as GET.
+  await getEventConsequences(req, res);
 }
 
 export async function postApplyEventConsequences(

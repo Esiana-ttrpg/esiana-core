@@ -1,4 +1,4 @@
-import { backfillCampaignPathKeys } from '../lib/wikiPathKeyService.js';
+import { ensureChronologyWikiWorkspaces, ChronologyWorkspaceError } from '../lib/chronologyWikiWorkspace.js';
 import { linkChronologyPage } from './chronologyPagesController.js';
 import { EraError } from '../lib/chronologyEraService.js';
 import { sessionAudioSummaries, type AudioSummary } from '../lib/sessionAudioSummaries.js';
@@ -804,7 +804,7 @@ export async function getWikiTree(
 
   await ensureQuickAccessCategoryTitle(ctx.campaignId);
   await ensureRemoveLegacyDashboardWikiPage(ctx.campaignId);
-  if (await prisma.wikiPage.findFirst({ where: { campaignId: ctx.campaignId, deletedAt: null, id: { startsWith: 'event-' }, pathKey: null }, select: { id: true } })) await backfillCampaignPathKeys(ctx.campaignId);
+  await ensureChronologyWikiWorkspaces(ctx.campaignId);
   await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
   await ensureDowntimeSystemCategoryKey(ctx.campaignId);
 
@@ -1219,7 +1219,7 @@ export async function createWikiPage(
       return tx.wikiPage.findUniqueOrThrow({ where: { id: createdPage.id }, select: wikiPageSelect });
     });
   } catch (error) {
-    if (error instanceof EraError) { res.status(error.status).json({ error: error.message }); return; }
+    if (error instanceof EraError || error instanceof ChronologyWorkspaceError) { res.status(error.status).json({ error: error.message }); return; }
     throw error;
   }
 
@@ -1425,6 +1425,7 @@ export async function getWikiPageByWorkspacePath(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  await ensureChronologyWikiWorkspaces(ctx.campaignId);
   const segment = String(req.params.workspaceSegment);
   const pathKey = String(req.params.pathKey);
   const workspace = segmentToWorkspace(segment);
@@ -1455,6 +1456,7 @@ export async function getWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  await ensureChronologyWikiWorkspaces(ctx.campaignId);
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId, deletedAt: null },

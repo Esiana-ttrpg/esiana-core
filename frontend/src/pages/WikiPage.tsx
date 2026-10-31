@@ -1,3 +1,6 @@
+import { resolveWikiNavigation } from '@/lib/resolveWikiRoutePageId';
+import { chronologyWikiDocumentKind } from '@shared/wikiWorkspaceResolve';
+import { ChronologyDocumentNavigation } from '@/components/chronology/ChronologyDocumentNavigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   resolveWikiRoutePageId,
@@ -245,16 +248,14 @@ function headerIconButtonClass(active: boolean): string {
 export function WikiPage() {
   const params = useParams();
   const location = useLocation();
-  const { flatPages, loading } = useWiki();
-  const legacy = params.pathKey ?? params.pageId ?? '';
-  const isAuthoredPath = params.pathKey && flatPages.some(page => page.pathKey === params.pathKey && page.id !== legacy);
-  if (loading && (legacy.startsWith('event-') || legacy === 'present')) return <LoadingSpinner label="Loading chronology..." />;
-  if (/^event-[a-zA-Z0-9_-]+$/.test(legacy) && !isAuthoredPath && !location.pathname.includes('/wiki/')) {
-    return <Navigate to={'/campaigns/' + params.campaignHandle + '/events/' + encodeURIComponent(legacy.slice(6))} replace />;
-  }
-  if (params.pathKey === 'present' && location.pathname.includes('/pages/') && !flatPages.some(page => page.pathKey === 'present' && !(page.metadata && 'eraOverview' in page.metadata && page.metadata.eraOverview === true))) {
-    return <Navigate to={'/campaigns/' + params.campaignHandle + '/eras'} replace />;
-  }
+  const { flatPages, loading, campaignHandle } = useWiki();
+  if (loading) return <LoadingSpinner label="Loading wiki..." />;
+  const destination = resolveWikiNavigation({ pathname: location.pathname, campaignHandle,
+    pageId: params.pageId, pathKey: params.pathKey, flatPages });
+  if (destination.path && destination.path !== location.pathname) return <Navigate to={destination.path + location.search} replace />;
+  const page = destination.page;
+  if (page) return <>{chronologyWikiDocumentKind(page) && <ChronologyDocumentNavigation pageId={page.id} kind={chronologyWikiDocumentKind(page)!} />}<WikiPageDocument /></>;
+
   return <WikiPageDocument />;
 }
 function WikiPageDocument() {

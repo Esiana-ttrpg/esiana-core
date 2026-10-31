@@ -6,6 +6,7 @@ import {
 export { CampaignWorkspace };
 export type { CampaignWorkspaceType as CampaignWorkspaceValue };
 import {
+  chronologyWikiDocumentKind,
   isCategoryIndexPage,
   resolveWorkspaceForPage,
   SYSTEM_CATEGORY_NARRATIVE_THREADS,
@@ -51,6 +52,8 @@ const WORKSPACE_TO_SEGMENT: Record<CampaignWorkspaceType, string> = {
   [CampaignWorkspace.HAVENS]: 'havens',
   [CampaignWorkspace.PROJECTS]: 'projects',
   [CampaignWorkspace.JOURNALS]: 'journals',
+  [CampaignWorkspace.EVENTS]: 'event-pages',
+  [CampaignWorkspace.ERAS]: 'era-pages',
   [CampaignWorkspace.PAGES]: 'pages',
   [CampaignWorkspace.CUSTOM]: 'custom',
 };
@@ -94,6 +97,10 @@ export const RESERVED_PATH_KEY_SEGMENTS = new Set([
 ]);
 
 export const CAMPAIGN_WORKSPACE_ROUTES: readonly CampaignWorkspaceRoute[] = [
+  { workspace: CampaignWorkspace.EVENTS, segment: 'event-pages', kind: 'system', title: 'Events',
+    systemCategoryKey: 'chronology_events', indexResolver: { type: 'systemCategoryKey', key: 'chronology_events' }, hasEntityRoutes: true },
+  { workspace: CampaignWorkspace.ERAS, segment: 'era-pages', kind: 'system', title: 'Eras',
+    systemCategoryKey: 'chronology_eras', indexResolver: { type: 'systemCategoryKey', key: 'chronology_eras' }, hasEntityRoutes: true },
   {
     workspace: CampaignWorkspace.CHARACTERS,
     segment: 'characters',
@@ -416,15 +423,17 @@ export function resolveCanonicalPagePath(
   },
   flatPages: readonly WikiPageWorkspaceInput[],
 ): PublicPagePath {
-  if (isCategoryIndexPage(page.title)) {
+  const meta = page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {};
+  const systemRoute = CAMPAIGN_WORKSPACE_ROUTES.find(route => route.systemCategoryKey && route.systemCategoryKey === meta.systemCategoryKey);
+  if (systemRoute) return asPublicPagePath(campaignWorkspaceIndexPath(handle, systemRoute.segment));
+  if (isCategoryIndexPage(page.title) && !chronologyWikiDocumentKind(page)) {
     const indexPath = resolveWorkspaceIndexPathForFolderTitle(handle, page.title);
     if (indexPath) return indexPath;
   }
 
-  const workspace =
-    (page.workspace as CampaignWorkspaceType | null | undefined) ??
-    resolveWorkspaceForPage(page, flatPages);
-  const pathSegment = page.pathKey ?? page.id;
+  const ownedWorkspace = chronologyWikiDocumentKind(page) ? resolveWorkspaceForPage(page, flatPages) : null;
+  const workspace = ownedWorkspace ?? (page.workspace as CampaignWorkspaceType | null | undefined) ?? resolveWorkspaceForPage(page, flatPages);
+  const pathSegment = ownedWorkspace && page.workspace !== ownedWorkspace ? page.id : page.pathKey ?? page.id;
 
   if (!workspace || !pathSegment) {
     return asPublicPagePath(campaignPath(handle, page.id));

@@ -32,7 +32,7 @@ export function ChronologyPageLink({ type, id, title, pageId, description, onCha
     setBusy(true); setError(undefined);
     try {
       const created = await createWikiPage(campaignHandle, {
-        title, parentId: flatPages.find(row => row.title === (type === 'events' ? 'Events' : 'Timelines'))?.id ?? null,
+        title, parentId: null,
         ...(type === 'events' ? { chronologyEventId: id } : { chronologyEraId: id }),
         blocks: description ? [{ id: crypto.randomUUID(), type: 'text-tiptap', title: 'Description', x: 0, y: 0, w: 2, h: 2, isPrivate: false, content: { markdown: description } }] : undefined,
       });

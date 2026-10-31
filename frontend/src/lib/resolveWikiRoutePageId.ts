@@ -1,4 +1,5 @@
-import { segmentToWorkspace } from '@shared/campaignWorkspaceRoutes';
+import { wikiPageHasRouteAlias } from '@shared/wikiWorkspaceResolve';
+import { segmentToWorkspace, resolveCanonicalPagePath } from '@shared/campaignWorkspaceRoutes';
 import { CampaignWorkspace } from '@shared/campaignWorkspace';
 import { isEventLorePageId } from '@/lib/wiki';
 import type { WikiTreeNode } from '@/types/wiki';
@@ -35,6 +36,8 @@ export function resolveWikiRoutePageId(input: {
         (page) => page.workspace === workspace && page.pathKey === pathKey,
       );
       if (match) return match.id;
+      const alias = flatPages.find(page => wikiPageHasRouteAlias(page, workspace, pathKey));
+      if (alias) return alias.id;
     }
 
     // Transitional: some links still emit internal page ids in the URL segment.
@@ -43,6 +46,21 @@ export function resolveWikiRoutePageId(input: {
   }
 
   return pageId ?? '';
+}
+
+/** Known documents always resolve through the wiki registry before interpreting old URLs. */
+export function resolveWikiNavigation(input: Parameters<typeof resolveWikiRoutePageId>[0]) {
+  const pageId = resolveWikiRoutePageId(input);
+  const page = input.flatPages.find(row => row.id === pageId);
+  if (page) return { page, path: resolveCanonicalPagePath(input.campaignHandle, page, input.flatPages) };
+  const segment = workspaceSegmentFromCampaignPath(input.pathname, input.campaignHandle);
+  const legacy = input.pathKey ?? input.pageId ?? '';
+  const legacyNamespace = segment === 'pages' || !!input.pageId && segment !== 'wiki';
+  if (legacyNamespace && /^event-[a-zA-Z0-9_-]+$/.test(legacy)) {
+    return { page: undefined, path: `/campaigns/${input.campaignHandle}/events/${encodeURIComponent(legacy.slice(6))}` };
+  }
+  if (segment === 'pages' && legacy === 'present') return { page: undefined, path: `/campaigns/${input.campaignHandle}/eras` };
+  return { page: undefined, path: undefined };
 }
 
 export function isFreeformPagesRoute(pathname: string, campaignHandle: string): boolean {

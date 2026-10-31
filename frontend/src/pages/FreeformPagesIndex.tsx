@@ -30,7 +30,7 @@ export function FreeformPagesIndex() {
   const freeformPages = useMemo(
     () =>
       flatPages
-        .filter((page) => (page.workspace === CampaignWorkspace.PAGES && page.pathKey) || /^event-/.test(page.id))
+        .filter((page) => page.workspace === CampaignWorkspace.PAGES && page.pathKey)
         .sort((a, b) => a.title.localeCompare(b.title)),
     [flatPages],
   );

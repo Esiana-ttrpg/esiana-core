@@ -26636,7 +26636,7 @@ components:
             - type: 'null'
         visibility: { type: string, enum: [PUBLIC, PARTY, DM_ONLY] }
         isCurrent: { type: boolean }
-        overview: { type: string, description: Chronology description authored through the standard rich-text editor; independent of an optional wiki document. }
+        description: { type: [string, "null"], description: Explicit authored chronology description; omission preserves the existing value. Independent of linked wiki prose. }
     ChronologyEra:
       allOf:
         - $ref: '#/components/schemas/ChronologyEraInput'
@@ -26647,6 +26647,7 @@ components:
             isMasterTime: { type: boolean }
             sortOrder: { type: integer }
             status: { type: string, enum: [PAST, PRESENT, FUTURE] }
+            overview: { type: string, readOnly: true, description: Authorized display projection; never accepted as an authored description. }
             overviewPageId: { type: [string, "null"], description: Optional visible authored page. }
             slug: { type: string }
             slugAliases: { type: array, items: { type: string } }
