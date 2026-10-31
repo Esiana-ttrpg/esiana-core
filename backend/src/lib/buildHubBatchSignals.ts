@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { sessionSnippet } from './sessionSnippet.js';
 import { SessionScheduleStatus } from './notifications/types.js';
 import { CampaignMemberRoles, WikiVisibility } from '../types/domain.js';
 import type { CampaignMemberRole } from '../types/domain.js';
@@ -143,17 +144,6 @@ function computeMomentum(input: {
   return { label: 'stalled', daysSinceLastSession: daysSinceSession };
 }
 
-function stripSnippet(markdown: string): string {
-  return markdown
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/#{1,6}\s+/g, '')
-    .replace(/\*\*|__/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 200);
-}
-
 /** Extract prose from a session page without exposing its stored block JSON. */
 export function extractHubSessionMarkdown(blocks: unknown): string {
   if (typeof blocks === 'string') {
@@ -225,7 +215,7 @@ export async function batchLastSessions(
     const campaignId = row.timelinePoint.campaignId;
     if (map.has(campaignId)) continue;
     const markdown = extractHubSessionMarkdown(row.timelinePoint.wikiPage.blocks);
-    const snippet = stripSnippet(markdown) || null;
+    const snippet = sessionSnippet(markdown) || null;
     map.set(campaignId, {
       title: row.timelinePoint.wikiPage.title,
       playedAt: row.plannedStartAt?.toISOString() ?? row.publishedAt?.toISOString() ?? null,

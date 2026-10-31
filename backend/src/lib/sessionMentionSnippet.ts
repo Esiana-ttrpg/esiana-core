@@ -7,7 +7,7 @@ const WIKILINK_SPAN_REGEX =
   /data-type="(?:wikiLink|mention)"[^>]*data-id="([^"]*)"[^>]*data-label="([^"]*)"/g;
 
 const MARKUP_STRIP_REGEX =
-  /!\[[^\]]*\]\([^)]*\)|<[^>]+>|data-type="[^"]*"[^>]*>/g;
+  /!\[[^\]]*\]\([^)]*\)|<[^<>]+>|data-type="[^"]*"[^>]*>/g;
 
 const WIKILINK_SPAN_LABEL_REGEX =
   /data-type="(?:wikiLink|mention)"[^>]*data-id="[^"]*"[^>]*data-label="([^"]*)"/g;
@@ -56,14 +56,18 @@ function findLastMentionIndex(markdown: string, targetPageId: string): number {
 }
 
 function stripMarkup(text: string): string {
-  return text
-    .replace(WIKILINK_SPAN_LABEL_REGEX, '$1')
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(MARKUP_STRIP_REGEX, '')
-    .replace(/\[\[([^[\]]+)\]\]/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // Repeat the whole pipeline: any replacement can expose more markup.
+  let previous: string;
+  do {
+    previous = text;
+    text = text
+      .replace(WIKILINK_SPAN_LABEL_REGEX, '$1')
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(MARKUP_STRIP_REGEX, '')
+      .replace(/\[\[([^[\]]+)\]\]/g, '$1');
+  } while (text !== previous);
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 function expandToSentence(markdown: string, mentionIndex: number): string {

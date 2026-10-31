@@ -8,7 +8,12 @@ export function sanitizeRecruitmentText(
   if (typeof raw !== 'string') return null;
   let value = raw.trim();
   if (!value) return null;
-  value = value.replace(/<[^>]+>/g, '');
+  // Removing a tag can join its neighbours into another tag.
+  let previous: string;
+  do {
+    previous = value;
+    value = value.replace(/<[^<>]+>/g, '');
+  } while (value !== previous);
   if (value.length > maxLength) {
     value = value.slice(0, maxLength);
   }

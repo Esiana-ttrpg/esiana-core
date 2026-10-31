@@ -6,6 +6,19 @@ import {
 } from './sessionMentionSnippet.js';
 
 describe('sessionMentionSnippet', () => {
+  it('removes tags reconstructed by nested markup removal', () => {
+    const blocks = [{
+      type: 'text-tiptap',
+      content: {
+        markdown: '[Mira](/campaigns/demo/wiki/char-mira) found <scr<script>ipt>the archive</scr</script>ipt>.',
+      },
+    }];
+    assert.equal(
+      extractMentionSnippetFromBlocks(blocks, 'char-mira'),
+      'Mira found the archive.',
+    );
+  });
+
   it('extracts plain text around the last wikilink span mention', () => {
     const blocks = [
       {
