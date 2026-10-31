@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { sessionSnippet } from './sessionSnippet.js';
 import { SessionScheduleStatus } from './notifications/types.js';
 import {
   compileSessionNotesForCampaign,
@@ -6,19 +7,6 @@ import {
 } from './sessionNotesCompile.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import type { CampaignMemberRole } from '../types/domain.js';
-
-const SNIPPET_MAX = 200;
-
-function stripMarkdownForSnippet(markdown: string): string {
-  return markdown
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/#{1,6}\s+/g, '')
-    .replace(/\*\*|__/g, '')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, SNIPPET_MAX);
-}
 
 export type DashboardSessionSummary = {
   timelinePointId: string;
@@ -98,7 +86,7 @@ export async function fetchLastDashboardSession(
       fallbackTimeline.schedule?.plannedStartAt?.toISOString() ??
       fallbackTimeline.schedule?.publishedAt?.toISOString() ??
       null;
-    const snippet = stripMarkdownForSnippet(
+    const snippet = sessionSnippet(
       extractCompileMarkdown(fallbackTimeline.wikiPage.blocks),
     );
     return {
@@ -114,7 +102,7 @@ export async function fetchLastDashboardSession(
   const canManage =
     role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER;
 
-  let snippet: string | null = stripMarkdownForSnippet(
+  let snippet: string | null = sessionSnippet(
     extractCompileMarkdown(row.timelinePoint.wikiPage.blocks),
   );
 
@@ -124,7 +112,7 @@ export async function fetchLastDashboardSession(
         sessionPageId: row.timelinePoint.wikiPage.id,
         orderBy: 'timeline',
       });
-      snippet = stripMarkdownForSnippet(compiled.compiledMarkdown) || null;
+      snippet = sessionSnippet(compiled.compiledMarkdown) || null;
     } catch {
       snippet = null;
     }

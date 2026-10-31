@@ -32,16 +32,135 @@ export interface ExtractedSocialMention {
 const WIKI_PATH_REGEX =
   /\/(?:c|campaigns?)\/[A-Za-z0-9_-]+\/(?:wiki\/([A-Za-z0-9_-]+)|characters\/([A-Za-z0-9_-]+)|event-([A-Za-z0-9_-]+))/g;
 
-const WIKILINK_SPAN_REGEX =
-  /data-type="(?:wikiLink|mention)"[^>]*data-id="([^"]*)"[^>]*data-label="([^"]*)"/g;
 const WIKILINK_STUB_REGEX = /data-stub="true"/;
-
-const SOCIAL_MENTION_REGEX =
-  /data-type="socialMention"[^>]*data-mention-type="([^"]*)"[^>]*(?:data-target-user-id="([^"]*)")?[^>]*(?:data-identity-page-id="([^"]*)")?[^>]*data-label="([^"]*)"/g;
 
 const BRACKET_WIKILINK_REGEX = /\[\[([^[\]]+)\]\]/g;
 
 const MARKDOWN_BLOCK_TYPES = new Set(['text-tiptap', 'text-biography']);
+
+function hasMentionSpanPrefix(text: string): boolean {
+  // The legacy non-Unicode /i expression folds ASCII markers only.
+  const folded = text.replace(/[A-Z]/g, (char) => char.toLowerCase());
+  return folded.split('>').some((segment) => {
+    const span = segment.indexOf('<span');
+    return span >= 0 && (
+      segment.indexOf('data-type="wikilink"', span + 5) >= 0 ||
+      segment.indexOf('data-type="mention"', span + 5) >= 0
+    );
+  });
+}
+
+/**
+ * Match the existing ordered, double-quoted mention attributes without regex
+ * backtracking. Suffix tables retain the old greedy [^>]* and optional-capture
+ * semantics, even for malformed quotes crossing a >. Each table is built once.
+ */
+function* mentionAttributeMatches(
+  markdown: string,
+  social = false,
+  rename?: { pageId: string; body: boolean },
+): Generator<RegExpExecArray> {
+  const attributes: Array<{
+    prefix: string; optional: boolean; values?: string[]; body?: boolean;
+  }> = rename
+    ? [
+        { prefix: 'data-type="', optional: false, values: ['wikiLink', 'mention'] },
+        { prefix: 'data-id="', optional: false, values: [rename.pageId] },
+        rename.body
+          ? { prefix: '>[[', optional: false, body: true }
+          : { prefix: 'data-label="', optional: false },
+      ]
+    : social
+    ? [
+        { prefix: 'data-mention-type="', optional: false },
+        { prefix: 'data-target-user-id="', optional: true },
+        { prefix: 'data-identity-page-id="', optional: true },
+        { prefix: 'data-label="', optional: false },
+      ]
+    : [
+        { prefix: 'data-id="', optional: false },
+        { prefix: 'data-label="', optional: false },
+      ];
+  const markers = rename ? ['<span'] : social
+    ? ['data-type="socialMention"']
+    : ['data-type="wikiLink"', 'data-type="mention"'];
+  if (!markers.some((marker) => markdown.includes(marker))) return;
+
+  const size = markdown.length + 1;
+  const nextQuote = new Int32Array(size).fill(-1);
+  const nextBracket = rename?.body ? new Int32Array(size).fill(-1) : undefined;
+  let quote = -1;
+  let bracket = -1;
+  for (let i = markdown.length - 1; i >= 0; i -= 1) {
+    if (markdown[i] === '"') quote = i;
+    nextQuote[i] = quote;
+    if (markdown[i] === ']') bracket = i;
+    if (nextBracket) nextBracket[i] = bracket;
+  }
+  let nextEnd = Int32Array.from({ length: size }, (_, i) => i);
+  const choices: Int32Array[] = [];
+  for (let stage = attributes.length - 1; stage >= 0; stage -= 1) {
+    const { prefix, optional, values, body } = attributes[stage];
+    const ends = new Int32Array(size).fill(-1);
+    const chosen = new Int32Array(size).fill(-1);
+    for (let i = markdown.length; i >= 0; i -= 1) {
+      // Prefer consuming another character, just as a greedy wildcard does.
+      if (i < markdown.length && markdown[i] !== '>' && ends[i + 1] >= 0) {
+        ends[i] = ends[i + 1];
+        chosen[i] = chosen[i + 1];
+        continue;
+      }
+      if (markdown.startsWith(prefix, i)) {
+        const close = (body ? nextBracket! : nextQuote)[i + prefix.length];
+        const suffix = body ? ']]</span>' : '"';
+        const after = close + suffix.length;
+        if (close >= 0 && markdown.startsWith(suffix, close) &&
+            (!values || values.includes(markdown.slice(i + prefix.length, close))) &&
+            nextEnd[after] >= 0) {
+          ends[i] = nextEnd[after];
+          chosen[i] = i;
+          continue;
+        }
+      }
+      if (optional && nextEnd[i] >= 0) {
+        ends[i] = nextEnd[i];
+        chosen[i] = -i - 2; // Encode a skipped optional attribute and its position.
+      }
+    }
+    choices[stage] = chosen;
+    nextEnd = ends;
+  }
+
+  for (let i = 0; i < markdown.length; i += 1) {
+    const marker = markers.find((value) => markdown.startsWith(value, i));
+    if (!marker) continue;
+    let cursor = i + marker.length;
+    const end = nextEnd[cursor];
+    if (end < 0) continue;
+    const captures: Array<string | undefined> = [];
+    for (let stage = 0; stage < attributes.length; stage += 1) {
+      const chosen = choices[stage][cursor];
+      if (chosen < -1) {
+        captures.push(undefined);
+        cursor = -chosen - 2;
+      } else {
+        const start = chosen + attributes[stage].prefix.length;
+        const close = (attributes[stage].body ? nextBracket! : nextQuote)[start];
+        captures.push(markdown.slice(start, close));
+        cursor = close + (attributes[stage].body ? ']]</span>'.length : 1);
+      }
+    }
+    yield Object.assign([markdown.slice(i, end), ...captures], {
+      index: i, input: markdown,
+    }) as RegExpExecArray;
+    i = end - 1;
+  }
+}
+
+/** Ordered wiki/mention attributes, including their original match offsets. */
+export function wikiLinkSpanMatches(markdown: string): Generator<RegExpExecArray> {
+  return mentionAttributeMatches(markdown);
+}
 
 export function getBlockMarkdown(block: Record<string, unknown>): string {
   const type = (block as { type?: string }).type;
@@ -94,9 +213,7 @@ export function extractWikiEdgesFromBlocks(
       }
     }
 
-    WIKILINK_SPAN_REGEX.lastIndex = 0;
-    // eslint-disable-next-line no-cond-assign
-    while ((match = WIKILINK_SPAN_REGEX.exec(markdown)) !== null) {
+    for (const match of mentionAttributeMatches(markdown)) {
       const id = match[1]?.trim() ?? '';
       const label = match[2]?.trim() || undefined;
       const snippet = markdown.slice(
@@ -120,10 +237,8 @@ export function extractUnresolvedWikilinksFromBlocks(
   const byNormalized = new Map<string, ExtractedUnresolvedWikilink>();
 
   for (const markdown of collectMarkdownFromBlocks(blocks)) {
-    WIKILINK_SPAN_REGEX.lastIndex = 0;
     let match: RegExpExecArray | null;
-    // eslint-disable-next-line no-cond-assign
-    while ((match = WIKILINK_SPAN_REGEX.exec(markdown)) !== null) {
+    for (const match of mentionAttributeMatches(markdown)) {
       const id = match[1]?.trim() ?? '';
       const label = match[2]?.trim() || '';
       const snippet = markdown.slice(
@@ -151,7 +266,7 @@ export function extractUnresolvedWikilinksFromBlocks(
     // eslint-disable-next-line no-cond-assign
     while ((match = BRACKET_WIKILINK_REGEX.exec(markdown)) !== null) {
       const before = markdown.slice(Math.max(0, match.index - 80), match.index);
-      if (/<span[^>]*data-type="(?:wikiLink|mention)"/i.test(before)) continue;
+      if (hasMentionSpanPrefix(before)) continue;
       const rawText = match[1].trim();
       const normalizedText = normalizeAlias(rawText);
       if (!normalizedText) continue;
@@ -178,10 +293,7 @@ export function extractSocialMentionsFromBlocks(
   const results: ExtractedSocialMention[] = [];
 
   for (const markdown of collectMarkdownFromBlocks(blocks)) {
-    SOCIAL_MENTION_REGEX.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    // eslint-disable-next-line no-cond-assign
-    while ((match = SOCIAL_MENTION_REGEX.exec(markdown)) !== null) {
+    for (const match of mentionAttributeMatches(markdown, true)) {
       const mentionType =
         match[1]?.toUpperCase() === 'CHARACTER' ? 'CHARACTER' : 'USER';
       results.push({
@@ -209,9 +321,7 @@ function extractAllWikiTargetsFromMarkdown(markdown: string): ExtractedWikiTarge
     }
   }
 
-  WIKILINK_SPAN_REGEX.lastIndex = 0;
-  // eslint-disable-next-line no-cond-assign
-  while ((match = WIKILINK_SPAN_REGEX.exec(markdown)) !== null) {
+  for (const match of mentionAttributeMatches(markdown)) {
     const id = match[1]?.trim() ?? '';
     const label = match[2]?.trim() || undefined;
     const snippet = markdown.slice(
@@ -239,7 +349,7 @@ function extractAllWikiTargetsFromMarkdown(markdown: string): ExtractedWikiTarge
   // eslint-disable-next-line no-cond-assign
   while ((match = BRACKET_WIKILINK_REGEX.exec(markdown)) !== null) {
     const before = markdown.slice(Math.max(0, match.index - 80), match.index);
-    if (/<span[^>]*data-type="(?:wikiLink|mention)"/i.test(before)) continue;
+    if (hasMentionSpanPrefix(before)) continue;
     const rawText = match[1].trim();
     const key = `stub:${normalizeAlias(rawText)}`;
     if (!byId.has(key)) {
@@ -324,26 +434,47 @@ export function rewriteMarkdownForPageRename(
   const escapedId = pageId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pathPattern = `(/(?:c|campaign)/[A-Za-z0-9_-]+/(?:wiki/${escapedId}|characters/${escapedId}|event-${escapedId.replace(/^event-/, '')}))`;
 
-  let next = markdown.replace(
-    new RegExp(`\\[([^\\]]*)\\]\\(${pathPattern}\\)`, 'g'),
-    (_m, label: string, href: string) => {
-      const trimmed = label.trim();
-      if (trimmed === oldTitle || trimmed === '') {
-        return `[${newTitle}](${href})`;
-      }
-      return _m;
-    },
-  );
+  // Check each closing bracket once. A failed href is shared by all preceding
+  // opening brackets, rather than retried for each unmatched '['.
+  const hrefPattern = new RegExp(`${pathPattern}\\)`, 'y');
+  const parts: string[] = [];
+  let copied = 0;
+  let opening = markdown.indexOf('[');
+  let closing = -1;
+  while (opening >= 0) {
+    if (closing < opening) closing = markdown.indexOf(']', opening + 1);
+    if (closing < 0) break;
+    hrefPattern.lastIndex = closing + 2;
+    const href = markdown[closing + 1] === '(' ? hrefPattern.exec(markdown) : null;
+    if (!href) {
+      opening = markdown.indexOf('[', closing + 1);
+      continue;
+    }
+    const label = markdown.slice(opening + 1, closing).trim();
+    const end = hrefPattern.lastIndex;
+    parts.push(markdown.slice(copied, opening));
+    parts.push(label === oldTitle || !label
+      ? `[${newTitle}](${href[1]})`
+      : markdown.slice(opening, end));
+    copied = end;
+    opening = markdown.indexOf('[', end);
+  }
+  parts.push(markdown.slice(copied));
+  let next = parts.join('');
 
-  const spanPattern = `(<span[^>]*data-type="(?:wikiLink|mention)"[^>]*data-id="${escapedId}"[^>]*data-label=")[^"]*(")`;
-  next = next.replace(new RegExp(spanPattern, 'g'), `$1${newTitle}$2`);
-  next = next.replace(
-    new RegExp(
-      `(<span[^>]*data-type="(?:wikiLink|mention)"[^>]*data-id="${escapedId}"[^>]*>\\[\\[)[^\\]]*(\\]\\]</span>)`,
-      'g',
-    ),
-    `$1${newTitle}$2`,
-  );
+  for (const body of [false, true]) {
+    const rewritten: string[] = [];
+    let cursor = 0;
+    for (const match of mentionAttributeMatches(next, false, { pageId, body })) {
+      const suffix = body ? ']]</span>' : '"';
+      const valueStart = match.index + match[0].length - match[3].length - suffix.length;
+      const prefix = next.slice(match.index, valueStart);
+      rewritten.push(next.slice(cursor, match.index), prefix, newTitle, suffix);
+      cursor = match.index + match[0].length;
+    }
+    rewritten.push(next.slice(cursor));
+    next = rewritten.join('');
+  }
 
   return next;
 }

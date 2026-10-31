@@ -1,16 +1,8 @@
-import { getBlockMarkdown } from './wikiLinkExtract.js';
+import { getBlockMarkdown, wikiLinkSpanMatches } from './wikiLinkExtract.js';
+import { stripSnippetMarkup } from './snippetMarkup.js';
 
 const WIKI_PATH_REGEX =
   /\/(?:c|campaigns?)\/[A-Za-z0-9_-]+\/(?:wiki\/([A-Za-z0-9_-]+)|characters\/([A-Za-z0-9_-]+)|event-([A-Za-z0-9_-]+))/g;
-
-const WIKILINK_SPAN_REGEX =
-  /data-type="(?:wikiLink|mention)"[^>]*data-id="([^"]*)"[^>]*data-label="([^"]*)"/g;
-
-const MARKUP_STRIP_REGEX =
-  /!\[[^\]]*\]\([^)]*\)|<[^>]+>|data-type="[^"]*"[^>]*>/g;
-
-const WIKILINK_SPAN_LABEL_REGEX =
-  /data-type="(?:wikiLink|mention)"[^>]*data-id="[^"]*"[^>]*data-label="([^"]*)"/g;
 
 export interface MentionSnippetOptions {
   maxLength?: number;
@@ -43,9 +35,7 @@ function findLastMentionIndex(markdown: string, targetPageId: string): number {
     }
   }
 
-  WIKILINK_SPAN_REGEX.lastIndex = 0;
-  // eslint-disable-next-line no-cond-assign
-  while ((match = WIKILINK_SPAN_REGEX.exec(markdown)) !== null) {
+  for (const match of wikiLinkSpanMatches(markdown)) {
     const id = match[1]?.trim() ?? '';
     if (id === targetPageId) {
       lastIndex = match.index;
@@ -56,14 +46,14 @@ function findLastMentionIndex(markdown: string, targetPageId: string): number {
 }
 
 function stripMarkup(text: string): string {
-  return text
-    .replace(WIKILINK_SPAN_LABEL_REGEX, '$1')
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(MARKUP_STRIP_REGEX, '')
-    .replace(/\[\[([^[\]]+)\]\]/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const parts: string[] = [];
+  let cursor = 0;
+  for (const match of wikiLinkSpanMatches(text)) {
+    parts.push(text.slice(cursor, match.index), match[2]);
+    cursor = match.index + match[0].length;
+  }
+  parts.push(text.slice(cursor));
+  return stripSnippetMarkup(parts.join(''), 'mention').replace(/\s+/g, ' ').trim();
 }
 
 function expandToSentence(markdown: string, mentionIndex: number): string {
