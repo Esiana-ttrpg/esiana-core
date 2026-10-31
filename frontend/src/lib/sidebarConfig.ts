@@ -84,7 +84,7 @@ export const DEFAULT_SIDEBAR_HEADERS: SidebarConfigHeaders = {
 export const TIME_TRACKING_LABEL =
   'Time Tracking (Calendars, Timelines, Events)';
 
-export const TIME_TRACKING_WIKI_TITLES = ['Calendars', 'Timelines', 'Events'] as const;
+export const TIME_TRACKING_WIKI_TITLES = ['Calendars', 'Timelines', 'Eras', 'Events'] as const;
 
 /** @deprecated Legacy bucket ids — no longer in customizable defaults */
 export const SIDEBAR_GAME_MANAGEMENT_IDS: SidebarSectionId[] = [

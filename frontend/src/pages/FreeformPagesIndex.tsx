@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMemo, useState, type FormEvent } from 'react';
 import { Plus, X } from 'lucide-react';
-import { readCampaignHandle, campaignFreeformPagePath } from '@/lib/campaignPaths';
+import { readCampaignHandle, campaignFreeformPagePath, campaignWikiPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
 import { CampaignWorkspace } from '@shared/campaignWorkspace';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -30,7 +30,7 @@ export function FreeformPagesIndex() {
   const freeformPages = useMemo(
     () =>
       flatPages
-        .filter((page) => page.workspace === CampaignWorkspace.PAGES && page.pathKey)
+        .filter((page) => (page.workspace === CampaignWorkspace.PAGES && page.pathKey) || /^event-/.test(page.id))
         .sort((a, b) => a.title.localeCompare(b.title)),
     [flatPages],
   );
@@ -98,7 +98,7 @@ export function FreeformPagesIndex() {
           {freeformPages.map((page) => (
             <li key={page.id}>
               <Link
-                to={campaignFreeformPagePath(campaignHandle, page.pathKey!)}
+                to={campaignWikiPath(campaignHandle, page.id, flatPages)}
                 className="text-primary hover:underline"
               >
                 {page.title}

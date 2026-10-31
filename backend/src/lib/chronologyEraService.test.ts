@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
+import { linkChronologyPage } from '../controllers/chronologyPagesController.js';
 import { prisma } from './prisma.js';
 import { buildCampaignContext } from './campaignScopeContext.js';
 import { ensureChronologyEras, listChronologyEras, saveChronologyEra, deleteChronologyEra, chronologyEraImpact, reorderChronologyEras, eraDateToMinute } from './chronologyEraService.js';
@@ -59,6 +60,10 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
   const id = await saveChronologyEra(gm, input, owner.id);
   let eras = await listChronologyEras(gm);
   const created = eras.find(era => era.id === id)!;
+  assert.equal(created.overviewPageId, null, 'an era does not create a page');
+  const authoredPage = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: input.name, visibility: 'DM_Only' } });
+  await prisma.$transaction(tx => linkChronologyPage(tx, gm, 'eras', id, authoredPage.id));
+  created.overviewPageId = authoredPage.id;
   assert.deepEqual(created.endDate, input.endDate);
   assert.equal(created.status, 'FUTURE');
   assert.equal(created.isCurrent, true);
@@ -111,7 +116,7 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
   await deleteChronologyEra(gm, id);
   const afterDelete = eraOccurrenceSchedule(repeat, calendar, 1000000n, await prisma.campaignEra.findMany({ where: { campaignId: campaign.id } }), ((await prisma.campaignMomentum.findUniqueOrThrow({ where: { campaignId: campaign.id } })).eraRecurrenceHistory as EraHistory)[repeat.id]);
   assert.deepEqual(afterDelete, before, 'deletion must preserve historical ordinals and dates');
-  assert.equal(await prisma.wikiPage.findUnique({ where: { id: created.overviewPageId } }), null);
+  assert.ok(await prisma.wikiPage.findUnique({ where: { id: created.overviewPageId! } }), 'deleting an era preserves its authored page');
   assert.ok(await prisma.calendarEvent.findUnique({ where: { id: event.id } }));
   const metadata = (await prisma.wikiPage.findUniqueOrThrow({ where: { id: page.id } })).metadata as any;
   const detached = normalizeEraTrajectories(metadata.character.eraTrajectories);
@@ -128,7 +133,7 @@ test('chronology eras: migration, authorization, dates, order, visibility and no
   } as any);
   assert.deepEqual(calendarDeleteBody, { ok: true });
   assert.equal(await prisma.campaignEra.findUnique({ where: { campaignId_id: { campaignId: campaign.id, id: otherEra } } }), null);
-  assert.equal(await prisma.wikiPage.findUnique({ where: { id: otherOverview } }), null);
+  assert.equal(otherOverview, null, 'page-free eras remain page-free');
   assert.equal(await prisma.fantasyCalendar.findUnique({ where: { id: otherTrack.id } }), null);
 });
 

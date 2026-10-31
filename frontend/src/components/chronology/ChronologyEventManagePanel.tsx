@@ -141,6 +141,9 @@ export function ChronologyEventForm({
             campaignHandle={campaignHandle}
             baseEventId={baseEvent.id}
             title={baseEvent.title}
+            wikiPageId={baseEvent.wikiPageId}
+            description={baseEvent.description}
+            onChanged={onMutated}
           />
         )}
         <div className="space-y-2">

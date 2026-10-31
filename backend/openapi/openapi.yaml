@@ -3800,6 +3800,44 @@ paths:
                   error:
                     type: string
   # END GENERATED SESSION AUDIO API
+  /api/campaigns/{campaignHandle}/chronology/{entityType}/{entityId}/page:
+    put:
+      tags: [Chronology]
+      summary: Link or unlink an optional wiki document
+      description: Requires chronology.edit and disclosure access to the record and page. Both must belong to the addressed campaign. Unlinking retains the record and page.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [events, eras] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pageId]
+              properties:
+                pageId: { type: [string, "null"] }
+      responses:
+        '200':
+          description: Page linked or unlinked
+        '400':
+          description: Invalid page identifier
+        '403':
+          description: Chronology management is not permitted
+        '404':
+          description: Record or page unavailable in this campaign
+        '409':
+          description: Page is already linked to another era
   /api/campaigns/{campaignHandle}/chronology/eras:
     parameters:
       - $ref: '#/components/parameters/campaignHandle'
@@ -3825,7 +3863,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/campaignHandle'
       tags: [Chronology]
-      summary: Create an era and its canonical Overview
+      summary: Create an era without creating a wiki page
       description: Requires chronology.edit. Observers are always denied. DM-only visibility additionally requires narrative.elevated_view. Names are authored; eras append to the track sequence.
       requestBody:
         required: true
@@ -3914,7 +3952,7 @@ paths:
           schema:
             type: string
       tags: [Chronology]
-      summary: Delete an era and its owned Overview after impact confirmation
+      summary: Delete an era after impact confirmation; retain its authored page
       description: Preserves events and trajectory content, detaches references with former-name snapshots, and leaves the track without a current era if necessary. Incoming wiki links do not block deletion. Recurrence uses remaining applicable eras independent of viewer visibility.
       requestBody:
         required: true
@@ -3928,7 +3966,7 @@ paths:
                   const: true
       responses:
         '204':
-          description: Era and Overview deleted
+          description: Era deleted; optional authored page retained
         '400':
           description: Confirmation required
         '403':
@@ -4591,7 +4629,7 @@ paths:
           - Membership in the addressed campaign
           - Non-observer campaign membership
           - Resource-level visibility and ownership checks performed by the controller/service
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Non-observer campaign membership; Resource-level visibility and ownership checks performed by the controller/service."
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Non-observer campaign membership; Resource-level visibility and ownership checks performed by the controller/service. Optional chronologyEventId or chronologyEraId atomically links the normal page to one chronology record; additionally requires chronology.edit and disclosure access. Initial page visibility matches the record."
   /api/campaigns/{campaignHandle}/wiki/{pageId}:
     get:
       tags:
@@ -26598,7 +26636,7 @@ components:
             - type: 'null'
         visibility: { type: string, enum: [PUBLIC, PARTY, DM_ONLY] }
         isCurrent: { type: boolean }
-        overview: { type: string, description: Markdown authored through the standard rich-text editor and stored on the owned wiki page. }
+        overview: { type: string, description: Chronology description authored through the standard rich-text editor; independent of an optional wiki document. }
     ChronologyEra:
       allOf:
         - $ref: '#/components/schemas/ChronologyEraInput'
@@ -26609,7 +26647,9 @@ components:
             isMasterTime: { type: boolean }
             sortOrder: { type: integer }
             status: { type: string, enum: [PAST, PRESENT, FUTURE] }
-            overviewPageId: { type: string }
+            overviewPageId: { type: [string, "null"], description: Optional visible authored page. }
+            slug: { type: string }
+            slugAliases: { type: array, items: { type: string } }
             canManage: { type: boolean }
     CalendarSubscriptionStatusResponse:
       type: object

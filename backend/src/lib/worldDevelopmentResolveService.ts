@@ -13,7 +13,6 @@ import {
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import { prisma } from './prisma.js';
-import { ensureEventLoreStubPage, eventLorePageIdForCalendarEvent } from './eventLoreStub.js';
 import { WORLD_EVENT_PROMPTS_HANDLER_VERSION } from './worldEventSuggestionService.js';
 import { findDefinitionById, getDevelopmentResolveProvider } from './developmentRegistry.js';
 import { DEVELOPMENT_TYPE_LABELS } from '../../../shared/worldDevelopmentPresentation.js';
@@ -94,7 +93,6 @@ export async function resolveWorldDevelopmentSuggestion(
       status: 'accepted',
       acceptTarget: 'calendar_event',
       calendarEventId: suggestion.acceptedCalendarEventId,
-      lorePageId: eventLorePageIdForCalendarEvent(suggestion.acceptedCalendarEventId),
     };
   }
   if (suggestion.status !== 'pending') {
@@ -222,17 +220,6 @@ export async function resolveWorldDevelopmentSuggestion(
       );
       await syncEntityRelationsForCalendarEvent(tx, input.campaignId, event.id);
 
-      const descriptionMarkdown = narrative
-        ? `# ${title}\n\n${narrative}`
-        : `# ${title}`;
-
-      const { lorePageId } = await ensureEventLoreStubPage(tx, {
-        campaignId: input.campaignId,
-        calendarEventId: event.id,
-        title,
-        descriptionMarkdown,
-      });
-
       if (nextPayload) {
         nextPayload.acceptedArtifactId = event.id;
         nextPayload.resultSummary = defaultResultSummary(acceptTarget, title);
@@ -251,7 +238,7 @@ export async function resolveWorldDevelopmentSuggestion(
         },
       });
 
-      return { calendarEventId: event.id, lorePageId };
+      return { calendarEventId: event.id };
     });
 
     return {
@@ -259,7 +246,7 @@ export async function resolveWorldDevelopmentSuggestion(
       status: 'accepted',
       acceptTarget,
       calendarEventId: result.calendarEventId,
-      lorePageId: result.lorePageId,
+
     };
   }
 

@@ -13,7 +13,9 @@ export interface ChronologyEra {
   endDate: EraDate | null;
   status: 'PAST' | 'FUTURE' | 'PRESENT';
   visibility: EraVisibility;
-  overviewPageId: string;
+  slug?: string;
+  slugAliases?: string[];
+  overviewPageId: string | null;
   overview: string;
   canManage: boolean;
 }

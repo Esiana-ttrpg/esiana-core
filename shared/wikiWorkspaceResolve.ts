@@ -130,7 +130,6 @@ export function isCategoryIndexPage(title: string | null | undefined): boolean {
 
 /** Whether a page should have workspace+pathKey (routable in public URLs). */
 export function isRoutableWikiPage(page: WikiPageWorkspaceInput): boolean {
-  if (/^event-[a-zA-Z0-9_-]+$/.test(page.id)) return false;
   if (CATEGORY_INDEX_TITLES.has(page.title.trim())) return false;
   if (page.templateType === 'SESSION_NOTE') return false;
   const systemKey = parseSystemCategoryKey(page.metadata);

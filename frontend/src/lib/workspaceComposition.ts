@@ -138,6 +138,8 @@ export function resolveWorkspaceComposition(pathname: string): WorkspaceComposit
 
   if (
     first === 'chronology' ||
+    first === 'events' ||
+    first === 'eras' ||
     first === 'party' ||
     first === 'visual-atlas' ||
     first === 'relations' ||

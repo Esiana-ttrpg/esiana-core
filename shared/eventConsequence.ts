@@ -1,6 +1,6 @@
 /**
  * Phase 6 — world event consequences (GM-authored, manually applied).
- * Stored on event-lore wiki metadata (`event-{calendarEventId}`).
+ * Event metadata is authoritative; authored page metadata is a legacy fallback only.
  */
 export const EVENT_HAVEN_THREAT_SEVERITIES = ['low', 'rising', 'critical'] as const;
 export type EventHavenThreatSeverity =

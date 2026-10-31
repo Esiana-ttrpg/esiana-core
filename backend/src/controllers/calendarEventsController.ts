@@ -1,3 +1,4 @@
+import { reserveChronologyRoute } from '../lib/chronologyRoutes.js';
 import type { Response } from 'express';
 import { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
@@ -409,6 +410,8 @@ export async function createCalendarEvent(
       : (body.recurrenceRule as Prisma.InputJsonValue);
 
   const created = await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
+    await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
     const event = await tx.calendarEvent.create({
       data: {
         calendarId,
@@ -440,6 +443,7 @@ export async function createCalendarEvent(
       '../lib/entityRelationSyncService.js'
     );
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
+    await reserveChronologyRoute(tx, campaignId, 'events', event.id, event.title);
     return event;
   });
 
@@ -614,6 +618,8 @@ export async function updateCalendarEvent(
         : (body.recurrenceRule as Prisma.InputJsonValue);
 
   const updated = await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
+    await reserveChronologyRoute(tx, campaignId, 'events', existing.id, existing.title);
     const event = await tx.calendarEvent.update({
       where: { id: eventId },
       data: {

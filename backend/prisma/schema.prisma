@@ -482,6 +482,7 @@ model PluginConnectionAuthState {
 }
 
 model Campaign {
+  chronologyRoutes ChronologyRoute[]
   safetyRequests SafetyPrivacyRequest[]
   safetyEligibility SafetyPrivacyEligibility[]
   assetOperationIdempotency AssetOperationIdempotency[]
@@ -1173,7 +1174,8 @@ model CampaignEra {
   epochStartMinute BigInt?
   epochEndMinute BigInt?
   visibility String @default("PARTY")
-  overviewPageId String @unique
+  overviewPageId String? @unique
+  description String?
   createdByUserId String?
   updatedByUserId String?
   createdAt DateTime @default(now())
@@ -1181,7 +1183,7 @@ model CampaignEra {
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   calendar FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
-  overview WikiPage @relation(fields: [overviewPageId], references: [id], onDelete: Restrict)
+  overview WikiPage? @relation(fields: [overviewPageId], references: [id], onDelete: SetNull)
 
   @@id([campaignId, id])
   @@index([campaignId, calendarId, sortOrder])
@@ -1437,6 +1439,7 @@ model CalendarEventCategory {
 }
 
 model CalendarEvent {
+  wikiPageId String?
   id             String  @id @default(uuid())
   calendarId     String
   categoryId     String?
@@ -3135,4 +3138,18 @@ model SafetyPrivacyRequestRead {
   revision Int
   request SafetyPrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
   @@id([requestId, userId])
+}
+
+/// Reserved chronology URLs, including historical aliases. IDs remain authoritative.
+model ChronologyRoute {
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId String
+  entityType String
+  slug String
+  entityId String
+  title String
+  canonical Boolean @default(true)
+
+  @@id([campaignId, entityType, slug])
+  @@index([campaignId, entityType, entityId])
 }

@@ -69,6 +69,8 @@ export const RESERVED_PATH_KEY_SEGMENTS = new Set([
   'settings',
   'party',
   'chronology',
+  'events',
+  'eras',
   'progression',
   'workshop',
   'relations',
@@ -414,10 +416,6 @@ export function resolveCanonicalPagePath(
   },
   flatPages: readonly WikiPageWorkspaceInput[],
 ): PublicPagePath {
-  if (/^event-[a-zA-Z0-9_-]+$/.test(page.id)) {
-    return asPublicPagePath(campaignPath(handle, page.id));
-  }
-
   if (isCategoryIndexPage(page.title)) {
     const indexPath = resolveWorkspaceIndexPathForFolderTitle(handle, page.title);
     if (indexPath) return indexPath;

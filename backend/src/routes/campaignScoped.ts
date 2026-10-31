@@ -1,3 +1,4 @@
+import { setChronologyPage } from '../controllers/chronologyPagesController.js';
 import { Router } from 'express';
 import { campaignAudioRouter } from './audioSettings.js';
 import { sessionRecordingsRouter } from './sessionRecordings.js';
@@ -527,6 +528,7 @@ campaignScopedRouter.post('/discord/:destinationId/test', requireGamemasterSetti
 campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemasterSettings, listDiscordDeliveries);
 
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
+campaignScopedRouter.put('/chronology/:entityType/:entityId/page', requireChronologyManager, setChronologyPage);
 campaignScopedRouter.get('/chronology/eras', listEras);
 campaignScopedRouter.post('/chronology/eras', requireChronologyManager, createEra);
 campaignScopedRouter.put('/chronology/eras/order', requireChronologyManager, reorderEras);

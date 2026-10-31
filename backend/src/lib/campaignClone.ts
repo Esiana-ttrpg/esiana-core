@@ -7,7 +7,7 @@ import { cloneSessionAudio, preflightSessionAudioClone } from './sessionAudioBac
 import { audioContext, capability, assertAudio, authorizeAudioBackup } from './audioCore.js';
 import { deleteCampaignAssetFiles } from './assetFiles.js';
 import { CampaignCapabilities as AudioCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
-import { createEraOverview, ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
+import { ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
 import { extractDescriptionMarkdown } from './eventLoreWiki.js';
 import { env } from '../config/env.js';
 import { generateHandle, makeUniqueHandle, isValidHandle } from './handleUtils.js';
@@ -340,6 +340,7 @@ export async function duplicateCampaign(
                 targetDay: event.targetDay,
                 targetEpochMinute: event.targetEpochMinute,
                 recurrenceRule: event.recurrenceRule as Prisma.InputJsonValue,
+                metadata: event.metadata as Prisma.InputJsonValue,
               },
             });
             eventIdMap.set(event.id, copiedEvent.id);
@@ -586,17 +587,17 @@ export async function duplicateCampaign(
     }
 
     if (calendarIdMap.size) {
+      for (const [sourceEventId, targetEventId] of eventIdMap) {
+        const sourceEvent = await tx.calendarEvent.findFirst({ where: { id: sourceEventId, calendar: { campaignId: source.id } }, select: { wikiPageId: true } });
+        if (sourceEvent?.wikiPageId) await tx.calendarEvent.update({ where: { id: targetEventId }, data: { wikiPageId: pageIdMap.get(sourceEvent.wikiPageId) ?? null } });
+      }
       const sourceEras = await tx.campaignEra.findMany({ where: { campaignId: source.id }, include: { overview: true } });
       for (const era of sourceEras) {
         const calendarId = calendarIdMap.get(era.calendarId);
         if (!calendarId) continue;
-        let overviewPageId = pageIdMap.get(era.overviewPageId);
-        if (!overviewPageId) {
-          const page = await createEraOverview(tx, campaign.id, era.name, era.visibility, extractDescriptionMarkdown(era.overview.blocks) ?? '');
-          overviewPageId = page.id;
-        }
+        const overviewPageId = era.overviewPageId ? pageIdMap.get(era.overviewPageId) ?? null : null;
         await tx.campaignEra.create({ data: {
-          campaignId: campaign.id, id: era.id, calendarId, overviewPageId, name: era.name,
+          campaignId: campaign.id, id: era.id, calendarId, overviewPageId, name: era.name, description: era.description,
           sortOrder: era.sortOrder, isCurrent: era.isCurrent, visibility: era.visibility,
           epochStartMinute: era.epochStartMinute, epochEndMinute: era.epochEndMinute,
         } });

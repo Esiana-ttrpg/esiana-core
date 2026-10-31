@@ -117,7 +117,7 @@ export function buildCampaignLinks(
   if (payload.domain === ChronologyDomainKind.WORLD_EVENT) {
     links.push({
       hrefKind: 'event_lore',
-      path: asPublicPagePath(`/campaigns/${slug}/event-${payload.payload.baseEventId}`),
+      path: asPublicPagePath(`/campaigns/${slug}/events/${encodeURIComponent(payload.payload.baseEventId)}`),
     });
     links.push({
       hrefKind: 'chronology_events',

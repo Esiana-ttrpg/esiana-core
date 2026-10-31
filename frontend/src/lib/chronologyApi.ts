@@ -31,6 +31,9 @@ export interface MoonOverride {
 }
 
 export interface TimelineBaseEventRecord {
+  slug?: string;
+  slugAliases?: string[];
+  wikiPageId?: string | null;
   id: string;
   calendarId: string;
   categoryId: string | null;
@@ -58,6 +61,8 @@ export interface TimelineBaseEventRecord {
 }
 
 export interface TimelineOccurrenceRecord {
+  wikiPageId?: string | null;
+  slug?: string;
   eraIds?: string[];
   eraNames?: string[];
   occurrenceId: string;

@@ -102,7 +102,7 @@ export const HistoricalTrack = memo(function HistoricalTrack({ id, name, axis, i
             onClick={() => onSelect(row)} onKeyDown={event => {
               if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(row); }
             }}>
-            <title>{comparisonIntervalLabel(row, axis, text)}</title>
+            <title>{comparisonIntervalLabel(row, axis, text)} / {row.representative.wikiPageId ? 'Page' : 'Event only'}</title>
             <rect x={Math.max(0, x - 20)} y={y - 22} width={Math.min(width - Math.max(0, x - 20), Math.max(44, right - x + 40, 140))} height={44} fill="transparent" />
             {row.end - row.start === 1440n ? <path d={`M ${x} ${y - (major ? 9 : 6)} l ${major ? 9 : 6} ${major ? 9 : 6} l -${major ? 9 : 6} ${major ? 9 : 6} l -${major ? 9 : 6} -${major ? 9 : 6} Z`} fill="currentColor" opacity={notice ? .4 : .85} /> :
               <rect x={x} y={y - (major ? 7 : 4)} width={Math.max(.75, right - x)} height={major ? 14 : 8} rx={2}

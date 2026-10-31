@@ -26,7 +26,7 @@ export const reorderEras = handler(async (req, res) => {
 });
 export const eraImpact = handler(async (req, res) => { res.json(await chronologyEraImpact(req.campaign!, String(req.params.eraId))); });
 export const deleteEra = handler(async (req, res) => {
-  if (req.body?.confirmed !== true) throw new EraError('Confirm deletion of the era and its Overview.');
+  if (req.body?.confirmed !== true) throw new EraError('Confirm deletion of the era.');
   await deleteChronologyEra(req.campaign!, String(req.params.eraId));
   res.status(204).end();
 });

@@ -4,7 +4,7 @@ import { campaignChronologyPath } from '@/lib/campaignPaths';
 import { chronologyViewParams } from '@/lib/chronologyNavigation';
 import type { TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 
-export type ChronologyView = 'calendar' | 'timeline' | 'eras' | 'feed';
+export type ChronologyView = 'calendar' | 'timeline' | 'eras' | 'events' | 'feed';
 
 export interface UniverseClockPill {
   id: string;
@@ -27,6 +27,7 @@ const VIEW_TABS: Array<{ id: ChronologyView; label: string }> = [
   { id: 'calendar', label: 'Calendar' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'eras', label: 'Eras' },
+  { id: 'events', label: 'Events' },
   { id: 'feed', label: 'Campaign feed' },
 ];
 

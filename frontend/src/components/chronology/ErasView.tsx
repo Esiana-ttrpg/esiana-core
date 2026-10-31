@@ -1,10 +1,11 @@
+import { ChronologyPageLink } from './ChronologyPageLink';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
 import { ChronologyImportance } from './ChronologyImportance';
 import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { chronologyTargetSignature, intervalOccurrence } from '@/lib/chronologyNavigation';
 import { createPortal } from 'react-dom';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { compareEraDates, eraContainsDate, type ChronologyEra, type EraDate, type EraInput, type EraDeletionImpact } from '@shared/chronologyEras';
@@ -13,7 +14,7 @@ import { ChronologyEventSidebar } from './ChronologyEventSidebar';
 import { comparisonDateLabel, useComparisonText } from './comparisonText';
 import { historicalClock, sharedHistoricalIntervals } from '@/lib/historicalTimeline';
 import { eraBounds, eraDateSummary, selectedEraEvents, selectWorkspaceEra } from '@/lib/eraWorkspace';
-import { campaignWikiPath } from '@/lib/campaignPaths';
+import { campaignWikiPath, campaignEraPath } from '@/lib/campaignPaths';
 import type { ChronologyTimelineBundle, TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 import { FantasyDatePicker } from './FantasyDatePicker';
@@ -44,6 +45,8 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
   const elevated = can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW);
   const text = useComparisonText();
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
+  const route = useParams();
   const eras = bundle.eras ?? [];
   const defaultTrack = bundle.calendars.find(row => row.isMasterTime)?.id ?? bundle.calendars[0]?.id ?? '';
   const signature = chronologyTargetSignature(params);
@@ -52,9 +55,9 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
   }));
   if (pendingRestore.signature !== signature) setPendingRestore({ signature, snapshot: undefined });
   const restore = pendingRestore.signature === signature ? pendingRestore.snapshot : undefined;
-  const requestedEra = restore?.era ?? params.get('era');
+  const requestedEra = route.eraSlug ? eras.find(era => era.id === route.eraSlug || era.slugAliases?.includes(route.eraSlug!))?.id ?? route.eraSlug : restore?.era ?? params.get('era');
   const linkedEra = eras.find(row => row.id === requestedEra);
-  const track = restore?.track ?? params.get('track') ?? linkedEra?.calendarId ?? defaultTrack;
+  const track = route.eraSlug && linkedEra ? linkedEra.calendarId : restore?.track ?? params.get('track') ?? linkedEra?.calendarId ?? defaultTrack;
   const trackEras = useMemo(() => (bundle.eras ?? []).filter(era => era.calendarId === track)
     .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id)), [bundle.eras, track]);
   const definition = ledger.timeBundle.calendars.find(row => row.id === track);
@@ -100,6 +103,8 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
   const like = useMemo(() => calendar ? historicalClock(calendar).axis?.calendar ?? null : null, [calendar]);
   const dateLabel = (date: EraDate) => `${axis ? resolveMonthName(axis.calendar, date.year, date.month) : `Month ${date.month + 1}`} ${date.day}, Year ${date.year}`;
   function filter(key: string, value: string) {
+    if (route.eraSlug && key === 'era') { navigate(campaignEraPath(ledger.campaignHandle, eras.find(era => era.id === value)?.slug ?? value)); return; }
+    if (route.eraSlug && key === 'track') { navigate(campaignEraPath(ledger.campaignHandle, '') + '?track=' + encodeURIComponent(value)); return; }
     const next = new URLSearchParams(params); if (value) next.set(key, value); else next.delete(key);
     if (key === 'track') next.delete('era');
     setParams(next); setSelectedKey(null);
@@ -156,7 +161,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
                 {!selected.isCurrent && <button disabled={busy} onClick={() => void perform(() => saveEra(ledger.campaignHandle, { ...selected, isCurrent: true }, selected.id))}>Make current</button>}
                 <button disabled={busy || !previous} onClick={() => void move(-1)}>Move up</button>
                 <button disabled={busy || !nextEra} onClick={() => void move(1)}>Move down</button>
-                {flatPages.some(page => page.id === selected.overviewPageId) && <Link className="flex min-h-11 items-center rounded px-3 hover:bg-elevated" to={campaignWikiPath(ledger.campaignHandle, selected.overviewPageId, flatPages)}>Open overview</Link>}
+                {flatPages.some(page => page.id === selected.overviewPageId) && <Link className="flex min-h-11 items-center rounded px-3 hover:bg-elevated" to={campaignWikiPath(ledger.campaignHandle, selected.overviewPageId!, flatPages)}>Open overview</Link>}
                 <button className="text-red-500" disabled={busy} onClick={() => void perform(async () => setImpact({ era: selected, details: await fetchEraImpact(ledger.campaignHandle, selected.id) }), false)}>Delete era...</button>
               </div>
             </details>
@@ -173,6 +178,8 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
           {today && eraContainsDate(selected, today) && <span>{selected.isCurrent && ' · '}Contains campaign today</span>}
         </p>}
       </header>
+      <ChronologyPageLink key={selected.id} type="eras" canManage={selected.canManage} id={selected.id} title={selected.name} pageId={selected.overviewPageId} description={selected.overview} onChanged={onErasChanged} />
+      <Link className="text-sm text-muted underline" to={campaignEraPath(ledger.campaignHandle, selected.slug ?? selected.id)}>Link to this era</Link>
       <section className="type-prose max-w-[80ch]" aria-label="Era overview">
         {selected.overview.trim() ? <WikiMarkdown content={selected.overview} /> : selected.canManage ? <div className="space-y-1 border-l-2 border-border/60 pl-4">
           <p className="text-sm text-muted">Tell the story of this era.</p>
@@ -218,7 +225,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
       open={!!inspection} occurrence={occurrence} dateSeed={occurrence?.start} onClose={() => setSelectedKey(null)}
       onMutated={ledger.onEventMutated} onDeleted={async () => { setSelectedKey(null); await ledger.onEventDeleted(); }} onRevealEvent={ledger.onRevealEvent} />
     {draft && like && <EraDialog title={editing ? 'Edit era' : 'Create era'} busy={busy} onClose={() => setDraft(null)}>
-      <form className="space-y-4" onSubmit={e => { e.preventDefault(); void perform(async () => { const result = await saveEra(ledger.campaignHandle, draft, editing); setDraft(null); const next = new URLSearchParams(params); next.set('track', result.era.calendarId); next.set('era', result.era.id); setParams(next); setSelectedKey(null); }); }}>
+      <form className="space-y-4" onSubmit={e => { e.preventDefault(); void perform(async () => { const result = await saveEra(ledger.campaignHandle, draft, editing); setDraft(null); navigate(campaignEraPath(ledger.campaignHandle, result.era.slug ?? result.era.id)); setSelectedKey(null); }); }}>
         <h2 className={TYPE_DISPLAY_CLASS}>{editing ? 'Edit era' : 'Create era'}</h2>
         <label className="block">Calendar <select disabled={!!editing} value={draft.calendarId} onChange={e => setDraft({ ...draft, calendarId: e.target.value, startDate: null, endDate: null })}>{bundle.calendars.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
         <label className="block">Name <input required maxLength={120} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label>
@@ -240,9 +247,9 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
       <h2 className={TYPE_DISPLAY_CLASS}>Delete “{impact.era.name}”?</h2>
       <p>{impact.details.events} chronology events · {impact.details.trajectories} progression references · {impact.details.recurringRules} recurring rules · Overview ({impact.details.overviewWords} words)</p>
       <p>Events and progression content will remain. Era references will be removed, preserving the former name. Future repeating events will use the remaining eras.</p>
-      <p>The era Overview will be deleted. Links to it will become broken links.</p>
+      <p>Linked pages will remain available in the wiki.</p>
       {error && <p role="alert">{error}</p>}
-      <button disabled={busy} onClick={() => setImpact(null)}>Cancel</button>{' '}<button disabled={busy} onClick={() => void perform(async () => { await deleteEra(ledger.campaignHandle, impact.era.id); setImpact(null); if (selected?.id === impact.era.id) filter('era', ''); })}>Delete era and Overview</button>
+      <button disabled={busy} onClick={() => setImpact(null)}>Cancel</button>{' '}<button disabled={busy} onClick={() => void perform(async () => { await deleteEra(ledger.campaignHandle, impact.era.id); setImpact(null); if (selected?.id === impact.era.id) navigate(campaignEraPath(ledger.campaignHandle, '')); })}>Delete era</button>
     </div></EraDialog>}
   </div>;
 }
