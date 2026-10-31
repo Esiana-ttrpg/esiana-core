@@ -299,8 +299,10 @@ function CampaignLayoutShell() {
  * Campaign shell: persistent sidebar at lg+; off-canvas drawer below lg.
  */
 export function CampaignLayout() {
+  const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
+
   return (
-    <WikiProvider>
+    <WikiProvider key={campaignHandle}>
       <CampaignNavProvider>
         <PluginRuntimeProvider>
           <SceneCompositionProvider>
