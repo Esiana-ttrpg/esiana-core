@@ -135,6 +135,28 @@ export function AdminSidebarNav({
           </span>
         </a>
         <a
+          href={externalLinks.discord}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:border-border hover:bg-elevated/60 hover:text-primary"
+        >
+          <span>Discord</span>
+          <span className="text-muted" aria-hidden="true">
+            ↗
+          </span>
+        </a>
+        <a
+          href={externalLinks.reddit}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 flex min-h-11 items-center justify-between gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium text-muted transition-colors hover:border-border hover:bg-elevated/60 hover:text-primary"
+        >
+          <span>Reddit</span>
+          <span className="text-muted" aria-hidden="true">
+            ↗
+          </span>
+        </a>
+        <a
           href={docsLinks.home}
           target="_blank"
           rel="noopener noreferrer"
