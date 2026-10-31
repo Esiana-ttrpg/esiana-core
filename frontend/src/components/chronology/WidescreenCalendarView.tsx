@@ -1,3 +1,5 @@
+import { eventCategoryLabel, resolveEventCategoryFilter } from '@shared/defaultEventCategories';
+import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
 import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
 import { ChronologyImportance } from './ChronologyImportance';
 import { ChronologyInspector } from './ChronologyInspector';
@@ -34,7 +36,7 @@ import {
 export interface CalendarSession {
   signature?: string;
   snapshot?: { calendarId: string | null; year: number; month: number; day: number | null;
-    occurrenceId: string | null; importance: Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean> };
+    occurrenceId: string | null; category?: string; importance: Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean> };
 }
 interface WidescreenCalendarViewProps {
   onInspectionChange?: (occurrence: TimelineOccurrenceRecord | null) => void;
@@ -77,11 +79,16 @@ export function WidescreenCalendarView({
   const [importanceFilter, setImportanceFilter] = useState<
     Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean>
   >(session?.snapshot?.importance ?? { NOTICE: false, MINOR: true, MAJOR: true });
+  const [categoryFilter, setCategoryFilter] = useState(session?.snapshot?.category ?? 'all');
+  useEffect(() => {
+    const available = resolveEventCategoryFilter(categoryFilter, categories);
+    if (available !== categoryFilter) setCategoryFilter(available);
+  }, [categoryFilter, categories]);
   const viewCalendarIdRef = useRef<string | null>(session?.snapshot?.calendarId ?? null);
   useLayoutEffect(() => {
     if (session) session.snapshot = { calendarId: selectedCalendarId, year: viewYear, month: viewMonthIndex,
-      day: selectedDay, occurrenceId: expandedOccurrenceId, importance: importanceFilter };
-  }, [session, selectedCalendarId, viewYear, viewMonthIndex, selectedDay, expandedOccurrenceId, importanceFilter]);
+      day: selectedDay, occurrenceId: expandedOccurrenceId, importance: importanceFilter, category: categoryFilter };
+  }, [session, selectedCalendarId, viewYear, viewMonthIndex, selectedDay, expandedOccurrenceId, importanceFilter, categoryFilter]);
   const signature = chronologyTargetSignature(params);
   const appliedLink = useRef(params.get('focus') === 'calendar' ? undefined : session?.snapshot ? signature : undefined);
   const [revealedTarget, setRevealedTarget] = useState<string | null>(null);
@@ -96,7 +103,7 @@ export function WidescreenCalendarView({
     (!params.has('event') && !params.has('date') && targetClock ? { year: targetClock.state.year, month: targetClock.state.monthIndex, day: targetClock.state.day } : null);
   const hasTarget = params.has('event') || params.has('date') || params.has('track');
   const unavailable = hasTarget && (!targetClock || !linkedDate || (params.has('event') && !target));
-  const filteredTarget = target && !importanceFilter[target.importance] && revealedTarget !== signature;
+  const filteredTarget = target && (!importanceFilter[target.importance] || (categoryFilter !== 'all' && (target.categoryId ?? 'uncategorized') !== categoryFilter)) && revealedTarget !== signature;
   const calendars = useMemo(() => timeBundle.calendars.filter(row => chronologyBundle.calendars.some(track => track.id === row.id)), [timeBundle.calendars, chronologyBundle.calendars]);
 
   useEffect(() => {
@@ -246,17 +253,6 @@ export function WidescreenCalendarView({
     [baseEvents],
   );
 
-  const categoryNameById = useMemo(
-    () =>
-      new Map(
-        chronologyBundle.categories.map((category) => [
-          category.id,
-          category.name,
-        ]),
-      ),
-    [chronologyBundle.categories],
-  );
-
   // Bounded bundles may contain only continuation days; inspection still opens the actual start.
   const calendarOccurrences = useMemo(() => target && !chronologyBundle.occurrences.some(row =>
     row.baseEventId === target.baseEventId && row.occurrenceIndex === target.occurrenceIndex && row.calendarId === target.calendarId && row.dayOffset === 0)
@@ -268,6 +264,7 @@ export function WidescreenCalendarView({
     for (const occurrence of calendarOccurrences) {
       if (occurrence.calendarId !== selectedCalendar.id) continue;
       if (!importanceFilter[occurrence.importance ?? 'MINOR'] && !(revealedTarget === signature && occurrence.baseEventId === target?.baseEventId && occurrence.occurrenceIndex === target.occurrenceIndex)) continue;
+      if (categoryFilter !== 'all' && (occurrence.categoryId ?? 'uncategorized') !== categoryFilter && !(revealedTarget === signature && occurrence.baseEventId === target?.baseEventId && occurrence.occurrenceIndex === target.occurrenceIndex)) continue;
       if (!baseEventById.has(occurrence.baseEventId)) continue;
       if (occurrence.start.year !== viewYear) continue;
       if (occurrence.start.month !== viewMonthIndex) continue;
@@ -285,7 +282,7 @@ export function WidescreenCalendarView({
     selectedCalendar,
     viewYear,
     viewMonthIndex,
-    importanceFilter,
+    importanceFilter, categoryFilter,
     revealedTarget, signature, target, baseEventById,
   ]);
 
@@ -297,6 +294,7 @@ export function WidescreenCalendarView({
           occurrence.calendarId === selectedCalendar.id &&
           baseEventById.has(occurrence.baseEventId) &&
           (importanceFilter[occurrence.importance ?? 'MINOR'] || (revealedTarget === signature && occurrence.baseEventId === target?.baseEventId && occurrence.occurrenceIndex === target.occurrenceIndex)) &&
+          (categoryFilter === 'all' || (occurrence.categoryId ?? 'uncategorized') === categoryFilter || (revealedTarget === signature && occurrence.baseEventId === target?.baseEventId && occurrence.occurrenceIndex === target.occurrenceIndex)) &&
           occurrence.start.year === viewYear &&
           occurrence.start.month === viewMonthIndex &&
           occurrence.start.day === selectedDay,
@@ -308,7 +306,7 @@ export function WidescreenCalendarView({
     viewYear,
     viewMonthIndex,
     selectedDay,
-    importanceFilter,
+    importanceFilter, categoryFilter,
     revealedTarget, signature, target, baseEventById,
   ]);
 
@@ -375,6 +373,7 @@ export function WidescreenCalendarView({
         </label>
 
         <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
+          <label className="text-xs">Category <select className="rounded border border-border bg-background px-2 py-1" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="all">All categories</option><option value="uncategorized">Uncategorized</option>{categories.map(category => <option key={category.id} value={category.id}>{eventCategoryLabel(category.name)}</option>)}</select></label>
           {(['NOTICE', 'MINOR', 'MAJOR'] as const).map((importance) => (
             <button
               key={importance}
@@ -429,6 +428,7 @@ export function WidescreenCalendarView({
         />
         <div className="min-h-0 md:flex-1 md:overflow-auto">
           <CalendarMonthGrid
+            categories={categories}
             columnLabels={viewport.columnLabels}
             monthTitle={viewport.monthTitle}
             climateAspect={viewport.climateAspect}
@@ -493,12 +493,6 @@ export function WidescreenCalendarView({
                   categories={categories}
                   editableEvents={baseEvents}
                   canManage={canManage}
-                  categoryName={
-                    occurrence.categoryId
-                      ? (categoryNameById.get(occurrence.categoryId) ??
-                        'Unknown')
-                      : 'Uncategorized'
-                  }
                   expanded={expandedOccurrenceId === occurrence.occurrenceId}
                   onToggle={() => toggleAgendaItem(occurrence.occurrenceId)}
                   onEventMutated={onEventMutated}
@@ -525,7 +519,6 @@ function AgendaItem({
   categories,
   editableEvents,
   canManage,
-  categoryName,
   expanded,
   onToggle,
   onEventMutated,
@@ -541,7 +534,6 @@ function AgendaItem({
   categories: TimelineCategoryRecord[];
   editableEvents: TimelineBaseEventRecord[];
   canManage: boolean;
-  categoryName: string;
   expanded: boolean;
   onToggle: () => void;
   onEventMutated?: () => void | Promise<void>;
@@ -569,7 +561,7 @@ function AgendaItem({
               {occurrence.eraNames.join(' · ')}
             </p>
           )}
-          <p className="mt-1 text-[11px] text-muted">{categoryName} · <ChronologyImportance value={occurrence.importance} /> / {baseEvent?.wikiPageId ? 'Page' : 'Event only'}</p>
+          <p className="mt-1 text-[11px] text-muted"><ChronologyCategoryLabel category={categories.find(category => category.id === occurrence.categoryId)} /> · <ChronologyImportance value={occurrence.importance} /> / {baseEvent?.wikiPageId ? 'Page' : 'Event only'}</p>
           <p className="mt-1 text-xs text-muted">
             {eventDayState(occurrence)}
             {occurrence.duration > 1 && (

@@ -65,6 +65,14 @@ describe('world calendar presentation', () => {
     const html = renderToStaticMarkup(<CalendarMonthGrid {...common} />);
     assert.doesNotMatch(html, /132px|Single-day event|Event begins/);
   });
+  it('uses campaign category colors independently of importance', () => {
+    const categorized = { ...event('categorized', 'NOTICE'), categoryId: 'archive' };
+    const html = renderToStaticMarkup(<CalendarMonthGrid {...common} presentation="expanded"
+      categories={[{ id: 'archive', campaignId: 'campaign', name: 'Archives', color: '#123456', icon: 'compass' }]}
+      occurrencesByDay={new Map([[1, [categorized]]])} />);
+    assert.match(html, /border-left-color:#123456/);
+    assert.match(html, /notice/);
+  });
   it('omits unconfigured climate and discloses the complete configured label', () => {
     const empty = renderToStaticMarkup(<CalendarClimateContext />);
     assert.doesNotMatch(empty, /Monthly climate|Temperate|forecast/i);

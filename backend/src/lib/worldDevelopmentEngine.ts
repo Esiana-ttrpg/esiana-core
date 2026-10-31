@@ -167,6 +167,7 @@ async function createSuggestionFromCandidate(
     chainStageCount: input.chainStageCount ?? null,
     proposedAcceptTarget: candidate.proposedAcceptTarget,
     budgetAllocationRank: input.rank,
+    categoryId: candidate.categoryId && await tx.calendarEventCategory.findFirst({ where: { id: candidate.categoryId, campaignId: input.campaignId }, select: { id: true } }) ? candidate.categoryId : null,
     definitionId: candidate.definitionId,
     providerId: candidate.providerId,
     trajectoryRef: candidate.trajectoryRef,

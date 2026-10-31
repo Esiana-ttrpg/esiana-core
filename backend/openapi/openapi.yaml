@@ -27054,7 +27054,13 @@ components:
         campaignId: { type: string }
         name: { type: string }
         color: { type: string, nullable: true }
-      description: Campaign-scoped event category. Null categoryId means Uncategorized.
+        icon:
+          type: string
+          nullable: true
+          enum: [tag, swords, landmark, users, compass, triangle-alert, search, heart, cake, crown, null]
+          description: Supported category icon key. POST and PATCH accept this field; null uses the default icon.
+        sortOrder: { type: integer }
+      description: Campaign-scoped, freely editable event category. New campaigns receive nine defaults once. Existing campaigns receive missing non-legacy defaults; missing Personal is preserved because prior deletion or customization cannot be established. Null categoryId means virtual Uncategorized. Category PATCH also accepts orderedCategoryIds containing every campaign category ID exactly once to save display order, and rejects requests combining that field with name, color, or icon. Legacy saved Uncategorized categories retain their IDs and can be edited; creating or renaming another category to Uncategorized is rejected. Categories are independent of importance.
     ApiResponse:
       description: Endpoint-specific JSON response. See the operation description and examples.
       oneOf:

@@ -1,3 +1,4 @@
+import { eventCategoryLabel } from '@shared/defaultEventCategories';
 import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
 import { useCallback, useEffect, useMemo, useRef, useState, useLayoutEffect, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -327,7 +328,7 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
           </div>
           <label className="block text-xs">{text('category')} <select className={control} value={category} onChange={event => setCategory(event.target.value)}>
             <option value="all">{text('allCategories')}</option><option value="uncategorized">{text('uncategorized')}</option>
-            {bundle.categories.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
+            {bundle.categories.map(row => <option key={row.id} value={row.id}>{eventCategoryLabel(row.name)}</option>)}
           </select></label>
           <label className="block text-xs"><input type="checkbox" checked={showEras} onChange={event => setShowEras(event.target.checked)} /> {text('showEras')}</label>
           <label className="block text-xs">{text('jumpEra')} <select className={control} value={focusedEraId ?? ''} onChange={event => focusEra(event.target.value)}>

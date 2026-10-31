@@ -124,8 +124,9 @@ export async function buildCampaignNarrativeFeed(ctx: CampaignContext, options: 
   };
 
   // Chronology: one row per recurrence, shared generator, normalized native dates (never stale repeated epochs).
-  const categories = await prisma.calendarEventCategory.findMany({ where: { campaignId, name: WORLD_ADVANCE_CATEGORY }, select: { id: true } });
-  const batchCategoryIds = new Set(categories.map(row => row.id));
+  const categories = await prisma.calendarEventCategory.findMany({ where: { campaignId }, select: { id: true, campaignId: true, name: true, color: true, icon: true } });
+  const batchCategoryIds = new Set(categories.filter(row => row.name === WORLD_ADVANCE_CATEGORY).map(row => row.id));
+  const categoryById = new Map(categories.map(category => [category.id, category]));
   for (const event of visibleEvents) {
     if (batchCategoryIds.has(event.categoryId ?? '')) continue; // The same artifact is represented by its distinct applied effects below.
     if (!enabled('world_event')) continue;
@@ -135,7 +136,7 @@ export async function buildCampaignNarrativeFeed(ctx: CampaignContext, options: 
     for (const code of expanded.warnings) warn('world_event', code, 'Chronology recurrence expansion is limited or contains unsupported dates. Narrowing a window cannot recover occurrences beyond a recurrence cap.');
     if (!expanded.occurrences.length && !event.isRepeating) {
       add(anchorFromTimelineOccurrence({ ...event, occurrenceId: `occ_${event.id}_0_0`, baseEventId: event.id, prerequisiteBaseEventId: event.prerequisiteId, sourceType: 'STATIC', start: { year: event.targetYear, month: event.targetMonth, day: event.targetDay, epochMinute: null } }),
-        { datePrecision: 'undated', importance: event.importance as FeedImportance, calendarId: calendar.id, calendarName: calendar.name }, pathMap.has(`event-${event.id}`) ? [{ hrefKind: 'event_lore', path: pathMap.get(`event-${event.id}`)! }] : []);
+        { category: categoryById.get(event.categoryId ?? '') ?? null, datePrecision: 'undated', importance: event.importance as FeedImportance, calendarId: calendar.id, calendarName: calendar.name }, pathMap.has(`event-${event.id}`) ? [{ hrefKind: 'event_lore', path: pathMap.get(`event-${event.id}`)! }] : []);
     }
     let timeOffset = 0n;
     for (const raw of expanded.occurrences) {
@@ -151,7 +152,7 @@ export async function buildCampaignNarrativeFeed(ctx: CampaignContext, options: 
       if (pathMap.has(`event-${event.id}`)) links.push({ hrefKind: 'event_lore', path: pathMap.get(`event-${event.id}`)! });
       links.push({ hrefKind: 'chronology_events', path: asPublicPagePath(`/campaigns/${handle}/chronology?view=timeline&track=${encodeURIComponent(calendar.id)}`) });
       add(anchorFromTimelineOccurrence({ ...event, baseEventId: event.id, occurrenceId: row.occurrenceId, prerequisiteBaseEventId: event.prerequisiteId, sourceType: event.isRepeating ? 'REPEATING' : 'STATIC', start: { ...row.start, epochMinute: minute?.toString() ?? null } }),
-        { datePrecision: minute === null ? 'unaligned' : event.targetEpochMinute === null ? 'day' : 'minute', importance: event.importance as FeedImportance,
+        { category: categoryById.get(event.categoryId ?? '') ?? null, datePrecision: minute === null ? 'unaligned' : event.targetEpochMinute === null ? 'day' : 'minute', importance: event.importance as FeedImportance,
           occurrenceId: row.occurrenceId, occurrenceIndex: row.occurrenceIndex, duration: event.duration, endEpochMinute: end?.toString(),
           calendarId: calendar.id, calendarName: calendar.name, nativeDateLabel, nativeStart: nativeAvailable ? row.start : undefined, nativeEnd: nativeAvailable ? row.end : undefined, provenance: [`timeline_event:${event.id}`] }, links);
     }

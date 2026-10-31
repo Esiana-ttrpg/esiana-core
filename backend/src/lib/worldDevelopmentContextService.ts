@@ -215,13 +215,17 @@ export async function buildWorldDevelopmentContext(
     tx?: Prisma.TransactionClient;
   },
 ): Promise<WorldDevelopmentContext> {
-  const [projection, settings, projectedFactionStates] = await Promise.all([
+  const [projection, settings, projectedFactionStates, availableEventCategories] = await Promise.all([
     buildCampaignWorldPressureProjection(campaignId, {
       tx: input.tx,
       includeSessionForecast: false,
     }),
     resolveWorldDevelopmentSettings(campaignId, input.tx),
     buildProjectedFactionStates(campaignId, { tx: input.tx }),
+    (input.tx ?? (await import('./prisma.js')).prisma).calendarEventCategory.findMany({
+      where: { campaignId }, orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { id: true, name: true, color: true, icon: true },
+    }),
   ]);
 
   const bulletByOrg = new Map(
@@ -242,6 +246,7 @@ export async function buildWorldDevelopmentContext(
   return {
     campaignId,
     projectedFactionStates: enrichedStates,
+    availableEventCategories,
     currentEra,
     settings,
     advanceMagnitude: input.advanceMagnitude,

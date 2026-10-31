@@ -93,6 +93,8 @@ export type NormalizedTrajectoryContext = {
 export type ProjectedFactionState = NormalizedTrajectoryContext;
 
 export type WorldDevelopmentContext = {
+  /** Live campaign choices; defaults may have been renamed or deleted. */
+  availableEventCategories?: { id: string; name: string; color: string | null; icon: string | null }[];
   campaignId: string;
   /**
    * Projected trajectory contexts for all supported subjects
@@ -115,6 +117,8 @@ export type WorldDevelopmentContext = {
  * - `suggestionKind: 'faction_pressure'` means subject-scoped (vs regional era_trend).
  */
 export type ProviderDevelopmentCandidate = {
+  /** Optional available campaign category ID; stale/foreign IDs resolve to Uncategorized. */
+  categoryId?: string | null;
   definitionId: string;
   developmentType: DevelopmentType;
   title: string;

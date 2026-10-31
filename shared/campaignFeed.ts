@@ -1,6 +1,7 @@
 /** Additive, read-only presentation contract for the campaign feed. */
 export type FeedImportance = 'MAJOR' | 'MINOR' | 'NOTICE';
 export interface FeedEntryMetadata {
+  category?: { id: string; campaignId: string; name: string; color: string | null; icon: string | null } | null;
   calendarId?: string;
   calendarName?: string;
   nativeDateLabel?: string;

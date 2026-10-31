@@ -1,3 +1,4 @@
+import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
 import { ChronologyPageLink } from './ChronologyPageLink';
 import { ChevronLeft, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
 import { ChronologyImportance } from './ChronologyImportance';
@@ -214,7 +215,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
             <span className="min-w-0 space-y-1">
               <span className="block break-words text-sm font-medium">{row.representative.title}</span>
               <span className="block text-xs text-muted"><ChronologyImportance value={row.representative.importance} />
-                {' · '}{bundle.categories.find(category => category.id === row.representative.categoryId)?.name ?? 'Uncategorized'}
+                {' · '}<ChronologyCategoryLabel category={bundle.categories.find(category => category.id === row.representative.categoryId)} />
                 {bounds?.start != null && row.start < bounds.start && ' · Began before this era'}{bounds?.end != null && row.end > bounds.end && ' · Continues beyond this era'}</span>
             </span>
             <span className="text-xs text-muted">{comparisonDateLabel(axis!, row.start, text)}{row.end - row.start > 1440n && ' – ' + comparisonDateLabel(axis!, row.end - 1440n, text)}</span>

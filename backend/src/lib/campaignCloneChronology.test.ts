@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { prisma } from './prisma.js';
 import { duplicateCampaign } from './campaignClone.js';
+import { initializeEventCategories } from './defaultEventCategories.js';
 import { mergeEventConsequenceSetIntoMetadata, readEventConsequencesFromMetadata } from '../../../shared/eventConsequence.js';
 import type { CampaignCloneOptions } from './campaignCloneOptions.js';
 
@@ -17,6 +18,9 @@ test('campaign duplication links copied events only to copied wiki documents', a
   const owner = await prisma.user.create({ data: { email: `clone-chronology-${stamp}@example.test`, passwordHash: 'fixture' } });
   const source = await prisma.campaign.create({ data: { name: 'Source Chronicle', handle: `clone-source-${stamp}`, campaignOwnerUserId: owner.id } });
   const campaigns = [source.id];
+  await prisma.$transaction(tx => initializeEventCategories(tx, source.id, { newCampaign: true }));
+  await prisma.calendarEventCategory.deleteMany({ where: { campaignId: source.id, name: 'Conflict' } });
+  await prisma.calendarEventCategory.updateMany({ where: { campaignId: source.id, name: 'Discovery' }, data: { name: 'Archives', color: '#123456', sortOrder: -1 } });
   t.after(async () => {
     await prisma.campaign.deleteMany({ where: { id: { in: campaigns } } });
     await prisma.user.delete({ where: { id: owner.id } }); await prisma.$disconnect();
@@ -42,6 +46,12 @@ test('campaign duplication links copied events only to copied wiki documents', a
     return prisma.calendarEvent.findMany({ where: { calendar: { campaignId: result.campaignId } }, include: { wikiPage: true } });
   };
   const copied = await clone(options, 'with-documents');
+  await prisma.$transaction(tx => initializeEventCategories(tx, campaigns[1]));
+  const copiedCategories = await prisma.calendarEventCategory.findMany({ where: { campaignId: campaigns[1] }, orderBy: { sortOrder: 'asc' } });
+  assert.equal(copiedCategories.length, 8);
+  assert.equal(copiedCategories[0].name, 'Archives');
+  assert.equal(copiedCategories[0].color, '#123456');
+  assert.equal(copiedCategories[0].icon, 'compass');
   assert.equal(copied.length, 2);
   const linked = copied.find(event => event.title === 'Riverlight Discovery')!;
   assert.ok(linked.wikiPageId);

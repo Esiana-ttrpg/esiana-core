@@ -295,6 +295,8 @@ export async function duplicateCampaign(
             campaignId: campaign.id,
             name: category.name,
             color: category.color,
+            icon: category.icon,
+            sortOrder: category.sortOrder,
           },
         });
         categoryIdMap.set(category.id, createdCategory.id);
@@ -618,6 +620,12 @@ export async function duplicateCampaign(
       const sourceHistory = (await tx.campaignMomentum.findUnique({ where: { campaignId: source.id } }))?.eraRecurrenceHistory as import('./eraOccurrenceHistory.js').EraHistory | undefined;
       const history = Object.fromEntries(Object.entries(sourceHistory ?? {}).filter(([id]) => eventIdMap.has(id)).map(([id, value]) => [eventIdMap.get(id)!, value]));
       await tx.campaignMomentum.update({ where: { campaignId: campaign.id }, data: { eraRecurrenceHistory: history as Prisma.InputJsonValue } });
+    }
+    if (copy.scheduling.calendarStructure && source.eventCategoriesInitialized) {
+      await tx.campaign.update({ where: { id: campaign.id }, data: { eventCategoriesInitialized: true } });
+    } else {
+      const { initializeEventCategories } = await import('./defaultEventCategories.js');
+      await initializeEventCategories(tx, campaign.id, { newCampaign: !copy.scheduling.calendarStructure });
     }
     return campaign;
   });

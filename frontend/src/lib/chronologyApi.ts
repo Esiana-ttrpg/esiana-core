@@ -11,6 +11,8 @@ export interface TimelineCategoryRecord {
   campaignId: string;
   name: string;
   color: string | null;
+  icon?: string | null;
+  sortOrder?: number;
 }
 
 export interface ConditionNode {

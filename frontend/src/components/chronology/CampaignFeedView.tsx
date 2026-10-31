@@ -1,3 +1,5 @@
+import { eventCategoryLabel, resolveEventCategoryFilter } from '@shared/defaultEventCategories';
+import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { TYPE_DISPLAY_CLASS, META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
@@ -45,7 +47,21 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
   const range = coverage?.requestedRange ?? bundle.window;
   const importance = (params.get('importance') ?? 'MAJOR,MINOR,NOTICE').split(',');
   const domains = params.get('domains')?.split(',');
-  const groups = useMemo(() => groupCampaignFeed(bundle.entries.filter(row => row.projection.visible), params.get('group') === 'session'), [bundle.entries, params]);
+  const availableCategories = chronologyBundle?.categories ?? catalogue?.categories;
+  const requestedCategory = params.get('feedCategory');
+  const feedCategory = resolveEventCategoryFilter(requestedCategory, availableCategories ?? []);
+  useEffect(() => {
+    if (!availableCategories || requestedCategory === null || requestedCategory === feedCategory) return;
+    setParams(current => {
+      if (current.get('feedCategory') !== requestedCategory) return current;
+      const next = new URLSearchParams(current);
+      next.set('feedCategory', feedCategory);
+      return next;
+    }, { replace: true });
+  }, [availableCategories, requestedCategory, feedCategory, setParams]);
+  const groups = useMemo(() => groupCampaignFeed(bundle.entries.filter(row => row.projection.visible &&
+    (feedCategory === 'all' || (row.domain === 'world_event' && (row.feed?.category?.id ?? 'uncategorized') === feedCategory))),
+    params.get('group') === 'session'), [bundle.entries, params, feedCategory]);
   const axes = useMemo(() => new Map(timeBundle.calendars.map(calendar => [calendar.id, historicalClock(calendar).axis])), [timeBundle.calendars]);
   const master = timeBundle.calendars.find(row => row.isMasterTime) ?? timeBundle.calendars[0];
   const axis = master ? axes.get(master.id) ?? null : null;
@@ -111,6 +127,7 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
     {entry.domain === 'world_event' ? <button className="min-h-11 text-left font-medium" aria-busy={inspecting || undefined} onClick={() => void inspect(entry)}>{entry.display.title}</button> : <p className="font-medium">{entry.display.title}</p>}
     {entry.display.summary && <p className="type-prose max-w-[80ch] text-sm">{entry.display.summary}</p>}
     <p className="text-xs text-muted">{FEED_SOURCES[entry.domain as keyof typeof FEED_SOURCES] ?? entry.domain}
+      {entry.domain === 'world_event' && <> {'\u00b7'} <ChronologyCategoryLabel category={entry.feed?.category ?? undefined} /></>}
       {entry.feed?.originLabel && ` · ${entry.feed.originLabel}`}
       {entry.domain === 'world_event' && chronologyBundle?.baseEvents.some(event => event.id === entry.source.entityId) && <span> / {chronologyBundle.baseEvents.find(event => event.id === entry.source.entityId)?.wikiPageId ? 'Page' : 'Event only'}</span>}
       {entry.feed?.importance && <> · <ChronologyImportance value={entry.feed.importance} /></>}{entry.feed?.calendarName && ` · ${entry.feed.calendarName}`}
@@ -133,6 +150,7 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
       </div>
       <details><summary className="min-h-11 cursor-pointer py-3 text-sm">Filter and group history</summary>
         <div className="space-y-3 text-sm">
+          <label className="inline-flex min-h-11 items-center gap-2">Event category <select className={control} value={feedCategory} onChange={event => filter('feedCategory', event.target.value)}><option value="all">All categories</option><option value="uncategorized">Uncategorized</option>{availableCategories?.map(category => <option key={category.id} value={category.id}>{eventCategoryLabel(category.name)}</option>)}</select></label>
           <fieldset className="flex flex-wrap gap-4"><legend className={META_SECTION_LABEL_CLASS}>Sources</legend>
             {Object.entries(FEED_SOURCES).map(([id, title]) => <label className="inline-flex min-h-11 items-center gap-2" key={id}><input type="checkbox" checked={domains === undefined || domains.includes(id)} onChange={e => {
               const selected = domains ?? Object.keys(FEED_SOURCES); filter('domains', (e.target.checked ? [...selected, id] : selected.filter(value => value !== id)).join(','));

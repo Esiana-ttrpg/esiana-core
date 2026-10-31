@@ -44,7 +44,12 @@ test('campaign feed: real sources, authorizations, excerpts, recurrence, progres
   const projectPage = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'Coastal archive research', visibility: 'Party' } });
   const project = await prisma.downtimeProject.create({ data: { campaignId: campaign.id, wikiPageId: projectPage.id, status: 'COMPLETED', completedAtEpochMinute: 26n * 1440n + 123n } });
   const options: CampaignFeedOptions = { order: 'desc', importance: ['MAJOR', 'MINOR', 'NOTICE'], includeFuture: false, domains: null, sessionLinkedOnly: false };
+  const discoveryCategory = await prisma.calendarEventCategory.create({ data: { campaignId: campaign.id, name: 'Archives', color: '#123456', icon: 'compass' } });
+  await prisma.calendarEvent.update({ where: { id: first.id }, data: { categoryId: discoveryCategory.id } });
   const result = await buildCampaignNarrativeFeed(player, options);
+  const discoveryEntry = result.entries.find(row => row.source.entityId === first.id)!;
+  assert.deepEqual(discoveryEntry.feed?.category, { id: discoveryCategory.id, campaignId: campaign.id, name: 'Archives', color: '#123456', icon: 'compass' });
+  assert.equal(discoveryEntry.feed?.importance, 'NOTICE');
   assert.ok(result.feed); assert.equal(result.feed.requestedRange.mode, 'EPOCH_RANGE');
   const json = JSON.stringify(result);
   assert.ok(!json.includes('Hidden council')); assert.ok(!json.includes('PRIVATE NOTES')); assert.ok(!json.includes('TRANSCRIPT SECRET'));

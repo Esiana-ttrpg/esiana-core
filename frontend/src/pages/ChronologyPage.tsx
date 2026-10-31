@@ -1,3 +1,4 @@
+import { eventCategoryLabel } from '@shared/defaultEventCategories';
 import { useSearchParams, useParams, useLocation, useNavigate }  from 'react-router-dom';
 import { EventsDirectory } from '@/components/chronology/EventsDirectory';
 import { ChronologyEventInlineDetail } from '@/components/chronology/ChronologyEventInlineDetail';
@@ -308,7 +309,7 @@ function ChronologyWorkspace() {
               className="rounded-full border border-border px-2 py-0.5 text-[10px]"
               style={{ backgroundColor: `${category.color ?? '#334155'}22` }}
             >
-              {category.name}
+              {eventCategoryLabel(category.name)}
             </span>
           ))}
         </div>
