@@ -1,3 +1,4 @@
+import { ensureChronologyWikiWorkspaces } from '../chronologyWikiWorkspace.js';
 import {
   GLOBAL_SEARCH_MIN_QUERY_LENGTH,
   type GlobalSearchResponse,
@@ -57,6 +58,7 @@ export async function searchCampaign(
     return empty;
   }
 
+  await ensureChronologyWikiWorkspaces(ctx.campaignId);
   ensureCoreProvidersRegistered();
 
   const providers = listSearchProviders();

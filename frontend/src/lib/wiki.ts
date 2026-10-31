@@ -947,6 +947,8 @@ export async function createWikiPage(
     blocks?: WikiPageBlock[];
     templateType?: string;
     visibility?: 'Public' | 'Party' | 'DM_Only';
+    chronologyEventId?: string;
+    chronologyEraId?: string;
     initialThreadLifecycle?: string;
     tags?: WikiTagInput[];
   },

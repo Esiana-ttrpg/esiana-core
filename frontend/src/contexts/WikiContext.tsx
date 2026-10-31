@@ -80,11 +80,12 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshGenerationRef = useRef(0);
+  const initialLoadCompletedFor = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!campaignHandle) return;
     const generation = ++refreshGenerationRef.current;
-    setLoading(true);
+    setLoading(initialLoadCompletedFor.current !== campaignHandle);
     setError(null);
     setPinsLoading(true);
     void fetchPersonalPins(campaignHandle).then((pins) => {
@@ -110,7 +111,10 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPlayers([]);
       setSidebarConfig(normalizeSidebarConfig(null));
     } finally {
-      if (generation === refreshGenerationRef.current) setLoading(false);
+      if (generation === refreshGenerationRef.current) {
+        initialLoadCompletedFor.current = campaignHandle;
+        setLoading(false);
+      }
     }
   }, [campaignHandle]);
 

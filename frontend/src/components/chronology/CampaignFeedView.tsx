@@ -112,6 +112,7 @@ export function CampaignFeedView({ campaignHandle, bundle, timeBundle, chronolog
     {entry.display.summary && <p className="type-prose max-w-[80ch] text-sm">{entry.display.summary}</p>}
     <p className="text-xs text-muted">{FEED_SOURCES[entry.domain as keyof typeof FEED_SOURCES] ?? entry.domain}
       {entry.feed?.originLabel && ` · ${entry.feed.originLabel}`}
+      {entry.domain === 'world_event' && chronologyBundle?.baseEvents.some(event => event.id === entry.source.entityId) && <span> / {chronologyBundle.baseEvents.find(event => event.id === entry.source.entityId)?.wikiPageId ? 'Page' : 'Event only'}</span>}
       {entry.feed?.importance && <> · <ChronologyImportance value={entry.feed.importance} /></>}{entry.feed?.calendarName && ` · ${entry.feed.calendarName}`}
       {entry.feed?.nativeDateLabel && ` · ${entry.feed.nativeDateLabel}`}{entry.feed?.duration && entry.feed.duration > 1 ? ` · ${entry.feed.duration} days` : ''}</p>
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">

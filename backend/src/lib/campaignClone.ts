@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readEventConsequencesFromMetadata, mergeEventConsequenceSetIntoMetadata } from '../../../shared/eventConsequence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from './prismaClient.js';
@@ -7,7 +8,7 @@ import { cloneSessionAudio, preflightSessionAudioClone } from './sessionAudioBac
 import { audioContext, capability, assertAudio, authorizeAudioBackup } from './audioCore.js';
 import { deleteCampaignAssetFiles } from './assetFiles.js';
 import { CampaignCapabilities as AudioCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
-import { createEraOverview, ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
+import { ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
 import { extractDescriptionMarkdown } from './eventLoreWiki.js';
 import { env } from '../config/env.js';
 import { generateHandle, makeUniqueHandle, isValidHandle } from './handleUtils.js';
@@ -340,6 +341,7 @@ export async function duplicateCampaign(
                 targetDay: event.targetDay,
                 targetEpochMinute: event.targetEpochMinute,
                 recurrenceRule: event.recurrenceRule as Prisma.InputJsonValue,
+                metadata: event.metadata as Prisma.InputJsonValue,
               },
             });
             eventIdMap.set(event.id, copiedEvent.id);
@@ -586,17 +588,27 @@ export async function duplicateCampaign(
     }
 
     if (calendarIdMap.size) {
+      const sourceEvents = new Map(source.fantasyCalendars.flatMap(calendar => calendar.events.map(event => [event.id, event] as const)));
+      for (const [sourceEventId, targetEventId] of eventIdMap) {
+        const sourceEvent = sourceEvents.get(sourceEventId)!;
+        const sourcePageId = sourceEvent.wikiPageId;
+        const targetPageId = sourcePageId ? pageIdMap.get(sourcePageId) : undefined;
+        const consequences = readEventConsequencesFromMetadata(sourceEvent.metadata);
+        const metadata = consequences.length ? mergeEventConsequenceSetIntoMetadata(sourceEvent.metadata as Record<string, unknown>, consequences.map(consequence => ({
+          ...consequence,
+          targets: consequence.targets && Object.fromEntries(Object.entries(consequence.targets).map(([key, ids]) => [key,
+            ids.flatMap(id => { const mapped = pageIdMap.get(id); return mapped ? [mapped] : []; }),
+          ])),
+        }))) as Prisma.InputJsonValue : undefined;
+        if (targetPageId || metadata) await tx.calendarEvent.update({ where: { id: targetEventId }, data: { ...(targetPageId ? { wikiPageId: targetPageId } : {}), ...(metadata ? { metadata } : {}) } });
+      }
       const sourceEras = await tx.campaignEra.findMany({ where: { campaignId: source.id }, include: { overview: true } });
       for (const era of sourceEras) {
         const calendarId = calendarIdMap.get(era.calendarId);
         if (!calendarId) continue;
-        let overviewPageId = pageIdMap.get(era.overviewPageId);
-        if (!overviewPageId) {
-          const page = await createEraOverview(tx, campaign.id, era.name, era.visibility, extractDescriptionMarkdown(era.overview.blocks) ?? '');
-          overviewPageId = page.id;
-        }
+        const overviewPageId = era.overviewPageId ? pageIdMap.get(era.overviewPageId) ?? null : null;
         await tx.campaignEra.create({ data: {
-          campaignId: campaign.id, id: era.id, calendarId, overviewPageId, name: era.name,
+          campaignId: campaign.id, id: era.id, calendarId, overviewPageId, name: era.name, description: era.description,
           sortOrder: era.sortOrder, isCurrent: era.isCurrent, visibility: era.visibility,
           epochStartMinute: era.epochStartMinute, epochEndMinute: era.epochEndMinute,
         } });

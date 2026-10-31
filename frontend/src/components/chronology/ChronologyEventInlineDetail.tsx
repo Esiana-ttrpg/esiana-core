@@ -1,3 +1,4 @@
+import { WikiMarkdown } from '@/components/wiki/WikiMarkdown';
 import { Link } from 'react-router-dom';
 import { ChronologyNavigationLinks } from './ChronologyNavigationLinks';
 import type { TimelineOccurrenceRecord } from '@/lib/chronologyApi';
@@ -13,7 +14,7 @@ import {
 import { ChronologyEventManagePanel } from '@/components/chronology/ChronologyEventManagePanel';
 import { ChronologyLoreLink } from '@/components/chronology/ChronologyLoreLink';
 import { ConditionTreeReadOnly } from '@/components/chronology/ConditionTreeReadOnly';
-import { campaignEventLorePath } from '@/lib/campaignPaths';
+import { campaignEventLorePath, campaignEventPath } from '@/lib/campaignPaths';
 import type {
   TimelineBaseEventRecord,
   TimelineCategoryRecord,
@@ -24,6 +25,7 @@ import type { FantasyCalendarLike } from '@/lib/timeEngine';
 
 interface ChronologyEventInlineDetailProps {
   campaignHandle: string;
+  fullDescription?: boolean;
   baseEvent: TimelineBaseEventRecord;
   calendarName?: string;
   occurrence?: TimelineOccurrenceRecord | null;
@@ -40,6 +42,7 @@ interface ChronologyEventInlineDetailProps {
 
 export function ChronologyEventInlineDetail({
   campaignHandle,
+  fullDescription = false,
   baseEvent,
   calendarName,
   occurrence,
@@ -73,14 +76,18 @@ export function ChronologyEventInlineDetail({
         {timeBundle && <OccurrenceReferenceDate occurrence={occurrence} timeBundle={timeBundle} />}
         <ChronologyNavigationLinks campaignHandle={campaignHandle} occurrence={occurrence} />
       </>}
+      <Link className="inline-flex min-h-11 items-center text-sm text-muted underline" to={campaignEventPath(campaignHandle, baseEvent.slug ?? baseEvent.id)}>Event details</Link>
       <ChronologyLoreLink
         campaignHandle={campaignHandle}
         baseEventId={baseEvent.id}
         title={baseEvent.title}
+        wikiPageId={baseEvent.wikiPageId}
+        description={baseEvent.description}
+        onChanged={onMutated}
         className="w-full"
       />
 
-      {descriptionPreview ? (
+      {fullDescription && baseEvent.description ? <div className="type-prose"><WikiMarkdown content={baseEvent.description} /></div> : descriptionPreview ? (
         <p className="text-xs text-foreground whitespace-pre-wrap">
           {descriptionPreview.text}
           {descriptionPreview.isTruncated ? (
@@ -90,7 +97,7 @@ export function ChronologyEventInlineDetail({
                 to={campaignEventLorePath(campaignHandle, baseEvent.id)}
                 className="text-primary underline-offset-2 hover:underline"
               >
-                Read Full Chronicle ↗
+                Read event details ↗
               </Link>
             </>
           ) : null}

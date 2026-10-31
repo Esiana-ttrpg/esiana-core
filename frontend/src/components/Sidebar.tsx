@@ -588,7 +588,7 @@ export function Sidebar({
           ? 'calendar'
           : title === 'Timelines'
             ? 'timeline'
-            : 'events';
+            : title === 'Eras' ? 'eras' : 'events';
       return (
         <NavItem
           key={`timeline-${title}`}

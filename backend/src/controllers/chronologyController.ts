@@ -1,3 +1,5 @@
+import { visibleChronologyPageIds } from '../lib/chronologyPageAccess.js';
+import { chronologyRouteMap } from '../lib/chronologyRoutes.js';
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
@@ -88,6 +90,7 @@ export async function getChronologyTimelineBundle(
       ],
       select: {
         id: true,
+        wikiPageId: true,
         calendarId: true,
         categoryId: true,
         prerequisiteId: true,
@@ -146,8 +149,13 @@ export async function getChronologyTimelineBundle(
   for (const event of visibleEvents) {
     if (event.prerequisiteId && !visibleIds.has(event.prerequisiteId)) event.prerequisiteId = null;
   }
+  const routes = await chronologyRouteMap(campaignId, 'events');
+  const linkedPages = await prisma.wikiPage.findMany({ where: { campaignId, deletedAt: null, id: { in: visibleEvents.flatMap(event => event.wikiPageId ? [event.wikiPageId] : []) } }, select: { id: true, visibility: true } });
+  const visiblePageIds = await visibleChronologyPageIds(req.campaign!, linkedPages);
   const baseEvents = visibleEvents.map((event) => ({
     ...event,
+    ...routes.get(event.id),
+    wikiPageId: event.wikiPageId && visiblePageIds.has(event.wikiPageId) ? event.wikiPageId : null,
     targetEpochMinute: event.targetEpochMinute?.toString() ?? null,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
@@ -174,7 +182,11 @@ export async function getChronologyTimelineBundle(
   );
 
   const eras = await listChronologyEras(req.campaign!);
+  const eventDetails = new Map(baseEvents.map(event => [event.id, event]));
   for (const occurrence of expanded.occurrences) {
+    const definition = eventDetails.get(String(occurrence.baseEventId));
+    occurrence.wikiPageId = definition?.wikiPageId ?? null;
+    occurrence.slug = definition?.slug;
     const start = occurrence.start as { year: number | null; month: number | null; day: number | null; epochMinute: string | null };
     const track = calendarsById.get(String(occurrence.calendarId));
     const minute = start.epochMinute != null ? BigInt(start.epochMinute)

@@ -1,3 +1,6 @@
+import { resolveWikiNavigation, mergeWikiRouteSearch } from '@/lib/resolveWikiRoutePageId';
+import { chronologyWikiDocumentKind } from '@shared/wikiWorkspaceResolve';
+import { ChronologyDocumentNavigation } from '@/components/chronology/ChronologyDocumentNavigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   resolveWikiRoutePageId,
@@ -243,6 +246,18 @@ function headerIconButtonClass(active: boolean): string {
 }
 
 export function WikiPage() {
+  const params = useParams();
+  const location = useLocation();
+  const { flatPages, loading, campaignHandle } = useWiki();
+  if (loading) return <LoadingSpinner label="Loading wiki..." />;
+  const destination = resolveWikiNavigation({ pathname: location.pathname, campaignHandle,
+    pageId: params.pageId, pathKey: params.pathKey, flatPages });
+  const destinationPath = destination.path && mergeWikiRouteSearch(destination.path, location.search);
+  if (destinationPath && destinationPath !== location.pathname + location.search) return <Navigate to={destinationPath} replace />;
+  const page = destination.page;
+  return <>{page && chronologyWikiDocumentKind(page) && <ChronologyDocumentNavigation pageId={page.id} kind={chronologyWikiDocumentKind(page)!} />}<WikiPageDocument /></>;
+}
+function WikiPageDocument() {
   const params = useParams<{
     campaignHandle?: string;
     pageId?: string;
@@ -290,7 +305,7 @@ export function WikiPage() {
     if (!page?.pathKey || params.pathKey === page.pathKey) return;
     const canonicalPath = resolveCanonicalPagePath(campaignHandle, page, flatPages);
     if (canonicalPath.split('?')[0] === location.pathname) return;
-    navigate(`${canonicalPath}${location.search}`, { replace: true });
+    navigate(mergeWikiRouteSearch(canonicalPath, location.search), { replace: true });
   }, [
     campaignHandle,
     flatPages,

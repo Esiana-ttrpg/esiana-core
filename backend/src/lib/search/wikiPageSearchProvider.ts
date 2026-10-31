@@ -379,13 +379,17 @@ async function scoreWikiCandidates(
       metadata: page.metadata,
     });
 
+    const pageMetadata = page.metadata && typeof page.metadata === 'object' && !Array.isArray(page.metadata) ? page.metadata as Record<string, unknown> : {};
+    const chronologyLabel = pageMetadata.chronologyDocument === 'event' || page.id.startsWith('event-') ? 'Event page'
+      : pageMetadata.chronologyDocument === 'era' || pageMetadata.eraOverview === true ? 'Era page' : null;
+    const subtitle = [chronologyLabel, meta.subtitle].filter(Boolean).join(' / ');
     results.push({
       id: `${typeInfo.key}:${page.id}`,
       entityId: page.id,
       campaignId: ctx.campaignId,
       type: { key: typeInfo.key, label: typeInfo.label },
-      ...(requestedForReturn && meta.subtitle
-        ? { subtitle: meta.subtitle }
+      ...(requestedForReturn && subtitle
+        ? { subtitle }
         : {}),
       title: page.title,
       ...(image ? { image } : {}),

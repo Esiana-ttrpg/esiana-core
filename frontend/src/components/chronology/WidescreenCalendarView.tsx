@@ -569,7 +569,7 @@ function AgendaItem({
               {occurrence.eraNames.join(' · ')}
             </p>
           )}
-          <p className="mt-1 text-[11px] text-muted">{categoryName} · <ChronologyImportance value={occurrence.importance} /></p>
+          <p className="mt-1 text-[11px] text-muted">{categoryName} · <ChronologyImportance value={occurrence.importance} /> / {baseEvent?.wikiPageId ? 'Page' : 'Event only'}</p>
           <p className="mt-1 text-xs text-muted">
             {eventDayState(occurrence)}
             {occurrence.duration > 1 && (

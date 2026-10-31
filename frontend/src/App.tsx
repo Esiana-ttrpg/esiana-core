@@ -118,6 +118,10 @@ export default function App() {
             <Route path="visual-atlas" element={<VisualAtlasPage />} />
             <Route path="relations" element={<RelationsPage />} />
             <Route path="chronology" element={<ChronologyPage />} />
+            <Route path="events" element={<ChronologyPage />} />
+            <Route path="events/:eventSlug" element={<ChronologyPage />} />
+            <Route path="eras" element={<ChronologyPage />} />
+            <Route path="eras/:eraSlug" element={<ChronologyPage />} />
             <Route path="time-tracking" element={<TimeTrackingManagement />} />
             <Route path="world-advance" element={<WorldAdvancePage />} />
             <Route path="progression" element={<ProgressionPage />} />
@@ -125,6 +129,7 @@ export default function App() {
             <Route path="world-advance/batches/:eventId" element={<WorldAdvanceBatchPage />} />
             <Route path="recent-changes" element={<RecentChangesPage />} />
             <Route path="pages" element={<FreeformPagesIndex />} />
+            <Route path="wiki/:pageId" element={<WikiPage />} />
             <Route path="pages/:pathKey" element={<WikiPage />} />
             {WORKSPACE_INDEX_SEGMENTS.filter((s) => s !== 'pages').map((segment) => (
               <Route key={`ws-index-${segment}`} path={segment} element={<WorkspaceIndexPage />} />

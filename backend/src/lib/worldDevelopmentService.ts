@@ -23,7 +23,6 @@ import { listPendingReputationSuggestions } from './reputationSuggestionService.
 import { canManageWorldEventSuggestions } from './worldEventSuggestionService.js';
 import { resolveWorldDevelopmentSettings } from './worldDevelopmentSettingsService.js';
 import { markStalePendingDevelopments } from './developmentStalenessService.js';
-import { eventLorePageIdForCalendarEvent } from './eventLoreStub.js';
 import {
   buildWorldDevelopmentReadiness,
   buildWorldDevelopmentStatusSummary,
@@ -218,7 +217,7 @@ export async function listDevelopmentHistory(
       rationale: payload?.rationale ?? [],
       obsoleteReason: payload?.obsoleteReason ?? null,
       acceptedEventHref: row.acceptedCalendarEventId
-        ? `/campaigns/${campaignHandle}/${eventLorePageIdForCalendarEvent(row.acceptedCalendarEventId)}`
+        ? `/campaigns/${campaignHandle}/events/${row.acceptedCalendarEventId}`
         : null,
       resolvedBy: payload?.resolvedBy ?? null,
       resultSummary: payload?.resultSummary ?? null,

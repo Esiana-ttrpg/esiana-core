@@ -14,7 +14,7 @@ const axis = createHistoricalAxis({
 const date = (day: number) => ({ year: 1, month: 0, day });
 const era = (id = 'era', start = 5, end = 10): ChronologyEra => ({
   id, calendarId: 'world', calendarName: 'World', isMasterTime: true, name: id, sortOrder: 0, isCurrent: false,
-  startDate: date(start), endDate: date(end), status: 'PRESENT', visibility: 'PARTY', overviewPageId: 'wiki-era', overview: '**Canonical**', canManage: true,
+  startDate: date(start), endDate: date(end), status: 'PRESENT', visibility: 'PARTY', description: null, overviewPageId: 'wiki-era', overview: '**Canonical**', canManage: true,
 });
 const occurrence = (day: number, index = day): TimelineOccurrenceRecord => ({
   occurrenceId: `occ-${index}`, baseEventId: 'journey', occurrenceIndex: index, calendarId: 'world', categoryId: null,

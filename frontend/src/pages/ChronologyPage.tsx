@@ -1,4 +1,8 @@
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams, useLocation, useNavigate }  from 'react-router-dom';
+import { EventsDirectory } from '@/components/chronology/EventsDirectory';
+import { ChronologyEventInlineDetail } from '@/components/chronology/ChronologyEventInlineDetail';
+import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
+import { campaignEventPath, campaignEraPath } from '@/lib/campaignPaths';
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +40,7 @@ import {
 } from '@/lib/chronologyOverlayApi';
 
 function parseActiveView(raw: string | null): ChronologyView {
-  if (raw === 'events') return 'eras';
+  if (raw === 'events') return 'events';
   if (
     raw === 'timeline' ||
     raw === 'eras' ||
@@ -75,7 +79,11 @@ function ChronologyWorkspace() {
     }
     setInspectedOccurrence(previous => JSON.stringify(previous) === JSON.stringify(occurrence) ? previous : occurrence);
   }, [calendarSession, timelineSession]);
-  const requestedView = searchParams.get('view');
+  const route = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const requestedView = route.eventSlug || /\/events$/.test(location.pathname) ? 'events'
+    : route.eraSlug || /\/eras$/.test(location.pathname) ? 'eras' : searchParams.get('view');
   const windowMode = searchParams.get('windowMode') ?? 'YEAR_RANGE';
   const from = searchParams.get('from') ?? '0';
   const to = searchParams.get('to') ?? '9999';
@@ -85,6 +93,12 @@ function ChronologyWorkspace() {
   const [overlayBundle, setOverlayBundle] =
     useState<ConvergenceOverlayBundle | null>(null);
   const [timeBundle, setTimeBundle] = useState<TimeTrackingBundle | null>(null);
+  const selectedEvent = route.eventSlug ? bundle?.baseEvents.find(event => event.id === route.eventSlug || event.slugAliases?.includes(route.eventSlug!)) : undefined;
+  const selectedEra = route.eraSlug ? bundle?.eras?.find(era => era.id === route.eraSlug || era.slugAliases?.includes(route.eraSlug!)) : undefined;
+  useEffect(() => {
+    if (selectedEvent?.slug && route.eventSlug !== selectedEvent.slug) navigate(campaignEventPath(campaignHandle, selectedEvent.slug) + location.search, { replace: true });
+    if (selectedEra?.slug && route.eraSlug !== selectedEra.slug) navigate(campaignEraPath(campaignHandle, selectedEra.slug) + location.search, { replace: true });
+  }, [selectedEvent, selectedEra, route.eventSlug, route.eraSlug, navigate, campaignHandle, location.search, searchParams]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const feedDomains = useMemo(() => domainsParam === null ? [] : domainsParam.split(',').filter(Boolean), [domainsParam]);
@@ -328,7 +342,7 @@ function ChronologyWorkspace() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col gap-3 overflow-hidden p-3">
+    <div className={activeView === 'events' ? "workspace-field flex min-w-0 flex-col gap-3 p-3" : "flex h-[calc(100vh-4rem)] flex-col gap-3 overflow-hidden p-3"}>
       <UniverseHeader
         campaignHandle={campaignHandle}
         activeView={activeView}
@@ -356,7 +370,17 @@ function ChronologyWorkspace() {
       )}
 
       {!loading && !error && timeBundle && (bundle || overlayBundle) && (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background">
+        <div className={activeView === 'events' ? "min-w-0" : "min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background"}>
+          {activeView === 'events' && bundle && (route.eventSlug ? selectedEvent ? <article className="space-y-4 p-6">
+            <h2 className={TYPE_DISPLAY_CLASS}>{selectedEvent.title}</h2>
+            <ChronologyEventInlineDetail campaignHandle={campaignHandle} baseEvent={selectedEvent} fullDescription
+              calendarName={bundle.calendars.find(row => row.id === selectedEvent.calendarId)?.name}
+              occurrence={bundle.occurrences.find(row => row.baseEventId === selectedEvent.id && row.isStart)}
+              timeBundle={timeBundle} categories={bundle.categories} editableEvents={bundle.baseEvents}
+              calendarLike={(() => { const calendar = timeBundle.calendars.find(row => row.id === selectedEvent.calendarId); return calendar ? historicalClock(calendar).axis?.calendar ?? null : null; })()}
+              canManage={canManageChronologyAccess} onMutated={handleEventMutated} onDeleted={async () => { await handleEventDeleted(); navigate(campaignEventPath(campaignHandle, '').replace(/\/$/, '')); }} />
+          </article> : <p className="p-6 text-muted">Event unavailable.</p> : <EventsDirectory bundle={bundle} campaignHandle={campaignHandle} />)}
+          {route.eraSlug && !selectedEra && <p className="p-6 text-muted">Era unavailable.</p>}
           {activeView === 'feed' && overlayBundle && (
             <CampaignFeedView bundle={overlayBundle} campaignHandle={campaignHandle} timeBundle={timeBundle}
               onInspectionChange={handleInspection}
@@ -387,7 +411,7 @@ function ChronologyWorkspace() {
               onRevealEvent={handleRevealEvent} categoryFooter={categoryFooter} />
           )}
 
-          {activeView === 'eras' && bundle && (
+          {activeView === 'eras' && bundle && (!route.eraSlug || selectedEra) && (
             <ErasView
               onInspectionChange={handleInspection}
               session={erasSession}

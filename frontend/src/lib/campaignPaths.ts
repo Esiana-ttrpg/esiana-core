@@ -150,18 +150,17 @@ export function campaignWikiTagsPath(
   return `${base}?${params.toString()}`;
 }
 
+export function campaignEventPath(handle: string, slugOrId: string): string {
+  return campaignPath(handle, 'events', encodeURIComponent(slugOrId));
+}
+export function campaignEraPath(handle: string, slugOrId: string): string {
+  return campaignPath(handle, 'eras', encodeURIComponent(slugOrId));
+}
 export function campaignEventLorePath(
   handle: string,
   baseEventId: string,
-  options?: { create?: boolean; prefillTitle?: string },
 ): string {
-  const base = campaignPath(handle, `event-${baseEventId}`);
-  if (!options?.create) return base;
-  const params = new URLSearchParams({ create: 'true' });
-  if (options.prefillTitle?.trim()) {
-    params.set('prefillTitle', options.prefillTitle.trim());
-  }
-  return `${base}?${params.toString()}`;
+  return campaignEventPath(handle, baseEventId);
 }
 
 export function campaignCharacterPath(

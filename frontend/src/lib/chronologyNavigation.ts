@@ -2,7 +2,7 @@ import type { TimelineOccurrenceRecord } from './chronologyApi';
 import type { ChronologyDateParts } from './chronologyDates';
 import { historicalMinute, historicalNativeState, type HistoricalAxis, type HistoricalInterval } from './historicalTimeline';
 
-export type ChronologyDestination = 'calendar' | 'timeline' | 'eras' | 'feed';
+export type ChronologyDestination = 'calendar' | 'timeline' | 'eras' | 'events' | 'feed';
 const targetKeys = ['event', 'occurrence', 'at', 'date', 'era'];
 
 /** Only identifiers and small navigation coordinates belong in the URL. */

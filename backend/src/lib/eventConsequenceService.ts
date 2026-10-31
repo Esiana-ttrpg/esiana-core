@@ -31,6 +31,7 @@ export type ApplyEventConsequencesInput = {
   calendarEventId: string;
   actorUserId: string;
   atEpochMinute: string;
+  authorizedPageIds?: ReadonlySet<string>;
   previewOnly?: boolean;
   applicationRunId?: string;
 };
@@ -300,12 +301,14 @@ export async function applyEventConsequences(
   input: ApplyEventConsequencesInput,
 ): Promise<EventConsequenceApplyResult> {
   const previewOnly = input.previewOnly === true;
+  if (!previewOnly) await tx.campaign.update({ where: { id: input.campaignId }, data: { updatedAt: new Date() } });
   const applicationRunId = input.applicationRunId ?? newApplicationRunId();
 
   const loaded = await loadEventConsequencesForCalendarEvent(
     tx,
     input.campaignId,
     input.calendarEventId,
+    input.authorizedPageIds,
   );
 
   const pageIds = [
