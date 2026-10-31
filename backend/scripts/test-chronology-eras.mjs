@@ -22,7 +22,7 @@ try {
     if (fs.existsSync(file)) db.exec(normalizeMigrationSqlForSqlite(fs.readFileSync(file, 'utf8')));
   }
   db.close();
-  const result = spawnSync(process.execPath, ['--import', 'tsx', '--test', '--test-concurrency=1', 'src/lib/chronologyEraService.test.ts', 'src/lib/chronologyDocuments.test.ts', 'src/lib/chronologyWikiWorkspace.test.ts', 'src/lib/campaignCloneChronology.test.ts', 'src/lib/campaignNarrativeFeed.test.ts'], {
+  const result = spawnSync(process.execPath, ['--import', 'tsx', '--test', '--test-concurrency=1', 'src/lib/chronologyEraService.test.ts', 'src/lib/chronologyDocuments.test.ts', 'src/lib/chronologyWikiWorkspace.test.ts', 'src/lib/campaignCloneChronology.test.ts', 'src/lib/campaignNarrativeFeed.test.ts', 'src/lib/campaignExport/sovereignOperational.test.ts'], {
     cwd: backend, stdio: 'inherit', env: { ...process.env, NODE_ENV: 'test', DATABASE_PROVIDER: 'sqlite', DATABASE_URL: `file:${database.replaceAll('\\', '/')}`, CHRONOLOGY_ERA_TEST_DATABASE_URL: `file:${database.replaceAll('\\', '/')}` },
   });
   process.exitCode = result.status ?? 1;
