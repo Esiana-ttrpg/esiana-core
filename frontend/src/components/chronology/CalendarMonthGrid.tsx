@@ -4,7 +4,7 @@ import {
   type ClimateAspect,
 } from '@/lib/climateAspect';
 import type { CalendarState, MonthGridRow } from '@/lib/timeEngine';
-import type { TimelineOccurrenceRecord } from '@/lib/chronologyApi';
+import type { TimelineCategoryRecord, TimelineOccurrenceRecord } from '@/lib/chronologyApi';
 import {
   compareCalendarEvents,
   eventDayState,
@@ -17,6 +17,7 @@ export interface DayCellOverlay {
 }
 
 interface CalendarMonthGridProps {
+  categories?: TimelineCategoryRecord[];
   presentation?: 'compact' | 'expanded';
   occurrencesByDay?: Map<number, TimelineOccurrenceRecord[]>;
   dayStates?: Map<number, CalendarState>;
@@ -54,6 +55,7 @@ function MonthTitleBanner({
 
 export function CalendarMonthGrid({
   presentation = 'compact',
+  categories,
   occurrencesByDay,
   dayStates,
   todayDay,
@@ -71,6 +73,7 @@ export function CalendarMonthGrid({
     return (
       <ExpandedCalendar
         {...{
+          categories,
           columnLabels,
           monthTitle,
           rows,
@@ -127,6 +130,7 @@ export function CalendarMonthGrid({
 }
 
 function ExpandedCalendar({
+  categories,
   columnLabels,
   monthTitle,
   rows,
@@ -231,6 +235,7 @@ function ExpandedCalendar({
                             type="button"
                             aria-label={`${event.title}, ${event.importance.toLowerCase()}, ${state}${event.duration > 1 ? `, Day ${event.dayOffset + 1} of ${event.duration}` : ''}`}
                             title={`${event.title} — ${state}`}
+                            style={{ borderLeftColor: categories?.find(category => category.id === event.categoryId)?.color ?? undefined }}
                             onClick={() => onEventClick?.(event)}
                             className={`block w-full rounded border-l-2 px-1.5 py-1 text-left text-xs focus-visible:outline-2 focus-visible:outline-primary ${event.importance === 'MAJOR' ? 'border-primary bg-primary/15 font-semibold text-foreground' : event.importance === 'NOTICE' ? 'border-dotted border-muted text-muted' : 'border-primary/50 bg-surface text-foreground'}`}
                           >

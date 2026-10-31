@@ -482,6 +482,7 @@ model PluginConnectionAuthState {
 }
 
 model Campaign {
+  eventCategoriesInitialized Boolean @default(false)
   chronologyRoutes ChronologyRoute[]
   safetyRequests SafetyPrivacyRequest[]
   safetyEligibility SafetyPrivacyEligibility[]
@@ -1427,6 +1428,8 @@ model CalendarEventCategory {
   campaignId String
   name       String
   color      String?
+  icon       String?
+  sortOrder  Int @default(0)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   events   CalendarEvent[]

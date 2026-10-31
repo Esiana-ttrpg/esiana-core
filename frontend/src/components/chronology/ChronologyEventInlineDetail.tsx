@@ -1,3 +1,4 @@
+import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
 import { WikiMarkdown } from '@/components/wiki/WikiMarkdown';
 import { Link } from 'react-router-dom';
 import { ChronologyNavigationLinks } from './ChronologyNavigationLinks';
@@ -126,8 +127,7 @@ export function ChronologyEventInlineDetail({
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
         <dt className="text-muted">Category</dt>
         <dd className="text-foreground">
-          {categories.find((category) => category.id === baseEvent.categoryId)
-            ?.name ?? 'Uncategorized'}
+          <ChronologyCategoryLabel category={categories.find(category => category.id === baseEvent.categoryId)} />
         </dd>
         <dt className="text-muted">Importance</dt>
         <dd className="capitalize text-foreground">

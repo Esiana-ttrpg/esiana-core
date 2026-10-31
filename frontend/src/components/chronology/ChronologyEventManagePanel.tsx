@@ -1,3 +1,4 @@
+import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChronologyEventDialog } from './ChronologyEventDialog';
@@ -190,6 +191,7 @@ export function ChronologyEventForm({
               </option>
             ))}
           </select>
+          <ChronologyCategoryLabel category={categories.find(category => category.id === editor.categoryId)} />
         </label>
 
         <div className="grid gap-2 md:grid-cols-2">

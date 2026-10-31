@@ -206,6 +206,7 @@ export async function resolveWorldDevelopmentSuggestion(
       const event = await tx.calendarEvent.create({
         data: {
           calendarId,
+          categoryId: payload?.categoryId && await tx.calendarEventCategory.findFirst({ where: { id: payload.categoryId, campaignId: input.campaignId }, select: { id: true } }) ? payload.categoryId : null,
           visibility: 'DM_ONLY',
           title,
           description: narrative,

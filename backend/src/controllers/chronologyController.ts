@@ -67,12 +67,14 @@ export async function getChronologyTimelineBundle(
     }),
     prisma.calendarEventCategory.findMany({
       where: { campaignId },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
       select: {
         id: true,
         campaignId: true,
         name: true,
         color: true,
+        icon: true,
+        sortOrder: true,
       },
     }),
     prisma.calendarEvent.findMany({

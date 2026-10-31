@@ -5,6 +5,8 @@ export interface ChronologyCategoryRecord {
   campaignId: string;
   name: string;
   color: string | null;
+  icon: string | null;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,7 +37,7 @@ export async function createChronologyCategory(
 export async function updateChronologyCategory(
   campaignHandle: string,
   categoryId: string,
-  payload: Partial<{ name: string; color: string | null }>,
+  payload: Partial<{ name: string; color: string | null; orderedCategoryIds: string[] }>,
 ): Promise<ChronologyCategoryRecord> {
   const data = await apiFetch<{ category: ChronologyCategoryRecord }>(
     `/campaigns/${campaignHandle}/chronology/categories/${categoryId}`,
