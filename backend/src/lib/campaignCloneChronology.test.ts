@@ -18,7 +18,7 @@ test('campaign duplication links copied events only to copied wiki documents', a
   const owner = await prisma.user.create({ data: { email: `clone-chronology-${stamp}@example.test`, passwordHash: 'fixture' } });
   const source = await prisma.campaign.create({ data: { name: 'Source Chronicle', handle: `clone-source-${stamp}`, campaignOwnerUserId: owner.id } });
   const campaigns = [source.id];
-  await prisma.$transaction(tx => initializeEventCategories(tx, source.id));
+  await prisma.$transaction(tx => initializeEventCategories(tx, source.id, { newCampaign: true }));
   await prisma.calendarEventCategory.deleteMany({ where: { campaignId: source.id, name: 'Conflict' } });
   await prisma.calendarEventCategory.updateMany({ where: { campaignId: source.id, name: 'Discovery' }, data: { name: 'Archives', color: '#123456', sortOrder: -1 } });
   t.after(async () => {

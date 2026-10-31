@@ -625,7 +625,7 @@ export async function duplicateCampaign(
       await tx.campaign.update({ where: { id: campaign.id }, data: { eventCategoriesInitialized: true } });
     } else {
       const { initializeEventCategories } = await import('./defaultEventCategories.js');
-      await initializeEventCategories(tx, campaign.id);
+      await initializeEventCategories(tx, campaign.id, { newCampaign: !copy.scheduling.calendarStructure });
     }
     return campaign;
   });

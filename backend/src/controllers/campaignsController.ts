@@ -834,7 +834,7 @@ export async function createCampaign(
 
       await tx.chronologySettings.create({ data: { campaignId: created.id } });
       const { initializeEventCategories } = await import('../lib/defaultEventCategories.js');
-      await initializeEventCategories(tx, created.id);
+      await initializeEventCategories(tx, created.id, { newCampaign: true });
 
       const partyId = await (async () => {
         const { ensureDefaultPartyForCampaign, linkCampaignMembersToDefaultParty } =

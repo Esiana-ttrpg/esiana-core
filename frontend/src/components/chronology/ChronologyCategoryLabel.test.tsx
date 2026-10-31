@@ -11,3 +11,9 @@ test('category presentation follows saved labels, colors and icons after a renam
   assert.doesNotMatch(html, /Discovery/);
   assert.match(renderToStaticMarkup(<ChronologyCategoryLabel />), /Uncategorized/);
 });
+
+test('legacy saved Uncategorized remains distinct from the virtual fallback', () => {
+  const html = renderToStaticMarkup(<ChronologyCategoryLabel category={{ id: 'legacy', campaignId: 'campaign', name: 'Uncategorized', color: '#123456', icon: 'tag' }} />);
+  assert.match(html, /Uncategorized \(saved category\)/);
+  assert.doesNotMatch(renderToStaticMarkup(<ChronologyCategoryLabel />), /saved category/);
+});

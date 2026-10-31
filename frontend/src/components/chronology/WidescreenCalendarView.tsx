@@ -1,3 +1,4 @@
+import { eventCategoryLabel, resolveEventCategoryFilter } from '@shared/defaultEventCategories';
 import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
 import { ChronologyCoverageNotice } from './ChronologyCoverageNotice';
 import { ChronologyImportance } from './ChronologyImportance';
@@ -79,6 +80,10 @@ export function WidescreenCalendarView({
     Record<'NOTICE' | 'MINOR' | 'MAJOR', boolean>
   >(session?.snapshot?.importance ?? { NOTICE: false, MINOR: true, MAJOR: true });
   const [categoryFilter, setCategoryFilter] = useState(session?.snapshot?.category ?? 'all');
+  useEffect(() => {
+    const available = resolveEventCategoryFilter(categoryFilter, categories);
+    if (available !== categoryFilter) setCategoryFilter(available);
+  }, [categoryFilter, categories]);
   const viewCalendarIdRef = useRef<string | null>(session?.snapshot?.calendarId ?? null);
   useLayoutEffect(() => {
     if (session) session.snapshot = { calendarId: selectedCalendarId, year: viewYear, month: viewMonthIndex,
@@ -368,7 +373,7 @@ export function WidescreenCalendarView({
         </label>
 
         <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
-          <label className="text-xs">Category <select className="rounded border border-border bg-background px-2 py-1" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="all">All categories</option><option value="uncategorized">Uncategorized</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label className="text-xs">Category <select className="rounded border border-border bg-background px-2 py-1" value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)}><option value="all">All categories</option><option value="uncategorized">Uncategorized</option>{categories.map(category => <option key={category.id} value={category.id}>{eventCategoryLabel(category.name)}</option>)}</select></label>
           {(['NOTICE', 'MINOR', 'MAJOR'] as const).map((importance) => (
             <button
               key={importance}

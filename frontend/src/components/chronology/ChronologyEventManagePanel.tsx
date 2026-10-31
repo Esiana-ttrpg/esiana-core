@@ -1,3 +1,4 @@
+import { eventCategoryLabel } from '@shared/defaultEventCategories';
 import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -187,7 +188,7 @@ export function ChronologyEventForm({
             <option value="none">Uncategorized</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
-                {category.name}
+                {eventCategoryLabel(category.name)}
               </option>
             ))}
           </select>
