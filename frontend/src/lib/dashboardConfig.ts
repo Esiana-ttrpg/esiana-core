@@ -2,6 +2,8 @@
  * Campaign home layout configuration (frontend).
  */
 
+import { dashboardPresentation, normalizeDashboardVariant, type DashboardVariant } from '@shared/dashboardPresentation';
+
 import {
   DASHBOARD_DEFAULT_MAX_ENABLED_WIDGETS,
   DASHBOARD_MAX_ENABLED_WIDGETS,
@@ -74,6 +76,8 @@ export interface DashboardWidgetPlacement {
   w: number;
   h: number;
   enabled: boolean;
+  variant?: DashboardVariant;
+  autoHeight?: boolean;
   scope?: DashboardWidgetScope;
   config?: Record<string, unknown>;
 }
@@ -154,23 +158,6 @@ const PERSONAL_WIDGET_IDS = new Set<DashboardWidgetId>([
   'pinnedItems',
 ]);
 
-const NARRATIVE_BRIEFING_WIDGET_IDS: DashboardWidgetId[] = [
-  'campaignAtAGlance',
-  'currentStory',
-  'partyRoster',
-  'recentActivity',
-  'explore',
-];
-
-const LEGACY_OPERATIONAL_DEFAULT_IDS: DashboardWidgetId[] = [
-  'sessionSchedule',
-  'campaignPulse',
-  'worldSnapshot',
-  'recentLore',
-  'worldChronometer',
-  'lastSessionNotes',
-];
-
 function applyRetiredWidgetPolicy(
   widgets: DashboardWidgetPlacement[],
 ): DashboardWidgetPlacement[] {
@@ -191,30 +178,6 @@ function applyRetiredWidgetPolicy(
       }
       return widget;
     });
-}
-
-function needsNarrativeBriefingActivation(
-  saved: DashboardWidgetPlacement[],
-): boolean {
-  return !saved.some((item) =>
-    NARRATIVE_BRIEFING_WIDGET_IDS.includes(migrateWidgetId(item.id)),
-  );
-}
-
-function applyLegacyBriefingWidgetMigration(
-  widgets: DashboardWidgetPlacement[],
-): DashboardWidgetPlacement[] {
-  const defaults = getDefaultDashboardConfig();
-  return widgets.map((widget) => {
-    if (NARRATIVE_BRIEFING_WIDGET_IDS.includes(widget.id)) {
-      const defaultPlacement = defaults.widgets.find((w) => w.id === widget.id);
-      return defaultPlacement ? { ...defaultPlacement, enabled: true } : widget;
-    }
-    if (LEGACY_OPERATIONAL_DEFAULT_IDS.includes(widget.id)) {
-      return { ...widget, enabled: false };
-    }
-    return widget;
-  });
 }
 
 export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
@@ -272,9 +235,11 @@ function defaultPlacement(
     id,
     x,
     y,
-    w,
+    w: options?.enabled === false ? dashboardPresentation(id).preferredSpan : w,
     h,
     enabled: options?.enabled ?? true,
+    variant: id === 'currentStory' ? 'featured' : id === 'campaignAtAGlance' ? 'compact' : 'standard',
+    autoHeight: true,
     ...(options?.scope ? { scope: options.scope } : {}),
     ...(options?.config ? { config: options.config } : {}),
   };
@@ -285,10 +250,10 @@ export function getDefaultDashboardConfig(): DashboardConfig {
     hero: createDefaultHeroConfig(),
     widgets: [
       defaultPlacement('campaignAtAGlance', 0, 0, 12, 2),
-      defaultPlacement('currentStory', 0, 2, 12, 4),
-      defaultPlacement('partyRoster', 0, 6, 8, 3),
-      defaultPlacement('explore', 8, 6, 4, 3),
-      defaultPlacement('recentActivity', 0, 9, 12, 3),
+      defaultPlacement('currentStory', 0, 2, 7, 3),
+      defaultPlacement('partyRoster', 7, 2, 5, 3),
+      defaultPlacement('livingThreads', 7, 5, 5, 3),
+      defaultPlacement('recentActivity', 0, 5, 7, 3),
       defaultPlacement('sessionSchedule', 0, 12, 4, 4, { enabled: false }),
       defaultPlacement('campaignPulse', 4, 12, 4, 3, { enabled: false }),
       defaultPlacement('worldSnapshot', 8, 12, 4, 4, { enabled: false }),
@@ -296,7 +261,7 @@ export function getDefaultDashboardConfig(): DashboardConfig {
       defaultPlacement('worldChronometer', 4, 16, 4, 3, { enabled: false }),
       defaultPlacement('lastSessionNotes', 8, 16, 4, 4, { enabled: false }),
       defaultPlacement('questLedger', 0, 20, 6, 4, { enabled: false }),
-      defaultPlacement('livingThreads', 6, 20, 6, 4, { enabled: false }),
+      defaultPlacement('explore', 6, 20, 6, 2, { enabled: false }),
       defaultPlacement('quickUtilityNav', 0, 24, 3, 4, {
         enabled: false,
         config: { links: [...DEFAULT_DASHBOARD_QUICK_LINKS] },
@@ -353,10 +318,10 @@ function isPlacement(value: unknown): value is DashboardWidgetPlacement {
   return (
     typeof row.id === 'string' &&
     isKnownWidgetId(row.id) &&
-    typeof row.x === 'number' &&
-    typeof row.y === 'number' &&
-    typeof row.w === 'number' &&
-    typeof row.h === 'number' &&
+    typeof row.x === 'number' && Number.isFinite(row.x) &&
+    typeof row.y === 'number' && Number.isFinite(row.y) &&
+    typeof row.w === 'number' && Number.isFinite(row.w) &&
+    typeof row.h === 'number' && Number.isFinite(row.h) &&
     typeof row.enabled === 'boolean'
   );
 }
@@ -373,7 +338,7 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
   const saved = Array.isArray(parsed.widgets)
     ? parsed.widgets.filter(isPlacement)
     : [];
-  if (saved.length === 0) return getDefaultDashboardConfig();
+  if (saved.length === 0 && !Array.isArray(parsed.widgets)) return getDefaultDashboardConfig();
 
   const byCanonicalId = new Map<string, DashboardWidgetPlacement>();
   for (const item of saved) {
@@ -385,9 +350,11 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
       ...item,
       id: canonicalId,
       x: Math.max(0, Math.floor(item.x)),
-      y: Math.max(0, Math.floor(item.y)),
+      y: Math.max(0, Math.round(item.y * 4) / 4),
+      variant: normalizeDashboardVariant(item.variant),
+      autoHeight: item.autoHeight === true,
       w: Math.max(1, Math.min(12, Math.floor(item.w))),
-      h: Math.max(1, Math.floor(item.h)),
+      h: Math.max(0.25, Math.round(item.h * 4) / 4),
       ...(scope ? { scope } : {}),
     };
     if (canonicalId === 'text') {
@@ -412,16 +379,14 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
       if (fallback) {
         widgets.push({
           ...fallback,
-          enabled:
-            fallback.enabled && id !== 'pinnedItems' && id !== 'fantasyCalendar',
+          enabled: false,
         });
       }
     }
   }
 
-  const migratedWidgets = needsNarrativeBriefingActivation(saved)
-    ? applyLegacyBriefingWidgetMigration(widgets)
-    : widgets;
+  // Saved choices are authoritative; newly registered widgets start disabled.
+  const migratedWidgets = widgets;
 
   const importManifest = parseImportManifest(parsed.importManifest);
   return {
@@ -434,9 +399,40 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
 function parseImportManifest(raw: unknown): DashboardImportManifest | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const manifest = raw as Record<string, unknown>;
+  const result: DashboardImportManifest = {};
   const assetsRaw = manifest.assets;
-  if (!assetsRaw || typeof assetsRaw !== 'object') return undefined;
-  return { assets: assetsRaw as DashboardImportManifestAssets };
+  if (assetsRaw && typeof assetsRaw === 'object') {
+    const assetsObj = assetsRaw as Record<string, unknown>;
+    const assets: DashboardImportManifestAssets = {};
+    if (
+      typeof assetsObj.coverImageAssetId === 'string' &&
+      assetsObj.coverImageAssetId.trim()
+    ) {
+      assets.coverImageAssetId = assetsObj.coverImageAssetId.trim();
+    }
+    if (
+      typeof assetsObj.markdownZipAssetId === 'string' &&
+      assetsObj.markdownZipAssetId.trim()
+    ) {
+      assets.markdownZipAssetId = assetsObj.markdownZipAssetId.trim();
+    }
+    if (
+      typeof assetsObj.backupZipAssetId === 'string' &&
+      assetsObj.backupZipAssetId.trim()
+    ) {
+      assets.backupZipAssetId = assetsObj.backupZipAssetId.trim();
+    }
+    if (Object.keys(assets).length > 0) {
+      result.assets = assets;
+    }
+  }
+  if (
+    typeof manifest.startingLocationPageId === 'string' &&
+    manifest.startingLocationPageId.trim()
+  ) {
+    result.startingLocationPageId = manifest.startingLocationPageId.trim();
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 export type DashboardQuestStatus =

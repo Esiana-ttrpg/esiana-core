@@ -30,9 +30,10 @@ export function LastSessionNotesWidget({
         </p>
       ) : (
         <div className="space-y-3">
-          <p className="font-semibold text-foreground">{lastSession.title}</p>
+          {lastSession.playedAt ? <p className="text-xs text-muted">{lastSession.sequenceOrder != null ? `Session ${lastSession.sequenceOrder} - ` : ''}{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(lastSession.playedAt))}</p> : null}
+          <p className="break-words font-semibold text-foreground">{lastSession.title}</p>
           {lastSession.snippet ? (
-            <p className="text-sm leading-relaxed text-muted">{lastSession.snippet}</p>
+            <p className="line-clamp-4 text-sm leading-relaxed text-muted">{lastSession.snippet}</p>
           ) : (
             <p className="text-sm text-muted">Session notes are ready to read.</p>
           )}

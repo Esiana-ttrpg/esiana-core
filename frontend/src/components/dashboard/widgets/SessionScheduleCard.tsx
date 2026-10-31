@@ -130,8 +130,7 @@ export function SessionScheduleCard({
         campaignTz && localWhen !== campaignWhen
           ? ` (your time: ${localWhen})`
           : '';
-      const title = effectiveNext.sessionTitle || nextSession?.title || 'Next session';
-      let label = `${formatCountdown(when)} until ${title} — ${campaignWhen}${tzNote}`;
+      let label = `${formatCountdown(when)} away — ${campaignWhen}${tzNote}`;
       if (effectiveNext.plannedWorldEpochMinute) {
         label += ' · Planned world start set';
       }
@@ -183,7 +182,11 @@ export function SessionScheduleCard({
       onHide={onHide}
     >
       <div className="space-y-4">
-        <p className="text-base font-semibold leading-snug text-primary">{countdownLabel}</p>
+        {effectiveNext ? <div className="space-y-1">
+          {effectiveNext.sequenceOrder > 0 ? <p className="text-xs text-muted">Session {effectiveNext.sequenceOrder}</p> : null}
+          <p className="break-words text-base font-semibold leading-snug text-foreground">{effectiveNext.sessionTitle || nextSession?.title || 'Next session'}</p>
+        </div> : null}
+        <p className="text-sm leading-relaxed text-muted">{countdownLabel}</p>
 
         {showSchedulingCta || (!effectiveNext && canManageCampaign && !customizeMode) ? (
           <div className="flex flex-wrap gap-3">

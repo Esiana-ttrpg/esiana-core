@@ -2,7 +2,7 @@ import { Route } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { ContinueWhereYouLeftOffItem } from '@/lib/dashboardSummary';
-import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { DashboardWidgetShell, useDashboardPreviewLimit } from '../DashboardWidgetShell';
 
 interface ContinueWhereYouLeftOffWidgetProps {
   items: ContinueWhereYouLeftOffItem[];
@@ -15,6 +15,7 @@ export function ContinueWhereYouLeftOffWidget({
   customizeMode,
   onHide,
 }: ContinueWhereYouLeftOffWidgetProps) {
+  const previewLimit = useDashboardPreviewLimit();
   const { t } = useTranslation();
 
   return (
@@ -30,7 +31,7 @@ export function ContinueWhereYouLeftOffWidget({
         </p>
       ) : (
         <ul className="space-y-2">
-          {items.map((item) => (
+          {items.slice(0, previewLimit).map((item) => (
             <li key={`${item.entityType}-${item.entityId}`}>
               <Link
                 to={item.href}

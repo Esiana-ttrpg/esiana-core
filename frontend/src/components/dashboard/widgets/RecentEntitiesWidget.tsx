@@ -26,7 +26,7 @@ import {
   recentEntityCategoryLabelKey,
   recentEntitySortLabelKey,
 } from '@/i18n/dashboardCustomizeLabels';
-import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { DashboardWidgetShell, useDashboardPreviewLimit } from '../DashboardWidgetShell';
 import {
   CustomizeOptionButton,
   CustomizeOptionGroup,
@@ -77,6 +77,7 @@ export function RecentEntitiesWidget({
 }: RecentEntitiesWidgetProps) {
   const { t } = useTranslation();
   const settings = normalizeRecentEntitiesConfig(config);
+  const previewLimit = useDashboardPreviewLimit(settings.limit);
   const items = feed?.items ?? [];
 
   function updateConfig(patch: Partial<typeof settings>) {
@@ -136,7 +137,7 @@ export function RecentEntitiesWidget({
         <p className="text-sm text-muted">{t('campaign.dashboard.recentEntitiesEmpty')}</p>
       ) : (
         <ul className="space-y-2">
-          {items.map((item) => {
+          {items.slice(0, previewLimit).map((item) => {
             const Icon = iconForCategory(item.categoryKey, item.templateType);
             return (
               <li key={item.id}>

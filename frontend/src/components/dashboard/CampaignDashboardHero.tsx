@@ -205,7 +205,7 @@ export function CampaignDashboardHero({
               {campaignName}
             </h1>
             {tagline ? (
-              <p className={`${TYPE_PROSE_CLASS} max-w-2xl text-prose-muted ${layout.tagline}`}>{tagline}</p>
+              <p className={`${TYPE_PROSE_CLASS} line-clamp-2 max-w-2xl text-prose-muted ${layout.tagline}`}>{tagline}</p>
             ) : null}
             {!tagline && canManage ? (
               <button

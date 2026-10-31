@@ -323,8 +323,8 @@ export function CalendarWidget({
 
         {!loading && !error && data && data.calendars.length === 0 && (
           <p className="text-sm text-muted">
-            No fantasy calendars are configured for this campaign yet. Add calendars in the database
-            to see multi-timeline chronology here.
+            No fantasy calendars are configured for this campaign yet. Set up a calendar
+            in Chronology to explore dated entries here.
           </p>
         )}
 

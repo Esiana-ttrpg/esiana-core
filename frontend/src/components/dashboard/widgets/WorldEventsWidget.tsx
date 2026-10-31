@@ -18,7 +18,7 @@ import {
   worldEventSortLabelKey,
   worldEventTypeLabelKey,
 } from '@/i18n/dashboardCustomizeLabels';
-import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { DashboardWidgetShell, useDashboardPreviewLimit } from '../DashboardWidgetShell';
 import {
   CustomizeOptionButton,
   CustomizeOptionGroup,
@@ -44,6 +44,7 @@ export function WorldEventsWidget({
 }: WorldEventsWidgetProps) {
   const { t } = useTranslation();
   const settings = normalizeWorldEventsConfig(config);
+  const previewLimit = useDashboardPreviewLimit(settings.limit);
   const items = feed?.items ?? [];
 
   function updateConfig(patch: Partial<typeof settings>) {
@@ -127,7 +128,7 @@ export function WorldEventsWidget({
         </div>
       ) : (
         <ul className="space-y-2">
-          {items.map((item) => (
+          {items.slice(0, previewLimit).map((item) => (
             <li
               key={item.id}
               className="rounded-lg border border-border/60 px-3 py-2"

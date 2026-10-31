@@ -1,6 +1,17 @@
 import { GripVertical } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
+import type { DashboardVariant } from '@shared/dashboardPresentation';
 import { SURFACE_FLOAT_CLASS, SURFACE_OPERATIONAL_CLASS } from '@/lib/surfaceLayout';
+
+export const DashboardPresentationContext = createContext<{
+  variant: DashboardVariant;
+  autoHeight: boolean;
+}>({ variant: 'standard', autoHeight: false });
+
+export function useDashboardPreviewLimit(standard = 5) {
+  const { variant } = useContext(DashboardPresentationContext);
+  return variant === 'compact' ? Math.min(standard, 3) : standard;
+}
 
 interface DashboardWidgetShellProps {
   title: string;
@@ -10,6 +21,9 @@ interface DashboardWidgetShellProps {
   onHide?: () => void;
   dragHandleClass?: string;
   loading?: boolean;
+  description?: string;
+  action?: ReactNode;
+  error?: string | null;
 }
 
 export function DashboardWidgetSkeleton({ rows = 3 }: { rows?: number }) {
@@ -30,10 +44,15 @@ export function DashboardWidgetShell({
   onHide,
   dragHandleClass = 'dashboard-drag-handle',
   loading = false,
+  description,
+  action,
+  error,
 }: DashboardWidgetShellProps) {
+  const { variant, autoHeight } = useContext(DashboardPresentationContext);
   return (
     <div
-      className={`${customizeMode ? SURFACE_OPERATIONAL_CLASS : SURFACE_FLOAT_CLASS} region-depth-1 flex h-full flex-col p-4`}
+      data-dashboard-variant={variant}
+      className={`${customizeMode ? SURFACE_OPERATIONAL_CLASS : SURFACE_FLOAT_CLASS} ${variant === 'featured' ? 'region-depth-2' : 'region-depth-1'} dashboard-widget-shell flex min-w-0 flex-col rounded-xl ${autoHeight ? '' : 'h-full min-h-0'} ${variant === 'compact' ? 'p-3' : variant === 'featured' ? 'p-5 sm:p-6' : 'p-4'}`}
     >
       <header className="mb-3 flex items-center justify-between gap-2 pb-2">
         <div className="flex min-w-0 items-center gap-2">
@@ -46,10 +65,11 @@ export function DashboardWidgetShell({
             </span>
           )}
           {icon}
-          <h3 className="truncate text-sm font-semibold leading-tight text-foreground">
+          <h3 className="min-w-0 text-sm font-semibold leading-tight text-foreground">
             {title}
           </h3>
         </div>
+        {action}
         {customizeMode && onHide && (
           <button
             type="button"
@@ -60,8 +80,9 @@ export function DashboardWidgetShell({
           </button>
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-auto">
-        {loading ? <DashboardWidgetSkeleton /> : children}
+      {description ? <p className="mb-3 text-xs text-muted">{description}</p> : null}
+      <div className={`min-h-0 min-w-0 flex-1 ${autoHeight ? '' : 'overflow-y-auto'}`}>
+        {error ? <p role="alert" className="text-sm text-muted">{error}</p> : loading ? <DashboardWidgetSkeleton rows={variant === 'compact' ? 1 : 3} /> : children}
       </div>
     </div>
   );

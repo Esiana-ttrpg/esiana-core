@@ -25,7 +25,7 @@ function StateFact({
         {fact.label}
       </p>
       <p
-        className={`${TYPE_PROSE_CLASS} text-base font-medium leading-snug text-focal-foreground sm:text-lg ${
+        className={`${TYPE_PROSE_CLASS} text-base font-medium leading-snug text-focal-foreground break-words ${
           isEmpty ? 'text-focal-muted' : ''
         }`}
       >
@@ -43,13 +43,13 @@ function StateFact({
     return (
       <Link
         to={fact.href}
-        className="block rounded-lg p-4 transition-colors hover:bg-focal-elevated/60"
+        className="block min-w-0 rounded-lg p-2 transition-colors hover:bg-focal-elevated/60"
       >
         {content}
       </Link>
     );
   }
-  return <div className="p-4">{content}</div>;
+  return <div className="min-w-0 p-2">{content}</div>;
 }
 
 export function CampaignStateCard({ campaignState, embedded = false }: CampaignStateCardProps) {
@@ -61,7 +61,7 @@ export function CampaignStateCard({ campaignState, embedded = false }: CampaignS
   ];
 
   const factGrid = (
-    <div className="grid gap-0 sm:grid-cols-2">
+    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
       {facts.map((fact) => (
         <StateFact key={fact.label} fact={fact} />
       ))}

@@ -15,7 +15,6 @@ import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MascotErrorPanel } from '@/components/errors/MascotErrorPanel';
 import { CampaignDashboardHero } from '@/components/dashboard/CampaignDashboardHero';
-import { CampaignContinuityStream } from '@/components/dashboard/CampaignContinuityStream';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { LinkYourCharacterCard } from '@/components/dashboard/LinkYourCharacterCard';
 import { PluginSlotHost, PluginUiSlots } from '@/plugins/slots';
@@ -135,6 +134,8 @@ function CampaignDashboardContent({
   const hasDashboardSlot = useDeclaredPluginSlot(PluginUiSlots.DASHBOARD);
   const [customizeMode, setCustomizeMode] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
+  const latestBundleRef = useRef(bundle);
+  latestBundleRef.current = bundle;
 
   const canEditLayout =
     campaign.role !== null &&
@@ -251,14 +252,6 @@ function CampaignDashboardContent({
         onCustomizeModeChange={setCustomizeMode}
         onHeroChange={handleHeroChange}
       />
-      {!customizeMode ? (
-        <CampaignContinuityStream
-          embedded
-          campaignHandle={campaignHandle}
-          summary={bundle.summary}
-          questPages={bundle.questPages}
-        />
-      ) : null}
       {hasDashboardSlot && campaign ? (
         <PluginSlotHost
           slot={PluginUiSlots.DASHBOARD}
@@ -288,6 +281,7 @@ function CampaignDashboardContent({
         customizeMode={customizeMode}
         onConfigChange={handleConfigChange}
         onLayoutSavingChange={setLayoutSaving}
+        onWidgetFeedsChange={(feeds) => onBundleChange({ ...latestBundleRef.current, ...feeds })}
       />
       <PluginPageExtensionsHost target="campaign.dashboard" className="mt-2" />
     </div>

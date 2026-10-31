@@ -12,7 +12,7 @@ import type { FactionConflictFeedResult } from '@/lib/dashboardWidgetFeeds';
 import { campaignPath } from '@/lib/campaignPaths';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
 import { factionConflictSortLabelKey } from '@/i18n/dashboardCustomizeLabels';
-import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { DashboardWidgetShell, useDashboardPreviewLimit } from '../DashboardWidgetShell';
 import {
   CustomizeOptionButton,
   CustomizeOptionGroup,
@@ -38,6 +38,7 @@ export function FactionsAtWarWidget({
 }: FactionsAtWarWidgetProps) {
   const { t } = useTranslation();
   const settings = normalizeFactionConflictConfig(config);
+  const previewLimit = useDashboardPreviewLimit(settings.limit);
   const pairs = feed?.pairs ?? [];
 
   function updateConfig(patch: Partial<typeof settings>) {
@@ -99,7 +100,7 @@ export function FactionsAtWarWidget({
         </div>
       ) : (
         <ul className="space-y-4">
-          {pairs.map((pair) => (
+          {pairs.slice(0, previewLimit).map((pair) => (
             <li
               key={pair.id}
               className="rounded-lg border border-border/60 px-3 py-3"

@@ -13,7 +13,7 @@ export function CampaignPulseWidget({
   customizeMode,
   onHide,
 }: CampaignPulseWidgetProps) {
-  const lines = pulse.lines;
+  const lines = pulse.lines.slice(0, 3);
 
   return (
     <DashboardWidgetShell

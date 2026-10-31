@@ -1,6 +1,6 @@
 import { Pin } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { DashboardWidgetShell, useDashboardPreviewLimit } from '../DashboardWidgetShell';
 
 interface PinnedItem {
   id: string;
@@ -16,6 +16,7 @@ interface PinnedItemsWidgetProps {
 }
 
 export function PinnedItemsWidget({ pinned, customizeMode, onHide }: PinnedItemsWidgetProps) {
+  const previewLimit = useDashboardPreviewLimit();
   return (
     <DashboardWidgetShell
       title="Pinned Pages"
@@ -29,7 +30,7 @@ export function PinnedItemsWidget({ pinned, customizeMode, onHide }: PinnedItems
         </p>
       ) : (
         <ul className="space-y-2">
-          {pinned.map((item) => (
+          {pinned.slice(0, previewLimit).map((item) => (
             <li key={item.id}>
               <Link
                 to={item.href}
