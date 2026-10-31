@@ -157,6 +157,11 @@ function* mentionAttributeMatches(
   }
 }
 
+/** Ordered wiki/mention attributes, including their original match offsets. */
+export function wikiLinkSpanMatches(markdown: string): Generator<RegExpExecArray> {
+  return mentionAttributeMatches(markdown);
+}
+
 export function getBlockMarkdown(block: Record<string, unknown>): string {
   const type = (block as { type?: string }).type;
   if (!type || !MARKDOWN_BLOCK_TYPES.has(type)) return '';
@@ -463,17 +468,8 @@ export function rewriteMarkdownForPageRename(
     for (const match of mentionAttributeMatches(next, false, { pageId, body })) {
       const suffix = body ? ']]</span>' : '"';
       const valueStart = match.index + match[0].length - match[3].length - suffix.length;
-      // Retain the existing String.replace substitution contract for titles
-      // containing $, while replacing only the scanner-selected match.
       const prefix = next.slice(match.index, valueStart);
-      const replacement = `$1${newTitle}$2`.replace(/\$(\$|&|`|'|0?[12])/g, (_token, code: string) => {
-        if (code === '$') return '$';
-        if (code === '&') return match[0];
-        if (code === '`') return next.slice(0, match.index);
-        if (code === "'") return next.slice(match.index + match[0].length);
-        return Number(code) === 1 ? prefix : suffix;
-      });
-      rewritten.push(next.slice(cursor, match.index), replacement);
+      rewritten.push(next.slice(cursor, match.index), prefix, newTitle, suffix);
       cursor = match.index + match[0].length;
     }
     rewritten.push(next.slice(cursor));

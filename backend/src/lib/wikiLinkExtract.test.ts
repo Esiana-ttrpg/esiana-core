@@ -65,6 +65,15 @@ describe('wikiLinkExtract', () => {
       '<span data-type="wikiLink" data-id="page-1" data-label="Éowyn 北">[[Éowyn 北]]</span>');
   });
 
+  it('inserts dollar-sign titles literally in Markdown links, span labels and bodies', () => {
+    const title = "$& $$ $1 $2 $` $' $01";
+    const input = '[Old](/c/demo/wiki/page-1) ' +
+      '<span data-type="wikiLink" data-id="page-1" data-label="Old">[[Old]]</span>';
+    assert.equal(rewriteMarkdownForPageRename(input, 'page-1', 'Old', title),
+      `[${title}](/c/demo/wiki/page-1) ` +
+      `<span data-type="wikiLink" data-id="page-1" data-label="${title}">[[${title}]]</span>`);
+  });
+
   it('handles long unmatched delimiters and repeated attribute prefixes deterministically', () => {
     for (const markdown of [
       '['.repeat(100_000),
