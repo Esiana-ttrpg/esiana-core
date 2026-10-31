@@ -1,6 +1,6 @@
 # Session audio and processing providers
 
-See [Recording privacy and consent](https://github.com/Esiana-ttrpg/docs/blob/main/features/session-recordings-privacy.md) for participant acknowledgement, visibility, transcription, clones, backups, and deletion. New recording creation requires `consentAcknowledged: true` through both the UI and external API. The server stores its timestamp with the uploader; adding files to that recording does not repeat the acknowledgement. Legacy recordings remain unacknowledged unless originally recorded with consent metadata.
+See [Recording privacy and consent](https://esiana-ttrpg.github.io/docs/features/session-recordings-privacy/) for participant acknowledgement, visibility, transcription, clones, backups, and deletion. New recording creation requires `consentAcknowledged: true` through both the UI and external API. The server stores its timestamp with the uploader; adding files to that recording does not repeat the acknowledgement. Legacy recordings remain unacknowledged unless originally recorded with consent metadata.
 
 Session recordings attach to existing Session Notes sessions. Recording uploads are enabled by default globally and for campaigns; explicit disabled settings remain respected. Automated transcription remains disabled until configured and permitted. Notes, attendance, recaps, manual transcripts, and chapters remain independent of transcription services.
 

@@ -1,11 +1,12 @@
 import { env } from './env.js';
 import { isSecretBoxConfigured } from '../lib/crypto/secretBox.js';
+import { externalLinks } from '../../../shared/externalLinks.js';
 
 /** Stable id for the environment-managed OIDC provider row. */
 export const ENV_MANAGED_OIDC_PROVIDER_ID = 'oidc';
 
 export const OIDC_CONFIGURATION_DOCS_URL =
-  'https://github.com/Esiana-ttrpg/docs/blob/main/options/federated-identity.md';
+  `${externalLinks.documentation}options/federated-identity/`;
 
 export type OidcManagementMode = 'admin-managed' | 'env-managed' | 'force-disabled';
 
