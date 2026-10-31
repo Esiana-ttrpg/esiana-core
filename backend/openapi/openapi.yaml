@@ -26302,8 +26302,11 @@ components:
       required:
         - id
         - displayName
+        - isCampaignOwner
       properties:
         id: *a1
+        isCampaignOwner:
+          type: boolean
         displayName:
           type:
             - string
@@ -26433,6 +26436,8 @@ components:
             - reviewerIds
             - messages
             - events
+            - reviewers
+            - relatedRecording
           properties:
             campaign:
               $ref: "#/components/schemas/SafetyPrivacyCampaign"
@@ -26441,7 +26446,23 @@ components:
             people:
               type: array
               items:
+                type: object
+                required: [id, displayName]
+                properties:
+                  id: *a1
+                  displayName:
+                    type: [string, "null"]
+            reviewers:
+              type: array
+              items:
                 $ref: "#/components/schemas/SafetyPrivacyReviewer"
+            relatedRecording:
+              description: Recording metadata only when the current reader has normal recording access; null for deleted, unavailable, or unauthorized references. The stored relatedContentId is unchanged.
+              type: [object, "null"]
+              required: [title, sessionId]
+              properties:
+                title: *a1
+                sessionId: *a1
             reviewerIds:
               type: array
               items: *a1

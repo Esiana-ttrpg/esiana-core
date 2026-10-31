@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { audioRequest, assetUploadBase, formatAudioTime, type RecordingView, type ChapterView, type NativeTranscript,
   type TranscriptSegmentInput, type AudioSettingsPayload } from '@/lib/sessionAudio';
 import { apiFetch } from '@/lib/api';
@@ -14,6 +15,8 @@ type Upload = { id: string; name: string; offsetBytes: string; sizeBytes: string
 type Job = { id: string; status: string; failureCode: string | null };
 export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHandle: string; timelineId: string }) {
   const { flatPages } = useWiki();
+  const [searchParams] = useSearchParams();
+  const linkedRecordingId = searchParams.get('recording') ?? '';
   const [recordings, setRecordings] = useState<RecordingView[]>([]), [selected, setSelected] = useState('');
   const [settings, setSettings] = useState<AudioSettingsPayload | null>(null), [error, setError] = useState('');
   const [expanded, setExpanded] = useState(true), [createOpen, setCreateOpen] = useState(false);
@@ -48,7 +51,7 @@ export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHand
     setRecordings(rows); setSettings(config);
   }, [request, timelineId]);
   const run = async (action: () => Promise<unknown>) => { setError(''); try { await action(); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to complete action'); } };
-  useEffect(() => { setSelected(''); setFileIndex(0); setPosition(0); void run(reload); return () => abort.current?.abort(); }, [reload]);
+  useEffect(() => { setSelected(linkedRecordingId); setFileIndex(0); setPosition(0); void run(reload); return () => abort.current?.abort(); }, [reload, linkedRecordingId]);
   useEffect(() => {
     if (!recording) { setTranscript(null); return; }
     void request<NativeTranscript>(`/recordings/${recording.id}/transcript`).then((data) => { setTranscript(data); setSegments(data.current?.segments ?? []); }).catch((e) => setError(e.message));
@@ -130,7 +133,7 @@ export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHand
     setFileIndex(0); setPosition(0); await reload(); await loadTranscript();
   }
   if (!recording && !canUpload) return error ? <p role="alert" className="text-sm text-red-400">{error}</p> : null;
-  return <section aria-label="Session recording" className="min-w-0 space-y-3 border-b border-border pb-4">
+  return <section id="session-recording" aria-label="Session recording" className="min-w-0 space-y-3 border-b border-border pb-4">
     {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
     <div className="flex items-center justify-between gap-3">
       <h2 className="text-sm font-medium text-muted">Recordings</h2>
