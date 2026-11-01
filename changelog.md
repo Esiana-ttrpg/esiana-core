@@ -2,28 +2,80 @@
 
 ## Unreleased
 
+## [1.9.0] - 2026-11-01
+
 ### Added
 
-- Scoped API-token recording uploads with persistent creation retry keys, resumable progress, repeated finalization, and external-client curl examples. Recording uploads now default to enabled; automated transcription remains opt-in.
+- **Session Recordings** — Attach resumable multi-file audio to Session Notes, play it as one timeline, add chapters from the current position, and edit or import transcripts (text, SRT, WebVTT, or native JSON) with revision history. New recordings require an explicit privacy acknowledgement. Uploads are enabled by default; automated transcription stays off until a provider is configured and granted.
+- **Processing Providers** — Administrators can connect Whisper-compatible or OpenAI-compatible transcription endpoints, grant selected campaigns and models, and review content-neutral usage. No models, GPUs, or worker services are bundled. Campaign managers see permitted providers without receiving credentials or endpoints.
+- **Safety & Privacy** — Campaign members can open a private request conversation from User Settings or Campaign Settings. Requests never rewrite wiki, recordings, or transcripts; they stay out of search, feeds, exports, and plugin projections.
+- **Chronology Workspace** — Calendar, Timeline, Eras, and Campaign Feed now share one historical workspace, with linked inspection, exact occurrence URLs, and consistent unavailable-state handling across views.
+- **Visual Timeline** — Browse history on clock tracks with era regions, duration bars, pan and zoom, dense-event clusters, and optional comparison of aligned calendars against a reference clock.
+- **Historical Eras** — Open a period's wiki overview, sampled defining events, and native date bounds, then jump into Timeline in native or comparison mode.
+- **Campaign Feed** — Read the campaign's recorded story from sessions, chronology, downtime, faction history, and applied world-development, grouped by in-world date. The feed projects existing records; it does not invent new ones.
+- **Event Importance & Categories** — Mark events Notice, Minor, or Major, set campaign defaults for manual, downtime, and progression events, and manage category icons, order, and defaults.
+- **Event and Era Pages** — Chronology records can link optional wiki pages. Events and eras have their own directories, stable slugs, and authored-page workspaces without creating a second document system.
+- **Campaign Home** — Role-based starting layouts plus session follow-up, announcements, Needs Your Attention, map and page spotlights, Quick Links (including external resources), and an optional statistics widget. Saved layouts keep their existing choices.
+- **Campaign Statistics** — A dedicated view of authorized record counts (completed sessions, page activity, chronology totals, and current-state wiki metrics) rather than estimated play time.
+- **Public Access** — Instance-level sign-in and registration controls, optional footer links for signed-out visitors, public campaign previews, and campaign discoverability (private or public).
+- **Campaign Permissions** — A role-based capability matrix now covers collaboration, audio upload, chapters, transcripts, and related campaign access. Previous contributor / chapter / transcript AND-gates migrate into role grants without expanding access.
+- **Map Editor Tools** — Selection overlay and additional editing interactions for map canvases, with more reliable fullscreen viewing.
 
-- Session recordings with resumable multi-file uploads, continuous playback, chapters from the current playback position, and native transcript editing/imports with revision history.
-- Global processing-provider connections, explicit campaign/model grants, content-neutral usage reporting, and optional Whisper-compatible transcription without bundled processing services.
-- Audio governance, protected media range requests, recording storage management, streamed campaign backups, and opt-in recording clones.
+### Improved
 
+- **Campaign Settings** — Rebuilt settings navigation, including a clearer Access section and a compact mobile tab dropdown.
+- **Characters** — The hub is labeled Characters rather than Campaign Cast. Toolbars, page management, portfolio actions, and mobile section selection are simpler and more consistent.
+- **Calendar** — Resized and redesigned the chronology calendar so month, day agenda, and dialogs fit the shared workspace.
+- **Maps** — Fullscreen map viewing no longer exits when other dialogs open, and drawing/selection tools keep keyboard focus.
+- **API Tokens** — Existing read/write scopes now authenticate Character Portfolio, Character Profile/media, My Sessions, and recording-upload clients. Account security routes remain session-only.
+- **Admin Sidebar** — Discord and Reddit community links, with documentation URLs pointed at the current docs site.
+- **Documentation** — Self-hosting, chronology, session-audio, safety, and dashboard docs updated for this release.
+
+### Changed
+
+- Recording uploads default to enabled globally and per campaign; explicit disabled settings are still respected. Transcription remains opt-in.
+- **Require sign-in** defaults to on for the instance. Operators who want anonymous browsing of public campaigns must turn this off in Administration and set those campaigns to Public.
+- TipTap packages upgraded to **3.32.0**.
+- Prisma ORM upgraded to **7.10.1** (`prisma` + `@prisma/client`; `@prisma/adapter-better-sqlite3` 7.10.1).
+- Frontend toolchain: **Vite 8.3.5**, Vitest 5.0.5, TypeScript **7.0.2**.
+- Other notable upgrades: Express 5.3, dotenv 18, undici 8, lucide-react 1.62, react-grid-layout 2.x, i18next 26.5, `@xyflow/react` 12.12, nginx `>=1.30.6` in the Docker image.
+- OpenAPI specification synchronized with recordings, providers, safety/privacy, chronology documents, public access, and dashboard routes.
 
 ### Fixed
 
-- SQLite migration deployment now uses disposable normalized copies so failed cleanup preserves repository migrations and schema files. Portfolio import recovery uses a JSON lookup compatible with both database providers.
+- SQLite migration deploy uses disposable normalized copies so a failed cleanup no longer rewrites repository schema files; portfolio import recovery is portable across database providers.
+- Backup restore stages ZIP extraction on the uploads volume, consumes restore upload IDs once, removes partial exports on failure, and keeps retry keys on plain HTTP. Recording clones preflight source media and clean up incomplete destinations.
+- Upload path validation rejects unsafe expressions. Chunk and cancellation routes inherit mutation rate limits without double-charging the expensive-operation budget.
+- Processing providers reject mapped IPv4 and literal IPv6 link-local destinations. Transcript bodies are authorized and size-limited before parsing; segment ends are clamped to measured file duration.
+- Wiki personal pins no longer refetch in a way that dropped loading state or allowed duplicate toggles.
+- Profile text, recruitment copy, and social links are sanitized more strictly (including unsafe URL schemes).
+- Event page routing, chronology deep links, and truncated era coverage notices no longer strand the workspace on a missing or filtered occurrence.
 
-- API tokens now authenticate Character Portfolio, Character Profile/media, and My Sessions schedule requests using existing read/write scopes and ownership checks. Account security routes remain session-only.
-- Upload chunk and cancellation routes now mount native rate-limit guards that CodeQL recognizes, reusing the configured mutation ceiling without charging requests twice when the parent router already enforces it.
-- Backup restore and rollback paths explicitly stay within uploads storage. Regression coverage verifies inherited rate limits on chunk-upload and cancellation routes without charging the expensive-operation budget per chunk.
-- Processing providers reject mapped IPv4 and literal IPv6 link-local destinations. Transcript editing permissions and configured request-size limits are enforced before parsing, and missing or expired uploads clear stale retry keys without discarding them on transport failures.
-- Backup ZIP extraction stages files under the configured uploads storage so large restores use the existing data mount instead of the system temporary directory.
-- Audio settings no longer render Advanced tools alongside the audio panel. Backup and recording uploads retain retry keys on plain HTTP, and upload quotas use database aggregates for session, campaign, and instance totals.
-- Recording clones preflight source media and clean up incomplete campaigns after audio-copy failures; missing clone prerequisites return HTTP 400. Transcription clamps segment ends to the measured file duration while rejecting segments that start outside it.
-- Backup streams handle partial failures without a second response, failed asynchronous exports remove partial ZIPs, and restore upload IDs are consumed once. Site-admin recovery backups explicitly audit their private-content override.
-- Campaign deletion now permits cascading recording-file removal while retaining foreign-key protection for referenced assets. Large transcript request bodies are parsed after campaign authentication and rate limiting.
+### Security
+
+- Hardened upload path handling, HTML/snippet sanitization, and user-display escaping.
+- Docker nginx floor raised to 1.30.6; grouped dependency security updates including `undici` 8.
+
+### Database
+
+Schema migrations apply automatically before the API starts: PostgreSQL via `prisma migrate deploy`, SQLite via the existing normalized deploy script **without resetting the database**. The process does not start against an outdated schema.
+
+Event and Era wiki ownership is backfilled once at startup (`Campaign.chronologyWorkspacesInitialized`). Existing document IDs, content, permissions, citations, and associations are preserved. Restart retries any incomplete campaign; later startups skip campaigns that already completed. Wiki and search paths keep a defensive repair only while a campaign is still unclaimed.
+
+- `20261009120000_event_importance_and_chronology_settings` — event importance plus `ChronologySettings`.
+- `20261026120000_session_audio_processing` — recordings, processing connections, grants, jobs, and storage metadata.
+- `20261027120000_asset_upload_idempotency` — persistent upload retry keys.
+- `20261027130000_recording_file_asset_no_action` — recording-file assets no longer cascade-delete on campaign cleanup of referenced media.
+- `20261028120000_recording_consent` — recording privacy acknowledgement timestamp.
+- `20261028120000_safety_privacy` — Safety & Privacy eligibility, requests, and messages.
+- `20261030120000_chronology_documents` — optional event/era wiki links and `ChronologyRoute` slugs.
+- `20261031120000_default_event_categories` — category icons, sort order, and initialization flag.
+- `20261101010000_instance_require_login` — `SystemSetting.requireLogin`.
+- `20261101020000_footer_show_to_unauthorized` — optional signed-out footer.
+- `20261101030000_audio_contributor_role_grants` — folds prior audio contributor gates into role grants.
+- `20261101140000_chronology_workspaces_initialized` — one-time chronology wiki-workspace backfill flag.
+
+Existing event wiki pages named `event-<id>` are linked in place. The optional `pnpm --dir backend db:migrate:chronology-workspaces` command remains a retry hatch; it is not required for upgrade.
 
 ## [1.8.0] - 2026-10-06
 

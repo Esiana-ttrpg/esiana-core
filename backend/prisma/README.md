@@ -42,7 +42,7 @@ pnpm run db:generate
 pnpm run db:migrate:deploy:sqlite
 ```
 
-**Do not** use `db:push` or plain `db:migrate:deploy` on SQLite. Committed migration SQL is Postgres-normalized; Prisma's SQLite client cannot read/write columns declared as `TIMESTAMP(3)` or `JSONB`. The [`deploy-sqlite-migrations.mjs`](./scripts/deploy-sqlite-migrations.mjs) script rewrites those types (and `tsvector`) to `DATETIME`/`TEXT`, drops `USING GIN` indexes, runs `migrate deploy`, and restores committed files. Schema normalization (provider swap, `Unsupported("tsvector")?` → `String?`, strip `, type: Gin`) lives in [`sqliteSchema.mjs`](./scripts/sqliteSchema.mjs).
+Docker and `pnpm --filter backend start` apply pending SQLite migrations automatically without deleting the database. **Do not** use `db:push` or plain `db:migrate:deploy` on SQLite. Committed migration SQL is Postgres-normalized; Prisma's SQLite client cannot read/write columns declared as `TIMESTAMP(3)` or `JSONB`. The [`deploy-sqlite-migrations.mjs`](./scripts/deploy-sqlite-migrations.mjs) script stages normalized copies in a temp directory, rewrites those types (and `tsvector`) to `DATETIME`/`TEXT`, drops `USING GIN` indexes, and runs `migrate deploy` without modifying tracked files or deleting the database. Schema normalization (provider swap, `Unsupported("tsvector")?` → `String?`, strip `, type: Gin`) lives in [`sqliteSchema.mjs`](./scripts/sqliteSchema.mjs).
 
 ### Engine-specific escape hatch: `Unsupported("tsvector")`
 
@@ -56,8 +56,8 @@ Do not introduce additional vendor-specific types without extending the SQLite n
 
 | Command | Effect |
 |---------|--------|
-| `pnpm run db:migrate:deploy:sqlite` | Reset `dev.db` and apply all migrations (first-time / broken DB recovery) |
-| `node prisma/scripts/deploy-sqlite-migrations.mjs` | Apply pending migrations without deleting `dev.db` (from `backend/`) |
+| `pnpm run db:migrate:deploy:sqlite` | Apply pending migrations without deleting `dev.db` |
+| `pnpm run db:migrate:reset:sqlite` | Delete `dev.db` and apply all migrations (first-time / broken DB recovery) |
 
 After schema changes from `develop`: regenerate the client, redeploy with the SQLite script, restart the backend.
 

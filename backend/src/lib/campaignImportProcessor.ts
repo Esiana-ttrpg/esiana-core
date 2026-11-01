@@ -1041,6 +1041,9 @@ export async function processCampaignImportZip(
       await backfillCampaignPathKeys(campaignId);
     }
 
+    const { repairChronologyWikiWorkspacesForCampaign } = await import('./chronologyWikiWorkspace.js');
+    await repairChronologyWikiWorkspacesForCampaign(campaignId);
+
     const { rebuildWikiLinksForCampaign } = await import('./wikiLinkService.js');
     const linkEdgeCount = await rebuildWikiLinksForCampaign(campaignId);
     const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');

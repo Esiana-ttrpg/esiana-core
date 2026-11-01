@@ -36,7 +36,7 @@ Open **http://localhost:8080**, register, and use Esiana. The first account beco
 | **esiana** | `ghcr.io/esiana-ttrpg/esiana` | Node API + nginx web delivery layer (single container; nginx on by default) |
 | **postgres** | `postgres:16-alpine` | Database |
 
-Esiana waits for Postgres to pass `pg_isready` before starting. Migrations run automatically on container start.
+Esiana waits for Postgres to pass `pg_isready` before starting. Schema migrations run automatically on container start for PostgreSQL. SQLite URLs use the same startup gate with the normalized deploy script and never reset the database. The API does not start if migrate fails. Chronology Event/Era wiki ownership is backfilled once during process startup.
 
 ---
 

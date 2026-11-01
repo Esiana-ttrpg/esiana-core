@@ -99,11 +99,52 @@ async function ownershipCandidates(db: Db, campaignId: string) {
   return candidates.sort((a, b) => depth(a.id) - depth(b.id));
 }
 
-/** Portable idempotent data migration. Never creates documents for chronology-only records. */
-export async function ensureChronologyWikiWorkspaces(campaignId: string) {
-  if (!(await ownershipCandidates(prisma, campaignId)).length) return;
+async function repairChronologyWikiWorkspaces(db: Db, campaignId: string) {
+  if (!(await ownershipCandidates(db, campaignId)).length) return;
+  for (const page of await ownershipCandidates(db, campaignId)) await ownChronologyWikiPage(db, campaignId, page.kind, page.id);
+}
+
+/** Always repairs unowned Event/Era documents. Used by tests, imports, and the CLI. */
+export async function repairChronologyWikiWorkspacesForCampaign(campaignId: string) {
   await prisma.$transaction(async db => {
     await db.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
-    for (const page of await ownershipCandidates(db, campaignId)) await ownChronologyWikiPage(db, campaignId, page.kind, page.id);
+    await repairChronologyWikiWorkspaces(db, campaignId);
   }, { timeout: 30_000 });
+}
+
+/** Must run within a transaction: the claim and ownership repair commit or roll back together. */
+export async function initializeChronologyWorkspaces(tx: Prisma.TransactionClient, campaignId: string) {
+  const claim = await tx.campaign.updateMany({
+    where: { id: campaignId, chronologyWorkspacesInitialized: false },
+    data: { chronologyWorkspacesInitialized: true },
+  });
+  if (!claim.count) return;
+  await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
+  await repairChronologyWikiWorkspaces(tx, campaignId);
+}
+
+/** One-time portable backfill before serving requests. */
+export async function initializeExistingChronologyWorkspaces() {
+  for (;;) {
+    const campaigns = await prisma.campaign.findMany({
+      where: { chronologyWorkspacesInitialized: false }, select: { id: true }, take: 100,
+    });
+    if (!campaigns.length) return;
+    for (const campaign of campaigns) {
+      await prisma.$transaction(tx => initializeChronologyWorkspaces(tx, campaign.id), { timeout: 30_000 });
+    }
+  }
+}
+
+/**
+ * Lazy defensive repair. After startup claims a campaign, skip the tree scan.
+ * Write paths still assign ownership atomically for new Event/Era pages.
+ */
+export async function ensureChronologyWikiWorkspaces(campaignId: string) {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { chronologyWorkspacesInitialized: true },
+  });
+  if (campaign?.chronologyWorkspacesInitialized) return;
+  await prisma.$transaction(tx => initializeChronologyWorkspaces(tx, campaignId), { timeout: 30_000 });
 }

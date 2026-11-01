@@ -6,7 +6,7 @@ Session recordings attach to existing Session Notes sessions. Recording uploads 
 
 ## Enable recordings
 
-1. Apply the normal database migrations and regenerate the Prisma client before starting the updated backend. The migration supports the existing PostgreSQL and SQLite deployment tooling.
+1. Start the updated backend. Docker and `pnpm --filter backend start` apply schema migrations automatically (SQLite without reset). Local development still needs `pnpm run db:generate` after pulling schema changes. The migration supports the existing PostgreSQL and SQLite deployment tooling.
 2. In Administration → Audio, review formats, file/session/campaign limits, and optional global storage limits. Administrators may disable new uploads.
 3. In Campaign Settings → Audio, choose visibility and configure contributions, or opt out of recording uploads. The campaign permission matrix separately governs chapter editing, transcript editing/publication, and transcription requests.
 4. Open a session and choose Add Recording, then add one or more audio files. Select a previous file again after a browser reload to resume its pending upload.

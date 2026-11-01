@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import Database from 'better-sqlite3';
 import { deploySqliteMigrations } from './deploy-sqlite-migrations.mjs';
+import { normalizeMigrationSqlForSqlite } from './sqliteSchema.mjs';
 
 function snapshot(root) {
   return fs.readdirSync(root, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
@@ -71,6 +73,68 @@ for (const failure of ['staging', 'deploy', 'generate', 'none']) {
     assert.deepEqual(snapshot(root), before);
   });
 }
+
+test('SQLite deploy without generate only runs migrate deploy', (t) => {
+  const root = fixture(t);
+  let calls = 0;
+  deploySqliteMigrations({
+    backendRoot: root,
+    reset: false,
+    generate: false,
+    databaseUrl: 'file:./fixture.db',
+    runCommand: (_, args) => {
+      calls++;
+      assert.ok(args.includes('deploy'));
+      assert.equal(args.includes('generate'), false);
+    },
+  });
+  assert.equal(calls, 1);
+});
+
+test('SQLite upgrade deploy does not delete an existing database', (t) => {
+  const root = fixture(t);
+  const dbPath = path.join(root, 'prisma/upgrade.db');
+  fs.writeFileSync(dbPath, 'existing-sqlite-bytes');
+  deploySqliteMigrations({
+    backendRoot: root,
+    reset: false,
+    generate: false,
+    databaseUrl: 'file:./upgrade.db',
+    runCommand: () => {},
+  });
+  assert.equal(fs.readFileSync(dbPath, 'utf8'), 'existing-sqlite-bytes');
+});
+
+test('SQLite reset deploy deletes an existing database', (t) => {
+  const root = fixture(t);
+  const dbPath = path.join(root, 'prisma/upgrade.db');
+  fs.writeFileSync(dbPath, 'existing-sqlite-bytes');
+  deploySqliteMigrations({
+    backendRoot: root,
+    reset: true,
+    generate: false,
+    databaseUrl: 'file:./upgrade.db',
+    runCommand: () => {},
+  });
+  assert.equal(fs.existsSync(dbPath), false);
+});
+
+test('chronology workspace flag migration is additive on SQLite', () => {
+  const db = new Database(':memory:');
+  try {
+    db.exec(`
+      CREATE TABLE "Campaign" ("id" TEXT PRIMARY KEY, "eventCategoriesInitialized" BOOLEAN NOT NULL DEFAULT 0);
+      INSERT INTO "Campaign" ("id") VALUES ('keep-me');
+    `);
+    const sql = fs.readFileSync(new URL('../migrations/20261101140000_chronology_workspaces_initialized/migration.sql', import.meta.url), 'utf8');
+    db.exec(normalizeMigrationSqlForSqlite(sql));
+    const row = db.prepare('SELECT id, chronologyWorkspacesInitialized FROM Campaign').get();
+    assert.equal(row.id, 'keep-me');
+    assert.equal(row.chronologyWorkspacesInitialized, 0);
+  } finally {
+    db.close();
+  }
+});
 
 test('overlapping invocations own separate workspaces and cleanup', (t) => {
   const root = fixture(t);

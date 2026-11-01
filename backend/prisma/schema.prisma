@@ -488,6 +488,8 @@ model PluginConnectionAuthState {
 
 model Campaign {
   eventCategoriesInitialized Boolean @default(false)
+  /// One-time chronology wiki-workspace ownership backfill. Claimed at startup.
+  chronologyWorkspacesInitialized Boolean @default(false)
   chronologyRoutes ChronologyRoute[]
   safetyRequests SafetyPrivacyRequest[]
   safetyEligibility SafetyPrivacyEligibility[]
