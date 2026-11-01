@@ -57,6 +57,7 @@ import { ArchiveCampaignModal } from '@/components/campaign/ArchiveCampaignModal
 import { useCampaignInviteLink } from '@/hooks/useCampaignInviteLink';
 import { CampaignInviteEmailForm } from '@/components/campaign/CampaignInviteEmailForm';
 import { CollaborationPermissionsPanel } from '@/components/settings/CollaborationPermissionsPanel';
+import { PublicCampaignAccessCard } from '@/components/settings/PublicCampaignAccessCard';
 import { CampaignAudioSettingsTab } from '@/components/campaign/CampaignAudioSettingsTab';
 import {
   campaignDashboardPath,
@@ -127,6 +128,7 @@ export function CampaignSettingsPage() {
   }, [campaignHandle, canReviewSafety, setSafetyUnread]);
   const canManageSidebar = can(C.PAGE_EDIT_ANY) || can(C.CAMPAIGN_SETTINGS_EDIT);
   const canManageAccess = can(C.CAMPAIGN_MANAGE_ROLES);
+  const canEditPublicAccess = can(C.CAMPAIGN_VISIBILITY_EDIT);
   const canManageMemberIdentity = can(C.PAGE_EDIT_ANY);
   const canAccessCampaignSettings =
     canReviewSafety ||
@@ -489,13 +491,13 @@ export function CampaignSettingsPage() {
                         value: CampaignDiscoverability.PRIVATE,
                         label: 'Private',
                         description:
-                          'Only invited members can access this campaign.',
+                          'Only invited members can access this campaign. Anonymous visitors cannot view campaign content.',
                       },
                       {
                         value: CampaignDiscoverability.PUBLIC,
                         label: 'Public',
                         description:
-                          'Listed on the Global Hub and recruitment marketplace. Public discovery applies to campaign visibility, not party membership.',
+                          'Listed on the Global Hub and recruitment marketplace, and eligible for anonymous Observer reads if the instance administrator allows public access. Public discovery is not party membership.',
                       },
                     ] as const
                   ).map((option) => (
@@ -620,6 +622,15 @@ export function CampaignSettingsPage() {
         </div>
       ) : activeTab === 'access' ? (
         <div className="space-y-5">
+          <PublicCampaignAccessCard
+            campaignHandle={campaignHandle}
+            discoverability={discoverability}
+            canEdit={canEditPublicAccess}
+            onChanged={(next) => {
+              setDiscoverability(next);
+              void refreshWiki();
+            }}
+          />
           <div className="rounded-lg border border-border bg-surface p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -682,6 +693,8 @@ export function CampaignSettingsPage() {
                 Manage what each campaign role can access and change. View as
                 Player or Public only remaps visibility in the campaign workspace
                 — it does not impersonate accounts or change write capabilities.
+                Public preview can show what would be eligible even when the
+                instance currently requires login.
               </p>
               <div className="mt-4">
                 <CollaborationPermissionsPanel

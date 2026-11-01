@@ -6,6 +6,7 @@ import { MembershipRoles } from '@shared/campaignPolicy/membershipRoles';
 import {
   adventurePublicPreviewCapabilities,
   adventurePublicPreviewEligible,
+  adventurePublicPreviewGate,
   filterNodesByPreviewVisibility,
   isAdventurePreviewPerspective,
 } from './adventurePreview';
@@ -18,9 +19,12 @@ describe('adventure public preview', () => {
     assert.notEqual('public', 'party');
   });
 
-  it('blocks public preview when the campaign gate is private', () => {
+  it('keeps Public selectable and distinguishes instance vs campaign gates', () => {
     assert.equal(adventurePublicPreviewEligible('private'), false);
     assert.equal(adventurePublicPreviewEligible('public'), true);
+    assert.equal(adventurePublicPreviewGate('private', true), 'campaign');
+    assert.equal(adventurePublicPreviewGate('public', true), 'instance-notice');
+    assert.equal(adventurePublicPreviewGate('public', false), 'none');
   });
 
   it('evaluates public preview as Observer reads, including overrides', () => {

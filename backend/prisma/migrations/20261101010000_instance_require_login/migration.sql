@@ -1,0 +1,1 @@
+ALTER TABLE "SystemSetting" ADD COLUMN "requireLogin" BOOLEAN NOT NULL DEFAULT true;

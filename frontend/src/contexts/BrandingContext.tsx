@@ -11,6 +11,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentBranding } from '@/hooks/useDocumentBranding';
 import { DEFAULT_FOOTER_CONFIG, normalizeFooterConfig } from '@/lib/footerConfig';
+import { INSTANCE_REQUIRES_LOGIN_DEFAULT } from '@shared/campaignPolicy/publicAccess';
 import { fetchPublicSystemStatus } from '@/lib/publicSystem';
 import { fetchUserProfile } from '@/lib/user';
 import type { FooterConfig, PublicSystemStatus, SystemBrandingSettings } from '@/types/admin';
@@ -56,6 +57,8 @@ export interface BrandingState {
     footer?: FooterConfig,
   ) => void;
   refreshBranding: (options?: { preservePreview?: boolean }) => void;
+  /** Instance login gate. Campaign public access is still required. */
+  instanceRequiresLogin: boolean;
 }
 
 const BrandingContext = createContext<BrandingState | null>(null);
@@ -72,6 +75,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const [allowCampaignSystemOverride, setAllowCampaignSystemOverride] = useState(true);
   const [campaignPref, setCampaignPref] = useState<Partial<ThemeProfile> | null>(null);
   const [previewOverlay, setPreviewOverlayState] = useState<ThemeProfile | null>(null);
+  const [instanceRequiresLogin, setInstanceRequiresLogin] = useState(
+    INSTANCE_REQUIRES_LOGIN_DEFAULT,
+  );
 
   const userPrefKey = themeProfileSignature(userPref);
   const campaignPrefKey = themeProfileSignature(campaignPref);
@@ -136,6 +142,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
   const ingestPublicSystemStatus = useCallback(
     (status: PublicSystemStatus) => {
+      setInstanceRequiresLogin(
+        status.publicAccess?.requireLogin ?? INSTANCE_REQUIRES_LOGIN_DEFAULT,
+      );
       applySystemBrandingSnapshot(
         {
           globalTitle: status.globalTitle,
@@ -238,6 +247,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       setCampaignAppearance,
       applySystemBrandingSnapshot,
       refreshBranding,
+      instanceRequiresLogin,
     }),
     [
       globalTitle,
@@ -255,6 +265,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       setCampaignAppearance,
       applySystemBrandingSnapshot,
       refreshBranding,
+      instanceRequiresLogin,
     ],
   );
 

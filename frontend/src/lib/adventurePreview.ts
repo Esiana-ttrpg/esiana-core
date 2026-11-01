@@ -6,6 +6,11 @@ import {
 } from '@shared/campaignPolicy/policy';
 import type { CampaignCapability } from '@shared/campaignPolicy/capabilities';
 import { allowsAnonymousCampaignView } from '@shared/campaignPolicy/discoverability';
+import {
+  instanceRequiresLogin,
+  resolvePublicPreviewGate,
+  type PublicPreviewGate,
+} from '@shared/campaignPolicy/publicAccess';
 import { canViewVisibilityFromCaps } from '@shared/campaignPolicy/resourceAccess';
 import type { CampaignRoleCapabilityOverrideRow } from '@shared/campaignPolicy/capabilityOverrides';
 
@@ -33,6 +38,16 @@ export function adventurePublicPreviewEligible(
   discoverability: string | null | undefined,
 ): boolean {
   return allowsAnonymousCampaignView(discoverability ?? 'private');
+}
+
+export function adventurePublicPreviewGate(
+  discoverability: string | null | undefined,
+  requireLogin = instanceRequiresLogin(),
+): PublicPreviewGate {
+  return resolvePublicPreviewGate({
+    instanceRequiresLogin: requireLogin,
+    campaignAllowsPublic: adventurePublicPreviewEligible(discoverability),
+  });
 }
 
 export function buildAdventurePublicPreviewActor(campaign: {

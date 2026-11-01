@@ -3,6 +3,7 @@ export * from './membershipRoles.js';
 export * from './roleGrants.js';
 export * from './campaignAdminGrants.js';
 export * from './discoverability.js';
+export * from './publicAccess.js';
 export * from './publicProfile.js';
 export * from './glossary.js';
 export * from './policy.js';

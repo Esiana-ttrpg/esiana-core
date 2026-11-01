@@ -6,6 +6,10 @@ export interface SystemRegistrationSettings {
   allowedDomains: string;
 }
 
+export interface SystemPublicAccessSettings {
+  requireLogin: boolean;
+}
+
 export interface SystemSmtpSettings {
   host: string;
   port: number;
@@ -70,6 +74,7 @@ export interface SystemPluginRegistrySettings {
 export interface SystemSettings {
   id: string;
   registration: SystemRegistrationSettings;
+  publicAccess: SystemPublicAccessSettings;
   smtp: SystemSmtpSettings;
   uploads: SystemUploadSettings;
   urlImports: SystemUrlImportSettings;
@@ -87,6 +92,7 @@ export interface SystemSettings {
 
 export interface SystemSettingsPatch {
   registration?: Partial<SystemRegistrationSettings>;
+  publicAccess?: Partial<SystemPublicAccessSettings>;
   smtp?: Partial<SystemSmtpSettings>;
   uploads?: Partial<SystemUploadSettings>;
   urlImports?: Partial<SystemUrlImportSettings>;
@@ -137,6 +143,7 @@ export interface PublicSystemStatus {
   footer: FooterConfig;
   defaultTimezone: string;
   defaultUiLocale: string | null;
+  publicAccess?: SystemPublicAccessSettings;
 }
 
 export interface PluginCompatibilityMeta {

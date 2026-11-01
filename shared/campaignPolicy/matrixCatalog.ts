@@ -50,7 +50,8 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
       {
         capability: CampaignCapabilities.CAMPAIGN_VIEW,
         label: 'View campaign',
-        description: 'Open the campaign workspace when invited, or anonymously when the public gate is on.',
+        description:
+          'Open the campaign workspace when invited, or anonymously when both the instance login gate and campaign public access allow it.',
         overridableRoles: NONE,
       },
       {
@@ -68,7 +69,8 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
       {
         capability: CampaignCapabilities.CAMPAIGN_VISIBILITY_EDIT,
         label: 'Change campaign visibility',
-        description: 'Private vs public campaign listing and anonymous Observer reads.',
+        description:
+          'Campaign public access (anonymous Observer reads) and listing. Still requires the instance administrator to allow public access.',
         overridableRoles: NONE,
       },
       {

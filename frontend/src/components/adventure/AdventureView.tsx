@@ -33,9 +33,10 @@ interface AdventureViewProps {
 export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isDMUser, playerPreview, publicPreview, publicPreviewEligible } =
+  const { isDMUser, playerPreview, publicPreview, publicPreviewGate } =
     useAdventureWorkspace();
-  const publicPreviewBlocked = publicPreview && !publicPreviewEligible;
+  const publicPreviewCampaignBlocked = publicPreview && publicPreviewGate === 'campaign';
+  const publicPreviewInstanceNotice = publicPreview && publicPreviewGate === 'instance-notice';
 
   const basePath = campaignAdventureHubPath(campaignHandle);
   const activeView = readStoryViewFromSearch(location.search, campaignHandle);
@@ -193,25 +194,41 @@ export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewP
         inlineContextual={showContextualRail}
         catalogGridClass="adventure-shell-body min-h-[560px] w-full min-w-0"
       >
-        {publicPreviewBlocked ? (
+        {publicPreviewCampaignBlocked ? (
           <div className="rounded-lg border border-border bg-surface/40 px-4 py-6 text-sm">
-            <p className="font-medium text-foreground">Public access is off</p>
+            <p className="font-medium text-foreground">Public campaign access is off</p>
             <p className="mt-2 text-muted">
-              This campaign is not open to anonymous visitors. Public preview stays
-              selected and shows what they would see: nothing in Adventure until
-              the public access gate is enabled.
+              This campaign does not allow visitors without an account. Public
+              preview stays selected and shows what they would see: nothing in
+              Adventure until campaign public access is enabled. The instance
+              administrator must also allow public access.
             </p>
           </div>
         ) : (
-          <StorySection
-            campaignHandle={campaignHandle}
-            categoryPageId={categoryPageId}
-            activeView={activeView}
-            threadsLens={threadsLens}
-            filters={filters}
-            onThreadsLensChange={setThreadsLens}
-            onHeaderActionsChange={handleHeaderActionsChange}
-          />
+          <>
+            {publicPreviewInstanceNotice ? (
+              <div className="mb-4 rounded-lg border border-border bg-surface/40 px-4 py-4 text-sm">
+                <p className="font-medium text-foreground">
+                  Public access is currently unavailable
+                </p>
+                <p className="mt-2 text-muted">
+                  This instance requires visitors to sign in. Public preview stays
+                  selected and shows content that would be eligible if the instance
+                  administrator allowed anonymous access. Private campaigns and
+                  restricted resources stay hidden.
+                </p>
+              </div>
+            ) : null}
+            <StorySection
+              campaignHandle={campaignHandle}
+              categoryPageId={categoryPageId}
+              activeView={activeView}
+              threadsLens={threadsLens}
+              filters={filters}
+              onThreadsLensChange={setThreadsLens}
+              onHeaderActionsChange={handleHeaderActionsChange}
+            />
+          </>
         )}
 
         {showContextualRail ? (

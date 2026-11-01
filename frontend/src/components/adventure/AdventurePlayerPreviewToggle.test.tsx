@@ -11,6 +11,7 @@ const workspace = {
   playerPreview: false,
   publicPreview: false,
   publicPreviewEligible: false,
+  publicPreviewGate: 'campaign' as const,
 };
 
 vi.mock('@/contexts/AdventureWorkspaceContext', () => ({

@@ -8,13 +8,16 @@ import {
   type ReactNode,
 } from 'react';
 import { useWiki } from '@/contexts/WikiContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import { useAdventureRoute } from '@/hooks/useAdventureRoute';
 import {
   adventureHidesGmChrome,
   adventurePublicPreviewEligible,
+  adventurePublicPreviewGate,
   isAdventurePublicPreview,
   type AdventurePreviewPerspective,
 } from '@/lib/adventurePreview';
+import type { PublicPreviewGate } from '@shared/campaignPolicy/publicAccess';
 import {
   patchAdventurePerspective,
   readAdventurePerspective,
@@ -27,6 +30,7 @@ interface AdventureWorkspaceContextValue {
   playerPreview: boolean;
   publicPreview: boolean;
   publicPreviewEligible: boolean;
+  publicPreviewGate: PublicPreviewGate;
   isDMUser: boolean;
 }
 
@@ -35,6 +39,7 @@ const AdventureWorkspaceContext = createContext<AdventureWorkspaceContextValue |
 export function AdventureWorkspaceProvider({ children }: { children: ReactNode }) {
   const adventureRoute = useAdventureRoute();
   const { hasElevatedView, campaignHandle, campaign } = useWiki();
+  const { instanceRequiresLogin } = useBranding();
   const [perspective, setPerspectiveState] = useState<AdventurePreviewPerspective>(() =>
     readAdventurePerspective(campaignHandle),
   );
@@ -61,9 +66,20 @@ export function AdventureWorkspaceProvider({ children }: { children: ReactNode }
       playerPreview: adventureHidesGmChrome(perspective),
       publicPreview: isAdventurePublicPreview(perspective),
       publicPreviewEligible: adventurePublicPreviewEligible(campaign?.discoverability),
+      publicPreviewGate: adventurePublicPreviewGate(
+        campaign?.discoverability,
+        instanceRequiresLogin,
+      ),
       isDMUser,
     }),
-    [adventureRoute, campaign?.discoverability, isDMUser, perspective, setPerspective],
+    [
+      adventureRoute,
+      campaign?.discoverability,
+      instanceRequiresLogin,
+      isDMUser,
+      perspective,
+      setPerspective,
+    ],
   );
 
   return (

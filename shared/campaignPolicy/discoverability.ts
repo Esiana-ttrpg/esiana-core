@@ -1,5 +1,8 @@
 /**
- * Layer 1 — campaign container discoverability (not a membership role).
+ * Campaign-level public access / listing (not a membership role).
+ *
+ * This is only the campaign gate. Anonymous visitors also need the instance
+ * login gate to allow public access — see `publicAccess.ts`. Both must allow.
  */
 
 export const CampaignDiscoverability = {
@@ -48,6 +51,7 @@ export function resolveDiscoverability(
   return normalizeDiscoverability(discoverability);
 }
 
+/** Campaign gate only. Use `allowsAnonymousCampaignAccess` for both gates. */
 export function allowsAnonymousCampaignView(
   discoverability: CampaignDiscoverabilityValue | string,
 ): boolean {

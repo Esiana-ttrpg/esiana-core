@@ -48,6 +48,9 @@ export function serializeSystemSettings(row: SystemSetting) {
       allowRegistrations: row.allowRegistrations,
       allowedDomains: row.allowedDomains ?? '',
     },
+    publicAccess: {
+      requireLogin: row.requireLogin ?? true,
+    },
     smtp: {
       host: row.smtpHost ?? '',
       port: row.smtpPort ?? 587,
@@ -132,11 +135,19 @@ export function serializePublicSystemSettings(row: SystemSetting) {
     footer: serializeFooter(row),
     defaultTimezone: row.defaultTimezone ?? DEFAULT_TIMEZONE,
     defaultUiLocale: resolveInstanceDefaultUiLocale(env.defaultUiLocale),
+    publicAccess: {
+      requireLogin: row.requireLogin ?? true,
+    },
   };
 }
 
 export async function getOrCreateSystemSettings(): Promise<SystemSetting> {
   return bootstrapSystemSettings();
+}
+
+export async function getInstanceRequireLogin(): Promise<boolean> {
+  const row = await getOrCreateSystemSettings();
+  return row.requireLogin ?? true;
 }
 
 export function parseAllowedDomains(raw: string | null | undefined): string[] {

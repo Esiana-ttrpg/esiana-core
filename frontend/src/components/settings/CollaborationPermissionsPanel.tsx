@@ -332,8 +332,10 @@ export function CollaborationPermissionsPanel({
         })}
       </div>
       <p className="text-xs text-muted">
-        Public is not a role. When the campaign public access gate is enabled,
-        anonymous visitors inherit Observer’s effective read permissions.
+        Public is not a role. When both the instance login gate and this
+        campaign’s public access setting allow it, anonymous visitors inherit
+        Observer’s effective read permissions. A public instance still does not
+        grant access to private campaigns or restricted content.
       </p>
       <button
         type="button"

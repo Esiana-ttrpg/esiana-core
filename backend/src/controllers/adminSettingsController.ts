@@ -95,6 +95,12 @@ export async function patchAdminSettings(
     if (allowedDomains !== undefined) data.allowedDomains = allowedDomains;
   }
 
+  const publicAccess = body.publicAccess as Record<string, unknown> | undefined;
+  if (publicAccess && typeof publicAccess === 'object') {
+    const requireLogin = optionalBoolean(publicAccess.requireLogin);
+    if (requireLogin !== undefined) data.requireLogin = requireLogin;
+  }
+
   const smtp = body.smtp as Record<string, unknown> | undefined;
   let smtpUpdated = false;
   if (smtp && typeof smtp === 'object') {

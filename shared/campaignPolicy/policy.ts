@@ -104,6 +104,9 @@ export function resolveActorCapabilities(
 ): ReadonlySet<CampaignCapability> {
   if (actor.kind === 'anonymous') {
     const discoverability = resolveDiscoverability(actor.campaign.discoverability);
+    // Campaign gate only. Instance login is a separate admission check
+    // (`resolveAnonymousCampaignAccess`) so Public preview can still project
+    // Observer-eligible content when the instance currently requires login.
     if (!allowsAnonymousCampaignView(discoverability)) {
       return new Set();
     }
