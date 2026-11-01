@@ -234,6 +234,8 @@ model SystemSetting {
   footerDiscordUrl        String?
   footerGithubUrl         String?
   footerAlignment         String  @default("center")
+  /// When true, configured footer links appear for visitors who are not signed in.
+  footerShowToUnauthorized Boolean @default(false)
 
   /// Bell badge poll interval in seconds (30–300). Default 60 for SQLite-friendly load.
   notificationPollIntervalSeconds Int @default(60)

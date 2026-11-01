@@ -8,6 +8,7 @@ export interface SystemRegistrationSettings {
 
 export interface SystemPublicAccessSettings {
   requireLogin: boolean;
+  allowRegistrations?: boolean;
 }
 
 export interface SystemSmtpSettings {
@@ -117,6 +118,7 @@ export interface FooterConfig {
   discordUrl: string;
   githubUrl: string;
   alignment: FooterAlignment;
+  showToUnauthorized: boolean;
 }
 
 export interface SystemBrandingSettings {

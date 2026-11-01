@@ -1,5 +1,6 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
-import { hasFooterContent } from '@/lib/footerConfig';
+import { footerNavLinksForAudience, hasFooterContent } from '@/lib/footerConfig';
 import type { FooterAlignment } from '@/types/admin';
 
 const alignmentClasses: Record<FooterAlignment, string> = {
@@ -16,6 +17,7 @@ const linkRowAlignmentClasses: Record<FooterAlignment, string> = {
 
 export function Footer() {
   const { footer } = useBranding();
+  const { isAuthenticated } = useAuth();
 
   if (!hasFooterContent(footer)) {
     return null;
@@ -23,12 +25,11 @@ export function Footer() {
 
   const alignment = footer.alignment ?? 'center';
   const customText = footer.customText.trim();
-  const links = [
-    { label: 'Terms of Service', url: footer.tosUrl.trim() },
-    { label: 'Privacy Policy', url: footer.privacyPolicyUrl.trim() },
-    { label: 'Discord', url: footer.discordUrl.trim() },
-    { label: 'GitHub', url: footer.githubUrl.trim() },
-  ].filter((item) => item.url);
+  const links = footerNavLinksForAudience(footer, isAuthenticated);
+
+  if (!customText && links.length === 0) {
+    return null;
+  }
 
   return (
     <footer className="mt-auto border-t border-border bg-background/80 px-4 py-6">

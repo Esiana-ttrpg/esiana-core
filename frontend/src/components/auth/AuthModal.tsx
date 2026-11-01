@@ -4,23 +4,27 @@ import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import { requestPasswordReset } from '@/lib/authEmail';
+import { currentAuthReturnTo } from '@/lib/instanceHome';
 import {
   fetchAuthProviders,
   federatedSignInUrl,
   type AuthProviderSummary,
 } from '@/lib/federatedIdentity';
 
+type AuthMode = 'login' | 'register' | 'forgot';
+
 interface AuthModalProps {
   open: boolean;
   onClose: () => void;
+  initialMode?: AuthMode;
 }
 
-type AuthMode = 'login' | 'register' | 'forgot';
-
-export function AuthModal({ open, onClose }: AuthModalProps) {
+export function AuthModal({ open, onClose, initialMode = 'login' }: AuthModalProps) {
   const { login, register } = useAuth();
-  const [mode, setMode] = useState<AuthMode>('login');
+  const { allowRegistrations } = useBranding();
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +34,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   const [localLoginEnabled, setLocalLoginEnabled] = useState(true);
   const [oidcAutoRedirect, setOidcAutoRedirect] = useState(false);
   const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (!open) return;
+    setMode(initialMode === 'register' && allowRegistrations ? 'register' : initialMode === 'forgot' ? 'forgot' : 'login');
+  }, [allowRegistrations, initialMode, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -49,7 +58,12 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   useEffect(() => {
     if (!open || searchParams.get('authError')) return;
     if (!oidcAutoRedirect || providers.length === 0) return;
-    window.location.assign(federatedSignInUrl(providers[0].id, { mode: 'login' }));
+    window.location.assign(
+      federatedSignInUrl(providers[0].id, {
+        mode: 'login',
+        returnTo: currentAuthReturnTo(),
+      }),
+    );
   }, [open, oidcAutoRedirect, providers, searchParams]);
 
   if (!open) return null;
@@ -60,7 +74,12 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
   }
 
   function startFederated(providerId: string) {
-    window.location.assign(federatedSignInUrl(providerId, { mode: 'login' }));
+    window.location.assign(
+      federatedSignInUrl(providerId, {
+        mode: 'login',
+        returnTo: currentAuthReturnTo(),
+      }),
+    );
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -77,8 +96,11 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
       }
       if (mode === 'login') {
         await login(email, password);
-      } else {
+      } else if (allowRegistrations) {
         await register(email, password);
+      } else {
+        setError('Registration is disabled on this instance.');
+        return;
       }
       onClose();
       setEmail('');
@@ -218,6 +240,7 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
           {showLocalFields && (
           <p className="text-center text-sm text-muted">
             {mode === 'login' ? (
+              allowRegistrations ? (
               <>
                 No account?{' '}
                 <button
@@ -231,6 +254,9 @@ export function AuthModal({ open, onClose }: AuthModalProps) {
                   Register
                 </button>
               </>
+              ) : (
+                'Ask the people who run this instance if you need an account.'
+              )
             ) : mode === 'register' ? (
               <>
                 Have an account?{' '}

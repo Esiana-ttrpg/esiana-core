@@ -26,6 +26,7 @@ function serializeFooter(row: SystemSetting) {
     discordUrl: row.footerDiscordUrl ?? '',
     githubUrl: row.footerGithubUrl ?? '',
     alignment: sanitizeFooterAlignment(row.footerAlignment) ?? 'center',
+    showToUnauthorized: row.footerShowToUnauthorized ?? false,
   };
 }
 
@@ -50,6 +51,7 @@ export function serializeSystemSettings(row: SystemSetting) {
     },
     publicAccess: {
       requireLogin: row.requireLogin ?? true,
+      allowRegistrations: row.allowRegistrations ?? true,
     },
     smtp: {
       host: row.smtpHost ?? '',
@@ -137,6 +139,7 @@ export function serializePublicSystemSettings(row: SystemSetting) {
     defaultUiLocale: resolveInstanceDefaultUiLocale(env.defaultUiLocale),
     publicAccess: {
       requireLogin: row.requireLogin ?? true,
+      allowRegistrations: row.allowRegistrations ?? true,
     },
   };
 }

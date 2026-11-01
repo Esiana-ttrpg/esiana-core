@@ -59,6 +59,8 @@ export interface BrandingState {
   refreshBranding: (options?: { preservePreview?: boolean }) => void;
   /** Instance login gate. Campaign public access is still required. */
   instanceRequiresLogin: boolean;
+  allowRegistrations: boolean;
+  brandingReady: boolean;
 }
 
 const BrandingContext = createContext<BrandingState | null>(null);
@@ -78,6 +80,8 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const [instanceRequiresLogin, setInstanceRequiresLogin] = useState(
     INSTANCE_REQUIRES_LOGIN_DEFAULT,
   );
+  const [allowRegistrations, setAllowRegistrations] = useState(false);
+  const [brandingReady, setBrandingReady] = useState(false);
 
   const userPrefKey = themeProfileSignature(userPref);
   const campaignPrefKey = themeProfileSignature(campaignPref);
@@ -145,6 +149,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       setInstanceRequiresLogin(
         status.publicAccess?.requireLogin ?? INSTANCE_REQUIRES_LOGIN_DEFAULT,
       );
+      setAllowRegistrations(status.publicAccess?.allowRegistrations === true);
       applySystemBrandingSnapshot(
         {
           globalTitle: status.globalTitle,
@@ -162,8 +167,15 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   );
 
   const loadSystemBranding = useCallback(async () => {
-    const status = await fetchPublicSystemStatus();
-    ingestPublicSystemStatus(status);
+    try {
+      const status = await fetchPublicSystemStatus();
+      ingestPublicSystemStatus(status);
+    } catch {
+      setInstanceRequiresLogin(INSTANCE_REQUIRES_LOGIN_DEFAULT);
+      setAllowRegistrations(false);
+    } finally {
+      setBrandingReady(true);
+    }
   }, [ingestPublicSystemStatus]);
 
   useDocumentBranding(globalTitle, faviconUrl);
@@ -248,6 +260,8 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       applySystemBrandingSnapshot,
       refreshBranding,
       instanceRequiresLogin,
+      allowRegistrations,
+      brandingReady,
     }),
     [
       globalTitle,
@@ -266,6 +280,8 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       applySystemBrandingSnapshot,
       refreshBranding,
       instanceRequiresLogin,
+      allowRegistrations,
+      brandingReady,
     ],
   );
 

@@ -408,6 +408,7 @@ export async function patchAdminSettings(
     const discordUrl = optionalString(footer.discordUrl);
     const githubUrl = optionalString(footer.githubUrl);
     const alignment = optionalString(footer.alignment);
+    const showToUnauthorized = optionalBoolean(footer.showToUnauthorized);
 
     if (customText !== undefined) {
       data.footerCustomText = customText || null;
@@ -445,6 +446,9 @@ export async function patchAdminSettings(
         return;
       }
       data.footerAlignment = normalized;
+    }
+    if (showToUnauthorized !== undefined) {
+      data.footerShowToUnauthorized = showToUnauthorized;
     }
   }
 

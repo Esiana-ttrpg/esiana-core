@@ -5,7 +5,7 @@ import { LocaleProvider } from '@/contexts/LocaleContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CampaignLayout } from '@/layouts/CampaignLayout';
-import { GlobalHubPage } from '@/pages/GlobalHubPage';
+import { InstanceHomePage } from '@/pages/InstanceHomePage';
 import { GlobalPluginPageHost } from '@/pages/GlobalPluginPageHost';
 import { PluginPageHost } from '@/pages/PluginPageHost';
 import { WikiPage } from '@/pages/WikiPage';
@@ -86,7 +86,7 @@ export default function App() {
         <BrandingProvider>
         <Routes>
           <Route element={<AppLayout />} errorElement={<RouteErrorPage />}>
-            <Route index element={<GlobalHubPage />} />
+            <Route index element={<InstanceHomePage />} />
             <Route path="plugins/:pluginId/:pageId/*" element={<GlobalPluginPageHost />} />
             <Route path="guides/:guideSlug" element={<PlatformGuidePage />} />
             <Route path="recruitment" element={<RecruitmentDirectoryPage />} />
