@@ -1,3 +1,4 @@
+import { CampaignStatisticsPage } from '@/pages/CampaignStatisticsPage';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LocaleProvider } from '@/contexts/LocaleContext';
@@ -124,6 +125,7 @@ export default function App() {
             <Route path="eras/:eraSlug" element={<ChronologyPage />} />
             <Route path="time-tracking" element={<TimeTrackingManagement />} />
             <Route path="world-advance" element={<WorldAdvancePage />} />
+            <Route path="campaign-statistics" element={<CampaignStatisticsPage />} />
             <Route path="progression" element={<ProgressionPage />} />
             <Route path="workshop" element={<WorkshopPage />} />
             <Route path="world-advance/batches/:eventId" element={<WorldAdvanceBatchPage />} />

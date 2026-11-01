@@ -85,6 +85,7 @@ export async function buildCampaignWorldPressureProjection(
   campaignId: string,
   options?: {
     tx?: Prisma.TransactionClient;
+    role?: CampaignMemberRole | null;
     includeSessionForecast?: boolean;
     daysUntilNextSession?: number | null;
     targetEpochMinute?: string | null;
@@ -114,7 +115,7 @@ export async function buildCampaignWorldPressureProjection(
     options?.tx
       ? resolveChronologyNowFromDb(db, campaignId)
       : resolveCampaignChronologyNow(campaignId),
-    includeSessionForecast ? fetchNextDashboardSession(campaignId) : Promise.resolve(null),
+    includeSessionForecast ? fetchNextDashboardSession(campaignId, options?.role ?? null) : Promise.resolve(null),
   ]);
 
   const currentEra =
@@ -233,13 +234,14 @@ export function buildWorldPressurePreviewFromProjection(
 
 export async function buildWorldPressurePreview(
   campaignId: string,
-  options?: { daysUntilNextSession?: number | null },
+  options?: { daysUntilNextSession?: number | null; role?: CampaignMemberRole | null },
 ): Promise<WorldPressurePreview | null> {
   const momentumRow = await ensureCampaignMomentum(campaignId);
   const momentumPayload = toCampaignMomentumPayload(momentumRow);
   const paused = momentumPayload.state.worldPressurePaused === true;
 
   const projection = await buildCampaignWorldPressureProjection(campaignId, {
+    role: options?.role,
     includeSessionForecast: options?.daysUntilNextSession === undefined,
     daysUntilNextSession: options?.daysUntilNextSession,
   });

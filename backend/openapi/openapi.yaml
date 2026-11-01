@@ -26203,6 +26203,203 @@ paths:
         "404": *a4
         "429": *a5
         "500": *a6
+  /api/campaigns/{campaignHandle}/dashboard/announcements:
+    get:
+      tags: [Campaigns]
+      summary: Get campaign announcements
+      operationId: get_campaign_dashboard_announcements
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    post:
+      tags: [Campaigns]
+      summary: Post campaign announcements
+      operationId: post_campaign_dashboard_announcements
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, message, style]
+              properties:
+                title: {type: string, maxLength: 120}
+                message: {type: string, maxLength: 8000}
+                style: {type: string, enum: [information, important, update]}
+                link: {type: string, nullable: true}
+                expiresAt: {type: string, format: date-time, nullable: true}
+                expectedUpdatedAt: {type: string, format: date-time}
+      responses:
+        "201":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Announcement version changed; refresh before editing
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/campaigns/{campaignHandle}/dashboard/announcements/{announcementId}:
+    patch:
+      tags: [Campaigns]
+      summary: Patch campaign announcements
+      operationId: patch_campaign_dashboard_announcements_announcementId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+        - name: announcementId
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, message, style]
+              properties:
+                title: {type: string, maxLength: 120}
+                message: {type: string, maxLength: 8000}
+                style: {type: string, enum: [information, important, update]}
+                link: {type: string, nullable: true}
+                expiresAt: {type: string, format: date-time, nullable: true}
+                expectedUpdatedAt: {type: string, format: date-time}
+      responses:
+        "200":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Announcement version changed; refresh before editing
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      tags: [Campaigns]
+      summary: Delete campaign announcements
+      operationId: delete_campaign_dashboard_announcements_announcementId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+        - name: announcementId
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "204":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Announcement version changed; refresh before editing
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/campaigns/{campaignHandle}/campaign-statistics:
+    get:
+      tags: [Campaigns]
+      summary: Get campaign statistics
+      operationId: get_campaign_campaign-statistics
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+        - name: days
+          in: query
+          schema: {type: integer, enum: [7, 30, 90, 365], default: 30}
+      responses:
+        "200":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 components:
   securitySchemes:
     cookieAuth:

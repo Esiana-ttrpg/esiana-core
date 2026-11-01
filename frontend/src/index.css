@@ -1681,14 +1681,13 @@ html[data-scene='quiet_reading_room'] .narrative-layout--scene-quiet_reading_roo
   }
 }
 
-.dashboard-widget-grid--staggered .react-grid-item:first-child {
-  z-index: 2;
-}
-
-.dashboard-widget-grid--staggered .react-grid-item:not(:first-child) .surface-float,
-.dashboard-widget-grid--staggered .react-grid-item:not(:first-child) .surface-contextual {
-  opacity: 0.94;
-}
+/* Widget weight follows presentation, independently of registration order. */
+.dashboard-widget-shell { overflow-wrap: anywhere; }
+.dashboard-widget-shell[data-dashboard-variant="compact"] header { margin-bottom: 0.5rem; padding-bottom: 0; }
+.dashboard-widget-shell[data-dashboard-variant="compact"] { --space-section: 0.75rem; }
+.dashboard-widget-shell[data-dashboard-variant="featured"] { border-inline-start: 2px solid var(--color-primary); }
+.dashboard-widget-shell :focus-visible { outline-offset: 3px; }
+.dashboard-grid-reading .react-grid-item { transition: none; }
 
 .narrative-layout--hub {
   grid-template-columns: minmax(0, 1fr);

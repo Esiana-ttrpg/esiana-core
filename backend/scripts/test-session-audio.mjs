@@ -29,7 +29,7 @@ try {
   const result = spawnSync(process.execPath, ['--import', 'tsx', '--import', './scripts/session-audio-test-env.mjs', '--test', '--test-concurrency=1',
     'prisma/scripts/recording-file-migration.test.mjs',
     'src/lib/networkFetch.test.ts',
-    '../shared/sessionAudio.test.ts', 'src/lib/sessionAudio.integration.test.ts', 'src/lib/transcriptionHttp.test.ts',
+    '../shared/sessionAudio.test.ts', 'src/lib/sessionAudio.integration.test.ts', 'src/lib/dashboardSessionFollowUp.integration.test.ts', 'src/lib/dashboardCampaignFeatures.integration.test.ts', 'src/lib/transcriptionHttp.test.ts',
     'src/lib/sessionAudio.apiTokens.test.ts',
     '../shared/campaignPolicy/policy.test.ts', '../shared/campaignPolicy/capabilityOverrides.test.ts',
     'src/lib/campaignClonePresets.test.ts', 'src/lib/campaignBackupRoundTrip.test.ts',

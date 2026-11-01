@@ -11,6 +11,8 @@ export type NarrativeSnapshotStoryBeat = {
   href: string;
   statusLabel?: string | null;
   roleLabel: string;
+  snippet?: string | null;
+  progress?: { completed: number; total: number; percent: number };
 };
 
 export type NarrativeSnapshotPartyMember = {
@@ -18,6 +20,7 @@ export type NarrativeSnapshotPartyMember = {
   title: string;
   href: string;
   tagline: string | null;
+  portraitUrl?: string | null;
 };
 
 export type NarrativeSnapshotActivityItem = {
@@ -26,6 +29,7 @@ export type NarrativeSnapshotActivityItem = {
   href: string | null;
   updatedAt: string;
   reason?: string | null;
+  entityType?: string | null;
 };
 
 export type NarrativeSnapshotDeepSystems = {

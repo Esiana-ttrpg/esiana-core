@@ -133,7 +133,7 @@ export function resolveWorkspaceComposition(pathname: string): WorkspaceComposit
     return PRESETS.entity;
   }
 
-  if (first === 'notes' || first === 'notes-index') return PRESETS.reference;
+  if (first === 'notes' || first === 'notes-index' || first === 'campaign-statistics') return PRESETS.reference;
 
   if (first === 'adventures' && !second) return PRESETS.hub;
 

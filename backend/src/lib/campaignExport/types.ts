@@ -76,6 +76,7 @@ export type SovereignKnowledge = import('../packKnowledgeImporter.js').PackKnowl
 
 /** Wiki-linked operational state in sovereign/operational.json (optional in older zips). */
 export interface SovereignOperational {
+  campaignAnnouncements?: Array<Record<string, unknown>>;
   chronologyRoutes?: Array<Record<string, unknown>>;
   campaignEras?: Array<Record<string, unknown>>;
   eraRecurrenceHistory?: import('../eraOccurrenceHistory.js').EraHistory;

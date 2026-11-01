@@ -17,6 +17,7 @@ describe('workspaceComposition', () => {
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/chronology').id, 'studio');
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/party').id, 'studio');
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/notes').id, 'reference');
+    assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/campaign-statistics').id, 'reference');
   });
 
   it('resolves document routes', () => {

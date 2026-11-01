@@ -1,15 +1,11 @@
 import { buildEntityCategoryWhereClause } from './wikiCategoryEntityIndex.js';
 import { prisma } from './prisma.js';
 import type { CampaignMemberRole } from '../types/domain.js';
-import { CampaignMemberRoles } from '../types/domain.js';
+import { CampaignMemberRoles, WikiVisibility } from '../types/domain.js';
 import type { DashboardConfig } from './dashboardConfig.js';
 import type { DashboardSummary } from './buildDashboardSummary.js';
+import { formatChronometerStatusLabel } from './buildDashboardChronometer.js';
 import {
-  buildDashboardChronometer,
-  formatChronometerStatusLabel,
-} from './buildDashboardChronometer.js';
-import {
-  fetchNextDashboardSession,
   type DashboardSessionSummary,
 } from './buildDashboardSessions.js';
 import {
@@ -25,7 +21,6 @@ import { buildWikiPageHref } from './wikiLinkService.js';
 import { parseCharacterMetadata } from './characterMetadata.js';
 import { isActivePartyCharacter } from '../../../shared/partyParticipation.js';
 import { canViewWikiPage } from './wikiTree.js';
-import { buildArcIdentity } from './buildHubNarrativeLabels.js';
 import { campaignPath, campaignThreadsHubPath } from './notifications/deepLinks.js';
 import type { DashboardThreadBundle } from './dashboardThreadLedger.js';
 import type { RecentEntityFeedItem } from './recentEntityFeedTypes.js';
@@ -43,6 +38,8 @@ export type NarrativeSnapshotStoryBeat = {
   href: string;
   statusLabel?: string | null;
   roleLabel: string;
+  snippet?: string | null;
+  progress?: { completed: number; total: number; percent: number };
 };
 
 export type NarrativeSnapshotPartyMember = {
@@ -50,6 +47,7 @@ export type NarrativeSnapshotPartyMember = {
   title: string;
   href: string;
   tagline: string | null;
+  portraitUrl?: string | null;
 };
 
 export type NarrativeSnapshotActivityItem = {
@@ -58,6 +56,7 @@ export type NarrativeSnapshotActivityItem = {
   href: string | null;
   updatedAt: string;
   reason?: string | null;
+  entityType?: string | null;
 };
 
 export type NarrativeSnapshotDeepSystems = {
@@ -129,8 +128,9 @@ function resolveNextSessionFact(
   campaignHandle: string,
   nextSession: DashboardSessionSummary | null,
   summary: DashboardSummary,
+  role: CampaignMemberRole | null,
 ): NarrativeSnapshotFact {
-  const settingsHref = campaignPath(campaignHandle, 'settings');
+  const settingsHref = isDmRole(role) ? campaignPath(campaignHandle, 'settings') : campaignPath(campaignHandle, 'notes');
   if (nextSession?.plannedStartAt) {
     const formatted = formatSessionDate(nextSession.plannedStartAt);
     const title = nextSession.title?.trim();
@@ -139,7 +139,7 @@ function resolveNextSessionFact(
     return {
       label: 'Next Session',
       value,
-      href: campaignPath(campaignHandle, 'notes'),
+      href: campaignPath(campaignHandle, 'notes', nextSession.timelinePointId),
     };
   }
   const cadence = formatScheduleCadence(summary);
@@ -153,7 +153,7 @@ function resolveNextSessionFact(
   return {
     label: 'Next Session',
     value: 'No session scheduled',
-    emptyPrompt: 'Add a session in schedule settings',
+    emptyPrompt: isDmRole(role) ? 'Add a session in schedule settings' : null,
     href: settingsHref,
   };
 }
@@ -193,20 +193,12 @@ function resolveArcProse(input: {
   arcSnippet: string | null;
   questSnippet: string | null;
   heroSummary: string | null;
-  tensionLine: string | null;
-  description: string | null;
 }): string | null {
   if (input.arcSnippet?.trim()) return truncateProse(input.arcSnippet);
   if (input.questSnippet?.trim()) return truncateProse(input.questSnippet);
   if (input.heroSummary?.trim()) {
-    const sentences = input.heroSummary.split(/[.!?]+/).map((s) => s.trim()).filter(Boolean);
-    if (sentences.length > 1) {
-      return truncateProse(sentences.slice(1).join('. ') + '.');
-    }
     return truncateProse(input.heroSummary);
   }
-  if (input.tensionLine?.trim()) return truncateProse(input.tensionLine);
-  if (input.description?.trim()) return truncateProse(input.description);
   return null;
 }
 
@@ -214,7 +206,7 @@ async function loadPartyRoster(
   campaignId: string,
   campaignHandle: string,
   role: CampaignMemberRole | null,
-): Promise<NarrativeSnapshotPartyMember[]> {
+): Promise<{ members: NarrativeSnapshotPartyMember[]; totalCount: number }> {
   const pages = await prisma.wikiPage.findMany({
     where: { campaignId, deletedAt: null, ...buildEntityCategoryWhereClause('characters') },
     select: {
@@ -243,9 +235,10 @@ async function loadPartyRoster(
       title: page.title,
       href: buildWikiPageHref(campaignHandle, page),
       tagline,
+      portraitUrl: identity.appearance.portraitUrl,
     });
   }
-  return members.slice(0, 8);
+  return { members: members.slice(0, 8), totalCount: members.length };
 }
 
 async function resolveLocationFact(
@@ -283,7 +276,7 @@ async function resolveLocationFact(
   return {
     label: 'Current Location',
     value: 'Location not set',
-    emptyPrompt: 'Mark where the party is in Locations',
+    emptyPrompt: isDmRole(role) ? 'Mark where the party is in Locations' : null,
     href: locationsHref,
   };
 }
@@ -306,12 +299,10 @@ export async function buildCampaignNarrativeSnapshot(input: {
     summary,
     questPages,
     threadBundle,
-    campaignDescription,
   } = input;
 
-  const [chronometer, nextSession, partyMembers, locationFact] = await Promise.all([
-    buildDashboardChronometer(campaignId),
-    fetchNextDashboardSession(campaignId),
+  const { chronometer, nextSession } = summary;
+  const [partyRoster, locationFact] = await Promise.all([
     loadPartyRoster(campaignId, campaignHandle, role),
     resolveLocationFact(campaignId, campaignHandle, dashboardConfig, role),
   ]);
@@ -326,11 +317,12 @@ export async function buildCampaignNarrativeSnapshot(input: {
     : {
         label: 'Current Date',
         value: 'World date not set',
-        emptyPrompt: 'Set your current campaign time',
+        emptyPrompt: isDmRole(role) ? 'Set your current campaign time' : null,
         href: campaignPath(campaignHandle, 'chronology'),
       };
 
-  const partyCount = partyMembers.length;
+  const partyMembers = partyRoster.members;
+  const partyCount = partyRoster.totalCount;
   const memberCountFallback = summary.party.members.length;
   const displayCount = partyCount > 0 ? partyCount : memberCountFallback;
   const partySummary: NarrativeSnapshotFact & { count: number } = {
@@ -343,42 +335,34 @@ export async function buildCampaignNarrativeSnapshot(input: {
           ? `${displayCount} ${displayCount === 1 ? 'player' : 'players'} at the table`
           : 'No party yet',
     href: campaignPath(campaignHandle, 'party'),
-    emptyPrompt: partyCount === 0 ? 'Add characters in the codex' : null,
+    emptyPrompt: partyCount === 0 && isDmRole(role) ? 'Add characters in the codex' : null,
   };
 
   const activeQuest = pickActiveQuest(questPages);
   const activeThread = pickEscalatingThread(threadBundle);
   const hero = dashboardConfig.hero;
-  const arcIdentity = buildArcIdentity({
-    heroCurrentArc: hero.currentArc ?? null,
-    heroSummary: hero.summary,
-    topThreadTitle: activeThread?.title ?? null,
-    topQuestTitle: activeQuest?.title ?? null,
-    recruitmentTagline: null,
-    description: campaignDescription,
-    lastSessionSnippet: summary.lastSession?.snippet ?? null,
-    attentionItems: [],
-    recentEditTitles: summary.recent.items.slice(0, 3).map((i) => i.title),
-  });
-
   let arcPageSnippet: string | null = null;
   const arcPages = await prisma.wikiPage.findMany({
-    where: { campaignId, deletedAt: null, templateType: 'ARC' },
-    select: { title: true, metadata: true, blocks: true },
+    where: {
+      campaignId, deletedAt: null, templateType: 'ARC',
+      ...(!isDmRole(role) ? { visibility: { in: role ? [WikiVisibility.PUBLIC, WikiVisibility.PARTY] : [WikiVisibility.PUBLIC] } } : {}),
+    },
+    select: { title: true, metadata: true, blocks: true, visibility: true },
     orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
     take: 8,
   });
-  const arcTitleNeedle = arcIdentity.currentArc?.replace(/^Arc:\s*/i, '').trim().toLowerCase();
+  const arcTitleNeedle = hero.currentArc?.replace(/^Arc:\s*/i, '').trim().toLowerCase();
+  const visibleArcs = arcPages.filter((page) => canViewWikiPage(page.visibility, role));
   const arcPage =
-    arcPages.find((p) => {
+    visibleArcs.find((p) => {
       const meta = p.metadata as Record<string, unknown> | null;
       const kind = meta && typeof meta.arcKind === 'string' ? meta.arcKind : '';
       return kind === 'campaign_arc';
     }) ??
     (arcTitleNeedle
-      ? arcPages.find((p) => p.title.toLowerCase().includes(arcTitleNeedle))
+      ? visibleArcs.find((p) => p.title.toLowerCase().includes(arcTitleNeedle))
       : null) ??
-    arcPages[0];
+    visibleArcs[0];
   if (arcPage?.blocks) {
     arcPageSnippet = buildContentSnippet(
       arcPage.blocks as unknown as Parameters<typeof buildContentSnippet>[0],
@@ -389,8 +373,6 @@ export async function buildCampaignNarrativeSnapshot(input: {
     arcSnippet: arcPageSnippet,
     questSnippet: activeQuest?.snippet ?? null,
     heroSummary: hero.summary,
-    tensionLine: arcIdentity.tensionLine,
-    description: campaignDescription,
   });
 
   const adventureHref = campaignPath(campaignHandle, 'wiki');
@@ -401,6 +383,8 @@ export async function buildCampaignNarrativeSnapshot(input: {
         href: buildWikiPageHref(campaignHandle, activeQuest),
         statusLabel: activeQuest.questStatus,
         roleLabel: 'Active Quest',
+        snippet: activeQuest.snippet,
+        progress: activeQuest.progress,
       }
     : null;
   const threadBeat: NarrativeSnapshotStoryBeat | null = activeThread
@@ -414,7 +398,8 @@ export async function buildCampaignNarrativeSnapshot(input: {
       }
     : null;
 
-  const hasStory = Boolean(arcIdentity.currentArc || questBeat || threadBeat);
+  const arcTitle = hero.currentArc?.trim() || arcPage?.title || activeQuest?.title || activeThread?.title || null;
+  const hasStory = Boolean(arcTitle || questBeat || threadBeat);
   const recentItems: NarrativeSnapshotActivityItem[] = summary.recent.items
     .slice(0, 5)
     .map((item: RecentEntityFeedItem) => ({
@@ -422,7 +407,8 @@ export async function buildCampaignNarrativeSnapshot(input: {
       title: item.title,
       href: item.href,
       updatedAt: item.updatedAt,
-      reason: item.reason ?? item.freshnessLabel ?? null,
+      reason: item.reason ?? 'Edited',
+      entityType: item.contentTypeLabel ?? item.entityType.replaceAll('_', ' ').toLowerCase(),
     }));
 
   let deepSystems: NarrativeSnapshotDeepSystems | null = null;
@@ -481,13 +467,13 @@ export async function buildCampaignNarrativeSnapshot(input: {
   return {
     campaignState: {
       calendarDate,
-      nextSession: resolveNextSessionFact(campaignHandle, nextSession, summary),
+      nextSession: resolveNextSessionFact(campaignHandle, nextSession, summary, role),
       partySummary,
       location: locationFact,
     },
     currentStory: {
-      arcTitle: arcIdentity.currentArc,
-      arcProse,
+      arcTitle,
+      arcProse: hasStory ? arcProse : null,
       activeQuest: questBeat,
       activeThread: threadBeat,
       emptyPrompt: hasStory ? null : 'Start your story in Adventure',

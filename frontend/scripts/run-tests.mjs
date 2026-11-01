@@ -25,6 +25,8 @@ const nodeResult = spawnSync(process.execPath, [
   '../shared/mapWorkspace.test.ts',
   '../shared/creatableCodexPageTypes.test.ts',
   '../shared/globalSearchQuery.test.ts',
+  '../shared/dashboardQuickLinkCatalog.test.ts',
+  '../shared/dashboardSessions.test.ts',
   ...nodeTests,
 ], options);
 

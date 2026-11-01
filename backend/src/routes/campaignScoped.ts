@@ -1,3 +1,4 @@
+import { listDashboardAnnouncements, saveDashboardAnnouncement, deleteDashboardAnnouncement, getDashboardCampaignStatistics } from '../controllers/dashboardFeaturesController.js';
 import { setChronologyPage } from '../controllers/chronologyPagesController.js';
 import { Router } from 'express';
 import { campaignAudioRouter } from './audioSettings.js';
@@ -1116,6 +1117,11 @@ campaignScopedRouter.post(
 );
 
 campaignScopedRouter.get('/dashboard', getDashboardBundle);
+campaignScopedRouter.get('/dashboard/announcements', requireGamemasterSettings, listDashboardAnnouncements);
+campaignScopedRouter.post('/dashboard/announcements', requireGamemasterSettings, saveDashboardAnnouncement);
+campaignScopedRouter.patch('/dashboard/announcements/:announcementId', requireGamemasterSettings, saveDashboardAnnouncement);
+campaignScopedRouter.delete('/dashboard/announcements/:announcementId', requireGamemasterSettings, deleteDashboardAnnouncement);
+campaignScopedRouter.get('/campaign-statistics', getDashboardCampaignStatistics);
 campaignScopedRouter.get('/visual-atlas', getVisualAtlas);
 
 campaignScopedRouter.patch(

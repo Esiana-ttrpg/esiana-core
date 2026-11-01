@@ -7,28 +7,42 @@ import {
 } from './sessionNotesCompile.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import type { CampaignMemberRole } from '../types/domain.js';
+import { WikiVisibility } from '../types/domain.js';
+
+function visibleSessionPage(role: CampaignMemberRole | null) {
+  const elevated = role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER;
+  return { deletedAt: null, ...(elevated ? {} : { visibility: { in: role ? [WikiVisibility.PUBLIC, WikiVisibility.PARTY] : [WikiVisibility.PUBLIC] } }) };
+}
 
 export type DashboardSessionSummary = {
   timelinePointId: string;
   title: string;
   plannedStartAt: string | null;
   sequenceOrder: number | null;
+  status?: string;
+  plannedEndAt?: string | null;
+  timezone?: string | null;
+  venueLabel?: string | null;
+  venueType?: string | null;
+  locationTitle?: string | null;
 };
 
 export type DashboardLastSessionSummary = DashboardSessionSummary & {
   playedAt: string | null;
   snippet: string | null;
+  followUp?: import('../../../shared/dashboardSessions.js').DashboardSessionFollowUp;
 };
 
 export async function fetchNextDashboardSession(
   campaignId: string,
+  role: CampaignMemberRole | null = null,
 ): Promise<DashboardSessionSummary | null> {
   const now = new Date();
   const row = await prisma.campaignSessionSchedule.findFirst({
     where: {
       status: SessionScheduleStatus.PUBLISHED,
-      plannedStartAt: { gte: now },
-      timelinePoint: { campaignId },
+      OR: [{ plannedStartAt: { gte: now } }, { plannedStartAt: { lte: now }, plannedEndAt: { gt: now } }],
+      timelinePoint: { campaignId, wikiPage: visibleSessionPage(role) },
     },
     orderBy: { plannedStartAt: 'asc' },
     include: {
@@ -40,11 +54,22 @@ export async function fetchNextDashboardSession(
 
   if (!row) return null;
 
+  const location = row.locationPageId ? await prisma.wikiPage.findFirst({
+    where: { id: row.locationPageId, campaignId, ...visibleSessionPage(role) },
+    select: { title: true },
+  }) : null;
+
   return {
     timelinePointId: row.timelinePointId,
     title: row.timelinePoint.wikiPage.title,
     plannedStartAt: row.plannedStartAt?.toISOString() ?? null,
     sequenceOrder: row.timelinePoint.sequenceOrder,
+    status: row.status,
+    plannedEndAt: row.plannedEndAt?.toISOString() ?? null,
+    timezone: row.timezone,
+    venueLabel: row.venueLabel,
+    venueType: row.venueType,
+    locationTitle: location?.title ?? null,
   };
 }
 
@@ -53,11 +78,11 @@ export async function fetchLastDashboardSession(
   role: CampaignMemberRole | null,
 ): Promise<DashboardLastSessionSummary | null> {
   const now = new Date();
-  let row = await prisma.campaignSessionSchedule.findFirst({
+  const row = await prisma.campaignSessionSchedule.findFirst({
     where: {
-      status: SessionScheduleStatus.PUBLISHED,
+      status: SessionScheduleStatus.COMPLETED,
       plannedStartAt: { lt: now },
-      timelinePoint: { campaignId },
+      timelinePoint: { campaignId, wikiPage: visibleSessionPage(role) },
     },
     orderBy: { plannedStartAt: 'desc' },
     include: {
@@ -72,32 +97,7 @@ export async function fetchLastDashboardSession(
     },
   });
 
-  if (!row) {
-    const fallbackTimeline = await prisma.campaignSessionTimeline.findFirst({
-      where: { campaignId },
-      orderBy: { sequenceOrder: 'desc' },
-      include: {
-        wikiPage: { select: { title: true, id: true, blocks: true } },
-        schedule: true,
-      },
-    });
-    if (!fallbackTimeline) return null;
-    const playedAt =
-      fallbackTimeline.schedule?.plannedStartAt?.toISOString() ??
-      fallbackTimeline.schedule?.publishedAt?.toISOString() ??
-      null;
-    const snippet = sessionSnippet(
-      extractCompileMarkdown(fallbackTimeline.wikiPage.blocks),
-    );
-    return {
-      timelinePointId: fallbackTimeline.id,
-      title: fallbackTimeline.wikiPage.title,
-      plannedStartAt: fallbackTimeline.schedule?.plannedStartAt?.toISOString() ?? null,
-      sequenceOrder: fallbackTimeline.sequenceOrder,
-      playedAt,
-      snippet: snippet || null,
-    };
-  }
+  if (!row) return null;
 
   const canManage =
     role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER;

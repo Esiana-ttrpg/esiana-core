@@ -1,3 +1,4 @@
+import { CAMPAIGN_ANNOUNCEMENT_RECORD } from '../../../shared/dashboardCampaignFeatures.js';
 import { randomUUID } from 'node:crypto';
 import { readEventConsequencesFromMetadata, mergeEventConsequenceSetIntoMetadata } from '../../../shared/eventConsequence.js';
 import fs from 'node:fs/promises';
@@ -13,7 +14,7 @@ import { extractDescriptionMarkdown } from './eventLoreWiki.js';
 import { env } from '../config/env.js';
 import { generateHandle, makeUniqueHandle, isValidHandle } from './handleUtils.js';
 import { getDefaultSidebarConfig, normalizeSidebarConfig } from './sidebarConfig.js';
-import { getDefaultDashboardConfig } from './dashboardConfig.js';
+import { normalizeDashboardConfig, getDefaultDashboardConfig } from './dashboardConfig.js';
 import { generateInviteToken } from './inviteToken.js';
 import { seedWikiSkeleton } from './seedWiki.js';
 import { CampaignMemberRoles } from '../types/domain.js';
@@ -581,6 +582,15 @@ export async function duplicateCampaign(
     }
 
     if (copy.structure.sidebarLayout) {
+      const dashboard = normalizeDashboardConfig(source.dashboardConfig);
+      dashboard.widgets = dashboard.widgets.map(widget => ({ ...widget, config: widget.config ? {
+        ...widget.config,
+        ...(widget.id === 'pageSpotlight' ? { pageId: pageIdMap.get(String(widget.config.pageId)) ?? null } : {}),
+        ...(widget.id === 'campaignMap' ? { mapId: assetIdMap.get(String(widget.config.mapId)) ?? null } : {}),
+      } : undefined }));
+      await tx.campaign.update({ where: { id: campaign.id }, data: { dashboardConfig: dashboard as unknown as Prisma.InputJsonValue } });
+      const announcements = await tx.dashboardWidget.findMany({ where: { campaignId: source.id, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD } });
+      for (const notice of announcements) await tx.dashboardWidget.create({ data: { campaignId: campaign.id, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD, configJson: notice.configJson } });
       await tx.campaign.update({
         where: { id: campaign.id },
         data: {

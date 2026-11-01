@@ -9,13 +9,12 @@ import {
   type DashboardConfig,
 } from '@/lib/dashboardConfig';
 import { resolveHeroCoverFromWizardAsset } from '@/lib/syncDashboardHeroCover';
-import { CampaignMemberRoles } from '@/types/domain';
+import { CampaignCapabilities as C } from '@shared/campaignPolicy/capabilities';
 import type { CampaignDetail } from '@/types/campaign';
 import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MascotErrorPanel } from '@/components/errors/MascotErrorPanel';
 import { CampaignDashboardHero } from '@/components/dashboard/CampaignDashboardHero';
-import { CampaignContinuityStream } from '@/components/dashboard/CampaignContinuityStream';
 import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 import { LinkYourCharacterCard } from '@/components/dashboard/LinkYourCharacterCard';
 import { PluginSlotHost, PluginUiSlots } from '@/plugins/slots';
@@ -25,13 +24,6 @@ import {
   campaignDashboardNavigationReducer,
   createCampaignDashboardNavigationState,
 } from '@/lib/campaignDashboardNavigationState';
-
-const LAYOUT_EDIT_ROLES = [
-  CampaignMemberRoles.GAMEMASTER,
-  CampaignMemberRoles.WRITER,
-] as const;
-
-const TIME_MANAGE_ROLES = LAYOUT_EDIT_ROLES;
 
 const HERO_SAVE_DEBOUNCE_MS = 450;
 
@@ -135,19 +127,14 @@ function CampaignDashboardContent({
   const hasDashboardSlot = useDeclaredPluginSlot(PluginUiSlots.DASHBOARD);
   const [customizeMode, setCustomizeMode] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
+  const latestBundleRef = useRef(bundle);
+  useEffect(() => { latestBundleRef.current = bundle; }, [bundle]);
 
-  const canEditLayout =
-    campaign.role !== null &&
-    LAYOUT_EDIT_ROLES.includes(
-      campaign.role as (typeof LAYOUT_EDIT_ROLES)[number],
-    );
-
-  const canManageTime =
-    campaign.role !== null &&
-    TIME_MANAGE_ROLES.includes(
-      campaign.role as (typeof TIME_MANAGE_ROLES)[number],
-    );
-  const canManageCampaign = canManageTime;
+  const { can } = useWiki();
+  const allowed = (cap: Parameters<typeof can>[0]) => bundle.viewer ? bundle.viewer.capabilities.includes(cap) : can(cap);
+  const canEditLayout = allowed(C.CAMPAIGN_SETTINGS_EDIT);
+  const canManageTime = allowed(C.CHRONOLOGY_EDIT);
+  const canManageCampaign = allowed(C.NOTES_MODERATE);
 
   const dashboardConfig = normalizeDashboardConfig(bundle.dashboardConfig);
 
@@ -166,6 +153,23 @@ function CampaignDashboardContent({
     },
     [bundle, onBundleChange],
   );
+
+  // Reuse the bundle when returning from notes/media workflows. No widget timer
+  // or separate transcription poll; keep in-progress layout edits intact.
+  useEffect(() => {
+    let cancelled = false;
+    let pending = false;
+    const refreshSessionSummary = () => {
+      if (pending) return;
+      pending = true;
+      void fetchDashboardBundle(campaignHandle).then((refreshed) => {
+        if (!cancelled) onBundleChange({ ...latestBundleRef.current, summary: refreshed.summary, narrativeSnapshot: refreshed.narrativeSnapshot, features: refreshed.features, viewer: refreshed.viewer });
+      }).catch(() => { /* Retain the last successfully loaded summary. */ })
+        .finally(() => { pending = false; });
+    };
+    window.addEventListener('focus', refreshSessionSummary);
+    return () => { cancelled = true; window.removeEventListener('focus', refreshSessionSummary); };
+  }, [campaignHandle, onBundleChange]);
 
   const handleHeroChange = useCallback(
     (hero: DashboardConfig['hero']) => {
@@ -246,19 +250,12 @@ function CampaignDashboardContent({
         hero={dashboardConfig.hero}
         statusStrip={bundle.summary.statusStrip}
         canManage={canManageCampaign}
-        customizeMode={customizeMode}
+        canEditLayout={canEditLayout}
+        customizeMode={customizeMode && canEditLayout}
         layoutSaving={layoutSaving}
-        onCustomizeModeChange={setCustomizeMode}
+        onCustomizeModeChange={(next) => { if (canEditLayout) setCustomizeMode(next); }}
         onHeroChange={handleHeroChange}
       />
-      {!customizeMode ? (
-        <CampaignContinuityStream
-          embedded
-          campaignHandle={campaignHandle}
-          summary={bundle.summary}
-          questPages={bundle.questPages}
-        />
-      ) : null}
       {hasDashboardSlot && campaign ? (
         <PluginSlotHost
           slot={PluginUiSlots.DASHBOARD}
@@ -285,9 +282,12 @@ function CampaignDashboardContent({
         recentEntities={bundle.recentEntities}
         worldEvents={bundle.worldEvents}
         factionConflict={bundle.factionConflict}
-        customizeMode={customizeMode}
+        features={bundle.features}
+        viewer={bundle.viewer}
+        customizeMode={customizeMode && canEditLayout}
         onConfigChange={handleConfigChange}
         onLayoutSavingChange={setLayoutSaving}
+        onWidgetFeedsChange={(feeds) => onBundleChange({ ...latestBundleRef.current, ...feeds })}
       />
       <PluginPageExtensionsHost target="campaign.dashboard" className="mt-2" />
     </div>
