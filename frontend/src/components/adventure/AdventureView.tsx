@@ -33,7 +33,9 @@ interface AdventureViewProps {
 export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isDMUser, playerPreview } = useAdventureWorkspace();
+  const { isDMUser, playerPreview, publicPreview, publicPreviewEligible } =
+    useAdventureWorkspace();
+  const publicPreviewBlocked = publicPreview && !publicPreviewEligible;
 
   const basePath = campaignAdventureHubPath(campaignHandle);
   const activeView = readStoryViewFromSearch(location.search, campaignHandle);
@@ -191,15 +193,26 @@ export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewP
         inlineContextual={showContextualRail}
         catalogGridClass="adventure-shell-body min-h-[560px] w-full min-w-0"
       >
-        <StorySection
-          campaignHandle={campaignHandle}
-          categoryPageId={categoryPageId}
-          activeView={activeView}
-          threadsLens={threadsLens}
-          filters={filters}
-          onThreadsLensChange={setThreadsLens}
-          onHeaderActionsChange={handleHeaderActionsChange}
-        />
+        {publicPreviewBlocked ? (
+          <div className="rounded-lg border border-border bg-surface/40 px-4 py-6 text-sm">
+            <p className="font-medium text-foreground">Public access is off</p>
+            <p className="mt-2 text-muted">
+              This campaign is not open to anonymous visitors. Public preview stays
+              selected and shows what they would see: nothing in Adventure until
+              the public access gate is enabled.
+            </p>
+          </div>
+        ) : (
+          <StorySection
+            campaignHandle={campaignHandle}
+            categoryPageId={categoryPageId}
+            activeView={activeView}
+            threadsLens={threadsLens}
+            filters={filters}
+            onThreadsLensChange={setThreadsLens}
+            onHeaderActionsChange={handleHeaderActionsChange}
+          />
+        )}
 
         {showContextualRail ? (
           <footer className="mt-4 border-t border-border pt-2 text-xs text-muted-foreground lg:hidden">

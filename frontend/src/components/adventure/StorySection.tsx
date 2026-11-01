@@ -44,7 +44,7 @@ export function StorySection({
   onHeaderActionsChange,
 }: StorySectionProps) {
   const { flatPages } = useWiki();
-  const { playerPreview, isDMUser } = useAdventureWorkspace();
+  const { playerPreview, publicPreview, isDMUser } = useAdventureWorkspace();
 
   const threadsCategoryId = useMemo(
     () =>
@@ -122,6 +122,7 @@ export function StorySection({
     categoryPageId,
     isDMUser,
     playerPreview,
+    publicPreview,
     threadsLens,
   ]);
 
@@ -171,6 +172,7 @@ export function StorySection({
         campaignHandle={campaignHandle}
         categoryPageId={categoryPageId}
         playerPreview={playerPreview}
+        publicPreview={publicPreview}
         onHeaderToolbarChange={onHeaderActionsChange}
       />
     );

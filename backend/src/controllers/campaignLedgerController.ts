@@ -204,7 +204,7 @@ export async function createLedgerEntryHandler(
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
-  if (!canContributeToLedger(ctx.role)) {
+  if (!canContributeToLedger(ctx.role, ctx.capabilities)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -331,7 +331,7 @@ export async function listLedgerSuggestionsHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canContributeToLedger(ctx.role)) {
+  if (!canContributeToLedger(ctx.role, ctx.capabilities)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -357,7 +357,7 @@ export async function acceptLedgerSuggestionHandler(
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
-  if (!canManageLedgerSettings(ctx.role)) {
+  if (!canManageLedgerSettings(ctx.role, ctx.capabilities)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }

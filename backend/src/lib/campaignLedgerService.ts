@@ -1,6 +1,7 @@
 import type { CampaignLedger, CampaignLedgerEntry, DowntimeProject, FantasyCalendar, Prisma, WikiPage } from './prismaClient.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
+import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
 import { prisma } from './prisma.js';
 import { assertScopedMutationCount } from './scopedMutation.js';
 import { toNullableInputJsonValue } from './inputJsonValue.js';
@@ -86,7 +87,13 @@ const entryInclude = {
   contributorWiki: { select: { ...wikiPageHrefSelect } },
 } as const;
 
-export function canContributeToLedger(role: CampaignMemberRole | null): boolean {
+export function canContributeToLedger(
+  role: CampaignMemberRole | null,
+  capabilities?: ReadonlySet<string>,
+): boolean {
+  if (capabilities) {
+    return capabilities.has(CampaignCapabilities.LEDGER_CONTRIBUTE);
+  }
   return (
     role === CampaignMemberRoles.GAMEMASTER ||
     role === CampaignMemberRoles.WRITER ||
@@ -94,7 +101,13 @@ export function canContributeToLedger(role: CampaignMemberRole | null): boolean 
   );
 }
 
-export function canManageLedgerSettings(role: CampaignMemberRole | null): boolean {
+export function canManageLedgerSettings(
+  role: CampaignMemberRole | null,
+  capabilities?: ReadonlySet<string>,
+): boolean {
+  if (capabilities) {
+    return capabilities.has(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW);
+  }
   return (
     role === CampaignMemberRoles.GAMEMASTER ||
     role === CampaignMemberRoles.WRITER

@@ -2,18 +2,31 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
 import { useWiki } from '@/contexts/WikiContext';
 import { useAdventureRoute } from '@/hooks/useAdventureRoute';
+import {
+  adventureHidesGmChrome,
+  adventurePublicPreviewEligible,
+  isAdventurePublicPreview,
+  type AdventurePreviewPerspective,
+} from '@/lib/adventurePreview';
+import {
+  patchAdventurePerspective,
+  readAdventurePerspective,
+} from '@/lib/workspacePersistence';
 
 interface AdventureWorkspaceContextValue {
   active: boolean;
+  perspective: AdventurePreviewPerspective;
+  setPerspective: (value: AdventurePreviewPerspective) => void;
   playerPreview: boolean;
-  setPlayerPreview: (value: boolean) => void;
-  togglePlayerPreview: () => void;
+  publicPreview: boolean;
+  publicPreviewEligible: boolean;
   isDMUser: boolean;
 }
 
@@ -21,24 +34,36 @@ const AdventureWorkspaceContext = createContext<AdventureWorkspaceContextValue |
 
 export function AdventureWorkspaceProvider({ children }: { children: ReactNode }) {
   const adventureRoute = useAdventureRoute();
-  const { hasElevatedView } = useWiki();
-  const [playerPreview, setPlayerPreview] = useState(false);
+  const { hasElevatedView, campaignHandle, campaign } = useWiki();
+  const [perspective, setPerspectiveState] = useState<AdventurePreviewPerspective>(() =>
+    readAdventurePerspective(campaignHandle),
+  );
 
   const isDMUser = hasElevatedView;
 
-  const togglePlayerPreview = useCallback(() => {
-    setPlayerPreview((prev) => !prev);
-  }, []);
+  useEffect(() => {
+    setPerspectiveState(readAdventurePerspective(campaignHandle));
+  }, [campaignHandle]);
+
+  const setPerspective = useCallback(
+    (next: AdventurePreviewPerspective) => {
+      setPerspectiveState(next);
+      if (campaignHandle) patchAdventurePerspective(campaignHandle, next);
+    },
+    [campaignHandle],
+  );
 
   const value = useMemo(
     () => ({
       active: adventureRoute != null,
-      playerPreview,
-      setPlayerPreview,
-      togglePlayerPreview,
+      perspective,
+      setPerspective,
+      playerPreview: adventureHidesGmChrome(perspective),
+      publicPreview: isAdventurePublicPreview(perspective),
+      publicPreviewEligible: adventurePublicPreviewEligible(campaign?.discoverability),
       isDMUser,
     }),
-    [adventureRoute, playerPreview, togglePlayerPreview, isDMUser],
+    [adventureRoute, campaign?.discoverability, isDMUser, perspective, setPerspective],
   );
 
   return (

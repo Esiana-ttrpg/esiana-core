@@ -1,9 +1,10 @@
 interface PlayerPerspectiveToggleProps {
-  value: 'dm' | 'party';
-  onChange: (value: 'dm' | 'party') => void;
+  value: 'dm' | 'party' | 'public';
+  onChange: (value: 'dm' | 'party' | 'public') => void;
   className?: string;
   dmLabel?: string;
   partyLabel?: string;
+  publicLabel?: string;
   ariaLabel?: string;
 }
 
@@ -14,8 +15,9 @@ export function PlayerPerspectiveToggle({
   value,
   onChange,
   className = '',
-  dmLabel = 'DM',
-  partyLabel = 'Party',
+  dmLabel = 'GM',
+  partyLabel = 'Player',
+  publicLabel,
   ariaLabel = 'View perspective',
 }: PlayerPerspectiveToggleProps) {
   return (
@@ -48,6 +50,20 @@ export function PlayerPerspectiveToggle({
       >
         {partyLabel}
       </button>
+      {publicLabel ? (
+        <button
+          type="button"
+          aria-pressed={value === 'public'}
+          onClick={() => onChange('public')}
+          className={`${segmentClass} ${
+            value === 'public'
+              ? 'bg-primary/15 text-primary shadow-sm'
+              : 'text-muted hover:text-foreground'
+          }`}
+        >
+          {publicLabel}
+        </button>
+      ) : null}
     </div>
   );
 }

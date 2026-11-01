@@ -8,3 +8,5 @@ export * from './glossary.js';
 export * from './policy.js';
 export * from './pageOwnership.js';
 export * from './capabilityOverrides.js';
+export * from './resourceAccess.js';
+export * from './matrixCatalog.js';

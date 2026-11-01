@@ -37,8 +37,8 @@ export function NarrativeVisibilityBadge({
           aria-label="Page access"
         >
           <option value="Public">Public</option>
-          <option value="Party">Visible to party</option>
-          <option value="DM_Only">Private (staff only)</option>
+          <option value="Party">Campaign</option>
+          <option value="DM_Only">GM only</option>
         </select>
       </div>
     );
@@ -53,7 +53,7 @@ export function NarrativeVisibilityBadge({
       className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${PRIVATE_BADGE_TONE}`}
     >
       <EyeOff className="size-3.5 shrink-0" aria-hidden />
-      Private
+      GM only
     </span>
   );
 }

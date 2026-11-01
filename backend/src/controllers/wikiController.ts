@@ -72,6 +72,7 @@ import {
   type CampaignActor,
 } from '../../../shared/campaignPolicy/policy.js';
 import { PageOwnerTypes } from '../../../shared/campaignPolicy/pageOwnership.js';
+import { canChangeResourceVisibility } from '../../../shared/campaignPolicy/resourceAccess.js';
 import { logCampaignActivity } from '../lib/campaignActivity.js';
 import {
   applyWikiPageTemporalData,
@@ -716,17 +717,15 @@ function parseTagColorValue(
 }
 
 function canModifySessionNote(
-  role: string | null,
+  actor: CampaignActor,
   userId: string | null | undefined,
   metadata: unknown,
 ): boolean {
-  if (
-    role === CampaignMemberRoles.GAMEMASTER ||
-    role === CampaignMemberRoles.WRITER
-  ) {
+  if (policyCan(actor, CampaignCapabilities.NOTES_MODERATE)) {
     return true;
   }
-  if (!userId) return false;
+  if (!userId || actor.kind !== 'member') return false;
+  if (actor.membershipRole === CampaignMemberRoles.OBSERVER) return false;
   return getSessionNoteAuthorId(metadata) === userId;
 }
 
@@ -822,6 +821,7 @@ export async function getWikiTree(
         appearanceProfile: true,
         allowPlayerChronologyManagement: true,
         campaignIntegrations: true,
+        discoverability: true,
       },
     }),
     prisma.wikiPage.findMany({
@@ -864,7 +864,7 @@ export async function getWikiTree(
     const hidden = await hiddenEraIds(ctx.campaignId);
     for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
   }
-  const tree = buildWikiTree(pages, ctx.role);
+  const tree = buildWikiTree(pages, ctx);
 
   const lastWikiUpdate = pages.reduce<Date | null>((latest, page) => {
     if (!latest || page.updatedAt > latest) return page.updatedAt;
@@ -888,6 +888,10 @@ export async function getWikiTree(
         resolveCampaignAppearanceProfile(campaign),
       ),
       allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement,
+      discoverability: ctx.discoverability,
+      partyId: ctx.partyId,
+      chronologyContributor: ctx.chronologyContributor,
+      roleCapabilityOverrides: ctx.roleCapabilityOverrides,
       campaignIntegrations: parseCampaignIntegrations(campaign.campaignIntegrations),
     },
     players: members.map((m, index) => {
@@ -1477,7 +1481,7 @@ export async function getWikiPage(
     return;
   }
 
-  if (!canViewWikiPage(page.visibility, ctx.role)) {
+  if (!canViewWikiPage(page.visibility, ctx)) {
     res.status(403).json({ error: 'Forbidden: page not visible to your role' });
     return;
   }
@@ -2182,11 +2186,38 @@ export async function updateWikiPageVisibility(
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId },
-    select: { id: true, title: true, parentId: true },
+    select: {
+      id: true,
+      title: true,
+      parentId: true,
+      visibility: true,
+      ownerType: true,
+      ownerUserId: true,
+      ownerPartyId: true,
+    },
   });
 
   if (!page) {
     res.status(404).json({ error: 'Page not found' });
+    return;
+  }
+
+  if (
+    !canChangeResourceVisibility(
+      ctx.actor,
+      {
+        module: 'wiki',
+        visibility: page.visibility,
+        ownership: {
+          ownerType: page.ownerType as (typeof PageOwnerTypes)[keyof typeof PageOwnerTypes],
+          ownerUserId: page.ownerUserId,
+          ownerPartyId: page.ownerPartyId,
+        },
+      },
+      visibility,
+    )
+  ) {
+    res.status(403).json({ error: 'Forbidden: cannot change page access' });
     return;
   }
 
@@ -3982,7 +4013,7 @@ export async function getSessionNotesIndex(
   for (const page of legacyPages) {
     if (!isLegacyStandaloneSessionNote(page.metadata)) continue;
 
-    const canEditPage = canModifySessionNote(ctx.role, userId, page.metadata);
+    const canEditPage = canModifySessionNote(ctx.actor, userId, page.metadata);
     const shape: SessionNotesIndexPageShape = {
       id: page.id,
       title: page.title,
@@ -4582,7 +4613,7 @@ export async function updateSessionNotePage(
     res.status(400).json({ error: 'Only session notes can be edited here' });
     return;
   }
-  if (!canModifySessionNote(ctx.role, req.user?.id, page.metadata)) {
+  if (!canModifySessionNote(ctx.actor, req.user?.id, page.metadata)) {
     res.status(403).json({ error: 'Forbidden: cannot edit this session note' });
     return;
   }
@@ -4969,7 +5000,7 @@ export async function deleteSessionNotePage(
     res.status(400).json({ error: 'Only session notes can be deleted here' });
     return;
   }
-  if (!canModifySessionNote(ctx.role, req.user?.id, page.metadata)) {
+  if (!canModifySessionNote(ctx.actor, req.user?.id, page.metadata)) {
     res.status(403).json({ error: 'Forbidden: cannot delete this session note' });
     return;
   }

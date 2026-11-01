@@ -282,8 +282,8 @@ export function DocumentSectionEditor({
             className={`${fieldSelectClass} text-xs`}
           >
             <option value="Public">Public</option>
-            <option value="Party">Party-Visible</option>
-            <option value="DM_Only">DM/Co-DM Only</option>
+            <option value="Party">Campaign</option>
+            <option value="DM_Only">GM only</option>
           </select>
         </label>
       </div>

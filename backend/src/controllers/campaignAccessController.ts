@@ -517,6 +517,8 @@ export async function updateCampaignMemberRole(
     });
   }
 
+  invalidateCampaignCapabilityOverrideCache(campaignId);
+
   res.json({
     member: {
       userId: updated.user.id,
@@ -706,6 +708,7 @@ export async function leaveCampaign(
 
 const COLLABORATIVE_OVERRIDE_CAPS = [
   CampaignCapabilities.SAFETY_SUBMIT,
+  CampaignCapabilities.SAFETY_MANAGE,
   CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,
@@ -713,10 +716,12 @@ const COLLABORATIVE_OVERRIDE_CAPS = [
   CampaignCapabilities.PAGE_CREATE,
   CampaignCapabilities.PAGE_EDIT_OWNED,
   CampaignCapabilities.PAGE_EDIT_PARTY,
+  CampaignCapabilities.WIKI_VIEW_PARTY,
   CampaignCapabilities.QUEST_EDIT,
   CampaignCapabilities.THREAD_EDIT,
   CampaignCapabilities.LEDGER_CONTRIBUTE,
   CampaignCapabilities.ASSETS_UPLOAD,
+  CampaignCapabilities.ASSETS_VIEW,
   CampaignCapabilities.ASSETS_DELETE_OWNED,
   CampaignCapabilities.CHRONOLOGY_EDIT,
 ] as const;

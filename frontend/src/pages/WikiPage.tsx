@@ -2016,7 +2016,7 @@ function WikiPageDocument() {
       <MascotErrorPanel
         code={403}
         title="Blåhaj says no."
-        description="This wiki page is restricted to DM/Co-DM only."
+        description="This wiki page is restricted to GM only."
       />
     );
   }

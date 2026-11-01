@@ -209,6 +209,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
           chronologyContributor: campaign.chronologyContributor,
           partyId: campaign.partyId,
           isCampaignOwner: campaign.isCampaignOwner,
+          roleCapabilityOverrides: campaign.roleCapabilityOverrides,
         }
       : null,
   );

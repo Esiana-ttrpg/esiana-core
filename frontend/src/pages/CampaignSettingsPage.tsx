@@ -125,13 +125,14 @@ export function CampaignSettingsPage() {
       .then(rows => { if (active) setSafetyUnread(rows.filter(r => r.unread).length); }).catch(() => {});
     return () => { active = false; };
   }, [campaignHandle, canReviewSafety, setSafetyUnread]);
-  const canManageSidebar =
-    wikiCampaign?.role === 'GAMEMASTER' || wikiCampaign?.role === 'WRITER';
-  const canManageAccess = wikiCampaign?.isCampaignOwner === true;
-  const canManageMemberIdentity =
-    wikiCampaign?.role === 'GAMEMASTER' || wikiCampaign?.role === 'WRITER';
+  const canManageSidebar = can(C.PAGE_EDIT_ANY) || can(C.CAMPAIGN_SETTINGS_EDIT);
+  const canManageAccess = can(C.CAMPAIGN_MANAGE_ROLES);
+  const canManageMemberIdentity = can(C.PAGE_EDIT_ANY);
   const canAccessCampaignSettings =
-    canReviewSafety || (wikiCampaign?.role != null && isElevatedMembershipRole(wikiCampaign.role));
+    canReviewSafety ||
+    can(C.CAMPAIGN_SETTINGS_EDIT) ||
+    can(C.CAMPAIGN_MANAGE_ROLES) ||
+    (wikiCampaign?.role != null && isElevatedMembershipRole(wikiCampaign.role));
 
   const characterPages = useMemo(
     () => flatPages.filter((page) => isCharacterWikiPage(page, flatPages)),
@@ -676,15 +677,16 @@ export function CampaignSettingsPage() {
 
           {canManageAccess && (
             <div className="rounded-lg border border-border bg-surface p-6">
-              <h3 className="text-lg font-semibold text-white">Player permissions</h3>
+              <h3 className="text-lg font-semibold text-white">Role capabilities</h3>
               <p className="mt-1 text-sm text-muted">
-                Control what Players and Observers can manage without Game Master or Writer roles.
-                Defaults apply when no override is set.
+                Manage what each campaign role can access and change. View as
+                Player or Public only remaps visibility in the campaign workspace
+                — it does not impersonate accounts or change write capabilities.
               </p>
               <div className="mt-4">
                 <CollaborationPermissionsPanel
                   campaignHandle={campaignHandle}
-                  isCampaignOwner={canManageAccess}
+                  canManage={canManageAccess}
                   onSaved={() => void refreshWiki()}
                 />
               </div>

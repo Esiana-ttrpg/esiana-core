@@ -1,24 +1,14 @@
-import { CampaignMemberRoles, type CampaignMemberRole } from '@/types/domain';
+import { roleCapabilitiesFor } from '@shared/campaignPolicy/roleGrants';
+import { canViewVisibilityFromCaps } from '@shared/campaignPolicy/resourceAccess';
+import { isMembershipRole } from '@shared/campaignPolicy/membershipRoles';
+import type { CampaignMemberRole } from '@/types/domain';
 
 export function canViewWikiPage(
   visibility: string,
   role: CampaignMemberRole | null,
 ): boolean {
-  if (
-    role === CampaignMemberRoles.GAMEMASTER ||
-    role === CampaignMemberRoles.WRITER
-  ) {
-    return true;
-  }
-
-  if (visibility === 'Public') return true;
-
-  if (visibility === 'Party') {
-    return (
-      role === CampaignMemberRoles.PARTICIPANT ||
-      role === CampaignMemberRoles.OBSERVER
-    );
-  }
-
-  return false;
+  const caps = roleCapabilitiesFor(
+    role && isMembershipRole(role) ? role : null,
+  );
+  return canViewVisibilityFromCaps(caps, visibility);
 }

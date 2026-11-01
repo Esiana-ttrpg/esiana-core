@@ -32,6 +32,7 @@ const GM_WRITER_NARRATIVE_STAFF: readonly CampaignCapability[] = [
   CampaignCapabilities.CHRONOLOGY_EDIT,
   CampaignCapabilities.DISCOVERY_REVEAL,
   CampaignCapabilities.NARRATIVE_ELEVATED_VIEW,
+  CampaignCapabilities.WIKI_VIEW_PARTY,
   CampaignCapabilities.RUMOR_MODERATE,
   CampaignCapabilities.NOTES_MODERATE,
 ];

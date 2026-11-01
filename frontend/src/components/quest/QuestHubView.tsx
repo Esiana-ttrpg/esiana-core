@@ -40,6 +40,8 @@ import {
   type QuestHubTypeFilters,
 } from '@/lib/questHubFilters';
 import { useCampaignActor } from '@/hooks/useCampaignActor';
+import { filterNodesByPreviewVisibility } from '@/lib/adventurePreview';
+import { resolveActorCapabilities } from '@shared/campaignPolicy/policy';
 import type { QuestHubNode, QuestHubPayload, WikiTreeNode } from '@/types/wiki';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
@@ -74,6 +76,7 @@ interface QuestHubViewProps {
   embedded?: boolean;
   storyFilters?: StoryFilterState;
   playerPreview?: boolean;
+  publicPreview?: boolean;
   /** Hoist toolbar into Adventure hub header when embedded. */
   onHeaderToolbarChange?: (toolbar: ReactNode | null) => void;
 }
@@ -94,15 +97,18 @@ export function QuestHubView({
   categoryPageId,
   embedded = false,
   playerPreview: playerPreviewProp,
+  publicPreview = false,
   onHeaderToolbarChange,
 }: QuestHubViewProps) {
   const { flatPages, refresh, campaign } = useWiki();
   const navigate = useNavigate();
   const [playerPreviewLocal, setPlayerPreviewLocal] = useState(false);
   const playerPreview = playerPreviewProp ?? playerPreviewLocal;
-  const { previewAsPlayer, isElevated } = useCampaignActor({
-    previewAsPlayer: playerPreview,
-  });
+  const { previewAsPlayer, previewAsPublic, previewActor, isElevated } =
+    useCampaignActor({
+      previewAsPlayer: playerPreview && !publicPreview,
+      previewAsPublic: publicPreview,
+    });
   const isDMUser = isElevated();
 
   const [data, setData] = useState<QuestHubPayload | null>(null);
@@ -151,7 +157,7 @@ export function QuestHubView({
     try {
       const payload = await fetchQuestHub(campaignHandle, {
         pageId: categoryPageId,
-        previewAsPlayer,
+        previewAsPlayer: previewAsPlayer || previewAsPublic,
       });
       setData(payload);
     } catch (err) {
@@ -160,7 +166,7 @@ export function QuestHubView({
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, categoryPageId, previewAsPlayer]);
+  }, [campaignHandle, categoryPageId, previewAsPlayer, previewAsPublic]);
 
   useEffect(() => {
     void loadHub();
@@ -249,9 +255,25 @@ export function QuestHubView({
     setData((prev) => (prev ? { ...prev, quests } : prev));
   }, []);
 
+  const previewCapabilities = useMemo(
+    () => (previewActor ? resolveActorCapabilities(previewActor) : null),
+    [previewActor],
+  );
+
+  const visibleQuests = useMemo(() => {
+    if (!data) return [];
+    if (!previewAsPublic || !previewCapabilities) return data.quests;
+    return filterNodesByPreviewVisibility(data.quests, previewCapabilities);
+  }, [data, previewAsPublic, previewCapabilities]);
+
+  const visibleHubData = useMemo(
+    () => (data ? { ...data, quests: visibleQuests } : null),
+    [data, visibleQuests],
+  );
+
   const flatQuestNodes = useMemo(
-    () => (data ? flattenQuestHubTree(data.quests) : []),
-    [data],
+    () => flattenQuestHubTree(visibleQuests),
+    [visibleQuests],
   );
 
   const showStatusRefine = viewMode === 'list';
@@ -298,7 +320,7 @@ export function QuestHubView({
     ).length;
   }, [searchFilteredNodes, typeFilters]);
 
-  const totalQuestCount = data ? countVisibleQuestNodes(data.quests) : 0;
+  const totalQuestCount = data ? countVisibleQuestNodes(visibleQuests) : 0;
   const filteredQuestCount =
     viewMode === 'list' ? filteredListNodes.length : filteredBoardCount;
 
@@ -412,7 +434,7 @@ export function QuestHubView({
         <QuestKanbanBoard
           campaignHandle={campaignHandle}
           tagsPageId={tagsPageId}
-          data={data}
+          data={visibleHubData ?? data}
           playerPreview={playerPreview || data.previewAsPlayer}
           onQuestsChange={handleQuestsChange}
           calendarLike={calendarLike}
