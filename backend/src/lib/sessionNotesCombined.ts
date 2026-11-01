@@ -1,5 +1,6 @@
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
+import { prismaJsonPath } from './prismaJsonPath.js';
 import { extractWikiLinkTargetIdsFromBlocks } from './wikiLinkExtract.js';
 import {
   parseSessionNoteMetadata,
@@ -330,6 +331,11 @@ export async function fetchAuthorPagesForSession(
     where: {
       campaignId,
       templateType: 'SESSION_NOTE',
+      deletedAt: null,
+      OR: [
+        { metadata: { path: prismaJsonPath('sessionGroupId'), equals: sessionGroupId } },
+        ...(timelinePointId ? [{ metadata: { path: prismaJsonPath('timelinePointId'), equals: timelinePointId } }] : []),
+      ] as Prisma.WikiPageWhereInput[],
     },
     select: {
       id: true,

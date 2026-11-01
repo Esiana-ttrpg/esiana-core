@@ -59,6 +59,64 @@ Upcoming sessions require a visible undeleted page. Last Session requires an
 explicit `COMPLETED` schedule; future, unscheduled, draft, and skipped placeholders
 cannot become a recap fallback.
 
+## Session widgets
+
+Session Schedule defaults to standard presentation and supports compact and
+featured variants. Its date block shows the scheduled month, day, and local time
+in the session's recorded timezone. Title, session number, countdown, venue, and
+authorized location context link into the existing session workflow. Published
+sessions whose recorded start/end range contains now are shown as ongoing;
+passing a start time alone never implies completion. Completed, cancelled, and
+skipped states do not offer RSVP controls. The existing manager scheduling and
+skip dialogs remain available. Players use the authorized dashboard summary;
+manager schedule refreshes retain recorded venue details.
+
+Last Session prioritizes the current member's note contribution. Empty author
+placeholders are not contributions. The primary link uses the existing own-note
+workflow with `notes=mine&edit=1`; the editor only honors this intent when the
+loaded note belongs to the signed-in account. Dashboard reads never create
+notes or infer contributions from attendance.
+
+Contributors are visible authors with readable, non-empty note bodies. Page and
+block revelation, page visibility, and campaign capability overrides constrain
+these summaries. Private or unrevealed own notes are marked unavailable rather
+than missing. Private authors and hidden character identities do not enter
+contribution counts or labels. Session-note retrieval uses the existing portable
+Prisma JSON-path helper to load the selected group, excluding deleted pages.
+
+Recording and transcript summaries use the existing recording access policy.
+Disabled campaign or instance audio omits the media section entirely. Readable
+recordings with ready media link into the existing recording panel; known missing
+media placeholders are not reported as playable. Transcript states distinguish
+unavailable, not requested, queued, processing, ready, and requiring attention.
+Readers see published transcripts; transcript editors can also open drafts.
+Job failures are summarized only for users allowed to inspect processing jobs.
+No provider credentials, failure details, private recording counts, or raw media
+URLs enter the dashboard response.
+
+The selected recording and transcript tab are addressed through the existing
+session all-notes route using `recording` and `audioTab` query parameters. These
+links retain the session and recording access checks. Returning focus to Campaign
+Home refreshes the existing bundle's session summary and preserves layout edits;
+widgets do not add transcription polling. Session widget placement remains under
+the existing customization controls.
+
+## Quick Links resources
+
+Quick Links stores one ordered `config.links` list. Legacy internal destination
+strings remain valid; external entries additionally store `kind: 'external'`, a
+stable ID, display label, HTTP/HTTPS URL, and optional built-in icon. Internal and
+external entries share the existing seven-link limit and widget persistence.
+An explicitly empty list stays empty.
+
+Authorized layout editors can add, edit, reorder, and remove resources. Server
+payload validation rejects unsafe schemes, credentials, malformed URLs, duplicate
+external IDs, invalid icons, and excess entries. Read normalization keeps safe
+legacy entries without making damaged URLs clickable. External navigation uses
+`target="_blank"` and `rel="noopener noreferrer"`, with a small external-link
+indicator and an accessible new-tab label. The server never fetches these URLs.
+No VTT or Discord links are inserted automatically.
+
 Quest and thread widgets use bounded previews with links to complete records.
 Other bank widgets retain their data integrations and settings within the shared
 shell. Calendar and chronometer retain custom calendar support. Description and
@@ -83,6 +141,15 @@ running application. There is no configured lint script in the root, frontend,
 or backend packages; TypeScript, frontend tests, relevant backend tests, and the
 production build are the available repository checks.
 
-Verified with Node 26.12.1 and pnpm 9.15.9: 714 frontend Node tests, 53 frontend
-Vitest tests, 44 dashboard/affected backend tests, and the production build pass.
-Vite reports existing mixed static/dynamic import warnings.
+The additional session/resource regressions cover mixed-link save/refresh
+compatibility, URL validation, editor reordering/removal, direct own-note entry,
+capability overrides, hidden contributions, disabled audio, private recordings,
+and published versus draft transcript access. The existing disposable SQLite
+audio suite also exercises dashboard follow-up against real completed-session
+and note records, including campaign isolation. It does not use developer data.
+
+Validated using Node 26.12.1 and pnpm 9.15.9: 718 frontend Node tests, 72 frontend
+Vitest tests, 41 targeted backend tests, and 87 audio/API/SQLite tests pass. The
+production build passes with the existing mixed static/dynamic import warnings.
+The new session widgets and Quick Links editor were also visually reviewed with
+compiled light/dark theme styles and fixture data.

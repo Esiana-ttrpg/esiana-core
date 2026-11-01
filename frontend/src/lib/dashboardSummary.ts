@@ -31,11 +31,18 @@ export interface DashboardSessionSummary {
   title: string;
   plannedStartAt: string | null;
   sequenceOrder: number | null;
+  status?: string;
+  plannedEndAt?: string | null;
+  timezone?: string | null;
+  venueLabel?: string | null;
+  venueType?: string | null;
+  locationTitle?: string | null;
 }
 
 export interface DashboardLastSessionSummary extends DashboardSessionSummary {
   playedAt: string | null;
   snippet: string | null;
+  followUp?: import('@shared/dashboardSessions').DashboardSessionFollowUp;
 }
 
 export interface DashboardChronometerSummary {

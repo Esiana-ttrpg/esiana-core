@@ -395,3 +395,20 @@ test('fine row positions survive persistence without changing legacy dimensions'
   assert.equal(refreshed.widgets.find((item) => item.id === 'currentStory')?.h, 3.25);
   assert.equal(refreshed.widgets.find((item) => item.id === 'partyRoster')?.h, 3);
 });
+
+test('mixed quick links round-trip through the existing layout payload in configured order', () => {
+  const links = ['maps', { kind: 'external', id: 'atlas', label: 'Shared atlas', url: 'https://example.com/world', icon: 'book' }, 'sessionNotes'];
+  const parsed = parseDashboardLayoutPayload({ widgets: [{ id: 'quickUtilityNav', x: 3, y: 2, w: 4, h: 2, enabled: true, config: { links } }] });
+  assert.ok(parsed);
+  const refreshed = normalizeDashboardConfig(JSON.parse(JSON.stringify(parsed)));
+  const widget = refreshed.widgets.find(item => item.id === 'quickUtilityNav');
+  assert.deepEqual(widget?.config?.links, links);
+  assert.deepEqual([widget?.x, widget?.y, widget?.w, widget?.h], [3, 2, 4, 2]);
+});
+
+test('unsafe external links are rejected before normalization can repair saved data', () => {
+  const parsed = parseDashboardLayoutPayload({ widgets: [{ id: 'quickUtilityNav', x: 0, y: 0, w: 4, h: 2, enabled: true,
+    config: { links: [{ kind: 'external', id: 'unsafe', label: 'Unsafe', url: 'javascript:alert(1)' }] },
+  }] });
+  assert.equal(parsed, null);
+});

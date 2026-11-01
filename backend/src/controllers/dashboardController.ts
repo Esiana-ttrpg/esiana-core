@@ -13,6 +13,7 @@ import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { buildDashboardQuestLedgerEntries } from '../lib/dashboardQuestLedger.js';
 import { buildDashboardThreadBundle } from '../lib/dashboardThreadLedger.js';
 import { buildDashboardSummary } from '../lib/buildDashboardSummary.js';
+import { buildDashboardSessionFollowUp } from '../lib/dashboardSessionFollowUp.js';
 import { buildRecentLoreFeed } from '../lib/buildRecentEntityFeed.js';
 import { buildCampaignNarrativeSnapshot } from '../lib/buildCampaignNarrativeSnapshot.js';
 import { buildRecentEntitiesFeed } from '../lib/buildRecentEntitiesFeed.js';
@@ -114,6 +115,10 @@ export async function getDashboardBundle(
     updatedAt: item.updatedAt,
     createdAt: item.updatedAt,
   }));
+
+  if (summary.lastSession) {
+    summary.lastSession.followUp = await buildDashboardSessionFollowUp({ ...req.campaign!, campaignHandle }, req.user?.id, summary.lastSession);
+  }
 
   const narrativeSnapshot = await buildCampaignNarrativeSnapshot({
     campaignId,

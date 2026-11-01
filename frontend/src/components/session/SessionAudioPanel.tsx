@@ -23,7 +23,9 @@ export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHand
   const [newTitle, setNewTitle] = useState('Session recording'), [newVisibility, setNewVisibility] = useState('campaign');
   const [newFiles, setNewFiles] = useState<File[]>([]), [consent, setConsent] = useState(false), [creating, setCreating] = useState(false);
   const createDialog = useRef<HTMLDialogElement>(null), createKey = useRef('');
-  const [tab, setTab] = useState<'chapters' | 'transcript' | 'files'>('chapters');
+  const requestedTab = searchParams.get('audioTab');
+  const [tab, setTab] = useState<'chapters' | 'transcript' | 'files'>(() => requestedTab === 'transcript' || requestedTab === 'files' ? requestedTab : 'chapters');
+  useEffect(() => { if (requestedTab === 'chapters' || requestedTab === 'transcript' || requestedTab === 'files') setTab(requestedTab); }, [requestedTab]);
   const [fileIndex, setFileIndex] = useState(0), [position, setPosition] = useState(0), [speed, setSpeed] = useState(1);
   const [volume, setVolume] = useState(1), [sticky, setSticky] = useState(false);
   const [chapter, setChapter] = useState<{ id?: string; title: string; description: string; startMs: number; wikiPageId: string }>({ title: '', description: '', startMs: 0, wikiPageId: '' });

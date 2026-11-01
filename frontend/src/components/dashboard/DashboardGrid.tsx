@@ -634,6 +634,7 @@ function DashboardWidgetRenderer({
       return (
         <QuickUtilityNav
           campaignHandle={campaignHandle}
+          canConfigure={canManageCampaign}
           isLookingForGroup={isLookingForGroup}
           config={widget.config}
           onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}

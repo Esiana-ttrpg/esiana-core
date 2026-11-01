@@ -7,7 +7,7 @@ import { dashboardPresentation, normalizeDashboardVariant, type DashboardVariant
 import {
   DEFAULT_DASHBOARD_QUICK_LINKS,
   sanitizeQuickUtilityNavConfig,
-  parseDashboardQuickLinkKeys,
+  parseDashboardQuickLinks,
 } from '../../../shared/dashboardQuickLinkCatalog.js';
 import {
   sanitizeRecentEntitiesConfig,
@@ -477,7 +477,7 @@ export function parseDashboardLayoutPayload(body: unknown): DashboardConfig | nu
       widget.id === 'quickUtilityNav' &&
       widget.config?.links !== undefined
     ) {
-      if (!parseDashboardQuickLinkKeys(widget.config.links)) return null;
+      if (!parseDashboardQuickLinks(widget.config.links)) return null;
     }
     if (isPlacement(widget) && widget.id === 'recentEntities' && widget.config) {
       if (!parseRecentEntitiesConfig(widget.config)) return null;
@@ -498,7 +498,7 @@ export function parseDashboardLayoutPayload(body: unknown): DashboardConfig | nu
 
   for (const widget of normalized.widgets) {
     if (widget.id === 'quickUtilityNav' && widget.config?.links !== undefined) {
-      const links = parseDashboardQuickLinkKeys(widget.config.links);
+      const links = parseDashboardQuickLinks(widget.config.links);
       if (!links) return null;
     }
   }

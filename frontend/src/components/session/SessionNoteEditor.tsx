@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Calendar,
   ChevronRight,
@@ -70,6 +70,9 @@ export function SessionNoteEditor({
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const { user } = useAuth();
   const currentUserId = user?.id ?? null;
+  const [searchParams] = useSearchParams();
+  const openOwnNotes = searchParams.get('notes') === 'mine';
+  const requestEditing = searchParams.get('edit') === '1';
   const { campaign, tree, flatPages, pageIdByTitle, refresh } = useWiki();
 
   const [title, setTitle] = useState(pageData.title);
@@ -144,13 +147,14 @@ export function SessionNoteEditor({
   }, [refresh]);
 
   useEffect(() => {
-    setIsEditing(false);
+    const ownRequested = openOwnNotes && currentUserId !== null && sessionMeta.sessionNoteAuthorId === currentUserId;
+    setIsEditing(ownRequested && requestEditing);
     setTitle(pageData.title);
     setContent(getSessionNoteMarkdown(pageData.blocks ?? []));
     setIsDirty(false);
-    setActiveMemberId(SESSION_COMBINED_VIEW_ID);
+    setActiveMemberId(ownRequested ? currentUserId : SESSION_COMBINED_VIEW_ID);
     setViewMarkdown(null);
-  }, [pageData.id]);
+  }, [pageData.id, currentUserId, openOwnNotes, requestEditing]);
 
   useEffect(() => {
     if (isEditing || isViewingOther || isCombinedView) return;

@@ -168,6 +168,23 @@ function CampaignDashboardContent({
     [bundle, onBundleChange],
   );
 
+  // Reuse the bundle when returning from notes/media workflows. No widget timer
+  // or separate transcription poll; keep in-progress layout edits intact.
+  useEffect(() => {
+    let cancelled = false;
+    let pending = false;
+    const refreshSessionSummary = () => {
+      if (pending) return;
+      pending = true;
+      void fetchDashboardBundle(campaignHandle).then((refreshed) => {
+        if (!cancelled) onBundleChange({ ...latestBundleRef.current, summary: refreshed.summary, narrativeSnapshot: refreshed.narrativeSnapshot });
+      }).catch(() => { /* Retain the last successfully loaded summary. */ })
+        .finally(() => { pending = false; });
+    };
+    window.addEventListener('focus', refreshSessionSummary);
+    return () => { cancelled = true; window.removeEventListener('focus', refreshSessionSummary); };
+  }, [campaignHandle, onBundleChange]);
+
   const handleHeroChange = useCallback(
     (hero: DashboardConfig['hero']) => {
       const nextConfig = { ...dashboardConfig, hero };

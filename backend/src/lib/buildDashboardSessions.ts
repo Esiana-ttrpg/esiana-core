@@ -19,11 +19,18 @@ export type DashboardSessionSummary = {
   title: string;
   plannedStartAt: string | null;
   sequenceOrder: number | null;
+  status?: string;
+  plannedEndAt?: string | null;
+  timezone?: string | null;
+  venueLabel?: string | null;
+  venueType?: string | null;
+  locationTitle?: string | null;
 };
 
 export type DashboardLastSessionSummary = DashboardSessionSummary & {
   playedAt: string | null;
   snippet: string | null;
+  followUp?: import('../../../shared/dashboardSessions.js').DashboardSessionFollowUp;
 };
 
 export async function fetchNextDashboardSession(
@@ -34,7 +41,7 @@ export async function fetchNextDashboardSession(
   const row = await prisma.campaignSessionSchedule.findFirst({
     where: {
       status: SessionScheduleStatus.PUBLISHED,
-      plannedStartAt: { gte: now },
+      OR: [{ plannedStartAt: { gte: now } }, { plannedStartAt: { lte: now }, plannedEndAt: { gt: now } }],
       timelinePoint: { campaignId, wikiPage: visibleSessionPage(role) },
     },
     orderBy: { plannedStartAt: 'asc' },
@@ -47,11 +54,22 @@ export async function fetchNextDashboardSession(
 
   if (!row) return null;
 
+  const location = row.locationPageId ? await prisma.wikiPage.findFirst({
+    where: { id: row.locationPageId, campaignId, ...visibleSessionPage(role) },
+    select: { title: true },
+  }) : null;
+
   return {
     timelinePointId: row.timelinePointId,
     title: row.timelinePoint.wikiPage.title,
     plannedStartAt: row.plannedStartAt?.toISOString() ?? null,
     sequenceOrder: row.timelinePoint.sequenceOrder,
+    status: row.status,
+    plannedEndAt: row.plannedEndAt?.toISOString() ?? null,
+    timezone: row.timezone,
+    venueLabel: row.venueLabel,
+    venueType: row.venueType,
+    locationTitle: location?.title ?? null,
   };
 }
 
