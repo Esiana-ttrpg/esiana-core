@@ -9,11 +9,11 @@ export async function getPublicSystemStatus(
   _req: Request,
   res: Response,
 ): Promise<void> {
-  const [row, userCount] = await Promise.all([
+  const [row, firstUser] = await Promise.all([
     getOrCreateSystemSettings(),
-    prisma.user.count(),
+    prisma.user.findFirst({ select: { id: true } }),
   ]);
   res.json(
-    serializePublicSystemSettings(row, { userTableEmpty: userCount === 0 }),
+    serializePublicSystemSettings(row, { userTableEmpty: firstUser == null }),
   );
 }
