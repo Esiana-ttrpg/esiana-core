@@ -256,7 +256,7 @@ export async function buildDashboardSummary(input: {
   }
 
   const worldPressurePreview = isDmRole(role)
-    ? await buildWorldPressurePreview(campaignId, { daysUntilNextSession: nextSessionInDays })
+    ? await buildWorldPressurePreview(campaignId, { daysUntilNextSession: nextSessionInDays, role })
     : null;
 
   return {

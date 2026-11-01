@@ -1,3 +1,4 @@
+import { dashboardFeedSignature as feedSignature, moveDashboardWidget } from '@/lib/dashboardLayoutEdits';
 import { CampaignCapabilities as C, type CampaignCapability } from '@shared/campaignPolicy/capabilities';
 import { composeInitialDashboard, meetsDashboardEligibility, type DashboardViewer, type DashboardCampaignFeatures } from '@shared/dashboardCampaignFeatures';
 import { DashboardWidgetShell } from './DashboardWidgetShell';
@@ -151,9 +152,6 @@ export function DashboardGrid({
   const saveGenerationRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingSaveCountRef = useRef(0);
-  const feedSignature = (value: DashboardConfig) => JSON.stringify(value.widgets
-    .filter((widget) => ['recentEntities', 'worldEvents', 'factionsAtWar', 'campaignMap', 'pageSpotlight', 'campaignAnnouncements', 'needsAttention', 'campaignStatistics'].includes(widget.id))
-    .map((widget) => [widget.id, widget.enabled, widget.config]));
   const loadedFeedsRef = useRef(feedSignature(config));
 
   const blankDefault = useMemo(() => {
@@ -206,10 +204,15 @@ export function DashboardGrid({
             onConfigChange(saved);
             const signature = feedSignature(saved);
             if (signature !== loadedFeedsRef.current && onWidgetFeedsChange) {
-              const refreshed = await fetchDashboardBundle(campaignHandle);
-              if (generation === saveGenerationRef.current) {
-                loadedFeedsRef.current = signature;
-                onWidgetFeedsChange({ recentEntities: refreshed.recentEntities, worldEvents: refreshed.worldEvents, factionConflict: refreshed.factionConflict, features: refreshed.features, viewer: refreshed.viewer });
+              try {
+                const refreshed = await fetchDashboardBundle(campaignHandle);
+                if (generation === saveGenerationRef.current) {
+                  loadedFeedsRef.current = signature;
+                  onWidgetFeedsChange({ recentEntities: refreshed.recentEntities, worldEvents: refreshed.worldEvents, factionConflict: refreshed.factionConflict, features: refreshed.features, viewer: refreshed.viewer });
+                }
+              } catch {
+                // The layout was saved. Retain existing feeds and retry on the
+                // next feed-changing save or normal dashboard refresh.
               }
             }
           }
@@ -368,18 +371,7 @@ export function DashboardGrid({
   }
 
   function moveWidget(widget: DashboardWidgetPlacement, direction: number) {
-    const ordered = [...enabledWidgets].sort((a, b) => a.y - b.y || a.x - b.x);
-    const index = ordered.findIndex((item) => item.id === widget.id);
-    const target = index + direction;
-    if (target < 0 || target >= ordered.length) return;
-    [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
-    let row = 0;
-    const positions = new Map(ordered.map((item) => {
-      const position = [item.id, row] as const;
-      row += contentHeights[item.id] ? contentHeights[item.id] / DASHBOARD_ROW_SCALE : item.h;
-      return position;
-    }));
-    applyWidgets(config.widgets.map((item) => positions.has(item.id) ? { ...item, x: 0, y: positions.get(item.id)! } : item));
+    applyWidgets(moveDashboardWidget(config.widgets, enabledWidgets, widget.id, direction, narrow, contentHeights));
   }
 
   return (

@@ -34,7 +34,7 @@ export function QuickLinksEditor({ entries, internalLabel, onChange }: Props) {
     if (!label.trim() || label.trim().length > 80) { setError('Enter a label of 1–80 characters.'); return; }
     if (!normalized) { setError('Enter a complete HTTP or HTTPS URL without credentials.'); return; }
     if (!editingId && entries.length >= DASHBOARD_QUICK_LINK_MAX) { setError(`Remove a link before adding another (maximum ${DASHBOARD_QUICK_LINK_MAX}).`); return; }
-    const entry = { kind: 'external' as const, id: editingId ?? crypto.randomUUID(), label: label.trim(), url: normalized, icon };
+    const entry = { kind: 'external' as const, id: editingId ?? (globalThis.crypto?.randomUUID?.() ?? `resource-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`), label: label.trim(), url: normalized, icon };
     onChange(editingId ? entries.map(item => typeof item !== 'string' && item.id === editingId ? entry : item) : [...entries, entry]);
     reset();
   }

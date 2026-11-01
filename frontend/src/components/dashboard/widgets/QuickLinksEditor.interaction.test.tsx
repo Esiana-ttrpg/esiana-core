@@ -30,7 +30,12 @@ async function type(input: HTMLInputElement, value: string) {
   });
 }
 
-test('external resources can be added, reordered, edited, validated, and removed alongside internal links', async () => {
+test.each([true, false])('external resources preserve valid IDs through editing (secure UUID available: %s)', async secure => {
+  if (!secure) {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, 'crypto')!;
+    Object.defineProperty(globalThis, 'crypto', { configurable: true, value: undefined });
+    restore.push(() => Object.defineProperty(globalThis, 'crypto', previous));
+  }
   const changed = vi.fn();
   function Editor() {
     const [entries, setEntries] = useState<DashboardQuickLinkEntry[]>(['maps', 'sessionNotes']);

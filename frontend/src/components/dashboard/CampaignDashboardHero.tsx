@@ -34,6 +34,7 @@ interface CampaignDashboardHeroProps {
   hero: DashboardHeroConfig;
   statusStrip: DashboardSummary['statusStrip'];
   canManage: boolean;
+  canEditLayout: boolean;
   customizeMode: boolean;
   layoutSaving: boolean;
   onCustomizeModeChange: (next: boolean) => void;
@@ -49,6 +50,7 @@ export function CampaignDashboardHero({
   hero,
   statusStrip,
   canManage,
+  canEditLayout,
   customizeMode,
   layoutSaving,
   onCustomizeModeChange,
@@ -115,7 +117,7 @@ export function CampaignDashboardHero({
           <div className="absolute inset-0" style={artOverlayStyle} aria-hidden />
         ) : null}
 
-        {canManage ? (
+        {canManage || canEditLayout ? (
           <div className="relative flex justify-end px-4 pt-4 sm:px-6">
             <div className="relative" ref={menuRef}>
               <button
@@ -137,7 +139,7 @@ export function CampaignDashboardHero({
               </button>
               {menuOpen ? (
                 <div className="absolute right-0 z-20 mt-1 min-w-[12rem] rounded-lg border border-border bg-background py-1 shadow-xl">
-                  <button
+                  {canEditLayout && <button
                     type="button"
                     className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-foreground hover:bg-elevated"
                     onClick={() => {
@@ -147,8 +149,8 @@ export function CampaignDashboardHero({
                   >
                     <Palette className="size-4 shrink-0 text-muted" />
                     Edit presentation
-                  </button>
-                  <button
+                  </button>}
+                  {canEditLayout && <button
                     type="button"
                     className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-elevated ${
                       customizeMode ? 'text-primary' : 'text-foreground'
@@ -167,7 +169,8 @@ export function CampaignDashboardHero({
                     {layoutSaving ? (
                       <span className="ml-auto text-xs text-muted">Saving…</span>
                     ) : null}
-                  </button>
+                  </button>}
+                  {canManage && <>
                   <div className="my-1 border-t border-border" role="separator" />
                   <button
                     type="button"
@@ -192,6 +195,7 @@ export function CampaignDashboardHero({
                     <Copy className="size-4 shrink-0 text-muted" />
                     {invite.copiedShare ? 'Share link copied' : 'Copy share link'}
                   </button>
+                  </>}
                 </div>
               ) : null}
             </div>
@@ -207,7 +211,7 @@ export function CampaignDashboardHero({
             {tagline ? (
               <p className={`${TYPE_PROSE_CLASS} line-clamp-2 max-w-2xl text-prose-muted ${layout.tagline}`}>{tagline}</p>
             ) : null}
-            {!tagline && canManage ? (
+            {!tagline && canEditLayout ? (
               <button
                 type="button"
                 onClick={() => setPresentationOpen(true)}
@@ -221,7 +225,7 @@ export function CampaignDashboardHero({
       </section>
 
       <CampaignPresentationSheet
-        open={presentationOpen}
+        open={presentationOpen && canEditLayout}
         campaignHandle={campaignHandle}
         campaign={campaign}
         hero={hero}

@@ -26232,8 +26232,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "409":
-          description: Announcement version changed; refresh before editing
         "429":
           $ref: "#/components/responses/RateLimited"
     post:
@@ -26400,8 +26398,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "409":
-          description: Announcement version changed; refresh before editing
         "429":
           $ref: "#/components/responses/RateLimited"
 components:

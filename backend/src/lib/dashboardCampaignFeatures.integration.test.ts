@@ -1,3 +1,4 @@
+import { fetchLastDashboardSession } from './buildDashboardSessions.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -135,6 +136,43 @@ test('campaign context widgets enforce canonical visibility, durable notices, wo
         assert.ok(!JSON.stringify(privateBundle.dashboardConfig).includes('Our next chapter'));
         const saved = (await prisma.campaign.findUniqueOrThrow({ where: { id: campaign.id } })).dashboardConfig as { widgets: { config?: { introduction?: string } }[] };
         assert.equal(saved.widgets[0].config?.introduction, 'Our next chapter');
+      });
+      await t.test('world pressure includes the authorized PARTY session forecast', async () => {
+        const upcoming = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'Across the islands', visibility: 'Party' } });
+        const timeline = await prisma.campaignSessionTimeline.create({ data: { campaignId: campaign.id, wikiPageId: upcoming.id, authorId: owner.id, sequenceOrder: 2 } });
+        await prisma.campaignSessionSchedule.create({ data: { timelinePointId: timeline.id, status: 'PUBLISHED', plannedStartAt: new Date(Date.now() + 3 * 86400000) } });
+        await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'The Lantern Council', visibility: 'DM_Only', metadata: { entityCategory: 'organizations', worldState: 'rising', currentPressures: ['Expeditions return from the islands'] } } });
+        const response = await request(tokens[0], '/world-pressure');
+        const body = await response.json();
+        assert.equal(response.status, 200, JSON.stringify(body));
+        assert.equal(body.projection.projectedByNextSession?.daysUntil, 3);
+        assert.equal((await request(tokens[1], '/world-pressure')).status, 403);
+      });
+      await t.test('existing schedule PATCH explicitly completes a session before Last Session reads it', async () => {
+        const timeline = await prisma.campaignSessionTimeline.findFirstOrThrow({ where: { campaignId: campaign.id, wikiPageId: page.id } });
+        await prisma.campaignSessionSchedule.update({ where: { timelinePointId: timeline.id }, data: { status: 'PUBLISHED' } });
+        const path = `/session-timeline/${timeline.id}/schedule`;
+        assert.equal((await request(tokens[1], path, 'PATCH', { status: 'COMPLETED' })).status, 403);
+        assert.equal((await request(tokens[0], path, 'PATCH', { status: 'COMPLETED' })).status, 200);
+        assert.equal((await prisma.campaignSessionSchedule.findUniqueOrThrow({ where: { timelinePointId: timeline.id } })).status, 'COMPLETED');
+        assert.equal((await fetchLastDashboardSession(campaign.id, manager.role))?.timelinePointId, timeline.id);
+      });
+      await t.test('an optional widget read failure does not reject the dashboard bundle', async () => {
+        await prisma.campaign.update({ where: { id: campaign.id }, data: { dashboardConfig: { layoutMode: 'custom', widgets: [
+          { id: 'campaignAnnouncements', enabled: true, x: 0, y: 0, w: 6, h: 3 },
+          { id: 'pageSpotlight', enabled: true, x: 6, y: 0, w: 6, h: 3, config: { pageId: page.id } },
+        ] } } });
+        const delegate = prisma.dashboardWidget;
+        const original = delegate.findMany;
+        Object.defineProperty(delegate, 'findMany', { configurable: true, writable: true, value: async () => { throw new Error('Fixture unavailable'); } });
+        try {
+          const response = await request(tokens[0], '/dashboard');
+          const bundle = await response.json();
+          assert.equal(response.status, 200, JSON.stringify(bundle));
+          assert.deepEqual(bundle.features.announcements, []);
+          assert.equal(bundle.features.spotlight.id, page.id);
+          assert.ok(bundle.summary);
+        } finally { Object.defineProperty(delegate, 'findMany', { configurable: true, writable: true, value: original }); }
       });
     } finally {
       await new Promise<void>(resolve => server.close(() => resolve()));

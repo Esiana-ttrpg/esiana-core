@@ -128,7 +128,7 @@ function CampaignDashboardContent({
   const [customizeMode, setCustomizeMode] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const latestBundleRef = useRef(bundle);
-  latestBundleRef.current = bundle;
+  useEffect(() => { latestBundleRef.current = bundle; }, [bundle]);
 
   const { can } = useWiki();
   const allowed = (cap: Parameters<typeof can>[0]) => bundle.viewer ? bundle.viewer.capabilities.includes(cap) : can(cap);
@@ -250,9 +250,10 @@ function CampaignDashboardContent({
         hero={dashboardConfig.hero}
         statusStrip={bundle.summary.statusStrip}
         canManage={canManageCampaign}
-        customizeMode={customizeMode}
+        canEditLayout={canEditLayout}
+        customizeMode={customizeMode && canEditLayout}
         layoutSaving={layoutSaving}
-        onCustomizeModeChange={setCustomizeMode}
+        onCustomizeModeChange={(next) => { if (canEditLayout) setCustomizeMode(next); }}
         onHeroChange={handleHeroChange}
       />
       {hasDashboardSlot && campaign ? (
@@ -283,7 +284,7 @@ function CampaignDashboardContent({
         factionConflict={bundle.factionConflict}
         features={bundle.features}
         viewer={bundle.viewer}
-        customizeMode={customizeMode}
+        customizeMode={customizeMode && canEditLayout}
         onConfigChange={handleConfigChange}
         onLayoutSavingChange={setLayoutSaving}
         onWidgetFeedsChange={(feeds) => onBundleChange({ ...latestBundleRef.current, ...feeds })}

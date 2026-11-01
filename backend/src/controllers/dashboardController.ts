@@ -131,11 +131,11 @@ export async function getDashboardBundle(
 
   const widgetConfig = (id: string) => dashboardConfig.widgets.find(widget => widget.id === id)?.config;
   const [maps, spotlight, announcements, actions, statistics] = await Promise.all([
-    enabledIds.has('campaignMap') ? dashboardMaps(ctx, widgetConfig('campaignMap')?.mapId, ctx.capabilities.has(C.CAMPAIGN_SETTINGS_EDIT)) : null,
-    enabledIds.has('pageSpotlight') ? dashboardSpotlight(ctx, widgetConfig('pageSpotlight')?.pageId) : null,
-    enabledIds.has('campaignAnnouncements') ? campaignAnnouncements(campaignId) : [],
-    enabledIds.has('needsAttention') ? dashboardActions(ctx, req.user?.id, summary) : [],
-    enabledIds.has('campaignStatistics') ? buildCampaignStatistics(ctx, 30) : null,
+    enabledIds.has('campaignMap') ? dashboardMaps(ctx, widgetConfig('campaignMap')?.mapId, ctx.capabilities.has(C.CAMPAIGN_SETTINGS_EDIT)).catch(() => null) : null,
+    enabledIds.has('pageSpotlight') ? dashboardSpotlight(ctx, widgetConfig('pageSpotlight')?.pageId).catch(() => null) : null,
+    enabledIds.has('campaignAnnouncements') ? campaignAnnouncements(campaignId).catch(() => []) : [],
+    enabledIds.has('needsAttention') ? dashboardActions(ctx, req.user?.id, summary).catch(() => []) : [],
+    enabledIds.has('campaignStatistics') ? buildCampaignStatistics(ctx, 30).catch(() => null) : null,
   ]);
 
   const narrativeSnapshot = await buildCampaignNarrativeSnapshot({

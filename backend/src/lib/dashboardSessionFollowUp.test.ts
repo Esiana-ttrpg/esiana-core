@@ -20,7 +20,10 @@ const members = ['me', 'sable', 'secret'].map((userId, index) => ({ userId, role
   campaignMember: { findMany: async () => members },
   audioSettings: { findUnique: async () => ({ enabled, transcriptionEnabled: true }) },
   campaignAudioSettings: { findUnique: async () => ({ enabled, transcriptionEnabled: true }) },
-  contentPresenceState: { findMany: async () => presence },
+  contentPresenceState: { findMany: async ({ where }: { where: { subEntityId?: unknown; OR?: unknown[] } }) =>
+    presence.filter(row => where.subEntityId === null
+      ? (row as { subEntityId: unknown }).subEntityId == null
+      : (row as { subEntityId: unknown }).subEntityId != null) },
   sessionRecording: { findMany: recordingLookup },
 };
 const { buildDashboardSessionFollowUp } = await import('./dashboardSessionFollowUp.js');
@@ -69,10 +72,13 @@ test('private and unrevealed own notes are unavailable rather than reported as m
 });
 
 test('hidden note bodies cannot inflate contributions', async () => {
-  pages = [page('shared', 'sable', 'Hidden text')];
+  const shared = page('shared', 'sable', 'Hidden text');
+  pages = [shared];
   presence = [{ entityType: 'wiki_block', entityId: 'shared', subEntityId: 'shared-body', state: 'HIDDEN' }];
   const result = await buildDashboardSessionFollowUp(ctx, 'me', session);
   assert.equal(result.contributors.length, 0);
+  shared.blocks.push({ id: 'visible-body', type: 'text-tiptap', content: { markdown: 'A visible contribution' } });
+  assert.equal((await buildDashboardSessionFollowUp(ctx, 'me', session)).contributors.length, 1);
 });
 
 test('disabled audio omits all recording and transcript status without looking up media', async () => {
