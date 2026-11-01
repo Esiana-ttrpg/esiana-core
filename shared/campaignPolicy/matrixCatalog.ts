@@ -100,7 +100,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         label: 'Change campaign visibility',
         description: 'Decide whether this campaign allows public Observer reads.',
         help: {
-          explanation: 'Public campaign access is the toggle above this matrix.',
+          explanation: 'Public campaign access is on Sharing & Invites.',
         },
         overridableRoles: NONE,
       },
