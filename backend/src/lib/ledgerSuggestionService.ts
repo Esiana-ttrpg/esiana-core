@@ -166,6 +166,7 @@ export type AcceptLedgerSuggestionInput = {
   campaignHandle: string;
   role: CampaignMemberRole | null;
   userId: string;
+  capabilities?: ReadonlySet<string>;
   edits?: Partial<CreateLedgerEntryInput> & {
     contributorPageId?: string | null;
   };
@@ -174,7 +175,7 @@ export type AcceptLedgerSuggestionInput = {
 export async function acceptLedgerSuggestion(
   input: AcceptLedgerSuggestionInput,
 ): Promise<{ suggestion: CampaignLedgerSuggestionDetail; entryId: string }> {
-  if (!canManageLedgerSettings(input.role)) {
+  if (!canManageLedgerSettings(input.role, input.capabilities)) {
     throw new Error('Forbidden');
   }
 

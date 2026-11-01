@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BookOpen } from 'lucide-react';
 import { EsianaLogo } from '@/components/brand/EsianaLogo';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -6,16 +6,52 @@ import { useBranding } from '@/contexts/BrandingContext';
 import { TYPE_DISPLAY_CLASS, TYPE_PROSE_CLASS } from '@/lib/surfaceLayout';
 import { footerNavLinksForAudience } from '@/lib/footerConfig';
 import { docsLinks } from '@/lib/docsLinks';
+import { fetchAuthProviders } from '@/lib/federatedIdentity';
+import {
+  canCreateAccount,
+  canOfferRegistrationAction,
+} from '@/lib/instanceHome';
 import { externalLinks } from '@shared/externalLinks';
 
 export function InstanceLandingPage() {
-  const { globalTitle, globalLogoUrl, footer, allowRegistrations } = useBranding();
+  const { globalTitle, globalLogoUrl, footer, allowRegistrations, userTableEmpty } =
+    useBranding();
   const [logoError, setLogoError] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
   const instanceName = globalTitle.trim() || 'Esiana';
   const instanceNote = footer.customText.trim();
   const instanceLinks = footerNavLinksForAudience(footer, false);
+  const registrationAvailable = canCreateAccount({
+    allowRegistrations,
+    userTableEmpty,
+  });
+
+  useEffect(() => {
+    if (!registrationAvailable) {
+      setShowCreateAccount(false);
+      return;
+    }
+    let cancelled = false;
+    fetchAuthProviders()
+      .then((data) => {
+        if (cancelled) return;
+        setShowCreateAccount(
+          canOfferRegistrationAction({
+            canCreateAccount: true,
+            localLoginEnabled: data.localLoginEnabled !== false,
+            hasOidcProviders: (data.providers ?? []).length > 0,
+          }),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setShowCreateAccount(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [registrationAvailable]);
 
   const openAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode);
@@ -53,7 +89,7 @@ export function InstanceLandingPage() {
           >
             Sign In
           </button>
-          {allowRegistrations ? (
+          {showCreateAccount ? (
             <button
               type="button"
               onClick={() => openAuth('register')}

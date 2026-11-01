@@ -16,3 +16,19 @@ export function currentAuthReturnTo(): string {
   if (typeof window === 'undefined') return '/';
   return `${window.location.pathname}${window.location.search}` || '/';
 }
+
+export function canCreateAccount(input: {
+  allowRegistrations: boolean;
+  userTableEmpty?: boolean;
+}): boolean {
+  return input.allowRegistrations === true || input.userTableEmpty === true;
+}
+
+export function canOfferRegistrationAction(input: {
+  canCreateAccount: boolean;
+  localLoginEnabled: boolean;
+  hasOidcProviders: boolean;
+}): boolean {
+  if (!input.canCreateAccount) return false;
+  return input.localLoginEnabled || input.hasOidcProviders;
+}

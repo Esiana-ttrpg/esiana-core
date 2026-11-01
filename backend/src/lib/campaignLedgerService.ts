@@ -118,9 +118,14 @@ export function canEditLedgerEntry(
   role: CampaignMemberRole | null,
   userId: string | null,
   entry: Pick<CampaignLedgerEntry, 'createdByUserId'>,
+  capabilities?: ReadonlySet<string>,
 ): boolean {
-  if (canManageLedgerSettings(role)) return true;
-  if (role !== CampaignMemberRoles.PARTICIPANT) return false;
+  if (canManageLedgerSettings(role, capabilities)) return true;
+  if (capabilities) {
+    if (!capabilities.has(CampaignCapabilities.LEDGER_CONTRIBUTE)) return false;
+  } else if (role !== CampaignMemberRoles.PARTICIPANT) {
+    return false;
+  }
   return Boolean(userId && entry.createdByUserId && entry.createdByUserId === userId);
 }
 
@@ -195,6 +200,7 @@ function entryToFeedLine(
   role: CampaignMemberRole | null,
   userId: string | null,
   masterCalendar: FantasyCalendar | null,
+  capabilities?: ReadonlySet<string>,
 ): LedgerTransactionLine {
   const href = entry.projectHref ?? entry.havenHref ?? entry.contributorHref ?? undefined;
   const displayTitle = entry.contributorTitle
@@ -223,10 +229,10 @@ function entryToFeedLine(
     contributorTitle: entry.contributorTitle,
     canEdit: canEditLedgerEntry(role, userId, {
       createdByUserId: entry.createdByUserId,
-    }),
+    }, capabilities),
     canDelete: canEditLedgerEntry(role, userId, {
       createdByUserId: entry.createdByUserId,
-    }),
+    }, capabilities),
   };
 }
 
@@ -299,6 +305,7 @@ export async function buildLedgerHubPayload(
   campaignHandle: string,
   role: CampaignMemberRole | null,
   userId: string | null,
+  capabilities?: ReadonlySet<string>,
 ): Promise<DowntimeHubLedgerPayload> {
   const ledger = await ensureCampaignLedger(campaignId);
   const [entries, masterCalendar, pendingSuggestions, pendingSuggestionsCount, scheduledEffects] =
@@ -327,7 +334,14 @@ export async function buildLedgerHubPayload(
       openDebtsSummary: formatOpenDebtsSummary(openDebts, ledger.currencySuffix),
     },
     feed: entryDetails.map((entry) =>
-      entryToFeedLine(entry, ledger.currencySuffix, role, userId, masterCalendar),
+      entryToFeedLine(
+        entry,
+        ledger.currencySuffix,
+        role,
+        userId,
+        masterCalendar,
+        capabilities,
+      ),
     ),
     pendingSuggestions: pendingSuggestions.map(
       (suggestion): LedgerSuggestionLine => ({
@@ -423,8 +437,9 @@ export async function createLedgerEntry(
   role: CampaignMemberRole | null,
   userId: string,
   input: CreateLedgerEntryInput,
+  capabilities?: ReadonlySet<string>,
 ): Promise<CampaignLedgerEntryDetail> {
-  if (!canContributeToLedger(role)) {
+  if (!canContributeToLedger(role, capabilities)) {
     throw new Error('Forbidden');
   }
 
@@ -501,6 +516,7 @@ export async function updateLedgerEntry(
   userId: string,
   entryId: string,
   patch: UpdateLedgerEntryInput,
+  capabilities?: ReadonlySet<string>,
 ): Promise<CampaignLedgerEntryDetail> {
   const existing = await prisma.campaignLedgerEntry.findFirst({
     where: { id: entryId, campaignId },
@@ -509,7 +525,7 @@ export async function updateLedgerEntry(
   if (!existing) {
     throw new Error('Ledger entry not found.');
   }
-  if (!canEditLedgerEntry(role, userId, existing)) {
+  if (!canEditLedgerEntry(role, userId, existing, capabilities)) {
     throw new Error('Forbidden');
   }
 
@@ -604,6 +620,7 @@ export async function deleteLedgerEntry(
   role: CampaignMemberRole | null,
   userId: string,
   entryId: string,
+  capabilities?: ReadonlySet<string>,
 ): Promise<void> {
   const existing = await prisma.campaignLedgerEntry.findFirst({
     where: { id: entryId, campaignId },
@@ -612,7 +629,7 @@ export async function deleteLedgerEntry(
   if (!existing) {
     throw new Error('Ledger entry not found.');
   }
-  if (!canEditLedgerEntry(role, userId, existing)) {
+  if (!canEditLedgerEntry(role, userId, existing, capabilities)) {
     throw new Error('Forbidden');
   }
 
@@ -638,8 +655,9 @@ export async function updateLedgerSettings(
   role: CampaignMemberRole | null,
   userId: string,
   patch: UpdateLedgerSettingsInput,
+  capabilities?: ReadonlySet<string>,
 ): Promise<CampaignLedgerDetail> {
-  if (!canManageLedgerSettings(role)) {
+  if (!canManageLedgerSettings(role, capabilities)) {
     throw new Error('Forbidden');
   }
 

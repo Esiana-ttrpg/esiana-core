@@ -20,6 +20,7 @@ const options = { cwd: frontendRoot, stdio: 'inherit', env: process.env };
 const nodeResult = spawnSync(process.execPath, [
   '--import', 'tsx', '--test',
   '../shared/defaultEventCategories.test.ts',
+  '../shared/visibilityTier.test.ts',
   '../shared/recruitmentSeats.test.ts',
   '../shared/sessionAudio.test.ts',
   '../shared/mapWorkspace.test.ts',

@@ -7,9 +7,11 @@ import {
 } from '../lib/acl.js';
 import { invalidateCampaignCapabilityOverrideCache } from '../lib/campaignScopeContext.js';
 import {
+  applyCampaignRoleOverrides,
   NON_OVERRIDABLE_CAPABILITIES,
   CapabilityOverrideEffect,
 } from '../../../shared/campaignPolicy/capabilityOverrides.js';
+import { roleCapabilitiesFor } from '../../../shared/campaignPolicy/roleGrants.js';
 import {
   ALL_CAMPAIGN_CAPABILITIES,
   CampaignCapabilities,
@@ -347,8 +349,18 @@ export async function updateCampaignMemberIdentity(
     const assigneeRole = isCampaignMemberRole(targetMembership.role)
       ? targetMembership.role
       : null;
+    const assigneeViewer = assigneeRole
+      ? applyCampaignRoleOverrides(
+          roleCapabilitiesFor(assigneeRole, {
+            allowPlayerChronologyManagement:
+              req.campaign!.allowPlayerChronologyManagement,
+          }),
+          req.campaign!.roleCapabilityOverrides,
+          assigneeRole,
+        )
+      : null;
 
-    if (!canViewWikiPage(identityPage.visibility, assigneeRole)) {
+    if (!canViewWikiPage(identityPage.visibility, assigneeViewer)) {
       res.status(400).json({
         error: 'Selected page is not visible to this member',
       });

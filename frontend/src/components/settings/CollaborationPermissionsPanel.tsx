@@ -10,7 +10,6 @@ import {
   type CampaignRoleCapabilityOverrideRow,
 } from '@shared/campaignPolicy/capabilityOverrides';
 import { MembershipRoles, MEMBERSHIP_ROLE_UI_LABELS, type MembershipRole } from '@shared/campaignPolicy/membershipRoles';
-import { roleCapabilitiesFor } from '@shared/campaignPolicy/roleGrants';
 import { campaignAdminCapabilitiesFor } from '@shared/campaignPolicy/campaignAdminGrants';
 import { MATRIX_SECTIONS, type MatrixRow } from '@shared/campaignPolicy/matrixCatalog';
 
@@ -34,12 +33,19 @@ function stripChronologyOverrides(rows: OverrideRow[]): OverrideRow[] {
   );
 }
 
-function staffEffective(role: MembershipRole, capability: CampaignCapability): boolean {
-  const base = new Set(roleCapabilitiesFor(role));
-  if (role === MembershipRoles.GAMEMASTER) {
-    for (const cap of campaignAdminCapabilitiesFor(false, true)) base.add(cap);
+function staffEffective(
+  role: MembershipRole,
+  capability: CampaignCapability,
+  overrides: readonly OverrideRow[],
+): boolean {
+  const granted = resolveRoleCapability(role, capability, overrides);
+  if (
+    role === MembershipRoles.GAMEMASTER &&
+    campaignAdminCapabilitiesFor(false, true).has(capability)
+  ) {
+    return true;
   }
-  return base.has(capability);
+  return granted;
 }
 
 function overridableCapabilities(): CampaignCapability[] {
@@ -122,7 +128,7 @@ export function CollaborationPermissionsPanel({
 
   const isGranted = (role: MembershipRole, row: MatrixRow): boolean => {
     if (role === MembershipRoles.GAMEMASTER || role === MembershipRoles.WRITER) {
-      return staffEffective(role, row.capability);
+      return staffEffective(role, row.capability, overrides);
     }
     if (row.observerUnavailable && role === MembershipRoles.OBSERVER) {
       return false;

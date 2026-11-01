@@ -60,6 +60,8 @@ export interface BrandingState {
   /** Instance login gate. Campaign public access is still required. */
   instanceRequiresLogin: boolean;
   allowRegistrations: boolean;
+  /** True when no users exist yet. First local/OIDC signup is still allowed. */
+  userTableEmpty: boolean;
   brandingReady: boolean;
 }
 
@@ -81,6 +83,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     INSTANCE_REQUIRES_LOGIN_DEFAULT,
   );
   const [allowRegistrations, setAllowRegistrations] = useState(false);
+  const [userTableEmpty, setUserTableEmpty] = useState(false);
   const [brandingReady, setBrandingReady] = useState(false);
 
   const userPrefKey = themeProfileSignature(userPref);
@@ -150,6 +153,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         status.publicAccess?.requireLogin ?? INSTANCE_REQUIRES_LOGIN_DEFAULT,
       );
       setAllowRegistrations(status.publicAccess?.allowRegistrations === true);
+      setUserTableEmpty(status.publicAccess?.userTableEmpty === true);
       applySystemBrandingSnapshot(
         {
           globalTitle: status.globalTitle,
@@ -173,6 +177,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     } catch {
       setInstanceRequiresLogin(INSTANCE_REQUIRES_LOGIN_DEFAULT);
       setAllowRegistrations(false);
+      setUserTableEmpty(false);
     } finally {
       setBrandingReady(true);
     }
@@ -261,6 +266,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       refreshBranding,
       instanceRequiresLogin,
       allowRegistrations,
+      userTableEmpty,
       brandingReady,
     }),
     [
@@ -281,6 +287,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       refreshBranding,
       instanceRequiresLogin,
       allowRegistrations,
+      userTableEmpty,
       brandingReady,
     ],
   );

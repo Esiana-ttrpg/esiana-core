@@ -84,8 +84,7 @@ import { loadStoryboardLayout, saveStoryboardLayout } from '../lib/storyboardLay
 import { buildGlobalContinuityPayload } from '../lib/wikiContinuityService.js';
 import { buildContentSnippet } from '../lib/wikiCategories.js';
 import { buildWikiPageHref } from '../lib/wikiLinkService.js';
-import { normalizeCampaignMemberRole } from '../lib/acl.js';
-import { canViewWikiPage } from '../lib/wikiTree.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from '../lib/wikiTree.js';
 import {
   isNarrativeScenesCategoryPage,
   isQuestsCategoryPage,
@@ -143,9 +142,8 @@ async function redactBlocksForAdventure(
 async function resolveRefPages(
   refIds: Set<string>,
   campaignId: string,
-  role: string | null,
+  viewer: WikiVisibilityViewer,
 ) {
-  const memberRole = role ? normalizeCampaignMemberRole(role) : null;
   if (refIds.size === 0) {
     return new Map<string, { id: string; title: string; workspace: string | null; pathKey: string | null }>();
   }
@@ -155,7 +153,7 @@ async function resolveRefPages(
   });
   return new Map(
     pages
-      .filter((page) => canViewWikiPage(page.visibility, memberRole))
+      .filter((page) => canViewWikiPage(page.visibility, viewer))
       .map((page) => [page.id, page]),
   );
 }
@@ -278,7 +276,7 @@ export async function buildAdventureHubResponse(
       if (quest.questGiverId) refIds.add(quest.questGiverId);
       if (quest.factionId) refIds.add(quest.factionId);
     }
-    const refById = await resolveRefPages(refIds, ctx.campaignId, ctx.role);
+    const refById = await resolveRefPages(refIds, ctx.campaignId, ctx);
     const backlinkMap = await batchSessionBacklinksForQuests({
       campaignId: ctx.campaignId,
       campaignHandle,
@@ -360,7 +358,7 @@ export async function buildAdventureHubResponse(
       }
       if (scene.locationPageId) sceneRefIds.add(scene.locationPageId);
     }
-    const sceneRefById = await resolveRefPages(sceneRefIds, ctx.campaignId, ctx.role);
+    const sceneRefById = await resolveRefPages(sceneRefIds, ctx.campaignId, ctx);
 
     const scenes = buildSceneHubListPayload(lifecycleFilteredScenes, scenesRootId, (row) => {
       const parsed = parseSceneMetadataWithWarnings(row.metadata);
@@ -498,7 +496,7 @@ export async function buildAdventureHubResponse(
       const refPages = await resolveRefPages(
         new Set(unresolvedRefIds),
         ctx.campaignId,
-        ctx.role,
+        ctx,
       );
       for (const id of unresolvedRefIds) {
         const page = refPages.get(id);
@@ -748,7 +746,7 @@ export async function buildAdventureHubResponse(
     for (const thread of threadScans) titlesById.set(thread.id, thread.title);
     for (const scene of sceneScans) titlesById.set(scene.id, scene.title);
 
-    const refPages = await resolveRefPages(ledgerRefIds, ctx.campaignId, ctx.role);
+    const refPages = await resolveRefPages(ledgerRefIds, ctx.campaignId, ctx);
     for (const [id, page] of refPages) {
       titlesById.set(id, page.title);
     }

@@ -116,7 +116,10 @@ export function isSystemBannerActive(row: SystemSetting): boolean {
   return new Date() < row.systemBannerExpiresAt;
 }
 
-export function serializePublicSystemSettings(row: SystemSetting) {
+export function serializePublicSystemSettings(
+  row: SystemSetting,
+  options?: { userTableEmpty?: boolean },
+) {
   const active = isSystemBannerActive(row);
   const banner = active ? (row.systemBannerText?.trim() ?? '') : '';
   return {
@@ -140,6 +143,7 @@ export function serializePublicSystemSettings(row: SystemSetting) {
     publicAccess: {
       requireLogin: row.requireLogin ?? true,
       allowRegistrations: row.allowRegistrations ?? true,
+      userTableEmpty: options?.userTableEmpty === true,
     },
   };
 }

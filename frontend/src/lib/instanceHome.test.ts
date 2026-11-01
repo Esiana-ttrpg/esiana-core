@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { resolveInstanceHomeSurface } from './instanceHome';
+import {
+  canCreateAccount,
+  canOfferRegistrationAction,
+  resolveInstanceHomeSurface,
+} from './instanceHome';
 
 describe('instance home surface', () => {
   it('waits until auth and public settings resolve', () => {
@@ -57,6 +61,39 @@ describe('instance home surface', () => {
         instanceRequiresLogin: false,
       }),
       'hub',
+    );
+  });
+});
+
+describe('account creation eligibility', () => {
+  it('allows the first user when registrations are otherwise off', () => {
+    assert.equal(
+      canCreateAccount({ allowRegistrations: false, userTableEmpty: true }),
+      true,
+    );
+    assert.equal(
+      canCreateAccount({ allowRegistrations: false, userTableEmpty: false }),
+      false,
+    );
+    assert.equal(canCreateAccount({ allowRegistrations: true }), true);
+  });
+
+  it('hides create-account when no local or OIDC action exists', () => {
+    assert.equal(
+      canOfferRegistrationAction({
+        canCreateAccount: true,
+        localLoginEnabled: false,
+        hasOidcProviders: false,
+      }),
+      false,
+    );
+    assert.equal(
+      canOfferRegistrationAction({
+        canCreateAccount: true,
+        localLoginEnabled: false,
+        hasOidcProviders: true,
+      }),
+      true,
     );
   });
 });

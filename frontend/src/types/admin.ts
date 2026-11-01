@@ -9,6 +9,7 @@ export interface SystemRegistrationSettings {
 export interface SystemPublicAccessSettings {
   requireLogin: boolean;
   allowRegistrations?: boolean;
+  userTableEmpty?: boolean;
 }
 
 export interface SystemSmtpSettings {

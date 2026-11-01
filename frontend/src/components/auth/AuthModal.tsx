@@ -6,7 +6,7 @@ import { X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
 import { requestPasswordReset } from '@/lib/authEmail';
-import { currentAuthReturnTo } from '@/lib/instanceHome';
+import { canCreateAccount, currentAuthReturnTo } from '@/lib/instanceHome';
 import {
   fetchAuthProviders,
   federatedSignInUrl,
@@ -23,7 +23,11 @@ interface AuthModalProps {
 
 export function AuthModal({ open, onClose, initialMode = 'login' }: AuthModalProps) {
   const { login, register } = useAuth();
-  const { allowRegistrations } = useBranding();
+  const { allowRegistrations, userTableEmpty } = useBranding();
+  const registrationAvailable = canCreateAccount({
+    allowRegistrations,
+    userTableEmpty,
+  });
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,8 +41,8 @@ export function AuthModal({ open, onClose, initialMode = 'login' }: AuthModalPro
 
   useEffect(() => {
     if (!open) return;
-    setMode(initialMode === 'register' && allowRegistrations ? 'register' : initialMode === 'forgot' ? 'forgot' : 'login');
-  }, [allowRegistrations, initialMode, open]);
+    setMode(initialMode === 'register' && registrationAvailable ? 'register' : initialMode === 'forgot' ? 'forgot' : 'login');
+  }, [initialMode, open, registrationAvailable]);
 
   useEffect(() => {
     if (!open) return;
@@ -96,7 +100,7 @@ export function AuthModal({ open, onClose, initialMode = 'login' }: AuthModalPro
       }
       if (mode === 'login') {
         await login(email, password);
-      } else if (allowRegistrations) {
+      } else if (registrationAvailable) {
         await register(email, password);
       } else {
         setError('Registration is disabled on this instance.');
@@ -120,7 +124,8 @@ export function AuthModal({ open, onClose, initialMode = 'login' }: AuthModalPro
         ? 'Create account'
         : 'Reset password';
 
-  const showFederated = mode === 'login' && providers.length > 0;
+  const showFederated =
+    (mode === 'login' || mode === 'register') && providers.length > 0;
   const showLocalFields = localLoginEnabled;
 
   return createPortal(
@@ -232,15 +237,22 @@ export function AuthModal({ open, onClose, initialMode = 'login' }: AuthModalPro
           </button>
             </>
           )}
-          {!showLocalFields && showFederated && mode === 'login' && (
+          {!showLocalFields && showFederated && (mode === 'login' || mode === 'register') && (
             <p className="text-center text-sm text-muted">
-              Sign in with your organization identity provider above.
+              {mode === 'register'
+                ? 'Create an account with your organization identity provider above.'
+                : 'Sign in with your organization identity provider above.'}
+            </p>
+          )}
+          {!showLocalFields && !showFederated && mode === 'register' && (
+            <p className="text-center text-sm text-muted">
+              Registration is not available with the current sign-in options.
             </p>
           )}
           {showLocalFields && (
           <p className="text-center text-sm text-muted">
             {mode === 'login' ? (
-              allowRegistrations ? (
+              registrationAvailable ? (
               <>
                 No account?{' '}
                 <button

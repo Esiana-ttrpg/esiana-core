@@ -58,13 +58,17 @@ export function AdventureWorkspaceProvider({ children }: { children: ReactNode }
     [campaignHandle],
   );
 
+  const effectivePerspective: AdventurePreviewPerspective = isDMUser
+    ? perspective
+    : 'dm';
+
   const value = useMemo(
     () => ({
       active: adventureRoute != null,
-      perspective,
+      perspective: effectivePerspective,
       setPerspective,
-      playerPreview: adventureHidesGmChrome(perspective),
-      publicPreview: isAdventurePublicPreview(perspective),
+      playerPreview: adventureHidesGmChrome(effectivePerspective),
+      publicPreview: isAdventurePublicPreview(effectivePerspective),
       publicPreviewEligible: adventurePublicPreviewEligible(campaign?.discoverability),
       publicPreviewGate: adventurePublicPreviewGate(
         campaign?.discoverability,
@@ -75,9 +79,9 @@ export function AdventureWorkspaceProvider({ children }: { children: ReactNode }
     [
       adventureRoute,
       campaign?.discoverability,
+      effectivePerspective,
       instanceRequiresLogin,
       isDMUser,
-      perspective,
       setPerspective,
     ],
   );
