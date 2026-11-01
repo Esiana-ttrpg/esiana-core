@@ -23,14 +23,11 @@ import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
 import { HelpTooltip } from '@/components/ui/HelpTooltip';
 import {
   hasEnabledTranscriptionProvider,
-  matrixCellStatusLabel,
-  matrixCellTone,
   matrixFeatureStatuses,
   matrixGlobalAdminHelp,
   matrixRowHasHelp,
   matrixRowHelp,
   matrixRowSettingLink,
-  roleHasOverride,
   type MatrixCellTone,
   type MatrixStatusItem,
 } from '@/lib/matrixRowPresentation';
@@ -174,47 +171,44 @@ function RoleGrantControl({
   row,
   checked,
   editable,
-  tone,
+  unavailable,
+  globallyDisabled,
   onToggle,
 }: {
   role: MembershipRole;
   row: MatrixRow;
   checked: boolean;
   editable: boolean;
-  tone: MatrixCellTone;
+  unavailable: boolean;
+  globallyDisabled: boolean;
   onToggle: (next: boolean) => void;
 }) {
-  const status = matrixCellStatusLabel(tone);
   const roleLabel = MEMBERSHIP_ROLE_UI_LABELS[role];
-  if (tone === 'unavailable') {
+  if (unavailable) {
     return (
-      <div className="flex flex-col items-start gap-1">
+      <div>
         <span className="text-muted" aria-hidden>
           —
         </span>
-        <StatusChip item={{ tone, label: status }} />
         <span className="sr-only">{`${row.label} for ${roleLabel}: unavailable`}</span>
       </div>
     );
   }
   return (
-    <div className="flex flex-col items-start gap-1">
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={!editable}
-        onChange={(event) => onToggle(event.target.checked)}
-        aria-label={`${row.label} for ${roleLabel}, ${status}`}
-        title={
-          tone === 'disabled-global'
-            ? 'Disabled by Global Admin'
-            : editable
-              ? `${status}. Resetting to the default removes the override.`
-              : `${status}. Not overridable here.`
-        }
-      />
-      <StatusChip item={{ tone, label: status }} />
-    </div>
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={!editable}
+      onChange={(event) => onToggle(event.target.checked)}
+      aria-label={`${row.label} for ${roleLabel}`}
+      title={
+        globallyDisabled
+          ? 'Disabled by Global Admin'
+          : editable
+            ? undefined
+            : 'Not overridable here'
+      }
+    />
   );
 }
 
@@ -244,6 +238,7 @@ export function CollaborationPermissionsPanel({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const policyFlags = useMemo(
     () => ({ allowPlayerChronologyManagement }),
@@ -318,6 +313,7 @@ export function CollaborationPermissionsPanel({
 
   const toggle = (role: MembershipRole, row: MatrixRow, next: boolean) => {
     if (!canEditCell(role, row)) return;
+    setNotice(null);
     if (
       row.chronologyFlag &&
       row.capability === CampaignCapabilities.CHRONOLOGY_EDIT &&
@@ -348,6 +344,7 @@ export function CollaborationPermissionsPanel({
   const save = async () => {
     setSaving(true);
     setError(null);
+    setNotice(null);
     try {
       const normalized = normalizeCapabilityOverrides(
         stripChronologyOverrides(overrides),
@@ -383,20 +380,26 @@ export function CollaborationPermissionsPanel({
     }
   };
 
-  const cellToneFor = (role: MembershipRole, row: MatrixRow): MatrixCellTone => {
-    const globallyDisabled =
-      row.globalFeature === 'audio' && audioGlobalEnabled === false;
-    return matrixCellTone({
-      observerUnavailable: Boolean(
-        row.observerUnavailable && role === MembershipRoles.OBSERVER,
+  const resetToDefaults = () => {
+    setAllowPlayerChronologyManagement(false);
+    setOverrides((prev) =>
+      prev.filter(
+        (row) =>
+          !EDITABLE_ROLES.includes(row.role as MembershipRole) ||
+          !editableCaps.includes(row.capability as CampaignCapability),
       ),
-      globallyDisabled,
-      hasOverride:
-        row.chronologyFlag && role === MembershipRoles.PARTICIPANT
-          ? allowPlayerChronologyManagement
-          : roleHasOverride(overrides, role, row.capability),
-    });
+    );
+    setError(null);
+    setNotice('Default permissions restored. Save to apply changes.');
   };
+
+  const canReset =
+    allowPlayerChronologyManagement ||
+    overrides.some(
+      (row) =>
+        EDITABLE_ROLES.includes(row.role as MembershipRole) &&
+        editableCaps.includes(row.capability as CampaignCapability),
+    );
 
   if (!canManage) return null;
   if (loading) {
@@ -414,7 +417,10 @@ export function CollaborationPermissionsPanel({
           row={row}
           checked={isGranted(role, row)}
           editable={canEditCell(role, row) && !globallyDisabled}
-          tone={cellToneFor(role, row)}
+          unavailable={Boolean(
+            row.observerUnavailable && role === MembershipRoles.OBSERVER,
+          )}
+          globallyDisabled={globallyDisabled}
           onToggle={(next) => toggle(role, row, next)}
         />
       );
@@ -601,21 +607,36 @@ export function CollaborationPermissionsPanel({
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <p className="text-xs text-muted">
         Game Master and Writer show effective grants. Player and Observer can
-        store overrides. Resetting a cell to its default removes the override.
+        store overrides.
       </p>
       <div className="space-y-3">{MATRIX_SECTIONS.map(renderSection)}</div>
       <p className="text-xs text-muted">
         Public is not a role. When both public-access gates allow it, anonymous
         visitors inherit Observer’s effective read permissions.
       </p>
-      <button
-        type="button"
-        className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface/80 disabled:opacity-50"
-        disabled={saving}
-        onClick={() => void save()}
-      >
-        {saving ? 'Saving…' : 'Save permissions'}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface/80 disabled:opacity-50"
+          disabled={saving || !canReset}
+          onClick={resetToDefaults}
+        >
+          Reset to defaults
+        </button>
+        <button
+          type="button"
+          className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface/80 disabled:opacity-50"
+          disabled={saving}
+          onClick={() => void save()}
+        >
+          {saving ? 'Saving…' : 'Save permissions'}
+        </button>
+      </div>
+      {notice ? (
+        <p className="text-xs text-muted" role="status">
+          {notice}
+        </p>
+      ) : null}
     </section>
   );
 }
