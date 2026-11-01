@@ -19,6 +19,7 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model User {
+  safetyEligibility SafetyPrivacyEligibility[]
   id           String  @id @default(cuid())
   email        String  @unique
   displayName  String?
@@ -175,6 +176,9 @@ model SystemSetting {
   id String @id @default("GLOBAL_CONFIG")
 
   allowRegistrations Boolean @default(true)
+  /// When true, visitors must sign in before public-facing campaign content.
+  /// Campaign public access is still required. Anonymous routes remain Pass 4.
+  requireLogin       Boolean @default(true)
   /// Comma- or newline-separated email domains (e.g. example.com, guild.org).
   allowedDomains     String?
 
@@ -230,6 +234,8 @@ model SystemSetting {
   footerDiscordUrl        String?
   footerGithubUrl         String?
   footerAlignment         String  @default("center")
+  /// When true, configured footer links appear for visitors who are not signed in.
+  footerShowToUnauthorized Boolean @default(false)
 
   /// Bell badge poll interval in seconds (30–300). Default 60 for SQLite-friendly load.
   notificationPollIntervalSeconds Int @default(60)
@@ -481,6 +487,19 @@ model PluginConnectionAuthState {
 }
 
 model Campaign {
+  eventCategoriesInitialized Boolean @default(false)
+  /// One-time chronology wiki-workspace ownership backfill. Claimed at startup.
+  chronologyWorkspacesInitialized Boolean @default(false)
+  chronologyRoutes ChronologyRoute[]
+  safetyRequests SafetyPrivacyRequest[]
+  safetyEligibility SafetyPrivacyEligibility[]
+  assetOperationIdempotency AssetOperationIdempotency[]
+  audioSettings CampaignAudioSettings?
+  sessionRecordings SessionRecording[]
+  processingGrants ProcessingCampaignGrant[]
+  processingUsage ProcessingUsage[]
+  audioUploads AssetUploadSession[]
+  transcriptionJobs TranscriptionJob[]
   id               String      @id @default(cuid())
   name             String
   handle           String      @unique
@@ -561,6 +580,7 @@ model Campaign {
   members            CampaignMember[]
   fantasyCalendars   FantasyCalendar[]
   calendarEventCategories CalendarEventCategory[]
+  chronologySettings ChronologySettings?
   joinRequests       CampaignJoinRequest[]
   wikiPages          WikiPage[]
   characterPageTabs  CharacterPageTab[]
@@ -720,6 +740,17 @@ model DowntimeHaven {
   @@index([campaignId, havenType])
   @@index([campaignId, ownershipType])
   @@index([campaignId, discoveryState])
+}
+
+model ChronologySettings {
+  id String @id @default(cuid())
+  campaignId String @unique
+  manualEventImportance String @default("MINOR")
+  downtimeEventImportance String @default("NOTICE")
+  progressionEventImportance String @default("NOTICE")
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 /// Campaign-scoped operational relationship for a canonical Character page.
@@ -1151,7 +1182,8 @@ model CampaignEra {
   epochStartMinute BigInt?
   epochEndMinute BigInt?
   visibility String @default("PARTY")
-  overviewPageId String @unique
+  overviewPageId String? @unique
+  description String?
   createdByUserId String?
   updatedByUserId String?
   createdAt DateTime @default(now())
@@ -1159,7 +1191,7 @@ model CampaignEra {
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   calendar FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
-  overview WikiPage @relation(fields: [overviewPageId], references: [id], onDelete: Restrict)
+  overview WikiPage? @relation(fields: [overviewPageId], references: [id], onDelete: SetNull)
 
   @@id([campaignId, id])
   @@index([campaignId, calendarId, sortOrder])
@@ -1403,6 +1435,8 @@ model CalendarEventCategory {
   campaignId String
   name       String
   color      String?
+  icon       String?
+  sortOrder  Int @default(0)
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   events   CalendarEvent[]
@@ -1415,11 +1449,14 @@ model CalendarEventCategory {
 }
 
 model CalendarEvent {
+  wikiPage WikiPage? @relation("CalendarEventWikiPage", fields: [wikiPageId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  wikiPageId String?
   id             String  @id @default(uuid())
   calendarId     String
   categoryId     String?
   prerequisiteId String?
   visibility     String @default("PARTY")
+  importance     String @default("MINOR")
   title          String
   description    String?
   duration       Int @default(1)
@@ -1455,6 +1492,7 @@ model CalendarEvent {
   @@index([repeatUnit])
   @@index([calendarId, categoryId])
   @@index([targetEpochMinute])
+  @@index([wikiPageId])
   @@index([targetYear, targetMonth, targetDay])
 }
 
@@ -1517,6 +1555,7 @@ model CampaignMember {
 // ---------------------------------------------------------------------------
 
 model WikiPage {
+  calendarEvents CalendarEvent[] @relation("CalendarEventWikiPage")
   ownedEra CampaignEra?
   id              String  @id @default(cuid())
   campaignId      String
@@ -1707,6 +1746,7 @@ model NoteBookArc {
 }
 
 model CampaignSessionTimeline {
+  recordings SessionRecording[]
   id            String @id @default(cuid())
   campaignId    String
   wikiPageId    String @unique
@@ -2165,6 +2205,8 @@ model SocialMention {
 }
 
 model Asset {
+  sizeBytes BigInt?
+  recordingFiles SessionRecordingFile[]
   id         String @id @default(cuid())
   campaignId String
   url        String
@@ -2203,6 +2245,265 @@ model Asset {
   updatedAt DateTime @updatedAt
 
   @@index([campaignId])
+}
+
+/// Global infrastructure configuration, deliberately separate from campaign content.
+model ProcessingConnection {
+  monthlyRequests Int?
+  monthlyDurationMs BigInt?
+  id String @id @default(cuid())
+  name String
+  protocol String
+  endpoint String
+  encryptedCredential String?
+  enabled Boolean @default(false)
+  allowPrivateNetwork Boolean @default(false)
+  capabilities Json
+  operatorLabel String?
+  billingLabel String?
+  concurrency Int @default(1)
+  timeoutSeconds Int @default(3600)
+  maxRequestBytes BigInt @default(1073741824)
+  formats Json
+  status String @default("unverified")
+  models ProcessingModel[]
+  grants ProcessingCampaignGrant[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProcessingModel {
+  id String @id @default(cuid())
+  connectionId String
+  key String
+  name String
+  enabled Boolean @default(false)
+  capabilities Json
+  connection ProcessingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  @@unique([connectionId, key])
+}
+
+model ProcessingCampaignGrant {
+  id String @id @default(cuid())
+  campaignId String
+  connectionId String
+  feature String
+  capability String
+  enabled Boolean @default(false)
+  modelIds Json
+  monthlyRequests Int?
+  monthlyDurationMs BigInt?
+  revision Int @default(0)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  connection ProcessingConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  @@unique([campaignId, connectionId, feature, capability])
+}
+
+/// Content-neutral operational telemetry. Never persist prompts or provider errors here.
+model ProcessingUsage {
+  startedRequests Int @default(0)
+  startedDurationMs BigInt @default(0)
+  completedRequests Int @default(0)
+  completedDurationMs BigInt @default(0)
+  id String @id @default(cuid())
+  campaignId String
+  connectionId String
+  modelId String?
+  feature String
+  capability String
+  jobId String @unique
+  month String
+  durationMs BigInt
+  requestCount Int @default(1)
+  status String @default("reserved")
+  failureCode String?
+  tokens BigInt?
+  reportedCost String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  @@index([campaignId, connectionId, month])
+}
+
+model AudioSettings {
+  id String @id @default("GLOBAL_AUDIO")
+  enabled Boolean @default(true)
+  transcriptionEnabled Boolean @default(false)
+  maxFileBytes BigInt @default(1073741824)
+  maxSessionBytes BigInt @default(5368709120)
+  maxCampaignBytes BigInt @default(10737418240)
+  maxGlobalBytes BigInt?
+  maxTranscriptBytes Int @default(10485760)
+  uploadConcurrency Int @default(2)
+  allowedFormats Json
+  revision Int @default(0)
+}
+
+model CampaignAudioSettings {
+  campaignId String @id
+  enabled Boolean @default(true)
+  transcriptionEnabled Boolean @default(false)
+  allowPov Boolean @default(false)
+  defaultVisibility String @default("campaign")
+  defaultConnectionId String?
+  defaultModelId String?
+  maxStorageBytes BigInt?
+  monthlyRequests Int?
+  monthlyDurationMs BigInt?
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model SessionRecording {
+  id String @id @default(cuid())
+  campaignId String
+  timelineId String
+  uploadedByUserId String
+  title String
+  consentAcknowledgedAt DateTime?
+  visibility String @default("campaign")
+  status String @default("uploading")
+  isPrimary Boolean @default(false)
+  durationMs Int @default(0)
+  revision Int @default(0)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  timeline CampaignSessionTimeline @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  files SessionRecordingFile[]
+  chapters SessionAudioChapter[]
+  transcript SessionTranscript?
+  uploads AssetUploadSession[]
+  jobs TranscriptionJob[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([campaignId, timelineId])
+}
+
+model SessionRecordingFile {
+  id String @id @default(cuid())
+  recordingId String
+  assetId String
+  name String
+  order Int
+  durationMs Int
+  offsetMs Int
+  sizeBytes BigInt
+  format String
+  mimeType String
+  recording SessionRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: NoAction)
+  @@index([recordingId, order])
+  @@index([assetId])
+}
+
+model SessionAudioChapter {
+  id String @id @default(cuid())
+  recordingId String
+  title String
+  description String?
+  startMs Int
+  fileId String
+  fileStartMs Int
+  wikiPageId String?
+  recording SessionRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  @@index([recordingId, startMs])
+}
+
+model SessionTranscript {
+  id String @id @default(cuid())
+  recordingId String @unique
+  publishedRevisionId String?
+  revision Int @default(0)
+  recording SessionRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  revisions SessionTranscriptRevision[]
+}
+
+model SessionTranscriptRevision {
+  id String @id @default(cuid())
+  transcriptId String
+  source String
+  language String?
+  createdByUserId String
+  providerConnectionId String?
+  providerModelId String?
+  sourceJobId String?
+  createdAt DateTime @default(now())
+  transcript SessionTranscript @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  segments SessionTranscriptSegment[]
+  @@index([transcriptId, createdAt])
+}
+
+model SessionTranscriptSegment {
+  groupId String?
+  id String @id @default(cuid())
+  revisionId String
+  order Int
+  startMs Int?
+  endMs Int?
+  text String
+  speaker String?
+  fileId String?
+  fileStartMs Int?
+  fileEndMs Int?
+  revision SessionTranscriptRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  @@index([revisionId, order])
+}
+
+model AssetUploadSession {
+  purpose String @default("session_audio")
+  assetId String?
+  pendingStorageUrl String?
+  id String @id @default(cuid())
+  campaignId String
+  recordingId String?
+  userId String
+  name String
+  sizeBytes BigInt
+  offsetBytes BigInt @default(0)
+  status String @default("uploading")
+  fileId String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recording SessionRecording? @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  @@index([campaignId, status])
+  @@index([userId, status])
+}
+
+/// Retry receipts contain request hashes and resource IDs, never media or transcript content.
+model AssetOperationIdempotency {
+  id String @id @default(cuid())
+  campaignId String
+  userId String
+  operation String
+  key String
+  requestHash String
+  resourceId String
+  expiresAt DateTime
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  @@unique([campaignId, userId, operation, key])
+  @@index([expiresAt])
+}
+
+model TranscriptionJob {
+  id String @id @default(cuid())
+  campaignId String
+  recordingId String
+  userId String
+  connectionId String
+  modelId String?
+  grantRevision Int
+  recordingRevision Int
+  transcriptRevision Int
+  status String @default("queued")
+  failureCode String?
+  fileResults Json
+  attempts Int @default(0)
+  claimedAt DateTime?
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recording SessionRecording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  @@index([status, createdAt])
+  @@index([campaignId, recordingId])
 }
 
 model MapPin {
@@ -2785,4 +3086,80 @@ model PortfolioCharacterAdventure {
   @@index([portfolioCharacterId, status])
   @@index([campaignId])
   @@index([campaignCharacterPageId])
+}
+
+// Private operational records: excluded from wiki search, feeds and campaign exports.
+model SafetyPrivacyEligibility {
+  campaignId String
+  userId String
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([campaignId, userId])
+}
+
+model SafetyPrivacyRequest {
+  id String @id @default(cuid())
+  campaignId String
+  requesterId String
+  category String
+  status String @default("open")
+  relatedContentType String?
+  relatedContentId String?
+  description String
+  resolution String?
+  resolvedAt DateTime?
+  resolverId String?
+  revision Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  messages SafetyPrivacyRequestMessage[]
+  events SafetyPrivacyRequestEvent[]
+  reads SafetyPrivacyRequestRead[]
+  @@index([campaignId, status, updatedAt])
+  @@index([requesterId, updatedAt])
+}
+
+model SafetyPrivacyRequestMessage {
+  id String @id @default(cuid())
+  requestId String
+  authorId String
+  body String
+  createdAt DateTime @default(now())
+  request SafetyPrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([requestId, createdAt])
+}
+
+model SafetyPrivacyRequestEvent {
+  id String @id @default(cuid())
+  requestId String
+  actorId String
+  previousStatus String?
+  newStatus String
+  reason String?
+  createdAt DateTime @default(now())
+  request SafetyPrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@index([requestId, createdAt])
+}
+
+model SafetyPrivacyRequestRead {
+  requestId String
+  userId String
+  revision Int
+  request SafetyPrivacyRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@id([requestId, userId])
+}
+
+/// Reserved chronology URLs, including historical aliases. IDs remain authoritative.
+model ChronologyRoute {
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId String
+  entityType String
+  slug String
+  entityId String
+  title String
+  canonical Boolean @default(true)
+
+  @@id([campaignId, entityType, slug])
+  @@index([campaignId, entityType, entityId])
 }

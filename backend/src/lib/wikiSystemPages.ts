@@ -107,6 +107,8 @@ export function isReservedSystemWikiPage(page: {
     return true;
   }
 
+  const metadata = page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {};
+  if (metadata.systemCategoryKey === 'chronology_events' || metadata.systemCategoryKey === 'chronology_eras') return true;
   const templateType = page.templateType?.trim();
   if (
     templateType &&

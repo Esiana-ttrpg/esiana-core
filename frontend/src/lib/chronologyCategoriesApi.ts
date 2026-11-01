@@ -1,10 +1,13 @@
 import { apiFetch } from './api';
+import type { EventCategoryIcon } from '@shared/defaultEventCategories';
 
 export interface ChronologyCategoryRecord {
   id: string;
   campaignId: string;
   name: string;
   color: string | null;
+  icon: string | null;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,7 +23,7 @@ export async function listChronologyCategories(
 
 export async function createChronologyCategory(
   campaignHandle: string,
-  payload: { name: string; color?: string | null },
+  payload: { name: string; color?: string | null; icon?: EventCategoryIcon | null },
 ): Promise<ChronologyCategoryRecord> {
   const data = await apiFetch<{ category: ChronologyCategoryRecord }>(
     `/campaigns/${campaignHandle}/chronology/categories`,
@@ -35,7 +38,7 @@ export async function createChronologyCategory(
 export async function updateChronologyCategory(
   campaignHandle: string,
   categoryId: string,
-  payload: Partial<{ name: string; color: string | null }>,
+  payload: Partial<{ name: string; color: string | null; icon: EventCategoryIcon | null; orderedCategoryIds: string[] }>,
 ): Promise<ChronologyCategoryRecord> {
   const data = await apiFetch<{ category: ChronologyCategoryRecord }>(
     `/campaigns/${campaignHandle}/chronology/categories/${categoryId}`,

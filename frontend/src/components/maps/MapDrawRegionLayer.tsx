@@ -65,12 +65,14 @@ export function MapDrawRegionLayer({
     <>
       {previewLine.length >= 2 ? (
         <Polyline
+          interactive={false}
           positions={previewLine}
           pathOptions={{ color: '#fbbf24', weight: 2, dashArray: '4 4' }}
         />
       ) : null}
       {closedPreview ? (
         <Polygon
+          interactive={false}
           positions={closedPreview}
           pathOptions={{
             color: '#fbbf24',

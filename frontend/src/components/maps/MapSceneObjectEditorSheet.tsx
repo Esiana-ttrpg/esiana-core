@@ -1,3 +1,4 @@
+import { useMapEditorDraft, type MapDiscardGuard } from '@/hooks/useMapEditorDraft';
 import { useEffect, useMemo, useState } from 'react';
 import type { MapLayerDto, MapObjectGroupDto, MapSceneObjectDto } from '@/types/maps';
 import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
@@ -22,6 +23,8 @@ interface WikiPageOption {
 
 interface MapSceneObjectEditorSheetProps {
   open: boolean;
+  guardRef?: MapDiscardGuard;
+  floating?: boolean;
   object: MapSceneObjectDto | null;
   campaignHandle: string;
   assetId: string;
@@ -39,6 +42,8 @@ interface MapSceneObjectEditorSheetProps {
 
 export function MapSceneObjectEditorSheet({
   open,
+  guardRef,
+  floating = false,
   object,
   campaignHandle,
   assetId,
@@ -94,7 +99,9 @@ export function MapSceneObjectEditorSheet({
     setFontSize(String(style.fontSize ?? 14));
     setTextColor(style.color ?? '');
     setError(null);
-  }, [object]);
+  }, [object?.id, open]);
+
+  const draft = useMapEditorDraft(open, object?.id, onClose, guardRef, busy);
 
   if (!open || !object) return null;
 
@@ -211,7 +218,7 @@ export function MapSceneObjectEditorSheet({
       <div className="mt-4 space-y-3">
         <label className="block text-sm">
           <span className="text-muted">Label</span>
-          <input
+          <input autoFocus
             type="text"
             className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
             value={label}
@@ -219,7 +226,72 @@ export function MapSceneObjectEditorSheet({
           />
         </label>
 
-        <label className="block text-sm">
+        {object.kind === 'region' ? (
+          <>
+            <label className="block text-sm">
+              <span className="text-muted">Fill color</span>
+              <input
+                type="text"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
+                placeholder="#c9a227"
+                value={fillColor}
+                onChange={(e) => setFillColor(e.target.value)}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-muted">Stroke color</span>
+              <input
+                type="text"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
+                placeholder="#c9a227"
+                value={strokeColor}
+                onChange={(e) => setStrokeColor(e.target.value)}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-muted">Fill opacity (0 to 1)</span>
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.05}
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
+                value={fillOpacity}
+                onChange={(e) => setFillOpacity(e.target.value)}
+              />
+            </label>
+          </>
+        ) : null}
+
+        {object.kind === 'label' ? (
+          <>
+            <label className="block text-sm">
+              <span className="text-muted">Font size</span>
+              <input
+                type="number"
+                min={10}
+                max={48}
+                step={1}
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
+                value={fontSize}
+                onChange={(e) => setFontSize(e.target.value)}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="text-muted">Text color</span>
+              <input
+                type="text"
+                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
+                placeholder="#f8fafc"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+              />
+            </label>
+          </>
+        ) : null}
+      </div>
+
+      <details className="mt-3"><summary className="cursor-pointer text-sm font-medium">Links, layers & visibility</summary><div className="mt-3 space-y-3">        <label className="block text-sm">
           <span className="text-muted">Layer</span>
           <p className="mt-1 text-xs text-muted/80">
             Political borders, routes, and geographic regions use layers for presence filtering.
@@ -311,73 +383,10 @@ export function MapSceneObjectEditorSheet({
           </select>
         </label>
 
-        {object.kind === 'region' ? (
-          <>
-            <label className="block text-sm">
-              <span className="text-muted">Fill color</span>
-              <input
-                type="text"
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
-                placeholder="#c9a227"
-                value={fillColor}
-                onChange={(e) => setFillColor(e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-muted">Stroke color</span>
-              <input
-                type="text"
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
-                placeholder="#c9a227"
-                value={strokeColor}
-                onChange={(e) => setStrokeColor(e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-muted">Fill opacity (0 to 1)</span>
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.05}
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
-                value={fillOpacity}
-                onChange={(e) => setFillOpacity(e.target.value)}
-              />
-            </label>
-          </>
-        ) : null}
-
-        {object.kind === 'label' ? (
-          <>
-            <label className="block text-sm">
-              <span className="text-muted">Font size</span>
-              <input
-                type="number"
-                min={10}
-                max={48}
-                step={1}
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
-                value={fontSize}
-                onChange={(e) => setFontSize(e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-muted">Text color</span>
-              <input
-                type="text"
-                className="mt-1 w-full rounded-md border border-border bg-background px-2 py-1.5"
-                placeholder="#f8fafc"
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
-              />
-            </label>
-          </>
-        ) : null}
-      </div>
+</div></details>
 
       {timeTracking ? (
-        <MapObjectTemporalPanel
+        <details className="mt-3"><summary className="cursor-pointer text-sm font-medium">Temporal properties</summary><MapObjectTemporalPanel
           campaignHandle={campaignHandle}
           assetId={assetId}
           object={object}
@@ -386,7 +395,7 @@ export function MapSceneObjectEditorSheet({
           timeTracking={timeTracking}
           captureGeometry={object.kind === 'region' || object.kind === 'path' ? object.geometry : undefined}
           onUpdated={onUpdated}
-        />
+        /></details>
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -419,7 +428,7 @@ export function MapSceneObjectEditorSheet({
         <button
           type="button"
           className="ml-auto rounded-md px-3 py-1.5 text-sm text-muted hover:text-foreground"
-          onClick={onClose}
+          onClick={draft.close}
         >
           Close
         </button>
@@ -427,10 +436,11 @@ export function MapSceneObjectEditorSheet({
     </>
   );
 
-  if (variant === 'panel') {
+  if (variant === 'panel' || floating) {
     return (
       <div
-        className="w-80 shrink-0 overflow-y-auto border-l border-border bg-surface/95 p-4"
+        onChangeCapture={draft.markDirty}
+        className={floating ? "map-properties-floating map-float" : "w-80 shrink-0 overflow-y-auto border-l border-border bg-surface p-4 text-foreground"}
         role="complementary"
         aria-labelledby="scene-object-editor-title"
       >
@@ -440,7 +450,7 @@ export function MapSceneObjectEditorSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[700] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+    <div onChangeCapture={draft.markDirty} className="fixed inset-0 z-[2000] flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div
         className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-surface p-4 shadow-xl"
         role="dialog"

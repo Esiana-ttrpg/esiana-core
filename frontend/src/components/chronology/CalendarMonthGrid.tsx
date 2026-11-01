@@ -1,6 +1,15 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { getClimateAspectHeaderIcon, type ClimateAspect } from '@/lib/climateAspect';
-import type { MonthGridRow } from '@/lib/timeEngine';
+import {
+  getClimateAspectHeaderIcon,
+  type ClimateAspect,
+} from '@/lib/climateAspect';
+import type { CalendarState, MonthGridRow } from '@/lib/timeEngine';
+import type { TimelineCategoryRecord, TimelineOccurrenceRecord } from '@/lib/chronologyApi';
+import {
+  compareCalendarEvents,
+  eventDayState,
+  MOON_SYMBOLS,
+} from '@/lib/calendarPresentation';
 
 export interface DayCellOverlay {
   count: number;
@@ -8,6 +17,12 @@ export interface DayCellOverlay {
 }
 
 interface CalendarMonthGridProps {
+  categories?: TimelineCategoryRecord[];
+  presentation?: 'compact' | 'expanded';
+  occurrencesByDay?: Map<number, TimelineOccurrenceRecord[]>;
+  dayStates?: Map<number, CalendarState>;
+  todayDay?: number | null;
+  onEventClick?: (event: TimelineOccurrenceRecord) => void;
   columnLabels: string[];
   monthTitle: string;
   climateAspect?: ClimateAspect | null;
@@ -39,6 +54,12 @@ function MonthTitleBanner({
 }
 
 export function CalendarMonthGrid({
+  presentation = 'compact',
+  categories,
+  occurrencesByDay,
+  dayStates,
+  todayDay,
+  onEventClick,
   columnLabels,
   monthTitle,
   climateAspect = null,
@@ -48,6 +69,25 @@ export function CalendarMonthGrid({
   selectedDay = null,
   onDayClick,
 }: CalendarMonthGridProps) {
+  if (presentation === 'expanded') {
+    return (
+      <ExpandedCalendar
+        {...{
+          categories,
+          columnLabels,
+          monthTitle,
+          rows,
+          isIntercalaryMonth,
+          occurrencesByDay,
+          dayStates,
+          todayDay,
+          onEventClick,
+          selectedDay,
+          onDayClick,
+        }}
+      />
+    );
+  }
   return (
     <>
       <MonthTitleBanner monthTitle={monthTitle} climateAspect={climateAspect} />
@@ -89,6 +129,170 @@ export function CalendarMonthGrid({
   );
 }
 
+function ExpandedCalendar({
+  categories,
+  columnLabels,
+  monthTitle,
+  rows,
+  isIntercalaryMonth,
+  occurrencesByDay,
+  dayStates,
+  todayDay,
+  onEventClick,
+  selectedDay,
+  onDayClick,
+}: CalendarMonthGridProps) {
+  const weeks = isIntercalaryMonth
+    ? [...(dayStates?.keys() ?? [])].map((day) => [{ day, isToday: false }])
+    : rows.flatMap((row) => (row.kind === 'standardWeek' ? [row.cells] : []));
+  return (
+    <table
+      className="w-full table-fixed border-collapse text-left"
+      aria-label={monthTitle}
+    >
+      {isIntercalaryMonth && (
+        <caption className="mb-2 text-sm text-muted">
+          {monthTitle} · Festival &amp; intercalary days
+        </caption>
+      )}
+      {!isIntercalaryMonth && (
+        <thead>
+          <tr>
+            {columnLabels.map((label, index) => (
+              <th
+                key={index}
+                scope="col"
+                className="truncate border border-border bg-surface px-1 py-2 text-center text-xs font-medium text-muted"
+                title={label}
+              >
+                {label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+      )}
+      <tbody>
+        {weeks.map((week, rowIndex) => (
+          <tr key={rowIndex}>
+            {week.map((cell, index) => {
+              if (!cell)
+                return (
+                  <td
+                    key={index}
+                    className="border border-border bg-surface/20"
+                  />
+                );
+              const events = [...(occurrencesByDay?.get(cell.day) ?? [])].sort(
+                compareCalendarEvents,
+              );
+              const moons = dayStates?.get(cell.day)?.activeMoonPhases ?? [];
+              const isToday = todayDay === cell.day;
+              const selected = selectedDay === cell.day;
+              return (
+                <td
+                  key={index}
+                  className={`border border-border p-1 align-top ${isToday ? 'bg-primary/10' : 'bg-background'} ${selected ? 'ring-2 ring-inset ring-primary' : ''}`}
+                >
+                  <div className="min-h-16 md:min-h-[132px]">
+                    <div className="flex flex-wrap items-start justify-between gap-0.5">
+                      <button
+                        type="button"
+                        aria-label={`${monthTitle} ${cell.day}${isToday ? ', today' : ''}, ${events.length} events`}
+                        aria-pressed={selected}
+                        aria-current={isToday ? 'date' : undefined}
+                        className={`min-h-8 min-w-6 rounded px-1 text-sm focus-visible:outline-2 focus-visible:outline-primary ${isToday ? 'font-bold text-primary' : ''}`}
+                        onClick={() => onDayClick?.(cell.day)}
+                      >
+                        {cell.day}
+                      </button>
+                      <div className="flex flex-wrap gap-0.5 text-[10px] md:text-xs">
+                        {moons.map((moon, moonIndex) => (
+                          <span
+                            key={moonIndex}
+                            role="img"
+                            aria-label={`${moon.name}: ${moon.phase}`}
+                            title={`${moon.name}: ${moon.phase}`}
+                          >
+                            {MOON_SYMBOLS[moon.phase] ?? '◯'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="hidden space-y-1 md:block">
+                      {events.slice(0, 3).map((event) => {
+                        const state = eventDayState(event);
+                        const symbol =
+                          state === 'Event begins'
+                            ? '↦'
+                            : state === 'Event ends'
+                              ? '↤'
+                              : state === 'Event continues'
+                                ? '↔'
+                                : '•';
+                        return (
+                          <button
+                            key={event.occurrenceId}
+                            type="button"
+                            aria-label={`${event.title}, ${event.importance.toLowerCase()}, ${state}${event.duration > 1 ? `, Day ${event.dayOffset + 1} of ${event.duration}` : ''}`}
+                            title={`${event.title} — ${state}`}
+                            style={{ borderLeftColor: categories?.find(category => category.id === event.categoryId)?.color ?? undefined }}
+                            onClick={() => onEventClick?.(event)}
+                            className={`block w-full rounded border-l-2 px-1.5 py-1 text-left text-xs focus-visible:outline-2 focus-visible:outline-primary ${event.importance === 'MAJOR' ? 'border-primary bg-primary/15 font-semibold text-foreground' : event.importance === 'NOTICE' ? 'border-dotted border-muted text-muted' : 'border-primary/50 bg-surface text-foreground'}`}
+                          >
+                            <span className="block truncate">
+                              {symbol} {event.title}
+                            </span>
+                            <span className="block truncate text-[10px] font-normal text-muted">
+                              {state}
+                              {event.duration > 1
+                                ? ` · Day ${event.dayOffset + 1} of ${event.duration}`
+                                : ''}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {events.length > 3 && (
+                        <button
+                          type="button"
+                          onClick={() => onDayClick?.(cell.day)}
+                          className="rounded px-1 py-1 text-xs text-primary hover:underline"
+                        >
+                          +{events.length - 3} more
+                        </button>
+                      )}
+                    </div>
+                    {events.length > 0 && (
+                      <button
+                        type="button"
+                        aria-label={`Show ${events.length} events on ${monthTitle} ${cell.day}`}
+                        onClick={() => onDayClick?.(cell.day)}
+                        className="flex min-h-7 w-full flex-wrap items-center justify-center gap-1 rounded md:hidden"
+                      >
+                        {events.slice(0, 3).map((event) => (
+                          <span
+                            key={event.occurrenceId}
+                            aria-hidden
+                            className={`size-1.5 rounded-full ${event.importance === 'MAJOR' ? 'bg-primary ring-1 ring-primary' : event.importance === 'NOTICE' ? 'bg-muted' : 'bg-primary/60'}`}
+                          />
+                        ))}
+                        {events.length > 3 && (
+                          <span className="text-[10px] text-muted">
+                            +{events.length - 3}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function IntercalaryBannerRow({
   row,
   colSpan,
@@ -124,8 +328,8 @@ function IntercalaryBannerRow({
       </div>
       <div className="mt-0.5 text-xs text-primary/80">Day {row.day}</div>
       <p className="mt-2 text-[11px] text-muted">
-        This day sits outside the standard weekday grid ({colSpan} column layout preserved for
-        surrounding months).
+        This day sits outside the standard weekday grid ({colSpan} column layout
+        preserved for surrounding months).
       </p>
     </>
   );
@@ -193,7 +397,9 @@ function MonthGridTableRow({
         const clickable = Boolean(onDayClick);
 
         const className = `relative min-h-[2.75rem] border border-border align-top p-0.5 ${
-          cell.isToday ? 'bg-primary/10 ring-1 ring-inset ring-primary/40' : 'bg-background/40'
+          cell.isToday
+            ? 'bg-primary/10 ring-1 ring-inset ring-primary/40'
+            : 'bg-background/40'
         } ${isSelected ? 'ring-2 ring-primary' : ''} ${
           clickable ? 'cursor-pointer hover:bg-elevated/60' : ''
         }`;
@@ -216,16 +422,20 @@ function MonthGridTableRow({
               onClick={(event) => event.stopPropagation()}
               onPointerDown={(event) => event.stopPropagation()}
             >
-              {Array.from({ length: Math.min(overlay.count, 3) }).map((_, dotIndex) => (
-                <span
-                  key={dotIndex}
-                  className={`size-1 rounded-full ${
-                    overlay.hasContinuation ? 'bg-muted' : 'bg-primary'
-                  }`}
-                />
-              ))}
+              {Array.from({ length: Math.min(overlay.count, 3) }).map(
+                (_, dotIndex) => (
+                  <span
+                    key={dotIndex}
+                    className={`size-1 rounded-full ${
+                      overlay.hasContinuation ? 'bg-muted' : 'bg-primary'
+                    }`}
+                  />
+                ),
+              )}
               {overlay.count > 3 && (
-                <span className="text-[9px] text-muted">+{overlay.count - 3}</span>
+                <span className="text-[9px] text-muted">
+                  +{overlay.count - 3}
+                </span>
               )}
             </div>
           ) : null;

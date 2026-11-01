@@ -4,6 +4,7 @@ import { Trash2, Pencil } from 'lucide-react';
 import { useState } from 'react';
 
 interface MapVisibilityBarProps {
+  compact?: boolean;
   layers: MapLayerDto[];
   enabledLayerIds: Set<string>;
   hiddenPinTypes: Set<MapPinType>;
@@ -26,6 +27,7 @@ interface MapVisibilityBarProps {
 }
 
 export function MapVisibilityBar({
+  compact = false,
   layers,
   enabledLayerIds,
   hiddenPinTypes,
@@ -98,18 +100,18 @@ export function MapVisibilityBar({
 
   return (
     <section
-      className="flex flex-col gap-2 py-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2"
+      className={compact ? "map-visibility-compact flex flex-col gap-3 py-2 text-sm" : "flex flex-col gap-2 py-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2"}
       aria-label="Map display filters"
     >
       {hasLayers ? (
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="shrink-0 font-medium text-muted">Layers</span>
           {editMode ? (
-            <>
+            <details open={!compact}><summary className="cursor-pointer">Manage layers</summary><div className="flex flex-wrap gap-1">
               {onAddPoliticalBordersLayer ? (
                 <button
                   type="button"
-                  className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-100 hover:bg-amber-500/20"
+                  className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs text-foreground hover:bg-amber-500/20"
                   onClick={() => void onAddPoliticalBordersLayer()}
                 >
                   + Political borders
@@ -118,7 +120,7 @@ export function MapVisibilityBar({
               {onAddMigrationFlowsLayer ? (
                 <button
                   type="button"
-                  className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs text-rose-100 hover:bg-rose-500/20"
+                  className="rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-xs text-foreground hover:bg-rose-500/20"
                   onClick={() => void onAddMigrationFlowsLayer()}
                 >
                   + Migration flows
@@ -127,7 +129,7 @@ export function MapVisibilityBar({
               {onAddTradeRoutesLayer ? (
                 <button
                   type="button"
-                  className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-100 hover:bg-emerald-500/20"
+                  className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs text-foreground hover:bg-emerald-500/20"
                   onClick={() => void onAddTradeRoutesLayer()}
                 >
                   + Trade routes
@@ -145,7 +147,7 @@ export function MapVisibilityBar({
               {onAddWeatherClimateLayer ? (
                 <button
                   type="button"
-                  className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-xs text-sky-100 hover:bg-sky-500/20"
+                  className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-xs text-foreground hover:bg-sky-500/20"
                   onClick={() => void onAddWeatherClimateLayer()}
                 >
                   + Weather & climate
@@ -154,28 +156,25 @@ export function MapVisibilityBar({
               {onAddVisibilityZonesLayer ? (
                 <button
                   type="button"
-                  className="rounded-full border border-slate-500/40 bg-slate-500/10 px-2 py-0.5 text-xs text-slate-200 hover:bg-slate-500/20"
+                  className="rounded-full border border-slate-500/40 bg-slate-500/10 px-2 py-0.5 text-xs text-foreground hover:bg-slate-500/20"
                   onClick={() => void onAddVisibilityZonesLayer()}
                 >
                   + Visibility zones
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="rounded-full border border-border px-2 py-0.5 text-xs hover:bg-muted/10"
-                onClick={onEnableAllLayers}
-              >
-                Show all
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-border px-2 py-0.5 text-xs hover:bg-muted/10"
-                onClick={onDisableAllLayers}
-              >
-                Hide all
-              </button>
-            </>
+            </div></details>
           ) : null}
+          {onEnableAllLayers ? (
+            <button type="button" className="rounded-full border border-border px-2 py-0.5 text-xs hover:bg-muted/10" onClick={onEnableAllLayers}>
+              Show all
+            </button>
+          ) : null}
+          {onDisableAllLayers ? (
+            <button type="button" className="rounded-full border border-border px-2 py-0.5 text-xs hover:bg-muted/10" onClick={onDisableAllLayers}>
+              Hide all
+            </button>
+          ) : null}
+
           {layers.map((layer) => {
             const on = enabledLayerIds.has(layer.id);
             const isEditing = editingId === layer.id;
@@ -242,7 +241,7 @@ export function MapVisibilityBar({
                 className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors group ${
                   on
                     ? 'border-border bg-muted/15 text-foreground'
-                    : 'border-transparent bg-transparent text-muted line-through opacity-60'
+                    : 'border-border bg-transparent text-muted'
                 }`}
               >
                 <span
@@ -254,12 +253,12 @@ export function MapVisibilityBar({
                   type="button"
                   onClick={() => onToggleLayer(layer.id)}
                   aria-pressed={on}
-                  className="hover:underline"
+                  className={on ? 'hover:underline' : 'line-through hover:underline'}
                 >
                   {layer.name}
                 </button>
                 {kindBadge ? (
-                  <span className="rounded bg-amber-500/20 px-1 text-[9px] font-semibold uppercase tracking-wide text-amber-100">
+                  <span className="rounded bg-amber-500/20 px-1 text-[9px] font-semibold uppercase tracking-wide text-foreground">
                     {kindBadge}
                   </span>
                 ) : null}

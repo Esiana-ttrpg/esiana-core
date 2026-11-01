@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2, X } from 'lucide-react';
-import type { CharacterFieldDescriptor, CharacterFieldType, CharacterPageDescriptor } from '@shared/characterPages';
+import { normalizeFieldPageId, type CharacterFieldDescriptor, type CharacterFieldType, type CharacterPageDescriptor } from '@shared/characterPages';
 import {
   createCustomEntityField,
   deleteCustomEntityField,
@@ -13,6 +13,7 @@ interface EntityFieldManagerProps {
   campaignHandle: string;
   entityPageId: string;
   pages: CharacterPageDescriptor[];
+  activePageId?: string | null;
   onClose: () => void;
 }
 
@@ -22,11 +23,11 @@ const FIELD_TYPES: Array<{ value: CharacterFieldType; label: string }> = [
   { value: 'JSON', label: 'Structured data' },
 ];
 
-export function EntityFieldManager({ campaignHandle, entityPageId, pages, onClose }: EntityFieldManagerProps) {
+export function EntityFieldManager({ campaignHandle, entityPageId, pages, activePageId = null, onClose }: EntityFieldManagerProps) {
   const [fields, setFields] = useState<CharacterFieldDescriptor[]>([]);
   const [label, setLabel] = useState('');
   const [type, setType] = useState<CharacterFieldType>('STRING');
-  const [pageId, setPageId] = useState<string | null>(null);
+  const [pageId, setPageId] = useState<string | null>(normalizeFieldPageId(activePageId));
   const [error, setError] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null);
@@ -87,7 +88,7 @@ export function EntityFieldManager({ campaignHandle, entityPageId, pages, onClos
     setError(null);
     try {
       await Promise.all(normalized
-        .filter((field) => field.capabilities.writable)
+        .filter((field) => field.capabilities.placeable)
         .map((field) => updateEntityField(campaignHandle, entityPageId, field.id, { displayOrder: field.displayOrder })));
       await reloadFields();
     } catch (reason) {
@@ -108,7 +109,7 @@ export function EntityFieldManager({ campaignHandle, entityPageId, pages, onClos
         <form className="mb-4 flex flex-wrap items-end gap-2" onSubmit={(event) => {
           event.preventDefault();
           if (!label.trim()) return;
-          void createCustomEntityField(campaignHandle, entityPageId, { label: label.trim(), type, pageId: pageId ?? undefined }).then((field) => {
+          void createCustomEntityField(campaignHandle, entityPageId, { label: label.trim(), type, pageId }).then((field) => {
             setFields((current) => [...current, field]); setLabel(''); setError(null);
           }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to add field'));
         }}>
@@ -122,8 +123,8 @@ export function EntityFieldManager({ campaignHandle, entityPageId, pages, onClos
           {ordered.map((field, index) => (
             <div key={field.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border/40 px-3 py-2">
               <div className="min-w-40 flex-1"><input className="w-full bg-transparent text-sm font-medium text-foreground" defaultValue={field.label} disabled={!field.capabilities.deletable} onBlur={(event) => { const next = event.target.value.trim(); if (next && next !== field.label) void change(field, { label: next }); }} /><p className="text-xs text-muted">{characterResourceSourceLabel(field)} · {field.type.toLowerCase()}</p></div>
-              <select className="rounded border border-border bg-background px-1.5 py-1 text-xs text-foreground" value={field.pageId ?? ''} disabled={!field.capabilities.deletable} onChange={(event) => void change(field, { pageId: event.target.value || null })}><option value="">Overview</option>{pages.filter((page) => page.coreKey !== 'overview' && !page.id.startsWith('virtual:')).map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select>
-              {field.capabilities.deletable ? <><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === 0 || ordered[index - 1]?.capabilities.writable === false} onClick={() => void move(index, -1)} aria-label={`Move ${field.label} earlier`}><ArrowUp className="size-4" /></button><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === ordered.length - 1 || ordered[index + 1]?.capabilities.writable === false} onClick={() => void move(index, 1)} aria-label={`Move ${field.label} later`}><ArrowDown className="size-4" /></button><button type="button" disabled={deletingFieldId === field.id} className="rounded p-1 text-muted hover:text-destructive disabled:opacity-30" aria-label={`Delete ${field.label}`} onClick={() => { if (!window.confirm(`Delete “${field.label}”?`)) return; setDeletingFieldId(field.id); void deleteCustomEntityField(campaignHandle, entityPageId, field.id).then(() => { setFields((current) => current.filter((candidate) => candidate.id !== field.id)); setError(null); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : `Unable to delete ${field.label}`)).finally(() => setDeletingFieldId(null)); }}><Trash2 className="size-4" /></button></> : null}
+              <select className="rounded border border-border bg-background px-1.5 py-1 text-xs text-foreground" aria-label={'Page for ' + field.label} value={normalizeFieldPageId(field.pageId) ?? ''} disabled={!field.capabilities.placeable} onChange={(event) => void change(field, { pageId: event.target.value || null })}><option value="">Overview</option>{pages.filter((page) => page.coreKey !== 'overview' && !page.id.startsWith('virtual:')).map((page) => <option key={page.id} value={page.id}>{page.title}</option>)}</select>
+              {field.capabilities.placeable ? <><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === 0 || ordered[index - 1]?.capabilities.placeable === false} onClick={() => void move(index, -1)} aria-label={`Move ${field.label} earlier`}><ArrowUp className="size-4" /></button><button type="button" className="rounded p-1 text-muted disabled:opacity-30" disabled={moving || index === ordered.length - 1 || ordered[index + 1]?.capabilities.placeable === false} onClick={() => void move(index, 1)} aria-label={`Move ${field.label} later`}><ArrowDown className="size-4" /></button>{field.capabilities.deletable ? <button type="button" disabled={deletingFieldId === field.id} className="rounded p-1 text-muted hover:text-destructive disabled:opacity-30" aria-label={`Delete ${field.label}`} onClick={() => { if (!window.confirm(`Delete “${field.label}”?`)) return; setDeletingFieldId(field.id); void deleteCustomEntityField(campaignHandle, entityPageId, field.id).then(() => { setFields((current) => current.filter((candidate) => candidate.id !== field.id)); setError(null); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : `Unable to delete ${field.label}`)).finally(() => setDeletingFieldId(null)); }}><Trash2 className="size-4" /></button> : null}</> : null}
             </div>
           ))}
           {ordered.length === 0 ? <p className="py-6 text-center text-sm text-muted">No custom fields yet.</p> : null}

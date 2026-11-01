@@ -1,4 +1,12 @@
+import { ChronologyCategoryLabel } from './ChronologyCategoryLabel';
+import { WikiMarkdown } from '@/components/wiki/WikiMarkdown';
 import { Link } from 'react-router-dom';
+import { ChronologyNavigationLinks } from './ChronologyNavigationLinks';
+import type { TimelineOccurrenceRecord } from '@/lib/chronologyApi';
+import { formatOccurrenceDateLabel } from '@/lib/chronologyDates';
+import { OccurrenceReferenceDate } from './OccurrenceReferenceDate';
+import { ChronologyImportance } from './ChronologyImportance';
+import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 import { BrowseVisibilityIndicator } from '@/components/narrative/VisibilityTierChip';
 import {
   resolveVisibilityTierLabel,
@@ -7,16 +15,22 @@ import {
 import { ChronologyEventManagePanel } from '@/components/chronology/ChronologyEventManagePanel';
 import { ChronologyLoreLink } from '@/components/chronology/ChronologyLoreLink';
 import { ConditionTreeReadOnly } from '@/components/chronology/ConditionTreeReadOnly';
-import { campaignEventLorePath } from '@/lib/campaignPaths';
-import type { TimelineBaseEventRecord, TimelineCategoryRecord } from '@/lib/chronologyApi';
+import { campaignEventLorePath, campaignEventPath } from '@/lib/campaignPaths';
+import type {
+  TimelineBaseEventRecord,
+  TimelineCategoryRecord,
+} from '@/lib/chronologyApi';
 import type { ChronologyDateParts } from '@/lib/chronologyDates';
 import { truncateChronologyDescription } from '@/lib/chronologyText';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 
 interface ChronologyEventInlineDetailProps {
   campaignHandle: string;
+  fullDescription?: boolean;
   baseEvent: TimelineBaseEventRecord;
   calendarName?: string;
+  occurrence?: TimelineOccurrenceRecord | null;
+  timeBundle?: TimeTrackingBundle;
   showConditions?: boolean;
   canManage?: boolean;
   categories?: TimelineCategoryRecord[];
@@ -29,8 +43,11 @@ interface ChronologyEventInlineDetailProps {
 
 export function ChronologyEventInlineDetail({
   campaignHandle,
+  fullDescription = false,
   baseEvent,
   calendarName,
+  occurrence,
+  timeBundle,
   showConditions = true,
   canManage = false,
   categories = [],
@@ -40,7 +57,9 @@ export function ChronologyEventInlineDetail({
   onMutated,
   onDeleted,
 }: ChronologyEventInlineDetailProps) {
-  const descriptionPreview = truncateChronologyDescription(baseEvent.description);
+  const descriptionPreview = truncateChronologyDescription(
+    baseEvent.description,
+  );
   const visibilityTier = resolveVisibilityTierLabel({
     pageVisibility: baseEvent.visibility,
   });
@@ -48,15 +67,28 @@ export function ChronologyEventInlineDetail({
     canManage && shouldShowVisibilityTierChip(visibilityTier);
 
   return (
-    <div className="space-y-3 border-t border-border pt-3" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="space-y-3 border-t border-border pt-3"
+      onClick={(event) => event.stopPropagation()}
+    >
+      {occurrence && <>
+        <p className="text-xs text-muted">{formatOccurrenceDateLabel(occurrence.start)} to {formatOccurrenceDateLabel(occurrence.end)} · {occurrence.duration} day(s)
+          {baseEvent.isRepeating && ` · Occurrence ${occurrence.occurrenceIndex + 1}`}</p>
+        {timeBundle && <OccurrenceReferenceDate occurrence={occurrence} timeBundle={timeBundle} />}
+        <ChronologyNavigationLinks campaignHandle={campaignHandle} occurrence={occurrence} />
+      </>}
+      <Link className="inline-flex min-h-11 items-center text-sm text-muted underline" to={campaignEventPath(campaignHandle, baseEvent.slug ?? baseEvent.id)}>Event details</Link>
       <ChronologyLoreLink
         campaignHandle={campaignHandle}
         baseEventId={baseEvent.id}
         title={baseEvent.title}
+        wikiPageId={baseEvent.wikiPageId}
+        description={baseEvent.description}
+        onChanged={onMutated}
         className="w-full"
       />
 
-      {!canManage && descriptionPreview ? (
+      {fullDescription && baseEvent.description ? <div className="type-prose"><WikiMarkdown content={baseEvent.description} /></div> : descriptionPreview ? (
         <p className="text-xs text-foreground whitespace-pre-wrap">
           {descriptionPreview.text}
           {descriptionPreview.isTruncated ? (
@@ -66,14 +98,14 @@ export function ChronologyEventInlineDetail({
                 to={campaignEventLorePath(campaignHandle, baseEvent.id)}
                 className="text-primary underline-offset-2 hover:underline"
               >
-                Read Full Chronicle ↗
+                Read event details ↗
               </Link>
             </>
           ) : null}
         </p>
-      ) : !canManage ? (
+      ) : (
         <p className="text-xs text-muted">No description.</p>
-      ) : null}
+      )}
 
       <p className="text-[11px] text-muted">
         Tags: {baseEvent.tags.length ? baseEvent.tags.join(' ') : '—'}
@@ -93,8 +125,16 @@ export function ChronologyEventInlineDetail({
       ) : null}
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+        <dt className="text-muted">Category</dt>
+        <dd className="text-foreground">
+          <ChronologyCategoryLabel category={categories.find(category => category.id === baseEvent.categoryId)} />
+        </dd>
+        <dt className="text-muted">Importance</dt>
+        <dd className="capitalize text-foreground">
+          <ChronologyImportance value={baseEvent.importance} />
+        </dd>
         <dt className="text-muted">Duration</dt>
-        <dd className="text-foreground">{baseEvent.duration} day(s)</dd>
+        <dd className="text-foreground">{occurrence?.duration ?? baseEvent.duration} day(s)</dd>
         {calendarName && (
           <>
             <dt className="text-muted">Calendar</dt>
@@ -105,13 +145,14 @@ export function ChronologyEventInlineDetail({
           <>
             <dt className="text-muted">Repeats</dt>
             <dd className="text-foreground">
-              every {baseEvent.repeatInterval ?? '?'} {baseEvent.repeatUnit ?? 'DAYS'}
+              every {baseEvent.repeatInterval ?? '?'}{' '}
+              {baseEvent.repeatUnit ?? 'DAYS'}
             </dd>
           </>
         )}
       </dl>
 
-      {showConditions && !canManage && <ConditionTreeReadOnly value={baseEvent.conditions} />}
+      {showConditions && <ConditionTreeReadOnly value={baseEvent.conditions} />}
 
       {canManage && calendarLike ? (
         <ChronologyEventManagePanel

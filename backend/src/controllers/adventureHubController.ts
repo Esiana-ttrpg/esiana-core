@@ -84,8 +84,7 @@ import { loadStoryboardLayout, saveStoryboardLayout } from '../lib/storyboardLay
 import { buildGlobalContinuityPayload } from '../lib/wikiContinuityService.js';
 import { buildContentSnippet } from '../lib/wikiCategories.js';
 import { buildWikiPageHref } from '../lib/wikiLinkService.js';
-import { normalizeCampaignMemberRole } from '../lib/acl.js';
-import { canViewWikiPage } from '../lib/wikiTree.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from '../lib/wikiTree.js';
 import {
   isNarrativeScenesCategoryPage,
   isQuestsCategoryPage,
@@ -143,9 +142,8 @@ async function redactBlocksForAdventure(
 async function resolveRefPages(
   refIds: Set<string>,
   campaignId: string,
-  role: string | null,
+  viewer: WikiVisibilityViewer,
 ) {
-  const memberRole = role ? normalizeCampaignMemberRole(role) : null;
   if (refIds.size === 0) {
     return new Map<string, { id: string; title: string; workspace: string | null; pathKey: string | null }>();
   }
@@ -155,7 +153,7 @@ async function resolveRefPages(
   });
   return new Map(
     pages
-      .filter((page) => canViewWikiPage(page.visibility, memberRole))
+      .filter((page) => canViewWikiPage(page.visibility, viewer))
       .map((page) => [page.id, page]),
   );
 }
@@ -255,7 +253,7 @@ export async function buildAdventureHubResponse(
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
-    const visibleQuestRows = collectVisibleQuestSubtreeRows(questRows, questsRootId, ctx.role);
+    const visibleQuestRows = collectVisibleQuestSubtreeRows(questRows, questsRootId, ctx);
     const questLifecycleMap = await getLifecycleStates(
       ctx.campaignId,
       NarrativeLifecycleSubjectKinds.QUEST,
@@ -278,7 +276,7 @@ export async function buildAdventureHubResponse(
       if (quest.questGiverId) refIds.add(quest.questGiverId);
       if (quest.factionId) refIds.add(quest.factionId);
     }
-    const refById = await resolveRefPages(refIds, ctx.campaignId, ctx.role);
+    const refById = await resolveRefPages(refIds, ctx.campaignId, ctx);
     const backlinkMap = await batchSessionBacklinksForQuests({
       campaignId: ctx.campaignId,
       campaignHandle,
@@ -334,7 +332,7 @@ export async function buildAdventureHubResponse(
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
-    const visibleSceneRows = collectVisibleSceneSubtreeRows(sceneRows, scenesRootId, ctx.role);
+    const visibleSceneRows = collectVisibleSceneSubtreeRows(sceneRows, scenesRootId, ctx);
     const sceneLifecycleMap = await getLifecycleStates(
       ctx.campaignId,
       NarrativeLifecycleSubjectKinds.SCENE,
@@ -360,7 +358,7 @@ export async function buildAdventureHubResponse(
       }
       if (scene.locationPageId) sceneRefIds.add(scene.locationPageId);
     }
-    const sceneRefById = await resolveRefPages(sceneRefIds, ctx.campaignId, ctx.role);
+    const sceneRefById = await resolveRefPages(sceneRefIds, ctx.campaignId, ctx);
 
     const scenes = buildSceneHubListPayload(lifecycleFilteredScenes, scenesRootId, (row) => {
       const parsed = parseSceneMetadataWithWarnings(row.metadata);
@@ -414,7 +412,7 @@ export async function buildAdventureHubResponse(
         updatedAt: row.updatedAt,
       })),
       questsRootId,
-      ctx.role,
+      ctx,
     );
     const arcProjection = buildArcHierarchyProjection({
       questsRootId,
@@ -447,7 +445,7 @@ export async function buildAdventureHubResponse(
       const visibleThreads = collectVisibleThreadSubtreeRows(
         threadRows,
         threadsRootId,
-        ctx.role,
+        ctx,
       );
       const threadLifecycleMap = await getLifecycleStates(
         ctx.campaignId,
@@ -498,7 +496,7 @@ export async function buildAdventureHubResponse(
       const refPages = await resolveRefPages(
         new Set(unresolvedRefIds),
         ctx.campaignId,
-        ctx.role,
+        ctx,
       );
       for (const id of unresolvedRefIds) {
         const page = refPages.get(id);
@@ -654,7 +652,7 @@ export async function buildAdventureHubResponse(
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
-    const visibleThreads = collectVisibleThreadSubtreeRows(threadRows, threadsRootId, ctx.role);
+    const visibleThreads = collectVisibleThreadSubtreeRows(threadRows, threadsRootId, ctx);
     const threadLifecycleMap = await getLifecycleStates(
       ctx.campaignId,
       NarrativeLifecycleSubjectKinds.OPEN_THREAD,
@@ -677,7 +675,7 @@ export async function buildAdventureHubResponse(
     }));
     const visibleSceneRows =
       scenesRootId != null
-        ? collectVisibleSceneSubtreeRows(sceneRows, scenesRootId, ctx.role)
+        ? collectVisibleSceneSubtreeRows(sceneRows, scenesRootId, ctx)
         : [];
     const sceneLifecycleMap =
       visibleSceneRows.length > 0
@@ -748,7 +746,7 @@ export async function buildAdventureHubResponse(
     for (const thread of threadScans) titlesById.set(thread.id, thread.title);
     for (const scene of sceneScans) titlesById.set(scene.id, scene.title);
 
-    const refPages = await resolveRefPages(ledgerRefIds, ctx.campaignId, ctx.role);
+    const refPages = await resolveRefPages(ledgerRefIds, ctx.campaignId, ctx);
     for (const [id, page] of refPages) {
       titlesById.set(id, page.title);
     }
@@ -856,7 +854,7 @@ export async function buildAdventureHubResponse(
         updatedAt: row.updatedAt,
       })),
       scenesRootId,
-      ctx.role,
+      ctx,
     );
 
     const sceneLifecycleMap = await getLifecycleStates(
@@ -892,7 +890,7 @@ export async function buildAdventureHubResponse(
         updatedAt: row.updatedAt,
       })),
       questsRootId,
-      ctx.role,
+      ctx,
     );
     const arcProjection = buildArcHierarchyProjection({
       questsRootId,
@@ -980,7 +978,7 @@ export async function buildAdventureHubResponse(
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       }));
-      const visibleThreads = collectVisibleThreadSubtreeRows(threadRows, threadsRootId, ctx.role);
+      const visibleThreads = collectVisibleThreadSubtreeRows(threadRows, threadsRootId, ctx);
       const threadLifecycleMap = await getLifecycleStates(
         ctx.campaignId,
         NarrativeLifecycleSubjectKinds.OPEN_THREAD,
@@ -1058,7 +1056,7 @@ export async function buildAdventureHubResponse(
               updatedAt: row.updatedAt,
             })),
             scenesRootId,
-            ctx.role,
+            ctx,
           )
             .filter((row) => parseSceneMetadata(row.metadata).sceneStatus === 'READY')
             .map((row) => ({
@@ -1109,7 +1107,7 @@ export async function buildAdventureHubResponse(
         updatedAt: row.updatedAt,
       })),
       questsRootId,
-      ctx.role,
+      ctx,
     );
     const sceneRowsForArc =
       scenesRootId != null
@@ -1125,7 +1123,7 @@ export async function buildAdventureHubResponse(
               updatedAt: row.updatedAt,
             })),
             scenesRootId,
-            ctx.role,
+            ctx,
           )
         : [];
 

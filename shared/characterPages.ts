@@ -4,6 +4,7 @@ export const CHARACTER_CORE_PAGE_KEYS = [
   'relationships',
   'timeline',
   'discovery',
+  'trajectory',
   'continuity',
 ] as const;
 
@@ -28,6 +29,20 @@ export interface CharacterFieldCapabilities {
   readable: boolean;
   writable: boolean;
   deletable: boolean;
+  /** Sheet placement/order can be managed independently of value writability. */
+  placeable?: boolean;
+}
+
+/** Overview has historically used both a null destination and a materialized core tab. */
+export function normalizeFieldPageId(pageId: string | null | undefined): string | null {
+  return !pageId || pageId === 'core:overview' ? null : pageId;
+}
+
+export function formatCustomFieldValue(value: unknown): string {
+  if (value == null || value === '') return 'Not set';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
 }
 
 export interface PluginCharacterFieldDefinition {
@@ -135,7 +150,7 @@ export const ENTITY_SHELL_CORE_PAGES: Record<string, ReadonlyArray<{ key: string
   character: CHARACTER_CORE_PAGE_KEYS.map((key) => ({
     key,
     title: key.charAt(0).toUpperCase() + key.slice(1),
-    dmOnly: key === 'discovery' || key === 'continuity',
+    dmOnly: key === 'discovery' || key === 'trajectory' || key === 'continuity',
   })),
   location: [
     ['overview', 'Overview'], ['people', 'People'], ['places', 'Places'], ['organizations', 'Organizations'],

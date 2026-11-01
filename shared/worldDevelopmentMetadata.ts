@@ -210,6 +210,7 @@ export type DevelopmentDependencyRef = {
 };
 
 export type DevelopmentPayload = {
+  categoryId?: string | null;
   version: typeof WORLD_DEVELOPMENT_SEMANTICS_VERSION;
   developmentType: DevelopmentType;
   significance: DevelopmentSignificance;
@@ -399,6 +400,7 @@ export function normalizeDevelopmentPayload(raw: unknown): DevelopmentPayload | 
     acceptTarget: normalizeDevelopmentAcceptTarget(obj.acceptTarget),
     acceptedArtifactId:
       typeof obj.acceptedArtifactId === 'string' ? obj.acceptedArtifactId : null,
+    categoryId: typeof obj.categoryId === 'string' ? obj.categoryId : null,
     definitionId: typeof obj.definitionId === 'string' ? obj.definitionId : null,
     resultSummary: typeof obj.resultSummary === 'string' ? obj.resultSummary.slice(0, 500) : null,
     providerId: typeof obj.providerId === 'string' ? obj.providerId.trim() || null : null,

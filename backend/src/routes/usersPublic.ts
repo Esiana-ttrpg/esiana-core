@@ -8,7 +8,8 @@ import {
   getPublicPortfolioCharacter,
   getUserAssetFile,
 } from '../controllers/portfolioController.js';
-import { optionalAuth } from '../middleware/auth.js';
+import { authenticateApiOrSession, optionalAuth, requireTokenScopes } from '../middleware/auth.js';
+import { API_TOKEN_SCOPES } from '../lib/apiToken.js';
 import { rateLimitPolicy } from '../lib/rateLimit/index.js';
 
 export const usersPublicRouter = Router();
@@ -25,12 +26,16 @@ usersPublicRouter.get('/:id/creator-attribution', optionalAuth, getPublicCreator
 usersPublicRouter.get('/:id/activity', optionalAuth, getPublicUserActivity);
 usersPublicRouter.get(
   '/:id/characters/:characterId',
-  optionalAuth,
+  authenticateApiOrSession,
+  requireTokenScopes([API_TOKEN_SCOPES.CAMPAIGN_READ]),
+  rateLimitPolicy('apiKey'),
   getPublicPortfolioCharacter,
 );
 usersPublicRouter.get(
   '/assets/:assetId',
-  optionalAuth,
+  authenticateApiOrSession,
+  requireTokenScopes([API_TOKEN_SCOPES.CAMPAIGN_READ]),
+  rateLimitPolicy('apiKey'),
   rateLimitPolicy('expensive', { scope: 'ip' }),
   getUserAssetFile,
 );

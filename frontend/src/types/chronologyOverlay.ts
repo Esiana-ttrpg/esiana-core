@@ -7,6 +7,7 @@ export type ConvergenceTimelineLink = {
 };
 
 export type ConvergenceTimelineEntry = {
+  feed?: import('@shared/campaignFeed').FeedEntryMetadata;
   entryId: string;
   sortOrdinal: string;
   instant: {
@@ -40,6 +41,7 @@ export type ConvergenceTimelineEntry = {
 };
 
 export type ConvergenceOverlayBundle = {
+  feed?: import('@shared/campaignFeed').CampaignFeedCoverage;
   bundleVersion: string;
   evaluatedAt: string;
   projectionContextHash: string;

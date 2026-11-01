@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ScrollText } from 'lucide-react';
 import type { DashboardQuestPage } from '@/lib/dashboardConfig';
-import { campaignWikiPath } from '@/lib/campaignPaths';
+import { campaignPath, campaignWikiPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
-import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { DashboardWidgetShell, useDashboardPreviewLimit } from '../DashboardWidgetShell';
 import {
   dashboardQuestStatusBadgeClass,
   dashboardQuestStatusLabel,
@@ -22,6 +22,7 @@ export function QuestLedgerWidget({
   customizeMode,
   onHide,
 }: QuestLedgerWidgetProps) {
+  const previewLimit = useDashboardPreviewLimit();
   const { flatPages } = useWiki();
 
   return (
@@ -37,11 +38,11 @@ export function QuestLedgerWidget({
         </p>
       ) : (
         <ul className="space-y-2">
-          {quests.map((quest) => (
+          {quests.slice(0, previewLimit).map((quest) => (
             <li key={quest.id}>
               <Link
                 to={campaignWikiPath(campaignHandle, quest.id, flatPages)}
-                className="block rounded-lg border border-border bg-background/50 px-3 py-2.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                className="block rounded-lg px-2 py-2.5 hover:bg-elevated/50 text-sm text-foreground transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="min-w-0 flex-1 font-medium leading-snug">
@@ -88,6 +89,7 @@ export function QuestLedgerWidget({
           ))}
         </ul>
       )}
+      <Link to={campaignPath(campaignHandle, 'adventures')} className="mt-3 inline-block text-sm text-primary hover:underline">View adventures</Link>
     </DashboardWidgetShell>
   );
 }

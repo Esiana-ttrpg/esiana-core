@@ -11,6 +11,8 @@ export interface TimelineCategoryRecord {
   campaignId: string;
   name: string;
   color: string | null;
+  icon?: string | null;
+  sortOrder?: number;
 }
 
 export interface ConditionNode {
@@ -31,11 +33,15 @@ export interface MoonOverride {
 }
 
 export interface TimelineBaseEventRecord {
+  slug?: string;
+  slugAliases?: string[];
+  wikiPageId?: string | null;
   id: string;
   calendarId: string;
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: 'PUBLIC' | 'PARTY' | 'DM_ONLY';
+  importance: 'NOTICE' | 'MINOR' | 'MAJOR';
   title: string;
   description: string | null;
   duration: number;
@@ -57,6 +63,8 @@ export interface TimelineBaseEventRecord {
 }
 
 export interface TimelineOccurrenceRecord {
+  wikiPageId?: string | null;
+  slug?: string;
   eraIds?: string[];
   eraNames?: string[];
   occurrenceId: string;
@@ -65,6 +73,7 @@ export interface TimelineOccurrenceRecord {
   calendarId: string;
   categoryId: string | null;
   visibility: 'PUBLIC' | 'PARTY' | 'DM_ONLY';
+  importance: 'NOTICE' | 'MINOR' | 'MAJOR';
   title: string;
   description: string | null;
   start: {

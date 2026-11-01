@@ -50,7 +50,7 @@ export function campaignPartyPath(handle: string): string {
 
 export function campaignChronologyPath(
   handle: string,
-  view?: 'calendar' | 'timeline' | 'events' | 'feed',
+  view?: 'calendar' | 'timeline' | 'eras' | 'events' | 'feed',
 ): string {
   const base = campaignPath(handle, 'chronology');
   return view ? `${base}?view=${view}` : base;
@@ -150,18 +150,17 @@ export function campaignWikiTagsPath(
   return `${base}?${params.toString()}`;
 }
 
+export function campaignEventPath(handle: string, slugOrId: string): string {
+  return campaignPath(handle, 'events', encodeURIComponent(slugOrId));
+}
+export function campaignEraPath(handle: string, slugOrId: string): string {
+  return campaignPath(handle, 'eras', encodeURIComponent(slugOrId));
+}
 export function campaignEventLorePath(
   handle: string,
   baseEventId: string,
-  options?: { create?: boolean; prefillTitle?: string },
 ): string {
-  const base = campaignPath(handle, `event-${baseEventId}`);
-  if (!options?.create) return base;
-  const params = new URLSearchParams({ create: 'true' });
-  if (options.prefillTitle?.trim()) {
-    params.set('prefillTitle', options.prefillTitle.trim());
-  }
-  return `${base}?${params.toString()}`;
+  return campaignEventPath(handle, baseEventId);
 }
 
 export function campaignCharacterPath(
@@ -187,10 +186,13 @@ export function campaignCategoryChildPath(
 }
 
 export type CampaignSettingsTab =
+  | 'safety-privacy'
+  | 'audio'
   | 'general'
   | 'access'
   | 'recruitment'
   | 'scheduling'
+  | 'timeline'
   | 'world-development'
   | 'appearance'
   | 'integrations'

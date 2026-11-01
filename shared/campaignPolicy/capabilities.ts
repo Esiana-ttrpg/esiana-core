@@ -4,6 +4,8 @@
  */
 
 export const CampaignCapabilities = {
+  SAFETY_SUBMIT: 'safety.submit',
+  SAFETY_MANAGE: 'safety.manage',
   CAMPAIGN_VIEW: 'campaign.view',
   CAMPAIGN_DELETE: 'campaign.delete',
   CAMPAIGN_TRANSFER_OWNERSHIP: 'campaign.transfer_ownership',
@@ -29,6 +31,12 @@ export const CampaignCapabilities = {
   ASSETS_DELETE_ANY: 'assets.delete_any',
   ASSETS_DELETE_OWNED: 'assets.delete_owned',
   ASSETS_VIEW: 'assets.view',
+  AUDIO_MANAGE: 'audio.manage',
+  AUDIO_UPLOAD: 'audio.upload',
+  AUDIO_CHAPTERS_EDIT: 'audio.chapters.edit',
+  AUDIO_TRANSCRIPT_EDIT: 'audio.transcript.edit',
+  AUDIO_TRANSCRIPT_PUBLISH: 'audio.transcript.publish',
+  AUDIO_TRANSCRIBE: 'audio.transcribe',
 
   LEDGER_CONTRIBUTE: 'ledger.contribute',
 

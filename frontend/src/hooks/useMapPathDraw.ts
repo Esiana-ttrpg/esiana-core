@@ -43,6 +43,8 @@ export function useMapPathDraw({
   const lastClickRef = useRef(0);
 
   useEffect(() => {
+    lastClickRef.current = 0;
+    setSpaceHeld(false);
     if (!active) {
       setPhase('idle');
       setVertices([]);
@@ -52,7 +54,7 @@ export function useMapPathDraw({
     setPhase('drawing');
     setVertices([]);
     setCursorDisplay(null);
-  }, [active]);
+  }, [active, campaignHandle, assetId]);
 
   const cancel = useCallback(() => {
     setPhase('idle');
@@ -64,10 +66,7 @@ export function useMapPathDraw({
     if (phase !== 'drawing') return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Escape') {
-        event.preventDefault();
-        cancel();
-      }
+      if ((event.target as HTMLElement)?.closest('input, textarea, select, button, summary, [contenteditable="true"]')) return;
       if (event.code === 'Space') {
         event.preventDefault();
         setSpaceHeld(true);

@@ -1,5 +1,7 @@
+import { RecordingStoragePanel } from '@/components/admin/RecordingStoragePanel';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useState } from 'react';
+
 import { Check, HardDrive, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { secondaryButtonClasses } from '@/components/admin/adminFormStyles';
@@ -216,6 +218,7 @@ export function AdminStoragePage() {
 
   return (
     <div className="space-y-8">
+      <RecordingStoragePanel />
       <header className="space-y-1">
         <div className="flex items-center gap-2 text-primary">
           <HardDrive className="size-7" strokeWidth={1.5} />

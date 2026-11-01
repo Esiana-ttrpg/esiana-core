@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { dashboardSessionState } from '@shared/dashboardSessions';
 import { CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +13,7 @@ import { SkipSessionModal } from '@/components/session/SkipSessionModal';
 import type { SessionAttendanceStatus } from '@/types/notifications';
 import type { UpcomingSessionSummary } from '@/types/notifications';
 import { translateDashboardWidgetLabel } from '@/i18n/dashboardWidgetLabels';
-import { DashboardWidgetShell } from '../DashboardWidgetShell';
+import { DashboardPresentationContext, DashboardWidgetShell } from '../DashboardWidgetShell';
 
 interface SessionScheduleCardProps {
   campaignHandle: string;
@@ -35,11 +36,18 @@ function formatCountdown(target: Date): string {
   return `${minutes}m`;
 }
 
+function safeTimeZone(value?: string | null): string | undefined {
+  const zone = value?.trim();
+  if (!zone) return undefined;
+  try { new Intl.DateTimeFormat(undefined, { timeZone: zone }); return zone; }
+  catch { return undefined; }
+}
+
 function formatLocalTime(iso: string, timeZone?: string | null): string {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
-    timeZone: timeZone ?? undefined,
+    timeZone: safeTimeZone(timeZone),
   }).format(new Date(iso));
 }
 
@@ -55,45 +63,50 @@ export function SessionScheduleCard({
   const { t } = useTranslation();
   const [rsvp, setRsvp] = useState<SessionAttendanceStatus>('ATTENDING');
   const [rsvpBusy, setRsvpBusy] = useState(false);
-  const [, tick] = useState(0);
+  const [now, setNow] = useState(Date.now);
+  const { variant } = useContext(DashboardPresentationContext);
   const [upcoming, setUpcoming] = useState<UpcomingSessionSummary | null>(null);
+  const [scheduleLoaded, setScheduleLoaded] = useState(false);
   const [autoSchedule, setAutoSchedule] = useState(true);
   const [isOneShot, setIsOneShot] = useState(false);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [skipModalOpen, setSkipModalOpen] = useState(false);
 
   const reloadSchedule = useCallback(() => {
+    if (!canManageCampaign) return;
     void fetchCampaignSchedule(campaignHandle)
       .then((payload) => {
         setUpcoming(payload.upcoming);
+        setScheduleLoaded(true);
         setAutoSchedule(payload.schedule.autoScheduleUpcomingSession);
         setIsOneShot(payload.schedule.isOneShot);
       })
       .catch(() => {
         setUpcoming(null);
+        setScheduleLoaded(false);
       });
-  }, [campaignHandle]);
+  }, [campaignHandle, canManageCampaign]);
 
   useEffect(() => {
     reloadSchedule();
   }, [reloadSchedule, nextSession?.timelinePointId]);
 
   useEffect(() => {
-    const interval = window.setInterval(() => tick((v) => v + 1), 60_000);
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(interval);
   }, []);
 
-  const effectiveNext = upcoming ?? (nextSession
+  const fallback = nextSession
     ? {
         timelinePointId: nextSession.timelinePointId,
         sessionTitle: nextSession.title,
         sequenceOrder: nextSession.sequenceOrder ?? 0,
-        status: 'PUBLISHED',
+        status: nextSession.status ?? 'PUBLISHED',
         plannedStartAt: nextSession.plannedStartAt,
-        plannedEndAt: null,
-        timezone: schedule.timezone ?? null,
-        venueType: null,
-        venueLabel: null,
+        plannedEndAt: nextSession.plannedEndAt ?? null,
+        timezone: nextSession.timezone ?? schedule.timezone ?? null,
+        venueType: nextSession.venueType ?? null,
+        venueLabel: nextSession.venueLabel ?? null,
         venueUrl: null,
         locationPageId: null,
         reminderSentAt: null,
@@ -102,26 +115,48 @@ export function SessionScheduleCard({
         skipReason: null,
         plannedWorldEpochMinute: null,
       }
-    : null);
+    : null;
+  const refreshedUpcoming = upcoming && fallback?.timelinePointId === upcoming.timelinePointId ? {
+    ...fallback, ...upcoming,
+    venueLabel: upcoming.venueLabel ?? fallback.venueLabel,
+    venueType: upcoming.venueType ?? fallback.venueType,
+  } : upcoming;
+  const effectiveNext = canManageCampaign && scheduleLoaded
+    ? (fallback && dashboardSessionState(fallback, now) === 'ongoing' ? fallback : refreshedUpcoming)
+    : fallback;
 
   /** Only fetched upcoming may drive edit/skip (never synthesized dashboard fallback). */
   const editableUpcoming =
-    upcoming && upcoming.status !== 'SKIPPED' ? upcoming : null;
+    upcoming && upcoming.status === 'PUBLISHED' && upcoming.timelinePointId === effectiveNext?.timelinePointId ? upcoming : null;
 
-  const isSkipped = effectiveNext?.status === 'SKIPPED';
+  const state = effectiveNext ? dashboardSessionState(effectiveNext, now) : null;
+  const isSkipped = state === 'skipped';
+  const canRsvp = state === 'scheduled' || state === 'ongoing';
+  const start = effectiveNext?.plannedStartAt ? new Date(effectiveNext.plannedStartAt) : null;
+  const validStart = start && Number.isFinite(start.getTime()) ? start : null;
+  const locationTitle = effectiveNext?.timelinePointId === nextSession?.timelinePointId ? nextSession?.locationTitle : null;
+  const timeZone = safeTimeZone(effectiveNext?.timezone ?? schedule.timezone);
+  const datePart = (options: Intl.DateTimeFormatOptions) => validStart
+    ? new Intl.DateTimeFormat(undefined, { ...options, timeZone }).format(validStart) : '';
 
   const hasRecurringSchedule = Boolean(schedule.day && schedule.time);
   const showSchedulingCta =
     !effectiveNext && !hasRecurringSchedule && canManageCampaign && !customizeMode;
 
   const countdownLabel = useMemo(() => {
+    if (state === 'completed') return 'Completed';
+    if (state === 'cancelled') return 'Cancelled';
+    if (state === 'draft') return 'Draft schedule';
+    if (state === 'ongoing') return 'In progress';
     if (isSkipped && effectiveNext) {
       const reason = effectiveNext.skipReason?.trim();
       return reason ? `Skipped · ${reason}` : 'Skipped';
     }
     if (effectiveNext?.plannedStartAt) {
       const when = new Date(effectiveNext.plannedStartAt);
-      const campaignTz = schedule.timezone?.trim() || undefined;
+      if (!Number.isFinite(when.getTime())) return 'Session date unavailable';
+      if (when.getTime() <= now) return 'Scheduled start has passed';
+      const campaignTz = effectiveNext.timezone ?? schedule.timezone?.trim() ?? undefined;
       const localWhen = formatLocalTime(effectiveNext.plannedStartAt, undefined);
       const campaignWhen = campaignTz
         ? formatLocalTime(effectiveNext.plannedStartAt, campaignTz)
@@ -130,8 +165,7 @@ export function SessionScheduleCard({
         campaignTz && localWhen !== campaignWhen
           ? ` (your time: ${localWhen})`
           : '';
-      const title = effectiveNext.sessionTitle || nextSession?.title || 'Next session';
-      let label = `${formatCountdown(when)} until ${title} — ${campaignWhen}${tzNote}`;
+      let label = `Starts in ${formatCountdown(when)}${tzNote}`;
       if (effectiveNext.plannedWorldEpochMinute) {
         label += ' · Planned world start set';
       }
@@ -152,14 +186,15 @@ export function SessionScheduleCard({
     canManageCampaign,
     hasRecurringSchedule,
     t,
-    tick,
+    now,
+    state,
     isSkipped,
     nextSession?.title,
   ]);
 
   async function updateRsvp(next: SessionAttendanceStatus) {
     setRsvp(next);
-    if (!effectiveNext?.timelinePointId || customizeMode || isSkipped) return;
+    if (!effectiveNext?.timelinePointId || customizeMode || !canRsvp) return;
     setRsvpBusy(true);
     try {
       await patchMySessionAttendance(campaignHandle, effectiveNext.timelinePointId, {
@@ -182,11 +217,29 @@ export function SessionScheduleCard({
       customizeMode={customizeMode}
       onHide={onHide}
     >
-      <div className="space-y-4">
-        <p className="text-base font-semibold leading-snug text-primary">{countdownLabel}</p>
+      <div className="space-y-2" data-session-state={state ?? 'empty'}>
+        <div className="flex min-w-0 items-start gap-3">
+        {validStart ? <div className="shrink-0 rounded-lg bg-elevated px-3 py-2 text-center" aria-label={datePart({ dateStyle: 'full' })}>
+          <p className="text-xs text-muted">{datePart({ month: 'short' })}</p>
+          <p className={`type-prose font-semibold leading-tight text-foreground ${variant === 'featured' ? 'text-4xl' : 'text-3xl'}`}>{datePart({ day: 'numeric' })}</p>
+          <p className="mt-1 text-xs text-muted">{datePart({ hour: 'numeric', minute: '2-digit' })}</p>
+        </div> : null}
+        <div className="min-w-0 flex-1 space-y-1">
+        {effectiveNext ? (
+          <p className="break-words text-base font-semibold leading-snug text-foreground">{effectiveNext.sessionTitle || nextSession?.title || 'Next session'}</p>
+        ) : null}
+        <p className="text-xs leading-relaxed text-muted">
+          {effectiveNext && effectiveNext.sequenceOrder > 0 ? `Session ${effectiveNext.sequenceOrder} · ` : ''}{countdownLabel}
+        </p>
+        {effectiveNext?.venueLabel || locationTitle || (validStart && timeZone) ? <p className="break-words text-xs leading-relaxed text-muted">
+          {[effectiveNext?.venueLabel, locationTitle !== effectiveNext?.venueLabel ? locationTitle : null, validStart ? timeZone : null].filter(Boolean).join(' · ')}
+        </p> : null}
+        </div>
+        </div>
 
+        {effectiveNext || (canManageCampaign && !customizeMode) ? <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {showSchedulingCta || (!effectiveNext && canManageCampaign && !customizeMode) ? (
-          <div className="flex flex-wrap gap-3">
+          <>
             <button
               type="button"
               onClick={() => setScheduleModalOpen(true)}
@@ -200,10 +253,10 @@ export function SessionScheduleCard({
             >
               {t('campaign.dashboard.sessionScheduleSetupLink')}
             </Link>
-          </div>
+          </>
         ) : null}
 
-        {effectiveNext && !isSkipped ? (
+        {effectiveNext ? (
           <Link
             to={campaignNotePath(campaignHandle, effectiveNext.timelinePointId)}
             className="text-xs text-primary hover:underline"
@@ -213,7 +266,7 @@ export function SessionScheduleCard({
         ) : null}
 
         {editableUpcoming && canManageCampaign && !customizeMode ? (
-          <div className="flex flex-wrap gap-3">
+          <>
             <button
               type="button"
               onClick={() => setScheduleModalOpen(true)}
@@ -228,11 +281,11 @@ export function SessionScheduleCard({
             >
               Skip session
             </button>
-          </div>
+          </>
         ) : null}
 
-        {effectiveNext && !isSkipped ? (
-          <div className="grid grid-cols-3 gap-2">
+        {effectiveNext && canRsvp && variant !== 'compact' ? (
+          <div role="group" aria-label="Session attendance" className="flex flex-wrap gap-1">
             {(
               [
                 ['ATTENDING', 'Attending'],
@@ -244,6 +297,7 @@ export function SessionScheduleCard({
                 key={value}
                 type="button"
                 disabled={rsvpBusy || customizeMode}
+                aria-pressed={rsvp === value}
                 onClick={() => void updateRsvp(value)}
                 className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
                   rsvp === value
@@ -256,6 +310,7 @@ export function SessionScheduleCard({
             ))}
           </div>
         ) : null}
+        </div> : null}
       </div>
 
       <ScheduleSessionModal

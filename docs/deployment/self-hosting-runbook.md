@@ -9,7 +9,7 @@ Maintainer appendix — RC gates and release verification.
 ## RC verification
 
 - OpenAPI loads at `/api/docs` when `OPENAPI_DOCS_ENABLED` ≠ false
-- `docker compose up -d` — migrations apply automatically via esiana entrypoint
+- `docker compose up -d` — schema migrations apply automatically via the esiana entrypoint (PostgreSQL `migrate deploy`; SQLite normalized deploy without reset). Chronology wiki-workspace backfill runs once at API startup.
 - Smoke: login, wiki edit, sovereign export ZIP at `http://localhost:8080`
 - GHCR image is multi-arch (`linux/amd64`, `linux/arm64`):
   `docker buildx imagetools inspect ghcr.io/esiana-ttrpg/esiana:latest`

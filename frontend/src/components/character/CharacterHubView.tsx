@@ -366,7 +366,7 @@ export function CharacterHubView({
           showInlineRail ? 'narrative-layout--character-hub-inline' : ''
         }
         narrativeLayoutStyle={narrativeLayoutStyle}
-        catalogGridClass="space-y-8"
+        catalogGridClass="space-y-2"
         breadcrumbs={
           <WikiPageBreadcrumbs
             crumbs={indexBreadcrumbs}
@@ -377,14 +377,14 @@ export function CharacterHubView({
         title={
           <>
             <Users className="size-6 text-primary" strokeWidth={1.25} />
-            Campaign Cast
+            Characters
           </>
         }
         beforeActions={
           isDMUser ? (
             <PlayerPerspectiveToggle
               value={playerPreview ? 'party' : 'dm'}
-              onChange={(next) => setPlayerPreview(next === 'party')}
+              onChange={(next) => setPlayerPreview(next !== 'dm')}
               ariaLabel="Character cast view perspective"
             />
           ) : null

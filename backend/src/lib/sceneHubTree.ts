@@ -1,5 +1,4 @@
-import type { CampaignMemberRole } from '../types/domain.js';
-import { canViewWikiPage } from './wikiTree.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from './wikiTree.js';
 import { compareWikiTitles } from './wikiSort.js';
 
 export type SceneHubPageRow = {
@@ -35,7 +34,7 @@ export function isDescendantOfScenesRoot(
 export function collectVisibleSceneSubtreeRows(
   rows: SceneHubPageRow[],
   scenesRootId: string,
-  role: CampaignMemberRole | null,
+  viewer: WikiVisibilityViewer,
 ): SceneHubPageRow[] {
   const parentById = new Map(
     rows.map((row) => [row.id, { parentId: row.parentId }]),
@@ -50,7 +49,7 @@ export function collectVisibleSceneSubtreeRows(
       visited.add(current);
       const node = rowById.get(current);
       if (!node) return false;
-      if (!canViewWikiPage(node.visibility, role)) return false;
+      if (!canViewWikiPage(node.visibility, viewer)) return false;
       current = node.parentId;
     }
     return true;
@@ -61,7 +60,7 @@ export function collectVisibleSceneSubtreeRows(
     if (!isDescendantOfScenesRoot(row.id, scenesRootId, parentById)) {
       return false;
     }
-    if (!canViewWikiPage(row.visibility, role)) return false;
+    if (!canViewWikiPage(row.visibility, viewer)) return false;
     if (!row.parentId || row.parentId === scenesRootId) return true;
     return hasVisibleAncestryChain(row.parentId);
   });

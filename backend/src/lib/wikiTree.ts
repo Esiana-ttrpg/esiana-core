@@ -2,11 +2,12 @@ import type { WikiPage } from './prismaClient.js';
 import type { WikiTreeNode } from '../types/api.js';
 import { isWorkshopInfrastructurePage } from './workshopDraftService.js';
 import { compareWikiTitles } from './wikiSort.js';
-import {
-  CampaignMemberRoles,
-  WikiVisibility,
-  type CampaignMemberRole,
-} from '../types/domain.js';
+import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
+import { roleCapabilitiesFor } from '../../../shared/campaignPolicy/roleGrants.js';
+import { canViewVisibilityFromCaps } from '../../../shared/campaignPolicy/resourceAccess.js';
+import { isMembershipRole } from '../../../shared/campaignPolicy/membershipRoles.js';
+import type { CampaignMemberRole } from '../types/domain.js';
+import type { CampaignContext } from '../types/api.js';
 
 type FlatWikiPage = Pick<
   WikiPage,
@@ -24,38 +25,51 @@ type FlatWikiPage = Pick<
   | 'updatedAt'
 >;
 
+export type WikiVisibilityViewer =
+  | CampaignMemberRole
+  | null
+  | ReadonlySet<string>
+  | { capabilities: Iterable<string> }
+  | Pick<CampaignContext, 'capabilities' | 'actor'>;
+
+function capsFromViewer(
+  viewer: WikiVisibilityViewer,
+): ReadonlySet<(typeof CampaignCapabilities)[keyof typeof CampaignCapabilities]> {
+  if (viewer && typeof viewer === 'object') {
+    if ('capabilities' in viewer && viewer.capabilities) {
+      return new Set(
+        [...viewer.capabilities] as Array<
+          (typeof CampaignCapabilities)[keyof typeof CampaignCapabilities]
+        >,
+      );
+    }
+    if (viewer instanceof Set) {
+      return viewer as ReadonlySet<
+        (typeof CampaignCapabilities)[keyof typeof CampaignCapabilities]
+      >;
+    }
+  }
+  const role =
+    typeof viewer === 'string' && isMembershipRole(viewer) ? viewer : null;
+  if (!role) {
+    return new Set([CampaignCapabilities.CAMPAIGN_VIEW]);
+  }
+  return roleCapabilitiesFor(role);
+}
+
 export function canViewWikiPage(
   visibility: string,
-  role: CampaignMemberRole | null,
+  viewer: WikiVisibilityViewer,
 ): boolean {
-  if (
-    role === CampaignMemberRoles.GAMEMASTER ||
-    role === CampaignMemberRoles.WRITER
-  ) {
-    return true;
-  }
-
-  if (visibility === WikiVisibility.PUBLIC) {
-    return true;
-  }
-
-  if (visibility === WikiVisibility.PARTY) {
-    return (
-      role === CampaignMemberRoles.PARTICIPANT ||
-      role === CampaignMemberRoles.OBSERVER
-    );
-  }
-
-  // DM_Only — not visible to players/viewers or anonymous public visitors
-  return false;
+  return canViewVisibilityFromCaps(capsFromViewer(viewer), visibility);
 }
 
 export function buildWikiTree(
   pages: FlatWikiPage[],
-  role: CampaignMemberRole | null,
+  viewer: WikiVisibilityViewer,
 ): WikiTreeNode[] {
   const visible = pages.filter(
-    (p) => canViewWikiPage(p.visibility, role) && !isWorkshopInfrastructurePage(p.metadata),
+    (p) => canViewWikiPage(p.visibility, viewer) && !isWorkshopInfrastructurePage(p.metadata),
   );
 
   const nodeMap = new Map<string, WikiTreeNode>();
@@ -81,7 +95,6 @@ export function buildWikiTree(
   }
 
   const roots: WikiTreeNode[] = [];
-
   for (const node of nodeMap.values()) {
     if (node.parentId && nodeMap.has(node.parentId)) {
       nodeMap.get(node.parentId)!.children.push(node);

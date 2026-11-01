@@ -12,7 +12,6 @@ import { WikiPageBreadcrumbs } from '@/components/wiki/WikiPageBreadcrumbs';
 import { WikiPageRuntimeToolbar } from '@/components/wiki/WikiPageRuntimeToolbar';
 import { EntitySubviewNav } from '@/components/entity/shells/EntitySubviewNav';
 import type { WikiPageBlock } from '@/types/wiki';
-import { Plus } from 'lucide-react';
 import { resolvePluginPageTarget } from '@/lib/pluginContributions';
 
 interface WikiBreadcrumb {
@@ -33,19 +32,18 @@ interface WikiPageEditorHeaderProps {
   subviews: EntitySubviewDef[];
   activeSubview: EntitySubviewId;
   onSubviewChange: (id: EntitySubviewId) => void;
+  portfolioCharacter?: { pageId: string; characterName: string };
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;
   isSaving: boolean;
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;
-  isSearchOpen: boolean;
   isEditingPage: boolean;
   showGridLines: boolean;
   canDeleteWikiPage: boolean;
   widgetOptions: Array<{ value: string; label: string; group?: string }>;
   onTogglePin: () => void;
-  onToggleSearch: () => void;
   onToggleEditPage: () => void;
   onToggleGridLines: () => void;
   onOpenPageSettings?: () => void;
@@ -60,7 +58,6 @@ interface WikiPageEditorHeaderProps {
   onPageTitleForEditChange?: (value: string) => void;
   onPageTitleForEditBlur?: () => void | Promise<void>;
   titleFocusField?: string | null;
-  onAddSubview?: () => void;
   onManageSubviews?: () => void;
   characterMasthead?: (nameControl: ReactNode) => ReactNode;
 }
@@ -88,7 +85,6 @@ export function WikiPageEditorHeader({
   onPageTitleForEditChange,
   onPageTitleForEditBlur,
   titleFocusField,
-  onAddSubview,
   onManageSubviews,
   characterMasthead,
   ...toolbarProps
@@ -119,7 +115,7 @@ export function WikiPageEditorHeader({
       </div>
 
       <div className="mt-1 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
           {!characterMasthead && showTitleEditor ? (
             <input
               id="character-field-name"
@@ -170,33 +166,20 @@ export function WikiPageEditorHeader({
         </Link>
       ) : null}
 
-      {toolbarProps.isSearchOpen && !isTagsHub ? (
-        <div className="mt-2" data-print-hide>
-          <input
-            type="search"
-            placeholder="Search this page…"
-            className="w-full max-w-sm rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-primary/60"
-            aria-label="Search this page"
-          />
-        </div>
-      ) : null}
-
       {showSectionSubviews ? (
-        <div className="flex items-end gap-1" data-print-hide>
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end" data-print-hide>
           <EntitySubviewNav
             subviews={subviews}
             activeSubview={activeSubview}
             onSubviewChange={onSubviewChange}
+            onManagePages={onManageSubviews}
             isDMUser={isDMUser}
           />
-          {onAddSubview ? (
-            <button type="button" className="mb-0.5 rounded-md p-1.5 text-muted hover:bg-elevated hover:text-foreground" onClick={onAddSubview} aria-label="Add character page" title="Add character page">
-              <Plus className="size-3.5" aria-hidden />
-            </button>
-          ) : null}
-          {onManageSubviews ? (
-            <button type="button" className="mb-0.5 rounded-md px-2 py-1.5 text-xs font-medium text-muted hover:bg-elevated hover:text-foreground" onClick={onManageSubviews}>Manage pages</button>
-          ) : null}
+          <div className="hidden shrink-0 items-center gap-1 sm:flex sm:self-auto">
+            {onManageSubviews ? (
+              <button type="button" className="mb-0.5 whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium text-muted hover:bg-elevated hover:text-foreground" onClick={onManageSubviews}>Manage pages</button>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>

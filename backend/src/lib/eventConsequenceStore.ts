@@ -2,13 +2,11 @@ import { randomUUID } from 'node:crypto';
 import type { Prisma } from './prismaClient.js';
 import {
   dedupeEventConsequencesById,
-  EVENT_LORE_AUTO_GENERATED_METADATA_KEY,
   mergeEventConsequenceSetIntoMetadata,
   readEventConsequencesFromMetadata,
   type EventConsequence,
 } from '../../../shared/eventConsequence.js';
-import { parseBaseEventIdFromLorePageId } from './eventLoreWiki.js';
-import { ensureEventLoreStubPage, eventLorePageIdForCalendarEvent } from './eventLoreStub.js';
+import { eventLorePageIdForCalendarEvent } from './eventLoreStub.js';
 
 export { eventLorePageIdForCalendarEvent };
 
@@ -16,14 +14,18 @@ export async function loadEventConsequencesForCalendarEvent(
   tx: Prisma.TransactionClient | typeof import('./prisma.js').prisma,
   campaignId: string,
   calendarEventId: string,
-): Promise<{ lorePageId: string; consequences: EventConsequence[]; metadata: Record<string, unknown> | null }> {
-  const lorePageId = eventLorePageIdForCalendarEvent(calendarEventId);
-  const page = await tx.wikiPage.findFirst({
+  authorizedPageIds?: ReadonlySet<string>,
+): Promise<{ lorePageId: string | null; consequences: EventConsequence[]; metadata: Record<string, unknown> | null }> {
+  const event = await tx.calendarEvent.findFirst({ where: { id: calendarEventId, calendar: { campaignId } }, select: { metadata: true, wikiPageId: true } });
+  const lorePageId = event?.wikiPageId ?? eventLorePageIdForCalendarEvent(calendarEventId);
+  const page = authorizedPageIds && !authorizedPageIds.has(lorePageId) ? null : await tx.wikiPage.findFirst({
     where: { id: lorePageId, campaignId, deletedAt: null },
     select: { metadata: true },
   });
-  if (!page?.metadata || typeof page.metadata !== 'object' || Array.isArray(page.metadata)) {
-    return { lorePageId, consequences: [], metadata: null };
+  const eventMetadata = event?.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata) ? event.metadata as Record<string, unknown> : null;
+  if (Object.prototype.hasOwnProperty.call(eventMetadata ?? {}, 'eventConsequences') || !page?.metadata || typeof page.metadata !== 'object' || Array.isArray(page.metadata) || !('eventConsequences' in page.metadata)) {
+    const metadata = event?.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata) ? event.metadata as Record<string, unknown> : null;
+    return { lorePageId: authorizedPageIds && !authorizedPageIds.has(lorePageId) ? null : lorePageId, consequences: readEventConsequencesFromMetadata(metadata), metadata };
   }
   const metadata = { ...(page.metadata as Record<string, unknown>) };
   return {
@@ -43,42 +45,13 @@ export async function saveEventConsequences(
     calendarEventTitle?: string;
   },
 ): Promise<EventConsequence[]> {
+  await tx.campaign.update({ where: { id: input.campaignId }, data: { updatedAt: new Date() } });
   const deduped = dedupeEventConsequencesById(input.consequences);
-  const lorePageId = eventLorePageIdForCalendarEvent(input.calendarEventId);
-
-  let page = await tx.wikiPage.findFirst({
-    where: { id: lorePageId, campaignId: input.campaignId, deletedAt: null },
-    select: { id: true, metadata: true },
-  });
-
-  if (!page) {
-    const title = input.calendarEventTitle?.trim() || 'World event';
-    const stubMarkdown = `# Event: ${title}\n\nAuto-generated event lore page.`;
-    const stubMetadata = mergeEventConsequenceSetIntoMetadata(
-      { [EVENT_LORE_AUTO_GENERATED_METADATA_KEY]: true },
-      deduped,
-    );
-    await ensureEventLoreStubPage(tx, {
-      campaignId: input.campaignId,
-      calendarEventId: input.calendarEventId,
-      title,
-      descriptionMarkdown: stubMarkdown,
-      extraMetadata: stubMetadata,
-    });
-    return deduped;
-  }
-
-  const metadata =
-    page.metadata && typeof page.metadata === 'object' && !Array.isArray(page.metadata)
-      ? { ...(page.metadata as Record<string, unknown>) }
-      : {};
-
-  await tx.wikiPage.update({
-    where: { id: page.id },
-    data: {
-      metadata: mergeEventConsequenceSetIntoMetadata(metadata, deduped) as never,
-    },
-  });
+  const event = await tx.calendarEvent.findFirstOrThrow({ where: { id: input.calendarEventId, calendar: { campaignId: input.campaignId } } });
+  // Event metadata is authoritative. Page permissions and old authored copies cannot
+  // change operational state, and saving consequences must not mutate a wiki document.
+  const metadata = event.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata) ? event.metadata as Record<string, unknown> : {};
+  await tx.calendarEvent.update({ where: { id: event.id }, data: { metadata: mergeEventConsequenceSetIntoMetadata(metadata, deduped) as Prisma.InputJsonValue } });
 
   return deduped;
 }
@@ -94,39 +67,19 @@ export async function listActionableEventConsequencesForCampaign(
     consequences: EventConsequence[];
   }>
 > {
-  const pages = await db.wikiPage.findMany({
-    where: {
-      campaignId,
-      deletedAt: null,
-      id: { startsWith: 'event-' },
-    },
-    select: { id: true, metadata: true },
-  });
-
-  const results: Array<{
-    calendarEventId: string;
-    lorePageId: string;
-    eventTitle: string | null;
-    consequences: EventConsequence[];
-  }> = [];
-
-  for (const page of pages) {
-    const calendarEventId = parseBaseEventIdFromLorePageId(page.id);
-    if (!calendarEventId) continue;
-    const consequences = readEventConsequencesFromMetadata(page.metadata);
-    if (consequences.length === 0) continue;
-    const event = await db.calendarEvent.findFirst({
-      where: { id: calendarEventId, calendar: { campaignId } },
-      select: { title: true },
-    });
-    results.push({
-      calendarEventId,
-      lorePageId: page.id,
-      eventTitle: event?.title ?? null,
-      consequences,
-    });
+  const events = await db.calendarEvent.findMany({ where: { calendar: { campaignId } }, select: { id: true, title: true, wikiPageId: true, metadata: true } });
+  const pageIds = events.map(event => event.wikiPageId ?? eventLorePageIdForCalendarEvent(event.id));
+  const pages = await db.wikiPage.findMany({ where: { campaignId, deletedAt: null, id: { in: pageIds } }, select: { id: true, metadata: true } });
+  const byId = new Map(pages.map(page => [page.id, page]));
+  const results: Array<{ calendarEventId: string; lorePageId: string; eventTitle: string | null; consequences: EventConsequence[] }> = [];
+  for (const event of events) {
+    const lorePageId = event.wikiPageId ?? eventLorePageIdForCalendarEvent(event.id);
+    const pageMetadata = byId.get(lorePageId)?.metadata;
+    const hasEventConsequences = event.metadata && typeof event.metadata === 'object' && !Array.isArray(event.metadata) && Object.prototype.hasOwnProperty.call(event.metadata, 'eventConsequences');
+    const metadata = hasEventConsequences ? event.metadata : pageMetadata && typeof pageMetadata === 'object' && !Array.isArray(pageMetadata) && 'eventConsequences' in pageMetadata ? pageMetadata : event.metadata;
+    const consequences = readEventConsequencesFromMetadata(metadata);
+    if (consequences.length) results.push({ calendarEventId: event.id, lorePageId, eventTitle: event.title, consequences });
   }
-
   return results;
 }
 

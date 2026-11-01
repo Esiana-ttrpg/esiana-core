@@ -304,7 +304,7 @@ export function CharacterIdentityEditor({
           <EntityFactRow fieldId="character-field-primaryAffiliationId" label="Affiliations">
             <IdentityPagePicker flatPages={orgPages} value={draft.primaryAffiliationId} placeholder="Add primary affiliation" onChange={(nextId) => void persist({ primaryAffiliationId: nextId })} />
           </EntityFactRow>
-          <EntityFactRow fieldId="character-field-tags" label="Tags">{tagsControl}</EntityFactRow>
+          {tagsControl ? <EntityFactRow fieldId="character-field-tags" label="Tags">{tagsControl}</EntityFactRow> : null}
         </EntityFactRowList>
         {error ? <p className="mt-2 text-xs text-red-400" role="alert">{error}</p> : null}
       </div>

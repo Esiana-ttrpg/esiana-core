@@ -67,7 +67,7 @@ export async function getWorldPressureHandler(
 ): Promise<void> {
   if (!requireWorldPressureAccess(req, res)) return;
   const ctx = req.campaign!;
-  const projection = await buildCampaignWorldPressureProjection(ctx.campaignId);
+  const projection = await buildCampaignWorldPressureProjection(ctx.campaignId, { role: ctx.role });
   res.json({ projection });
 }
 
@@ -94,6 +94,7 @@ export async function getWorldPressurePreviewHandler(
 
   const projection = await buildCampaignWorldPressureProjection(ctx.campaignId, {
     targetEpochMinute,
+    role: ctx.role,
     includeSessionForecast: false,
   });
 

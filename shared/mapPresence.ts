@@ -133,7 +133,6 @@ export function resolveMapObjectPresenceDetailed(
       visible: false,
       reason: 'layer_disabled',
     };
-    if (ghost) return { ...resolution, visible: true };
     return resolution;
   }
 

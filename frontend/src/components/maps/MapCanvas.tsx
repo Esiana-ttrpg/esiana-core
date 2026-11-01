@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MapContainer,
   ImageOverlay,
+  ZoomControl,
   useMap,
   useMapEvents,
 } from 'react-leaflet';
 import L from 'leaflet';
 import '@/styles/leaflet-modern.css';
+import '@/styles/map-workspace.css';
+import { MapSelectionOverlay } from './MapSelectionOverlay';
+import type { MapDiscardGuard } from '@/hooks/useMapEditorDraft';
 import type { CampaignMapAsset, MapPinDto } from '@/types/maps';
 import { mapDisplayTitle } from '@/types/maps';
 import { mapAssetImageUrl } from '@/lib/maps';
@@ -25,6 +29,11 @@ import { PluginSlotHost } from '@/plugins/slots';
 import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
 
 interface MapCanvasProps {
+  selectedObject?: import('@/types/maps').MapSceneObjectDto | null;
+  editingObject?: import('@/types/maps').MapSceneObjectDto | null;
+  onCloseProperties?: () => void;
+  pinGuard?: MapDiscardGuard;
+  onInteractionChange?: (active: boolean) => void;
   campaignHandle: string;
   map: CampaignMapAsset;
   canEdit?: boolean;
@@ -49,25 +58,57 @@ interface MapCanvasProps {
   onNavigateMap?: (assetId: string, title?: string) => void;
 }
 
-function MapResizeSync({ fullscreen }: { fullscreen: boolean }) {
+function MapResizeSync({ fullscreen, bounds }: { fullscreen: boolean; bounds: L.LatLngBoundsExpression }) {
   const leafletMap = useMap();
+  const container = leafletMap.getContainer().parentElement;
+  const initialized = useRef(false);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => leafletMap.invalidateSize());
-    return () => window.cancelAnimationFrame(frame);
-  }, [fullscreen, leafletMap]);
+    const invalidate = () => {
+      if (!container?.clientWidth || !container.clientHeight) return;
+      const center = leafletMap.getCenter();
+      leafletMap.invalidateSize({ animate: false, pan: false });
+      if (!initialized.current) {
+        leafletMap.fitBounds(bounds, { animate: false });
+        initialized.current = true;
+      } else leafletMap.setView(center, leafletMap.getZoom(), { animate: false });
+    };
+    const frame = window.requestAnimationFrame(invalidate);
+    const observer = container ? new ResizeObserver(invalidate) : null;
+    if (observer && container) observer.observe(container);
+    window.addEventListener('resize', invalidate);
+    window.visualViewport?.addEventListener('resize', invalidate);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('resize', invalidate);
+      window.visualViewport?.removeEventListener('resize', invalidate);
+    };
+  }, [container, fullscreen, leafletMap, bounds]);
 
   return null;
 }
 
 function MapInteractionLayer({
   editMode,
+  editingAvailable,
+  placePin,
   onQuickDrop,
 }: {
   editMode: boolean;
+  editingAvailable: boolean;
+  placePin: boolean;
   onQuickDrop: (x: number, y: number) => void;
 }) {
+  const map = useMap();
+  useEffect(() => {
+    if (editingAvailable) map.doubleClickZoom.disable();
+    else map.doubleClickZoom.enable();
+  }, [map, editingAvailable]);
   useMapEvents({
+    click(event) {
+      if (placePin) onQuickDrop(event.latlng.lng, event.latlng.lat);
+    },
     dblclick(event) {
       if (!editMode) return;
       onQuickDrop(event.latlng.lng, event.latlng.lat);
@@ -77,6 +118,11 @@ function MapInteractionLayer({
 }
 
 export function MapCanvas({
+  selectedObject,
+  editingObject,
+  onCloseProperties,
+  pinGuard,
+  onInteractionChange,
   campaignHandle,
   map,
   canEdit = false,
@@ -117,7 +163,32 @@ export function MapCanvas({
   } = scene;
 
   const [quickDrop, setQuickDrop] = useState<{ x: number; y: number } | null>(null);
-  const [editingPin, setEditingPin] = useState<MapPinDto | null>(null);
+  const [quickDropError, setQuickDropError] = useState<string | null>(null);
+  const [quickDropBusy, setQuickDropBusy] = useState(false);
+  const persistPin = (input: Parameters<typeof handleCreatePin>[0]) => {
+    if (!canEdit || !editMode || quickDropBusy) return;
+    setQuickDropBusy(true);
+    setQuickDropError(null);
+    void handleCreatePin(input)
+      .then(() => setQuickDrop(null))
+      .catch(err => setQuickDropError(err instanceof Error ? err.message : 'Unable to create pin'))
+      .finally(() => setQuickDropBusy(false));
+  };
+  useEffect(() => { setQuickDropError(null); }, [quickDrop]);
+  const [localEditingPin, setLocalEditingPin] = useState<MapPinDto | null>(null);
+  const localPinGuard = useRef<(() => boolean) | null>(null);
+  const activePinGuard = pinGuard ?? localPinGuard;
+  const editingPin = editingObject === undefined ? localEditingPin : visiblePins.find(pin => pin.sceneObjectId === editingObject?.id) ?? null;
+  const setEditingPin = (pin: MapPinDto | null) => {
+    if (editingObject === undefined) setLocalEditingPin(pin);
+    else if (pin) {
+      const object = sceneObjects.find(o => o.id === pin.sceneObjectId || o.mapPinId === pin.id);
+      if (object) onSelectSceneObject?.(object);
+    } else onCloseProperties?.();
+  };
+  useEffect(() => {
+    if (!editMode || !canEdit) { setQuickDrop(null); setLocalEditingPin(null); }
+  }, [editMode, canEdit]);
 
   const width = map.width ?? 1000;
   const height = map.height ?? 1000;
@@ -143,12 +214,12 @@ export function MapCanvas({
   }
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
+    <div className={`map-workspace ${editMode && editorTool !== 'select' ? 'map-drawing' : ''} flex min-h-0 flex-col ${fullscreen ? 'map-canvas-fullscreen gap-0' : 'gap-2'} ${className}`}>
       <div
-        className={`relative overflow-hidden border border-border bg-[#1a1a1a] ${
+        className={`relative overflow-hidden bg-[#1a1a1a] ${
           fullscreen
-            ? 'h-[calc(100dvh-11rem)] min-h-[24rem] rounded-lg'
-            : 'min-h-[min(72vh,780px)] rounded-xl'
+            ? 'h-full min-h-0 flex-1'
+            : 'min-h-[min(72vh,780px)] rounded-xl border border-border'
         }`}
       >
         {loading ? (
@@ -163,13 +234,17 @@ export function MapCanvas({
         ) : null}
 
         {canEdit ? (
-          <div className="absolute right-3 top-3 z-[600]">
+          <div className={fullscreen ? 'map-fullscreen-dock' : 'absolute right-3 top-3 z-[1100] max-w-[calc(100%_-_5rem)]'}>
             <MapEditorToolbar
+              canEdit={canEdit}
               editMode={editMode}
               ghostMode={ghostMode}
               editorTool={editorTool}
               onEditorToolChange={onEditorToolChange}
-              onToggleEditMode={onToggleEditMode}
+              onToggleEditMode={() => {
+                if (!pinGuard && editMode && !(activePinGuard.current?.() ?? true)) return;
+                onToggleEditMode();
+              }}
               onToggleGhostMode={onToggleGhostMode}
               onAddLayer={editMode ? () => void handleCreateLayer() : undefined}
               onAddPoliticalBordersLayer={
@@ -204,14 +279,19 @@ export function MapCanvas({
           minZoom={-3}
           maxZoom={4}
           zoom={0}
+          zoomSnap={0.25}
+          zoomDelta={0.5}
           style={{
             height: fullscreen ? '100%' : 'min(72vh, 780px)',
             width: '100%',
             background: '#111',
           }}
           scrollWheelZoom
+          zoomControl={false}
+          doubleClickZoom={!editMode}
         >
-          <MapResizeSync fullscreen={fullscreen} />
+          <ZoomControl position="bottomleft" />
+          <MapResizeSync fullscreen={fullscreen} bounds={bounds} />
           <ImageOverlay url={imageUrl} bounds={bounds} />
           {hiddenZoneGeometries.length > 0 ? (
             <MapFogLayer
@@ -225,13 +305,16 @@ export function MapCanvas({
             layers={layers}
             width={width}
             height={height}
-            editMode={editMode && canEdit && editorTool === 'select'}
+            editMode={editorTool === 'select'}
             onSelectObject={onSelectSceneObject}
           />
           {regionDrawOverlay}
+          <MapSelectionOverlay object={selectedObject} width={width} height={height} onInteractionChange={onInteractionChange} />
           <MapInteractionLayer
+            editingAvailable={editMode && canEdit}
+            placePin={editMode && canEdit && editorTool === 'placePin'}
             editMode={editMode && canEdit && editorTool === 'select'}
-            onQuickDrop={(x, y) => setQuickDrop({ x, y })}
+            onQuickDrop={(x, y) => { if (x >= 0 && y >= 0 && x <= width && y <= height) setQuickDrop({ x, y }); }}
           />
           {visiblePins.map((pin) => {
             if (!pin.targetPageId && !pin.targetAssetId) {
@@ -241,8 +324,10 @@ export function MapCanvas({
               <MapPinMarker
                 key={pin.id}
                 pin={pin}
+                selected={selectedObject?.id === pin.sceneObjectId}
+                onSelect={() => { const object = sceneObjects.find(o => o.id === pin.sceneObjectId); if (object) onSelectSceneObject?.(object); }}
                 campaignHandle={campaignHandle}
-                draggable={editMode && canEdit}
+                draggable={editMode && canEdit && editorTool === 'select'}
                 editMode={editMode && canEdit}
                 onDragEnd={handleDragEnd}
                 onEditPin={setEditingPin}
@@ -256,9 +341,9 @@ export function MapCanvas({
         </MapContainer>
       </div>
 
-      <ImageCreditDisplay credit={map.imageCredit} className="px-1" />
+      {!fullscreen ? <ImageCreditDisplay credit={map.imageCredit} className="px-1" /> : null}
 
-      {editMode && canEdit ? (
+      {editMode && canEdit && !fullscreen ? (
         <p className="text-xs text-muted">
           {editorTool === 'select'
             ? 'Double-click to add a pin · click objects to edit · drag pins to move'
@@ -271,7 +356,9 @@ export function MapCanvas({
       ) : null}
 
       <MapPinQuickDropDialog
-        open={Boolean(quickDrop)}
+        error={quickDropError}
+        busy={quickDropBusy}
+        open={Boolean(quickDrop) && canEdit && editMode}
         x={quickDrop?.x ?? 0}
         y={quickDrop?.y ?? 0}
         wikiPages={wikiPages}
@@ -280,35 +367,37 @@ export function MapCanvas({
         onClose={() => setQuickDrop(null)}
         onBindExisting={(pageId, pinType) => {
           if (!quickDrop) return;
-          void handleCreatePin({
+          persistPin({
             x: quickDrop.x,
             y: quickDrop.y,
             targetPageId: pageId,
             pinType,
-          }).then(() => setQuickDrop(null));
+          });
         }}
         onQuickCreate={(title, pinType) => {
           if (!quickDrop) return;
-          void handleCreatePin({
+          persistPin({
             x: quickDrop.x,
             y: quickDrop.y,
             quickCreate: { title },
             pinType,
-          }).then(() => setQuickDrop(null));
+          });
         }}
         onNestedMap={(targetAssetId, pinType) => {
           if (!quickDrop) return;
-          void handleCreatePin({
+          persistPin({
             x: quickDrop.x,
             y: quickDrop.y,
             targetAssetId,
             pinType,
-          }).then(() => setQuickDrop(null));
+          });
         }}
       />
 
       <MapPinEditorSheet
-        open={Boolean(editingPin)}
+        open={Boolean(editingPin) && canEdit && editMode}
+        floating={fullscreen}
+        guardRef={activePinGuard}
         pin={editingPin}
         campaignHandle={campaignHandle}
         assetId={map.id}
@@ -321,6 +410,7 @@ export function MapCanvas({
           setPins((current) =>
             current.map((entry) => (entry.id === updated.id ? updated : entry)),
           );
+          void scene.reloadScene();
         }}
         onDeleted={(pinId) => {
           setPins((current) => current.filter((entry) => entry.id !== pinId));
@@ -328,4 +418,5 @@ export function MapCanvas({
       />
     </div>
   );
+          void scene.reloadScene();
 }

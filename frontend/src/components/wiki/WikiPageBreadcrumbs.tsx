@@ -4,8 +4,6 @@ import {
   campaignDashboardPath,
   campaignEventLorePath,
   campaignWikiPath,
-  campaignWorkspaceIndexPath,
-  workspaceToSegment,
 } from '@/lib/campaignPaths';
 import {
   isCategoryIndexPage,
@@ -15,7 +13,6 @@ import { useWiki } from '@/contexts/WikiContext';
 import { isEventLorePageId } from '@/lib/wiki';
 import type { WikiBreadcrumb } from '@/lib/wikiHierarchy';
 import { SURFACE_RECESSED_CLASS } from '@/lib/surfaceLayout';
-import { resolveWorkspaceForPage } from '@shared/wikiWorkspaceResolve';
 
 export const WIKI_ROOT_CRUMB_ID = '__wiki_root__';
 
@@ -33,32 +30,17 @@ function breadcrumbHref(
   if (pageId === WIKI_ROOT_CRUMB_ID) {
     return campaignDashboardPath(campaignHandle);
   }
+  const page = flatPages.find((entry) => entry.id === pageId);
+  if (page) return campaignWikiPath(campaignHandle, pageId, flatPages);
   if (isEventLorePageId(pageId)) {
     return campaignEventLorePath(campaignHandle, pageId.slice('event-'.length));
   }
 
-  const page = flatPages.find((entry) => entry.id === pageId);
-  const title = (crumbTitle ?? page?.title ?? '').trim();
-
-  if (page?.pathKey) {
-    return campaignWikiPath(campaignHandle, pageId, flatPages);
-  }
+  const title = (crumbTitle ?? '').trim();
 
   if (title && isCategoryIndexPage(title)) {
     const indexPath = resolveWorkspaceIndexPathForFolderTitle(campaignHandle, title);
     if (indexPath) return indexPath;
-  }
-
-  if (page) {
-    const workspace =
-      (page.workspace as Parameters<typeof workspaceToSegment>[0] | null | undefined) ??
-      resolveWorkspaceForPage(page, flatPages);
-    if (workspace) {
-      const segment = workspaceToSegment(workspace);
-      if (segment) {
-        return campaignWorkspaceIndexPath(campaignHandle, segment);
-      }
-    }
   }
 
   return campaignWikiPath(campaignHandle, pageId, flatPages);

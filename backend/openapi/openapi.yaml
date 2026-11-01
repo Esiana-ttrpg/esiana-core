@@ -21,15 +21,16 @@ info:
 
     ## Human documentation
 
-    API guides and architecture explainers live in the [Esiana docs wiki](https://github.com/Esiana-ttrpg/docs):
-    [API overview](../../docs/api/overview.md), [campaign model](../../docs/architecture/campaign-model.md),
-    [plugin development](../../docs/plugin-development/getting-started.md).
+    API guides and architecture explainers live in the [Esiana docs wiki](https://esiana-ttrpg.github.io/docs/):
+    [API overview](https://esiana-ttrpg.github.io/docs/api/overview/), [campaign model](https://esiana-ttrpg.github.io/docs/architecture/campaign-model/),
+    [plugin development](https://esiana-ttrpg.github.io/docs/plugin-development/getting-started/).
 
     **Interactive explorer:** open `/api/docs` on your running Esiana instance (version-locked to this release).
 servers:
   - url: http://localhost:3001
     description: Local backend
 tags:
+  - name: Safety & Privacy
   - name: Administration
   - name: Authentication
   - name: Recruitment
@@ -55,6 +56,3782 @@ tags:
   - name: Import
   - name: System
 paths:
+  # BEGIN GENERATED SESSION AUDIO API
+  /api/campaigns/{campaignHandle}/audio/settings:
+    get:
+      tags:
+        - Wiki
+      summary: Read effective campaign audio configuration
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+    patch:
+      tags:
+        - Wiki
+      summary: Update campaign audio configuration
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                transcriptionEnabled:
+                  type: boolean
+                allowPov:
+                  type: boolean
+                defaultVisibility:
+                  enum:
+                    - campaign
+                    - staff
+                    - uploader_and_managers
+                defaultConnectionId:
+                  type:
+                    - string
+                    - "null"
+                defaultModelId:
+                  type:
+                    - string
+                    - "null"
+                maxStorageBytes:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                monthlyRequests:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                monthlyDurationMs:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d+$
+  /api/campaigns/{campaignHandle}/audio/providers:
+    get:
+      tags:
+        - Wiki
+      summary: List permitted provider names, capabilities, and models
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    capabilities:
+                      type: array
+                      items:
+                        type: string
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/audio/usage:
+    get:
+      tags:
+        - Wiki
+      summary: Read campaign processing usage
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/audio/sessions/{timelineId}/recordings:
+    get:
+      tags:
+        - Wiki
+      summary: List visible session recordings
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        curl --fail-with-body "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \
+          -H "Authorization: Bearer $ESIANA_TOKEN"
+        ```
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timelineId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    title:
+                      type: string
+                    visibility:
+                      enum:
+                        - campaign
+                        - staff
+                        - uploader_and_managers
+                    status:
+                      enum:
+                        - uploading
+                        - ready
+                        - archived
+                    revision:
+                      type: integer
+                      minimum: 0
+                    durationMs:
+                      type: integer
+                      minimum: 0
+                    isPrimary:
+                      type: boolean
+                    files:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          assetId:
+                            type: string
+                          name:
+                            type: string
+                          order:
+                            type: integer
+                            minimum: 0
+                          offsetMs:
+                            type: integer
+                            minimum: 0
+                          durationMs:
+                            type: integer
+                            minimum: 0
+                          sizeBytes:
+                            type: string
+                            pattern: ^\d+$
+                            description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                          format:
+                            type: string
+                          mimeType:
+                            type: string
+                    chapters:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          title:
+                            type: string
+                          description:
+                            type:
+                              - string
+                              - "null"
+                          startMs:
+                            type: integer
+                            minimum: 0
+                          fileId:
+                            type: string
+                          fileStartMs:
+                            type: integer
+                            minimum: 0
+                          wikiPageId:
+                            type:
+                              - string
+                              - "null"
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |-
+            curl --fail-with-body "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \
+              -H "Authorization: Bearer $ESIANA_TOKEN"
+    post:
+      tags:
+        - Wiki
+      summary: Create a session recording
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \
+          -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+          -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording","consentAcknowledged":true}'
+        ```
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: timelineId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+            pattern: ^[A-Za-z0-9._:-]+$
+          description: Persist and reuse this key when retrying creation. Scoped to campaign, authenticated user, and operation
+            for 72 hours. An identical normalized request returns the original resource without reserving storage twice.
+            Changed input returns 409; a deleted resource returns 410.
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  visibility:
+                    enum:
+                      - campaign
+                      - staff
+                      - uploader_and_managers
+                  status:
+                    enum:
+                      - uploading
+                      - ready
+                      - archived
+                  revision:
+                    type: integer
+                    minimum: 0
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                  isPrimary:
+                    type: boolean
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        assetId:
+                          type: string
+                        name:
+                          type: string
+                        order:
+                          type: integer
+                          minimum: 0
+                        offsetMs:
+                          type: integer
+                          minimum: 0
+                        durationMs:
+                          type: integer
+                          minimum: 0
+                        sizeBytes:
+                          type: string
+                          pattern: ^\d+$
+                          description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                        format:
+                          type: string
+                        mimeType:
+                          type: string
+                  chapters:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                        startMs:
+                          type: integer
+                          minimum: 0
+                        fileId:
+                          type: string
+                        fileStartMs:
+                          type: integer
+                          minimum: 0
+                        wikiPageId:
+                          type:
+                            - string
+                            - "null"
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "410":
+          description: The resource created with this retry key was deleted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                visibility:
+                  enum:
+                    - campaign
+                    - staff
+                    - uploader_and_managers
+                consentAcknowledged:
+                  const: true
+                  description: Uploader confirms participants were informed and permission was obtained to upload and share this
+                    recording.
+              required:
+                - title
+                - consentAcknowledged
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: >-
+            curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/sessions/$SESSION_ID/recordings" \
+              -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+              -H "Idempotency-Key: $RECORDING_CREATE_KEY" --data '{"title":"Session recording","consentAcknowledged":true}'
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}:
+    get:
+      tags:
+        - Wiki
+      summary: Read an authorized recording
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  visibility:
+                    enum:
+                      - campaign
+                      - staff
+                      - uploader_and_managers
+                  status:
+                    enum:
+                      - uploading
+                      - ready
+                      - archived
+                  revision:
+                    type: integer
+                    minimum: 0
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                  isPrimary:
+                    type: boolean
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        assetId:
+                          type: string
+                        name:
+                          type: string
+                        order:
+                          type: integer
+                          minimum: 0
+                        offsetMs:
+                          type: integer
+                          minimum: 0
+                        durationMs:
+                          type: integer
+                          minimum: 0
+                        sizeBytes:
+                          type: string
+                          pattern: ^\d+$
+                          description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                        format:
+                          type: string
+                        mimeType:
+                          type: string
+                  chapters:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                        startMs:
+                          type: integer
+                          minimum: 0
+                        fileId:
+                          type: string
+                        fileStartMs:
+                          type: integer
+                          minimum: 0
+                        wikiPageId:
+                          type:
+                            - string
+                            - "null"
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+    patch:
+      tags:
+        - Wiki
+      summary: Update recording metadata
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  visibility:
+                    enum:
+                      - campaign
+                      - staff
+                      - uploader_and_managers
+                  status:
+                    enum:
+                      - uploading
+                      - ready
+                      - archived
+                  revision:
+                    type: integer
+                    minimum: 0
+                  durationMs:
+                    type: integer
+                    minimum: 0
+                  isPrimary:
+                    type: boolean
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        assetId:
+                          type: string
+                        name:
+                          type: string
+                        order:
+                          type: integer
+                          minimum: 0
+                        offsetMs:
+                          type: integer
+                          minimum: 0
+                        durationMs:
+                          type: integer
+                          minimum: 0
+                        sizeBytes:
+                          type: string
+                          pattern: ^\d+$
+                          description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                        format:
+                          type: string
+                        mimeType:
+                          type: string
+                  chapters:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - "null"
+                        startMs:
+                          type: integer
+                          minimum: 0
+                        fileId:
+                          type: string
+                        fileStartMs:
+                          type: integer
+                          minimum: 0
+                        wikiPageId:
+                          type:
+                            - string
+                            - "null"
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expectedRevision:
+                  type: integer
+                  minimum: 0
+                title:
+                  type: string
+                visibility:
+                  enum:
+                    - campaign
+                    - staff
+                    - uploader_and_managers
+                isPrimary:
+                  type: boolean
+                status:
+                  enum:
+                    - ready
+                    - archived
+              required:
+                - expectedRevision
+    delete:
+      tags:
+        - Wiki
+      summary: Delete recording metadata while retaining physical media
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Success
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/chapters:
+    post:
+      tags:
+        - Wiki
+      summary: Create a chapter from a playback or segment position
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/chapters" \
+          -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+          --data '{"title":"The letter","startMs":100}'
+        ```
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  description:
+                    type:
+                      - string
+                      - "null"
+                  startMs:
+                    type: integer
+                    minimum: 0
+                  wikiPageId:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - title
+                  - startMs
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type:
+                    - string
+                    - "null"
+                startMs:
+                  type: integer
+                  minimum: 0
+                wikiPageId:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - title
+                - startMs
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |-
+            curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/chapters" \
+              -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+              --data '{"title":"The letter","startMs":100}'
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/chapters/{chapterId}:
+    patch:
+      tags:
+        - Wiki
+      summary: Edit a timestamped chapter
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type:
+                    - string
+                    - "null"
+                startMs:
+                  type: integer
+                  minimum: 0
+                wikiPageId:
+                  type:
+                    - string
+                    - "null"
+              required:
+                - title
+                - startMs
+    delete:
+      tags:
+        - Wiki
+      summary: Delete a chapter
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chapterId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Success
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/timeline/preview:
+    post:
+      tags:
+        - Wiki
+      summary: Preview file order and affected annotations
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fileIds:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - fileIds
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/timeline/commit:
+    post:
+      tags:
+        - Wiki
+      summary: Commit reviewed file order and annotation resolutions
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expectedRevision:
+                  type: integer
+                  minimum: 0
+                fileIds:
+                  type: array
+                  items:
+                    type: string
+                resolutions:
+                  type: object
+                  additionalProperties:
+                    anyOf:
+                      - type: "null"
+                      - type: object
+                        properties:
+                          fileId:
+                            type: string
+                          startMs:
+                            type: integer
+                            minimum: 0
+                          endMs:
+                            type: integer
+                            minimum: 0
+                        required:
+                          - fileId
+                          - startMs
+              required:
+                - expectedRevision
+                - fileIds
+                - resolutions
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/transcript:
+    get:
+      tags:
+        - Wiki
+      summary: Read a permitted published transcript or editor revision
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: revisionId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/transcript/revisions:
+    post:
+      tags:
+        - Wiki
+      summary: Save a manual or imported transcript draft
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        curl --fail-with-body -X POST
+        "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/transcript/revisions" \
+          -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+          --data '{"expectedRevision":0,"segments":[{"startMs":0,"endMs":500,"text":"Neris discovers a letter.","speaker":"Neris"}]}'
+        ```
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  segments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        startMs:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                        endMs:
+                          type:
+                            - integer
+                            - "null"
+                          minimum: 0
+                        text:
+                          type: string
+                        speaker:
+                          type:
+                            - string
+                            - "null"
+                      required:
+                        - startMs
+                        - endMs
+                        - text
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expectedRevision:
+                  type: integer
+                  minimum: 0
+                language:
+                  type:
+                    - string
+                    - "null"
+                segments:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      startMs:
+                        type:
+                          - integer
+                          - "null"
+                        minimum: 0
+                      endMs:
+                        type:
+                          - integer
+                          - "null"
+                        minimum: 0
+                      text:
+                        type: string
+                      speaker:
+                        type:
+                          - string
+                          - "null"
+                    required:
+                      - startMs
+                      - endMs
+                      - text
+                text:
+                  type: string
+                baseRevisionId:
+                  type: string
+                sourceJobId:
+                  type: string
+                format:
+                  enum:
+                    - txt
+                    - srt
+                    - vtt
+                    - json
+              required:
+                - expectedRevision
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: >-
+            curl --fail-with-body -X POST
+            "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/transcript/revisions" \
+              -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+              --data '{"expectedRevision":0,"segments":[{"startMs":0,"endMs":500,"text":"Neris discovers a letter.","speaker":"Neris"}]}'
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/transcript/publish:
+    post:
+      tags:
+        - Wiki
+      summary: Publish a revision with renewed provider authorization when applicable
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expectedRevision:
+                  type: integer
+                  minimum: 0
+                revisionId:
+                  type: string
+              required:
+                - expectedRevision
+                - revisionId
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/transcription:
+    post:
+      tags:
+        - Wiki
+      summary: Request permitted timestamped transcription
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "202":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                connectionId:
+                  type: string
+                modelId:
+                  type:
+                    - string
+                    - "null"
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/jobs:
+    get:
+      tags:
+        - Wiki
+      summary: Read content-neutral transcription status
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/jobs/{jobId}/result:
+    get:
+      tags:
+        - Wiki
+      summary: Review retained provider output under transcript content permissions
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/jobs/{jobId}/cancel:
+    post:
+      tags:
+        - Wiki
+      summary: Cancel transcription without deleting campaign content
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/jobs/{jobId}/retry:
+    post:
+      tags:
+        - Wiki
+      summary: Retry an interrupted or failed transcription
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+  /api/campaigns/{campaignHandle}/asset-uploads:
+    post:
+      tags:
+        - Wiki
+      summary: Reserve quota and begin a resumable audio or backup upload
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads" \
+          -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+          -H "Idempotency-Key: $FILE_CREATE_KEY" \
+          --data "$(jq -nc --arg id "$RECORDING_ID" --arg name "$FILE_NAME" --arg bytes "$FILE_BYTES" '{purpose:"session_audio",recordingId:$id,name:$name,sizeBytes:$bytes}')"
+        ```
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+            pattern: ^[A-Za-z0-9._:-]+$
+          description: Persist and reuse this key when retrying creation. Scoped to campaign, authenticated user, and operation
+            for 72 hours. An identical normalized request returns the original resource without reserving storage twice.
+            Changed input returns 409; a deleted resource returns 410.
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "410":
+          description: The resource created with this retry key was deleted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                purpose:
+                  enum:
+                    - session_audio
+                    - campaign_backup
+                  default: session_audio
+                recordingId:
+                  type: string
+                name:
+                  type: string
+                sizeBytes:
+                  type: string
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+              required:
+                - name
+                - sizeBytes
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: >-
+            curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads" \
+              -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
+              -H "Idempotency-Key: $FILE_CREATE_KEY" \
+              --data "$(jq -nc --arg id "$RECORDING_ID" --arg name "$FILE_NAME" --arg bytes "$FILE_BYTES" '{purpose:"session_audio",recordingId:$id,name:$name,sizeBytes:$bytes}')"
+  /api/campaigns/{campaignHandle}/asset-uploads/{uploadId}:
+    get:
+      tags:
+        - Wiki
+      summary: Read authoritative upload status and offset
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        curl --fail-with-body "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads/$UPLOAD_ID" \
+          -H "Authorization: Bearer $ESIANA_TOKEN"
+        ```
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |-
+            curl --fail-with-body "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads/$UPLOAD_ID" \
+              -H "Authorization: Bearer $ESIANA_TOKEN"
+    patch:
+      tags:
+        - Wiki
+      summary: Append at most 8 MiB at the authoritative byte offset
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        # chunk.bin contains at most 8 MiB, starting at the saved Upload-Offset.
+
+        curl --fail-with-body -X PATCH "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads/$UPLOAD_ID" \
+          -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/octet-stream' \
+          -H "Upload-Offset: $OFFSET_BYTES" --data-binary @chunk.bin
+        ```
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Upload-Offset
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: ^\d+$
+            description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |-
+            # chunk.bin contains at most 8 MiB, starting at the saved Upload-Offset.
+            curl --fail-with-body -X PATCH "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads/$UPLOAD_ID" \
+              -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/octet-stream' \
+              -H "Upload-Offset: $OFFSET_BYTES" --data-binary @chunk.bin
+    delete:
+      tags:
+        - Wiki
+      summary: Cancel an unfinished upload and release its reservation
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Success
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/campaigns/{campaignHandle}/asset-uploads/{uploadId}/finalize:
+    post:
+      tags:
+        - Wiki
+      summary: Validate and idempotently finalize uploaded media or backup archive
+      description: >-
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
+        not confer content access. Times are integer milliseconds.
+
+
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
+        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
+        disclosure, operation permissions, storage quotas, or upload ownership.
+
+
+        ```bash
+
+        curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads/$UPLOAD_ID/finalize" \
+          -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' --data '{}'
+        ```
+
+
+        Finalization is inherently idempotent by upload ID: retries after completion return the same file/asset. A
+        concurrent finalization can return 409 upload_busy; check progress and retry. No new idempotency key is needed.
+        All authorization checks still run.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: {}
+      x-codeSamples:
+        - lang: Shell
+          label: curl
+          source: |-
+            curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/asset-uploads/$UPLOAD_ID/finalize" \
+              -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' --data '{}'
+  /api/admin/audio:
+    get:
+      tags:
+        - Administration
+      summary: Read global audio governance settings
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                  transcriptionEnabled:
+                    type: boolean
+                  maxFileBytes:
+                    type: string
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxSessionBytes:
+                    type: string
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxCampaignBytes:
+                    type: string
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxGlobalBytes:
+                    type:
+                      - string
+                      - "null"
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxTranscriptBytes:
+                    type: integer
+                    minimum: 0
+                  uploadConcurrency:
+                    type: integer
+                    minimum: 0
+                  allowedFormats:
+                    type: array
+                    items:
+                      enum:
+                        - mp3
+                        - m4a
+                        - aac
+                        - ogg
+                        - opus
+                        - wav
+                        - flac
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+    patch:
+      tags:
+        - Administration
+      summary: Update global audio governance settings
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                  transcriptionEnabled:
+                    type: boolean
+                  maxFileBytes:
+                    type: string
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxSessionBytes:
+                    type: string
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxCampaignBytes:
+                    type: string
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxGlobalBytes:
+                    type:
+                      - string
+                      - "null"
+                    pattern: ^\d+$
+                    description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                  maxTranscriptBytes:
+                    type: integer
+                    minimum: 0
+                  uploadConcurrency:
+                    type: integer
+                    minimum: 0
+                  allowedFormats:
+                    type: array
+                    items:
+                      enum:
+                        - mp3
+                        - m4a
+                        - aac
+                        - ogg
+                        - opus
+                        - wav
+                        - flac
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                transcriptionEnabled:
+                  type: boolean
+                maxFileBytes:
+                  type: string
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                maxSessionBytes:
+                  type: string
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                maxCampaignBytes:
+                  type: string
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                maxGlobalBytes:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                maxTranscriptBytes:
+                  type: integer
+                  minimum: 0
+                uploadConcurrency:
+                  type: integer
+                  minimum: 0
+                allowedFormats:
+                  type: array
+                  items:
+                    enum:
+                      - mp3
+                      - m4a
+                      - aac
+                      - ogg
+                      - opus
+                      - wav
+                      - flac
+  /api/admin/audio/storage:
+    get:
+      tags:
+        - Administration
+      summary: Inspect content-neutral physical audio usage and upload health
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/admin/audio/storage/assets/{assetId}:
+    delete:
+      tags:
+        - Administration
+      summary: Explicitly purge an unreferenced physical audio asset
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Success
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/admin/audio/storage/recordings/{recordingId}:
+    delete:
+      tags:
+        - Administration
+      summary: Administratively remove a recording without reading its content
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Success
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/admin/providers:
+    get:
+      tags:
+        - Administration
+      summary: List global processing connections with masked credentials
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+    post:
+      tags:
+        - Administration
+      summary: Create a global processing connection
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                protocol:
+                  enum:
+                    - whisper_cpp
+                    - openai_transcription
+                endpoint:
+                  type: string
+                  format: uri
+                credential:
+                  type: string
+                  writeOnly: true
+                enabled:
+                  type: boolean
+                allowPrivateNetwork:
+                  type: boolean
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                operatorLabel:
+                  type:
+                    - string
+                    - "null"
+                billingLabel:
+                  type:
+                    - string
+                    - "null"
+                concurrency:
+                  type: integer
+                  minimum: 0
+                timeoutSeconds:
+                  type: integer
+                  minimum: 0
+                maxRequestBytes:
+                  type: string
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                formats:
+                  type: array
+                  items:
+                    type: string
+                monthlyRequests:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                monthlyDurationMs:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d+$
+  /api/admin/providers/{connectionId}:
+    patch:
+      tags:
+        - Administration
+      summary: Update global endpoint, policy, and encrypted credential
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                protocol:
+                  enum:
+                    - whisper_cpp
+                    - openai_transcription
+                endpoint:
+                  type: string
+                  format: uri
+                credential:
+                  type: string
+                  writeOnly: true
+                enabled:
+                  type: boolean
+                allowPrivateNetwork:
+                  type: boolean
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                operatorLabel:
+                  type:
+                    - string
+                    - "null"
+                billingLabel:
+                  type:
+                    - string
+                    - "null"
+                concurrency:
+                  type: integer
+                  minimum: 0
+                timeoutSeconds:
+                  type: integer
+                  minimum: 0
+                maxRequestBytes:
+                  type: string
+                  pattern: ^\d+$
+                  description: Decimal byte count; avoids 32-bit database and JSON integer overflow.
+                formats:
+                  type: array
+                  items:
+                    type: string
+                monthlyRequests:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                monthlyDurationMs:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d+$
+  /api/admin/providers/{connectionId}/test:
+    post:
+      tags:
+        - Administration
+      summary: Test endpoint reachability without sending campaign audio
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/admin/providers/{connectionId}/models/{modelKey}:
+    put:
+      tags:
+        - Administration
+      summary: Declare a model and its explicit capabilities
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: modelKey
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                enabled:
+                  type: boolean
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - name
+                - enabled
+                - capabilities
+  /api/admin/providers/policies/all:
+    get:
+      tags:
+        - Administration
+      summary: List campaign provider access policies
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/admin/providers/policies/bulk:
+    put:
+      tags:
+        - Administration
+      summary: Explicitly grant or revoke selected campaigns
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                campaignIds:
+                  type: array
+                  items:
+                    type: string
+                connectionId:
+                  type: string
+                feature:
+                  const: session_audio
+                capability:
+                  const: audio.transcribe
+                enabled:
+                  type: boolean
+                modelIds:
+                  type: array
+                  items:
+                    type: string
+                monthlyRequests:
+                  type:
+                    - integer
+                    - "null"
+                  minimum: 0
+                monthlyDurationMs:
+                  type:
+                    - string
+                    - "null"
+                  pattern: ^\d+$
+              required:
+                - campaignIds
+                - connectionId
+                - feature
+                - capability
+                - enabled
+                - modelIds
+                - monthlyRequests
+                - monthlyDurationMs
+  /api/admin/providers/usage/all:
+    get:
+      tags:
+        - Administration
+      summary: Read campaign-attributed processing metrics without content
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            pattern: ^\d{4}-\d{2}$
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/admin/providers/usage/summary:
+    get:
+      tags:
+        - Administration
+      summary: Aggregate all campaign processing consumption without content
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  /api/admin/providers/usage/{jobId}/cancel:
+    post:
+      tags:
+        - Administration
+      summary: Cancel an operational job without accessing campaign content
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
+        administration does not confer content access. Times are integer milliseconds.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "403":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "404":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "409":
+          description: Denied by campaign/content/provider policy, invalid input, or revision conflict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+  # END GENERATED SESSION AUDIO API
+  /api/safety-privacy/campaigns:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: List campaigns eligible for a personal request
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyCampaign"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: &a2
+                type: object
+                properties:
+                  error: &a1
+                    type: string
+                  code: *a1
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/recipients/{handle}:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: Disclose current eligible reviewers before submission
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: handle
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyReviewer"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/recordings:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: Discover visible recordings associated with attendance or upload
+      security:
+        - cookieAuth: []
+      description: Grouped by campaign/session. Uses existing session and recording
+        visibility checks. Attendance or association is discovery only and is
+        never required to submit a concern.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyRecording"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: List own requests, or a capability-authorized campaign inbox
+      security:
+        - cookieAuth: []
+      description: Without campaign, returns only the authenticated requester's
+        history, including after departure. With campaign, requires current
+        safety.manage. Global administration grants no access.
+      parameters:
+        - in: query
+          name: campaign
+          schema: *a1
+          description: Campaign handle; requires safety.manage.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyRequestListItem"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+    post:
+      tags:
+        - Safety & Privacy
+      summary: Submit a private Safety & Privacy request
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafetyPrivacyCreate"
+      description: Requires safety.submit for current members, or retained
+        participation eligibility for former members. Does not change or delete
+        related content. Notifications contain only neutral wording and an
+        authenticated request link.
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyPrivacyRequest"
+        "400":
+          description: Invalid payload or incomplete reference
+          content:
+            application/json:
+              schema: *a2
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "409":
+          description: Reviewer list changed or no eligible reviewers
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests/{id}:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: Read a private request, conversation and status history
+      security:
+        - cookieAuth: []
+      parameters:
+        - &a3
+          in: path
+          name: id
+          required: true
+          schema: *a1
+      description: Only the requester (including former members) or a current
+        safety.manage reviewer may read this. Records the viewed revision for the
+        reviewer unread count. Does not hydrate related content or bypass content
+        permissions.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyPrivacyDetail"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests/{id}/messages:
+    post:
+      tags:
+        - Safety & Privacy
+      summary: Add a private request message
+      security:
+        - cookieAuth: []
+      parameters:
+        - *a3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - body
+              properties:
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 10000
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyPrivacyMessage"
+        "400":
+          description: Invalid message
+          content:
+            application/json:
+              schema: *a2
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests/{id}/status:
+    patch:
+      tags:
+        - Safety & Privacy
+      summary: Change request status or reopen a terminal request
+      security:
+        - cookieAuth: []
+      parameters:
+        - *a3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafetyPrivacyStatusUpdate"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    const: true
+        "400":
+          description: Invalid transition or missing outcome
+          content:
+            application/json:
+              schema: *a2
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "409":
+          description: Request revision changed
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/campaigns/{campaignHandle}/chronology/{entityType}/{entityId}/page:
+    put:
+      tags: [Chronology]
+      summary: Link or unlink an optional wiki document
+      description: Requires chronology.edit and disclosure access to the record and page. Both must belong to the addressed campaign. Unlinking retains the record and page.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/campaignHandle'
+        - name: entityType
+          in: path
+          required: true
+          schema: { type: string, enum: [events, eras] }
+        - name: entityId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pageId]
+              properties:
+                pageId: { type: [string, "null"] }
+      responses:
+        '200':
+          description: Page linked or unlinked
+        '400':
+          description: Invalid page identifier
+        '403':
+          description: Chronology management is not permitted
+        '404':
+          description: Record or page unavailable in this campaign
+        '409':
+          description: Page is already linked to another era
   /api/campaigns/{campaignHandle}/chronology/eras:
     parameters:
       - $ref: '#/components/parameters/campaignHandle'
@@ -80,7 +3857,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/campaignHandle'
       tags: [Chronology]
-      summary: Create an era and its canonical Overview
+      summary: Create an era without creating a wiki page
       description: Requires chronology.edit. Observers are always denied. DM-only visibility additionally requires narrative.elevated_view. Names are authored; eras append to the track sequence.
       requestBody:
         required: true
@@ -169,7 +3946,7 @@ paths:
           schema:
             type: string
       tags: [Chronology]
-      summary: Delete an era and its owned Overview after impact confirmation
+      summary: Delete an era after impact confirmation; retain its authored page
       description: Preserves events and trajectory content, detaches references with former-name snapshots, and leaves the track without a current era if necessary. Incoming wiki links do not block deletion. Recurrence uses remaining applicable eras independent of viewer visibility.
       requestBody:
         required: true
@@ -183,7 +3960,7 @@ paths:
                   const: true
       responses:
         '204':
-          description: Era and Overview deleted
+          description: Era deleted; optional authored page retained
         '400':
           description: Confirmation required
         '403':
@@ -846,7 +4623,7 @@ paths:
           - Membership in the addressed campaign
           - Non-observer campaign membership
           - Resource-level visibility and ownership checks performed by the controller/service
-      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Non-observer campaign membership; Resource-level visibility and ownership checks performed by the controller/service."
+      description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign; Non-observer campaign membership; Resource-level visibility and ownership checks performed by the controller/service. Optional chronologyEventId or chronologyEraId atomically links the normal page to one chronology record; additionally requires chronology.edit and disclosure access. Initial page visibility matches the record."
   /api/campaigns/{campaignHandle}/wiki/{pageId}:
     get:
       tags:
@@ -1537,6 +5314,14 @@ paths:
         - $ref: "#/components/parameters/campaignHandle"
       requestBody:
         content:
+          application/json:
+            schema:
+              type: object
+              required: [uploadId]
+              properties:
+                uploadId:
+                  type: string
+                  description: Completed, unexpired campaign_backup session from the shared resumable asset-upload API. Restore consumes this ID once and retires the original asset when its ZIP moves into restore staging. Replaying a claimed or consumed ID returns 409 backup_upload_consumed.
           multipart/form-data:
             schema:
               type: object
@@ -1561,6 +5346,15 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: Invalid campaign backup ZIP
+        "409":
+          description: Backup upload is already being restored or has been consumed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Backup upload is already being restored or has been consumed
+                code: backup_upload_consumed
       x-esiana-authorization:
         boundary: campaign
         requires:
@@ -1811,7 +5605,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
+      description: "Authorization: Authenticated SYSTEM_ADMIN. This disaster-recovery endpoint explicitly overrides campaign content permissions, including private recordings and transcripts. Every request records the actor and backup scope in the system diagnostic log. No campaign membership is required. This exception does not grant access through ordinary content or asset APIs."
   /api/admin/identity-providers:
     get:
       tags:
@@ -2630,7 +6424,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user; SYSTEM_ADMIN application role."
+      description: "Authorization: Authenticated SYSTEM_ADMIN. This disaster-recovery endpoint explicitly overrides campaign content permissions, including private recordings and transcripts. Every request records the actor and backup scope in the system diagnostic log. No campaign membership is required. This exception does not grant access through ordinary content or asset APIs."
   /api/admin/system/check-version:
     get:
       tags:
@@ -4272,6 +8066,50 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user or API token; Membership in the addressed campaign."
+  /api/campaigns/{campaignHandle}/chronology/settings:
+    get:
+      tags: [Chronology]
+      summary: Get campaign chronology settings
+      operationId: get_api_campaigns_campaignHandle_chronology_settings
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Campaign-scoped event defaults
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/ChronologySettings" }
+    put:
+      tags: [Chronology]
+      summary: Update campaign chronology settings
+      operationId: put_api_campaigns_campaignHandle_chronology_settings
+      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChronologySettingsUpdate" }
+      responses:
+        "200":
+          description: Updated campaign chronology settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/ChronologySettings" }
   /api/campaigns/{campaignHandle}/chronology/categories:
     get:
       tags:
@@ -4524,6 +8362,43 @@ paths:
           required: true
           schema:
             type: string
+        - name: order
+          in: query
+          description: Opts into the read-only campaign feed projection. Omit all feed parameters for legacy convergence behavior.
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: importance
+          in: query
+          description: Comma-separated MAJOR, MINOR, NOTICE. Empty selects no chronology importance levels. Other sources are unaffected.
+          schema:
+            type: string
+        - name: includeFuture
+          in: query
+          description: Include authorized future records. Feed defaults to false; omitted legacy calls retain their existing behavior.
+          schema:
+            type: boolean
+        - name: from
+          in: query
+          description: Inclusive signed epoch-minute boundary in feed mode. Defaults to a 30-day master-calendar window.
+          schema:
+            type: string
+            pattern: '^-?[0-9]+$'
+        - name: to
+          in: query
+          description: Exclusive signed epoch-minute boundary in feed mode. Defaults to after the current master-calendar day.
+          schema:
+            type: string
+            pattern: '^-?[0-9]+$'
+        - name: domains
+          in: query
+          description: Comma-separated existing chronology domains. An empty value selects no sources in feed mode.
+          schema:
+            type: string
+        - name: sessionLinkedOnly
+          in: query
+          schema:
+            type: boolean
       responses:
         "200":
           description: Successful response
@@ -9370,6 +13245,18 @@ paths:
           required: true
           schema:
             type: string
+        - name: layerIds
+          in: query
+          required: false
+          allowEmptyValue: true
+          schema:
+            type: string
+          description: >-
+            Omit to use default layer visibility. An empty value hides all
+            explicitly layered objects; a comma-separated list enables only
+            the selected layers. Unlayered objects retain their existing
+            visibility rules. This filter does not grant authorization or
+            bypass temporal or revelation filtering.
       responses:
         "200":
           description: Successful response
@@ -19387,13 +23274,15 @@ paths:
           schema:
             type: string
       requestBody:
-        required: false
-        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        required: true
+        description: Register a field. API callers may provide a stable sourceKey and defaultSheetName; creation defaults never overwrite an existing registration's placement or value.
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ApiRequest"
+              $ref: "#/components/schemas/EntityFieldRegistrationRequest"
       responses:
+        "201":
+          description: Field created on its selected or app-default sheet
         "200":
           description: Successful response
           content:
@@ -20945,13 +24834,15 @@ paths:
           schema:
             type: string
       requestBody:
-        required: false
-        description: JSON fields accepted by this operation. Action endpoints may not require a body.
+        required: true
+        description: Register a field. API callers may provide a stable sourceKey and defaultSheetName; creation defaults never overwrite an existing registration's placement or value.
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ApiRequest"
+              $ref: "#/components/schemas/EntityFieldRegistrationRequest"
       responses:
+        "201":
+          description: Field created on its selected or app-default sheet
         "200":
           description: Successful response
           content:
@@ -21463,9 +25354,11 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:read (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       responses:
         "200":
           description: Successful response
@@ -21485,7 +25378,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user session."
+      description: "Authorization: Authenticated application user session or API token."
   /api/user/schedule/preferences:
     patch:
       tags:
@@ -21495,9 +25388,11 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       requestBody:
         required: false
         description: JSON fields accepted by this operation. Action endpoints may not require a body.
@@ -21524,7 +25419,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user session."
+      description: "Authorization: Authenticated application user session or API token."
   /api/campaigns/{campaignHandle}/wiki/{pageId}/add-to-portfolio:
     post:
       tags:
@@ -21588,13 +25483,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Explicit lifecycle transition from CURRENT to PAST (meaningful history — not staleness).
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - name: adventureId
           in: path
@@ -21629,13 +25526,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:read (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - name: filter
           in: query
@@ -21686,13 +25585,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       requestBody:
         required: true
         content:
@@ -21721,13 +25622,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Deletes the user-owned portfolio character. Related campaign wiki pages are not cascade-deleted; adventure provenance detaches instead.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - &a7
           name: id
@@ -21757,13 +25660,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:read (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       responses:
@@ -21787,13 +25692,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -21824,13 +25731,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Explicit clone/transform: creates a new campaign-scoped WikiPage character and a CURRENT PortfolioCharacterAdventure provenance row. The portfolio and campaign records remain independently owned and are never synchronized afterward. Favorite/showcase/archive are not copied.
 
-        Authorization: Authenticated application user session; caller must be a member of the target campaign.
+        Authorization: Authenticated application user session or API token; caller must be a member of the target campaign.
       parameters:
         - *a7
       requestBody:
@@ -21861,13 +25770,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Personal organization only. Archive is orthogonal to provenance-derived Past.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -21898,13 +25809,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Creates another independent portfolio character. Adventures are not copied. Favorite/showcase/archive are reset.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -21935,13 +25848,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -21973,13 +25888,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -22010,13 +25927,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -22060,13 +25979,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         User-scoped portfolio resource owned by the authenticated user. Not campaign-scoped.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
         - name: mediaId
@@ -22096,13 +26017,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Explicit showcase membership change. Public profile exposure requires isShowcased=true. Removing from showcase clears membership and order together — not an ordering-only mutation.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       parameters:
         - *a7
       requestBody:
@@ -22133,13 +26056,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Batch favorite/archive/showcase mutations for Manage Portfolio / Manage Showcase flows.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       requestBody:
         required: true
         content:
@@ -22168,13 +26093,15 @@ paths:
       x-esiana-authorization:
         boundary: own-user-account
         requires:
-          - Authenticated application user session
+          - Authenticated application user session or API token
+          - 'API token scope campaign:write (legacy unscoped tokens retain access)'
       security:
         - cookieAuth: []
+        - bearerAuth: []
       description: |-
         Reorders an already-showcased set. Does not add/remove showcase membership; use the showcase endpoint for membership.
 
-        Authorization: Authenticated application user session.
+        Authorization: Authenticated application user session or API token.
       requestBody:
         required: true
         content:
@@ -22203,6 +26130,11 @@ paths:
       x-esiana-authorization:
         boundary: public-or-resource-conditional
         requires: []
+      security:
+        - {}
+        - cookieAuth: []
+        - bearerAuth: []
+      x-esiana-token-scopes: ['campaign:read']
       parameters:
         - name: id
           in: path
@@ -22239,6 +26171,11 @@ paths:
       x-esiana-authorization:
         boundary: public-or-resource-conditional
         requires: []
+      security:
+        - {}
+        - cookieAuth: []
+        - bearerAuth: []
+      x-esiana-token-scopes: ['campaign:read']
       parameters:
         - name: assetId
           in: path
@@ -22260,6 +26197,203 @@ paths:
         "404": *a4
         "429": *a5
         "500": *a6
+  /api/campaigns/{campaignHandle}/dashboard/announcements:
+    get:
+      tags: [Campaigns]
+      summary: Get campaign announcements
+      operationId: get_campaign_dashboard_announcements
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    post:
+      tags: [Campaigns]
+      summary: Post campaign announcements
+      operationId: post_campaign_dashboard_announcements
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, message, style]
+              properties:
+                title: {type: string, maxLength: 120}
+                message: {type: string, maxLength: 8000}
+                style: {type: string, enum: [information, important, update]}
+                link: {type: string, nullable: true}
+                expiresAt: {type: string, format: date-time, nullable: true}
+                expectedUpdatedAt: {type: string, format: date-time}
+      responses:
+        "201":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Announcement version changed; refresh before editing
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/campaigns/{campaignHandle}/dashboard/announcements/{announcementId}:
+    patch:
+      tags: [Campaigns]
+      summary: Patch campaign announcements
+      operationId: patch_campaign_dashboard_announcements_announcementId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+        - name: announcementId
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, message, style]
+              properties:
+                title: {type: string, maxLength: 120}
+                message: {type: string, maxLength: 8000}
+                style: {type: string, enum: [information, important, update]}
+                link: {type: string, nullable: true}
+                expiresAt: {type: string, format: date-time, nullable: true}
+                expectedUpdatedAt: {type: string, format: date-time}
+      responses:
+        "200":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Announcement version changed; refresh before editing
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    delete:
+      tags: [Campaigns]
+      summary: Delete campaign announcements
+      operationId: delete_campaign_dashboard_announcements_announcementId
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+          - Campaign settings modification privilege (campaign-scoped; not system administration)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+        - name: announcementId
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "204":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Announcement version changed; refresh before editing
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /api/campaigns/{campaignHandle}/campaign-statistics:
+    get:
+      tags: [Campaigns]
+      summary: Get campaign statistics
+      operationId: get_campaign_campaign-statistics
+      x-esiana-authorization:
+        boundary: campaign
+        requires:
+          - Membership in the addressed campaign
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: campaignHandle
+          in: path
+          required: true
+          schema: {type: string}
+        - name: days
+          in: query
+          schema: {type: integer, enum: [7, 30, 90, 365], default: 30}
+      responses:
+        "200":
+          description: Successful response
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
 components:
   securitySchemes:
     cookieAuth:
@@ -22314,6 +26448,283 @@ components:
         type: string
       example: port-haven
   schemas:
+    EntityFieldRegistrationRequest:
+      type: object
+      required: [label, type]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        type:
+          type: string
+          enum: [STRING, NUMBER, BOOLEAN, JSON, DATE, ENUM]
+        value:
+          description: Initial value; existing stable registrations preserve their stored value. Use PUT to synchronize values.
+        validation:
+          type: object
+          description: Existing field validation rules (required, min, max, maxLength, options).
+        pageId:
+          type: [string, "null"]
+          description: Existing entity sheet ID or core ID; explicit null means Overview. Omit to use the API app's default sheet.
+        defaultSheetName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Creation default for API fields without pageId. Falls back to the authenticated API token's display name. Sheets are scoped by campaign, entity, and API source.
+        sourceKey:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Optional stable API field key within the token and entity. Re-registration preserves identity, value, ordering, and user placement overrides.
+    SafetyPrivacyCampaign:
+      type: object
+      required:
+        - id
+        - handle
+        - name
+      properties:
+        id: &a1
+          type: string
+        handle: *a1
+        name: *a1
+    SafetyPrivacyReviewer:
+      type: object
+      required:
+        - id
+        - displayName
+        - isCampaignOwner
+      properties:
+        id: *a1
+        isCampaignOwner:
+          type: boolean
+        displayName:
+          type:
+            - string
+            - "null"
+    SafetyPrivacyRequest:
+      type: object
+      required:
+        - id
+        - campaignId
+        - requesterId
+        - category
+        - status
+        - description
+        - revision
+        - createdAt
+        - updatedAt
+      properties:
+        id: *a1
+        campaignId: *a1
+        requesterId: *a1
+        category: &a6
+          type: string
+          enum:
+            - recording_privacy
+            - content
+            - other
+        status: &a5
+          type: string
+          enum: &a4
+            - open
+            - in_review
+            - resolved
+            - declined
+        description: &a3
+          type: string
+          minLength: 1
+          maxLength: 10000
+        relatedContentType:
+          type:
+            - string
+            - "null"
+          enum: &a7
+            - recording
+            - session
+            - page
+        relatedContentId:
+          type:
+            - string
+            - "null"
+        resolution:
+          type:
+            - string
+            - "null"
+        resolvedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        resolverId:
+          type:
+            - string
+            - "null"
+        revision:
+          type: integer
+          minimum: 0
+        createdAt: &a2
+          type: string
+          format: date-time
+        updatedAt: *a2
+    SafetyPrivacyRequestListItem:
+      allOf:
+        - $ref: "#/components/schemas/SafetyPrivacyRequest"
+        - type: object
+          required:
+            - campaign
+            - unread
+          properties:
+            campaign:
+              $ref: "#/components/schemas/SafetyPrivacyCampaign"
+            unread:
+              type: boolean
+    SafetyPrivacyMessage:
+      type: object
+      required:
+        - id
+        - requestId
+        - authorId
+        - body
+        - createdAt
+      properties:
+        id: *a1
+        requestId: *a1
+        authorId: *a1
+        body: *a3
+        createdAt: *a2
+    SafetyPrivacyEvent:
+      type: object
+      required:
+        - id
+        - requestId
+        - actorId
+        - newStatus
+        - createdAt
+      properties:
+        id: *a1
+        requestId: *a1
+        actorId: *a1
+        previousStatus:
+          type:
+            - string
+            - "null"
+          enum: *a4
+        newStatus: *a5
+        reason:
+          type:
+            - string
+            - "null"
+        createdAt: *a2
+    SafetyPrivacyDetail:
+      allOf:
+        - $ref: "#/components/schemas/SafetyPrivacyRequest"
+        - type: object
+          required:
+            - campaign
+            - manager
+            - people
+            - reviewerIds
+            - messages
+            - events
+            - reviewers
+            - relatedRecording
+          properties:
+            campaign:
+              $ref: "#/components/schemas/SafetyPrivacyCampaign"
+            manager:
+              type: boolean
+            people:
+              type: array
+              items:
+                type: object
+                required: [id, displayName]
+                properties:
+                  id: *a1
+                  displayName:
+                    type: [string, "null"]
+            reviewers:
+              type: array
+              items:
+                $ref: "#/components/schemas/SafetyPrivacyReviewer"
+            relatedRecording:
+              description: Recording metadata only when the current reader has normal recording access; null for deleted, unavailable, or unauthorized references. The stored relatedContentId is unchanged.
+              type: [object, "null"]
+              required: [title, sessionId]
+              properties:
+                title: *a1
+                sessionId: *a1
+            reviewerIds:
+              type: array
+              items: *a1
+            messages:
+              type: array
+              items:
+                $ref: "#/components/schemas/SafetyPrivacyMessage"
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/SafetyPrivacyEvent"
+    SafetyPrivacyRecording:
+      type: object
+      required:
+        - id
+        - title
+        - campaign
+        - sessionId
+        - sessionTitle
+      properties:
+        id: *a1
+        title: *a1
+        campaign:
+          $ref: "#/components/schemas/SafetyPrivacyCampaign"
+        sessionId: *a1
+        sessionTitle: *a1
+    SafetyPrivacyCreate:
+      type: object
+      additionalProperties: false
+      required:
+        - campaign
+        - category
+        - description
+        - recipientIds
+      properties:
+        campaign:
+          type: string
+          minLength: 1
+          maxLength: 200
+        category: *a6
+        description: *a3
+        relatedContentType:
+          type: string
+          enum: *a7
+        relatedContentId:
+          type: string
+          minLength: 1
+          maxLength: 300
+        recipientIds:
+          type: array
+          items: *a1
+          maxItems: 1000
+      description: Related content type and reference must be supplied together.
+        References are opaque user-supplied text; they do not grant content access.
+        recipientIds must exactly match the disclosed eligible reviewers; refresh
+        recipients on 409.
+    SafetyPrivacyStatusUpdate:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - expectedRevision
+      properties:
+        status: *a5
+        reason: *a3
+        expectedRevision:
+          type: integer
+          minimum: 0
+      description: Managers may change status; resolving or declining requires a
+        nonblank visible reason. Requesters may reopen resolved or declined
+        requests. Revision conflicts return 409.
     IdLabel:
       type: object
       required: [id, label]
@@ -22437,7 +26848,7 @@ components:
             - type: 'null'
         visibility: { type: string, enum: [PUBLIC, PARTY, DM_ONLY] }
         isCurrent: { type: boolean }
-        overview: { type: string, description: Markdown authored through the standard rich-text editor and stored on the owned wiki page. }
+        description: { type: [string, "null"], description: Explicit authored chronology description; omission preserves the existing value. Independent of linked wiki prose. }
     ChronologyEra:
       allOf:
         - $ref: '#/components/schemas/ChronologyEraInput'
@@ -22448,7 +26859,10 @@ components:
             isMasterTime: { type: boolean }
             sortOrder: { type: integer }
             status: { type: string, enum: [PAST, PRESENT, FUTURE] }
-            overviewPageId: { type: string }
+            overview: { type: string, readOnly: true, description: Authorized display projection; never accepted as an authored description. }
+            overviewPageId: { type: [string, "null"], description: Optional visible authored page. }
+            slug: { type: string }
+            slugAliases: { type: array, items: { type: string } }
             canManage: { type: boolean }
     CalendarSubscriptionStatusResponse:
       type: object
@@ -22824,6 +27238,41 @@ components:
           type: boolean
         requiresAuth:
           type: boolean
+    CalendarEventImportance:
+      type: string
+      description: Narrative notice level; independent of visibility and category.
+      enum: [NOTICE, MINOR, MAJOR]
+    ChronologySettings:
+      type: object
+      required: [manualEventImportance, downtimeEventImportance, progressionEventImportance]
+      properties:
+        id: { type: string }
+        campaignId: { type: string }
+        manualEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        downtimeEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        progressionEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+      description: Campaign-scoped defaults copied only onto newly created chronology events. Defaults are MINOR, NOTICE, and NOTICE respectively.
+    ChronologySettingsUpdate:
+      type: object
+      properties:
+        manualEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        downtimeEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        progressionEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+    CalendarEventCategory:
+      type: object
+      required: [id, campaignId, name]
+      properties:
+        id: { type: string }
+        campaignId: { type: string }
+        name: { type: string }
+        color: { type: string, nullable: true }
+        icon:
+          type: string
+          nullable: true
+          enum: [tag, swords, landmark, users, compass, triangle-alert, search, heart, cake, crown, null]
+          description: Supported category icon key. POST and PATCH accept this field; null uses the default icon.
+        sortOrder: { type: integer }
+      description: Campaign-scoped, freely editable event category. New campaigns receive nine defaults once. Existing campaigns receive missing non-legacy defaults; missing Personal is preserved because prior deletion or customization cannot be established. Null categoryId means virtual Uncategorized. Category PATCH also accepts orderedCategoryIds containing every campaign category ID exactly once to save display order, and rejects requests combining that field with name, color, or icon. Legacy saved Uncategorized categories retain their IDs and can be edited; creating or renaming another category to Uncategorized is rejected. Categories are independent of importance.
     ApiResponse:
       description: Endpoint-specific JSON response. See the operation description and examples.
       oneOf:
@@ -22835,7 +27284,7 @@ components:
         - type: string
     ApiRequest:
       type: object
-      description: Operation-specific request fields. Consult the operation summary and validation errors; unknown fields are not guaranteed to be retained.
+      description: Operation-specific request fields. Chronology event create/update accepts importance NOTICE, MINOR, or MAJOR; omitted importance uses the campaign/source default. Consult the operation summary and validation errors; unknown fields are not guaranteed to be retained.
       additionalProperties: true
     PortfolioDerivedFilter:
       type: string

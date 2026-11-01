@@ -238,17 +238,32 @@ export function fromChronologyVisibility(
 export function fromWikiMapVisibility(
   visibility: string | null | undefined,
 ): NarrativeVisibilityTierValue {
-  const normalized = String(visibility ?? WikiVisibilityTier.PUBLIC).trim();
+  const normalized = String(visibility ?? '').trim();
+  const upper = normalized.toUpperCase().replace(/-/g, '_');
   if (
     normalized === WikiVisibilityTier.DM_ONLY ||
-    normalized.toUpperCase() === 'DM_ONLY'
+    upper === 'DM_ONLY' ||
+    upper === 'GM_ONLY' ||
+    upper === 'ELEVATED_ONLY' ||
+    upper === 'SECRET' ||
+    upper === 'STAFF'
   ) {
     return NarrativeVisibilityTier.ELEVATED_ONLY;
   }
-  if (normalized === WikiVisibilityTier.PARTY) {
+  if (
+    normalized === WikiVisibilityTier.PARTY ||
+    upper === 'PARTY' ||
+    upper === 'CAMPAIGN'
+  ) {
     return NarrativeVisibilityTier.PARTY;
   }
-  return NarrativeVisibilityTier.PUBLIC;
+  if (
+    normalized === WikiVisibilityTier.PUBLIC ||
+    upper === 'PUBLIC'
+  ) {
+    return NarrativeVisibilityTier.PUBLIC;
+  }
+  return NarrativeVisibilityTier.ELEVATED_ONLY;
 }
 
 export function fromRelationVisibility(

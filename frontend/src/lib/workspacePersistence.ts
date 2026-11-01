@@ -1,5 +1,9 @@
 import type { StoryViewId, StoryboardLensId } from '@/lib/adventureLayout';
 import type { ProgressionSectionId } from '@/lib/progressionLayout';
+import {
+  isAdventurePreviewPerspective,
+  type AdventurePreviewPerspective,
+} from '@/lib/adventurePreview';
 
 export type StoryVisibilityFilter = 'all' | 'party' | 'dm' | 'hidden';
 
@@ -15,6 +19,7 @@ export interface CampaignWorkspaceState {
   progressionSection?: ProgressionSectionId;
   storyFilters?: StoryFilterState;
   threadsLens?: 'all' | 'activity';
+  adventurePerspective?: AdventurePreviewPerspective;
   workshopSession?: WorkshopSessionState;
 }
 
@@ -155,4 +160,18 @@ export function patchThreadsLens(
   threadsLens: 'all' | 'activity',
 ): void {
   writeCampaignWorkspaceState(campaignHandle, { threadsLens });
+}
+
+export function readAdventurePerspective(
+  campaignHandle: string,
+): AdventurePreviewPerspective {
+  const stored = readCampaignWorkspaceState(campaignHandle).adventurePerspective;
+  return isAdventurePreviewPerspective(stored) ? stored : 'dm';
+}
+
+export function patchAdventurePerspective(
+  campaignHandle: string,
+  adventurePerspective: AdventurePreviewPerspective,
+): void {
+  writeCampaignWorkspaceState(campaignHandle, { adventurePerspective });
 }

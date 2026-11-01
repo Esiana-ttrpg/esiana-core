@@ -1,5 +1,10 @@
 {
   "campaign.settings.pageTitle": "Campaign Settings",
+  "campaign.settings.contextLabel": "Settings",
+  "campaign.settings.back": "Back",
+  "campaign.settings.groupCampaign": "Campaign",
+  "campaign.settings.groupSystems": "Systems",
+  "campaign.settings.groupAdministration": "Administration",
   "campaign.settings.pageSubtitle": "Manage campaign details, privacy, and performance metrics in one place.",
   "campaign.settings.tabGeneral": "General",
   "campaign.settings.tabAccess": "Access",

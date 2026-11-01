@@ -1,14 +1,20 @@
+import { CAMPAIGN_ANNOUNCEMENT_RECORD } from '../../../shared/dashboardCampaignFeatures.js';
 import { randomUUID } from 'node:crypto';
+import { readEventConsequencesFromMetadata, mergeEventConsequenceSetIntoMetadata } from '../../../shared/eventConsequence.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
-import { createEraOverview, ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
+import { cloneSessionAudio, preflightSessionAudioClone } from './sessionAudioBackup.js';
+import { audioContext, capability, assertAudio, authorizeAudioBackup } from './audioCore.js';
+import { deleteCampaignAssetFiles } from './assetFiles.js';
+import { CampaignCapabilities as AudioCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
+import { ensureChronologyEras, syncEraProjection } from './chronologyEraService.js';
 import { extractDescriptionMarkdown } from './eventLoreWiki.js';
 import { env } from '../config/env.js';
 import { generateHandle, makeUniqueHandle, isValidHandle } from './handleUtils.js';
 import { getDefaultSidebarConfig, normalizeSidebarConfig } from './sidebarConfig.js';
-import { getDefaultDashboardConfig } from './dashboardConfig.js';
+import { normalizeDashboardConfig, getDefaultDashboardConfig } from './dashboardConfig.js';
 import { generateInviteToken } from './inviteToken.js';
 import { seedWikiSkeleton } from './seedWiki.js';
 import { CampaignMemberRoles } from '../types/domain.js';
@@ -95,6 +101,13 @@ async function copyAssetFile(sourceUrl: string, newAssetId: string): Promise<str
 export async function duplicateCampaign(
   input: DuplicateCampaignInput,
 ): Promise<DuplicateCampaignResult> {
+  assertAudio(!input.copy.scheduling.sessionRecordings || (input.copy.scheduling.sessionEventsLogs && input.copy.structure.wikiPages),
+    400, 'recording_clone_requires_session_history_and_wiki_pages');
+  if (input.copy.scheduling.sessionRecordings) {
+    capability(await audioContext(input.sourceCampaignId, input.ownerUserId), AudioCapabilities.AUDIO_MANAGE);
+    await authorizeAudioBackup(input.sourceCampaignId, input.ownerUserId);
+  }
+  const preparedAudio = input.copy.scheduling.sessionRecordings ? await preflightSessionAudioClone(input.sourceCampaignId) : undefined;
   await ensureChronologyEras(input.sourceCampaignId);
   const source = await prisma.campaign.findUnique({
     where: { id: input.sourceCampaignId },
@@ -103,6 +116,7 @@ export async function duplicateCampaign(
         include: { events: true },
       },
       calendarEventCategories: true,
+      chronologySettings: true,
       wikiPages: true,
       tags: { include: { pages: { select: { id: true } } } },
       assets: true,
@@ -122,6 +136,7 @@ export async function duplicateCampaign(
 
   const finalHandle = await resolveUniqueHandle(input.name);
   const copy = input.copy;
+  let clonedPageIds = new Map<string, string>();
 
   const categoryRoots = await prisma.wikiPage.findMany({
     where: {
@@ -263,6 +278,17 @@ export async function duplicateCampaign(
     const eventIdMap = new Map<string, string>();
     const categoryIdMap = new Map<string, string>();
 
+    if (source.chronologySettings) {
+      await tx.chronologySettings.create({
+        data: {
+          campaignId: campaign.id,
+          manualEventImportance: source.chronologySettings.manualEventImportance,
+          downtimeEventImportance: source.chronologySettings.downtimeEventImportance,
+          progressionEventImportance: source.chronologySettings.progressionEventImportance,
+        },
+      });
+    }
+
     if (copy.scheduling.calendarStructure) {
       for (const category of source.calendarEventCategories) {
         const createdCategory = await tx.calendarEventCategory.create({
@@ -270,6 +296,8 @@ export async function duplicateCampaign(
             campaignId: campaign.id,
             name: category.name,
             color: category.color,
+            icon: category.icon,
+            sortOrder: category.sortOrder,
           },
         });
         categoryIdMap.set(category.id, createdCategory.id);
@@ -300,6 +328,7 @@ export async function duplicateCampaign(
                   ? (categoryIdMap.get(event.categoryId) ?? null)
                   : null,
                 visibility: event.visibility,
+                importance: event.importance,
                 title: event.title,
                 description: event.description,
                 duration: event.duration,
@@ -315,6 +344,7 @@ export async function duplicateCampaign(
                 targetDay: event.targetDay,
                 targetEpochMinute: event.targetEpochMinute,
                 recurrenceRule: event.recurrenceRule as Prisma.InputJsonValue,
+                metadata: event.metadata as Prisma.InputJsonValue,
               },
             });
             eventIdMap.set(event.id, copiedEvent.id);
@@ -324,11 +354,12 @@ export async function duplicateCampaign(
     }
 
     const pageIdMap = new Map<string, string>();
+    clonedPageIds = pageIdMap;
     const assetIdMap = new Map<string, string>();
 
     if (copy.gameplay.mapsAssets) {
       for (const asset of source.assets) {
-        if (asset.type === 'campaign-backup-zip' || asset.type === 'campaign-import-zip') {
+        if (asset.type === 'campaign-backup-zip' || asset.type === 'campaign-import-zip' || asset.type === 'SessionAudio') {
           continue;
         }
         const newId = randomUUID();
@@ -551,6 +582,15 @@ export async function duplicateCampaign(
     }
 
     if (copy.structure.sidebarLayout) {
+      const dashboard = normalizeDashboardConfig(source.dashboardConfig);
+      dashboard.widgets = dashboard.widgets.map(widget => ({ ...widget, config: widget.config ? {
+        ...widget.config,
+        ...(widget.id === 'pageSpotlight' ? { pageId: pageIdMap.get(String(widget.config.pageId)) ?? null } : {}),
+        ...(widget.id === 'campaignMap' ? { mapId: assetIdMap.get(String(widget.config.mapId)) ?? null } : {}),
+      } : undefined }));
+      await tx.campaign.update({ where: { id: campaign.id }, data: { dashboardConfig: dashboard as unknown as Prisma.InputJsonValue } });
+      const announcements = await tx.dashboardWidget.findMany({ where: { campaignId: source.id, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD } });
+      for (const notice of announcements) await tx.dashboardWidget.create({ data: { campaignId: campaign.id, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD, configJson: notice.configJson } });
       await tx.campaign.update({
         where: { id: campaign.id },
         data: {
@@ -560,17 +600,27 @@ export async function duplicateCampaign(
     }
 
     if (calendarIdMap.size) {
+      const sourceEvents = new Map(source.fantasyCalendars.flatMap(calendar => calendar.events.map(event => [event.id, event] as const)));
+      for (const [sourceEventId, targetEventId] of eventIdMap) {
+        const sourceEvent = sourceEvents.get(sourceEventId)!;
+        const sourcePageId = sourceEvent.wikiPageId;
+        const targetPageId = sourcePageId ? pageIdMap.get(sourcePageId) : undefined;
+        const consequences = readEventConsequencesFromMetadata(sourceEvent.metadata);
+        const metadata = consequences.length ? mergeEventConsequenceSetIntoMetadata(sourceEvent.metadata as Record<string, unknown>, consequences.map(consequence => ({
+          ...consequence,
+          targets: consequence.targets && Object.fromEntries(Object.entries(consequence.targets).map(([key, ids]) => [key,
+            ids.flatMap(id => { const mapped = pageIdMap.get(id); return mapped ? [mapped] : []; }),
+          ])),
+        }))) as Prisma.InputJsonValue : undefined;
+        if (targetPageId || metadata) await tx.calendarEvent.update({ where: { id: targetEventId }, data: { ...(targetPageId ? { wikiPageId: targetPageId } : {}), ...(metadata ? { metadata } : {}) } });
+      }
       const sourceEras = await tx.campaignEra.findMany({ where: { campaignId: source.id }, include: { overview: true } });
       for (const era of sourceEras) {
         const calendarId = calendarIdMap.get(era.calendarId);
         if (!calendarId) continue;
-        let overviewPageId = pageIdMap.get(era.overviewPageId);
-        if (!overviewPageId) {
-          const page = await createEraOverview(tx, campaign.id, era.name, era.visibility, extractDescriptionMarkdown(era.overview.blocks) ?? '');
-          overviewPageId = page.id;
-        }
+        const overviewPageId = era.overviewPageId ? pageIdMap.get(era.overviewPageId) ?? null : null;
         await tx.campaignEra.create({ data: {
-          campaignId: campaign.id, id: era.id, calendarId, overviewPageId, name: era.name,
+          campaignId: campaign.id, id: era.id, calendarId, overviewPageId, name: era.name, description: era.description,
           sortOrder: era.sortOrder, isCurrent: era.isCurrent, visibility: era.visibility,
           epochStartMinute: era.epochStartMinute, epochEndMinute: era.epochEndMinute,
         } });
@@ -581,9 +631,30 @@ export async function duplicateCampaign(
       const history = Object.fromEntries(Object.entries(sourceHistory ?? {}).filter(([id]) => eventIdMap.has(id)).map(([id, value]) => [eventIdMap.get(id)!, value]));
       await tx.campaignMomentum.update({ where: { campaignId: campaign.id }, data: { eraRecurrenceHistory: history as Prisma.InputJsonValue } });
     }
+    if (copy.scheduling.calendarStructure && source.eventCategoriesInitialized) {
+      await tx.campaign.update({ where: { id: campaign.id }, data: { eventCategoriesInitialized: true } });
+    } else {
+      const { initializeEventCategories } = await import('./defaultEventCategories.js');
+      await initializeEventCategories(tx, campaign.id, { newCampaign: !copy.scheduling.calendarStructure });
+    }
+    const { initializeChronologyWorkspaces } = await import('./chronologyWikiWorkspace.js');
+    await initializeChronologyWorkspaces(tx, campaign.id);
     return campaign;
   });
 
+  if (copy.scheduling.sessionRecordings) {
+    try {
+      await cloneSessionAudio(source.id, created.id, clonedPageIds, preparedAudio);
+    } catch (error) {
+      // Legacy non-audio clones can retain source pointers; never purge those objects.
+      const sourcePointers = new Set(source.assets.flatMap((asset) => [asset.url, asset.displayUrl, asset.thumbnailUrl].filter((url): url is string => !!url)));
+      try { await deleteCampaignAssetFiles(created.id, sourcePointers); }
+      catch (cleanupError) { console.error('Failed to clean up cloned campaign storage', { campaignId: created.id, error: cleanupError }); }
+      try { await prisma.campaign.delete({ where: { id: created.id } }); }
+      catch (cleanupError) { console.error('Failed to remove incomplete cloned campaign', { campaignId: created.id, error: cleanupError }); }
+      throw error;
+    }
+  }
   await rebuildWikiLinksForCampaign(created.id);
   const { rebuildSearchIndexForCampaign } = await import('./search/index/searchIndexService.js');
   await rebuildSearchIndexForCampaign(created.id);

@@ -17,16 +17,21 @@ export function HavenDowntimeWidget({ campaignHandle, customizeMode, onHide }: H
   const { t } = useTranslation();
   const [overview, setOverview] = useState<DowntimeHubOverviewPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     void fetchDowntimeHub(campaignHandle)
       .then((payload) => {
         if (!cancelled) setOverview(payload.overview ?? null);
       })
-      .catch(() => {
-        if (!cancelled) setOverview(null);
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setOverview(null);
+          setError(err instanceof Error ? err.message : 'Unable to load downtime.');
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -43,6 +48,7 @@ export function HavenDowntimeWidget({ campaignHandle, customizeMode, onHide }: H
       customizeMode={customizeMode}
       onHide={onHide}
       loading={loading}
+      error={error}
     >
       <div className="flex h-full flex-col gap-3">
         {overview ? (

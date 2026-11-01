@@ -1,4 +1,9 @@
+import { listDashboardAnnouncements, saveDashboardAnnouncement, deleteDashboardAnnouncement, getDashboardCampaignStatistics } from '../controllers/dashboardFeaturesController.js';
+import { setChronologyPage } from '../controllers/chronologyPagesController.js';
 import { Router } from 'express';
+import { campaignAudioRouter } from './audioSettings.js';
+import { sessionRecordingsRouter } from './sessionRecordings.js';
+import { audioUploadsRouter } from './audioUploads.js';
 import { listEras, createEra, updateEra, reorderEras, eraImpact, deleteEra } from '../controllers/chronologyErasController.js';
 import {
   advanceCampaignTime,
@@ -297,6 +302,7 @@ import {
   listCalendarEventCategories,
   updateCalendarEventCategory,
 } from '../controllers/calendarEventCategoriesController.js';
+import { getChronologySettings, updateChronologySettings } from '../controllers/chronologySettingsController.js';
 import {
   getCampaignStatus,
   getCampaignCapacityHint,
@@ -458,6 +464,9 @@ campaignScopedRouter.use(requireCampaignMembership);
 campaignScopedRouter.use(rateLimitPolicy('authenticated'));
 campaignScopedRouter.use(rateLimitPolicy('apiKey'));
 campaignScopedRouter.use(rateLimitPolicy('mutation'));
+campaignScopedRouter.use('/audio', campaignAudioRouter);
+campaignScopedRouter.use('/audio', sessionRecordingsRouter);
+campaignScopedRouter.use('/asset-uploads', audioUploadsRouter);
 
 campaignScopedRouter.get('/', getCampaign);
 campaignScopedRouter.get('/members', listCampaignMembers);
@@ -520,6 +529,7 @@ campaignScopedRouter.post('/discord/:destinationId/test', requireGamemasterSetti
 campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemasterSettings, listDiscordDeliveries);
 
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
+campaignScopedRouter.put('/chronology/:entityType/:entityId/page', requireChronologyManager, setChronologyPage);
 campaignScopedRouter.get('/chronology/eras', listEras);
 campaignScopedRouter.post('/chronology/eras', requireChronologyManager, createEra);
 campaignScopedRouter.put('/chronology/eras/order', requireChronologyManager, reorderEras);
@@ -593,6 +603,8 @@ campaignScopedRouter.get(
 );
 campaignScopedRouter.get('/narrative-snapshots/:snapshotId', getMilestoneSnapshot);
 campaignScopedRouter.get('/chronology/categories', listCalendarEventCategories);
+campaignScopedRouter.get('/chronology/settings', getChronologySettings);
+campaignScopedRouter.put('/chronology/settings', requireChronologyManager, updateChronologySettings);
 campaignScopedRouter.post(
   '/chronology/categories',
   requireChronologyManager,
@@ -1105,6 +1117,11 @@ campaignScopedRouter.post(
 );
 
 campaignScopedRouter.get('/dashboard', getDashboardBundle);
+campaignScopedRouter.get('/dashboard/announcements', requireGamemasterSettings, listDashboardAnnouncements);
+campaignScopedRouter.post('/dashboard/announcements', requireGamemasterSettings, saveDashboardAnnouncement);
+campaignScopedRouter.patch('/dashboard/announcements/:announcementId', requireGamemasterSettings, saveDashboardAnnouncement);
+campaignScopedRouter.delete('/dashboard/announcements/:announcementId', requireGamemasterSettings, deleteDashboardAnnouncement);
+campaignScopedRouter.get('/campaign-statistics', getDashboardCampaignStatistics);
 campaignScopedRouter.get('/visual-atlas', getVisualAtlas);
 
 campaignScopedRouter.patch(

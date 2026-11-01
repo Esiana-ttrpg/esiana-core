@@ -1,11 +1,13 @@
 import type { Prisma } from '../lib/prismaClient.js';
 import type { Response } from 'express';
+import { pipeline } from 'node:stream/promises';
+import { authorizeAdminBackup } from '../lib/adminBackupAuthorization.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { deleteCampaignAssetFiles } from '../lib/assetFiles.js';
 import { buildFullCampaignBundle } from '../lib/campaignBackup.js';
 import { buildSovereignExport } from '../lib/campaignExport/buildSovereignExport.js';
-import { buildCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
+import { streamCampaignBackupZip } from '../lib/campaignExport/buildCampaignBackupZip.js';
 import {
   buildFileSizeFields,
   sumAssetUrlBytes,
@@ -222,6 +224,8 @@ export async function downloadAdminCampaignBackup(
     return;
   }
 
+  try { authorizeAdminBackup(req, campaignId); }
+  catch { res.status(403).json({ error: 'System administrator permission is required for administrative backups' }); return; }
   const sovereignExport = await buildSovereignExport(campaignId, 'full');
   if (!sovereignExport) {
     res.status(404).json({ error: 'Campaign not found' });
@@ -252,11 +256,9 @@ export async function downloadAdminCampaignBackup(
   );
 
   try {
-    const zipBuffer = await buildCampaignBackupZip(files);
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', String(zipBuffer.length));
-    res.send(zipBuffer);
+    await pipeline(streamCampaignBackupZip(files), res);
   } catch (err) {
     appendSystemLog(
       'error',
@@ -299,6 +301,11 @@ export async function deleteAdminCampaign(
     return;
   }
 
+  // Retained requests must not be erased indirectly through campaign deletion.
+  if (await prisma.safetyPrivacyRequest.count({ where: { campaignId } })) {
+    res.status(409).json({ error: 'This campaign has retained Safety & Privacy requests. Archive it instead; request erasure is not available.' });
+    return;
+  }
   await deleteCampaignAssetFiles(campaignId);
   await prisma.campaign.delete({ where: { id: campaignId } });
 

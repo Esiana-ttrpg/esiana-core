@@ -196,37 +196,15 @@ test('parseDashboardLayoutPayload accepts worldPressureForecast widget placement
   assert.ok(parsed.widgets.some((w) => w.id === 'worldPressureForecast'));
 });
 
-test('normalizeDashboardConfig migrates legacy layouts to narrative briefing widgets', () => {
-  const normalized = normalizeDashboardConfig({
-    hero: { coverImageUrl: null, summary: null },
-    widgets: [
-      {
-        id: 'sessionSchedule',
-        x: 0,
-        y: 0,
-        w: 4,
-        h: 4,
-        enabled: true,
-      },
-    ],
-  });
-
-  for (const id of [
-    'campaignAtAGlance',
-    'currentStory',
-    'partyRoster',
-    'recentActivity',
-    'explore',
-  ] as const) {
-    const widget = normalized.widgets.find((w) => w.id === id);
-    assert.ok(widget, `expected ${id} widget`);
-    assert.equal(widget.enabled, true);
-  }
-
-  assert.equal(
-    normalized.widgets.find((w) => w.id === 'sessionSchedule')?.enabled,
-    false,
-  );
+test('normalization preserves customized legacy layouts without enabling new defaults', () => {
+  const normalized = normalizeDashboardConfig({ widgets: [
+    { id: 'sessionClock', x: 2, y: 7, w: 4, h: 2, enabled: true, config: { note: 'Keep me' } },
+  ] });
+  const widget = normalized.widgets.find((item) => item.id === 'sessionSchedule');
+  assert.ok(widget);
+  assert.deepEqual([widget.x, widget.y, widget.w, widget.h, widget.enabled], [2, 7, 4, 2, true]);
+  assert.deepEqual(widget.config, { note: 'Keep me' });
+  assert.deepEqual(normalized.widgets.filter((item) => item.enabled).map((item) => item.id), ['sessionSchedule']);
 });
 
 test('getDefaultDashboardConfig enables narrative briefing widgets', () => {
@@ -236,7 +214,7 @@ test('getDefaultDashboardConfig enables narrative briefing widgets', () => {
     'currentStory',
     'partyRoster',
     'recentActivity',
-    'explore',
+    'livingThreads',
   ] as const) {
     const widget = defaults.widgets.find((w) => w.id === id);
     assert.ok(widget, `expected ${id} widget`);
@@ -377,4 +355,60 @@ test('parseDashboardLayoutPayload accepts valid world widget configs', () => {
     limit: 5,
     sortBy: 'created',
   });
+});
+
+test('plugin placements and presentation preferences survive save and refresh', () => {
+  const parsed = parseDashboardLayoutPayload({ widgets: [
+    { id: 'plugin:journal:reading', x: 3, y: 5, w: 6, h: 3, enabled: true, variant: 'compact', autoHeight: true, config: { selected: 'entry' } },
+  ] });
+  assert.ok(parsed);
+  const refreshed = normalizeDashboardConfig(JSON.parse(JSON.stringify(parsed)));
+  const widget = refreshed.widgets.find((item) => item.id === 'plugin:journal:reading');
+  assert.ok(widget);
+  assert.equal(widget.variant, 'compact');
+  assert.equal(widget.autoHeight, true);
+  assert.deepEqual(widget.config, { selected: 'entry' });
+  assert.equal(refreshed.widgets.filter((item) => item.enabled).length, 1);
+});
+
+test('an intentionally empty layout remains empty', () => {
+  assert.equal(normalizeDashboardConfig({ widgets: [] }).widgets.filter((item) => item.enabled).length, 0);
+  assert.ok(parseDashboardLayoutPayload({ widgets: [] }));
+});
+
+test('non-finite placement coordinates are rejected', () => {
+  for (const value of [NaN, Infinity, -Infinity]) {
+    assert.equal(parseDashboardLayoutPayload({ widgets: [
+      { id: 'partyRoster', x: value, y: 0, w: 4, h: 2, enabled: true },
+    ] }), null);
+  }
+});
+
+test('fine row positions survive persistence without changing legacy dimensions', () => {
+  const parsed = parseDashboardLayoutPayload({ widgets: [
+    { id: 'currentStory', x: 0, y: 1.75, w: 7, h: 3.25, enabled: true, autoHeight: false },
+    { id: 'partyRoster', x: 7, y: 2, w: 5, h: 3, enabled: true },
+  ] });
+  assert.ok(parsed);
+  const refreshed = normalizeDashboardConfig(JSON.parse(JSON.stringify(parsed)));
+  assert.equal(refreshed.widgets.find((item) => item.id === 'currentStory')?.y, 1.75);
+  assert.equal(refreshed.widgets.find((item) => item.id === 'currentStory')?.h, 3.25);
+  assert.equal(refreshed.widgets.find((item) => item.id === 'partyRoster')?.h, 3);
+});
+
+test('mixed quick links round-trip through the existing layout payload in configured order', () => {
+  const links = ['maps', { kind: 'external', id: 'atlas', label: 'Shared atlas', url: 'https://example.com/world', icon: 'book' }, 'sessionNotes'];
+  const parsed = parseDashboardLayoutPayload({ widgets: [{ id: 'quickUtilityNav', x: 3, y: 2, w: 4, h: 2, enabled: true, config: { links } }] });
+  assert.ok(parsed);
+  const refreshed = normalizeDashboardConfig(JSON.parse(JSON.stringify(parsed)));
+  const widget = refreshed.widgets.find(item => item.id === 'quickUtilityNav');
+  assert.deepEqual(widget?.config?.links, links);
+  assert.deepEqual([widget?.x, widget?.y, widget?.w, widget?.h], [3, 2, 4, 2]);
+});
+
+test('unsafe external links are rejected before normalization can repair saved data', () => {
+  const parsed = parseDashboardLayoutPayload({ widgets: [{ id: 'quickUtilityNav', x: 0, y: 0, w: 4, h: 2, enabled: true,
+    config: { links: [{ kind: 'external', id: 'unsafe', label: 'Unsafe', url: 'javascript:alert(1)' }] },
+  }] });
+  assert.equal(parsed, null);
 });

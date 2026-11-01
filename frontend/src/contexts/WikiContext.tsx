@@ -47,6 +47,7 @@ interface WikiContextValue {
   playerSessionNotesFolderTitle: string;
   sessionPages: WikiTreeNode[];
   pinnedShortcuts: PageShortcut[];
+  pinsLoading: boolean;
   sidebarConfig: SidebarConfig;
   loading: boolean;
   error: string | null;
@@ -72,23 +73,28 @@ export function WikiProvider({ children }: { children: ReactNode }) {
   const [playerSessionNotesFolderTitle, setPlayerSessionNotesFolderTitle] =
     useState(PLAYER_SESSION_NOTES_TITLE);
   const [pinnedShortcuts, setPinnedShortcuts] = useState<PageShortcut[]>([]);
+  const [pinsLoading, setPinsLoading] = useState(true);
   const [sidebarConfig, setSidebarConfig] = useState<SidebarConfig>(() =>
     normalizeSidebarConfig(null),
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const refreshGenerationRef = useRef(0);
+  const initialLoadCompletedFor = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!campaignHandle) return;
     const generation = ++refreshGenerationRef.current;
-    setLoading(true);
+    setLoading(initialLoadCompletedFor.current !== campaignHandle);
     setError(null);
+    setPinsLoading(true);
+    void fetchPersonalPins(campaignHandle).then((pins) => {
+      if (generation !== refreshGenerationRef.current) return;
+      setPinnedShortcuts(pins);
+      setPinsLoading(false);
+    });
     try {
-      const [data, pins] = await Promise.all([
-        fetchWikiTreePayload(campaignHandle),
-        fetchPersonalPins(campaignHandle),
-      ]);
+      const data = await fetchWikiTreePayload(campaignHandle);
       if (generation !== refreshGenerationRef.current) return;
       setTree(data.tree ?? []);
       setCampaign(data.campaign ?? null);
@@ -97,17 +103,18 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       setPlayerSessionNotesFolderTitle(
         data.playerSessionNotesFolderTitle ?? PLAYER_SESSION_NOTES_TITLE,
       );
-      setPinnedShortcuts(pins);
     } catch (err) {
       if (generation !== refreshGenerationRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load wiki');
       setTree([]);
       setCampaign(null);
       setPlayers([]);
-      setPinnedShortcuts([]);
       setSidebarConfig(normalizeSidebarConfig(null));
     } finally {
-      if (generation === refreshGenerationRef.current) setLoading(false);
+      if (generation === refreshGenerationRef.current) {
+        initialLoadCompletedFor.current = campaignHandle;
+        setLoading(false);
+      }
     }
   }, [campaignHandle]);
 
@@ -202,6 +209,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
           chronologyContributor: campaign.chronologyContributor,
           partyId: campaign.partyId,
           isCampaignOwner: campaign.isCampaignOwner,
+          roleCapabilityOverrides: campaign.roleCapabilityOverrides,
         }
       : null,
   );
@@ -217,6 +225,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       playerSessionNotesFolderTitle,
       sessionPages,
       pinnedShortcuts,
+      pinsLoading,
       sidebarConfig,
       loading,
       error,
@@ -238,6 +247,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       playerSessionNotesFolderTitle,
       sessionPages,
       pinnedShortcuts,
+      pinsLoading,
       sidebarConfig,
       loading,
       error,

@@ -1,10 +1,11 @@
+import { CampaignStatisticsPage } from '@/pages/CampaignStatisticsPage';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LocaleProvider } from '@/contexts/LocaleContext';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CampaignLayout } from '@/layouts/CampaignLayout';
-import { GlobalHubPage } from '@/pages/GlobalHubPage';
+import { InstanceHomePage } from '@/pages/InstanceHomePage';
 import { GlobalPluginPageHost } from '@/pages/GlobalPluginPageHost';
 import { PluginPageHost } from '@/pages/PluginPageHost';
 import { WikiPage } from '@/pages/WikiPage';
@@ -43,6 +44,8 @@ import { AdminLayout } from '@/layouts/AdminLayout';
 import { AdminGeneralSettingsPage } from '@/pages/AdminGeneralSettingsPage';
 import { AdminAssetsUploadsPage } from '@/pages/AdminAssetsUploadsPage';
 import { AdminStoragePage } from '@/pages/AdminStoragePage';
+import { AdminAudioPage } from '@/pages/AdminAudioPage';
+import { AdminProvidersPage } from '@/pages/AdminProvidersPage';
 import { AdminIdentityProvidersPage } from '@/pages/AdminIdentityProvidersPage';
 import { AdminAppearancePage } from '@/pages/AdminBrandingPage';
 import { AdminPluginsPage } from '@/pages/AdminPluginsPage';
@@ -83,7 +86,7 @@ export default function App() {
         <BrandingProvider>
         <Routes>
           <Route element={<AppLayout />} errorElement={<RouteErrorPage />}>
-            <Route index element={<GlobalHubPage />} />
+            <Route index element={<InstanceHomePage />} />
             <Route path="plugins/:pluginId/:pageId/*" element={<GlobalPluginPageHost />} />
             <Route path="guides/:guideSlug" element={<PlatformGuidePage />} />
             <Route path="recruitment" element={<RecruitmentDirectoryPage />} />
@@ -116,13 +119,19 @@ export default function App() {
             <Route path="visual-atlas" element={<VisualAtlasPage />} />
             <Route path="relations" element={<RelationsPage />} />
             <Route path="chronology" element={<ChronologyPage />} />
+            <Route path="events" element={<ChronologyPage />} />
+            <Route path="events/:eventSlug" element={<ChronologyPage />} />
+            <Route path="eras" element={<ChronologyPage />} />
+            <Route path="eras/:eraSlug" element={<ChronologyPage />} />
             <Route path="time-tracking" element={<TimeTrackingManagement />} />
             <Route path="world-advance" element={<WorldAdvancePage />} />
+            <Route path="campaign-statistics" element={<CampaignStatisticsPage />} />
             <Route path="progression" element={<ProgressionPage />} />
             <Route path="workshop" element={<WorkshopPage />} />
             <Route path="world-advance/batches/:eventId" element={<WorldAdvanceBatchPage />} />
             <Route path="recent-changes" element={<RecentChangesPage />} />
             <Route path="pages" element={<FreeformPagesIndex />} />
+            <Route path="wiki/:pageId" element={<WikiPage />} />
             <Route path="pages/:pathKey" element={<WikiPage />} />
             {WORKSPACE_INDEX_SEGMENTS.filter((s) => s !== 'pages').map((segment) => (
               <Route key={`ws-index-${segment}`} path={segment} element={<WorkspaceIndexPage />} />
@@ -175,6 +184,8 @@ export default function App() {
             <Route path="settings/general" element={<AdminGeneralSettingsPage />} />
             <Route path="settings/assets" element={<AdminAssetsUploadsPage />} />
             <Route path="settings/storage" element={<AdminStoragePage />} />
+            <Route path="settings/audio" element={<AdminAudioPage />} />
+            <Route path="settings/providers" element={<AdminProvidersPage />} />
             <Route
               path="settings/identity-providers"
               element={<AdminIdentityProvidersPage />}

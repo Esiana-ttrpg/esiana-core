@@ -1,3 +1,4 @@
+import { CAMPAIGN_ANNOUNCEMENT_RECORD, parseAnnouncement } from '../../../../shared/dashboardCampaignFeatures.js';
 import type { Prisma } from '../prismaClient.js';
 import { prisma } from '../prisma.js';
 import { ensureChronologyEras, syncEraProjection } from '../chronologyEraService.js';
@@ -24,7 +25,9 @@ export function parseOperationalPayload(raw: unknown): SovereignOperational | nu
   if (!raw || typeof raw !== 'object') return null;
   const payload = raw as SovereignOperational;
   return {
+    ...(Array.isArray(payload.campaignAnnouncements) ? { campaignAnnouncements: payload.campaignAnnouncements } : {}),
     downtimeHavens: Array.isArray(payload.downtimeHavens) ? payload.downtimeHavens : [],
+    ...(Array.isArray(payload.chronologyRoutes) ? { chronologyRoutes: payload.chronologyRoutes } : {}),
     ...(Array.isArray(payload.campaignEras) ? { campaignEras: payload.campaignEras } : {}),
     ...(payload.eraRecurrenceHistory ? { eraRecurrenceHistory: payload.eraRecurrenceHistory } : {}),
     downtimeProjects: Array.isArray(payload.downtimeProjects) ? payload.downtimeProjects : [],
@@ -42,6 +45,7 @@ export async function buildOperationalPayload(
   campaignId: string,
 ): Promise<SovereignOperational> {
   await ensureChronologyEras(campaignId);
+  const chronologyRoutes = await prisma.chronologyRoute.findMany({ where: { campaignId } });
   const campaignEras = await prisma.campaignEra.findMany({ where: { campaignId } });
   const eraRecurrenceHistory = (await prisma.campaignMomentum.findUniqueOrThrow({ where: { campaignId } })).eraRecurrenceHistory as import('../eraOccurrenceHistory.js').EraHistory;
   const characterDb = prisma as typeof prisma & {
@@ -60,8 +64,11 @@ export async function buildOperationalPayload(
       characterDb.characterField.findMany({ where: { campaignId } }),
     ]);
 
+  const campaignAnnouncements = await prisma.dashboardWidget.findMany({ where: { campaignId, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD } });
   return serializeForOperationalJson({
+    campaignAnnouncements,
     campaignEras,
+    chronologyRoutes,
     eraRecurrenceHistory,
     downtimeHavens,
     downtimeProjects,
@@ -157,6 +164,19 @@ export async function restoreOperationalPayload(
     return { havenCount: 0, projectCount: 0, pluginDataCount: 0 };
   }
 
+  const restoredAnnouncements = [];
+  for (const row of payload.campaignAnnouncements ?? []) {
+    if (typeof row.id !== 'string' || typeof row.configJson !== 'string') throw new Error('Invalid campaign announcement record');
+    let input;
+    try { input = parseAnnouncement(JSON.parse(row.configJson)); } catch { input = null; }
+    if (!input) throw new Error('Invalid campaign announcement content');
+    const existing = await prisma.dashboardWidget.findUnique({ where: { id: row.id }, select: { campaignId: true, widgetType: true } });
+    if (existing && (existing.campaignId !== campaignId || existing.widgetType !== CAMPAIGN_ANNOUNCEMENT_RECORD)) throw new Error('Announcement ID belongs to another record');
+    const configJson = JSON.stringify(input);
+    const createdAt = typeof row.createdAt === 'string' && Number.isFinite(Date.parse(row.createdAt)) ? new Date(row.createdAt) : undefined;
+    restoredAnnouncements.push({ id: row.id, configJson, createdAt });
+  }
+
   // Validate all new character-shell rows before any operational row is
   // mutated, so a malformed/colliding backup fails atomically at this layer.
   await validateCharacterRestoreOwnership(campaignId, payload);
@@ -165,25 +185,21 @@ export async function restoreOperationalPayload(
       const calendars = new Set((await tx.fantasyCalendar.findMany({ where: { campaignId }, select: { id: true } })).map(row => row.id));
       const pages = new Set((await tx.wikiPage.findMany({
         where: { campaignId },
-        select: { id: true, metadata: true },
-      })).filter(row => {
-        const metadata = row.metadata as Record<string, unknown> | null;
-        return metadata?.eraOverview === true;
-      }).map(row => row.id));
+        select: { id: true },
+      })).map(row => row.id));
       for (const row of payload.campaignEras!) {
         if (!row || typeof row.name !== 'string' || !row.name.trim() || row.name.length > 120
           || !Number.isInteger(row.sortOrder) || Number(row.sortOrder) < 0
           || !['PUBLIC', 'PARTY', 'DM_ONLY'].includes(String(row.visibility))) throw new Error('Invalid era in campaign backup.');
         if (typeof row.id !== 'string' || typeof row.calendarId !== 'string' || !calendars.has(row.calendarId)
-          || typeof row.overviewPageId !== 'string' || !pages.has(row.overviewPageId)) throw new Error('Era restore references content outside the target campaign.');
+          || (row.overviewPageId != null && (typeof row.overviewPageId !== 'string' || !pages.has(row.overviewPageId)))) throw new Error('Era restore references content outside the target campaign.');
         const data = {
-          calendarId: row.calendarId, overviewPageId: row.overviewPageId, name: String(row.name), sortOrder: Number(row.sortOrder),
+          calendarId: row.calendarId, overviewPageId: typeof row.overviewPageId === 'string' ? row.overviewPageId : null, description: typeof row.description === 'string' ? row.description : null, name: String(row.name), sortOrder: Number(row.sortOrder),
           isCurrent: row.isCurrent === true, visibility: String(row.visibility),
           epochStartMinute: row.epochStartMinute == null ? null : BigInt(String(row.epochStartMinute)),
           epochEndMinute: row.epochEndMinute == null ? null : BigInt(String(row.epochEndMinute)),
         };
         await tx.campaignEra.upsert({ where: { campaignId_id: { campaignId, id: row.id } }, create: { ...data, campaignId, id: row.id }, update: data });
-        await tx.wikiPage.update({ where: { id: row.overviewPageId }, data: { visibility: row.visibility === 'DM_ONLY' ? 'DM_Only' : row.visibility === 'PUBLIC' ? 'Public' : 'Party' } });
       }
       await tx.campaignMomentum.upsert({ where: { campaignId }, create: { campaignId, erasMigrated: true }, update: { erasMigrated: true } });
       await syncEraProjection(tx, campaignId);
@@ -195,6 +211,19 @@ export async function restoreOperationalPayload(
     });
   }
 
+  if (payload.chronologyRoutes) {
+    await prisma.$transaction(async tx => {
+      await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
+      for (const row of payload.chronologyRoutes!) {
+        if (!['events', 'eras'].includes(String(row.entityType)) || typeof row.entityId !== 'string' || typeof row.slug !== 'string' || typeof row.title !== 'string' || typeof row.canonical !== 'boolean') throw new Error('Invalid chronology route in backup.');
+        const key = { campaignId, entityType: String(row.entityType), slug: row.slug };
+        const existing = await tx.chronologyRoute.findUnique({ where: { campaignId_entityType_slug: key } });
+        if (existing && existing.entityId !== row.entityId) throw new Error('Chronology URL already belongs to another record.');
+        if (row.canonical) await tx.chronologyRoute.updateMany({ where: { campaignId, entityType: key.entityType, entityId: row.entityId, slug: { not: row.slug }, canonical: true }, data: { canonical: false } });
+        await tx.chronologyRoute.upsert({ where: { campaignId_entityType_slug: key }, create: { ...key, entityId: row.entityId, title: row.title, canonical: row.canonical }, update: { title: row.title, canonical: row.canonical } });
+      }
+    });
+  }
   let havenCount = 0;
   let projectCount = 0;
   let pluginDataCount = 0;
@@ -330,5 +359,9 @@ export async function restoreOperationalPayload(
     });
   }
 
+  for (const row of restoredAnnouncements) {
+    await prisma.dashboardWidget.upsert({ where: { id: row.id },
+      create: { id: row.id, campaignId, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD, configJson: row.configJson, createdAt: row.createdAt }, update: { configJson: row.configJson } });
+  }
   return { havenCount, projectCount, pluginDataCount };
 }

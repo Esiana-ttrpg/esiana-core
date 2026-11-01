@@ -38,6 +38,8 @@ const SYSTEM_CONFIG_NAV: AdminNavItem[] = [
     label: 'Assets & Uploads',
     icon: Upload,
   },
+  { to: '/admin/settings/audio', label: 'Audio', icon: Upload },
+  { to: '/admin/settings/providers', label: 'Providers', icon: Settings2 },
   {
     to: '/admin/settings/storage',
     label: 'Storage',

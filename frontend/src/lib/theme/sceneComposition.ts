@@ -294,6 +294,7 @@ export function isSceneCompositionActive(
   );
 }
 
+// Chronology records use studio composition; authored event/era wiki routes reuse the codex scene profiles.
 export function resolveSceneComposition(
   input: ResolveSceneCompositionInput,
 ): SceneCompositionProfile | null {

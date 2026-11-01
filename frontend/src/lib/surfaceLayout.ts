@@ -43,7 +43,7 @@ export const WORKSPACE_COMPOSITION_CLASS = 'workspace-composition';
 /** Full-bleed asymmetric workspace field — pages own composition, not the shell */
 export const WORKSPACE_FIELD_CLASS = 'workspace-field';
 
-/** Centered document-mode pages (settings, world-advance) */
+/** Centered document-mode pages (world-advance, maintenance) */
 export const WORKSPACE_DOCUMENT_CLASS = 'workspace-document';
 
 /** Focal narrative content — prose, hero story, note body */
@@ -114,6 +114,14 @@ export const SIDEBAR_NAV_PRIMARY_CLASS = 'sidebar-nav-primary';
 export const SIDEBAR_NAV_SECONDARY_CLASS = 'sidebar-nav-secondary';
 export const SIDEBAR_NAV_ITEM_CLASS = 'sidebar-nav-item';
 export const SIDEBAR_BREATHING_GAP_CLASS = 'sidebar-breathing-gap';
+
+export function campaignSidebarShellClass(collapsed: boolean, className = ''): string {
+  return `${SIDEBAR_ATMOSPHERE_CLASS} sidebar-shell relative flex h-full shrink-0 flex-col transition-[width] duration-200 ${
+    collapsed
+      ? 'sidebar-shell--collapsed w-14 max-w-14'
+      : 'w-72 max-w-[min(18rem,85vw)]'
+  } ${className}`.trim();
+}
 
 export function surfaceHeaderChromeClass(isReadingMode: boolean): string {
   return isReadingMode

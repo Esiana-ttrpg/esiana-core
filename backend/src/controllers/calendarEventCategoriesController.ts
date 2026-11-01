@@ -1,12 +1,15 @@
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
+import { isEventCategoryIcon } from '../../../shared/defaultEventCategories.js';
 
 function serializeCategory(row: {
   id: string;
   campaignId: string;
   name: string;
   color: string | null;
+  icon: string | null;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -15,6 +18,8 @@ function serializeCategory(row: {
     campaignId: row.campaignId,
     name: row.name,
     color: row.color,
+    icon: row.icon,
+    sortOrder: row.sortOrder,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -27,7 +32,7 @@ export async function listCalendarEventCategories(
   const campaignId = req.campaign!.campaignId;
   const categories = await prisma.calendarEventCategory.findMany({
     where: { campaignId },
-    orderBy: [{ name: 'asc' }],
+    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
   });
   res.json({ categories: categories.map(serializeCategory) });
 }
@@ -39,15 +44,21 @@ export async function createCalendarEventCategory(
   const campaignId = req.campaign!.campaignId;
   const body = (req.body ?? {}) as Record<string, unknown>;
   const name = typeof body.name === 'string' ? body.name.trim() : '';
-  if (!name) {
-    res.status(400).json({ error: 'name is required' });
+  if (!name || name.toLowerCase() === 'uncategorized') {
+    res.status(400).json({ error: 'A category name is required; Uncategorized is reserved for events without a category' });
     return;
   }
 
   const color =
     typeof body.color === 'string' && body.color.trim() ? body.color.trim() : null;
+  if (body.icon !== undefined && body.icon !== null && !isEventCategoryIcon(body.icon)) {
+    res.status(400).json({ error: 'icon must be a supported category icon or null' });
+    return;
+  }
+  const icon = body.icon === undefined || body.icon === null ? null : body.icon as string;
+  const last = await prisma.calendarEventCategory.aggregate({ where: { campaignId }, _max: { sortOrder: true } });
   const created = await prisma.calendarEventCategory.create({
-    data: { campaignId, name, color },
+    data: { campaignId, name, color, icon, sortOrder: (last._max.sortOrder ?? -1) + 1 },
   });
   res.status(201).json({ category: serializeCategory(created) });
 }
@@ -70,14 +81,33 @@ export async function updateCalendarEventCategory(
     return;
   }
   const body = (req.body ?? {}) as Record<string, unknown>;
+  if (body.orderedCategoryIds !== undefined) {
+    if (body.name !== undefined || body.color !== undefined || body.icon !== undefined) {
+      res.status(400).json({ error: 'Reordering cannot be combined with category field updates' });
+      return;
+    }
+    const ids = body.orderedCategoryIds;
+    const categories = await prisma.calendarEventCategory.findMany({ where: { campaignId }, select: { id: true } });
+    if (!Array.isArray(ids) || ids.length !== categories.length || new Set(ids).size !== ids.length ||
+      categories.some(category => !ids.includes(category.id))) {
+      res.status(400).json({ error: 'orderedCategoryIds must contain every campaign category exactly once' });
+      return;
+    }
+    await prisma.$transaction(ids.map((id, sortOrder) => prisma.calendarEventCategory.update({
+      where: { id }, data: { sortOrder },
+    })));
+    const updated = await prisma.calendarEventCategory.findUniqueOrThrow({ where: { id: categoryId } });
+    res.json({ category: serializeCategory(updated) });
+    return;
+  }
   const name =
     body.name === undefined
       ? existing.name
       : typeof body.name === 'string' && body.name.trim()
         ? body.name.trim()
         : '';
-  if (!name) {
-    res.status(400).json({ error: 'name cannot be empty' });
+  if (!name || (body.name !== undefined && name !== existing.name && name.toLowerCase() === 'uncategorized')) {
+    res.status(400).json({ error: 'A category name is required; Uncategorized is reserved for events without a category' });
     return;
   }
   const color =
@@ -86,10 +116,15 @@ export async function updateCalendarEventCategory(
       : typeof body.color === 'string' && body.color.trim()
         ? body.color.trim()
         : null;
+  if (body.icon !== undefined && body.icon !== null && !isEventCategoryIcon(body.icon)) {
+    res.status(400).json({ error: 'icon must be a supported category icon or null' });
+    return;
+  }
+  const icon = body.icon === undefined ? existing.icon : body.icon as string | null;
 
   const updated = await prisma.calendarEventCategory.update({
     where: { id: categoryId },
-    data: { name, color },
+    data: { name, color, icon },
   });
   res.json({ category: serializeCategory(updated) });
 }
@@ -114,7 +149,7 @@ export async function deleteCalendarEventCategory(
   }
 
   await prisma.calendarEvent.updateMany({
-    where: { categoryId },
+    where: { categoryId, calendar: { campaignId } },
     data: { categoryId: null },
   });
   await prisma.calendarEventCategory.delete({ where: { id: categoryId } });

@@ -1,5 +1,6 @@
 import type { ThemeDefinition } from './theme/themeTypes';
 import type { PluginSlotContext, PluginSlotRenderer } from '@/plugins/slots/types';
+import type { DashboardPresentation } from '@shared/dashboardPresentation';
 
 /** Theme contributed by a plugin (extends core presets). */
 export interface PluginTheme extends Omit<ThemeDefinition, 'name'> {
@@ -39,6 +40,8 @@ export interface LayoutWidget {
   minHeight?: number;
   minW?: number;
   minH?: number;
+  /** Optional dashboard presentation hints. Existing registrations remain valid. */
+  presentation?: Partial<DashboardPresentation>;
   render?: (
     root: HTMLElement,
     context: PluginSlotContext,

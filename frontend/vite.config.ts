@@ -3,9 +3,9 @@ import path from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { readVersionFromPackageJson } from '../shared/productVersion';
+import { readVersionFromPackageJson } from '../shared/productVersion.ts';
 
-const sharedRoot = path.resolve(__dirname, '../shared');
+const sharedRoot = path.resolve(import.meta.dirname, '../shared');
 
 /** Relative `.js` imports under `shared/` resolve to `.ts` sources (skip stale CJS emit). */
 function sharedTypescriptResolve(): Plugin {
@@ -30,7 +30,7 @@ function sharedTypescriptResolve(): Plugin {
 }
 
 function readRootPackageVersion(): string {
-  const pkgPath = path.resolve(__dirname, '../package.json');
+  const pkgPath = path.resolve(import.meta.dirname, '../package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
     name?: string;
     version?: string;
@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
     plugins: [sharedTypescriptResolve(), react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        '@': path.resolve(import.meta.dirname, './src'),
         '@shared': sharedRoot,
       },
       // Prefer .ts sources under ../shared over stale CommonJS .js emit artifacts.
@@ -69,13 +69,6 @@ export default defineConfig(({ mode }) => {
         '/uploads': {
           target: apiTarget,
           changeOrigin: true,
-        },
-      },
-    },
-    optimizeDeps: {
-      esbuildOptions: {
-        define: {
-          'process.env.DRAGGABLE_DEBUG': JSON.stringify(''),
         },
       },
     },

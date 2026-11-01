@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import '@/styles/map-workspace.css';
+import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
+import { mapEscapeAction, mapFocusTargetIndex, nextMapEditMode } from '@/lib/mapWorkspaceInteractions';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Maximize2, Minimize2, Settings } from 'lucide-react';
+import { Maximize2, Minimize2, Settings, Layers } from 'lucide-react';
 import { fetchCampaignMap, fetchCampaignMaps, resolveMapsHubPath } from '@/lib/maps';
 import { fetchTimeTracking, type TimeTrackingBundle } from '@/lib/timeTrackingApi';
 import { campaignPath, campaignWikiPath, readCampaignHandle } from '@/lib/campaignPaths';
@@ -24,6 +28,7 @@ import { isPageUnderOrganizationsCategory } from '@/lib/questHubLayout';
 import { useMapScene } from '@/hooks/useMapScene';
 import { useMapRegionDraw } from '@/hooks/useMapRegionDraw';
 import { useMapPathDraw } from '@/hooks/useMapPathDraw';
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { VISIBILITY_ZONES_LAYER_NAME } from '@/lib/mapScene';
 import type {
   CampaignMapAsset,
@@ -39,13 +44,14 @@ export function MapViewerPage() {
   const campaignHandle = readCampaignHandle(params);
   const assetId = params.assetId ?? '';
   const navigate = useNavigate();
-  const { tree, flatPages } = useWiki();
+  const { tree, flatPages, campaign: wikiCampaign } = useWiki();
 
   const [detail, setDetail] = useState<CampaignMapDetail | null>(null);
   const [campaignMaps, setCampaignMaps] = useState<CampaignMapAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [canEdit, setCanEdit] = useState(false);
+  const [loadedCanEdit, setCanEdit] = useState(false);
+  const canEdit = wikiCampaign ? wikiCampaign.role === CampaignMemberRoles.GAMEMASTER || wikiCampaign.role === CampaignMemberRoles.WRITER : loadedCanEdit;
   const [breadcrumbs, setBreadcrumbs] = useState<MapBreadcrumbItem[]>([]);
   const [timeTracking, setTimeTracking] = useState<TimeTrackingBundle | null>(null);
   const [campaignEpochMinute, setCampaignEpochMinute] = useState<string | null>(null);
@@ -57,6 +63,43 @@ export function MapViewerPage() {
   const [mapActionError, setMapActionError] = useState<string | null>(null);
   const [knowledgeFogEnabled, setKnowledgeFogEnabled] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [markerSearch, setMarkerSearch] = useState('');
+  const [interacting, setInteracting] = useState(false);
+  const [selectedObject, setSelectedObject] = useState<MapSceneObjectDto | null>(null);
+  const objectGuard = useRef<(() => boolean) | null>(null);
+  const pinGuard = useRef<(() => boolean) | null>(null);
+  const discardProperties = () => (objectGuard.current?.() ?? true) && (pinGuard.current?.() ?? true);
+  const selectObject = (object: MapSceneObjectDto) => {
+    if (editingObject?.id !== object.id && !discardProperties()) return;
+    setSelectedObject(object);
+    if (editMode && canEdit) { setEditingObject(object); if (window.matchMedia('(max-width: 639px)').matches) setLegendOpen(false); }
+  };
+  const changeTool = (tool: MapEditorTool) => {
+    if (!discardProperties()) return;
+    setEditingObject(null); setEditorTool(tool);
+  };
+  const toggleEditMode = () => {
+    setEditMode(nextMapEditMode(editMode, canEdit, discardProperties));
+  };
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+  const fullscreenTriggerRef = useRef<HTMLButtonElement>(null);
+  const wasFullscreenRef = useRef(false);
+  const viewerAnchorRef = useRef<HTMLDivElement>(null);
+  // The portal target stays the same while its DOM node moves. React and Leaflet
+  // therefore keep the same component and map instances in both presentations.
+  const [viewerHost] = useState(() => document.createElement('div'));
+  const viewerReady = !loading && !error && Boolean(detail);
+
+  useBodyScrollLock(fullscreen);
+
+  useLayoutEffect(() => {
+    const parent = fullscreen ? document.body : viewerAnchorRef.current;
+    parent?.appendChild(viewerHost);
+    return () => {
+      viewerHost.remove();
+    };
+  }, [fullscreen, viewerHost, viewerReady]);
 
   const wikiPages = useMemo(
     () => flattenWikiTree(tree).map((page) => ({ id: page.id, title: page.title })),
@@ -78,7 +121,7 @@ export function MapViewerPage() {
 
   const defaultLayerId = useMemo(() => {
     const enabled = scene.layers.filter((l) => scene.enabledLayerIds.has(l.id));
-    return enabled[0]?.id ?? scene.layers[0]?.id ?? null;
+    return enabled[0]?.id ?? null;
   }, [scene.layers, scene.enabledLayerIds]);
 
   const defaultLayerName = useMemo(() => {
@@ -98,7 +141,8 @@ export function MapViewerPage() {
   );
 
   const regionDraw = useMapRegionDraw({
-    active: editMode && canEdit && editorTool === 'drawRegion',
+    active: editMode && canEdit && (editorTool === 'drawRegion' || editorTool === 'drawCircle'),
+    circle: editorTool === 'drawCircle',
     campaignHandle,
     assetId,
     width: mapWidth,
@@ -106,7 +150,7 @@ export function MapViewerPage() {
     defaultLayerId,
     defaultLayerName,
     isVisibilityZone: isVisibilityZoneLayer,
-    onPersisted: () => scene.reloadScene(),
+    onPersisted: async () => { setEditorTool('select'); await scene.reloadScene(); },
     onError: (message) => setMapActionError(message),
   });
 
@@ -118,7 +162,7 @@ export function MapViewerPage() {
     height: mapHeight,
     defaultLayerId,
     defaultLayerName,
-    onPersisted: () => scene.reloadScene(),
+    onPersisted: async () => { setEditorTool('select'); await scene.reloadScene(); },
     onError: (message) => setMapActionError(message),
   });
 
@@ -180,16 +224,60 @@ export function MapViewerPage() {
   }, [editorTool]);
 
   useEffect(() => {
-    if (!fullscreen) return;
+    if (!canEdit) { setEditMode(false); setGhostMode(false); setEditorTool('select'); setEditingObject(null); }
+  }, [canEdit]);
+  useEffect(() => {
+    setSelectedObject(null); setEditingObject(null); setEditMode(false); setEditorTool('select');
+    setViewEpochMinute(null); setLegendOpen(false); setMarkerSearch('');
+  }, [campaignHandle, assetId]);
+  useEffect(() => {
+    if (scene.loading) return;
+    if (selectedObject && !scene.visibleSceneObjects.some(o => o.id === selectedObject.id)) {
+      setSelectedObject(null); setEditingObject(null);
+    }
+  }, [scene.loading, scene.visibleSceneObjects, selectedObject]);
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).filter(d => d !== fullscreenRef.current && d.getClientRects().length);
+      if (event.key === 'Tab' && fullscreen) {
+        const root = dialogs.at(-1) ?? fullscreenRef.current;
+        const nodes = Array.from(root?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]') ?? []).filter(el => el.getClientRects().length);
+        const index = nodes.indexOf(document.activeElement as HTMLElement);
+        const target = mapFocusTargetIndex(index, nodes.length, event.shiftKey);
+        if (target !== null) {
+          event.preventDefault();
+          if (target === -1) root?.focus();
+          else nodes[target].focus();
+        }
+        return;
+      }
       if (event.key !== 'Escape') return;
-      if (regionDraw.phase === 'drawing' || pathDraw.phase === 'drawing') return;
-      event.preventDefault();
-      setFullscreen(false);
+      const action = mapEscapeAction({
+        fullscreen, editMode, editorTool, dialogOpen: dialogs.length > 0,
+        propertiesOpen: Boolean(editingObject), persisting: regionDraw.isPersisting || pathDraw.isPersisting,
+      });
+      if (action === 'delegate' || action === 'none') return;
+      if (action === 'busy') { event.preventDefault(); return; }
+      if (action === 'cancelDrawing') {
+        event.preventDefault(); regionDraw.cancel(); pathDraw.cancel(); setEditorTool('select'); return;
+      }
+      if (action === 'exitFullscreen') { event.preventDefault(); setFullscreen(false); }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [fullscreen, pathDraw.phase, regionDraw.phase]);
+  }, [fullscreen, editingObject, editorTool, editMode, regionDraw, pathDraw]);
+
+  useEffect(() => {
+    if (!fullscreen) {
+      if (wasFullscreenRef.current) fullscreenTriggerRef.current?.focus();
+      wasFullscreenRef.current = false;
+      return;
+    }
+    wasFullscreenRef.current = true;
+    const frame = window.requestAnimationFrame(() => fullscreenRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [fullscreen]);
 
   if (loading) {
     return (
@@ -215,18 +303,18 @@ export function MapViewerPage() {
   const showBreadcrumbTrail = breadcrumbs.length > 1;
 
   const regionDrawOverlay =
-    editMode && editorTool === 'drawRegion' ? (
+    editMode && canEdit && (editorTool === 'drawRegion' || editorTool === 'drawCircle') ? (
       <MapDrawRegionLayer
         phase={regionDraw.phase}
         spaceHeld={regionDraw.spaceHeld}
-        previewLine={regionDraw.previewPositions()}
+        previewLine={editorTool === 'drawCircle' ? [] : regionDraw.previewPositions()}
         closedPreview={regionDraw.closedPreviewPositions()}
         onAddVertex={regionDraw.addVertex}
         onUpdateCursor={regionDraw.updateCursor}
         onClearCursor={regionDraw.clearCursor}
         onDoubleClickFinish={regionDraw.tryFinishOnDoubleClick}
       />
-    ) : editMode && editorTool === 'drawPath' ? (
+    ) : editMode && canEdit && editorTool === 'drawPath' ? (
       <MapDrawPathLayer
         phase={pathDraw.phase}
         spaceHeld={pathDraw.spaceHeld}
@@ -236,28 +324,33 @@ export function MapViewerPage() {
         onClearCursor={pathDraw.clearCursor}
         onDoubleClickFinish={pathDraw.tryFinishOnDoubleClick}
       />
-    ) : editMode && editorTool === 'placeLabel' ? (
+    ) : editMode && canEdit && editorTool === 'placeLabel' ? (
       <MapPlaceObjectLayer
         width={mapWidth}
         height={mapHeight}
         campaignHandle={campaignHandle}
         assetId={assetId}
         defaultLayerId={defaultLayerId}
-        onPlaced={() => scene.reloadScene()}
+        onPlaced={async () => { setEditorTool('select'); await scene.reloadScene(); }}
         onError={(message) => setMapActionError(message)}
       />
     ) : null;
 
-  return (
+  const viewer = (
     <div
+      ref={fullscreenRef}
+      tabIndex={fullscreen ? -1 : undefined}
+      role={fullscreen ? 'dialog' : undefined}
+      aria-modal={fullscreen ? 'true' : undefined}
+      aria-label={fullscreen ? 'Fullscreen map viewer' : undefined}
       className={
         fullscreen
-          ? 'fixed inset-0 z-[1900] w-full min-w-0 space-y-2 overflow-y-auto bg-background p-3'
-          : 'w-full min-w-0 space-y-3'
+          ? 'map-workspace fixed inset-0 z-[1900] h-[100dvh] w-screen min-w-0 overflow-hidden bg-background'
+          : 'map-workspace w-full min-w-0 space-y-3'
       }
     >
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+      <header className={fullscreen ? 'pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-3 px-[max(0.75rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))]' : 'flex shrink-0 flex-wrap items-start justify-between gap-3'}>
+        <div className={`min-w-0 space-y-1 ${fullscreen ? 'hidden' : ''}`}>
           <Link
             to={mapsHubPath}
             className="inline-block text-sm text-muted hover:text-foreground"
@@ -270,7 +363,9 @@ export function MapViewerPage() {
             px
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+        <div className={`flex shrink-0 flex-wrap items-center justify-end gap-1 ${fullscreen ? 'pointer-events-auto ml-auto max-w-[calc(100%_-_8rem)]' : ''}`}>
+          <div className={fullscreen ? 'absolute left-[calc(max(0.75rem,env(safe-area-inset-left))_+_3.25rem)] top-[max(0.75rem,env(safe-area-inset-top))] max-w-[calc(100%_-_7.5rem)] map-float' : ''}>
+          {fullscreen && !interacting ? <div className="max-w-52 truncate px-3 pt-2 text-sm font-medium" title={title}>{title}</div> : null}
           <MapChronologyBar
             viewEpochMinute={viewEpochMinute}
             campaignEpochMinute={campaignEpochMinute}
@@ -283,9 +378,11 @@ export function MapViewerPage() {
               scene.applyPresentationPreset(preset, setViewEpochMinute);
             }}
           />
+          </div>
           <button
+            ref={fullscreenTriggerRef}
             type="button"
-            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
+            className="inline-flex items-center gap-2 rounded-md border border-border bg-surface/95 px-3 py-2 text-sm shadow-md hover:bg-muted/10"
             onClick={() => setFullscreen((value) => !value)}
             aria-label={fullscreen ? 'Exit fullscreen map' : 'View map fullscreen'}
             title={fullscreen ? 'Exit fullscreen (Esc)' : 'View fullscreen'}
@@ -295,11 +392,11 @@ export function MapViewerPage() {
             ) : (
               <Maximize2 className="size-4" aria-hidden />
             )}
-            <span className={fullscreen ? '' : 'sr-only'}>
+            <span className="sr-only">
               {fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
             </span>
           </button>
-          {canEdit ? (
+          {canEdit && !fullscreen ? (
             <Link
               to={campaignPath(campaignHandle, 'maps', assetId, 'settings')}
               className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/10"
@@ -327,20 +424,12 @@ export function MapViewerPage() {
         />
       ) : null}
 
-      {editMode && canEdit ? (
-        <MapPresentationPresetsPanel
-          campaignHandle={campaignHandle}
-          assetId={assetId}
-          presets={scene.presentationPresets}
-          layers={scene.layers}
-          viewEpochMinute={viewEpochMinute}
-          campaignEpochMinute={campaignEpochMinute}
-          timeTracking={timeTracking}
-          onChanged={() => scene.reloadScene()}
-        />
-      ) : null}
-
-      <MapVisibilityBar
+      <div className={fullscreen ? 'map-legend-shell' : ''}>
+        {fullscreen ? <button type="button" className="map-float flex size-11 items-center justify-center" aria-label="Layers & Legend" aria-expanded={legendOpen} aria-controls="map-legend" onClick={() => setLegendOpen(v => !v)}><Layers size={20} /></button> : null}
+        <div id="map-legend" hidden={fullscreen && !legendOpen} className={fullscreen ? 'map-legend map-float' : 'space-y-3'}>
+          {fullscreen ? <h2 className="mb-3 font-semibold">Layers &amp; Legend</h2> : null}
+          <MapVisibilityBar
+        compact={fullscreen}
         layers={scene.layers}
         enabledLayerIds={scene.enabledLayerIds}
         hiddenPinTypes={scene.hiddenTypes}
@@ -381,20 +470,36 @@ export function MapViewerPage() {
         knowledgeFogEnabled={knowledgeFogEnabled}
         onToggleKnowledgeFog={() => setKnowledgeFogEnabled((v) => !v)}
       />
-
-      {editMode && canEdit ? (
-        <MapGroupsPanel
+          <details className="mt-3" open={!fullscreen}><summary>Annotations</summary><div className="flex flex-wrap gap-3 py-2">{([['label', 'Text'], ['region', 'Areas & circles'], ['path', 'Paths']] as const).map(([kind, label]) => <label key={kind} className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={!scene.hiddenAnnotationKinds.has(kind)} onChange={() => scene.toggleAnnotationKind(kind)} />{label}</label>)}</div></details>
+          <details open={fullscreen}><summary>Markers &amp; objects</summary>
+            <input aria-label="Search markers" placeholder="Search markers..." value={markerSearch} onChange={e => setMarkerSearch(e.target.value)} className="my-2 w-full rounded-md border border-border bg-background p-2 text-sm" />
+            <ul>{scene.visibleSceneObjects.filter(o => [o.label, o.targetPageTitle, o.targetMapTitle].some(t => t?.toLowerCase().includes(markerSearch.trim().toLowerCase())) || !markerSearch.trim()).map(object => <li key={object.id}><button type="button" className="min-h-11 w-full rounded px-2 py-1 text-left text-sm hover:bg-muted/10" aria-pressed={selectedObject?.id === object.id} onClick={() => selectObject(object)}>{object.label || object.targetPageTitle || object.targetMapTitle || object.kind}</button></li>)}</ul>
+            {!scene.visibleSceneObjects.length ? <p className="text-sm text-muted">No visible objects.</p> : null}
+          </details>
+          {editMode && canEdit ? <details><summary>Marker groups</summary><MapGroupsPanel
           campaignHandle={campaignHandle}
           assetId={assetId}
           groups={scene.groups}
           hiddenGroupIds={scene.hiddenGroupIds}
           onToggleGroupFilter={scene.toggleGroupFilter}
           onGroupsChanged={() => scene.reloadScene()}
-        />
-      ) : null}
+        /></details> : null}
+          {editMode && canEdit ? <details><summary>Presentation presets</summary><MapPresentationPresetsPanel
+          campaignHandle={campaignHandle}
+          assetId={assetId}
+          presets={scene.presentationPresets}
+          layers={scene.layers}
+          viewEpochMinute={viewEpochMinute}
+          campaignEpochMinute={campaignEpochMinute}
+          timeTracking={timeTracking}
+          onChanged={() => scene.reloadScene()}
+        /></details> : null}
+          {fullscreen ? <details><summary>Image credits</summary><ImageCreditDisplay credit={detail.map.imageCredit} /></details> : null}
+        </div>
+      </div>
 
       {mapActionError ? (
-        <p className="rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive">
+        <p className={`rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive ${fullscreen ? 'absolute left-3 right-3 top-16 z-[1000] bg-surface' : ''}`}>
           {mapActionError}
           <button
             type="button"
@@ -406,8 +511,8 @@ export function MapViewerPage() {
         </p>
       ) : null}
 
-      <div className="lg:flex lg:items-start lg:gap-3">
-        <div className="min-w-0 flex-1">
+      <div className={`${fullscreen ? 'absolute inset-0 overflow-hidden' : ''} lg:flex lg:items-start lg:gap-3`}>
+        <div className={`${fullscreen ? 'flex h-full min-h-0 flex-1 flex-col' : 'min-w-0 flex-1'}`}>
           <MapCanvas
             campaignHandle={campaignHandle}
             map={detail.map}
@@ -417,15 +522,20 @@ export function MapViewerPage() {
             campaignMaps={campaignMaps}
             editMode={editMode}
             ghostMode={ghostMode}
-            onToggleEditMode={() => setEditMode((v) => !v)}
+            onToggleEditMode={toggleEditMode}
             onToggleGhostMode={() => setGhostMode((v) => !v)}
             scene={scene}
             editorTool={editorTool}
-            onEditorToolChange={setEditorTool}
-            onSelectSceneObject={setEditingObject}
+            onEditorToolChange={changeTool}
+            onSelectSceneObject={selectObject}
+            selectedObject={scene.visibleSceneObjects.find(object => object.id === selectedObject?.id) ?? null}
+            editingObject={editingObject}
+            onCloseProperties={() => setEditingObject(null)}
+            pinGuard={pinGuard}
+            onInteractionChange={setInteracting}
             regionDrawOverlay={regionDrawOverlay}
             onCancelDraw={
-              editorTool === 'drawPath' ? pathDraw.cancel : regionDraw.cancel
+              () => { regionDraw.cancel(); pathDraw.cancel(); setEditorTool('select'); }
             }
             onFinishDraw={() =>
               void (editorTool === 'drawPath' ? pathDraw.finish() : regionDraw.finish())
@@ -439,6 +549,7 @@ export function MapViewerPage() {
             onNavigateWiki={(pageId) =>
               navigate(campaignWikiPath(campaignHandle, pageId, flatPages))
             }
+            className={fullscreen ? 'h-full min-h-0' : undefined}
             onNavigateMap={(nextAssetId, nextTitle) => {
               if (nextTitle) {
                 setBreadcrumbs((current) => [
@@ -453,7 +564,7 @@ export function MapViewerPage() {
 
         {editMode && canEdit ? (
           <MapSceneObjectEditorSheet
-            open={Boolean(editingObject)}
+            open={Boolean(editingObject && editingObject.kind !== 'pin')}
             object={editingObject}
             campaignHandle={campaignHandle}
             assetId={assetId}
@@ -467,9 +578,13 @@ export function MapViewerPage() {
             onClose={() => setEditingObject(null)}
             onUpdated={() => scene.reloadScene()}
             variant="panel"
+            floating={fullscreen}
+            guardRef={objectGuard}
           />
         ) : null}
       </div>
     </div>
   );
+
+  return <div ref={viewerAnchorRef}>{createPortal(viewer, viewerHost)}</div>;
 }

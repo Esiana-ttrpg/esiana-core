@@ -14,7 +14,6 @@ import { CampaignMemberRoles } from '../types/domain.js';
 import { prisma } from './prisma.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
 import { wikiPageHrefSelect } from './wikiPageHrefSelect.js';
-import { eventLorePageIdForCalendarEvent } from './eventLoreStub.js';
 
 export const WORLD_EVENT_PROMPTS_HANDLER_VERSION = 'world-event-prompts-v1';
 
@@ -49,7 +48,7 @@ function rowToSuggestionDetail(
     ? buildWikiPageHref(campaignHandle, row.primaryOrg)
     : null;
   const acceptedEventHref = row.acceptedCalendarEventId
-    ? `/campaigns/${campaignHandle}/${eventLorePageIdForCalendarEvent(row.acceptedCalendarEventId)}`
+    ? `/campaigns/${campaignHandle}/events/${row.acceptedCalendarEventId}`
     : null;
 
   return {
@@ -205,7 +204,7 @@ export async function acceptWorldEventSuggestion(
 ): Promise<{
   suggestion: ReturnType<typeof rowToSuggestionDetail>;
   calendarEventId: string;
-  lorePageId: string;
+  lorePageId?: string;
 }> {
   const { resolveWorldDevelopmentSuggestion } = await import(
     './worldDevelopmentResolveService.js'
@@ -233,7 +232,7 @@ export async function acceptWorldEventSuggestion(
   return {
     suggestion: rowToSuggestionDetail(updated, input.campaignHandle, false),
     calendarEventId: result.calendarEventId!,
-    lorePageId: result.lorePageId!,
+    lorePageId: result.lorePageId,
   };
 }
 

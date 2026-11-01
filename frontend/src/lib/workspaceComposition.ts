@@ -101,15 +101,15 @@ export function resolveWorkspaceComposition(pathname: string): WorkspaceComposit
 
   if (first === 'dashboard') return PRESETS.dashboard;
 
-  if (first === 'settings' || first === 'transfer-ownership') {
-    return PRESETS.document;
-  }
+  if (first === 'settings') return PRESETS.studio;
+  if (first === 'transfer-ownership') return PRESETS.document;
 
   if (first === 'world-advance') return PRESETS.document;
 
   if (first === 'wiki' && second === 'maintenance') return PRESETS.document;
 
   if (first === 'pages' && second) return PRESETS.codex;
+  if (first === 'event-pages' || first === 'era-pages') return second ? PRESETS.codex : PRESETS.hub;
 
   if (
     [
@@ -132,12 +132,14 @@ export function resolveWorkspaceComposition(pathname: string): WorkspaceComposit
     return PRESETS.entity;
   }
 
-  if (first === 'notes' || first === 'notes-index') return PRESETS.reference;
+  if (first === 'notes' || first === 'notes-index' || first === 'campaign-statistics') return PRESETS.reference;
 
   if (first === 'adventures' && !second) return PRESETS.hub;
 
   if (
     first === 'chronology' ||
+    first === 'events' ||
+    first === 'eras' ||
     first === 'party' ||
     first === 'visual-atlas' ||
     first === 'relations' ||

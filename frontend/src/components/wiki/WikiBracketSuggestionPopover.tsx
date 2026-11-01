@@ -6,6 +6,7 @@ import { resolveWikiSuggestion } from './extensions/wikiReferenceInsertion';
 import { WikiCodexSuggestionList } from './WikiCodexSuggestionList';
 
 interface WikiBracketSuggestionPopoverProps {
+  portalContainer?: Element;
   state: BracketSuggestionState;
   index: WikiLinkIndexEntry[];
   onSelect: (entry: WikiLinkIndexEntry) => void;
@@ -15,6 +16,7 @@ interface WikiBracketSuggestionPopoverProps {
 
 export function WikiBracketSuggestionPopover({
   state,
+  portalContainer,
   index,
   onSelect,
   onCreateStub,
@@ -60,6 +62,6 @@ export function WikiBracketSuggestionPopover({
         </button>
       ) : null}
     </div>,
-    document.body,
+    portalContainer ?? document.body,
   );
 }

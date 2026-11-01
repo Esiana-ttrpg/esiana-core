@@ -680,7 +680,12 @@ export function validatePluginGithubSource(raw: unknown): {
 
   const repo = typeof raw.repo === 'string' ? raw.repo.trim() : '';
   const commitSha = typeof raw.commitSha === 'string' ? raw.commitSha.trim() : '';
-  const path = typeof raw.path === 'string' ? raw.path.trim().replace(/^\/+|\/+$/g, '') : '';
+  const rawPath = typeof raw.path === 'string' ? raw.path.trim() : '';
+  let pathStart = 0;
+  let pathEnd = rawPath.length;
+  while (pathStart < pathEnd && rawPath[pathStart] === '/') pathStart += 1;
+  while (pathEnd > pathStart && rawPath[pathEnd - 1] === '/') pathEnd -= 1;
+  const path = rawPath.slice(pathStart, pathEnd);
 
   if (!repo) errors.push('source.repo is required (org/repo)');
   else if (!GITHUB_REPO_PATTERN.test(repo)) {

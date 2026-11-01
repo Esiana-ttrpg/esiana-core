@@ -72,6 +72,7 @@ export interface EntitySubviewNavProps {
   subviews: EntitySubviewDef[];
   activeSubview: EntitySubviewId;
   onSubviewChange: (id: EntitySubviewId) => void;
+  onManagePages?: () => void;
   isDMUser?: boolean;
 }
 

@@ -1,3 +1,6 @@
+import { ownChronologyWikiPage } from './chronologyWikiWorkspace.js';
+import { visibleChronologyPageIds, chronologyPageDescriptions } from './chronologyPageAccess.js';
+import { chronologyRouteMap, reserveChronologyRoute } from './chronologyRoutes.js';
 import { randomUUID } from 'node:crypto';
 import { preserveHistoricalEraOccurrences } from './eraOccurrenceHistory.js';
 import { prisma } from './prisma.js';
@@ -6,12 +9,8 @@ import type { CampaignContext } from '../types/api.js';
 import type { ChronologyEra, EraDate, EraDeletionImpact, EraInput } from '../../../shared/chronologyEras.js';
 import { parseCampaignMomentumState } from '../../../shared/factionMomentumMetadata.js';
 import { calendarEpochMinuteForDate, convertEpochToCalendarState, getMonthsForYear, parseMonths, parseLeapRules } from './timeEngine.js';
-import { extractDescriptionMarkdown, hydrateEventLoreBlocks } from './eventLoreWiki.js';
 import { chronologyCanManage, chronologyCanView, chronologyElevated } from './chronologyAccess.js';
-import { upsertWikiPageDocument, deleteDocumentsForPages } from './search/index/searchIndexService.js';
 import { canViewWikiPage } from './wikiTree.js';
-import { assignPathKeyForNewPage, loadCampaignWikiPathKeyRows } from './wikiPathKeyService.js';
-import { syncWikiLinksForSourcePage } from './wikiLinkService.js';
 
 const DAY = 1440n;
 type Db = Prisma.TransactionClient;
@@ -19,7 +18,6 @@ export class EraError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 const json = (value: unknown) => value as Prisma.InputJsonValue;
-const wikiVisibility = (visibility: string) => visibility === 'DM_ONLY' ? 'DM_Only' : visibility === 'PUBLIC' ? 'Public' : 'Party';
 
 export function eraDateToMinute(calendar: FantasyCalendar, value: unknown): bigint | null {
   if (value == null) return null;
@@ -43,26 +41,6 @@ export function eraMatchesMinute(era: Pick<CampaignEra, 'epochStartMinute' | 'ep
   return (era.epochStartMinute == null || minute >= era.epochStartMinute)
     && (era.epochEndMinute == null || minute < era.epochEndMinute);
 }
-export async function createEraOverview(db: Db, campaignId: string, name: string, visibility: string, overview: string, userId?: string) {
-  let parent = await db.wikiPage.findFirst({ where: { campaignId, title: 'Timelines', deletedAt: null } });
-  if (!parent) {
-    const game = await db.wikiPage.findFirst({ where: { campaignId, title: 'Game', deletedAt: null } })
-      ?? await db.wikiPage.create({ data: { campaignId, title: 'Game', visibility: 'Party' } });
-    parent = await db.wikiPage.create({ data: { campaignId, title: 'Timelines', visibility: 'Party', parentId: game.id } });
-  }
-  const pageId = randomUUID();
-  const routing = await assignPathKeyForNewPage(campaignId, { id: pageId, title: name, parentId: parent.id, templateType: 'DEFAULT', metadata: { eraOverview: true } }, await loadCampaignWikiPathKeyRows(campaignId, db), db);
-  const page = await db.wikiPage.create({ data: {
-    id: pageId, ...routing, campaignId, title: name, parentId: parent.id,
-    visibility: wikiVisibility(visibility), createdByUserId: userId,
-    blocks: json(hydrateEventLoreBlocks([], overview).map(block => ({ ...block, title: 'Overview' }))),
-    metadata: { eraOverview: true },
-  } });
-  await upsertWikiPageDocument(db, campaignId, page.id);
-  await syncWikiLinksForSourcePage(db, { campaignId, sourcePageId: page.id, blocks: page.blocks as Array<Record<string, unknown>>, emitEvents: false });
-  return page;
-}
-
 /** Idempotent portable backfill. The momentum row serializes migration and subsequent mutations. */
 export async function ensureChronologyEras(campaignId: string, tx?: Db): Promise<void> {
   const existing = await (tx ?? prisma).campaignMomentum.findUnique({
@@ -78,10 +56,9 @@ export async function ensureChronologyEras(campaignId: string, tx?: Db): Promise
     const claimed = await db.campaignMomentum.updateMany({ where: { campaignId, erasMigrated: false }, data: { erasMigrated: true } });
     if (!claimed.count) return;
     for (const era of parseCampaignMomentumState(row.state).eras) {
-      const overview = await createEraOverview(db, campaignId, era.name, 'PARTY', era.narrativeNote ?? '');
       await db.campaignEra.create({ data: {
         campaignId, id: era.id, calendarId: calendar.id, name: era.name, sortOrder: era.sortOrder,
-        isCurrent: era.isCurrent, overviewPageId: overview.id,
+        isCurrent: era.isCurrent, description: era.narrativeNote ?? null,
         epochStartMinute: era.epochStartMinute == null ? null : BigInt(era.epochStartMinute),
         epochEndMinute: era.epochEndMinute == null ? null : BigInt(era.epochEndMinute),
       } });
@@ -112,16 +89,22 @@ export async function listChronologyEras(ctx: CampaignContext): Promise<Chronolo
     prisma.campaignEra.findMany({ where: { campaignId: ctx.campaignId }, include: { calendar: true, overview: true }, orderBy: [{ calendarId: 'asc' }, { sortOrder: 'asc' }] }),
     prisma.campaign.findUniqueOrThrow({ where: { id: ctx.campaignId }, select: { currentEpochMinute: true } }),
   ]);
+  const visibleEras = eras.filter(era => chronologyCanView(ctx, era.visibility));
+  const pages = visibleEras.flatMap(era => era.overview ? [era.overview] : []);
+  const visiblePages = await visibleChronologyPageIds(ctx, pages);
+  const descriptions = await chronologyPageDescriptions(ctx, pages, visiblePages);
+  const routes = await chronologyRouteMap(ctx.campaignId, 'eras');
   const visibleOrder = new Map<string, number>();
-  return eras.filter(era => chronologyCanView(ctx, era.visibility)).map(era => ({
-    id: era.id, name: era.name, calendarId: era.calendarId, calendarName: era.calendar.name, isMasterTime: era.calendar.isMasterTime,
+  return visibleEras.map(era => ({
+    ...routes.get(era.id), id: era.id, name: era.name, calendarId: era.calendarId, calendarName: era.calendar.name, isMasterTime: era.calendar.isMasterTime,
     sortOrder: (() => { const order = visibleOrder.get(era.calendarId) ?? 0; visibleOrder.set(era.calendarId, order + 1); return order; })(), isCurrent: era.isCurrent,
     startDate: dateFor(era.calendar, era.epochStartMinute),
     endDate: dateFor(era.calendar, era.epochEndMinute == null ? null : era.epochEndMinute - 1n),
     status: era.epochStartMinute != null && era.epochStartMinute > campaign.currentEpochMinute ? 'FUTURE'
       : era.epochEndMinute != null && era.epochEndMinute <= campaign.currentEpochMinute ? 'PAST' : 'PRESENT',
-    visibility: era.visibility as ChronologyEra['visibility'], overviewPageId: era.overviewPageId,
-    overview: extractDescriptionMarkdown(era.overview.blocks) ?? '', canManage: chronologyCanManage(ctx),
+    visibility: era.visibility as ChronologyEra['visibility'], overviewPageId: era.overviewPageId && visiblePages.has(era.overviewPageId) ? era.overviewPageId : null,
+    description: era.description,
+    overview: era.description ?? (era.overviewPageId ? descriptions.get(era.overviewPageId) : null) ?? '', canManage: chronologyCanManage(ctx),
   }));
 }
 
@@ -143,7 +126,9 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
   await ensureChronologyEras(ctx.campaignId);
   return prisma.$transaction(async db => {
     await lock(db, ctx.campaignId);
+    await db.campaign.update({ where: { id: ctx.campaignId }, data: { updatedAt: new Date() } });
     const existing = id ? await accessibleEra(db, ctx, id) : null;
+    if (existing) await reserveChronologyRoute(db, ctx.campaignId, 'eras', existing.id, existing.name);
     const calendar = await db.fantasyCalendar.findFirst({ where: { id: input.calendarId, campaignId: ctx.campaignId } });
     if (!calendar) throw new EraError('Choose a timeline in this campaign.');
     if (existing && existing.calendarId !== calendar.id) throw new EraError('An existing era stays on its timeline.');
@@ -156,28 +141,22 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
     const end = lastDay == null ? null : lastDay + DAY;
     if (start != null && end != null && start >= end) throw new EraError('End date must be on or after the start date.');
     if (typeof input.isCurrent !== 'boolean') throw new EraError('Choose whether this era is current.');
-    if (input.overview != null && typeof input.overview !== 'string') throw new EraError('Overview must be text.');
+    if (input.description != null && typeof input.description !== 'string') throw new EraError('Description must be text.');
     // Setting current must not silently mutate a hidden current era.
     if (input.isCurrent) {
       const current = await db.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true } });
       if (current && !chronologyCanView(ctx, current.visibility)) throw new EraError('The current era cannot be changed with your access.', 403);
       await db.campaignEra.updateMany({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true }, data: { isCurrent: false } });
     }
-    const page = existing?.overview ?? await createEraOverview(db, ctx.campaignId, name, input.visibility, input.overview ?? '', userId);
-    const savedPage = await db.wikiPage.update({ where: { id: page.id }, data: {
-      title: name, visibility: wikiVisibility(input.visibility),
-      ...(input.overview !== undefined ? { blocks: json(hydrateEventLoreBlocks(page.blocks, input.overview).map(block => ({ ...block, title: 'Overview' }))) } : {}),
-    } });
-    const data = { name, calendarId: calendar.id, isCurrent: input.isCurrent, visibility: input.visibility,
+    const data = { name, description: input.description === undefined ? existing?.description ?? null : input.description?.trim() || null, calendarId: calendar.id, isCurrent: input.isCurrent, visibility: input.visibility,
       epochStartMinute: start, epochEndMinute: end, updatedByUserId: userId };
     const era = existing
       ? await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id: existing.id } }, data })
       : await db.campaignEra.create({ data: { ...data, id: randomUUID(), campaignId: ctx.campaignId,
           sortOrder: ((await db.campaignEra.aggregate({ where: { campaignId: ctx.campaignId, calendarId: calendar.id }, _max: { sortOrder: true } }))._max.sortOrder ?? -1) + 1,
-          overviewPageId: page.id, createdByUserId: userId } });
+          createdByUserId: userId } });
     await syncEraProjection(db, ctx.campaignId);
-    await upsertWikiPageDocument(db, ctx.campaignId, page.id);
-    await syncWikiLinksForSourcePage(db, { campaignId: ctx.campaignId, sourcePageId: page.id, blocks: savedPage.blocks as Array<Record<string, unknown>>, emitEvents: false });
+    await reserveChronologyRoute(db, ctx.campaignId, 'eras', era.id, name);
     return era.id;
   });
 }
@@ -225,6 +204,9 @@ function visitTrajectories(value: unknown, eraId: string, snapshot?: { id: strin
 }
 async function impact(db: Db, ctx: CampaignContext, id: string): Promise<EraDeletionImpact> {
   const era = await accessibleEra(db, ctx, id);
+  const linkedPages = era.overview ? [era.overview] : [];
+  const visiblePages = await visibleChronologyPageIds(ctx, linkedPages);
+  const descriptions = await chronologyPageDescriptions(ctx, linkedPages, visiblePages);
   const [events, pages] = await Promise.all([
     db.calendarEvent.findMany({ where: { calendarId: era.calendarId } }),
     db.wikiPage.findMany({ where: { campaignId: ctx.campaignId }, select: { metadata: true, visibility: true } }),
@@ -237,7 +219,7 @@ async function impact(db: Db, ctx: CampaignContext, id: string): Promise<EraDele
     }).length,
     trajectories: pages.filter(page => canViewWikiPage(page.visibility, ctx.role)).reduce((n, page) => n + visitTrajectories(page.metadata, id).count, 0),
     recurringRules: events.filter(event => event.repeatUnit === 'ERAS' && chronologyCanView(ctx, event.visibility)).length,
-    overviewWords: (extractDescriptionMarkdown(era.overview.blocks) ?? '').trim().split(/\s+/).filter(Boolean).length,
+    overviewWords: (era.description ?? (era.overviewPageId ? descriptions.get(era.overviewPageId) : null) ?? '').trim().split(/\s+/).filter(Boolean).length,
   };
 }
 export async function chronologyEraImpact(ctx: CampaignContext, id: string) {
@@ -264,9 +246,9 @@ export async function deleteChronologyEra(
       const detached = visitTrajectories(page.metadata, id, { id, name: era.name, calendarName: era.calendar.name, visibility: era.visibility });
       if (detached.count) await db.wikiPage.update({ where: { id: page.id }, data: { metadata: json(detached.value) } });
     }
+    if (era.overviewPageId) await ownChronologyWikiPage(db, ctx.campaignId, 'era', era.overviewPageId);
     await db.campaignEra.delete({ where: { campaignId_id: { campaignId: ctx.campaignId, id } } });
-    await deleteDocumentsForPages(db, [era.overviewPageId]);
-    await db.wikiPage.delete({ where: { id: era.overviewPageId } });
+    // Keep authored pages when the chronology structure is deleted.
     const remaining = await db.campaignEra.findMany({ where: { campaignId: ctx.campaignId, calendarId: era.calendarId }, orderBy: { sortOrder: 'asc' } });
     for (const [sortOrder, row] of remaining.entries()) await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id: row.id } }, data: { sortOrder } });
     await syncEraProjection(db, ctx.campaignId);

@@ -14,6 +14,7 @@ import {
 import {
   compareRouteInventory,
   CORE_ROUTER_MOUNTS,
+  extractRouterRoutes,
   inventoryCoreRoutes,
   inventoryStaticAppMounts,
   inventorySpecOperations,
@@ -21,6 +22,112 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sourceSpecPath = path.resolve(__dirname, '../../openapi/openapi.yaml');
+
+test('route extraction preserves methods, static literals, optional calls, and source lines', () => {
+  const source = [
+    '// router.get("/comment", handler);',
+    'router.GET("/get", handler);',
+    "router.post('/post', handler);",
+    'router.put(`/put`, handler);',
+    String.raw`router.patch('/escaped\u002fpath', handler);`,
+    'router.delete("/delete", handler);',
+    'router?.options("/options", handler);',
+    'router.head?.("/head", handler);',
+  ].join('\r\n');
+  assert.deepEqual(extractRouterRoutes(source, 'router'), [
+    ['get', '/get'], ['post', '/post'], ['put', '/put'], ['patch', '/escaped/path'],
+    ['delete', '/delete'], ['options', '/options'], ['head', '/head'],
+  ].map(([method, routePath], index) => ({ method, routePath, line: index + 2, middlewareSource: '' })));
+});
+
+test('route extraction ignores dynamic paths, indirect receivers, and source-like text', () => {
+  const source = [
+    'const text = "router.get(\'/text\', handler)";',
+    'router.get(path, handler);',
+    'router.get(`/dynamic/${id}`, handler);',
+    'router.get("/" + id, handler);',
+    'router.get(("/parenthesized"), handler);',
+    'router.get("/asserted" as const, handler);',
+    'other.get("/other", handler);',
+    'container.router.get("/nested-receiver", handler);',
+    '(router).get("/parenthesized-receiver", handler);',
+    'router["get"]("/computed", handler);',
+    'router.use("/middleware", handler);',
+    'router.get();',
+  ].join('\n');
+  assert.deepEqual(extractRouterRoutes(source, 'router'), []);
+});
+
+test('route extraction traverses TypeScript containers and preserves original middleware text', () => {
+  const source = [
+    'namespace Routes {',
+    '  export class Registration<T> {',
+    '    static {',
+    '      const register = (() => {',
+    '        router.post<{ id: string }>(',
+    '          "/typed/:id",',
+    '          /* leading trivia */ (requireAuth),',
+    '          policy<T>(/* retain this comment */ "write") satisfies Middleware,',
+    '          async (req: Request<T>, res: Response): Promise<void> => {},',
+    '        );',
+    '      }) satisfies () => void;',
+    '      router.get("/outer", wrap(() => { router.get("/inner", handler); }));',
+    '    }',
+    '  }',
+    '}',
+  ].join('\n');
+  assert.deepEqual(extractRouterRoutes(source, 'router', 'typed-routes.ts'), [
+    {
+      method: 'post', routePath: '/typed/:id', line: 5,
+      middlewareSource: '(requireAuth) policy<T>(/* retain this comment */ "write") satisfies Middleware',
+    },
+    { method: 'get', routePath: '/outer', line: 12, middlewareSource: '' },
+    { method: 'get', routePath: '/inner', line: 12, middlewareSource: '' },
+  ]);
+});
+
+test('static mount extraction preserves both mount forms, expressions, and file order', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'esiana-inventory-mounts-'));
+  try {
+    fs.mkdirSync(path.join(root, 'src'));
+    fs.writeFileSync(path.join(root, 'src/mountRouters.ts'), [
+      'app.use("/api/direct", /* leading trivia */ (createRouter<Context>(/* keep */ options)));',
+      'const mounts = [{ path: `/api/list`, router: router } satisfies Mount];',
+      'app.use(dynamicPath, router);',
+      'app.use(`/api/${name}`, router);',
+      'app.use("/outside-api", router);',
+      'app.use("/api/missing");',
+      'other.use("/api/other", router);',
+      'app["use"]("/api/computed", router);',
+      'const ignored = [{ "path": "/api/quoted" }, { [path]: "/api/computed" }, { path }];',
+    ].join('\n'));
+    fs.writeFileSync(path.join(root, 'src/app.ts'), 'app.use(`/api/inline`, inlineRouter);');
+    assert.deepEqual(inventoryStaticAppMounts(root), [
+      {
+        path: '/api/direct', routerExpression: '(createRouter<Context>(/* keep */ options))',
+        source: 'src/mountRouters.ts',
+      },
+      { path: '/api/list', routerExpression: 'listRouterMounts', source: 'src/mountRouters.ts' },
+      { path: '/api/inline', routerExpression: 'inlineRouter', source: 'src/app.ts' },
+    ]);
+    fs.unlinkSync(path.join(root, 'src/app.ts'));
+    assert.equal(inventoryStaticAppMounts(root).length, 2);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('invalid syntax throws instead of returning a partial route or mount inventory', () => {
+  assert.throws(() => extractRouterRoutes('router.get("/valid", handler); const broken = ;', 'router'), SyntaxError);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'esiana-inventory-invalid-'));
+  try {
+    fs.mkdirSync(path.join(root, 'src'));
+    fs.writeFileSync(path.join(root, 'src/app.ts'), 'app.use("/api/valid", router); const broken = ;');
+    assert.throws(() => inventoryStaticAppMounts(root), SyntaxError);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 type OpenApiSpec = {
   info?: Record<string, unknown>;
@@ -107,6 +214,21 @@ test('Wiki and integration operations retain distinct paths and authorization', 
     assert.ok(operation['x-esiana-authorization']?.requires?.some((requirement: string) => requirement.includes('Campaign settings modification')));
     assert.deepEqual(operation.security, [{ cookieAuth: [] }, { bearerAuth: [] }]);
   }
+});
+
+test('field registration aliases document app defaults and stable registration identity', () => {
+  const spec = loadOpenApiSpec(sourceSpecPath) as OpenApiSpec;
+  for (const route of ['entity-fields', 'character-fields']) {
+    const operation = spec.paths?.[`/api/campaigns/{campaignHandle}/wiki/{pageId}/${route}`]?.post as any;
+    assert.equal(operation.requestBody.content['application/json'].schema.$ref, '#/components/schemas/EntityFieldRegistrationRequest');
+    assert.ok(operation.responses['201']);
+    assert.ok(operation.responses['200']);
+  }
+  const registration = (spec as any).components.schemas.EntityFieldRegistrationRequest;
+  assert.deepEqual(registration.required, ['label', 'type']);
+  assert.equal(registration.properties.defaultSheetName.maxLength, 100);
+  assert.equal(registration.properties.sourceKey.maxLength, 100);
+  assert.deepEqual(registration.properties.pageId.type, ['string', 'null']);
 });
 
 test('Discord and webhook creation document their 201 responses', () => {

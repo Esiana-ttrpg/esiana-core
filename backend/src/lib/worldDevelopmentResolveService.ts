@@ -13,7 +13,6 @@ import {
 import type { CampaignMemberRole } from '../types/domain.js';
 import { CampaignMemberRoles } from '../types/domain.js';
 import { prisma } from './prisma.js';
-import { ensureEventLoreStubPage } from './eventLoreStub.js';
 import { WORLD_EVENT_PROMPTS_HANDLER_VERSION } from './worldEventSuggestionService.js';
 import { findDefinitionById, getDevelopmentResolveProvider } from './developmentRegistry.js';
 import { DEVELOPMENT_TYPE_LABELS } from '../../../shared/worldDevelopmentPresentation.js';
@@ -87,6 +86,14 @@ export async function resolveWorldDevelopmentSuggestion(
   });
   if (!suggestion) {
     throw new Error('Suggestion not found.');
+  }
+  if (suggestion.status === 'accepted' && suggestion.acceptedCalendarEventId) {
+    return {
+      suggestionId: suggestion.id,
+      status: 'accepted',
+      acceptTarget: 'calendar_event',
+      calendarEventId: suggestion.acceptedCalendarEventId,
+    };
   }
   if (suggestion.status !== 'pending') {
     throw new Error('Suggestion is no longer pending.');
@@ -199,10 +206,12 @@ export async function resolveWorldDevelopmentSuggestion(
       const event = await tx.calendarEvent.create({
         data: {
           calendarId,
+          categoryId: payload?.categoryId && await tx.calendarEventCategory.findFirst({ where: { id: payload.categoryId, campaignId: input.campaignId }, select: { id: true } }) ? payload.categoryId : null,
           visibility: 'DM_ONLY',
           title,
           description: narrative,
           targetEpochMinute: suggestion.occurredAtEpochMinute,
+          importance: (await tx.chronologySettings.findUnique({ where: { campaignId: input.campaignId }, select: { progressionEventImportance: true } }))?.progressionEventImportance ?? 'NOTICE',
           metadata: metadata as Prisma.InputJsonValue,
         },
       });
@@ -211,17 +220,6 @@ export async function resolveWorldDevelopmentSuggestion(
         './entityRelationSyncService.js'
       );
       await syncEntityRelationsForCalendarEvent(tx, input.campaignId, event.id);
-
-      const descriptionMarkdown = narrative
-        ? `# ${title}\n\n${narrative}`
-        : `# ${title}`;
-
-      const { lorePageId } = await ensureEventLoreStubPage(tx, {
-        campaignId: input.campaignId,
-        calendarEventId: event.id,
-        title,
-        descriptionMarkdown,
-      });
 
       if (nextPayload) {
         nextPayload.acceptedArtifactId = event.id;
@@ -241,7 +239,7 @@ export async function resolveWorldDevelopmentSuggestion(
         },
       });
 
-      return { calendarEventId: event.id, lorePageId };
+      return { calendarEventId: event.id };
     });
 
     return {
@@ -249,7 +247,7 @@ export async function resolveWorldDevelopmentSuggestion(
       status: 'accepted',
       acceptTarget,
       calendarEventId: result.calendarEventId,
-      lorePageId: result.lorePageId,
+
     };
   }
 

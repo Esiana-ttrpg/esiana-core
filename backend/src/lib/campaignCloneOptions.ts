@@ -17,6 +17,7 @@ export interface CampaignCloneSchedulingOptions {
   calendarStructure: boolean;
   sessionCadence: boolean;
   sessionEventsLogs: boolean;
+  sessionRecordings?: boolean;
 }
 
 export interface CampaignCloneGameplayOptions {

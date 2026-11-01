@@ -34,7 +34,7 @@ export async function fetchMapScene(
   if (options.viewEpochMinute) {
     params.set('viewEpochMinute', options.viewEpochMinute);
   }
-  if (options.layerIds?.length) {
+  if (options.layerIds !== undefined) {
     params.set('layerIds', options.layerIds.join(','));
   }
   if (options.editorGhostMode) params.set('editorGhostMode', '1');

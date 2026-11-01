@@ -45,6 +45,7 @@ export function sanitizeCampaignCloneOptions(raw: unknown): CampaignCloneOptions
       publicDocs: bool(recruitmentRaw.publicDocs, defaults.recruitment.publicDocs),
     },
     scheduling: {
+      ...(schedulingRaw.sessionRecordings === true ? { sessionRecordings: true } : {}),
       calendarStructure: bool(
         schedulingRaw.calendarStructure,
         defaults.scheduling.calendarStructure,

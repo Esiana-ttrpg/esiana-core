@@ -6,6 +6,7 @@ import {
 } from '../../../shared/pathKeyUtils.js';
 import { RESERVED_PATH_KEY_SEGMENTS } from '../../../shared/campaignWorkspaceRoutes.js';
 import {
+  wikiPageHasRouteAlias,
   isRoutableWikiPage,
   resolveWorkspaceForPage,
   type WikiPageWorkspaceInput,
@@ -52,9 +53,19 @@ async function takenPathKeysInWorkspace(
     },
     select: { pathKey: true },
   });
-  return new Set(
+  const taken = new Set(
     rows.map((r) => r.pathKey).filter((k): k is string => Boolean(k)),
   );
+  const aliasRows = await tx.wikiPage.findMany({ where: { campaignId, deletedAt: null,
+    ...(excludePageId ? { id: { not: excludePageId } } : {}) }, select: { metadata: true } });
+  for (const row of aliasRows) {
+    const metadata = row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata) ? row.metadata as Record<string, unknown> : {};
+    if (!Array.isArray(metadata.wikiRouteAliases)) continue;
+    for (const alias of metadata.wikiRouteAliases) {
+      if (alias && typeof alias === 'object' && alias.workspace === workspace && typeof alias.pathKey === 'string') taken.add(alias.pathKey);
+    }
+  }
+  return taken;
 }
 
 export function resolveWikiPageWorkspaceAndPathKey(
@@ -177,6 +188,9 @@ export async function resolveWikiPageByPathKey(
     },
   });
   if (byPathKey) return byPathKey;
+
+  const alias = (await loadCampaignWikiPathKeyRows(campaignId, tx)).find(page => wikiPageHasRouteAlias(page, workspace, pathKey));
+  if (alias) return tx.wikiPage.findFirst({ where: { id: alias.id, campaignId, deletedAt: null } });
 
   // Transitional: tolerate internal page ids in the public URL segment.
   return tx.wikiPage.findFirst({

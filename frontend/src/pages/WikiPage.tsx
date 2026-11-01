@@ -1,3 +1,6 @@
+import { resolveWikiNavigation, mergeWikiRouteSearch } from '@/lib/resolveWikiRoutePageId';
+import { chronologyWikiDocumentKind } from '@shared/wikiWorkspaceResolve';
+import { ChronologyDocumentNavigation } from '@/components/chronology/ChronologyDocumentNavigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   resolveWikiRoutePageId,
@@ -76,7 +79,6 @@ import { AncestryPageShellView } from '@/components/entity/shells/AncestryPageSh
 import { BestiaryPageShellView } from '@/components/entity/shells/BestiaryPageShellView';
 import { CharacterPageShellView } from '@/components/entity/shells/CharacterPageShellView';
 import { CharacterMasthead } from '@/components/entity/shells/CharacterMasthead';
-import { AddToPortfolioButton } from '@/components/portfolio/AddToPortfolioButton';
 import { CharacterIdentityEditor } from '@/components/entity/CharacterIdentityEditor';
 import { CharacterLineageEditor } from '@/components/entity/CharacterLineageEditor';
 import { NarrativeVisibilityBadge } from '@/components/entity/shells/NarrativeVisibilityBadge';
@@ -244,6 +246,18 @@ function headerIconButtonClass(active: boolean): string {
 }
 
 export function WikiPage() {
+  const params = useParams();
+  const location = useLocation();
+  const { flatPages, loading, campaignHandle } = useWiki();
+  if (loading) return <LoadingSpinner label="Loading wiki..." />;
+  const destination = resolveWikiNavigation({ pathname: location.pathname, campaignHandle,
+    pageId: params.pageId, pathKey: params.pathKey, flatPages });
+  const destinationPath = destination.path && mergeWikiRouteSearch(destination.path, location.search);
+  if (destinationPath && destinationPath !== location.pathname + location.search) return <Navigate to={destinationPath} replace />;
+  const page = destination.page;
+  return <>{page && chronologyWikiDocumentKind(page) && <ChronologyDocumentNavigation pageId={page.id} kind={chronologyWikiDocumentKind(page)!} />}<WikiPageDocument /></>;
+}
+function WikiPageDocument() {
   const params = useParams<{
     campaignHandle?: string;
     pageId?: string;
@@ -259,6 +273,7 @@ export function WikiPage() {
     loading,
     refresh,
     pinnedShortcuts,
+    pinsLoading,
     pageIdByTitle,
     players,
     can: wikiCan,
@@ -290,7 +305,7 @@ export function WikiPage() {
     if (!page?.pathKey || params.pathKey === page.pathKey) return;
     const canonicalPath = resolveCanonicalPagePath(campaignHandle, page, flatPages);
     if (canonicalPath.split('?')[0] === location.pathname) return;
-    navigate(`${canonicalPath}${location.search}`, { replace: true });
+    navigate(mergeWikiRouteSearch(canonicalPath, location.search), { replace: true });
   }, [
     campaignHandle,
     flatPages,
@@ -332,7 +347,6 @@ export function WikiPage() {
     DEFAULT_BLOCK_DISPLAY_STATE,
   );
   const [showGridLines, setShowGridLines] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [pageTags, setPageTags] = useState<WikiTagInput[]>([]);
   const [savedPageTags, setSavedPageTags] = useState<WikiTagInput[]>([]);
   const [allCampaignTags, setAllCampaignTags] = useState<WikiTag[]>([]);
@@ -505,7 +519,7 @@ export function WikiPage() {
             id: page.key,
             label: page.title,
             navPriority: page.displayOrder,
-            dmOnly: page.coreKey === 'discovery' || page.coreKey === 'continuity',
+            dmOnly: page.coreKey === 'discovery' || page.coreKey === 'trajectory' || page.coreKey === 'continuity',
           }))
         : entityPageShell.subviews,
     [characterPages, entityPageShell.subviews],
@@ -1120,7 +1134,6 @@ export function WikiPage() {
     setFocusBlockType(null);
     setShowGridLines(false);
     setPageSettingsOpen(false);
-    setIsSearchOpen(false);
     setBlockDisplayState(DEFAULT_BLOCK_DISPLAY_STATE);
     setPageFetchState('loading');
     setPageData(null);
@@ -1358,6 +1371,7 @@ export function WikiPage() {
   }
 
   function handleTogglePin() {
+    if (pinsLoading) return;
     void (async () => {
       try {
         await togglePinnedShortcut(campaignHandle, pageId);
@@ -1467,10 +1481,6 @@ export function WikiPage() {
     applyWorkspaceOrchestration(workspaceMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial orchestration per page/mode
   }, [pageData, blocks.length, pageId, workspaceMode]);
-
-  function handleToggleSearch() {
-    setIsSearchOpen((prev) => !prev);
-  }
 
   function openEditFromStrip(fieldKey: string) {
     setInspectorFocusField(fieldKey);
@@ -1635,8 +1645,7 @@ export function WikiPage() {
         confirmWorkshopLeave={confirmWorkshopLeave}
       />
     );
-    if (!managesEntityPages || activeCharacterPage?.renderMode === 'PLUGIN') return renderer;
-    return <>{renderer}<EntityCustomFieldsPanel campaignHandle={campaignHandle} entityPageId={pageId} activePageId={activeCharacterPage?.coreKey === 'overview' ? null : activeCharacterPage?.id ?? null} canEdit={pageCanEdit} /></>;
+    return renderer;
   }, [
     pageData,
     activeCharacterPage,
@@ -2007,7 +2016,7 @@ export function WikiPage() {
       <MascotErrorPanel
         code={403}
         title="Blåhaj says no."
-        description="This wiki page is restricted to DM/Co-DM only."
+        description="This wiki page is restricted to GM only."
       />
     );
   }
@@ -2077,6 +2086,10 @@ export function WikiPage() {
           <WikiPageEditorHeader
             campaignHandle={campaignHandle}
             pageId={pageId}
+            portfolioCharacter={entitySurfaceProfile.key === 'character' && pageId ? {
+              pageId,
+              characterName: characterIdentityProjection?.displayName ?? pageData?.title ?? 'Character',
+            } : undefined}
             canOpenWorkshop={canOpenWorkshop}
             confirmWorkshopLeave={confirmWorkshopLeave}
             crumbs={wikiBreadcrumbs}
@@ -2131,16 +2144,6 @@ export function WikiPage() {
                       isEditingPage={isEditingPage}
                       onVisibilityChange={handleVisibilityChange}
                     />
-                    {pageId ? (
-                      <AddToPortfolioButton
-                        pageId={pageId}
-                        characterName={
-                          characterIdentityProjection?.displayName ??
-                          pageData?.title ??
-                          'Character'
-                        }
-                      />
-                    ) : null}
                   </div>
                 }
               />
@@ -2157,20 +2160,6 @@ export function WikiPage() {
                 ? handleCharacterSubviewChange
                 : setPageSubview
             }
-            onAddSubview={
-              managesEntityPages && pageCanEdit
-                ? () => {
-                    const title = window.prompt('Page name');
-                    if (!title?.trim()) return;
-                    void createCustomCharacterPage(campaignHandle, pageId, title).then((page) => {
-                      setCharacterPages((previous) => [...previous, page].sort((a, b) => a.displayOrder - b.displayOrder));
-                      setPageSubview(page.key);
-                    }).catch((error: unknown) => {
-                      window.alert(error instanceof Error ? error.message : 'Unable to create page');
-                    });
-                  }
-                : undefined
-            }
             onManageSubviews={
               managesEntityPages && pageCanEdit
                 ? () => setCharacterPageManagerOpen(true)
@@ -2182,13 +2171,11 @@ export function WikiPage() {
             isSaving={isSaving}
             onSavePage={handleSavePage}
             isPinned={isPinned}
-            isSearchOpen={isSearchOpen}
             isEditingPage={isEditingPage}
             showGridLines={showGridLines}
             canDeleteWikiPage={canDeleteWikiPage}
             widgetOptions={widgetOptions}
             onTogglePin={handleTogglePin}
-            onToggleSearch={handleToggleSearch}
             onToggleEditPage={handleToggleEditPage}
             onToggleGridLines={() => setShowGridLines((prev) => !prev)}
             onOpenPageSettings={() => setPageSettingsOpen(true)}
@@ -2218,7 +2205,18 @@ export function WikiPage() {
           />
         }
       >
-        {renderWikiPageBody()}
+        {managesEntityPages ? (
+          <EntityCustomFieldsPanel
+            key={pageId + ':' + pageSubview}
+            campaignHandle={campaignHandle}
+            entityPageId={pageId}
+            activePageId={pageSubview === 'overview' ? null : activeCharacterPage?.id ?? 'core:' + pageSubview}
+            canEdit={pageCanEdit && isEditingPage}
+            refreshKey={characterPageManagerOpen}
+          >
+            {renderWikiPageBody()}
+          </EntityCustomFieldsPanel>
+        ) : renderWikiPageBody()}
         {isThreadDetailPage && pageId ? (
           <ThreadHistoryPanel
             campaignHandle={campaignHandle}
@@ -2231,8 +2229,27 @@ export function WikiPage() {
           campaignHandle={campaignHandle}
           characterPageId={pageId}
           pages={characterPages}
+          activePageId={pageSubview === 'overview' ? null : activeCharacterPage?.id ?? 'core:' + pageSubview}
+          onAddPage={
+            managesEntityPages && pageCanEdit
+              ? () => {
+                  const title = window.prompt('Page name');
+                  if (!title?.trim()) return;
+                  void createCustomCharacterPage(campaignHandle, pageId, title).then((page) => {
+                    setCharacterPages((previous) => [...previous, page].sort((a, b) => a.displayOrder - b.displayOrder));
+                    setPageSubview(page.key);
+                    setCharacterPageManagerOpen(false);
+                  }).catch((error: unknown) => {
+                    window.alert(error instanceof Error ? error.message : 'Unable to create page');
+                  });
+                }
+              : undefined
+          }
           onPagesChange={setCharacterPages}
-          onClose={() => setCharacterPageManagerOpen(false)}
+          onClose={() => {
+            setCharacterPageManagerOpen(false);
+            void fetchCharacterPages(campaignHandle, pageId, entityPageShell.key).then((result) => setCharacterPages(result.pages)).catch(() => {});
+          }}
         />
       ) : null}
 

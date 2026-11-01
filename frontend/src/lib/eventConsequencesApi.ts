@@ -7,7 +7,7 @@ import type {
 export async function fetchEventConsequences(
   campaignHandle: string,
   calendarEventId: string,
-): Promise<{ eventId: string; lorePageId: string; consequences: EventConsequence[] }> {
+): Promise<{ eventId: string; lorePageId: string | null; consequences: EventConsequence[] }> {
   return apiFetch(`/campaigns/${campaignHandle}/calendar-events/${calendarEventId}/consequences`);
 }
 
@@ -15,7 +15,7 @@ export async function saveEventConsequences(
   campaignHandle: string,
   calendarEventId: string,
   consequences: EventConsequence[],
-): Promise<{ eventId: string; lorePageId: string; consequences: EventConsequence[] }> {
+): Promise<{ eventId: string; lorePageId: string | null; consequences: EventConsequence[] }> {
   return apiFetch(`/campaigns/${campaignHandle}/calendar-events/${calendarEventId}/consequences`, {
     method: 'PUT',
     body: JSON.stringify({ consequences }),

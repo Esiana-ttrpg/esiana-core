@@ -2,6 +2,14 @@ import { env } from './config/env.js';
 import { createApp } from './app.js';
 import { createServer } from 'node:http';
 import { attachCampaignWebSocketServer } from './lib/campaignWebSocketServer.js';
+import {
+  applySqliteSchemaMigrations,
+  shouldApplySqliteSchemaMigrations,
+} from './lib/applySqliteSchemaMigrations.js';
+
+if (shouldApplySqliteSchemaMigrations()) {
+  await applySqliteSchemaMigrations();
+}
 
 const app = await createApp();
 const server = createServer(app);

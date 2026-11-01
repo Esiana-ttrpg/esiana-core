@@ -9,7 +9,8 @@ import {
 import type { MetricId } from '../../../shared/metricRegistry.js';
 import type { MetricValue } from '../../../shared/metricValue.js';
 import { buildUserCreatorAttribution } from '../lib/stats/buildUserCreatorAttribution.js';
-import { getCachedCampaignWorldStats } from '../lib/stats/campaignWorldStatsCache.js';
+import { buildCampaignStatistics } from '../lib/stats/buildCampaignStatistics.js';
+import { metricUnavailable } from '../../../shared/metricValue.js';
 import { buildUserActivityFeed } from '../lib/stats/buildUserActivityFeed.js';
 
 function parseActivityLimit(raw: unknown): number {
@@ -69,29 +70,17 @@ export async function getCampaignWorldStats(
   req: CampaignScopedRequest,
   res: Response,
 ): Promise<void> {
-  const campaignId = req.campaign!.campaignId;
-  const periodDays = Math.min(
-    90,
-    Math.max(1, Number(req.query.days) || 30),
-  );
-
-  const payload = await getCachedCampaignWorldStats(campaignId, periodDays);
-  const snapshot = stripMetricsForContext(
-    payload.snapshot,
-    'campaignMember',
-  ) as Partial<Record<MetricId, MetricValue>>;
-  const period = stripMetricsForContext(
-    payload.period,
-    'campaignMember',
-  ) as Partial<Record<MetricId, MetricValue>>;
-
-  res.json({
-    computedAt: payload.computedAt,
-    refreshCadence: payload.refreshCadence,
-    periodDays: payload.periodDays,
-    snapshot,
-    period,
-    recentEditors: payload.recentEditors ?? [],
+  // Compatibility endpoint: do not reuse the old campaign-wide cache, whose
+  // counters include hidden records and an inferred growth estimate.
+  const days = Number(req.query.days ?? 30);
+  const payload = await buildCampaignStatistics(req.campaign!, [7, 30, 90, 365].includes(days) ? days : 30);
+  const find = (id: string) => payload.metrics.find(metric => metric.id === id)?.value ?? metricUnavailable('not_yet_tracked');
+  res.json({ computedAt: payload.computedAt, refreshCadence: 'cached_5m', periodDays: payload.days,
+    snapshot: { 'snapshot.pageCount': find('visiblePages'), 'snapshot.totalWords': metricUnavailable('not_yet_tracked'),
+      'snapshot.characterCount': metricUnavailable('not_yet_tracked'), 'snapshot.locationCount': metricUnavailable('not_yet_tracked'),
+      'snapshot.organizationCount': metricUnavailable('not_yet_tracked'), 'snapshot.connectionCount': metricUnavailable('not_yet_tracked'), 'snapshot.mapCount': metricUnavailable('not_yet_tracked') },
+    period: { 'period.pagesCreated': find('creations'), 'period.pagesEdited': metricUnavailable('not_yet_tracked'),
+      'period.wordsGrowthEstimate': metricUnavailable('not_yet_tracked'), 'period.wordsAdded': metricUnavailable('not_yet_tracked') }, recentEditors: [],
   });
 }
 

@@ -1,19 +1,15 @@
+import { visibleChronologyPageIds } from '../lib/chronologyPageAccess.js';
+import { chronologyRouteMap } from '../lib/chronologyRoutes.js';
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { canManageChronology } from '../lib/acl.js';
 import { chronologyCanView, chronologyElevated } from '../lib/chronologyAccess.js';
 import { ensureChronologyEras, listChronologyEras, eraMatchesMinute } from '../lib/chronologyEraService.js';
-import { calendarEpochMinuteForDate, convertEpochToCalendarState } from '../lib/timeEngine.js';
-import type { CampaignEra } from '../lib/prismaClient.js';
-import { eraOccurrenceSchedule, type EraHistory } from '../lib/eraOccurrenceHistory.js';
+import { calendarEpochMinuteForDate } from '../lib/timeEngine.js';
+import { type EraHistory } from '../lib/eraOccurrenceHistory.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
-import {
-  advanceCalendarDate,
-  getMonthLengthsForYear,
-  resolveEventStartCoordinates,
-  type CalendarRowForResolve,
-} from '../lib/chronologyOccurrences.js';
+import { type CalendarRowForResolve } from '../lib/chronologyOccurrences.js';
 import { getContentPresenceStateMap } from '../lib/contentPresenceService.js';
 import { resolveCampaignChronologyNow } from '../lib/chronologyDefaults.js';
 import { ContentPresenceEntityType } from '../../../shared/contentPresence.js';
@@ -24,231 +20,15 @@ import {
 } from '../../../shared/narrativeProjection.js';
 import { parseDomainsQuery } from '../../../shared/chronologyConvergence.js';
 import { buildConvergenceOverlay } from '../lib/chronologyConvergenceService.js';
+import { buildCampaignNarrativeFeed } from '../lib/campaignNarrativeFeed.js';
+import type { FeedImportance } from '../../../shared/campaignFeed.js';
 
-const MAX_GENERATED_PER_EVENT = 100;
-const MAX_GENERATED_TOTAL = 2000;
+import { buildOccurrences, type BaseEvent, MAX_GENERATED_PER_EVENT, MAX_GENERATED_TOTAL } from '../lib/buildChronologyOccurrences.js';
 
 function extractHashtags(value: string | null): string[] {
   if (!value) return [];
   const matches = value.match(/#[a-z0-9][a-z0-9-_]*/gi) ?? [];
   return Array.from(new Set(matches.map((tag) => tag.toLowerCase())));
-}
-
-type BaseEvent = {
-  id: string;
-  calendarId: string;
-  categoryId: string | null;
-  prerequisiteId: string | null;
-  visibility: string;
-  title: string;
-  description: string | null;
-  duration: number;
-  isRepeating: boolean;
-  repeatInterval: number | null;
-  repeatUnit: string | null;
-  limitRepetitions: number | null;
-  conditions: unknown;
-  moonOverrides: unknown;
-  isRecurring: boolean;
-  targetYear: number | null;
-  targetMonth: number | null;
-  targetDay: number | null;
-  targetEpochMinute: bigint | null;
-  recurrenceRule: unknown;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-function addRepeatUnit(
-  year: number | null,
-  month: number | null,
-  day: number | null,
-  unit: string,
-  interval: number,
-  monthLengths: number[],
-): { year: number | null; month: number | null; day: number | null; clipped: boolean } {
-  if (year === null || month === null || day === null) {
-    return { year, month, day, clipped: false };
-  }
-  let nextYear = year;
-  let nextMonth = month;
-  let nextDay = day;
-  if (unit === 'DAYS') {
-    nextDay += interval;
-  } else if (unit === 'MONTHS') {
-    nextMonth += interval;
-  } else if (unit === 'YEARS' || unit === 'ERAS') {
-    nextYear += interval;
-  }
-  while (nextMonth >= monthLengths.length && monthLengths.length > 0) {
-    nextMonth -= monthLengths.length;
-    nextYear += 1;
-  }
-  const monthLength = monthLengths[nextMonth] ?? 30;
-  let clipped = false;
-  if (nextDay > monthLength) {
-    nextDay = monthLength;
-    clipped = true;
-  }
-  return { year: nextYear, month: nextMonth, day: nextDay, clipped };
-}
-
-function buildOccurrences(
-  baseEvents: BaseEvent[],
-  calendarsById: Map<string, CalendarRowForResolve>,
-  campaignEpochMinute: bigint | null,
-  eras: CampaignEra[] = [],
-  eraHistory: EraHistory = {},
-) {
-  const occurrences: Array<Record<string, unknown>> = [];
-  const truncatedBaseEventIds: string[] = [];
-  const warnings = new Set<string>();
-
-  for (const event of baseEvents) {
-    const calendarRow = calendarsById.get(event.calendarId);
-
-    const limit = Math.min(event.limitRepetitions ?? MAX_GENERATED_PER_EVENT, MAX_GENERATED_PER_EVENT);
-    if (event.limitRepetitions === null && event.isRepeating) {
-      warnings.add('UNBOUNDED_RULE_FORCED_CAP');
-    }
-
-    let generatedForEvent = 0;
-    const resolved = resolveEventStartCoordinates(event, calendarRow, campaignEpochMinute);
-    let state = {
-      year: resolved.year,
-      month: resolved.month,
-      day: resolved.day,
-      monthName: resolved.monthName,
-      epochMinute: resolved.epochMinute,
-    };
-
-    const eraSchedule = event.isRepeating && event.repeatUnit === 'ERAS' && calendarRow
-      ? eraOccurrenceSchedule(event, calendarRow, campaignEpochMinute, eras, eraHistory[event.id]) : null;
-    const maxIterations = event.isRepeating ? limit : 1;
-    for (let i = 0; i < maxIterations; i += 1) {
-      if (eraSchedule && calendarRow) {
-        const minute = eraSchedule[i];
-        if (minute == null) continue;
-        const date = convertEpochToCalendarState(minute, calendarRow);
-        state = { year: date.year, month: date.monthIndex, day: date.day, monthName: date.monthName, epochMinute: minute.toString() };
-      }
-      if (generatedForEvent >= MAX_GENERATED_PER_EVENT || occurrences.length >= MAX_GENERATED_TOTAL) {
-        truncatedBaseEventIds.push(event.id);
-        if (generatedForEvent >= MAX_GENERATED_PER_EVENT) warnings.add('CAP_APPLIED_PER_EVENT');
-        if (occurrences.length >= MAX_GENERATED_TOTAL) warnings.add('CAP_APPLIED_TOTAL');
-        break;
-      }
-
-      const duration = Math.max(1, event.duration ?? 1);
-      const endCoords = advanceCalendarDate(
-        calendarRow,
-        state.year,
-        state.month,
-        state.day,
-        duration - 1,
-      );
-
-      for (let dayOffset = 0; dayOffset < duration; dayOffset += 1) {
-        if (occurrences.length >= MAX_GENERATED_TOTAL) {
-          truncatedBaseEventIds.push(event.id);
-          warnings.add('CAP_APPLIED_TOTAL');
-          break;
-        }
-
-        const startCoords = advanceCalendarDate(
-          calendarRow,
-          state.year,
-          state.month,
-          state.day,
-          dayOffset,
-        );
-
-        if (
-          startCoords.year === null ||
-          startCoords.month === null ||
-          startCoords.day === null
-        ) {
-          warnings.add('CLIPPED_DAY_TO_MONTH_END');
-          continue;
-        }
-
-        occurrences.push({
-          occurrenceId: `occ_${event.id}_${i}_${dayOffset}`,
-          baseEventId: event.id,
-          occurrenceIndex: i,
-          calendarId: event.calendarId,
-          categoryId: event.categoryId,
-          visibility: event.visibility,
-          title: event.title,
-          description: event.description,
-          start: {
-            year: startCoords.year,
-            month: startCoords.month,
-            day: startCoords.day,
-            monthName: startCoords.monthName,
-            epochMinute: state.epochMinute,
-          },
-          end: {
-            year: endCoords.year,
-            month: endCoords.month,
-            day: endCoords.day,
-            monthName: endCoords.monthName,
-            epochMinute: state.epochMinute,
-          },
-          duration,
-          isStart: dayOffset === 0,
-          isContinuation: dayOffset > 0,
-          dayOffset,
-          sourceType: event.isRepeating ? 'REPEATING' : 'STATIC',
-          prerequisiteBaseEventId: event.prerequisiteId,
-        });
-      }
-      generatedForEvent += 1;
-
-      if (!event.isRepeating || !event.repeatUnit || !event.repeatInterval) break;
-      if (eraSchedule) continue;
-      const monthLengths =
-        calendarRow && state.year !== null
-          ? getMonthLengthsForYear(calendarRow, state.year)
-          : [];
-      const next = addRepeatUnit(
-        state.year,
-        state.month,
-        state.day,
-        event.repeatUnit,
-        event.repeatInterval,
-        monthLengths,
-      );
-      if (next.clipped) warnings.add('CLIPPED_DAY_TO_MONTH_END');
-      const nextMonthName =
-        calendarRow && next.year !== null && next.month !== null
-          ? resolveEventStartCoordinates(
-              {
-                calendarId: event.calendarId,
-                targetYear: next.year,
-                targetMonth: next.month,
-                targetDay: next.day,
-                targetEpochMinute: null,
-              },
-              calendarRow,
-              null,
-            ).monthName
-          : state.monthName;
-      state = {
-        ...state,
-        year: next.year,
-        month: next.month,
-        day: next.day,
-        monthName: nextMonthName,
-      };
-    }
-  }
-
-  return {
-    occurrences,
-    warnings: Array.from(warnings),
-    truncatedBaseEventIds: Array.from(new Set(truncatedBaseEventIds)),
-  };
 }
 
 export async function getChronologyTimelineBundle(
@@ -287,12 +67,14 @@ export async function getChronologyTimelineBundle(
     }),
     prisma.calendarEventCategory.findMany({
       where: { campaignId },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }, { id: 'asc' }],
       select: {
         id: true,
         campaignId: true,
         name: true,
         color: true,
+        icon: true,
+        sortOrder: true,
       },
     }),
     prisma.calendarEvent.findMany({
@@ -310,10 +92,12 @@ export async function getChronologyTimelineBundle(
       ],
       select: {
         id: true,
+        wikiPageId: true,
         calendarId: true,
         categoryId: true,
         prerequisiteId: true,
         visibility: true,
+        importance: true,
         duration: true,
         isRepeating: true,
         repeatInterval: true,
@@ -367,8 +151,13 @@ export async function getChronologyTimelineBundle(
   for (const event of visibleEvents) {
     if (event.prerequisiteId && !visibleIds.has(event.prerequisiteId)) event.prerequisiteId = null;
   }
+  const routes = await chronologyRouteMap(campaignId, 'events');
+  const linkedPages = await prisma.wikiPage.findMany({ where: { campaignId, deletedAt: null, id: { in: visibleEvents.flatMap(event => event.wikiPageId ? [event.wikiPageId] : []) } }, select: { id: true, visibility: true } });
+  const visiblePageIds = await visibleChronologyPageIds(req.campaign!, linkedPages);
   const baseEvents = visibleEvents.map((event) => ({
     ...event,
+    ...routes.get(event.id),
+    wikiPageId: event.wikiPageId && visiblePageIds.has(event.wikiPageId) ? event.wikiPageId : null,
     targetEpochMinute: event.targetEpochMinute?.toString() ?? null,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
@@ -395,7 +184,11 @@ export async function getChronologyTimelineBundle(
   );
 
   const eras = await listChronologyEras(req.campaign!);
+  const eventDetails = new Map(baseEvents.map(event => [event.id, event]));
   for (const occurrence of expanded.occurrences) {
+    const definition = eventDetails.get(String(occurrence.baseEventId));
+    occurrence.wikiPageId = definition?.wikiPageId ?? null;
+    occurrence.slug = definition?.slug;
     const start = occurrence.start as { year: number | null; month: number | null; day: number | null; epochMinute: string | null };
     const track = calendarsById.get(String(occurrence.calendarId));
     const minute = start.epochMinute != null ? BigInt(start.epochMinute)
@@ -442,6 +235,25 @@ export async function getChronologyOverlayBundle(
   req: CampaignScopedRequest,
   res: Response,
 ): Promise<void> {
+  if (req.query.order !== undefined || req.query.importance !== undefined || req.query.includeFuture !== undefined) {
+    const order = req.query.order ?? 'desc';
+    const importance = req.query.importance === undefined ? ['MAJOR', 'MINOR', 'NOTICE'] : String(req.query.importance).split(',').filter(Boolean);
+    if (!['asc', 'desc'].includes(String(order)) || importance.some(value => !['MAJOR', 'MINOR', 'NOTICE'].includes(value))
+      || (req.query.includeFuture !== undefined && !['true', 'false'].includes(String(req.query.includeFuture)))) {
+      res.status(400).json({ error: 'Invalid campaign feed filters.' }); return;
+    }
+    try {
+      res.json(await buildCampaignNarrativeFeed(req.campaign!, {
+        order: order as 'asc' | 'desc', importance: importance as FeedImportance[], includeFuture: req.query.includeFuture === 'true',
+        from: req.query.from === undefined ? undefined : String(req.query.from), to: req.query.to === undefined ? undefined : String(req.query.to),
+        domains: req.query.domains === undefined ? null : String(req.query.domains) === '' ? [] : parseDomainsQuery(String(req.query.domains)) ?? [], sessionLinkedOnly: req.query.sessionLinkedOnly === 'true',
+      }));
+    } catch (error) {
+      if (error instanceof Error && error.message === 'INVALID_FEED_RANGE') res.status(400).json({ error: 'Choose a valid half-open epoch range.' });
+      else throw error;
+    }
+    return;
+  }
   const campaignId = req.campaign!.campaignId;
   const campaignHandle =
     req.campaign!.campaignHandle ??

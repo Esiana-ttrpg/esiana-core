@@ -6,7 +6,7 @@ import type {
   DashboardOpenThread,
   DashboardThreadBundle,
 } from '@/lib/dashboardConfig';
-import { campaignWikiPath } from '@/lib/campaignPaths';
+import { campaignPath, campaignWikiPath } from '@/lib/campaignPaths';
 import { useWiki } from '@/contexts/WikiContext';
 import {
   THREAD_KIND_LABELS,
@@ -45,7 +45,7 @@ function ThreadRow({
     <li>
       <Link
         to={campaignWikiPath(campaignHandle, thread.id, flatPages)}
-        className={`block rounded-lg border border-border bg-background/50 px-3 py-2.5 text-sm text-foreground transition-colors ${linkClass}`}
+        className={`block rounded-lg hover:bg-elevated/50 px-3 py-2.5 text-sm text-foreground transition-colors ${linkClass}`}
       >
         <div className="flex items-start justify-between gap-2">
           <span className="min-w-0 flex-1 font-medium leading-snug">
@@ -111,7 +111,7 @@ export function LivingThreadsWidget({
                 Narrative pressure
               </h4>
               <ul className="space-y-2">
-                {bundle.living.map((thread) => (
+                {bundle.living.slice(0, 3).map((thread) => (
                   <ThreadRow
                     key={thread.id}
                     campaignHandle={campaignHandle}
@@ -130,7 +130,7 @@ export function LivingThreadsWidget({
                 Player theories
               </h4>
               <ul className="space-y-2">
-                {bundle.theories.map((thread) => (
+                {bundle.theories.slice(0, 3).map((thread) => (
                   <ThreadRow
                     key={thread.id}
                     campaignHandle={campaignHandle}
@@ -158,7 +158,7 @@ export function LivingThreadsWidget({
               </button>
               {resolvedOpen ? (
                 <ul className="space-y-2 opacity-90">
-                  {bundle.recentlyResolved.map((thread) => (
+                  {bundle.recentlyResolved.slice(0, 3).map((thread) => (
                     <ThreadRow
                       key={thread.id}
                       campaignHandle={campaignHandle}
@@ -172,6 +172,7 @@ export function LivingThreadsWidget({
           ) : null}
         </div>
       )}
+      <Link to={campaignPath(campaignHandle, 'threads')} className="mt-3 inline-block text-sm text-primary hover:underline">View all threads</Link>
     </DashboardWidgetShell>
   );
 }

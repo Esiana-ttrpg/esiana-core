@@ -1,4 +1,7 @@
-import { useMemo, useState } from 'react';
+import { AddToPortfolioButton } from '@/components/portfolio/AddToPortfolioButton';
+import { useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { addCampaignCharacterToPortfolio } from '@/lib/portfolio';
 import { MoreHorizontal, Pin, Settings, Trash2 } from 'lucide-react';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { PluginPageActions } from '@/components/plugins/PluginPageActions';
@@ -20,6 +23,7 @@ function menuItemClass(danger = false): string {
 }
 
 interface WikiPageMoreMenuProps {
+  portfolioCharacter?: { pageId: string; characterName: string };
   isDMUser?: boolean;
   isTagsHub: boolean;
   isPinned: boolean;
@@ -40,9 +44,15 @@ export function WikiPageMoreMenu({
   onOpenPageSettings,
   onDeletePage,
   pageTarget,
+  portfolioCharacter,
 }: WikiPageMoreMenuProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const [open, setOpen] = useState(false);
+  const [portfolioBusy, setPortfolioBusy] = useState(false);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const portfolioPending = useRef(false);
+  const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
+  const navigate = useNavigate();
   const { plugins } = usePluginRuntime();
   const { isAuthenticated } = useAuth();
   const wiki = useOptionalWiki();
@@ -57,8 +67,24 @@ export function WikiPageMoreMenu({
     );
   }, [pageTarget, plugins, isAuthenticated, wiki?.campaign?.role]);
 
+  async function handleAddToPortfolio() {
+    if (!campaignHandle || !portfolioCharacter || portfolioPending.current) return;
+    portfolioPending.current = true;
+    setPortfolioBusy(true);
+    setPortfolioError(null);
+    try {
+      const result = await addCampaignCharacterToPortfolio(campaignHandle, portfolioCharacter.pageId);
+      navigate(`/characters/${result.portfolioCharacter.id}`);
+    } catch (error) {
+      setPortfolioError(error instanceof Error ? error.message : 'Could not add to portfolio.');
+    } finally {
+      portfolioPending.current = false;
+      setPortfolioBusy(false);
+    }
+  }
+
   if (isTagsHub) return null;
-  if (!isDMUser && !hasPluginActions) return null;
+  if (!isDMUser && !hasPluginActions && !portfolioCharacter) return null;
 
   return (
     <div className="relative">
@@ -86,12 +112,21 @@ export function WikiPageMoreMenu({
             className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-lg border border-border bg-surface p-1 shadow-lg"
             role="menu"
           >
+            {portfolioCharacter ? (
+              <AddToPortfolioButton
+                characterName={portfolioCharacter.characterName}
+                busy={portfolioBusy}
+                onAdd={() => void handleAddToPortfolio()}
+                menuItem
+              />
+            ) : null}
             {isDMUser ? (
               <>
                 <button
                   type="button"
                   role="menuitem"
-                  className={menuItemClass()}
+                  disabled={wiki?.pinsLoading ?? true}
+                  className={`${menuItemClass()} disabled:cursor-not-allowed disabled:opacity-50`}
                   onClick={() => {
                     onTogglePin();
                     setOpen(false);
@@ -136,6 +171,8 @@ export function WikiPageMoreMenu({
           </div>
         </>
       ) : null}
+      {portfolioBusy ? <p role="status" className="mt-1 max-w-[14rem] text-right text-xs text-muted">Adding to Portfolio…</p> : null}
+      {portfolioError ? <p role="alert" className="mt-1 max-w-[14rem] text-right text-xs text-destructive">{portfolioError}</p> : null}
     </div>
   );
 }

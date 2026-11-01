@@ -12,12 +12,12 @@ function normalizePathKey(raw) {
     const trimmed = raw.trim().toLowerCase();
     if (!trimmed)
         return '';
-    let key = trimmed
+    const key = trimmed
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/-+/g, '-')
-        .replace(/^-+|-+$/g, '');
-    key = key.replace(/[^a-z0-9]+$/g, '').replace(/-+$/g, '');
-    return key;
+        .replace(/^-/, '');
+    // Runs have already collapsed to one hyphen; no suffix search is needed.
+    return key.endsWith('-') ? key.slice(0, -1) : key;
 }
 /** Lenient path key from a wiki page title. */
 function pathKeyFromTitle(title) {
@@ -29,9 +29,10 @@ function pathKeyFromTitle(title) {
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9-]/g, '')
         .replace(/-+/g, '-')
-        .replace(/^-+|-+$/g, '');
-    if (strict.length >= 1 && strict.length <= 80) {
-        return strict;
+        .replace(/^-/, '');
+    const canonical = strict.endsWith('-') ? strict.slice(0, -1) : strict;
+    if (canonical.length >= 1 && canonical.length <= 80) {
+        return canonical;
     }
     return normalizePathKey(trimmed);
 }

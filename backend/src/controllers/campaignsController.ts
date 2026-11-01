@@ -1,10 +1,9 @@
 import type { Response } from 'express';
+import { AudioError } from '../lib/audioCore.js';
 import { Prisma, type FantasyCalendar } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
-import { env } from '../config/env.js';
 import fsPromises from 'node:fs/promises';
-import path from 'node:path';
 import {
   buildActorFromAclContext,
   canModifyCampaign,
@@ -67,6 +66,8 @@ import type {
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import {
   UploadValidationError,
+  resolveSafeUploadPath,
+  resolveUploadedFilePath,
   validateWizardUploadFile,
 } from '../lib/uploadValidation.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
@@ -745,7 +746,7 @@ export async function createCampaign(
   let coverImageBuffer: Buffer | null = null;
   if (coverImageFile) {
     try {
-      const coverPath = path.join(env.uploadsDir, coverImageFile.filename);
+      const coverPath = resolveUploadedFilePath(coverImageFile);
       coverImageBuffer = await fsPromises.readFile(coverPath);
     } catch (error) {
       console.error('Error reading cover image for campaign', error);
@@ -755,7 +756,7 @@ export async function createCampaign(
   }
   if (calendarConfigFile) {
     try {
-      const filePath = path.join(env.uploadsDir, calendarConfigFile.filename);
+      const filePath = resolveUploadedFilePath(calendarConfigFile);
       const text = await fsPromises.readFile(filePath, 'utf8');
       parsedCalendarConfig = parseFantasyCalendarExport(JSON.parse(text));
     } catch (error) {
@@ -831,6 +832,10 @@ export async function createCampaign(
         select: campaignSelect(),
       });
 
+      await tx.chronologySettings.create({ data: { campaignId: created.id } });
+      const { initializeEventCategories } = await import('../lib/defaultEventCategories.js');
+      await initializeEventCategories(tx, created.id, { newCampaign: true });
+
       const partyId = await (async () => {
         const { ensureDefaultPartyForCampaign, linkCampaignMembersToDefaultParty } =
           await import('../lib/partyService.js');
@@ -878,8 +883,8 @@ export async function createCampaign(
         }
         // Normalize filename to campaign-[campaignId]-import.zip
         const nextFilename = `campaign-${created.id}-import.zip`;
-        const currentPath = path.join(env.uploadsDir, markdownZipFile.filename);
-        const nextPath = path.join(env.uploadsDir, nextFilename);
+        const currentPath = resolveUploadedFilePath(markdownZipFile);
+        const nextPath = resolveSafeUploadPath(nextFilename);
         try {
           await fsPromises.rename(currentPath, nextPath);
         } catch (error) {
@@ -911,8 +916,8 @@ export async function createCampaign(
           updateBackgroundTask(restoreTask.id, { progress: 25 });
         }
         const nextFilename = `campaign-${created.id}-backup.zip`;
-        const currentPath = path.join(env.uploadsDir, backupZipFile.filename);
-        const nextPath = path.join(env.uploadsDir, nextFilename);
+        const currentPath = resolveUploadedFilePath(backupZipFile);
+        const nextPath = resolveSafeUploadPath(nextFilename);
         try {
           await fsPromises.rename(currentPath, nextPath);
         } catch (error) {
@@ -1558,8 +1563,9 @@ export async function duplicateCampaignHandler(
     });
   } catch (error) {
     console.error('Error duplicating campaign:', error);
-    res.status(500).json({
+    res.status(error instanceof AudioError ? error.status : 500).json({
       error: error instanceof Error ? error.message : 'Failed to duplicate campaign',
+      ...(error instanceof AudioError ? { code: error.code } : {}),
     });
   }
 }
@@ -1587,6 +1593,11 @@ export async function deleteCampaign(
     return;
   }
 
+  // Retained requests must not be erased indirectly through campaign deletion.
+  if (await prisma.safetyPrivacyRequest.count({ where: { campaignId } })) {
+    res.status(409).json({ error: 'This campaign has retained Safety & Privacy requests. Archive it instead; request erasure is not available.' });
+    return;
+  }
   await deleteCampaignAssetFiles(campaignId);
   await prisma.campaign.delete({ where: { id: campaignId } });
 

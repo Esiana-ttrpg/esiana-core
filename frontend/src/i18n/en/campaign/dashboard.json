@@ -1,4 +1,10 @@
 {
+  "campaign.dashboard.widgetCampaignMap": "Campaign Map",
+  "campaign.dashboard.widgetPageSpotlight": "Page Spotlight",
+  "campaign.dashboard.widgetCampaignAnnouncements": "Campaign Announcements",
+  "campaign.dashboard.widgetNeedsAttention": "Needs Your Attention",
+  "campaign.dashboard.widgetCampaignStatistics": "Campaign Statistics",
+
   "campaign.dashboard.loadingCampaignHome": "Loading campaign home…",
   "campaign.dashboard.campaignNotFound": "Campaign not found",
   "campaign.dashboard.campaignNotFoundDescription": "Missing campaign slug in the URL.",

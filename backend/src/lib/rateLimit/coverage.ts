@@ -12,6 +12,7 @@ type StackLayer = {
   handle?: RequestHandler & {
     rateLimitPolicy?: string;
     stack?: StackLayer[];
+    rateLimitMountPath?: string;
   };
   route?: {
     path: string | string[];
@@ -84,6 +85,9 @@ function walkRouterStack(
       if (!routerPolicies.includes(policy)) {
         routerPolicies.push(policy);
       }
+    }
+    if (layer.handle?.stack && layer.handle.rateLimitMountPath) {
+      walkRouterStack(layer.handle.stack, joinPaths(basePath, layer.handle.rateLimitMountPath), routerPolicies, out);
     }
   }
 }

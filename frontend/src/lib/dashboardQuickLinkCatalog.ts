@@ -4,6 +4,8 @@ import {
   DASHBOARD_QUICK_LINK_KEYS,
   DASHBOARD_QUICK_LINK_MAX,
   normalizeDashboardQuickLinkKeys,
+  normalizeDashboardQuickLinks,
+  type DashboardExternalLinkIcon,
   type DashboardQuickLinkKey,
 } from '@shared/dashboardQuickLinkCatalog';
 import { useWiki } from '@/contexts/WikiContext';
@@ -21,11 +23,16 @@ export {
   DASHBOARD_QUICK_LINK_KEYS,
   DASHBOARD_QUICK_LINK_MAX,
   normalizeDashboardQuickLinkKeys,
+  normalizeDashboardQuickLinks,
+  type DashboardExternalLinkIcon,
   type DashboardQuickLinkKey,
 };
 
 export type ResolvedQuickLink = {
-  key: DashboardQuickLinkKey;
+  key: string;
+  internalKey?: DashboardQuickLinkKey;
+  external?: boolean;
+  icon?: DashboardExternalLinkIcon;
   label: string;
   to: string;
 };
@@ -36,7 +43,7 @@ export function useResolvedDashboardQuickLinks(
   options?: { isLookingForGroup?: boolean },
 ): ResolvedQuickLink[] {
   const { resolvePageId, flatPages } = useWiki();
-  const keys = normalizeDashboardQuickLinkKeys(config?.links);
+  const keys = normalizeDashboardQuickLinks(config?.links);
 
   const codexPath = useMemo(() => {
     const pageId = resolveWikiIndexPageId(resolvePageId, flatPages);
@@ -44,7 +51,11 @@ export function useResolvedDashboardQuickLinks(
   }, [campaignHandle, flatPages, resolvePageId]);
 
   return keys
-    .map((key) => resolveQuickLink(key, campaignHandle, codexPath, options?.isLookingForGroup))
+    .map((entry): ResolvedQuickLink | null => {
+      if (typeof entry !== 'string') return { key: entry.id, label: entry.label, to: entry.url, external: true, icon: entry.icon };
+      const link = resolveQuickLink(entry, campaignHandle, codexPath, options?.isLookingForGroup);
+      return link ? { ...link, internalKey: entry } : null;
+    })
     .filter((link): link is ResolvedQuickLink => link !== null);
 }
 

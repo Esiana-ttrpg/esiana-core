@@ -1,12 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
-import { deleteCalendarEvent, updateCalendarEvent } from '@/lib/calendarEventsApi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  updateCalendarEvent,
+} from '@/lib/calendarEventsApi';
 import type {
   ConditionNode,
   MoonOverride,
   TimelineBaseEventRecord,
 } from '@/lib/chronologyApi';
-import { clampChronologyDate, type ChronologyDateParts } from '@/lib/chronologyDates';
-import { calendarEpochMinuteForDate, type FantasyCalendarLike } from '@/lib/timeEngine';
+import {
+  clampChronologyDate,
+  type ChronologyDateParts,
+} from '@/lib/chronologyDates';
+import {
+  calendarEpochMinuteForDate,
+  type FantasyCalendarLike,
+} from '@/lib/timeEngine';
 
 export interface UseChronologyEventEditorOptions {
   campaignHandle: string;
@@ -15,6 +25,8 @@ export interface UseChronologyEventEditorOptions {
   dateSeed?: ChronologyDateParts | null;
   onMutated?: () => void | Promise<void>;
   onDeleted?: () => void | Promise<void>;
+  mode?: 'create' | 'edit';
+  onSaved?: (eventId: string) => void | Promise<void>;
 }
 
 function initialDateFromEvent(
@@ -37,18 +49,33 @@ export function useChronologyEventEditor({
   dateSeed = null,
   onMutated,
   onDeleted,
+  mode = 'edit',
+  onSaved,
 }: UseChronologyEventEditorOptions) {
+  const persistedCreateId = useRef<string | null>(null);
+  const [title, setTitle] = useState(baseEvent.title);
   const [categoryId, setCategoryId] = useState<string | 'none'>('none');
-  const [description, setDescription] = useState('');
+  // Mount the shared rich-text editor with persisted content so hydration does
+  // not emit an update that makes an untouched inspection/edit flow dirty.
+  const [description, setDescription] = useState(baseEvent.description ?? '');
   const [prerequisiteId, setPrerequisiteId] = useState<string | 'none'>('none');
-  const [visibility, setVisibility] = useState<'PUBLIC' | 'PARTY' | 'DM_ONLY'>('PARTY');
+  const [visibility, setVisibility] = useState<'PUBLIC' | 'PARTY' | 'DM_ONLY'>(
+    'PARTY',
+  );
+  const [importance, setImportance] = useState<'NOTICE' | 'MINOR' | 'MAJOR'>(
+    'MINOR',
+  );
   const [duration, setDuration] = useState(1);
   const [isRepeating, setIsRepeating] = useState(false);
   const [repeatInterval, setRepeatInterval] = useState<number | ''>('');
-  const [repeatUnit, setRepeatUnit] = useState<'DAYS' | 'MONTHS' | 'YEARS' | 'ERAS'>('DAYS');
+  const [repeatUnit, setRepeatUnit] = useState<
+    'DAYS' | 'MONTHS' | 'YEARS' | 'ERAS'
+  >('DAYS');
   const [limitRepetitions, setLimitRepetitions] = useState<number | ''>('');
   const [conditions, setConditions] = useState<ConditionNode | null>(null);
-  const [moonOverrides, setMoonOverrides] = useState<MoonOverride[] | null>(null);
+  const [moonOverrides, setMoonOverrides] = useState<MoonOverride[] | null>(
+    null,
+  );
   const [targetDate, setTargetDate] = useState<ChronologyDateParts>({
     year: 1,
     month: 0,
@@ -60,20 +87,31 @@ export function useChronologyEventEditor({
   const [error, setError] = useState<string | null>(null);
 
   const resetFromEvent = useCallback(() => {
+    setTitle(baseEvent.title);
     setCategoryId(baseEvent.categoryId ?? 'none');
     setDescription(baseEvent.description ?? '');
     setPrerequisiteId(baseEvent.prerequisiteId ?? 'none');
     setVisibility(baseEvent.visibility);
+    setImportance(baseEvent.importance ?? 'MINOR');
     setDuration(baseEvent.duration);
     setIsRepeating(baseEvent.isRepeating);
     setRepeatInterval(baseEvent.repeatInterval ?? '');
     setRepeatUnit(baseEvent.repeatUnit ?? 'DAYS');
     setLimitRepetitions(baseEvent.limitRepetitions ?? '');
     setConditions(baseEvent.conditions ?? null);
-    setMoonOverrides((baseEvent.moonOverrides as MoonOverride[] | null) ?? null);
+    setMoonOverrides(
+      (baseEvent.moonOverrides as MoonOverride[] | null) ?? null,
+    );
     setTargetDate(initialDateFromEvent(baseEvent, calendarLike, dateSeed));
     setError(null);
-  }, [baseEvent, calendarLike, dateSeed]);
+  }, [
+    baseEvent.id,
+    baseEvent.updatedAt,
+    calendarLike,
+    dateSeed?.year,
+    dateSeed?.month,
+    dateSeed?.day,
+  ]);
 
   useEffect(() => {
     resetFromEvent();
@@ -105,24 +143,43 @@ export function useChronologyEventEditor({
 
   const save = useCallback(async () => {
     const clamped = clampChronologyDate(calendarLike, targetDate);
-    if (clamped.year === null || clamped.month === null || clamped.day === null) {
+    if (
+      clamped.year === null ||
+      clamped.month === null ||
+      clamped.day === null
+    ) {
       setError('Please choose a valid event date.');
       return;
     }
 
+    if (!title.trim()) {
+      setError('Please enter an event title.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await updateCalendarEvent(campaignHandle, baseEvent.calendarId, baseEvent.id, {
+      const payload = {
+        title: title.trim(),
         categoryId: categoryId === 'none' ? null : categoryId,
         prerequisiteId:
-          prerequisiteId === 'none' || prerequisiteId === baseEvent.id ? null : prerequisiteId,
+          prerequisiteId === 'none' || prerequisiteId === baseEvent.id
+            ? null
+            : prerequisiteId,
         visibility,
+        importance,
         duration: Math.max(1, duration),
         isRepeating,
-        repeatInterval: isRepeating ? (repeatInterval === '' ? null : repeatInterval) : null,
+        repeatInterval: isRepeating
+          ? repeatInterval === ''
+            ? null
+            : repeatInterval
+          : null,
         repeatUnit: isRepeating ? repeatUnit : null,
-        limitRepetitions: limitRepetitions === '' ? null : Math.max(1, Number(limitRepetitions)),
+        limitRepetitions:
+          limitRepetitions === ''
+            ? null
+            : Math.max(1, Number(limitRepetitions)),
         conditions,
         moonOverrides,
         description: description.trim() || '',
@@ -135,22 +192,43 @@ export function useChronologyEventEditor({
           clamped.month,
           clamped.day,
         ).toString(),
-      });
+      };
+      const saved =
+        mode === 'create' && !persistedCreateId.current
+          ? await createCalendarEvent(
+              campaignHandle,
+              baseEvent.calendarId,
+              payload,
+            )
+          : await updateCalendarEvent(
+              campaignHandle,
+              baseEvent.calendarId,
+              persistedCreateId.current ?? baseEvent.id,
+              payload,
+            );
+      if (mode === 'create') persistedCreateId.current = saved.id;
       setIsDirty(false);
       await onMutated?.();
+      await onSaved?.(saved.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save event changes.');
+      setError(
+        err instanceof Error ? err.message : 'Failed to save event changes.',
+      );
     } finally {
       setSaving(false);
     }
   }, [
     baseEvent,
+    title,
+    mode,
+    onSaved,
     calendarLike,
     campaignHandle,
     categoryId,
     conditions,
     description,
     duration,
+    importance,
     isRepeating,
     limitRepetitions,
     moonOverrides,
@@ -174,7 +252,11 @@ export function useChronologyEventEditor({
     setDeleting(true);
     setError(null);
     try {
-      await deleteCalendarEvent(campaignHandle, baseEvent.calendarId, baseEvent.id);
+      await deleteCalendarEvent(
+        campaignHandle,
+        baseEvent.calendarId,
+        baseEvent.id,
+      );
       await onDeleted?.();
       await onMutated?.();
     } catch (err) {
@@ -185,6 +267,11 @@ export function useChronologyEventEditor({
   }, [baseEvent, campaignHandle, onDeleted, onMutated]);
 
   return {
+    title,
+    setTitle: (value: string) => {
+      setTitle(value);
+      markDirty();
+    },
     categoryId,
     setCategoryId: (value: string | 'none') => {
       setCategoryId(value);
@@ -192,6 +279,7 @@ export function useChronologyEventEditor({
     },
     description,
     setDescription: (value: string) => {
+      if (value === description) return;
       setDescription(value);
       markDirty();
     },
@@ -201,6 +289,11 @@ export function useChronologyEventEditor({
       markDirty();
     },
     visibility,
+    importance,
+    setImportance: (value: 'NOTICE' | 'MINOR' | 'MAJOR') => {
+      setImportance(value);
+      markDirty();
+    },
     setVisibility: (value: 'PUBLIC' | 'PARTY' | 'DM_ONLY') => {
       setVisibility(value);
       markDirty();

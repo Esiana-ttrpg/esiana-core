@@ -1,4 +1,4 @@
-FROM node:26-alpine AS build
+FROM node:26-alpine3.24 AS build
 WORKDIR /app
 
 # Node 26 images no longer bundle Corepack; pin pnpm to packageManager.
@@ -45,7 +45,7 @@ RUN set -eux; \
   node --input-type=module -e "import('./dist/backend/src/lib/createPrismaClient.js').then((m) => { if (typeof m.createPrismaClient !== 'function') process.exit(1); })"; \
   node --input-type=module -e "import('./dist/backend/src/lib/tagIconSvg.js')"
 
-FROM node:26-alpine AS runtime
+FROM node:26-alpine3.24 AS runtime
 WORKDIR /app
 
 ARG ESIANA_PRODUCT_VERSION
@@ -56,7 +56,7 @@ LABEL org.opencontainers.image.description="Self-hosted narrative infrastructure
 LABEL org.opencontainers.image.source="https://github.com/Esiana-ttrpg/esiana-core"
 LABEL org.opencontainers.image.vendor="Esiana-ttrpg"
 
-RUN apk add --no-cache nginx su-exec \
+RUN apk add --no-cache 'nginx>=1.30.6-r0' su-exec \
   && addgroup -S esiana && adduser -S esiana -G esiana \
   && mkdir -p /data/uploads /app/plugins /run/nginx \
   && chown -R esiana:esiana /data/uploads /app/plugins
@@ -70,7 +70,10 @@ COPY --from=build /app/frontend/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx-esiana.conf /etc/nginx/http.d/default.conf
 COPY docker/esiana-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh \
+COPY docker/apply-schema-migrations.sh /apply-schema-migrations.sh
+RUN chmod +x /entrypoint.sh /apply-schema-migrations.sh \
+  && test -f /app/backend/prisma/scripts/deploy-sqlite-migrations.mjs \
+  && test -f /app/backend/prisma/scripts/sqliteSchema.mjs \
   && nginx -t
 
 EXPOSE 80 3001

@@ -115,7 +115,7 @@ export async function buildDashboardSummary(input: {
         isLookingForGroup: true,
       },
     }),
-    fetchNextDashboardSession(campaignId),
+    fetchNextDashboardSession(campaignId, role),
     fetchLastDashboardSession(campaignId, role),
     buildDashboardChronometer(campaignId),
     buildRecentLoreFeed(campaignId, campaignHandle, role, 12),
@@ -256,7 +256,7 @@ export async function buildDashboardSummary(input: {
   }
 
   const worldPressurePreview = isDmRole(role)
-    ? await buildWorldPressurePreview(campaignId, { daysUntilNextSession: nextSessionInDays })
+    ? await buildWorldPressurePreview(campaignId, { daysUntilNextSession: nextSessionInDays, role })
     : null;
 
   return {

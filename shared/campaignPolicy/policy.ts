@@ -46,7 +46,7 @@ export type CampaignActor =
   | {
       kind: 'member';
       userId: string;
-      membershipRole: MembershipRole;
+      membershipRole: MembershipRole | null;
       isCampaignOwner: boolean;
       campaign: CampaignPolicyContext;
       memberFlags?: { chronologyContributor?: boolean };
@@ -54,9 +54,11 @@ export type CampaignActor =
       partyId?: string | null;
     };
 
-function resolveMembershipRole(role: string | null | undefined): MembershipRole {
+function resolveMembershipRole(
+  role: string | null | undefined,
+): MembershipRole | null {
   if (role && isMembershipRole(role)) return role;
-  return MembershipRoles.OBSERVER;
+  return null;
 }
 
 export function buildCampaignActor(input: {
@@ -92,15 +94,23 @@ export function buildCampaignActor(input: {
   };
 }
 
+function evaluationRole(actor: Extract<CampaignActor, { kind: 'member' }>): MembershipRole | null {
+  if (actor.isCampaignOwner) return MembershipRoles.GAMEMASTER;
+  return actor.membershipRole;
+}
+
 export function resolveActorCapabilities(
   actor: CampaignActor,
 ): ReadonlySet<CampaignCapability> {
   if (actor.kind === 'anonymous') {
     const discoverability = resolveDiscoverability(actor.campaign.discoverability);
+    // Campaign gate only. Instance login is a separate admission check
+    // (`resolveAnonymousCampaignAccess`) so Public preview can still project
+    // Observer-eligible content when the instance currently requires login.
     if (!allowsAnonymousCampaignView(discoverability)) {
       return new Set();
     }
-    return publicAnonymousCapabilities();
+    return publicAnonymousCapabilities(actor.campaign.roleCapabilityOverrides ?? []);
   }
 
   const flags: MemberCapabilityFlags = {
@@ -109,13 +119,19 @@ export function resolveActorCapabilities(
       actor.campaign.allowPlayerChronologyManagement,
   };
 
-  const roleCaps = roleCapabilitiesFor(actor.membershipRole, flags);
+  const role = evaluationRole(actor);
+  const roleCaps = roleCapabilitiesFor(role, flags);
   const withOverrides = applyCampaignRoleOverrides(
     roleCaps,
     actor.campaign.roleCapabilityOverrides ?? [],
-    actor.membershipRole,
+    role ?? '',
   );
-  const adminCaps = campaignAdminCapabilitiesFor(actor.isCampaignOwner);
+  const isGamemaster =
+    actor.isCampaignOwner || actor.membershipRole === MembershipRoles.GAMEMASTER;
+  const adminCaps = campaignAdminCapabilitiesFor(
+    actor.isCampaignOwner,
+    isGamemaster,
+  );
   return new Set([...withOverrides, ...adminCaps]);
 }
 
@@ -134,7 +150,8 @@ export function actorDiscoverability(
 }
 
 export function canAccessCampaignContainer(actor: CampaignActor): boolean {
-  if (actor.kind === 'member') return true;
+  if (actor.kind === 'member' && actor.membershipRole) return true;
+  if (actor.kind === 'member' && actor.isCampaignOwner) return true;
   return can(actor, CampaignCapabilities.CAMPAIGN_VIEW);
 }
 

@@ -1,5 +1,13 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import {
+  authenticateApiOrSession,
+  requireAuth,
+  requireAuthenticatedApiOrSession,
+  requireTokenScopes,
+  type AuthenticatedRequest,
+} from '../middleware/auth.js';
+import type { RequestHandler } from 'express';
+import { API_TOKEN_SCOPES } from '../lib/apiToken.js';
 import {
   changePassword,
   deleteUserAccount,
@@ -78,13 +86,58 @@ import {
 
 export const userRouter = Router();
 
+// These content features share the campaign read/write token scopes. Account
+// security, token management, and unrelated user routes remain session-only.
+const userContentAuth: RequestHandler[] = [
+  authenticateApiOrSession,
+  requireAuthenticatedApiOrSession,
+  (req: AuthenticatedRequest, res, next) => requireTokenScopes([
+    req.method === 'GET' || req.method === 'HEAD'
+      ? API_TOKEN_SCOPES.CAMPAIGN_READ
+      : API_TOKEN_SCOPES.CAMPAIGN_WRITE,
+  ])(req, res, next),
+  rateLimitPolicy('authenticated'),
+  rateLimitPolicy('apiKey'),
+  rateLimitPolicy('mutation'),
+];
+
+userRouter.get('/schedule', ...userContentAuth, getUserSchedule);
+userRouter.patch('/schedule/preferences', ...userContentAuth, patchUserSchedulePreferencesHandler);
+
+// Character Portfolio
+userRouter.get('/portfolio/characters', ...userContentAuth, listPortfolioCharacters);
+userRouter.post('/portfolio/characters', ...userContentAuth, createPortfolioCharacter);
+userRouter.post('/portfolio/characters/bulk', ...userContentAuth, bulkPortfolioCharacterActions);
+userRouter.patch('/portfolio/showcase/reorder', ...userContentAuth, reorderShowcasePortfolioCharacters);
+userRouter.get('/portfolio/characters/:id', ...userContentAuth, getPortfolioCharacter);
+userRouter.patch('/portfolio/characters/:id', ...userContentAuth, updatePortfolioCharacter);
+userRouter.delete('/portfolio/characters/:id', ...userContentAuth, deletePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/duplicate', ...userContentAuth, duplicatePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/favorite', ...userContentAuth, toggleFavoritePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/archive', ...userContentAuth, archivePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/showcase', ...userContentAuth, setShowcasePortfolioCharacter);
+userRouter.post('/portfolio/characters/:id/add-to-campaign', ...userContentAuth, addPortfolioCharacterToCampaign);
+userRouter.post('/portfolio/characters/:id/export', ...userContentAuth, exportPortfolioCharacter);
+userRouter.post(
+  '/portfolio/characters/:id/media',
+  ...userContentAuth,
+  rateLimitPolicy('expensive'),
+  imageUpload.single('file'),
+  enforceSystemUploadLimit,
+  uploadPortfolioMedia,
+);
+userRouter.delete('/portfolio/characters/:id/media/:mediaId', ...userContentAuth, deletePortfolioMedia);
+userRouter.post(
+  '/portfolio/adventures/:adventureId/end',
+  ...userContentAuth,
+  endPortfolioAdventure,
+);
+
 userRouter.use(requireAuth);
 userRouter.use(rateLimitPolicy('authenticated'));
 userRouter.use(rateLimitPolicy('mutation'));
 
 userRouter.get('/hub', getUserHub);
-userRouter.get('/schedule', getUserSchedule);
-userRouter.patch('/schedule/preferences', patchUserSchedulePreferencesHandler);
 userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
 userRouter.get('/activity', getOwnerUserActivity);
 userRouter.put('/campaigns/:campaignId/pin', pinCampaign);
@@ -126,30 +179,3 @@ userRouter.get('/campaign-defaults', getUserCampaignDefaultsBundle);
 userRouter.patch('/campaign-defaults', patchUserCampaignDefaults);
 userRouter.get('/template-resources/:kind', getUserTemplateResource);
 userRouter.put('/template-resources/:kind', putUserTemplateResource);
-
-// Character Portfolio
-userRouter.get('/portfolio/characters', listPortfolioCharacters);
-userRouter.post('/portfolio/characters', createPortfolioCharacter);
-userRouter.post('/portfolio/characters/bulk', bulkPortfolioCharacterActions);
-userRouter.patch('/portfolio/showcase/reorder', reorderShowcasePortfolioCharacters);
-userRouter.get('/portfolio/characters/:id', getPortfolioCharacter);
-userRouter.patch('/portfolio/characters/:id', updatePortfolioCharacter);
-userRouter.delete('/portfolio/characters/:id', deletePortfolioCharacter);
-userRouter.post('/portfolio/characters/:id/duplicate', duplicatePortfolioCharacter);
-userRouter.post('/portfolio/characters/:id/favorite', toggleFavoritePortfolioCharacter);
-userRouter.post('/portfolio/characters/:id/archive', archivePortfolioCharacter);
-userRouter.post('/portfolio/characters/:id/showcase', setShowcasePortfolioCharacter);
-userRouter.post('/portfolio/characters/:id/add-to-campaign', addPortfolioCharacterToCampaign);
-userRouter.post('/portfolio/characters/:id/export', exportPortfolioCharacter);
-userRouter.post(
-  '/portfolio/characters/:id/media',
-  rateLimitPolicy('expensive'),
-  imageUpload.single('file'),
-  enforceSystemUploadLimit,
-  uploadPortfolioMedia,
-);
-userRouter.delete('/portfolio/characters/:id/media/:mediaId', deletePortfolioMedia);
-userRouter.post(
-  '/portfolio/adventures/:adventureId/end',
-  endPortfolioAdventure,
-);

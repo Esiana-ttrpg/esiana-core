@@ -30,6 +30,11 @@ export interface WikiCampaignMeta {
   allowPlayerChronologyManagement?: boolean;
   chronologyContributor?: boolean;
   partyId?: string | null;
+  roleCapabilityOverrides?: readonly {
+    role: string;
+    capability: string;
+    effect: string;
+  }[];
   sidebarConfig?: import('@/lib/sidebarConfig').SidebarConfig;
   themePreset?: string;
   appearanceProfile?: import('@/lib/theme').ThemeProfile | null;
@@ -363,6 +368,7 @@ export interface PageShortcut {
 }
 
 export interface SessionNotesNotebookPage {
+  audio?: { recordingCount: number; durationMs: number; transcriptAvailable: boolean; processing: boolean };
   id: string;
   title: string;
   content: string;

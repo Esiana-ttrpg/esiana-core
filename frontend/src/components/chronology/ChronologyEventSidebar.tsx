@@ -1,9 +1,14 @@
-import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { ChronologyEventManagePanel } from '@/components/chronology/ChronologyEventManagePanel';
-import { ChronologyLoreLink } from '@/components/chronology/ChronologyLoreLink';
-import type { TimelineBaseEventRecord, TimelineCategoryRecord } from '@/lib/chronologyApi';
+import { ChronologyInspector } from './ChronologyInspector';
+import { formatOccurrenceDateLabel } from '@/lib/chronologyDates';
+import { ChronologyEventInlineDetail } from '@/components/chronology/ChronologyEventInlineDetail';
+import type {
+  TimelineBaseEventRecord,
+  TimelineOccurrenceRecord,
+  TimelineCategoryRecord,
+} from '@/lib/chronologyApi';
 import type { ChronologyDateParts } from '@/lib/chronologyDates';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
+import type { TimeTrackingBundle } from '@/lib/timeTrackingApi';
 
 interface ChronologyEventSidebarProps {
   campaignHandle: string;
@@ -13,12 +18,16 @@ interface ChronologyEventSidebarProps {
   calendarLike: FantasyCalendarLike | null;
   canManage: boolean;
   dateSeed?: ChronologyDateParts | null;
+  occurrence?: TimelineOccurrenceRecord | null;
   open: boolean;
   onClose: () => void;
   onMutated?: () => void | Promise<void>;
   onDeleted?: () => void | Promise<void>;
   categoryFooter?: import('react').ReactNode;
   onRevealEvent?: (baseEventId: string) => void | Promise<void>;
+  calendarName?: string;
+  timeBundle?: TimeTrackingBundle;
+  comparisonContext?: import('react').ReactNode;
 }
 
 export function ChronologyEventSidebar({
@@ -29,87 +38,46 @@ export function ChronologyEventSidebar({
   calendarLike,
   canManage,
   dateSeed = null,
+  occurrence = null,
   open,
   onClose,
   onMutated,
   onDeleted,
   categoryFooter,
   onRevealEvent,
+  comparisonContext,
+  calendarName,
+  timeBundle,
 }: ChronologyEventSidebarProps) {
+  if (!open || !baseEvent) return null;
   return (
-    <aside className="relative h-full border-l border-border bg-surface/20">
-      <div
-        className={`absolute inset-0 flex flex-col transition-transform duration-300 ${
-          open && baseEvent ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {baseEvent ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="flex-1 space-y-3 overflow-y-auto p-4 text-sm">
-              <div className="flex items-center justify-between">
-                <h2 className={META_SECTION_LABEL_CLASS}>
-                  Event Details
-                </h2>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded border border-border px-2 py-0.5 text-[11px] text-muted hover:text-foreground"
-                >
-                  Close
-                </button>
-              </div>
-
-              <ChronologyLoreLink
-                campaignHandle={campaignHandle}
-                baseEventId={baseEvent.id}
-                title={baseEvent.title}
-                className="w-full"
-              />
-
-              <p className="text-base font-semibold text-foreground">{baseEvent.title}</p>
-              <p className="mb-1 text-xs text-muted">
-                Tags: {baseEvent.tags.length ? baseEvent.tags.join(' ') : '—'}
-              </p>
-              {canManage ? (
-                <button
-                  type="button"
-                  onClick={() => void onRevealEvent?.(baseEvent.id)}
-                  className="rounded border border-border px-2 py-0.5 text-[11px] text-muted hover:text-foreground"
-                >
-                  Reveal To Party
-                </button>
-              ) : null}
-
-              {calendarLike ? (
-                <ChronologyEventManagePanel
-                  campaignHandle={campaignHandle}
-                  baseEvent={baseEvent}
-                  categories={categories}
-                  editableEvents={editableEvents}
-                  calendarLike={calendarLike}
-                  canManage={canManage}
-                  dateSeed={dateSeed}
-                  onMutated={onMutated}
-                  onDeleted={onDeleted}
-                  variant="sidebar"
-                />
-              ) : (
-                <p className="text-xs text-muted">Calendar profile unavailable for editing.</p>
-              )}
-            </div>
-
-            {categoryFooter ? (
-              <div className="shrink-0 border-t border-border bg-background/90 p-3">{categoryFooter}</div>
-            ) : null}
-          </div>
-        ) : null}
+    <ChronologyInspector title="Event details" selectionId={occurrence?.occurrenceId ?? baseEvent.id} onClose={onClose}>
+      <div className="space-y-3 text-sm">
+        {comparisonContext && <div className="space-y-1 text-xs text-muted">{comparisonContext}</div>}
+        <p className="text-base font-semibold text-foreground">{baseEvent.title}</p>
+        {canManage && onRevealEvent && (
+          <button type="button" onClick={() => void onRevealEvent(baseEvent.id)}
+            className="min-h-11 rounded border border-border px-3 text-xs text-muted hover:text-foreground">
+            Reveal To Party
+          </button>
+        )}
+          <ChronologyEventInlineDetail
+            campaignHandle={campaignHandle}
+            baseEvent={baseEvent}
+            occurrence={occurrence}
+            timeBundle={timeBundle}
+            calendarName={calendarName}
+            categories={categories}
+            editableEvents={editableEvents}
+            calendarLike={calendarLike}
+            canManage={canManage}
+            dateSeed={dateSeed}
+            onMutated={onMutated}
+            onDeleted={onDeleted}
+          />
+        {!calendarLike && <p className="text-xs text-muted">Calendar profile unavailable.</p>}
       </div>
-
-      {!open && (
-        <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted">
-          Select an event to open preview.
-        </div>
-      )}
-    </aside>
+      {categoryFooter && <div className="mt-4 border-t border-border pt-3">{categoryFooter}</div>}
+    </ChronologyInspector>
   );
 }

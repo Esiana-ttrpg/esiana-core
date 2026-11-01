@@ -5,7 +5,6 @@ import type { WikiPageBlock } from '@/types/wiki';
 import { WikiPageRenderer } from '@/components/wiki/WikiPageRenderer';
 import { createWikiBlock } from '@/utils/pageTemplates';
 import { saveCharacterPageBlocks } from '@/lib/wiki';
-import { EntityCustomFieldsPanel } from './EntityCustomFieldsPanel';
 
 interface CharacterCanvasPageProps {
   campaignHandle: string;
@@ -112,7 +111,6 @@ export function CharacterCanvasPage({
         pageId={characterPageId}
         surfaceProfileKey={null}
       />
-      <EntityCustomFieldsPanel campaignHandle={campaignHandle} entityPageId={characterPageId} activePageId={page.id} canEdit={canEdit} />
     </section>
   );
 }

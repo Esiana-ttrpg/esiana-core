@@ -11,6 +11,10 @@ import { SceneCompositionProvider } from '@/contexts/SceneCompositionContext';
 import { CampaignNavProvider, useCampaignNav } from '@/contexts/CampaignNavContext';
 import { PluginRuntimeProvider } from '@/plugins/PluginRuntimeProvider';
 import { Sidebar } from '@/components/Sidebar';
+import { CampaignSettingsSidebar } from '@/components/campaign/CampaignSettingsSidebar';
+import { CampaignSettingsChromeProvider } from '@/hooks/useCampaignSettingsChrome';
+import { useCampaignSettingsExitHref } from '@/hooks/useCampaignSettingsExitHref';
+import { isCampaignSettingsPathname } from '@/lib/campaignSettingsNavigation';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import { applyToCampaignBySlugRecruitment } from '@/lib/campaigns';
 import {
@@ -160,11 +164,40 @@ function InviteJoinBridge() {
   );
 }
 
+function CampaignContextualSidebar({
+  isSettings,
+  backHref,
+  collapsed = false,
+  onNavigate,
+  onClose,
+}: {
+  isSettings: boolean;
+  backHref: string;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+  onClose?: () => void;
+}) {
+  if (isSettings) {
+    return (
+      <CampaignSettingsSidebar
+        backHref={backHref}
+        collapsed={collapsed}
+        onNavigate={onNavigate}
+        onClose={onClose}
+      />
+    );
+  }
+  return <Sidebar collapsed={collapsed} onNavigate={onNavigate} onClose={onClose} />;
+}
+
 function CampaignLayoutShell() {
   const { sidebarOpen, closeSidebar, sidebarCollapsed } = useCampaignNav();
   const { campaign, campaignHandle } = useWiki();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSettings = isCampaignSettingsPathname(location.pathname, campaignHandle);
+  const settingsBackHref = useCampaignSettingsExitHref(campaignHandle);
   const [pageWidth, setPageWidth] = useState<MasterPageWidth>(() =>
     getMasterPageWidthPreference(),
   );
@@ -228,7 +261,6 @@ function CampaignLayoutShell() {
     };
   }, []);
 
-  const location = useLocation();
   const composition = resolveWorkspaceComposition(location.pathname);
   const workspaceContainerClasses = shellClassesForComposition(
     composition,
@@ -256,7 +288,11 @@ function CampaignLayoutShell() {
       </div>
       <div className={`${CANVAS_ATMOSPHERE_AMBIENT_CLASS} flex min-h-0 flex-1`}>
         <div className="hidden min-h-0 shrink-0 self-stretch lg:flex" data-print-hide>
-          <Sidebar collapsed={sidebarCollapsed} />
+          <CampaignContextualSidebar
+            isSettings={isSettings}
+            backHref={settingsBackHref}
+            collapsed={sidebarCollapsed}
+          />
         </div>
 
         {sidebarOpen && (
@@ -268,7 +304,12 @@ function CampaignLayoutShell() {
               className="absolute inset-0 bg-black/60"
             />
             <div className="absolute inset-y-0 left-0 flex shadow-2xl">
-              <Sidebar onNavigate={closeSidebar} onClose={closeSidebar} />
+              <CampaignContextualSidebar
+                isSettings={isSettings}
+                backHref={settingsBackHref}
+                onNavigate={closeSidebar}
+                onClose={closeSidebar}
+              />
             </div>
           </div>
         )}
@@ -299,13 +340,17 @@ function CampaignLayoutShell() {
  * Campaign shell: persistent sidebar at lg+; off-canvas drawer below lg.
  */
 export function CampaignLayout() {
+  const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
+
   return (
-    <WikiProvider>
+    <WikiProvider key={campaignHandle}>
       <CampaignNavProvider>
         <PluginRuntimeProvider>
           <SceneCompositionProvider>
             <AdventureWorkspaceProvider>
-              <CampaignLayoutShell />
+              <CampaignSettingsChromeProvider>
+                <CampaignLayoutShell />
+              </CampaignSettingsChromeProvider>
             </AdventureWorkspaceProvider>
           </SceneCompositionProvider>
         </PluginRuntimeProvider>

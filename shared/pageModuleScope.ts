@@ -41,6 +41,8 @@ const WORKSPACE_TO_MODULE_KEY: Partial<Record<CampaignWorkspaceType, string>> = 
   [CampaignWorkspace.THREADS]: 'threads',
   [CampaignWorkspace.HAVENS]: 'havens',
   [CampaignWorkspace.PROJECTS]: 'projects',
+  [CampaignWorkspace.EVENTS]: 'event-pages',
+  [CampaignWorkspace.ERAS]: 'era-pages',
   [CampaignWorkspace.PAGES]: 'pages',
   [CampaignWorkspace.CUSTOM]: 'custom',
 };
@@ -180,6 +182,13 @@ export function resolvePageModuleScope(
   flatPages: readonly PageModuleInput[],
 ): PageModuleScope {
   const surfaceKey = resolvePageSurfaceKey(page, flatPages);
+  const rootKey = parseSystemCategoryKey(page.metadata);
+  const chronologyWorkspace = rootKey === 'chronology_events' ? CampaignWorkspace.EVENTS : rootKey === 'chronology_eras' ? CampaignWorkspace.ERAS : resolveWorkspaceForPage(page, flatPages);
+  if (chronologyWorkspace === CampaignWorkspace.EVENTS || chronologyWorkspace === CampaignWorkspace.ERAS) {
+    const kind = chronologyWorkspace === CampaignWorkspace.EVENTS ? 'events' : 'eras';
+    return { moduleKey: kind === 'events' ? 'event-pages' : 'era-pages', workspace: chronologyWorkspace, surfaceKey,
+      anchorPageId: flatPages.find(row => parseSystemCategoryKey(row.metadata) === 'chronology_' + kind)?.id ?? null };
+  }
 
   if (surfaceKey === 'event-lore') {
     return {

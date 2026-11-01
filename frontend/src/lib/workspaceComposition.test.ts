@@ -17,16 +17,17 @@ describe('workspaceComposition', () => {
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/chronology').id, 'studio');
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/party').id, 'studio');
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/notes').id, 'reference');
+    assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/campaign-statistics').id, 'reference');
   });
 
   it('resolves document routes', () => {
-    assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/settings').id, 'document');
+    assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/settings').id, 'studio');
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/world-advance').id, 'document');
     assert.equal(resolveWorkspaceComposition('/campaigns/my-campaign/wiki/maintenance').id, 'document');
   });
 
   it('marks workspace presets as non-document', () => {
     assert.equal(isWorkspaceComposition(resolveWorkspaceComposition('/campaigns/x/pages/a')), true);
-    assert.equal(isWorkspaceComposition(resolveWorkspaceComposition('/campaigns/x/settings')), false);
+    assert.equal(isWorkspaceComposition(resolveWorkspaceComposition('/campaigns/x/settings')), true);
   });
 });

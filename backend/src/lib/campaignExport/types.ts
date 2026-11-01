@@ -76,6 +76,8 @@ export type SovereignKnowledge = import('../packKnowledgeImporter.js').PackKnowl
 
 /** Wiki-linked operational state in sovereign/operational.json (optional in older zips). */
 export interface SovereignOperational {
+  campaignAnnouncements?: Array<Record<string, unknown>>;
+  chronologyRoutes?: Array<Record<string, unknown>>;
   campaignEras?: Array<Record<string, unknown>>;
   eraRecurrenceHistory?: import('../eraOccurrenceHistory.js').EraHistory;
   downtimeHavens: Array<Record<string, unknown>>;
@@ -90,6 +92,9 @@ export interface SovereignOperational {
 export interface SovereignExportFile {
   path: string;
   content: string | Buffer;
+  /** Stream this local file instead of buffering media into content. */
+  sourcePath?: string;
+  openStream?: () => Promise<import('node:stream').Readable>;
 }
 
 export interface SovereignExportResult {

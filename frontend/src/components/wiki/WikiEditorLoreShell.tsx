@@ -149,6 +149,7 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
       if (!bracketState || !editor) return null;
       return (
         <WikiBracketSuggestionPopover
+          portalContainer={editor.view.dom.closest('dialog[open]') ?? undefined}
           state={bracketState}
           index={index}
           onSelect={(entry) => {
@@ -175,6 +176,7 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
       };
       return (
         <WikiSlashSuggestionPopover
+          portalContainer={editor.view.dom.closest('dialog[open]') ?? undefined}
           state={slashState}
           index={index}
           suggestionOptions={suggestionOptions}
@@ -237,7 +239,7 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
             ))}
           </ul>
         </div>,
-        document.body,
+        editor.view.dom.closest('dialog[open]') ?? document.body,
       );
     },
     [atState, mentionTargets],

@@ -19,6 +19,8 @@ import { prisma } from './lib/prisma.js';
 import { setPluginHostReloader } from './lib/pluginRuntime/index.js';
 import { bootstrapStorageRegistry } from './lib/storage/storageRegistry.js';
 import { ensureStorageProviderPluginReady } from './lib/storage/ensureStorageProviderPlugin.js';
+import { initializeExistingEventCategories } from './lib/defaultEventCategories.js';
+import { initializeExistingChronologyWorkspaces } from './lib/chronologyWikiWorkspace.js';
 import { bootstrapGlobalTimeHooks } from './lib/globalTimeHooks/index.js';
 import { apiUsageLogger } from './middleware/apiLogger.js';
 import { installSystemLogCapture } from './lib/systemLogBuffer.js';
@@ -33,6 +35,8 @@ import { migrateWebhookUrlsAtRest } from './lib/webhooks/migrateWebhookUrls.js';
 import { csrfProtection } from './middleware/csrfProtection.js';
 import { configureTrustProxy } from './lib/rateLimit/index.js';
 import { mountRouters } from './mountRouters.js';
+import { startTranscriptionRunner } from './lib/transcriptionRunner.js';
+import { defaultJsonBody } from './middleware/jsonBody.js';
 
 export async function createApp(): Promise<Express> {
   installSystemLogCapture();
@@ -47,7 +51,7 @@ export async function createApp(): Promise<Express> {
       exposedHeaders: ['Retry-After'],
     }),
   );
-  app.use(express.json());
+  app.use(defaultJsonBody);
   // Unsafe cookie-authenticated requests are origin-checked by the next middleware.
   // codeql[js/missing-token-validation]
   app.use(cookieParser());
@@ -58,6 +62,8 @@ export async function createApp(): Promise<Express> {
   mountRouters(app);
 
   await getOrCreateSystemSettings();
+  await initializeExistingEventCategories();
+  await initializeExistingChronologyWorkspaces();
   await syncEnvManagedIdentityProvider();
   const enabledOidcCount = await prisma.identityProvider.count({
     where: { enabled: true },
@@ -83,6 +89,7 @@ export async function createApp(): Promise<Express> {
   // Kick off asynchronous, daily asset-retention garbage collection.
   startAssetRetentionSweep();
   startNotificationSweep();
+  await startTranscriptionRunner();
 
   app.use(
     (

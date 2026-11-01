@@ -1,3 +1,4 @@
+import { useDashboardPreviewLimit } from './DashboardWidgetShell';
 import { Link } from 'react-router-dom';
 import type { CampaignNarrativeSnapshot } from '@/lib/dashboardNarrativeSnapshot';
 import { formatRelativeUpdated } from '@/utils/formatDate';
@@ -10,6 +11,7 @@ interface CampaignRecentActivityProps {
 }
 
 export function CampaignRecentActivity({ activity, embedded = false }: CampaignRecentActivityProps) {
+  const previewLimit = useDashboardPreviewLimit(5);
   const activityBody = (
     <>
       {activity.items.length === 0 ? (
@@ -18,7 +20,7 @@ export function CampaignRecentActivity({ activity, embedded = false }: CampaignR
         </p>
       ) : (
         <ul className={`${embedded ? '' : 'mt-3'} space-y-2`}>
-          {activity.items.map((item) => (
+          {activity.items.slice(0, previewLimit).map((item) => (
             <li key={item.id} className="flex items-start gap-2 text-sm">
               <span className="mt-2 size-1 shrink-0 rounded-full bg-primary/70" aria-hidden />
               <div className="min-w-0 flex-1">
@@ -36,7 +38,7 @@ export function CampaignRecentActivity({ activity, embedded = false }: CampaignR
                   <span className="text-focal-muted"> — {item.reason}</span>
                 ) : null}
                 <p className={`${TYPE_META_CLASS} mt-0.5 normal-case tracking-normal text-recessed-foreground`}>
-                  {formatRelativeUpdated(item.updatedAt)}
+                  {item.entityType ? `${item.entityType} - ` : ''}{formatRelativeUpdated(item.updatedAt)}
                 </p>
               </div>
             </li>
@@ -47,7 +49,7 @@ export function CampaignRecentActivity({ activity, embedded = false }: CampaignR
         to={activity.viewAllHref}
         className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
       >
-        View full continuity →
+        View all record changes →
       </Link>
     </>
   );

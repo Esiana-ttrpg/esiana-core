@@ -17,6 +17,7 @@ interface IdentityPagePickerProps {
   value: string | null;
   disabled?: boolean;
   placeholder?: string;
+  ariaLabel?: string;
   clearLabel?: string;
   createLabel?: string;
   onCreatePage?: (title: string) => void;
@@ -37,6 +38,7 @@ export function IdentityPagePicker({
   value,
   disabled = false,
   placeholder = 'Search wiki pages…',
+  ariaLabel,
   clearLabel = 'No page linked',
   createLabel = 'Create new region',
   onCreatePage,
@@ -151,12 +153,13 @@ export function IdentityPagePicker({
   }
 
   return (
-    <div ref={containerRef} className="relative min-w-[12rem] flex-1">
+    <div ref={containerRef} className="relative min-w-0 w-full flex-1">
       <div className="flex items-center gap-1">
         <input
           ref={inputRef}
           type="search"
           role="combobox"
+          aria-label={ariaLabel ?? placeholder}
           aria-expanded={isOpen}
           aria-autocomplete="list"
           disabled={disabled || saving}

@@ -1,3 +1,5 @@
+import { ownChronologyWikiPage } from '../lib/chronologyWikiWorkspace.js';
+import { reserveChronologyRoute } from '../lib/chronologyRoutes.js';
 import type { Response } from 'express';
 import { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
@@ -7,6 +9,13 @@ import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import { convertEpochToCalendarState } from '../lib/timeEngine.js';
 import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
+import { CALENDAR_EVENT_IMPORTANCES, type CalendarEventImportance } from '../../../shared/calendarEventImportance.js';
+
+function parseImportance(value: unknown): CalendarEventImportance | null {
+  return typeof value === 'string' && (CALENDAR_EVENT_IMPORTANCES as readonly string[]).includes(value.toUpperCase())
+    ? value.toUpperCase() as CalendarEventImportance
+    : null;
+}
 
 const REPEAT_UNITS = ['DAYS', 'MONTHS', 'YEARS', 'ERAS'] as const;
 type RepeatUnit = (typeof REPEAT_UNITS)[number];
@@ -45,6 +54,7 @@ function serializeEvent(row: {
   categoryId: string | null;
   prerequisiteId: string | null;
   visibility: string;
+  importance: string;
   duration: number;
   isRepeating: boolean;
   repeatInterval: number | null;
@@ -70,6 +80,7 @@ function serializeEvent(row: {
     categoryId: row.categoryId,
     prerequisiteId: row.prerequisiteId,
     visibility: row.visibility,
+    importance: parseImportance(row.importance) ?? 'MINOR',
     duration: row.duration,
     isRepeating: row.isRepeating,
     repeatInterval: row.repeatInterval,
@@ -125,7 +136,7 @@ async function ensureCategoryInCampaign(campaignId: string, categoryId: string) 
 async function ensurePrerequisiteInCampaign(campaignId: string, prerequisiteId: string) {
   return prisma.calendarEvent.findFirst({
     where: { id: prerequisiteId, calendar: { campaignId } },
-    select: { id: true, visibility: true },
+    select: { id: true, visibility: true, wikiPageId: true },
   });
 }
 
@@ -253,6 +264,12 @@ export async function createCalendarEvent(
     res.status(400).json({ error: 'title is required' });
     return;
   }
+  const explicitImportance = body.importance === undefined ? null : parseImportance(body.importance);
+  if (body.importance !== undefined && !explicitImportance) {
+    res.status(400).json({ error: 'importance must be NOTICE, MINOR, or MAJOR' }); return;
+  }
+  const settings = await prisma.chronologySettings.findUnique({ where: { campaignId } });
+  const importance = explicitImportance ?? settings?.manualEventImportance ?? 'MINOR';
 
   const categoryId = parseOptionalString(body.categoryId);
   if (body.categoryId !== undefined && body.categoryId !== null && categoryId === null) {
@@ -394,12 +411,14 @@ export async function createCalendarEvent(
       : (body.recurrenceRule as Prisma.InputJsonValue);
 
   const created = await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
     const event = await tx.calendarEvent.create({
       data: {
         calendarId,
         categoryId,
         prerequisiteId,
         visibility: visibility ?? 'PARTY',
+        importance,
         duration,
         isRepeating,
         repeatInterval,
@@ -424,6 +443,7 @@ export async function createCalendarEvent(
       '../lib/entityRelationSyncService.js'
     );
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
+    await reserveChronologyRoute(tx, campaignId, 'events', event.id, event.title);
     return event;
   });
 
@@ -470,6 +490,10 @@ export async function updateCalendarEvent(
     typeof body.title === 'string' && body.title.trim()
       ? body.title.trim()
       : existing.title;
+  const importance = body.importance === undefined ? existing.importance : parseImportance(body.importance);
+  if (!importance) {
+    res.status(400).json({ error: 'importance must be NOTICE, MINOR, or MAJOR' }); return;
+  }
 
   const categoryId =
     body.categoryId === undefined
@@ -594,6 +618,8 @@ export async function updateCalendarEvent(
         : (body.recurrenceRule as Prisma.InputJsonValue);
 
   const updated = await prisma.$transaction(async (tx) => {
+    await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
+    await reserveChronologyRoute(tx, campaignId, 'events', existing.id, existing.title);
     const event = await tx.calendarEvent.update({
       where: { id: eventId },
       data: {
@@ -601,6 +627,7 @@ export async function updateCalendarEvent(
         categoryId,
         prerequisiteId,
         visibility: parsedVisibility ?? existing.visibility,
+        importance,
         duration,
         isRepeating,
         repeatInterval,
@@ -638,6 +665,7 @@ export async function updateCalendarEvent(
       '../lib/entityRelationSyncService.js'
     );
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
+    await reserveChronologyRoute(tx, campaignId, 'events', event.id, event.title);
     return event;
   });
 
@@ -664,7 +692,7 @@ export async function deleteCalendarEvent(
 
   const existing = await prisma.calendarEvent.findFirst({
     where: { id: eventId, calendarId },
-    select: { id: true, visibility: true },
+    select: { id: true, visibility: true, wikiPageId: true },
   });
   if (!existing || !chronologyCanView(req.campaign!, existing.visibility)) {
     res.status(404).json({ error: 'Event not found' });
@@ -675,6 +703,8 @@ export async function deleteCalendarEvent(
     const { clearEntityRelationsForCalendarEvent } = await import(
       '../lib/entityRelationSyncService.js'
     );
+    await tx.campaign.update({ where: { id: campaignId }, data: { updatedAt: new Date() } });
+    if (existing.wikiPageId) await ownChronologyWikiPage(tx, campaignId, 'event', existing.wikiPageId);
     await clearEntityRelationsForCalendarEvent(tx, campaignId, eventId);
     await tx.calendarEvent.delete({ where: { id: eventId } });
   });

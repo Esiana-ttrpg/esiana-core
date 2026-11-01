@@ -21,7 +21,11 @@ export interface MapPinVisibilityContext {
 
 export function isElevatedMapRole(
   role: CampaignMemberRole | null | undefined,
+  capabilities?: ReadonlySet<string>,
 ): boolean {
+  if (capabilities) {
+    return capabilities.has('narrative.elevated_view');
+  }
   return (
     role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER
   );

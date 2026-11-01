@@ -1,3 +1,8 @@
+import { ensureChronologyWikiWorkspaces, ChronologyWorkspaceError } from '../lib/chronologyWikiWorkspace.js';
+import { linkChronologyPage } from './chronologyPagesController.js';
+import { chronologyCanManage, chronologyCanView } from '../lib/chronologyAccess.js';
+import { EraError } from '../lib/chronologyEraService.js';
+import { sessionAudioSummaries, type AudioSummary } from '../lib/sessionAudioSummaries.js';
 import type { Response } from 'express';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -14,10 +19,7 @@ import {
   buildThreadDefaultBlocks,
 } from '../lib/pageTemplates.js';
 import {
-  hydrateEventLoreBlocks,
-  isEventLorePageId,
   loadCalendarEventDescriptionForLorePage,
-  syncEventLoreDescriptionFromBlocks,
 } from '../lib/eventLoreWiki.js';
 import { buildWikiTree, canViewWikiPage } from '../lib/wikiTree.js';
 import { isHubPageVisible } from '../lib/hubVisibility.js';
@@ -70,6 +72,7 @@ import {
   type CampaignActor,
 } from '../../../shared/campaignPolicy/policy.js';
 import { PageOwnerTypes } from '../../../shared/campaignPolicy/pageOwnership.js';
+import { canChangeResourceVisibility } from '../../../shared/campaignPolicy/resourceAccess.js';
 import { logCampaignActivity } from '../lib/campaignActivity.js';
 import {
   applyWikiPageTemporalData,
@@ -714,17 +717,15 @@ function parseTagColorValue(
 }
 
 function canModifySessionNote(
-  role: string | null,
+  actor: CampaignActor,
   userId: string | null | undefined,
   metadata: unknown,
 ): boolean {
-  if (
-    role === CampaignMemberRoles.GAMEMASTER ||
-    role === CampaignMemberRoles.WRITER
-  ) {
+  if (policyCan(actor, CampaignCapabilities.NOTES_MODERATE)) {
     return true;
   }
-  if (!userId) return false;
+  if (!userId || actor.kind !== 'member') return false;
+  if (actor.membershipRole === CampaignMemberRoles.OBSERVER) return false;
   return getSessionNoteAuthorId(metadata) === userId;
 }
 
@@ -803,6 +804,7 @@ export async function getWikiTree(
 
   await ensureQuickAccessCategoryTitle(ctx.campaignId);
   await ensureRemoveLegacyDashboardWikiPage(ctx.campaignId);
+  await ensureChronologyWikiWorkspaces(ctx.campaignId);
   await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
   await ensureDowntimeSystemCategoryKey(ctx.campaignId);
 
@@ -819,6 +821,7 @@ export async function getWikiTree(
         appearanceProfile: true,
         allowPlayerChronologyManagement: true,
         campaignIntegrations: true,
+        discoverability: true,
       },
     }),
     prisma.wikiPage.findMany({
@@ -861,7 +864,7 @@ export async function getWikiTree(
     const hidden = await hiddenEraIds(ctx.campaignId);
     for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
   }
-  const tree = buildWikiTree(pages, ctx.role);
+  const tree = buildWikiTree(pages, ctx);
 
   const lastWikiUpdate = pages.reduce<Date | null>((latest, page) => {
     if (!latest || page.updatedAt > latest) return page.updatedAt;
@@ -885,6 +888,10 @@ export async function getWikiTree(
         resolveCampaignAppearanceProfile(campaign),
       ),
       allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement,
+      discoverability: ctx.discoverability,
+      partyId: ctx.partyId,
+      chronologyContributor: ctx.chronologyContributor,
+      roleCapabilityOverrides: ctx.roleCapabilityOverrides,
       campaignIntegrations: parseCampaignIntegrations(campaign.campaignIntegrations),
     },
     players: members.map((m, index) => {
@@ -999,6 +1006,23 @@ export async function createWikiPage(
     res.status(400).json({ error: 'Invalid event lore page id.' });
     return;
   }
+  for (const field of ['chronologyEventId', 'chronologyEraId']) {
+    if (req.body[field] !== undefined && (typeof req.body[field] !== 'string' || !req.body[field].trim())) {
+      res.status(400).json({ error: 'Choose a valid chronology record.' }); return;
+    }
+  }
+  if ((req.body.chronologyEventId || lorePageId) && req.body.chronologyEraId) {
+    res.status(400).json({ error: 'Create a page for one chronology record at a time.' }); return;
+  }
+  const eventId = typeof req.body.chronologyEventId === 'string' ? req.body.chronologyEventId : lorePageId?.slice('event-'.length);
+  if (lorePageId && eventId !== lorePageId.slice('event-'.length)) {
+    res.status(400).json({ error: 'Event lore page id does not match the chronology event.' }); return;
+  }
+  if (eventId) {
+    if (!chronologyCanManage(ctx)) { res.status(403).json({ error: 'Chronology management is not permitted.' }); return; }
+    const event = await prisma.calendarEvent.findFirst({ where: { id: eventId, calendar: { campaignId: ctx.campaignId } }, select: { visibility: true } });
+    if (!event || !chronologyCanView(ctx, event.visibility)) { res.status(404).json({ error: 'Chronology record not found.' }); return; }
+  }
   if (lorePageId) {
     const existingLorePage = await prisma.wikiPage.findFirst({
       where: { id: lorePageId, campaignId: ctx.campaignId },
@@ -1052,6 +1076,8 @@ export async function createWikiPage(
   const normalizedCreateBlocks = normalizeBlocksWithStableIds(resolvedBlocks);
   resolvedBlocks = normalizedCreateBlocks.blocks;
 
+  if (req.body.chronologyEventId || lorePageId) createMetadata.chronologyDocument = 'event';
+  if (req.body.chronologyEraId) createMetadata.chronologyDocument = 'era';
   const baseMetadata = createMetadata;
 
   const intercepted = await runWikiDataInterceptors(res, {
@@ -1153,9 +1179,7 @@ export async function createWikiPage(
   });
 
   const existingRows = await loadCampaignWikiPathKeyRows(ctx.campaignId);
-  const pathRouting = lorePageId
-    ? { workspace: null, pathKey: null }
-    : await assignPathKeyForNewPage(
+  const pathRouting = await assignPathKeyForNewPage(
         ctx.campaignId,
         {
           id: 'pending',
@@ -1177,27 +1201,40 @@ export async function createWikiPage(
     templateType: interceptedTemplateType,
   });
 
-  const page = await prisma.wikiPage.create({
-    data: {
-      ...(lorePageId ? { id: lorePageId } : {}),
-      campaignId: ctx.campaignId,
-      title: interceptedTitle,
-      parentId: resolvedParentId,
-      visibility: interceptedVisibility,
-      metadata: interceptedMetadata as any,
-      blocks: resolvedBlocks as any,
-      templateType: interceptedTemplateType,
-      workspace: pathRouting.workspace,
-      pathKey: pathRouting.pathKey,
-      ownerType: ownership.ownerType,
-      ownerUserId: ownership.ownerUserId,
-      ownerPartyId: ownership.ownerPartyId,
-      createdByUserId: ownership.createdByUserId,
-      ...(temporalPageData.createdAt ? { createdAt: temporalPageData.createdAt } : {}),
-      ...(temporalPageData.updatedAt ? { updatedAt: temporalPageData.updatedAt } : {}),
-    },
-    select: wikiPageSelect,
-  });
+  let page;
+  try {
+    page = await prisma.$transaction(async tx => {
+      if (req.body.chronologyEventId || req.body.chronologyEraId || lorePageId) await tx.campaign.update({ where: { id: ctx.campaignId }, data: { updatedAt: new Date() } });
+      const createdPage = await tx.wikiPage.create({
+        data: {
+          ...(lorePageId ? { id: lorePageId } : {}),
+          campaignId: ctx.campaignId,
+          title: interceptedTitle,
+          parentId: resolvedParentId,
+          visibility: interceptedVisibility,
+          metadata: interceptedMetadata as any,
+          blocks: resolvedBlocks as any,
+          templateType: interceptedTemplateType,
+          workspace: pathRouting.workspace,
+          pathKey: pathRouting.pathKey,
+          ownerType: ownership.ownerType,
+          ownerUserId: ownership.ownerUserId,
+          ownerPartyId: ownership.ownerPartyId,
+          createdByUserId: ownership.createdByUserId,
+          ...(temporalPageData.createdAt ? { createdAt: temporalPageData.createdAt } : {}),
+          ...(temporalPageData.updatedAt ? { updatedAt: temporalPageData.updatedAt } : {}),
+        },
+        select: wikiPageSelect,
+      });
+      const eraId = typeof req.body.chronologyEraId === 'string' ? req.body.chronologyEraId : null;
+      if (eventId) await linkChronologyPage(tx, ctx, 'events', eventId, createdPage.id, true);
+      if (eraId) await linkChronologyPage(tx, ctx, 'eras', eraId, createdPage.id, true);
+      return tx.wikiPage.findUniqueOrThrow({ where: { id: createdPage.id }, select: wikiPageSelect });
+    });
+  } catch (error) {
+    if (error instanceof EraError || error instanceof ChronologyWorkspaceError) { res.status(error.status).json({ error: error.message }); return; }
+    throw error;
+  }
 
   await ensurePageNarrativeStatusOnCreate({
     campaignId: ctx.campaignId,
@@ -1401,6 +1438,7 @@ export async function getWikiPageByWorkspacePath(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  await ensureChronologyWikiWorkspaces(ctx.campaignId);
   const segment = String(req.params.workspaceSegment);
   const pathKey = String(req.params.pathKey);
   const workspace = segmentToWorkspace(segment);
@@ -1431,6 +1469,7 @@ export async function getWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  await ensureChronologyWikiWorkspaces(ctx.campaignId);
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId, deletedAt: null },
@@ -1442,22 +1481,12 @@ export async function getWikiPage(
     return;
   }
 
-  if (!canViewWikiPage(page.visibility, ctx.role)) {
+  if (!canViewWikiPage(page.visibility, ctx)) {
     res.status(403).json({ error: 'Forbidden: page not visible to your role' });
     return;
   }
 
-  let responsePage = page;
-  if (isEventLorePageId(pageId)) {
-    const eventDescription = await loadCalendarEventDescriptionForLorePage(
-      ctx.campaignId,
-      pageId,
-    );
-    responsePage = {
-      ...page,
-      blocks: hydrateEventLoreBlocks(page.blocks, eventDescription) as typeof page.blocks,
-    };
-  }
+  const responsePage = page;
 
   res.json(
     await formatWikiPageDetailResponse(responsePage, {
@@ -1475,32 +1504,12 @@ export async function getWikiPage(
   );
 }
 
-async function rejectEraOwnedOverview(
-  campaignId: string,
-  pageId: string,
-  actor: CampaignActor,
-  res: Response,
-): Promise<boolean> {
-  const ownedEra = await prisma.campaignEra.findFirst({
-    where: { campaignId, overviewPageId: pageId },
-    select: { visibility: true },
-  });
-  if (!ownedEra) return false;
-  if (ownedEra.visibility === 'DM_ONLY' && !hasElevatedNarrativeView(actor)) {
-    res.status(404).json({ error: 'Page not found' });
-    return true;
-  }
-  res.status(409).json({ error: 'Manage this era Overview in Chronology.' });
-  return true;
-}
-
 export async function updateWikiPage(
   req: CampaignScopedRequest & AuthenticatedRequest,
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { parentId, title, tags } = req.body as {
     parentId?: string | null;
     title?: string;
@@ -1678,7 +1687,6 @@ export async function transformWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { targetModule } = req.body as { targetModule?: string };
 
   if (typeof targetModule !== 'string' || !targetModule.trim()) {
@@ -2029,7 +2037,6 @@ export async function updateWikiPageLayout(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { temporal, rest } = extractTemporalFromBody(req.body);
   const { blocks } = rest as {
     blocks?: Array<Record<string, unknown>>;
@@ -2130,23 +2137,6 @@ export async function updateWikiPageLayout(
   let responseBlocks = updatedPage.blocks;
   let responseTemplateType = updatedPage.templateType;
 
-  if (isEventLorePageId(pageId)) {
-    const markdown = await syncEventLoreDescriptionFromBlocks(
-      ctx.campaignId,
-      pageId,
-      normalizedLayoutBlocks.blocks,
-    );
-    const syncedBlocks = hydrateEventLoreBlocks(
-      normalizedLayoutBlocks.blocks,
-      markdown ?? '',
-    );
-    await prisma.wikiPage.update({
-      where: { id: page.id },
-      data: { blocks: syncedBlocks as any },
-    });
-    responseBlocks = syncedBlocks as typeof updatedPage.blocks;
-  }
-
   if (req.user?.id) {
     logWikiPageActivity({
       campaignId: ctx.campaignId,
@@ -2183,7 +2173,6 @@ export async function updateWikiPageVisibility(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const { visibility } = req.body as { visibility?: string };
 
   if (
@@ -2197,11 +2186,38 @@ export async function updateWikiPageVisibility(
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId },
-    select: { id: true, title: true, parentId: true },
+    select: {
+      id: true,
+      title: true,
+      parentId: true,
+      visibility: true,
+      ownerType: true,
+      ownerUserId: true,
+      ownerPartyId: true,
+    },
   });
 
   if (!page) {
     res.status(404).json({ error: 'Page not found' });
+    return;
+  }
+
+  if (
+    !canChangeResourceVisibility(
+      ctx.actor,
+      {
+        module: 'wiki',
+        visibility: page.visibility,
+        ownership: {
+          ownerType: page.ownerType as (typeof PageOwnerTypes)[keyof typeof PageOwnerTypes],
+          ownerUserId: page.ownerUserId,
+          ownerPartyId: page.ownerPartyId,
+        },
+      },
+      visibility,
+    )
+  ) {
+    res.status(403).json({ error: 'Forbidden: cannot change page access' });
     return;
   }
 
@@ -2296,7 +2312,6 @@ export async function updateWikiPageMetadata(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const body = req.body as Record<string, unknown> & {
     key?: string;
     value?: string;
@@ -3837,6 +3852,7 @@ export async function getThreadHubIndex(
 }
 
 type SessionNotesIndexPageShape = {
+  audio?: AudioSummary;
   id: string;
   title: string;
   content: string;
@@ -3912,6 +3928,7 @@ export async function getSessionNotesIndex(
   ]);
 
   const pagesByArc = new Map<string, SessionNotesIndexPageShape[]>();
+  const audioSummaries = await sessionAudioSummaries(ctx, userId);
   const uncategorized: SessionNotesIndexPageShape[] = [];
 
   for (const row of timelineRows as Array<{
@@ -3976,6 +3993,7 @@ export async function getSessionNotesIndex(
       timelinePointId: row.id,
       sequenceOrder: row.sequenceOrder,
       fantasyEpochMinute: anchorMeta.fantasyEpochMinute ?? null,
+      audio: audioSummaries.get(row.id),
     };
 
     if (anchor.notebookArcId) {
@@ -3995,7 +4013,7 @@ export async function getSessionNotesIndex(
   for (const page of legacyPages) {
     if (!isLegacyStandaloneSessionNote(page.metadata)) continue;
 
-    const canEditPage = canModifySessionNote(ctx.role, userId, page.metadata);
+    const canEditPage = canModifySessionNote(ctx.actor, userId, page.metadata);
     const shape: SessionNotesIndexPageShape = {
       id: page.id,
       title: page.title,
@@ -4595,7 +4613,7 @@ export async function updateSessionNotePage(
     res.status(400).json({ error: 'Only session notes can be edited here' });
     return;
   }
-  if (!canModifySessionNote(ctx.role, req.user?.id, page.metadata)) {
+  if (!canModifySessionNote(ctx.actor, req.user?.id, page.metadata)) {
     res.status(403).json({ error: 'Forbidden: cannot edit this session note' });
     return;
   }
@@ -4865,7 +4883,6 @@ export async function deleteWikiPage(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  if (await rejectEraOwnedOverview(ctx.campaignId, pageId, ctx.actor, res)) return;
   const parsed = parseWikiDeleteBody(req.body);
   if (!parsed.ok) {
     res.status(400).json({ error: parsed.error });
@@ -4983,7 +5000,7 @@ export async function deleteSessionNotePage(
     res.status(400).json({ error: 'Only session notes can be deleted here' });
     return;
   }
-  if (!canModifySessionNote(ctx.role, req.user?.id, page.metadata)) {
+  if (!canModifySessionNote(ctx.actor, req.user?.id, page.metadata)) {
     res.status(403).json({ error: 'Forbidden: cannot delete this session note' });
     return;
   }

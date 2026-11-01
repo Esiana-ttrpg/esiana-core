@@ -1,3 +1,5 @@
+import { visibleChronologyPageIds } from '../lib/chronologyPageAccess.js';
+import type { CampaignContext } from '../types/api.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { chronologyCanManage, chronologyCanView } from '../lib/chronologyAccess.js';
@@ -15,8 +17,13 @@ import { prisma } from '../lib/prisma.js';
 async function ensureCalendarEventInCampaign(campaignId: string, eventId: string) {
   return prisma.calendarEvent.findFirst({
     where: { id: eventId, calendar: { campaignId } },
-    select: { id: true, title: true, calendarId: true, visibility: true },
+    select: { id: true, title: true, calendarId: true, visibility: true, wikiPageId: true },
   });
+}
+
+async function authorizedConsequencePageIds(ctx: CampaignContext, event: { id: string; wikiPageId: string | null }) {
+  const page = await prisma.wikiPage.findFirst({ where: { id: event.wikiPageId ?? 'event-' + event.id, campaignId: ctx.campaignId, deletedAt: null }, select: { id: true, visibility: true } });
+  return visibleChronologyPageIds(ctx, page ? [page] : []);
 }
 
 function parsePreviewOnly(req: CampaignScopedRequest): boolean {
@@ -43,7 +50,7 @@ export async function getEventConsequences(
     return;
   }
 
-  const loaded = await loadEventConsequencesForCalendarEvent(prisma, campaignId, eventId);
+  const loaded = await loadEventConsequencesForCalendarEvent(prisma, campaignId, eventId, await authorizedConsequencePageIds(req.campaign!, event));
   res.json({
     eventId,
     lorePageId: loaded.lorePageId,
@@ -88,7 +95,7 @@ export async function putEventConsequences(
 
   const consequences = dedupeEventConsequencesById(parsed.consequences);
 
-  const saved = await prisma.$transaction((tx) =>
+  await prisma.$transaction((tx) =>
     saveEventConsequences(tx, {
       campaignId: ctx.campaignId,
       calendarEventId: eventId,
@@ -98,11 +105,8 @@ export async function putEventConsequences(
     }),
   );
 
-  res.json({
-    eventId,
-    lorePageId: `event-${eventId}`,
-    consequences: saved,
-  });
+  // Use the same current page authorization and canonical event state as GET.
+  await getEventConsequences(req, res);
 }
 
 export async function postApplyEventConsequences(
@@ -143,6 +147,7 @@ export async function postApplyEventConsequences(
     actorUserId,
     atEpochMinute,
     previewOnly,
+    authorizedPageIds: await authorizedConsequencePageIds(ctx, event),
   });
 
   res.json(result);

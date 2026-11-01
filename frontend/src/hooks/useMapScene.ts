@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { MapLayerDto, MapObjectGroupDto, MapPinDto, MapPinType, MapPresentationPresetDto, MapSceneObjectDto } from '@/types/maps';
 import { createMapPin, updateMapPin } from '@/lib/maps';
 import {
@@ -21,6 +21,7 @@ import {
   WEATHER_CLIMATE_LAYER_NAME,
 } from '@shared/mapOverlayTypes';
 import { readPinTypeFilters, writePinTypeFilters } from '@/components/maps/mapPinIcons';
+import { applyMapPresentationPreset, filterMapSceneObjects, mapLayerSelectionForIdentity } from '@/lib/mapWorkspaceInteractions';
 
 const GROUP_FILTER_PREFIX = 'esiana-map-hidden-groups:';
 
@@ -68,7 +69,23 @@ export function useMapScene({
   const [activePresentationPresetAnchorEpoch, setActivePresentationPresetAnchorEpoch] =
     useState<string | null>(null);
   const [hiddenZoneGeometries, setHiddenZoneGeometries] = useState<unknown[]>([]);
-  const [enabledLayerIds, setEnabledLayerIds] = useState<Set<string>>(() => new Set());
+  const identity = `${campaignHandle}:${mapAssetId}`;
+  const visibilityContext = `${identity}:${canEdit}:${ghostMode}:${viewEpochMinute ?? campaignEpochMinute}`;
+  const [resolvedVisibilityContext, setResolvedVisibilityContext] = useState<string | null>(null);
+  const [layerSelection, setLayerSelection] = useState<{ identity: string; ids: Set<string> | null }>({ identity, ids: null });
+  const selection = mapLayerSelectionForIdentity(layerSelection, identity);
+  const enabledLayerIds = useMemo(() => selection ?? new Set(layers.filter(l => l.defaultEnabled).map(l => l.id)), [selection, layers]);
+  const setEnabledLayerIds = useCallback((update: Set<string> | ((ids: Set<string>) => Set<string>)) => {
+    setLayerSelection(current => ({ identity, ids: typeof update === 'function' ? update(current.identity === identity && current.ids !== null ? current.ids : enabledLayerIds) : update }));
+  }, [identity, enabledLayerIds]);
+  const requestSequence = useRef(0);
+  const currentIdentity = useRef(identity);
+  const currentVisibilityContext = useRef(visibilityContext);
+  useLayoutEffect(() => {
+    currentIdentity.current = identity;
+    currentVisibilityContext.current = visibilityContext;
+  }, [identity, visibilityContext]);
+  const [hiddenAnnotationKinds, setHiddenAnnotationKinds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const filterKey = `esiana-map-filters:${campaignHandle}:${mapAssetId}`;
@@ -79,15 +96,18 @@ export function useMapScene({
   );
 
   const reloadScene = useCallback(async () => {
+    const request = ++requestSequence.current;
     setLoading(true);
     setError(null);
     try {
       const scene = await fetchMapScene(campaignHandle, mapAssetId, {
         viewEpochMinute: viewEpochMinute ?? campaignEpochMinute,
-        layerIds: enabledLayerIds.size > 0 ? [...enabledLayerIds] : undefined,
+        layerIds: selection === null ? undefined : [...selection],
         editorGhostMode: ghostMode && canEdit,
         debugPresence: ghostMode && canEdit,
       });
+      if (request !== requestSequence.current || currentVisibilityContext.current !== visibilityContext) return;
+      setResolvedVisibilityContext(visibilityContext);
       setLayers(scene.layers);
       setGroups(scene.groups ?? []);
       setSceneObjects(scene.objects);
@@ -98,43 +118,53 @@ export function useMapScene({
       );
       setHiddenZoneGeometries(scene.hiddenZoneGeometries ?? []);
     } catch (err) {
+      if (request !== requestSequence.current || currentIdentity.current !== identity) return;
       setError(err instanceof Error ? err.message : 'Unable to load map');
     } finally {
-      setLoading(false);
+      if (request === requestSequence.current && currentIdentity.current === identity) setLoading(false);
     }
   }, [
     campaignHandle,
     mapAssetId,
     viewEpochMinute,
     campaignEpochMinute,
-    enabledLayerIds,
+    selection,
+    identity,
+    visibilityContext,
     ghostMode,
     canEdit,
   ]);
 
   useEffect(() => {
     void reloadScene();
+    return () => { requestSequence.current += 1; };
   }, [reloadScene]);
 
   useEffect(() => {
-    if (layers.length === 0) return;
-    setEnabledLayerIds((current) => {
-      if (current.size > 0) return current;
-      return new Set(
-        layers.filter((layer) => layer.defaultEnabled).map((layer) => layer.id),
-      );
-    });
-  }, [layers]);
+    setLayerSelection({ identity, ids: null });
+    setLayers([]);
+    setSceneObjects([]);
+    setPins([]);
+    setGroups([]);
+    setPresentationPresets([]);
+    setHiddenZoneGeometries([]);
+    setHiddenTypes(readPinTypeFilters(filterKey));
+    setHiddenGroupIds(readHiddenGroupIds(groupFilterKey));
+    setHiddenAnnotationKinds(new Set());
+  }, [filterKey, groupFilterKey, identity]);
 
   const passesGroupFilter = useCallback(
     (object: { groupId: string | null }) =>
-      !object.groupId || !hiddenGroupIds.has(object.groupId),
-    [hiddenGroupIds],
+      !canEdit || !object.groupId || !hiddenGroupIds.has(object.groupId),
+    [hiddenGroupIds, canEdit],
   );
 
   const visibleSceneObjects = useMemo(
-    () => sceneObjects.filter(passesGroupFilter),
-    [sceneObjects, passesGroupFilter],
+    () => filterMapSceneObjects(sceneObjects, {
+      resolvedContext: resolvedVisibilityContext, currentContext: visibilityContext,
+      enabledLayerIds, canEdit, hiddenGroupIds, hiddenAnnotationKinds, hiddenTypes,
+    }),
+    [sceneObjects, canEdit, hiddenGroupIds, hiddenAnnotationKinds, hiddenTypes, enabledLayerIds, resolvedVisibilityContext, visibilityContext],
   );
 
   const visiblePins = useMemo(
@@ -142,9 +172,10 @@ export function useMapScene({
       pins.filter(
         (pin) =>
           !hiddenTypes.has(pin.pinType as MapPinType) &&
+          visibleSceneObjects.some(object => object.mapPinId === pin.id) &&
           passesGroupFilter({ groupId: pinGroupIdFromScene(sceneObjects, pin) }),
       ),
-    [pins, hiddenTypes, passesGroupFilter, sceneObjects],
+    [pins, hiddenTypes, passesGroupFilter, sceneObjects, visibleSceneObjects],
   );
 
   const togglePinType = useCallback(
@@ -180,15 +211,15 @@ export function useMapScene({
       else next.add(layerId);
       return next;
     });
-  }, []);
+  }, [setEnabledLayerIds]);
 
   const enableAllLayers = useCallback(() => {
     setEnabledLayerIds(new Set(layers.map((layer) => layer.id)));
-  }, [layers]);
+  }, [layers, setEnabledLayerIds]);
 
   const disableAllLayers = useCallback(() => {
     setEnabledLayerIds(new Set());
-  }, []);
+  }, [setEnabledLayerIds]);
 
   const handleCreateLayer = useCallback(async () => {
     const name = window.prompt('Layer name (e.g. Political borders)');
@@ -252,12 +283,9 @@ export function useMapScene({
 
   const applyPresentationPreset = useCallback(
     (preset: MapPresentationPresetDto, onEpochChange: (epoch: string) => void) => {
-      onEpochChange(preset.anchorEpochMinute);
-      if (preset.enabledLayerIds.length > 0) {
-        setEnabledLayerIds(new Set(preset.enabledLayerIds));
-      }
+      applyMapPresentationPreset(preset, onEpochChange, setEnabledLayerIds);
     },
-    [],
+    [setEnabledLayerIds],
   );
 
   const activeEraPresetId = useMemo(() => {
@@ -305,6 +333,8 @@ export function useMapScene({
   );
 
   return {
+    hiddenAnnotationKinds,
+    toggleAnnotationKind: (kind: string) => setHiddenAnnotationKinds(current => { const next = new Set(current); if (next.has(kind)) next.delete(kind); else next.add(kind); return next; }),
     pins,
     setPins,
     sceneObjects,
@@ -315,7 +345,7 @@ export function useMapScene({
     enabledLayerIds,
     hiddenTypes,
     hiddenGroupIds,
-    loading,
+    loading: loading || (resolvedVisibilityContext !== visibilityContext && !error),
     error,
     togglePinType,
     toggleGroupFilter,

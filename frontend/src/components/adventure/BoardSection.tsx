@@ -5,6 +5,7 @@ interface BoardSectionProps {
   campaignHandle: string;
   categoryPageId: string;
   playerPreview?: boolean;
+  publicPreview?: boolean;
   onHeaderToolbarChange?: (toolbar: ReactNode | null) => void;
 }
 
@@ -13,6 +14,7 @@ export function BoardSection({
   campaignHandle,
   categoryPageId,
   playerPreview,
+  publicPreview,
   onHeaderToolbarChange,
 }: BoardSectionProps) {
   return (
@@ -21,6 +23,7 @@ export function BoardSection({
       categoryPageId={categoryPageId}
       embedded
       playerPreview={playerPreview}
+      publicPreview={publicPreview}
       onHeaderToolbarChange={onHeaderToolbarChange}
     />
   );

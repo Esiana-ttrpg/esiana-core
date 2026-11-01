@@ -15,6 +15,8 @@ export const CampaignWorkspace = {
   HAVENS: 'HAVENS',
   PROJECTS: 'PROJECTS',
   JOURNALS: 'JOURNALS',
+  EVENTS: 'EVENTS',
+  ERAS: 'ERAS',
   PAGES: 'PAGES',
   CUSTOM: 'CUSTOM',
 } as const;
