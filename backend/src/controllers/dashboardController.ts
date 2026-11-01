@@ -10,6 +10,13 @@ import {
 } from '../lib/assetReferenceValidation.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
+import { dashboardPresentation } from '../../../shared/dashboardPresentation.js';
+import { CampaignCapabilities as C } from '../../../shared/campaignPolicy/capabilities.js';
+import { composeInitialDashboard, meetsDashboardEligibility } from '../../../shared/dashboardCampaignFeatures.js';
+import { dashboardMaps, dashboardSpotlight } from '../lib/dashboardContent.js';
+import { campaignAnnouncements } from '../lib/campaignAnnouncements.js';
+import { dashboardActions } from '../lib/dashboardActions.js';
+import { buildCampaignStatistics } from '../lib/stats/buildCampaignStatistics.js';
 import { buildDashboardQuestLedgerEntries } from '../lib/dashboardQuestLedger.js';
 import { buildDashboardThreadBundle } from '../lib/dashboardThreadLedger.js';
 import { buildDashboardSummary } from '../lib/buildDashboardSummary.js';
@@ -34,7 +41,8 @@ export async function getDashboardBundle(
   res: Response,
 ): Promise<void> {
   const campaignId = req.campaign!.campaignId;
-  const role = req.campaign!.role;
+  // Adapt legacy feed builders to capabilities, including explicit overrides.
+  const role = req.campaign!.capabilities.has(C.NARRATIVE_ELEVATED_VIEW) ? 'GAMEMASTER' : req.campaign!.capabilities.has(C.WIKI_VIEW_PARTY) ? 'PARTICIPANT' : null;
 
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },
@@ -55,13 +63,14 @@ export async function getDashboardBundle(
     return;
   }
 
+  const ctx = req.campaign!;
   const dashboardConfig = normalizeDashboardConfig(campaign.dashboardConfig);
+  if (dashboardConfig.layoutMode === 'initial') dashboardConfig.widgets = composeInitialDashboard(dashboardConfig.widgets, ctx.capabilities, ctx.isMember);
   const campaignHandle =
     req.campaign!.campaignHandle ?? campaign.handle ?? req.params.campaignHandle ?? '';
 
-  const enabledIds = new Set(
-    dashboardConfig.widgets.filter((w) => w.enabled).map((w) => w.id),
-  );
+  const eligibleWidgetIds = dashboardConfig.widgets.filter(widget => meetsDashboardEligibility(dashboardPresentation(widget.id).eligibility, ctx.capabilities, ctx.isMember)).map(widget => widget.id);
+  const enabledIds = new Set(dashboardConfig.widgets.filter(w => w.enabled && eligibleWidgetIds.includes(w.id)).map(w => w.id));
   const recentEntitiesPlacement = dashboardConfig.widgets.find(
     (w) => w.id === 'recentEntities',
   );
@@ -120,6 +129,15 @@ export async function getDashboardBundle(
     summary.lastSession.followUp = await buildDashboardSessionFollowUp({ ...req.campaign!, campaignHandle }, req.user?.id, summary.lastSession);
   }
 
+  const widgetConfig = (id: string) => dashboardConfig.widgets.find(widget => widget.id === id)?.config;
+  const [maps, spotlight, announcements, actions, statistics] = await Promise.all([
+    enabledIds.has('campaignMap') ? dashboardMaps(ctx, widgetConfig('campaignMap')?.mapId, ctx.capabilities.has(C.CAMPAIGN_SETTINGS_EDIT)) : null,
+    enabledIds.has('pageSpotlight') ? dashboardSpotlight(ctx, widgetConfig('pageSpotlight')?.pageId) : null,
+    enabledIds.has('campaignAnnouncements') ? campaignAnnouncements(campaignId) : [],
+    enabledIds.has('needsAttention') ? dashboardActions(ctx, req.user?.id, summary) : [],
+    enabledIds.has('campaignStatistics') ? buildCampaignStatistics(ctx, 30) : null,
+  ]);
+
   const narrativeSnapshot = await buildCampaignNarrativeSnapshot({
     campaignId,
     campaignHandle,
@@ -131,8 +149,20 @@ export async function getDashboardBundle(
     campaignDescription: campaign.description,
   });
 
+  // Layout settings are shared, but a spotlight introduction can identify its
+  // inaccessible source. Redact only the read response for non-editors; never
+  // mutate or save the authored placement when access changes.
+  const responseConfig = ctx.capabilities.has(C.CAMPAIGN_SETTINGS_EDIT) ? dashboardConfig : {
+    ...dashboardConfig,
+    widgets: dashboardConfig.widgets.map(widget => {
+      if (widget.id === 'pageSpotlight' && !spotlight) return { ...widget, config: { ...widget.config, pageId: null, introduction: '' } };
+      if (widget.id === 'campaignMap' && !maps?.preview) return { ...widget, config: { ...widget.config, mapId: null, description: '' } };
+      return widget;
+    }),
+  };
+
   res.json({
-    dashboardConfig,
+    dashboardConfig: responseConfig,
     campaignDescription: campaign.description,
     schedule: summary.schedule,
     questPages,
@@ -142,6 +172,8 @@ export async function getDashboardBundle(
     recentActivity,
     summary,
     narrativeSnapshot,
+    viewer: { isMember: ctx.isMember, capabilities: [...ctx.capabilities], eligibleWidgetIds },
+    features: { map: maps?.preview ?? null, mapOptions: maps?.options ?? [], spotlight, announcements, actions, statistics },
     ...(recentEntities ? { recentEntities } : {}),
     ...(worldEvents ? { worldEvents } : {}),
     ...(factionConflict ? { factionConflict } : {}),

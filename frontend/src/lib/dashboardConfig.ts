@@ -36,6 +36,7 @@ import {
 export type { HeroMode };
 
 export type DashboardWidgetId =
+  | 'campaignMap' | 'pageSpotlight' | 'campaignAnnouncements' | 'needsAttention' | 'campaignStatistics'
   | 'sessionSchedule'
   | 'worldChronometer'
   | 'campaignBulletin'
@@ -106,11 +107,13 @@ export interface DashboardImportManifest {
 
 export interface DashboardConfig {
   hero: DashboardHeroConfig;
+  layoutMode?: 'initial' | 'custom';
   widgets: DashboardWidgetPlacement[];
   importManifest?: DashboardImportManifest;
 }
 
 export const DASHBOARD_WIDGET_IDS: DashboardWidgetId[] = [
+  'campaignMap', 'pageSpotlight', 'campaignAnnouncements', 'needsAttention', 'campaignStatistics',
   'sessionSchedule',
   'worldChronometer',
   'recentLore',
@@ -181,6 +184,7 @@ function applyRetiredWidgetPolicy(
 }
 
 export const DASHBOARD_WIDGET_LABELS: Record<DashboardWidgetId, string> = {
+  campaignMap: 'Campaign Map', pageSpotlight: 'Page Spotlight', campaignAnnouncements: 'Campaign Announcements', needsAttention: 'Needs Your Attention', campaignStatistics: 'Campaign Statistics',
   sessionSchedule: 'Session Schedule',
   worldChronometer: 'World Chronometer',
   campaignBulletin: 'Campaign Bulletin',
@@ -248,7 +252,9 @@ function defaultPlacement(
 export function getDefaultDashboardConfig(): DashboardConfig {
   return {
     hero: createDefaultHeroConfig(),
+    layoutMode: 'initial',
     widgets: [
+      ...(['campaignMap', 'pageSpotlight', 'campaignAnnouncements', 'needsAttention', 'campaignStatistics'] as DashboardWidgetId[]).map((id, index) => defaultPlacement(id, 0, 50 + index * 4, 6, 3, { enabled: false })),
       defaultPlacement('campaignAtAGlance', 0, 0, 12, 2),
       defaultPlacement('currentStory', 0, 2, 7, 3),
       defaultPlacement('partyRoster', 7, 2, 5, 3),
@@ -334,7 +340,7 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
   if (raw == null || typeof raw !== 'object') {
     return getDefaultDashboardConfig();
   }
-  const parsed = raw as { hero?: unknown; widgets?: unknown; importManifest?: unknown };
+  const parsed = raw as { hero?: unknown; widgets?: unknown; importManifest?: unknown; layoutMode?: unknown };
   const saved = Array.isArray(parsed.widgets)
     ? parsed.widgets.filter(isPlacement)
     : [];
@@ -391,6 +397,7 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
   const importManifest = parseImportManifest(parsed.importManifest);
   return {
     hero: normalizeHero(parsed.hero),
+    layoutMode: parsed.layoutMode === 'initial' ? 'initial' : 'custom',
     widgets: applyRetiredWidgetPolicy(migratedWidgets),
     ...(importManifest ? { importManifest } : {}),
   };
@@ -510,6 +517,8 @@ export interface DashboardBundle {
   openThreads: DashboardOpenThread[];
   recentActivity: DashboardActivityItem[];
   summary: DashboardSummary;
+  viewer?: import('@shared/dashboardCampaignFeatures').DashboardViewer;
+  features?: import('@shared/dashboardCampaignFeatures').DashboardCampaignFeatures;
   narrativeSnapshot?: import('./dashboardNarrativeSnapshot').CampaignNarrativeSnapshot;
   recentEntities?: import('./dashboardWidgetFeeds').RecentEntitiesFeedResult;
   worldEvents?: import('./dashboardWidgetFeeds').DashboardWorldEventsFeedResult;

@@ -1,5 +1,7 @@
 /** Presentation metadata only: no data access or permission decisions. Plugin IDs
  * deliberately use a conservative fallback until they declare their own sizing. */
+import type { DashboardEligibility } from './dashboardCampaignFeatures.js';
+import { CampaignCapabilities as C } from './campaignPolicy/capabilities.js';
 export type DashboardVariant = 'compact' | 'standard' | 'featured';
 export type DashboardWidgetCategory = 'Story' | 'Sessions' | 'World' | 'Party' | 'Activity' | 'Custom';
 export interface DashboardPresentation {
@@ -11,11 +13,17 @@ export interface DashboardPresentation {
   minH: number;
   contentRequirements: string;
   contentAware?: boolean;
+  eligibility?: DashboardEligibility;
 }
 const definition = (category: DashboardWidgetCategory, description: string, contentRequirements: string, preferredSpan = 6, variants: readonly DashboardVariant[] = ['compact', 'standard']): DashboardPresentation => ({
   category, description, contentRequirements, preferredSpan, variants, minW: 2, minH: 1, contentAware: true,
 });
 export const DASHBOARD_PRESENTATIONS: Record<string, DashboardPresentation> = {
+  campaignMap: { ...definition('World', 'A selected campaign map, with a safe thumbnail preview.', 'Visible, temporally available map', 7, ['standard', 'featured']), eligibility: { member: true, all: [C.ASSETS_VIEW] } },
+  pageSpotlight: definition('Story', 'Highlight a canonical place, person, faction, or page.', 'Visible, available campaign page', 7, ['standard', 'featured']),
+  campaignAnnouncements: { ...definition('Sessions', 'Practical campaign notices and schedule updates.', 'Active campaign announcements'), eligibility: { member: true } },
+  needsAttention: { ...definition('Activity', 'Outstanding actions from existing campaign workflows.', 'Authorized pending workflow records'), eligibility: { member: true } },
+  campaignStatistics: { ...definition('Activity', 'Explainable campaign history and trends.', 'Authorized measured records'), eligibility: { member: true } },
   currentStory: definition('Story', 'The ongoing story, active quest, and a way to continue.', 'Visible story or quest; otherwise discovery navigation', 7, ['standard', 'featured']),
   continueWhereYouLeftOff: definition('Story', 'Return to pages you recently worked on.', 'Personal recent pages'),
   questLedger: definition('Story', 'Quest status, summaries, and checklist progress.', 'Visible quest pages'),
@@ -27,7 +35,7 @@ export const DASHBOARD_PRESENTATIONS: Record<string, DashboardPresentation> = {
   campaignAtAGlance: definition('World', 'World date, next session, party, and location.', 'Authorized narrative snapshot', 12),
   fantasyCalendar: definition('World', 'Explore dated entries on the campaign calendar.', 'Campaign calendar'),
   worldEvents: definition('World', 'Upcoming and recent in-world developments.', 'Visible world events'),
-  worldPressureForecast: definition('World', 'Approaching developments and world pressure.', 'Authorized pressure preview'),
+  worldPressureForecast: { ...definition('World', 'Approaching developments and world pressure.', 'Authorized pressure preview'), eligibility: { all: [C.NARRATIVE_ELEVATED_VIEW] } },
   factionsAtWar: definition('World', 'Faction relationships and active conflicts.', 'Visible faction relationships'),
   havenDowntime: definition('World', 'Havens, activities, and downtime state.', 'Authorized downtime hub'),
   partyRoster: definition('Party', 'Compact portraits and details of active characters.', 'Visible active party characters', 5),
@@ -42,7 +50,11 @@ export const DASHBOARD_PRESENTATIONS: Record<string, DashboardPresentation> = {
   text: definition('Custom', 'Your own title and formatted text.', 'Custom text', 6, ['compact', 'standard', 'featured']),
 };
 export function dashboardPresentation(id: string): DashboardPresentation {
-  return DASHBOARD_PRESENTATIONS[id] ?? { ...definition('Custom', 'An extension-provided campaign widget.', 'Provided by the registered extension'), contentAware: false };
+  const aliases: Record<string, string> = { sessionClock: 'sessionSchedule', worldClock: 'worldChronometer', party: 'partyRoster', announcements: 'recentLore', activityLoop: 'recentLore' };
+  const canonical = aliases[id] ?? id;
+  const item = DASHBOARD_PRESENTATIONS[canonical];
+  if (item) return ['continueWhereYouLeftOff', 'pinnedItems', 'sessionSchedule', 'lastSessionNotes', 'fantasyCalendar', 'havenDowntime'].includes(canonical) ? { ...item, eligibility: { member: true, ...item.eligibility } } : item;
+  return { ...definition('Custom', 'An extension-provided campaign widget.', 'Provided by the registered extension'), contentAware: false };
 }
 export function normalizeDashboardVariant(value: unknown): DashboardVariant | undefined {
   return value === 'compact' || value === 'standard' || value === 'featured' ? value : undefined;

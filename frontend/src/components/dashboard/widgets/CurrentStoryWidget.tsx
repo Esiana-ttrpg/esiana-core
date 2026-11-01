@@ -10,6 +10,8 @@ interface CurrentStoryWidgetProps {
   snapshot: CampaignNarrativeSnapshot | undefined;
   campaignHandle?: string;
   canManageCampaign?: boolean;
+  canCreatePages?: boolean;
+  canScheduleSessions?: boolean;
   customizeMode?: boolean;
   onHide?: () => void;
 }
@@ -18,6 +20,8 @@ export function CurrentStoryWidget({
   snapshot,
   campaignHandle,
   canManageCampaign,
+  canCreatePages = canManageCampaign,
+  canScheduleSessions = canManageCampaign,
   customizeMode,
   onHide,
 }: CurrentStoryWidgetProps) {
@@ -39,9 +43,9 @@ export function CurrentStoryWidget({
       )}
       {snapshot && !snapshot.currentStory.activeQuest && !snapshot.currentStory.activeThread && !snapshot.currentStory.arcTitle && canManageCampaign && campaignHandle ? (
         <nav aria-label="Begin your campaign" className="mt-4 flex flex-wrap gap-3 text-sm text-primary">
-          <Link className="hover:underline" to={campaignPath(campaignHandle, 'party')}>Add characters</Link>
-          <Link className="hover:underline" to={campaignSettingsPath(campaignHandle, 'scheduling')}>Schedule a session</Link>
-          <Link className="hover:underline" to={campaignPath(campaignHandle, 'adventures')}>Start an adventure</Link>
+          {canCreatePages && <Link className="hover:underline" to={campaignPath(campaignHandle, 'party')}>Add characters</Link>}
+          {canScheduleSessions && <Link className="hover:underline" to={campaignSettingsPath(campaignHandle, 'scheduling')}>Schedule a session</Link>}
+          {canCreatePages && <Link className="hover:underline" to={campaignPath(campaignHandle, 'adventures')}>Start an adventure</Link>}
         </nav>
       ) : null}
     </DashboardWidgetShell>

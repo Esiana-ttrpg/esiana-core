@@ -40,6 +40,7 @@ import {
 export type { DashboardHeroConfig, HeroMode };
 
 export type DashboardWidgetId =
+  | 'campaignMap' | 'pageSpotlight' | 'campaignAnnouncements' | 'needsAttention' | 'campaignStatistics'
   | 'sessionSchedule'
   | 'worldChronometer'
   | 'campaignBulletin'
@@ -102,11 +103,13 @@ export interface DashboardImportManifest {
 
 export interface DashboardConfig {
   hero: DashboardHeroConfig;
+  layoutMode?: 'initial' | 'custom';
   widgets: DashboardWidgetPlacement[];
   importManifest?: DashboardImportManifest;
 }
 
 const CANONICAL_WIDGET_IDS: DashboardWidgetId[] = [
+  'campaignMap', 'pageSpotlight', 'campaignAnnouncements', 'needsAttention', 'campaignStatistics',
   'sessionSchedule',
   'worldChronometer',
   'recentLore',
@@ -150,6 +153,7 @@ export const RETIRED_DASHBOARD_WIDGET_BANK_IDS = new Set<DashboardWidgetId>([
 ]);
 
 const WIDGET_LABELS: Record<DashboardWidgetId, string> = {
+  campaignMap: 'Campaign Map', pageSpotlight: 'Page Spotlight', campaignAnnouncements: 'Campaign Announcements', needsAttention: 'Needs Your Attention', campaignStatistics: 'Campaign Statistics',
   sessionSchedule: 'Session Schedule',
   worldChronometer: 'World Chronometer',
   campaignBulletin: 'Campaign Bulletin',
@@ -242,7 +246,9 @@ function defaultPlacement(
 export function getDefaultDashboardConfig(): DashboardConfig {
   return {
     hero: createDefaultHeroConfig(),
+    layoutMode: 'initial',
     widgets: [
+      ...(['campaignMap', 'pageSpotlight', 'campaignAnnouncements', 'needsAttention', 'campaignStatistics'] as DashboardWidgetId[]).map((id, index) => defaultPlacement(id, 0, 50 + index * 4, 6, 3, { enabled: false })),
       defaultPlacement('campaignAtAGlance', 0, 0, 12, 2),
       defaultPlacement('currentStory', 0, 2, 7, 3),
       defaultPlacement('partyRoster', 7, 2, 5, 3),
@@ -348,7 +354,7 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
     return getDefaultDashboardConfig();
   }
 
-  const parsed = raw as { hero?: unknown; widgets?: unknown; importManifest?: unknown };
+  const parsed = raw as { hero?: unknown; widgets?: unknown; importManifest?: unknown; layoutMode?: unknown };
   const saved = Array.isArray(parsed.widgets)
     ? parsed.widgets.filter(isPlacement)
     : [];
@@ -421,6 +427,7 @@ export function normalizeDashboardConfig(raw: unknown): DashboardConfig {
 
   return {
     hero: normalizeHero(parsed.hero),
+    layoutMode: parsed.layoutMode === 'initial' ? 'initial' : 'custom',
     widgets: finalWidgets,
     ...(importManifest ? { importManifest } : {}),
   };
@@ -503,7 +510,7 @@ export function parseDashboardLayoutPayload(body: unknown): DashboardConfig | nu
     }
   }
 
-  return normalized;
+  return { ...normalized, layoutMode: (body as { layoutMode?: unknown }).layoutMode === 'initial' ? 'initial' : 'custom' };
 }
 
 export const DASHBOARD_CANONICAL_WIDGET_IDS = CANONICAL_WIDGET_IDS;

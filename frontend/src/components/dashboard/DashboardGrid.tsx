@@ -1,3 +1,8 @@
+import { CampaignCapabilities as C, type CampaignCapability } from '@shared/campaignPolicy/capabilities';
+import { composeInitialDashboard, meetsDashboardEligibility, type DashboardViewer, type DashboardCampaignFeatures } from '@shared/dashboardCampaignFeatures';
+import { DashboardWidgetShell } from './DashboardWidgetShell';
+import { CampaignContextWidget, NeedsAttentionWidget, CampaignStatisticsWidget } from './widgets/CampaignContextWidgets';
+import { CampaignAnnouncementsWidget } from './widgets/CampaignAnnouncementsWidget';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import GridLayout from 'react-grid-layout/legacy';
 import type { Layout } from 'react-grid-layout';
@@ -96,6 +101,8 @@ export interface DashboardGridProps {
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
   campaignDescription: string | null;
+  viewer?: DashboardViewer;
+  features?: DashboardCampaignFeatures;
   narrativeSnapshot?: CampaignNarrativeSnapshot;
   recentEntities?: RecentEntitiesFeedResult | null;
   worldEvents?: DashboardWorldEventsFeedResult | null;
@@ -103,7 +110,7 @@ export interface DashboardGridProps {
   customizeMode: boolean;
   onConfigChange: (config: DashboardConfig) => void;
   onLayoutSavingChange?: (saving: boolean) => void;
-  onWidgetFeedsChange?: (feeds: Pick<DashboardBundle, 'recentEntities' | 'worldEvents' | 'factionConflict'>) => void;
+  onWidgetFeedsChange?: (feeds: Pick<DashboardBundle, 'recentEntities' | 'worldEvents' | 'factionConflict' | 'features' | 'viewer'>) => void;
 }
 
 export function DashboardGrid({
@@ -118,6 +125,8 @@ export function DashboardGrid({
   isLookingForGroup,
   sessionDuration,
   campaignDescription,
+  viewer,
+  features,
   narrativeSnapshot,
   recentEntities,
   worldEvents,
@@ -128,6 +137,7 @@ export function DashboardGrid({
   onWidgetFeedsChange,
 }: DashboardGridProps) {
   const { t } = useTranslation();
+  const eligible = (id: string) => !viewer || ((!viewer.eligibleWidgetIds.includes(id) && !parsePluginWidgetPlacementId(id)) ? false : meetsDashboardEligibility(dashboardPresentation(id).eligibility, new Set(viewer.capabilities), viewer.isMember));
   const containerRef = useRef<HTMLDivElement>(null);
   const [gridWidth, setGridWidth] = useState(960);
   const [contentHeights, setContentHeights] = useState<Record<string, number>>({});
@@ -142,7 +152,7 @@ export function DashboardGrid({
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingSaveCountRef = useRef(0);
   const feedSignature = (value: DashboardConfig) => JSON.stringify(value.widgets
-    .filter((widget) => ['recentEntities', 'worldEvents', 'factionsAtWar'].includes(widget.id))
+    .filter((widget) => ['recentEntities', 'worldEvents', 'factionsAtWar', 'campaignMap', 'pageSpotlight', 'campaignAnnouncements', 'needsAttention', 'campaignStatistics'].includes(widget.id))
     .map((widget) => [widget.id, widget.enabled, widget.config]));
   const loadedFeedsRef = useRef(feedSignature(config));
 
@@ -150,11 +160,11 @@ export function DashboardGrid({
     if (!narrativeSnapshot || summary.nextSession || summary.lastSession || summary.chronometer?.label) return false;
     if (narrativeSnapshot.partyRoster.members.length || narrativeSnapshot.recentActivity.items.length ||
         narrativeSnapshot.currentStory.arcTitle || narrativeSnapshot.currentStory.activeQuest || narrativeSnapshot.currentStory.activeThread) return false;
-    const defaults = getDefaultDashboardConfig().widgets.filter((widget) => widget.enabled);
+    const defaults = (viewer ? composeInitialDashboard(getDefaultDashboardConfig().widgets, new Set(viewer.capabilities), viewer.isMember) : getDefaultDashboardConfig().widgets).filter((widget) => widget.enabled);
     const enabled = config.widgets.filter((widget) => widget.enabled);
     return enabled.length === defaults.length && defaults.every((item) => enabled.some((widget) =>
       widget.id === item.id && widget.x === item.x && widget.y === item.y && widget.w === item.w && widget.h === item.h && widget.autoHeight === true));
-  }, [config.widgets, narrativeSnapshot, summary]);
+  }, [config.widgets, narrativeSnapshot, summary, viewer]);
 
   const enabledWidgets = useMemo(
     () => config.widgets.filter((widget) => widget.enabled && (!blankDefault || customizeMode || widget.id === 'currentStory')),
@@ -199,7 +209,7 @@ export function DashboardGrid({
               const refreshed = await fetchDashboardBundle(campaignHandle);
               if (generation === saveGenerationRef.current) {
                 loadedFeedsRef.current = signature;
-                onWidgetFeedsChange({ recentEntities: refreshed.recentEntities, worldEvents: refreshed.worldEvents, factionConflict: refreshed.factionConflict });
+                onWidgetFeedsChange({ recentEntities: refreshed.recentEntities, worldEvents: refreshed.worldEvents, factionConflict: refreshed.factionConflict, features: refreshed.features, viewer: refreshed.viewer });
               }
             }
           }
@@ -261,7 +271,7 @@ export function DashboardGrid({
 
   const applyWidgets = useCallback(
     (widgets: DashboardWidgetPlacement[]) => {
-      scheduleSave({ ...config, widgets });
+      scheduleSave({ ...config, layoutMode: 'custom', widgets });
     },
     [config, scheduleSave],
   );
@@ -381,7 +391,7 @@ export function DashboardGrid({
           <p>{narrow ? 'Use Move earlier / later to reorder on this screen.' : 'Drag to move. Resize to choose width; turn off Fit content to set height.'}</p>
           <button type="button" className="rounded-md border border-border px-3 py-2 text-foreground" onClick={() => {
             if (window.confirm('Reset widgets to the default layout? This replaces your widget choices and keeps your campaign banner.')) {
-              applyWidgets(getDefaultDashboardConfig().widgets);
+              applyWidgets(viewer ? composeInitialDashboard(getDefaultDashboardConfig().widgets, new Set(viewer.capabilities), viewer.isMember) : getDefaultDashboardConfig().widgets);
             }
           }}>Reset to Default</button>
         </div> : null}
@@ -411,7 +421,9 @@ export function DashboardGrid({
                   <button type="button" className="p-2 hover:text-foreground" onClick={() => moveWidget(widget, -1)}>Move earlier</button>
                   <button type="button" className="p-2 hover:text-foreground" onClick={() => moveWidget(widget, 1)}>Move later</button>
                 </div> : null}
-                <DashboardWidgetRenderer
+                {eligible(widget.id) ? <DashboardWidgetRenderer
+                  viewer={viewer}
+                  features={features}
                   widget={widget}
                   campaignHandle={campaignHandle}
                   summary={summary}
@@ -431,7 +443,7 @@ export function DashboardGrid({
                   customizeMode={editable}
                   onHideWidget={hideWidget}
                   onWidgetConfigChange={updateWidgetConfig}
-                />
+                /> : <DashboardWidgetShell title={DASHBOARD_WIDGET_LABELS[widget.id] ?? 'Widget'} customizeMode={editable} onHide={() => hideWidget(widget.id)}><p className="text-sm text-muted">Unavailable with your current campaign access. This saved placement is retained.</p></DashboardWidgetShell>}
                 </MeasuredDashboardWidget>
               </div>
             ))}
@@ -450,8 +462,10 @@ export function DashboardGrid({
                 <li key={widget.id}>
                   <button
                     type="button"
+                    disabled={!eligible(widget.id)}
+                    title={!eligible(widget.id) ? 'Unavailable with your current campaign access' : undefined}
                     onClick={() => restoreWidget(widget.id)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border px-2 py-2 text-left text-xs text-foreground hover:border-primary/50 hover:text-primary"
+                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border px-2 py-2 text-left text-xs text-foreground hover:border-primary/50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Plus className="size-3.5 shrink-0" />
                     <span><span className="mb-1 block text-muted">{dashboardPresentation(widget.id).category}</span>{translateDashboardWidgetLabel(
@@ -459,7 +473,7 @@ export function DashboardGrid({
                       DASHBOARD_WIDGET_LABELS[widget.id as DashboardWidgetId] ??
                         parsePluginWidgetPlacementId(widget.id)?.widgetId ??
                         widget.id,
-                    )}<span className="mt-1 block text-muted">{dashboardPresentation(widget.id).description}</span><span className="mt-1 block text-muted">{dashboardPresentation(widget.id).variants.join(' · ')}</span></span>
+                    )}<span className="mt-1 block text-muted">{dashboardPresentation(widget.id).description}</span>{!eligible(widget.id) && <span className="mt-1 block text-muted">Unavailable with your current campaign access.</span>}<span className="mt-1 block text-muted">{dashboardPresentation(widget.id).variants.join(' · ')}</span></span>
                   </button>
                 </li>
               ))}
@@ -475,12 +489,14 @@ export function DashboardGrid({
                   <li key={`${entry.pluginId}:${entry.id}`}>
                     <button
                       type="button"
+                      disabled={!eligible(buildPluginWidgetPlacementId(entry.pluginId, entry.id))}
+                      title={!eligible(buildPluginWidgetPlacementId(entry.pluginId, entry.id)) ? 'Unavailable with your current campaign access' : undefined}
                       onClick={() =>
                         restoreWidget(
                           buildPluginWidgetPlacementId(entry.pluginId, entry.id) as DashboardWidgetId,
                         )
                       }
-                      className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border px-2 py-2 text-left text-xs text-foreground hover:border-primary/50 hover:text-primary"
+                      className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border px-2 py-2 text-left text-xs text-foreground hover:border-primary/50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <Plus className="size-3.5 shrink-0" />
                       <span>
@@ -531,6 +547,8 @@ interface DashboardWidgetRendererProps {
   isLookingForGroup: boolean;
   sessionDuration: string | null | undefined;
   campaignDescription: string | null;
+  viewer?: DashboardViewer;
+  features?: DashboardCampaignFeatures;
   narrativeSnapshot?: CampaignNarrativeSnapshot;
   recentEntities?: RecentEntitiesFeedResult | null;
   worldEvents?: DashboardWorldEventsFeedResult | null;
@@ -556,6 +574,8 @@ function DashboardWidgetRenderer({
   isLookingForGroup,
   sessionDuration,
   campaignDescription,
+  features,
+  viewer,
   narrativeSnapshot,
   recentEntities,
   worldEvents,
@@ -571,7 +591,18 @@ function DashboardWidgetRenderer({
     onHide: customizeMode ? () => onHideWidget(widget.id) : undefined,
   };
 
+  const allowed = (cap: CampaignCapability) => viewer ? viewer.capabilities.includes(cap) : canManageCampaign;
+  const contextProps = { id: widget.id, campaignHandle, features, config: widget.config, ...shellProps, onConfigChange: (value: Record<string, unknown>) => onWidgetConfigChange(widget.id, value) };
   switch (widget.id) {
+    case 'campaignMap':
+    case 'pageSpotlight':
+      return <CampaignContextWidget {...contextProps} />;
+    case 'campaignAnnouncements':
+      return <CampaignAnnouncementsWidget {...contextProps} />;
+    case 'needsAttention':
+      return <NeedsAttentionWidget {...contextProps} />;
+    case 'campaignStatistics':
+      return <CampaignStatisticsWidget {...contextProps} />;
     case 'sessionSchedule':
     case 'sessionClock':
       return (
@@ -634,7 +665,7 @@ function DashboardWidgetRenderer({
       return (
         <QuickUtilityNav
           campaignHandle={campaignHandle}
-          canConfigure={canManageCampaign}
+          canConfigure={allowed(C.CAMPAIGN_SETTINGS_EDIT)}
           isLookingForGroup={isLookingForGroup}
           config={widget.config}
           onConfigChange={(next) => onWidgetConfigChange(widget.id, next)}
@@ -689,7 +720,7 @@ function DashboardWidgetRenderer({
       );
     case 'currentStory':
       return (
-        <CurrentStoryWidget snapshot={narrativeSnapshot} campaignHandle={campaignHandle} canManageCampaign={canManageCampaign} {...shellProps} />
+        <CurrentStoryWidget snapshot={narrativeSnapshot} campaignHandle={campaignHandle} canManageCampaign={allowed(C.CAMPAIGN_SETTINGS_EDIT)} canCreatePages={allowed(C.PAGE_CREATE)} canScheduleSessions={allowed(C.NOTES_MODERATE)} {...shellProps} />
       );
     case 'recentActivity':
       return (

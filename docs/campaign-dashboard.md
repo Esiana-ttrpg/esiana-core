@@ -4,9 +4,11 @@ Campaign Home uses the existing `react-grid-layout` legacy adapter and campaign
 dashboard JSON. The banner remains outside the widget grid. No database migration
 or new dependency is required.
 
-The default composition has five widgets: a compact campaign state summary,
-featured Current Story, Party, Recent Activity, and Living Threads. Story occupies
-seven of twelve desktop columns; supporting content occupies five. Below 900px,
+Initial compositions use campaign capabilities. Managers start with Current Story,
+Session Schedule, Last Session, Needs Your Attention, and Announcements; members
+without layout management start with Current Story, Session Schedule, Party,
+Last Session, and Recent Activity. Previously saved layouts retain their choices.
+Story occupies seven of twelve desktop columns; supporting content occupies five. Below 900px,
 widgets stack in saved reading order. An unchanged default layout with no visible
 story, characters, activity, session, or calendar date shows the story starting
 state alone. Creation navigation is restricted to campaign managers. This does
@@ -29,7 +31,7 @@ without `autoHeight` retain manual heights.
 Normalization preserves enabled choices, positions, settings, personal scope,
 custom text, and plugin placement IDs. Existing legacy ID aliases still resolve
 to their canonical widgets. Newly discovered widgets are appended disabled.
-An explicitly empty widget array remains empty. Earlier automatic activation of
+An explicitly empty layout stays empty. Earlier automatic activation of
 briefing widgets has been removed; a normal read never resets a customization.
 
 Customization retains automatic saving. Fit content controls automatic height;
@@ -106,6 +108,59 @@ metadata and follow-up links wrap in compact rows. Content uses the existing
 Fit content measurement without adding minimum heights. Manually sized saved
 placements retain their geometry and existing resize behavior.
 
+## Campaign context and eligibility
+
+Campaign Map and Page Spotlight support standard and featured presentation in
+the existing widget bank. Map selection uses campaign maps; preview reads use
+existing thumbnails only. Managers may add an optional short description. Missing thumbnails use an icon fallback and never
+request full-resolution images. Preview responses contain no pins, annotations,
+layers, or map canvas data. Linked page visibility and temporal discovery also
+constrain which maps can be selected or displayed.
+
+Page Spotlight uses the existing page picker, storing a page ID and optional
+introduction. Its title, type, excerpt, image, and destination derive from the
+canonical record on refresh. Inaccessible, deleted, or temporally unavailable
+pages show a neutral state and hide the introduction too. Private or unrevealed
+blocks cannot enter the excerpt. Images use authorized existing thumbnails.
+
+Widget presentation registrations accept optional capability/member eligibility
+hints, including extensions. Existing plugins need no changes. Hints control
+mounting and the bank; record APIs remain responsible for authorization. A saved
+placement that becomes ineligible shows an unavailable state and stays saved.
+New widget IDs are appended disabled to customized layouts. Only explicitly
+marked initial layouts receive viewer-appropriate compositions. Editing widgets
+marks a layout custom; reset uses the current capability-based initial choices.
+The existing focus refresh updates capability and feature data without replacing
+in-progress geometry edits. Normal dashboard reads never write layout choices.
+
+## Practical announcements and outstanding actions
+
+Campaign Announcements uses the existing campaign-scoped `DashboardWidget`
+records with a dedicated record type, separate from dashboard JSON. No migration
+is required. Manager CRUD uses the campaign settings capability, validates
+formatted Markdown, semantic Information/Important/Update styles, optional safe
+HTTP/HTTPS links, and timezone-aware expiration. Edits use version checks.
+Expired notices disappear automatically; managers can still edit or remove them.
+The existing rich editor loads when management is expanded in customization mode.
+No acknowledgement or notification system is introduced. Legacy backups and
+sovereign exports preserve records; restoration rejects foreign record IDs.
+Campaign clones that copy sidebar/layout structure copy notices and remap map
+and spotlight references to copied assets/pages.
+
+Needs Your Attention derives at most six links from existing outstanding states:
+an upcoming session without an RSVP; membership requests for authorized managers;
+pending downtime ledger suggestions for elevated downtime managers; and failed
+transcript processing already disclosed by the authorized session summary.
+Missing own-session notes remain an optional contribution. Required decisions
+and deadlines precede optional prompts. Resolving a source record removes its
+action on bundle refresh. Private project/haven references are excluded. Planned
+projects, open threads, and generic progression state are not inferred tasks;
+they lack an audited standalone pending-decision contract for this widget.
+
+The optional statistics widget links to the separate campaign statistics view.
+Definitions, historical limits, authorization, and cache behavior are documented
+in [Campaign statistics](./campaign-statistics.md).
+
 ## Quick Links resources
 
 Quick Links stores one ordered `config.links` list. Legacy internal destination
@@ -157,8 +212,18 @@ and published versus draft transcript access. The existing disposable SQLite
 audio suite also exercises dashboard follow-up against real completed-session
 and note records, including campaign isolation. It does not use developer data.
 
-Validated using Node 26.12.1 and pnpm 9.15.9: 718 frontend Node tests, 74 frontend
-Vitest tests, 41 targeted backend tests, and 87 audio/API/SQLite tests pass. The
-production build passes with the existing mixed static/dynamic import warnings.
-The new session widgets and Quick Links editor were also visually reviewed with
-compiled light/dark theme styles and fixture data.
+Validated using Node 26.12.1 and pnpm 9.15.9: 721 frontend Node tests,
+81 frontend Vitest tests, 43 affected backend unit tests, and 94 disposable
+SQLite/audio/API tests pass. Frontend and backend TypeScript checks and the
+production build pass. Vite retains existing mixed static/dynamic import warnings.
+
+Context-widget regressions additionally cover canonical Spotlight changes,
+private/foreign/deleted/temporally gated pages, safe map thumbnail fallback,
+revoked map access without placement removal, private introduction redaction,
+announcement validation/version conflicts/expiration/removal/export/restore,
+optional notes versus outstanding RSVPs, and statistics cache access changes.
+Announcement interaction tests exercise the editing workflow and expiration
+without polling. Widget fixtures were reviewed at 1440px, 800px, and 390px with
+derived light/dark theme variables, including missing images and configuration
+controls. The new fixtures had no horizontal overflow. They do not replace a
+live campaign, production-sized statistics, or custom-calendar smoke check.

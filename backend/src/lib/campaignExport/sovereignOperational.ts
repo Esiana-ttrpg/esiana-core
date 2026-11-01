@@ -1,3 +1,4 @@
+import { CAMPAIGN_ANNOUNCEMENT_RECORD, parseAnnouncement } from '../../../../shared/dashboardCampaignFeatures.js';
 import type { Prisma } from '../prismaClient.js';
 import { prisma } from '../prisma.js';
 import { ensureChronologyEras, syncEraProjection } from '../chronologyEraService.js';
@@ -24,6 +25,7 @@ export function parseOperationalPayload(raw: unknown): SovereignOperational | nu
   if (!raw || typeof raw !== 'object') return null;
   const payload = raw as SovereignOperational;
   return {
+    ...(Array.isArray(payload.campaignAnnouncements) ? { campaignAnnouncements: payload.campaignAnnouncements } : {}),
     downtimeHavens: Array.isArray(payload.downtimeHavens) ? payload.downtimeHavens : [],
     ...(Array.isArray(payload.chronologyRoutes) ? { chronologyRoutes: payload.chronologyRoutes } : {}),
     ...(Array.isArray(payload.campaignEras) ? { campaignEras: payload.campaignEras } : {}),
@@ -62,7 +64,9 @@ export async function buildOperationalPayload(
       characterDb.characterField.findMany({ where: { campaignId } }),
     ]);
 
+  const campaignAnnouncements = await prisma.dashboardWidget.findMany({ where: { campaignId, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD } });
   return serializeForOperationalJson({
+    campaignAnnouncements,
     campaignEras,
     chronologyRoutes,
     eraRecurrenceHistory,
@@ -158,6 +162,19 @@ export async function restoreOperationalPayload(
 ): Promise<{ havenCount: number; projectCount: number; pluginDataCount: number }> {
   if (!payload) {
     return { havenCount: 0, projectCount: 0, pluginDataCount: 0 };
+  }
+
+  const restoredAnnouncements = [];
+  for (const row of payload.campaignAnnouncements ?? []) {
+    if (typeof row.id !== 'string' || typeof row.configJson !== 'string') throw new Error('Invalid campaign announcement record');
+    let input;
+    try { input = parseAnnouncement(JSON.parse(row.configJson)); } catch { input = null; }
+    if (!input) throw new Error('Invalid campaign announcement content');
+    const existing = await prisma.dashboardWidget.findUnique({ where: { id: row.id }, select: { campaignId: true, widgetType: true } });
+    if (existing && (existing.campaignId !== campaignId || existing.widgetType !== CAMPAIGN_ANNOUNCEMENT_RECORD)) throw new Error('Announcement ID belongs to another record');
+    const configJson = JSON.stringify(input);
+    const createdAt = typeof row.createdAt === 'string' && Number.isFinite(Date.parse(row.createdAt)) ? new Date(row.createdAt) : undefined;
+    restoredAnnouncements.push({ id: row.id, configJson, createdAt });
   }
 
   // Validate all new character-shell rows before any operational row is
@@ -342,5 +359,9 @@ export async function restoreOperationalPayload(
     });
   }
 
+  for (const row of restoredAnnouncements) {
+    await prisma.dashboardWidget.upsert({ where: { id: row.id },
+      create: { id: row.id, campaignId, widgetType: CAMPAIGN_ANNOUNCEMENT_RECORD, configJson: row.configJson, createdAt: row.createdAt }, update: { configJson: row.configJson } });
+  }
   return { havenCount, projectCount, pluginDataCount };
 }

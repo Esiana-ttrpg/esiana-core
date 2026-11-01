@@ -2,6 +2,11 @@ import type { DashboardWidgetId } from '@/lib/dashboardConfig';
 import { i18n } from '@/i18n/initI18n';
 
 const WIDGET_LABEL_KEYS: Record<DashboardWidgetId, string> = {
+  campaignMap: 'campaign.dashboard.widgetCampaignMap',
+  pageSpotlight: 'campaign.dashboard.widgetPageSpotlight',
+  campaignAnnouncements: 'campaign.dashboard.widgetCampaignAnnouncements',
+  needsAttention: 'campaign.dashboard.widgetNeedsAttention',
+  campaignStatistics: 'campaign.dashboard.widgetCampaignStatistics',
   sessionSchedule: 'campaign.dashboard.widgetSessionSchedule',
   worldChronometer: 'campaign.dashboard.widgetWorldChronometer',
   campaignBulletin: 'campaign.dashboard.widgetCampaignBulletin',
