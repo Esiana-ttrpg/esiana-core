@@ -10,7 +10,8 @@ migration, and review gates for later PRs. **No calculation in this PR
 changes.** Compatibility endpoints stay:
 
 - `GET /api/user/creator-attribution` (owner, includes habits)
-- `GET /api/users/:id/creator-attribution` (public strip)
+- `GET /api/users/:id/creator-attribution` (public strip; public-campaign counts only)
+- `GET /api/user/statistics?range=&from=&to=&campaignId=&version=1` (owner, versioned)
 
 Related campaign-scoped contract: [campaign-statistics.md](./campaign-statistics.md).
 
@@ -67,32 +68,27 @@ only.
 
 ## Privacy — existing public aggregate exposure
 
-**Release blocker for Milestone A. Documented here; remediating is PR 2.**
+**Release blocker. Remediated in PR 2.**
 
-Three visibility contexts must be distinguished later:
+Three visibility contexts:
 
-1. **Public campaign** — discoverable/public campaigns the subject exposes.
-2. **Viewer-authorized campaign** — campaigns the current viewer may see
-   (shared membership, and so on).
-3. **Private / hidden campaign** — owner-only; must never enter public
-   aggregates.
+1. **Public campaign** — `discoverability = public` (legacy `unlisted` is private).
+2. **Viewer-authorized campaign** — public campaigns plus campaigns the
+   current viewer also belongs to.
+3. **Private / hidden campaign** — owner-only; never enters public aggregates.
 
-Current behavior (`resolveLinkableCampaigns` comment: “Visibility gates links
-only — never used for attribution counts”):
+`GET /api/users/:id/creator-attribution` and any public-profile aggregate
+use the **public** context for counts. Shared membership is not enough to
+put a private campaign into public totals. `linkableCampaigns` remains
+separately gated (public GM campaigns plus shared memberships).
 
-- Public API and public profile **strip** `attribution.totalEdits` and all
-  five habit metrics via `filterMetricsByPrivacy(..., 'publicProfile')`.
-- Public **word, page, entity, connection, and table-count** totals still
-  include every current non-archived membership, including private campaigns.
-- `linkableCampaigns` is the only public list, so a high public word count
-  beside a short public campaign list can reveal hidden participation.
+Owner `GET /api/user/creator-attribution` and `GET /api/user/statistics`
+use the **owner** context (all current non-archived memberships, optional
+`campaignId` filter). Habits stay owner-only.
 
-`WikiPage.visibility` is unused for these counts. Hidden wiki inside a
-campaign the creator still belongs to is included.
-
-PR 2 must compute public aggregates from the public-campaign context only.
-Owner and viewer-authorized queries may include campaigns those viewers can
-access. Do not treat “totals without links” as privacy-preserving.
+`WikiPage.visibility` is still unused for these counts. Hidden wiki inside
+a public campaign the creator belongs to can still appear in public
+snapshot totals.
 
 ## Timezone reuse
 
@@ -113,13 +109,15 @@ PR 2 will pass the resolved zone into the statistics service. That zone
 determines calendar-day boundaries, writing streaks, weekly rhythms, favorite
 writing hours, monthly and yearly periods, and writing-session display.
 
-`UserWritingDailyRollup.date` is currently UTC midnight. After PR 2, derived
-daily groupings and habit projections are recalculated from authoritative UTC
-timestamps whenever the user's timezone (or the inherited admin default)
-changes. Original activity records are not rewritten.
+`UserWritingDailyRollup.date` remains a legacy UTC bucket. PR 2 rebuilds
+habit day boundaries from `NarrativeEvent.createdAt` and
+`CampaignActivity` writing-session timestamps in the resolved timezone.
+Changing `User.timezone` or the inherited admin default regroups those
+UTC instants; the original rows are not rewritten.
 
-Current habit metrics do **not** call `resolveEffectiveTimezone`. That is a
-known inaccuracy, not changed in this PR.
+`GET /api/user/statistics` reports the resolved `timeZone`. It does not
+accept a timezone override. Range modes are half-open UTC intervals
+derived from that zone. Lifetime views have `range.start = null`.
 
 ## Campaign activity coverage matrix
 
@@ -273,7 +271,8 @@ These IDs are reserved in documentation only. They are **not** in
 
 ## Review limits
 
-This PR adds registry metadata, regression tests that freeze current
-formulas and privacy flags, and this audit. It does not change endpoints,
-rollup writers, or public totals. Production-sized histories and live
-timezone-boundary checks wait for PR 2.
+PR 1 added registry metadata, regression tests, and this audit. PR 2
+remediates public aggregates, resolves reporting timezones through
+`resolveEffectiveTimezone`, and adds `GET /api/user/statistics`. It does
+not add contribution tables, word-level diffs, or inferred 15-minute
+sessions. Those remain gated for PR 3–4.

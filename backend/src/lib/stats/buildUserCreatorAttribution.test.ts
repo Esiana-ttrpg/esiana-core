@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readMetricAmount } from '../../../../shared/metricValue.js';
-import { assembleLifetimeAttributionMetrics } from './buildUserCreatorAttribution.js';
+import { assembleLifetimeAttributionMetrics } from './assembleLifetimeAttribution.js';
 
 function page(input: {
   campaignId: string;

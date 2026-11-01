@@ -42,7 +42,7 @@ describe('creator attribution privacy strip (controller contract)', () => {
     }
   });
 
-  it('documents that public totals are currently allowed even though they can include private campaigns', () => {
+  it('allows the seven public lifetime metric IDs on public profile and public API', () => {
     for (const id of PUBLIC_PERSONAL_ATTRIBUTION_METRIC_IDS) {
       assert.equal(isMetricAllowedInContext(id, 'publicProfile'), true);
       assert.equal(isMetricAllowedInContext(id, 'publicApi'), true);

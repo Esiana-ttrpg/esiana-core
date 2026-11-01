@@ -1,6 +1,8 @@
 import type {
   CreatorAttributionResponse,
   CampaignWorldStatsResponse,
+  PersonalStatisticsRangeMode,
+  PersonalStatisticsResponse,
   UserActivityResponse,
 } from '@shared/statsTypes';
 import { apiFetch } from './api';
@@ -13,6 +15,21 @@ export async function fetchPublicCreatorAttribution(
 
 export async function fetchOwnerCreatorAttribution(): Promise<CreatorAttributionResponse> {
   return apiFetch<CreatorAttributionResponse>('/user/creator-attribution');
+}
+
+export async function fetchOwnerPersonalStatistics(options?: {
+  range?: PersonalStatisticsRangeMode;
+  from?: string;
+  to?: string;
+  campaignId?: string;
+}): Promise<PersonalStatisticsResponse> {
+  const params = new URLSearchParams();
+  params.set('version', '1');
+  if (options?.range) params.set('range', options.range);
+  if (options?.from) params.set('from', options.from);
+  if (options?.to) params.set('to', options.to);
+  if (options?.campaignId) params.set('campaignId', options.campaignId);
+  return apiFetch<PersonalStatisticsResponse>(`/user/statistics?${params.toString()}`);
 }
 
 export async function fetchCampaignWorldStats(

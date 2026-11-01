@@ -22155,6 +22155,65 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user session."
+  /api/user/statistics:
+    get:
+      tags:
+        - User Account
+      summary: Get User Statistics
+      operationId: get_api_user_statistics
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: version
+          in: query
+          schema:
+            type: integer
+            default: 1
+            enum: [1]
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [all_time, year, month, custom]
+            default: all_time
+        - name: from
+          in: query
+          schema:
+            type: string
+          description: Year (YYYY), month (YYYY-MM), or inclusive calendar date (YYYY-MM-DD) in the resolved reporting timezone.
+        - name: to
+          in: query
+          schema:
+            type: string
+          description: Exclusive calendar date (YYYY-MM-DD) in the resolved reporting timezone. Used with range=custom.
+        - name: campaignId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session. Uses the user's resolved timezone; no statistics-specific timezone override."
   /api/user/developer/quota:
     get:
       tags:
