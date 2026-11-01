@@ -53,7 +53,9 @@ export function QuickUtilityNav({
       onHide={onHide}
     >
       {editing ? (
-        <div className="space-y-3">
+        <details className="min-w-0">
+          <summary className="cursor-pointer rounded-md py-1.5 text-sm font-medium text-primary focus-visible:outline-offset-2">Configure links</summary>
+          <div className="mt-2 space-y-3">
           <QuickLinksEditor entries={entries} internalLabel={key => t(quickLinkLabelKey(key))} onChange={next => onConfigChange?.({ ...config, links: next })} />
           <p className="text-xs text-muted">
             {t('campaign.dashboard.quickLinksCustomizeHint', {
@@ -86,14 +88,15 @@ export function QuickUtilityNav({
               );
             })}
           </ul>
-        </div>
+          </div>
+        </details>
       ) : (
-        <nav className="flex flex-col gap-1">
+        <nav aria-label="Campaign quick links" className="flex min-w-0 flex-wrap items-start gap-x-1 gap-y-0">
           {links.length === 0 ? (
             <p className="text-sm text-muted">{t('campaign.dashboard.quickLinksEmpty')}</p>
           ) : (
             links.map((link, index) => link.external ? (
-              <a key={`${link.key}-${index}`} href={link.to} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-elevated hover:text-primary">
+              <a key={`${link.key}-${index}`} href={link.to} target="_blank" rel="noopener noreferrer" className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-elevated hover:text-primary">
                 {(() => { const icons = { link: LinkIcon, book: BookOpen, file: FileText, globe: Globe }; const Icon = icons[link.icon as DashboardExternalLinkIcon] ?? LinkIcon; return <Icon className="size-3.5 shrink-0 text-muted" aria-hidden />; })()}
                 <span className="min-w-0 break-words">{link.label}</span>
                 <ExternalLink className="size-3 shrink-0 text-muted" aria-hidden />
@@ -103,7 +106,7 @@ export function QuickUtilityNav({
               <Link
                 key={`${link.key}-${index}`}
                 to={link.to}
-                className="rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-elevated hover:text-primary"
+                className="inline-flex min-w-0 max-w-full break-words rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-elevated hover:text-primary"
               >
                 {link.internalKey ? t(quickLinkLabelKey(link.internalKey), { defaultValue: link.label }) : link.label}
               </Link>

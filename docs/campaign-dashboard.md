@@ -101,6 +101,11 @@ Home refreshes the existing bundle's session summary and preserves layout edits;
 widgets do not add transcription polling. Session widget placement remains under
 the existing customization controls.
 
+Session widgets keep date/title and primary actions visible while secondary
+metadata and follow-up links wrap in compact rows. Content uses the existing
+Fit content measurement without adding minimum heights. Manually sized saved
+placements retain their geometry and existing resize behavior.
+
 ## Quick Links resources
 
 Quick Links stores one ordered `config.links` list. Legacy internal destination
@@ -116,6 +121,10 @@ legacy entries without making damaged URLs clickable. External navigation uses
 `target="_blank"` and `rel="noopener noreferrer"`, with a small external-link
 indicator and an accessible new-tab label. The server never fetches these URLs.
 No VTT or Discord links are inserted automatically.
+
+Normal viewing presents a wrapping navigation list without configuration forms.
+In widget editing mode, authorized editors expand Configure links to access the
+existing resource form, internal destinations, ordering, and removal controls.
 
 Quest and thread widgets use bounded previews with links to complete records.
 Other bank widgets retain their data integrations and settings within the shared
@@ -148,7 +157,7 @@ and published versus draft transcript access. The existing disposable SQLite
 audio suite also exercises dashboard follow-up against real completed-session
 and note records, including campaign isolation. It does not use developer data.
 
-Validated using Node 26.12.1 and pnpm 9.15.9: 718 frontend Node tests, 72 frontend
+Validated using Node 26.12.1 and pnpm 9.15.9: 718 frontend Node tests, 74 frontend
 Vitest tests, 41 targeted backend tests, and 87 audio/API/SQLite tests pass. The
 production build passes with the existing mixed static/dynamic import warnings.
 The new session widgets and Quick Links editor were also visually reviewed with

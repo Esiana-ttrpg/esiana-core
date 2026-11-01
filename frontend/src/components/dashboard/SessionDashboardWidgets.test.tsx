@@ -92,3 +92,22 @@ test('quick-link editing requires configuration permission and unsafe saved link
   expect(html).not.toContain('javascript:');
   expect(html).toContain('/campaigns/review/maps');
 });
+
+test('authorized managers see navigation without configuration forms in normal view', () => {
+  const html = render(<QuickUtilityNav campaignHandle="review" canConfigure config={{ links: [
+    'maps', { kind: 'external', id: 'atlas', label: 'Shared atlas', url: 'https://example.com/world' },
+  ] }} />);
+  expect(html).toContain('aria-label="Campaign quick links"');
+  expect(html).toContain('Shared atlas');
+  expect(html).not.toContain('<form');
+  expect(html).not.toContain('Configure links');
+});
+
+test('Quick Links configuration is a collapsed disclosure in widget editing mode', () => {
+  const html = render(<QuickUtilityNav campaignHandle="review" canConfigure customizeMode config={{ links: ['maps'] }} />);
+  expect(html).toContain('<details');
+  expect(html).not.toMatch(/<details[^>]*\bopen(?:=|\s|>)/);
+  expect(html).toContain('Configure links</summary>');
+  expect(html).toContain('aria-label="Add external resource"');
+  expect(html).toMatch(/aria-label="Move [^"]+ earlier"/);
+});

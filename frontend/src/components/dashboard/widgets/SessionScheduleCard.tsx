@@ -217,27 +217,29 @@ export function SessionScheduleCard({
       customizeMode={customizeMode}
       onHide={onHide}
     >
-      <div className="space-y-3" data-session-state={state ?? 'empty'}>
-        <div className="flex min-w-0 items-start gap-4">
+      <div className="space-y-2" data-session-state={state ?? 'empty'}>
+        <div className="flex min-w-0 items-start gap-3">
         {validStart ? <div className="shrink-0 rounded-lg bg-elevated px-3 py-2 text-center" aria-label={datePart({ dateStyle: 'full' })}>
           <p className="text-xs text-muted">{datePart({ month: 'short' })}</p>
           <p className={`type-prose font-semibold leading-tight text-foreground ${variant === 'featured' ? 'text-4xl' : 'text-3xl'}`}>{datePart({ day: 'numeric' })}</p>
           <p className="mt-1 text-xs text-muted">{datePart({ hour: 'numeric', minute: '2-digit' })}</p>
         </div> : null}
-        <div className="min-w-0 flex-1 space-y-2">
-        {effectiveNext ? <div className="space-y-1">
-          {effectiveNext.sequenceOrder > 0 ? <p className="text-xs text-muted">Session {effectiveNext.sequenceOrder}</p> : null}
+        <div className="min-w-0 flex-1 space-y-1">
+        {effectiveNext ? (
           <p className="break-words text-base font-semibold leading-snug text-foreground">{effectiveNext.sessionTitle || nextSession?.title || 'Next session'}</p>
-        </div> : null}
-        <p className="text-sm leading-relaxed text-muted">{countdownLabel}</p>
-        {effectiveNext?.venueLabel ? <p className="text-sm text-muted">{effectiveNext.venueLabel}</p> : null}
-        {locationTitle && locationTitle !== effectiveNext?.venueLabel ? <p className="text-sm text-muted">{locationTitle}</p> : null}
-        {validStart && timeZone ? <p className="text-xs text-muted">{timeZone}</p> : null}
+        ) : null}
+        <p className="text-xs leading-relaxed text-muted">
+          {effectiveNext && effectiveNext.sequenceOrder > 0 ? `Session ${effectiveNext.sequenceOrder} · ` : ''}{countdownLabel}
+        </p>
+        {effectiveNext?.venueLabel || locationTitle || (validStart && timeZone) ? <p className="break-words text-xs leading-relaxed text-muted">
+          {[effectiveNext?.venueLabel, locationTitle !== effectiveNext?.venueLabel ? locationTitle : null, validStart ? timeZone : null].filter(Boolean).join(' · ')}
+        </p> : null}
         </div>
         </div>
 
+        {effectiveNext || (canManageCampaign && !customizeMode) ? <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         {showSchedulingCta || (!effectiveNext && canManageCampaign && !customizeMode) ? (
-          <div className="flex flex-wrap gap-3">
+          <>
             <button
               type="button"
               onClick={() => setScheduleModalOpen(true)}
@@ -251,7 +253,7 @@ export function SessionScheduleCard({
             >
               {t('campaign.dashboard.sessionScheduleSetupLink')}
             </Link>
-          </div>
+          </>
         ) : null}
 
         {effectiveNext ? (
@@ -264,7 +266,7 @@ export function SessionScheduleCard({
         ) : null}
 
         {editableUpcoming && canManageCampaign && !customizeMode ? (
-          <div className="flex flex-wrap gap-3">
+          <>
             <button
               type="button"
               onClick={() => setScheduleModalOpen(true)}
@@ -279,11 +281,11 @@ export function SessionScheduleCard({
             >
               Skip session
             </button>
-          </div>
+          </>
         ) : null}
 
         {effectiveNext && canRsvp && variant !== 'compact' ? (
-          <div className="grid grid-cols-3 gap-2">
+          <div role="group" aria-label="Session attendance" className="flex flex-wrap gap-1">
             {(
               [
                 ['ATTENDING', 'Attending'],
@@ -295,6 +297,7 @@ export function SessionScheduleCard({
                 key={value}
                 type="button"
                 disabled={rsvpBusy || customizeMode}
+                aria-pressed={rsvp === value}
                 onClick={() => void updateRsvp(value)}
                 className={`rounded-lg border px-2 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
                   rsvp === value
@@ -307,6 +310,7 @@ export function SessionScheduleCard({
             ))}
           </div>
         ) : null}
+        </div> : null}
       </div>
 
       <ScheduleSessionModal
