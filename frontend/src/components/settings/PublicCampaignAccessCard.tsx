@@ -3,6 +3,10 @@ import {
   CampaignDiscoverability,
   type CampaignDiscoverabilityValue,
 } from '@shared/campaignPolicy/discoverability';
+import {
+  publicCampaignAccessStatusMessage,
+  resolvePublicCampaignAccessStatus,
+} from '@shared/campaignPolicy/publicAccess';
 import { updateCampaignSettings } from '@/lib/campaigns';
 import { useBranding } from '@/contexts/BrandingContext';
 
@@ -23,7 +27,9 @@ export function PublicCampaignAccessCard({
   const [error, setError] = useState('');
   const { instanceRequiresLogin } = useBranding();
   const allowed = discoverability === CampaignDiscoverability.PUBLIC;
-  const instanceBlocked = instanceRequiresLogin;
+  const statusMessage = publicCampaignAccessStatusMessage(
+    resolvePublicCampaignAccessStatus({ instanceRequiresLogin }),
+  );
 
   const handleChange = async (checked: boolean) => {
     const next = checked
@@ -47,8 +53,7 @@ export function PublicCampaignAccessCard({
     <div className="rounded-lg border border-border bg-surface p-6">
       <h2 className="text-lg font-semibold text-white">Public campaign access</h2>
       <p className="mt-1 text-sm text-muted">
-        Allow visitors without an account to view content permitted by the
-        Observer&apos;s read capabilities and resource visibility restrictions.
+        Allow visitors to view campaign content using Observer permissions.
       </p>
       <label
         className={`mt-4 flex items-start gap-3 rounded-lg border px-3 py-3 ${
@@ -62,24 +67,10 @@ export function PublicCampaignAccessCard({
           disabled={!canEdit || saving}
           onChange={(event) => void handleChange(event.target.checked)}
         />
-        <span>
-          <span className="block text-sm font-medium text-foreground">
-            Allow visitors without an account
-          </span>
-          <span className="mt-0.5 block text-xs text-muted">
-            Requires public access to be allowed by the instance administrator.
-            This does not grant access to GM-only or otherwise restricted
-            resources.
-          </span>
-        </span>
+        <span className="text-sm font-medium text-foreground">Allow public access</span>
       </label>
-      {instanceBlocked ? (
-        <p className="mt-3 text-xs text-muted">
-          This instance currently requires login. Enabling campaign public access
-          marks eligible Observer-readable content for Public preview; live
-          anonymous campaign routes remain reserved until the instance
-          administrator allows public access.
-        </p>
+      {statusMessage ? (
+        <p className="mt-3 text-xs text-muted">{statusMessage}</p>
       ) : null}
       {error ? (
         <p className="mt-3 text-sm text-red-200">{error}</p>

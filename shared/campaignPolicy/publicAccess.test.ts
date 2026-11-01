@@ -1,10 +1,13 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ANONYMOUS_CAMPAIGN_ROUTES_AVAILABLE,
   INSTANCE_REQUIRES_LOGIN_DEFAULT,
   allowsAnonymousCampaignAccess,
   instanceRequiresLogin,
+  publicCampaignAccessStatusMessage,
   resolveAnonymousCampaignAccess,
+  resolvePublicCampaignAccessStatus,
   resolvePublicPreviewGate,
 } from './publicAccess.js';
 
@@ -90,5 +93,26 @@ describe('public access gates', () => {
       }),
       'none',
     );
+  });
+
+  it('distinguishes instance login from unshipped anonymous routes', () => {
+    assert.equal(ANONYMOUS_CAMPAIGN_ROUTES_AVAILABLE, false);
+    assert.equal(
+      resolvePublicCampaignAccessStatus({ instanceRequiresLogin: true }),
+      'instance-login',
+    );
+    assert.equal(
+      resolvePublicCampaignAccessStatus({ instanceRequiresLogin: false }),
+      'routes-unavailable',
+    );
+    assert.match(
+      publicCampaignAccessStatusMessage('instance-login') ?? '',
+      /requires login/,
+    );
+    assert.match(
+      publicCampaignAccessStatusMessage('routes-unavailable') ?? '',
+      /not yet supported/,
+    );
+    assert.equal(publicCampaignAccessStatusMessage('ready'), null);
   });
 });

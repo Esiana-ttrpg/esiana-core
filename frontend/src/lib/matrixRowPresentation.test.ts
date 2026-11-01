@@ -35,9 +35,10 @@ describe('matrix row presentation', () => {
     const chronology = rowFor(CampaignCapabilities.CHRONOLOGY_EDIT);
     assert.ok(view);
     assert.ok(chronology);
+    assert.equal(view.description, 'Access this campaign and its permitted content.');
+    assert.equal(matrixRowHelp(view), null);
     assert.equal(matrixRowSettingLink(view, 'matrix-review', false), null);
     assert.equal(matrixRowSettingLink(chronology, 'matrix-review', false), null);
-    assert.match(matrixRowHelp(view)?.explanation ?? '', /toggle above this matrix/);
   });
 
   it('explains Global Admin restrictions instead of linking', () => {

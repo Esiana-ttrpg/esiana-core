@@ -610,10 +610,7 @@ export function CollaborationPermissionsPanel({
         store overrides.
       </p>
       <div className="space-y-3">{MATRIX_SECTIONS.map(renderSection)}</div>
-      <p className="text-xs text-muted">
-        Public is not a role. When both public-access gates allow it, anonymous
-        visitors inherit Observer’s effective read permissions.
-      </p>
+      <p className="text-xs text-muted">Public is not a campaign role.</p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

@@ -491,13 +491,13 @@ export function CampaignSettingsPage() {
                         value: CampaignDiscoverability.PRIVATE,
                         label: 'Private',
                         description:
-                          'Only invited members can access this campaign. Anonymous visitors cannot view campaign content.',
+                          'Only invited members can access this campaign.',
                       },
                       {
                         value: CampaignDiscoverability.PUBLIC,
                         label: 'Public',
                         description:
-                          'Listed on the Global Hub and recruitment marketplace, and eligible for anonymous Observer reads if the instance administrator allows public access. Public discovery is not party membership.',
+                          'Listed on the Global Hub and recruitment marketplace. Public listing is not party membership.',
                       },
                     ] as const
                   ).map((option) => (
@@ -693,8 +693,6 @@ export function CampaignSettingsPage() {
                 Manage what each campaign role can access and change. View as
                 Player or Public only remaps visibility in the campaign workspace
                 — it does not impersonate accounts or change write capabilities.
-                Public preview can show what would be eligible even when the
-                instance currently requires login.
               </p>
               <div className="mt-4">
                 <CollaborationPermissionsPanel

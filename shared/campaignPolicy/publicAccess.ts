@@ -12,12 +12,42 @@
  * restrictions still apply.
  *
  * `SystemSetting.requireLogin` stores the instance gate (default true).
- * Until Pass 4, anonymous campaign routes are not enabled even when this
- * is false. Pass 4 must evaluate both gates; campaign public access alone
- * is never sufficient.
+ * Anonymous campaign routes are a separate, unshipped capability. Turning
+ * the instance gate off does not enable those routes.
  */
 
 export const INSTANCE_REQUIRES_LOGIN_DEFAULT = true;
+
+/** Flip when live anonymous campaign routes ship. */
+export const ANONYMOUS_CAMPAIGN_ROUTES_AVAILABLE = false;
+
+export type PublicCampaignAccessStatus =
+  | 'instance-login'
+  | 'routes-unavailable'
+  | 'ready';
+
+export function resolvePublicCampaignAccessStatus(input: {
+  instanceRequiresLogin?: boolean;
+}): PublicCampaignAccessStatus {
+  if (instanceRequiresLogin({ requireLogin: input.instanceRequiresLogin })) {
+    return 'instance-login';
+  }
+  if (!ANONYMOUS_CAMPAIGN_ROUTES_AVAILABLE) return 'routes-unavailable';
+  return 'ready';
+}
+
+export function publicCampaignAccessStatusMessage(
+  status: PublicCampaignAccessStatus,
+): string | null {
+  switch (status) {
+    case 'instance-login':
+      return 'This instance requires login. Public preview is available, but anonymous access is currently disabled.';
+    case 'routes-unavailable':
+      return 'Public access is not yet supported. Enabling this does not make the campaign publicly accessible.';
+    default:
+      return null;
+  }
+}
 
 export type InstancePublicAccessSettings = {
   requireLogin?: boolean;

@@ -80,11 +80,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
       {
         capability: CampaignCapabilities.CAMPAIGN_VIEW,
         label: 'View campaign',
-        description: 'Open the campaign workspace when invited.',
-        help: {
-          explanation:
-            'Anonymous visitors also need both public-access gates. Public campaign access is the toggle above this matrix.',
-        },
+        description: 'Access this campaign and its permitted content.',
         overridableRoles: NONE,
       },
       {
