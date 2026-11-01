@@ -18,6 +18,24 @@ export type SoftDeletePolicy =
   | 'never_revoke';
 export type RefreshCadence = 'realtime' | 'cached_5m' | 'nightly' | 'frozen';
 export type MetricDisplayPolicy = 'always' | 'adaptive';
+export type MetricUnit =
+  | 'words'
+  | 'pages'
+  | 'edits'
+  | 'entities'
+  | 'connections'
+  | 'campaigns'
+  | 'days'
+  | 'days_per_week'
+  | 'hour_of_day'
+  | 'count';
+export type MetricTimeSemantics = 'snapshot' | 'activity_in_period' | 'lifetime';
+export type MetricHistoricalCompleteness =
+  | 'measured'
+  | 'estimated'
+  | 'partial'
+  | 'unavailable';
+export type MetricReportingClock = 'real_world' | 'in_world';
 
 export interface MetricRelevanceThreshold {
   minWords?: number;
@@ -38,6 +56,13 @@ export interface MetricDefinition {
   privacy: MetricPrivacy;
   /** Human-readable aggregation note for maintainers. */
   aggregation: string;
+  unit: MetricUnit;
+  source: string;
+  timeSemantics: MetricTimeSemantics;
+  attributionRules: string;
+  historicalCompleteness: MetricHistoricalCompleteness;
+  /** Personal and campaign activity reporting uses the real-world clock. */
+  reportingClock: MetricReportingClock;
   softDeletePolicy: SoftDeletePolicy;
   refreshCadence: RefreshCadence;
   i18nLabelKey: string;
@@ -100,6 +125,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     },
     aggregation:
       'SUM(WikiPageStats.wordCount) WHERE page.deletedAt IS NULL AND campaignId',
+    unit: 'words',
+    source: 'WikiPageStats.wordCount',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Campaign-scoped current authorized records; not personal attribution.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.totalWords',
@@ -117,6 +148,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(wikiPage) WHERE deletedAt IS NULL',
+    unit: 'pages',
+    source: 'WikiPage',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Campaign-scoped current authorized records; not personal attribution.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.pageCount',
@@ -134,6 +171,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'buildCampaignSizeSnapshot characterCount',
+    unit: 'entities',
+    source: 'WikiPage + resolveWikiCodexType',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Campaign-scoped current authorized records; not personal attribution.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.characterCount',
@@ -151,6 +194,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'buildCampaignSizeSnapshot locationCount',
+    unit: 'entities',
+    source: 'WikiPage + resolveWikiCodexType',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Campaign-scoped current authorized records; not personal attribution.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.locationCount',
@@ -169,6 +218,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'buildCampaignSizeSnapshot organizationCount',
+    unit: 'entities',
+    source: 'WikiPage + resolveWikiCodexType',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Campaign-scoped current authorized records; not personal attribution.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.organizationCount',
@@ -187,6 +242,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(wikiLink) OR SUM outboundLinkCount',
+    unit: 'connections',
+    source: 'WikiLink / WikiPageStats.outboundLinkCount',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Campaign-scoped current authorized records; not personal attribution.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.connectionCount',
@@ -205,6 +266,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'buildCampaignSizeSnapshot mapCount',
+    unit: 'count',
+    source: 'Asset.type=map and/or image-display blocks',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Campaign-scoped current authorized records; not personal attribution.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.mapCount',
@@ -224,6 +291,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     },
     aggregation:
       'SUM(WikiPageStats.wordCount) WHERE WikiPage.createdByUserId = user AND deletedAt IS NULL — all non-archived campaigns',
+    unit: 'words',
+    source: 'WikiPage.createdByUserId + WikiPageStats.wordCount',
+    timeSemantics: 'snapshot',
+    attributionRules:
+      'Current word count on pages the user originally created — not words they typed. Later editors inflate this total.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.totalWordsCreated',
@@ -241,6 +315,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: true,
     },
     aggregation: 'COUNT(WikiPage) WHERE createdByUserId = user AND deletedAt IS NULL',
+    unit: 'pages',
+    source: 'WikiPage.createdByUserId',
+    timeSemantics: 'snapshot',
+    attributionRules: 'Undeleted pages originally created by the user in current non-archived memberships.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.pagesCreated',
@@ -258,6 +338,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(NarrativeEvent PAGE_EDITED) WHERE actorUserId = user',
+    unit: 'edits',
+    source: 'NarrativeEvent PAGE_EDITED.actorUserId',
+    timeSemantics: 'lifetime',
+    attributionRules: 'Each user-attributed PAGE_EDITED event counts once. Creates do not count. Owner-only.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.totalEdits',
@@ -275,6 +361,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: true,
     },
     aggregation: 'COUNT pages created by user with character codex type',
+    unit: 'entities',
+    source: 'WikiPage.createdByUserId + resolveWikiCodexType(templateType, metadata)',
+    timeSemantics: 'snapshot',
+    attributionRules:
+      'Created-page set filtered to CHARACTER. Page id is not passed, so tree category resolution does not run.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.charactersCreated',
@@ -293,6 +386,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: true,
     },
     aggregation: 'COUNT pages created by user with location codex type',
+    unit: 'entities',
+    source: 'WikiPage.createdByUserId + resolveWikiCodexType(templateType, metadata)',
+    timeSemantics: 'snapshot',
+    attributionRules:
+      'Created-page set filtered to LOCATION. Page id is not passed, so tree category resolution does not run.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.locationsCreated',
@@ -311,6 +411,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: true,
     },
     aggregation: 'COUNT pages created by user with organization codex type',
+    unit: 'entities',
+    source: 'WikiPage.createdByUserId + resolveWikiCodexType(templateType, metadata)',
+    timeSemantics: 'snapshot',
+    attributionRules:
+      'Created-page set filtered to ORGANIZATION. Page id is not passed, so tree category resolution does not run.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.organizationsCreated',
@@ -329,6 +436,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: true,
     },
     aggregation: 'COUNT(NarrativeEvent LINK_CREATED) WHERE actorUserId = user',
+    unit: 'connections',
+    source: 'NarrativeEvent LINK_CREATED.actorUserId',
+    timeSemantics: 'lifetime',
+    attributionRules: 'Each LINK_CREATED event by this actor. Derived EntityRelation rows are not authorship.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.connectionsCreated',
@@ -348,6 +461,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     },
     aggregation:
       'COUNT DISTINCT non-archived campaignId from memberships OR edit events — includes private campaigns',
+    unit: 'campaigns',
+    source: 'CampaignMember ∩ (WikiPage.createdByUserId ∪ NarrativeEvent.actorUserId)',
+    timeSemantics: 'lifetime',
+    attributionRules:
+      'Current membership intersected with created pages or any actor events. Public aggregates currently include private campaigns — documented leak, remediating is PR 2.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.campaignsContributedCount',
@@ -365,6 +485,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(NarrativeEvent PAGE_CREATED) in window',
+    unit: 'pages',
+    source: 'NarrativeEvent PAGE_CREATED',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Campaign-scoped user-source events in the reporting window.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.periodPagesCreated',
@@ -382,6 +508,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(NarrativeEvent PAGE_EDITED) in window',
+    unit: 'edits',
+    source: 'NarrativeEvent PAGE_EDITED',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Campaign-scoped user-source events in the reporting window.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.periodPagesEdited',
@@ -399,6 +531,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'Sum wordCount delta on PAGE_EDITED pages in window (approximation)',
+    unit: 'words',
+    source: 'WikiPageStats.wordCount of pages edited in window',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Approximation of growth, not measured words added.',
+    historicalCompleteness: 'estimated',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.periodWordsGrowth',
@@ -416,6 +554,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(NarrativeEvent LINK_CREATED) in window',
+    unit: 'connections',
+    source: 'NarrativeEvent LINK_CREATED',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Campaign-scoped user-source events in the reporting window.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.periodConnectionsCreated',
@@ -434,6 +578,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(NarrativeEvent PAGE_CREATED) on character pages in window',
+    unit: 'entities',
+    source: 'NarrativeEvent PAGE_CREATED + character pages',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Campaign-scoped user-source events in the reporting window.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.periodCharactersCreated',
@@ -452,6 +602,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'COUNT(NarrativeEvent PAGE_CREATED) on location pages in window',
+    unit: 'entities',
+    source: 'NarrativeEvent PAGE_CREATED + location pages',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Campaign-scoped user-source events in the reporting window.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.periodLocationsCreated',
@@ -471,6 +627,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     },
     aggregation:
       'SUM(max(metadata.wordDelta, 0)) from NarrativeEvent PAGE_EDITED in window',
+    unit: 'words',
+    source: 'NarrativeEvent.metadata.wordDelta',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Positive net deltas only; not added-versus-removed.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'cached_5m',
     i18nLabelKey: 'campaign.worldstats.periodWordsAdded',
@@ -489,6 +651,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'SUM(UserWritingDailyRollup.wordsAdded) in window',
+    unit: 'words',
+    source: 'UserWritingDailyRollup.wordsAdded (UTC 30-day window)',
+    timeSemantics: 'activity_in_period',
+    attributionRules:
+      'Owner-only. Positive net deltas from wiki saves and writing-session flushes; can double-count.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.wordsAdded',
@@ -508,6 +677,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     },
     aggregation:
       'Consecutive UTC days with editsCount > 0 or wordsAdded > 0 in UserWritingDailyRollup',
+    unit: 'days',
+    source: 'UserWritingDailyRollup (UTC; sessionCount also counts as active)',
+    timeSemantics: 'activity_in_period',
+    attributionRules:
+      'Owner-only. Walks UTC days backward from today. Code also treats sessionCount > 0 as an active day.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.writingStreak',
@@ -526,6 +702,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation: 'Active writing days per week over 30d from UserWritingDailyRollup',
+    unit: 'days_per_week',
+    source: 'UserWritingDailyRollup active days / 30 * 7',
+    timeSemantics: 'activity_in_period',
+    attributionRules: 'Owner-only. UTC active days. Not a weekday histogram.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.writingCadence',
@@ -545,6 +727,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     },
     aggregation:
       'SUM(UserWritingDailyRollup.substantialRevisions) in 30d; threshold 40% word change per save',
+    unit: 'edits',
+    source: 'UserWritingDailyRollup.substantialRevisions',
+    timeSemantics: 'activity_in_period',
+    attributionRules:
+      'Owner-only. Per-save increment when |net word delta| ≥ 40% of previous or new count. Same-length rewrites do not qualify.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.substantialRevisions',
@@ -564,6 +753,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     },
     aggregation:
       'peakHourUtc weighted by sessionMinutes from UserWritingDailyRollup over 30d',
+    unit: 'hour_of_day',
+    source: 'UserWritingDailyRollup.peakHourUtc + sessionMinutes',
+    timeSemantics: 'activity_in_period',
+    attributionRules:
+      'Owner-only. UTC hour from writing-session flushes only; wiki saves do not set hour.',
+    historicalCompleteness: 'estimated',
+    reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
     refreshCadence: 'realtime',
     i18nLabelKey: 'profile.creatorstats.favoriteWritingHour',
@@ -614,3 +810,30 @@ export function listMetricIds(kind?: MetricKind): MetricId[] {
     (id) => !kind || METRIC_REGISTRY[id].kind === kind,
   );
 }
+
+/** The 13 personal creator-attribution IDs frozen in Esiana 1.10 PR 1. */
+export const PERSONAL_ATTRIBUTION_METRIC_IDS = [
+  'attribution.totalWordsCreated',
+  'attribution.pagesCreated',
+  'attribution.totalEdits',
+  'attribution.charactersCreated',
+  'attribution.locationsCreated',
+  'attribution.organizationsCreated',
+  'attribution.connectionsCreated',
+  'attribution.campaignsContributedCount',
+  'attribution.wordsAdded',
+  'attribution.writingStreak',
+  'attribution.writingCadence',
+  'attribution.substantialRevisions',
+  'attribution.favoriteWritingHour',
+] as const satisfies readonly MetricId[];
+
+export const PUBLIC_PERSONAL_ATTRIBUTION_METRIC_IDS = [
+  'attribution.totalWordsCreated',
+  'attribution.pagesCreated',
+  'attribution.charactersCreated',
+  'attribution.locationsCreated',
+  'attribution.organizationsCreated',
+  'attribution.connectionsCreated',
+  'attribution.campaignsContributedCount',
+] as const satisfies readonly MetricId[];

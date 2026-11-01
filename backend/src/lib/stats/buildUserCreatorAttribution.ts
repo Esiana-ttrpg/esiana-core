@@ -24,6 +24,48 @@ function countByCodexType(
   ).length;
 }
 
+export function assembleLifetimeAttributionMetrics(input: {
+  createdPages: Array<{
+    campaignId: string;
+    templateType: string;
+    metadata: unknown;
+    stats?: { wordCount: number } | null;
+  }>;
+  editCount: number;
+  linkCount: number;
+  actorEventCampaignIds: string[];
+}): Partial<Record<MetricId, ReturnType<typeof metricValue>>> {
+  const totalWords = input.createdPages.reduce(
+    (sum, page) => sum + (page.stats?.wordCount ?? 0),
+    0,
+  );
+
+  const contributedCampaignIdSet = new Set<string>();
+  for (const page of input.createdPages) {
+    contributedCampaignIdSet.add(page.campaignId);
+  }
+  for (const campaignId of input.actorEventCampaignIds) {
+    contributedCampaignIdSet.add(campaignId);
+  }
+
+  return {
+    'attribution.totalWordsCreated': metricValue(totalWords),
+    'attribution.pagesCreated': metricValue(input.createdPages.length),
+    'attribution.totalEdits': metricValue(input.editCount),
+    'attribution.charactersCreated': metricValue(
+      countByCodexType(input.createdPages, 'CHARACTER'),
+    ),
+    'attribution.locationsCreated': metricValue(
+      countByCodexType(input.createdPages, 'LOCATION'),
+    ),
+    'attribution.organizationsCreated': metricValue(
+      countByCodexType(input.createdPages, 'ORGANIZATION'),
+    ),
+    'attribution.connectionsCreated': metricValue(input.linkCount),
+    'attribution.campaignsContributedCount': metricValue(contributedCampaignIdSet.size),
+  };
+}
+
 function buildWorldbuildingMix(
   pages: Array<{ templateType: string; metadata: unknown }>,
 ): WorldbuildingMixEntry[] {
@@ -57,16 +99,12 @@ export async function buildUserCreatorAttribution(
 
   if (campaignIds.length === 0) {
     const linkableCampaigns = await resolveLinkableCampaigns(userId, viewerUserId);
-    const metrics: Partial<Record<MetricId, ReturnType<typeof metricValue>>> = {
-        'attribution.totalWordsCreated': metricValue(0),
-        'attribution.pagesCreated': metricValue(0),
-        'attribution.totalEdits': metricValue(0),
-        'attribution.charactersCreated': metricValue(0),
-        'attribution.locationsCreated': metricValue(0),
-        'attribution.organizationsCreated': metricValue(0),
-        'attribution.connectionsCreated': metricValue(0),
-        'attribution.campaignsContributedCount': metricValue(0),
-      };
+    const metrics = assembleLifetimeAttributionMetrics({
+      createdPages: [],
+      editCount: 0,
+      linkCount: 0,
+      actorEventCampaignIds: [],
+    });
 
     const includeHabits =
       options?.includeOwnerHabits === true ||
@@ -128,35 +166,12 @@ export async function buildUserCreatorAttribution(
       }),
     ]);
 
-  const totalWords = createdPages.reduce(
-    (sum, page) => sum + (page.stats?.wordCount ?? 0),
-    0,
-  );
-
-  const contributedCampaignIdSet = new Set<string>();
-  for (const page of createdPages) {
-    contributedCampaignIdSet.add(page.campaignId);
-  }
-  for (const row of contributedCampaignIds) {
-    contributedCampaignIdSet.add(row.campaignId);
-  }
-
-  const metrics: Partial<Record<MetricId, ReturnType<typeof metricValue>>> = {
-    'attribution.totalWordsCreated': metricValue(totalWords),
-    'attribution.pagesCreated': metricValue(createdPages.length),
-    'attribution.totalEdits': metricValue(editCount),
-    'attribution.charactersCreated': metricValue(
-      countByCodexType(createdPages, 'CHARACTER'),
-    ),
-    'attribution.locationsCreated': metricValue(
-      countByCodexType(createdPages, 'LOCATION'),
-    ),
-    'attribution.organizationsCreated': metricValue(
-      countByCodexType(createdPages, 'ORGANIZATION'),
-    ),
-    'attribution.connectionsCreated': metricValue(linkCount),
-    'attribution.campaignsContributedCount': metricValue(contributedCampaignIdSet.size),
-  };
+  const metrics = assembleLifetimeAttributionMetrics({
+    createdPages,
+    editCount,
+    linkCount,
+    actorEventCampaignIds: contributedCampaignIds.map((row) => row.campaignId),
+  });
 
   const linkableCampaigns = await resolveLinkableCampaigns(userId, viewerUserId);
 
