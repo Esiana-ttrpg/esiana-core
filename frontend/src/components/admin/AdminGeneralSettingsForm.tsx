@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { AlertTriangle, Bell, Mail, Upload, UserCog } from 'lucide-react';
+import { AlertTriangle, Bell, Lock, Mail, Upload, UserCog } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { fetchAdminSettings, sendAdminSmtpTestEmail, updateAdminSettings } from '@/lib/adminSettings';
 import type { BannerDuration, SystemSettings } from '@/types/admin';
@@ -20,6 +20,7 @@ export function AdminGeneralSettingsForm() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [allowRegistrations, setAllowRegistrations] = useState(true);
+  const [requireLogin, setRequireLogin] = useState(true);
   const [allowedDomains, setAllowedDomains] = useState('');
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState('587');
@@ -85,6 +86,7 @@ export function AdminGeneralSettingsForm() {
 
   function applySettings(row: SystemSettings) {
     setAllowRegistrations(row.registration.allowRegistrations);
+    setRequireLogin(row.publicAccess?.requireLogin ?? true);
     setAllowedDomains(row.registration.allowedDomains);
     setSmtpHost(row.smtp.host);
     setSmtpPort(String(row.smtp.port));
@@ -187,6 +189,7 @@ export function AdminGeneralSettingsForm() {
     try {
       const updated = await updateAdminSettings({
         registration: { allowRegistrations, allowedDomains },
+        publicAccess: { requireLogin },
         smtp: {
           host: smtpHost,
           port: parsedSmtpPort,
@@ -319,6 +322,28 @@ export function AdminGeneralSettingsForm() {
               </p>
             )}
           </fieldset>
+        </div>
+      </AdminSectionCard>
+
+      <AdminSectionCard
+        title="Public access"
+        description="Control whether visitors must sign in before accessing public-facing Esiana."
+        icon={Lock}
+      >
+        <div className="space-y-3">
+          <ToggleRow
+            label="Require login to access Esiana"
+            checked={requireLogin}
+            onChange={setRequireLogin}
+            description="When enabled, visitors must sign in before accessing campaign content. When disabled, public-facing content can be viewed without an account, subject to campaign permissions."
+          />
+          <p className="text-xs text-muted">
+            Individual campaigns still control whether they are publicly
+            accessible. Disabling the login requirement does not make private
+            campaigns or restricted content public. Anonymous campaign routes
+            remain reserved for Pass 4; this setting is stored now and already
+            informs Public preview.
+          </p>
         </div>
       </AdminSectionCard>
 

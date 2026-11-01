@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BookOpen, PanelLeft } from 'lucide-react';
 import { EsianaLogo } from '@/components/brand/EsianaLogo';
+import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
 import { useOptionalAdminNav } from '@/contexts/AdminNavContext';
 import { useOptionalCampaignNav } from '@/contexts/CampaignNavContext';
@@ -11,7 +12,8 @@ import { HeaderAccountNav } from '@/components/layout/HeaderAccountNav';
 
 export function AppHeader() {
   const { t } = useTranslation();
-  const { globalTitle, globalLogoUrl } = useBranding();
+  const { globalTitle, globalLogoUrl, instanceRequiresLogin } = useBranding();
+  const { isAuthenticated } = useAuth();
   const [logoError, setLogoError] = useState(false);
   const campaignNav = useOptionalCampaignNav();
   const adminNav = useOptionalAdminNav();
@@ -70,7 +72,7 @@ export function AppHeader() {
 
         <div className="flex-1" />
 
-        {!showCampaignMenu && !showAdminMenu ? (
+        {!showCampaignMenu && !showAdminMenu && (isAuthenticated || !instanceRequiresLogin) ? (
           <Link
             to="/recruitment"
             className="hidden text-sm font-medium text-muted transition-colors hover:text-primary sm:inline"

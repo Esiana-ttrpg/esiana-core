@@ -101,9 +101,8 @@ export function resolveWorkspaceComposition(pathname: string): WorkspaceComposit
 
   if (first === 'dashboard') return PRESETS.dashboard;
 
-  if (first === 'settings' || first === 'transfer-ownership') {
-    return PRESETS.document;
-  }
+  if (first === 'settings') return PRESETS.studio;
+  if (first === 'transfer-ownership') return PRESETS.document;
 
   if (first === 'world-advance') return PRESETS.document;
 

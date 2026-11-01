@@ -57,6 +57,7 @@ export async function getCampaignLedgerHandler(
         campaignHandle,
         ctx.role,
         req.user?.id ?? null,
+        ctx.capabilities,
       ),
     ]);
 
@@ -107,6 +108,7 @@ export async function patchCampaignLedgerHandler(
       ctx.role,
       req.user.id,
       patch,
+      ctx.capabilities,
     );
     res.json({ ledger });
   } catch (err) {
@@ -204,7 +206,7 @@ export async function createLedgerEntryHandler(
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
-  if (!canContributeToLedger(ctx.role)) {
+  if (!canContributeToLedger(ctx.role, ctx.capabilities)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -217,6 +219,7 @@ export async function createLedgerEntryHandler(
       ctx.role,
       req.user.id,
       input,
+      ctx.capabilities,
     );
     res.status(201).json({ entry });
   } catch (err) {
@@ -279,6 +282,7 @@ export async function patchLedgerEntryHandler(
       req.user.id,
       String(req.params.id),
       patch,
+      ctx.capabilities,
     );
     res.json({ entry });
   } catch (err) {
@@ -302,6 +306,7 @@ export async function deleteLedgerEntryHandler(
       ctx.role,
       req.user.id,
       String(req.params.id),
+      ctx.capabilities,
     );
     res.status(204).send();
   } catch (err) {
@@ -331,7 +336,7 @@ export async function listLedgerSuggestionsHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canContributeToLedger(ctx.role)) {
+  if (!canContributeToLedger(ctx.role, ctx.capabilities)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -357,7 +362,7 @@ export async function acceptLedgerSuggestionHandler(
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
-  if (!canManageLedgerSettings(ctx.role)) {
+  if (!canManageLedgerSettings(ctx.role, ctx.capabilities)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -377,6 +382,7 @@ export async function acceptLedgerSuggestionHandler(
       campaignHandle: campaignHandleFromRequest(req),
       role: ctx.role,
       userId: req.user.id,
+      capabilities: ctx.capabilities,
       edits,
     });
     res.json(result);

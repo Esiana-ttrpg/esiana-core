@@ -95,6 +95,12 @@ export async function patchAdminSettings(
     if (allowedDomains !== undefined) data.allowedDomains = allowedDomains;
   }
 
+  const publicAccess = body.publicAccess as Record<string, unknown> | undefined;
+  if (publicAccess && typeof publicAccess === 'object') {
+    const requireLogin = optionalBoolean(publicAccess.requireLogin);
+    if (requireLogin !== undefined) data.requireLogin = requireLogin;
+  }
+
   const smtp = body.smtp as Record<string, unknown> | undefined;
   let smtpUpdated = false;
   if (smtp && typeof smtp === 'object') {
@@ -402,6 +408,7 @@ export async function patchAdminSettings(
     const discordUrl = optionalString(footer.discordUrl);
     const githubUrl = optionalString(footer.githubUrl);
     const alignment = optionalString(footer.alignment);
+    const showToUnauthorized = optionalBoolean(footer.showToUnauthorized);
 
     if (customText !== undefined) {
       data.footerCustomText = customText || null;
@@ -439,6 +446,9 @@ export async function patchAdminSettings(
         return;
       }
       data.footerAlignment = normalized;
+    }
+    if (showToUnauthorized !== undefined) {
+      data.footerShowToUnauthorized = showToUnauthorized;
     }
   }
 

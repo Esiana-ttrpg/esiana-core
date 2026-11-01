@@ -18,9 +18,11 @@ export async function buildSessionAudioBackup(campaignId: string) {
 }
 const segment = z.object({ id: z.string(), order: z.number().int(), startMs: z.number().int().nullable(), endMs: z.number().int().nullable(),
   text: z.string(), speaker: z.string().nullable(), groupId: z.string().nullable().optional(), fileId: z.string().nullable(), fileStartMs: z.number().int().nullable(), fileEndMs: z.number().int().nullable() });
-const settingsSchema = z.object({ enabled: z.boolean(), allowContributors: z.boolean(), allowChapters: z.boolean(), allowTranscripts: z.boolean(),
+const settingsSchema = z.object({ enabled: z.boolean(),
+  allowContributors: z.boolean().optional(), allowChapters: z.boolean().optional(), allowTranscripts: z.boolean().optional(),
   allowPov: z.boolean(), defaultVisibility: z.enum(['campaign', 'staff', 'uploader_and_managers']), maxStorageBytes: z.string().regex(/^\d+$/).nullable(),
-  monthlyRequests: z.number().int().nonnegative().nullable(), monthlyDurationMs: z.string().regex(/^\d+$/).nullable() });
+  monthlyRequests: z.number().int().nonnegative().nullable(), monthlyDurationMs: z.string().regex(/^\d+$/).nullable() })
+  .transform(({ allowContributors: _allowContributors, allowChapters: _allowChapters, allowTranscripts: _allowTranscripts, ...rest }) => rest);
 const schema = z.object({ version: z.literal(1), settings: settingsSchema.nullable().optional(), recordings: z.array(z.object({ id: z.string(), title: z.string(), uploadedByUserId: z.string(),
   visibility: z.enum(['campaign', 'staff', 'uploader_and_managers']), status: z.string(), durationMs: z.number().int().nonnegative(), isPrimary: z.boolean(),
   consentAcknowledgedAt: z.string().datetime().nullable().optional(),

@@ -32,8 +32,7 @@ test('external integrations complete the shared lifecycle with scoped bearer tok
   await audioSettings();
   await prisma.audioSettings.update({ where: { id: 'GLOBAL_AUDIO' }, data: { enabled: true } });
   assert.equal((await campaignAudioSettings(campaign.id)).enabled, true);
-  await prisma.campaignAudioSettings.update({ where: { campaignId: campaign.id }, data: { allowContributors: true, allowChapters: true, allowTranscripts: true } });
-  for (const capability of [C.AUDIO_CHAPTERS_EDIT, C.AUDIO_TRANSCRIPT_EDIT, C.AUDIO_TRANSCRIPT_PUBLISH]) {
+  for (const capability of [C.AUDIO_UPLOAD, C.AUDIO_CHAPTERS_EDIT, C.AUDIO_TRANSCRIPT_EDIT, C.AUDIO_TRANSCRIPT_PUBLISH]) {
     await prisma.campaignRoleCapabilityOverride.create({ data: { campaignId: campaign.id, role: 'PARTICIPANT', capability, effect: CapabilityOverrideEffect.GRANT } });
   }
   const issue = async (userId: string, scopes: string[]) => {
@@ -133,9 +132,13 @@ test('external integrations complete the shared lifecycle with scoped bearer tok
       assert.equal((await malformed(stranger.raw)).status, 403);
       assert.equal((await malformed(reader.raw)).status, 403);
       assert.equal((await malformed(writer.raw)).status, 400);
-      await prisma.campaignAudioSettings.update({ where: { campaignId: campaign.id }, data: { allowTranscripts: false } });
+      await prisma.campaignRoleCapabilityOverride.deleteMany({ where: { campaignId: campaign.id, role: 'PARTICIPANT', capability: C.AUDIO_TRANSCRIPT_EDIT } });
+      invalidateCampaignCapabilityOverrideCache(campaign.id);
       try { assert.equal((await malformed(writer.raw)).status, 403); }
-      finally { await prisma.campaignAudioSettings.update({ where: { campaignId: campaign.id }, data: { allowTranscripts: true } }); }
+      finally {
+        await prisma.campaignRoleCapabilityOverride.create({ data: { campaignId: campaign.id, role: 'PARTICIPANT', capability: C.AUDIO_TRANSCRIPT_EDIT, effect: CapabilityOverrideEffect.GRANT } });
+        invalidateCampaignCapabilityOverrideCache(campaign.id);
+      }
       await prisma.wikiPage.update({ where: { id: page.id }, data: { visibility: WikiVisibility.DM_ONLY } });
       try { assert.equal((await malformed(writer.raw)).status, 404); }
       finally { await prisma.wikiPage.update({ where: { id: page.id }, data: { visibility: WikiVisibility.PARTY } }); }
@@ -166,7 +169,10 @@ test('external integrations complete the shared lifecycle with scoped bearer tok
       assert.equal((await request(writer.raw, `${uploads}/${uploadId}`)).status, 404);
       assert.equal((await request(writer.raw, `${uploads}/${uploadId}/finalize`, 'POST', {})).status, 404);
       await prisma.wikiPage.update({ where: { id: page.id }, data: { visibility: WikiVisibility.PARTY } });
-      await prisma.campaignRoleCapabilityOverride.create({ data: { campaignId: campaign.id, role: 'PARTICIPANT', capability: C.ASSETS_UPLOAD, effect: CapabilityOverrideEffect.REVOKE } });
+      await prisma.campaignRoleCapabilityOverride.updateMany({
+        where: { campaignId: campaign.id, role: 'PARTICIPANT', capability: C.AUDIO_UPLOAD },
+        data: { effect: CapabilityOverrideEffect.REVOKE },
+      });
       invalidateCampaignCapabilityOverrideCache(campaign.id);
       assert.equal((await request(writer.raw, `${uploads}/${uploadId}/finalize`, 'POST', {})).status, 403);
       await prisma.campaignMember.delete({ where: { userId_campaignId: { userId: uploader.id, campaignId: campaign.id } } });

@@ -30,6 +30,11 @@ export interface WikiCampaignMeta {
   allowPlayerChronologyManagement?: boolean;
   chronologyContributor?: boolean;
   partyId?: string | null;
+  roleCapabilityOverrides?: readonly {
+    role: string;
+    capability: string;
+    effect: string;
+  }[];
   sidebarConfig?: import('@/lib/sidebarConfig').SidebarConfig;
   themePreset?: string;
   appearanceProfile?: import('@/lib/theme').ThemeProfile | null;

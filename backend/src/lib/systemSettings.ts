@@ -26,6 +26,7 @@ function serializeFooter(row: SystemSetting) {
     discordUrl: row.footerDiscordUrl ?? '',
     githubUrl: row.footerGithubUrl ?? '',
     alignment: sanitizeFooterAlignment(row.footerAlignment) ?? 'center',
+    showToUnauthorized: row.footerShowToUnauthorized ?? false,
   };
 }
 
@@ -47,6 +48,10 @@ export function serializeSystemSettings(row: SystemSetting) {
     registration: {
       allowRegistrations: row.allowRegistrations,
       allowedDomains: row.allowedDomains ?? '',
+    },
+    publicAccess: {
+      requireLogin: row.requireLogin ?? true,
+      allowRegistrations: row.allowRegistrations ?? true,
     },
     smtp: {
       host: row.smtpHost ?? '',
@@ -111,7 +116,10 @@ export function isSystemBannerActive(row: SystemSetting): boolean {
   return new Date() < row.systemBannerExpiresAt;
 }
 
-export function serializePublicSystemSettings(row: SystemSetting) {
+export function serializePublicSystemSettings(
+  row: SystemSetting,
+  options?: { userTableEmpty?: boolean },
+) {
   const active = isSystemBannerActive(row);
   const banner = active ? (row.systemBannerText?.trim() ?? '') : '';
   return {
@@ -132,11 +140,21 @@ export function serializePublicSystemSettings(row: SystemSetting) {
     footer: serializeFooter(row),
     defaultTimezone: row.defaultTimezone ?? DEFAULT_TIMEZONE,
     defaultUiLocale: resolveInstanceDefaultUiLocale(env.defaultUiLocale),
+    publicAccess: {
+      requireLogin: row.requireLogin ?? true,
+      allowRegistrations: row.allowRegistrations ?? true,
+      userTableEmpty: options?.userTableEmpty === true,
+    },
   };
 }
 
 export async function getOrCreateSystemSettings(): Promise<SystemSetting> {
   return bootstrapSystemSettings();
+}
+
+export async function getInstanceRequireLogin(): Promise<boolean> {
+  const row = await getOrCreateSystemSettings();
+  return row.requireLogin ?? true;
 }
 
 export function parseAllowedDomains(raw: string | null | undefined): string[] {

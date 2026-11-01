@@ -1,13 +1,10 @@
 import { SafetyPrivacySection } from '@/components/settings/SafetyPrivacySection';
 import { CampaignCapabilities as C } from '@shared/campaignPolicy/capabilities';
-import { apiFetch } from '@/lib/api';
-import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Brush, CalendarDays, Clock3, Copy, GitBranch, Plug, RefreshCw, Settings, Shield, Users, Volume2, Wrench, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom';
-import { CampaignSettingsNav, type CampaignSettingsNavGroup } from '@/components/campaign/CampaignSettingsNav';
 import { campaignSettingsSectionHref } from '@/lib/campaignSettingsNavigation';
+import { useCampaignSettingsChrome } from '@/hooks/useCampaignSettingsChrome';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWiki } from '@/contexts/WikiContext';
 import { StatusTab } from '@/components/StatusTab';
@@ -19,12 +16,9 @@ import { RecruitmentSettingsTab } from '@/components/campaign/RecruitmentSetting
 import { SchedulingSettingsTab } from '@/components/campaign/SchedulingSettingsTab';
 import { TimelineSettingsTab } from '@/components/campaign/TimelineSettingsTab';
 import { WorldDevelopmentSettingsTab } from '@/components/campaign/WorldDevelopmentSettingsTab';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageShell, type PageShellWidth } from '@/components/layout/PageShell';
 import { SidebarSettingsTab } from '@/components/campaign/SidebarSettingsTab';
-import { UserAvatar } from '@/components/ui/UserAvatar';
 import { CampaignAppearanceSettingsTab } from '@/components/campaign/CampaignAppearanceSettingsTab';
-import { IdentityPagePicker } from '@/components/campaign/IdentityPagePicker';
-import { MemberIdentityLabel } from '@/components/campaign/MemberIdentityLabel';
 import {
   isAppearanceProfileDefined,
   isThemePresetId,
@@ -55,52 +49,14 @@ import {
 import { DeleteCampaignModal } from '@/components/campaign/DeleteCampaignModal';
 import { ArchiveCampaignModal } from '@/components/campaign/ArchiveCampaignModal';
 import { useCampaignInviteLink } from '@/hooks/useCampaignInviteLink';
-import { CampaignInviteEmailForm } from '@/components/campaign/CampaignInviteEmailForm';
-import { CollaborationPermissionsPanel } from '@/components/settings/CollaborationPermissionsPanel';
+import { AccessSettingsPanel } from '@/components/settings/AccessSettingsPanel';
+import type { AccessRole, CampaignAccessMember } from '@/components/settings/AccessMembersPanel';
 import { CampaignAudioSettingsTab } from '@/components/campaign/CampaignAudioSettingsTab';
 import {
   campaignDashboardPath,
   campaignSettingsPath,
-  type CampaignSettingsTab,
 } from '@/lib/campaignPaths';
-import { isElevatedMembershipRole } from '@/types/domain';
 import { isCharacterWikiPage } from '@/lib/isCharacterWikiPage';
-
-const SETTINGS_TABS = [
-  'safety-privacy',
-  'general',
-  'access',
-  'recruitment',
-  'scheduling',
-  'audio',
-  'timeline',
-  'world-development',
-  'appearance',
-  'integrations',
-  'advanced',
-] as const satisfies readonly CampaignSettingsTab[];
-
-function parseSettingsTab(value: string | null): CampaignSettingsTab {
-  if (value && SETTINGS_TABS.includes(value as CampaignSettingsTab)) {
-    return value as CampaignSettingsTab;
-  }
-  return 'general';
-}
-
-type AccessRole = 'GAMEMASTER' | 'WRITER' | 'PARTICIPANT' | 'OBSERVER';
-
-interface CampaignAccessMember {
-  userId: string;
-  name: string;
-  email: string;
-  avatarUrl: string | null;
-  role: AccessRole;
-  isCampaignOwner: boolean;
-  identityPageId?: string | null;
-  identityPageTitle?: string | null;
-  playerContext?: string;
-  label?: string;
-}
 
 export function CampaignSettingsPage() {
   const { t } = useTranslation();
@@ -110,40 +66,22 @@ export function CampaignSettingsPage() {
   const { user } = useAuth();
   const { campaign: wikiCampaign, flatPages, refresh: refreshWiki } = useWiki();
   const { can } = useWiki();
-  const canReviewSafety = can(C.SAFETY_MANAGE);
-  const [safetyUnreadState, setSafetyUnreadState] = useState({ campaignHandle, count: 0 });
-  const safetyUnread = canReviewSafety && safetyUnreadState.campaignHandle === campaignHandle
-    ? safetyUnreadState.count : 0;
-  const setSafetyUnread = useCallback((count: number) => {
-    setSafetyUnreadState({ campaignHandle, count });
-  }, [campaignHandle]);
-  useEffect(() => {
-    let active = true;
-    setSafetyUnread(0);
-    if (!canReviewSafety) return;
-    void apiFetch<{ unread: boolean }[]>('/safety-privacy/requests?campaign=' + encodeURIComponent(campaignHandle))
-      .then(rows => { if (active) setSafetyUnread(rows.filter(r => r.unread).length); }).catch(() => {});
-    return () => { active = false; };
-  }, [campaignHandle, canReviewSafety, setSafetyUnread]);
-  const canManageSidebar =
-    wikiCampaign?.role === 'GAMEMASTER' || wikiCampaign?.role === 'WRITER';
-  const canManageAccess = wikiCampaign?.isCampaignOwner === true;
-  const canManageMemberIdentity =
-    wikiCampaign?.role === 'GAMEMASTER' || wikiCampaign?.role === 'WRITER';
-  const canAccessCampaignSettings =
-    canReviewSafety || (wikiCampaign?.role != null && isElevatedMembershipRole(wikiCampaign.role));
+  const {
+    activeTab,
+    requestedTab,
+    canManageSidebar,
+    canReviewSafety,
+    canAccessCampaignSettings,
+    setSafetyUnread,
+  } = useCampaignSettingsChrome();
+  const canManageAccess = can(C.CAMPAIGN_MANAGE_ROLES);
+  const canEditPublicAccess = can(C.CAMPAIGN_VISIBILITY_EDIT);
+  const canManageMemberIdentity = can(C.PAGE_EDIT_ANY);
 
   const characterPages = useMemo(
     () => flatPages.filter((page) => isCharacterWikiPage(page, flatPages)),
     [flatPages],
   );
-
-  const requestedTab = parseSettingsTab(searchParams.get('tab'));
-  const activeTab = !canManageSidebar && canReviewSafety
-    ? 'safety-privacy'
-    : requestedTab === 'safety-privacy' && !canReviewSafety
-      ? 'general'
-      : requestedTab;
 
   const inviteLink = useCampaignInviteLink(campaignHandle, {
     enabled: activeTab === 'access' && Boolean(campaignHandle),
@@ -302,6 +240,7 @@ export function CampaignSettingsPage() {
             : member,
         ),
       );
+      void refreshWiki();
     } catch (error) {
       console.error('Error updating member identity:', error);
       setAccessError(
@@ -403,38 +342,6 @@ export function CampaignSettingsPage() {
     }
   };
 
-  const settingsGroups = useMemo<CampaignSettingsNavGroup[]>(
-    () => [
-      {
-        label: t('campaign.settings.groupCampaign'),
-        items: canManageSidebar ? [
-          { id: 'general', label: t('campaign.settings.tabGeneral'), icon: Settings },
-          { id: 'appearance', label: t('campaign.settings.tabAppearance'), icon: Brush },
-          { id: 'access', label: t('campaign.settings.tabAccess'), icon: Users },
-          { id: 'recruitment', label: t('campaign.settings.tabRecruitment'), icon: UserPlus },
-        ] : [],
-      },
-      {
-        label: t('campaign.settings.groupSystems'),
-        items: canManageSidebar ? [
-          { id: 'scheduling', label: t('campaign.settings.tabScheduling'), icon: CalendarDays },
-          { id: 'timeline', label: 'Timeline', icon: Clock3 },
-          { id: 'world-development', label: t('campaign.settings.tabDevelopment'), icon: GitBranch },
-          { id: 'audio', label: 'Audio', icon: Volume2 },
-          { id: 'integrations', label: t('campaign.settings.tabIntegrations'), icon: Plug },
-        ] : [],
-      },
-      {
-        label: t('campaign.settings.groupAdministration'),
-        items: [
-          ...(canReviewSafety ? [{ id: 'safety-privacy' as const, label: t('profile.safety.title') + (safetyUnread ? ` (${safetyUnread})` : ''), icon: Shield }] : []),
-          ...(canManageSidebar ? [{ id: 'advanced' as const, label: t('campaign.settings.tabAdvanced'), icon: Wrench }] : []),
-        ],
-      },
-    ],
-    [canManageSidebar, canReviewSafety, safetyUnread, t],
-  );
-
   if (wikiCampaign && canAccessCampaignSettings && requestedTab !== activeTab) {
     return <Navigate to={campaignSettingsSectionHref(campaignHandle, searchParams, requestedTab, activeTab)} replace />;
   }
@@ -443,19 +350,11 @@ export function CampaignSettingsPage() {
     return <Navigate to={campaignDashboardPath(campaignHandle)} replace />;
   }
 
+  const contentWidth: PageShellWidth = activeTab === 'access' ? 'wide' : 'standard';
+
   return (
-    <PageShell width="wide" className="flex min-w-0 flex-col gap-4 md:flex-row md:gap-6">
-      <CampaignSettingsNav
-        key={campaignHandle}
-        campaignHandle={campaignHandle}
-        campaignName={wikiCampaign?.name || campaignHandle}
-        groups={settingsGroups}
-        activeTab={activeTab}
-        sectionHref={tab => campaignSettingsSectionHref(campaignHandle, searchParams, activeTab, tab)}
-        navigationLabel={t('campaign.settings.pageTitle')}
-        settingsLabel={t('campaign.settings.contextLabel')}
-      />
-      <div className="min-w-0 flex-1 space-y-4 md:space-y-6">
+    <PageShell width={contentWidth} className="min-w-0">
+      <div className="min-w-0 space-y-4 md:space-y-6">
       <h1 className="sr-only">{t('campaign.settings.pageTitle')}</h1>
       {activeTab === 'safety-privacy' ? (
         canReviewSafety ? <SafetyPrivacySection key={campaignHandle} campaignHandle={campaignHandle} onUnreadChange={setSafetyUnread} /> : null
@@ -494,7 +393,7 @@ export function CampaignSettingsPage() {
                         value: CampaignDiscoverability.PUBLIC,
                         label: 'Public',
                         description:
-                          'Listed on the Global Hub and recruitment marketplace. Public discovery applies to campaign visibility, not party membership.',
+                          'Listed on the Global Hub and recruitment marketplace. Public listing is not party membership.',
                       },
                     ] as const
                   ).map((option) => (
@@ -618,225 +517,35 @@ export function CampaignSettingsPage() {
             </div>
         </div>
       ) : activeTab === 'access' ? (
-        <div className="space-y-5">
-          <div className="rounded-lg border border-border bg-surface p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-white">Invite Access Link</h2>
-                <p className="mt-1 text-sm text-muted">
-                  Share this URL to invite users into your campaign workspace.
-                </p>
-              </div>
-              <div className="rounded-full border border-border bg-elevated px-3 py-1 text-xs font-medium text-foreground">
-                Token:{' '}
-                {inviteLink.inviteToken
-                  ? `${inviteLink.inviteToken.slice(0, 8)}...`
-                  : 'loading'}
-              </div>
-            </div>
-            {(accessError || inviteLink.error) && (
-              <div className="mt-4 rounded border border-red-700 bg-red-950/50 p-3 text-sm text-red-200">
-                {accessError || inviteLink.error}
-              </div>
-            )}
-            <div className="mt-4 rounded-lg border border-border bg-background p-3">
-              <code className="block overflow-x-auto text-sm text-foreground">
-                {inviteLink.inviteUrl ||
-                  (inviteLink.loading || accessLoading
-                    ? 'Loading invite link...'
-                    : 'Invite link unavailable')}
-              </code>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={() => void handleCopyInviteUrl()}
-                disabled={!inviteLink.inviteUrl}
-                className="inline-flex h-10 items-center gap-2 rounded-md border border-emerald-500/60 bg-emerald-500 px-4 text-sm font-semibold text-background transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <Copy className="h-4 w-4" />
-                {inviteLink.copiedInvite ? 'Copied!' : 'Copy'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleRotateInvite()}
-                disabled={!canManageAccess || rotatingInvite}
-                className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-elevated px-4 text-sm font-semibold text-foreground transition hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <RefreshCw className={`h-4 w-4 ${rotatingInvite ? 'animate-spin' : ''}`} />
-                {rotatingInvite ? 'Regenerating...' : 'Regenerate Link'}
-              </button>
-            </div>
-            <CampaignInviteEmailForm
-              disabled={!inviteLink.inviteUrl}
-              emailAvailable={inviteLink.emailAvailable}
-              onSend={inviteLink.sendInviteEmail}
-            />
-          </div>
-
-          {canManageAccess && (
-            <div className="rounded-lg border border-border bg-surface p-6">
-              <h3 className="text-lg font-semibold text-white">Player permissions</h3>
-              <p className="mt-1 text-sm text-muted">
-                Control what Players and Observers can manage without Game Master or Writer roles.
-                Defaults apply when no override is set.
-              </p>
-              <div className="mt-4">
-                <CollaborationPermissionsPanel
-                  campaignHandle={campaignHandle}
-                  isCampaignOwner={canManageAccess}
-                  onSaved={() => void refreshWiki()}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-lg border border-border bg-surface p-6">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-white">Active Member Roster</h3>
-                <p className="text-sm text-muted">
-                  Manage membership and link each player to their character page. Players link
-                  themselves from Campaign Home; linking assigns page ownership to that member.
-                </p>
-              </div>
-            </div>
-
-            {accessError && (
-              <div className="mb-4 rounded border border-red-700 bg-red-950/50 p-3 text-sm text-red-200">
-                {accessError}
-              </div>
-            )}
-
-            {accessLoading ? (
-              <div className="rounded border border-border bg-background p-4 text-sm text-muted">
-                Loading members...
-              </div>
-            ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="min-w-full divide-y divide-border bg-background">
-                  <thead className="bg-surface">
-                    <tr>
-                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">User</th>
-                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">Identity page</th>
-                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">Current Role</th>
-                      <th className="px-4 py-3 text-left META_SECTION_LABEL_CLASS">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {members.map((member) => {
-                      const isBusy = updatingMemberId === member.userId;
-                      const isIdentityBusy = updatingIdentityUserId === member.userId;
-                      const isDmMember = member.role === 'GAMEMASTER';
-                      const canEditIdentity = canManageMemberIdentity;
-                      return (
-                        <tr key={member.userId}>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              <UserAvatar
-                                name={member.name}
-                                avatarUrl={member.avatarUrl}
-                                userId={member.userId}
-                                size="sm"
-                              />
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <MemberIdentityLabel
-                                    source={{
-                                      label: member.label,
-                                      displayName: member.identityPageTitle,
-                                      playerContext: member.playerContext ?? member.name,
-                                      identityPageId: member.identityPageId,
-                                    }}
-                                    primaryClassName="text-sm font-medium text-foreground"
-                                  />
-                                  {isDmMember && (
-                                    <span
-                                      title="Campaign Creator / Dungeon Master"
-                                      className="rounded-full border border-primary/50 bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary"
-                                    >
-                                      Campaign Creator
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted">{member.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            {canEditIdentity ? (
-                              <IdentityPagePicker
-                                flatPages={flatPages}
-                                defaultOptions={characterPages}
-                                searchOptions={flatPages}
-                                placeholder="Search character pages…"
-                                clearLabel="No character linked"
-                                value={member.identityPageId ?? null}
-                                disabled={isIdentityBusy}
-                                onChange={(pageId) =>
-                                  handleMemberIdentityChange(member.userId, pageId)
-                                }
-                              />
-                            ) : (
-                              <span className="text-sm text-muted">
-                                {member.identityPageTitle ?? '—'}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <select
-                              value={member.role}
-                              disabled={!canManageAccess || member.isCampaignOwner || isBusy}
-                              onChange={(e) => void handleMemberRoleChange(member.userId, e.target.value as AccessRole)}
-                              className="h-9 rounded border border-border bg-elevated px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              <option value="GAMEMASTER">Game Master</option>
-                              <option value="WRITER">Writer</option>
-                              <option value="PARTICIPANT">Player</option>
-                              <option value="OBSERVER">Observer</option>
-                            </select>
-                          </td>
-                          <td className="px-4 py-3">
-                            {isDmMember ? (
-                              <span
-                                title="Dungeon Master membership is permanent."
-                                className="inline-flex h-9 items-center rounded border border-border bg-surface px-3 text-xs font-medium text-muted"
-                              >
-                                Protected
-                              </span>
-                            ) : (
-                              <div className="flex flex-wrap gap-2">
-                                {member.role === 'WRITER' &&
-                                members.some((entry) => entry.userId === user?.id && entry.isCampaignOwner) ? (
-                                  <button
-                                    type="button"
-                                    disabled={!canManageAccess || isBusy}
-                                    onClick={() => void handleOfferOwnership(member)}
-                                    className="h-9 rounded border border-primary/50 bg-primary/10 px-3 text-xs font-semibold text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
-                                  >
-                                    Offer ownership
-                                  </button>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  disabled={!canManageAccess || member.isCampaignOwner || isBusy}
-                                  onClick={() => void handleRemoveMember(member)}
-                                  className="h-9 rounded border border-red-700 bg-red-600 px-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
+        <AccessSettingsPanel
+          campaignHandle={campaignHandle}
+          members={members}
+          accessLoading={accessLoading}
+          accessError={accessError}
+          discoverability={discoverability}
+          canManageAccess={canManageAccess}
+          policyReady={Boolean(wikiCampaign)}
+          canEditPublicAccess={canEditPublicAccess}
+          canManageMemberIdentity={canManageMemberIdentity}
+          currentUserId={user?.id}
+          inviteLink={inviteLink}
+          rotatingInvite={rotatingInvite}
+          updatingMemberId={updatingMemberId}
+          updatingIdentityUserId={updatingIdentityUserId}
+          flatPages={flatPages}
+          characterPages={characterPages}
+          onDiscoverabilityChanged={(next) => {
+            setDiscoverability(next);
+            void refreshWiki();
+          }}
+          onCopyInviteUrl={() => void handleCopyInviteUrl()}
+          onRotateInvite={() => void handleRotateInvite()}
+          onMemberRoleChange={(userId, role) => void handleMemberRoleChange(userId, role)}
+          onMemberIdentityChange={handleMemberIdentityChange}
+          onRemoveMember={(member) => void handleRemoveMember(member)}
+          onOfferOwnership={(member) => void handleOfferOwnership(member)}
+          onPermissionsSaved={() => void refreshWiki()}
+        />
       ) : activeTab === 'recruitment' ? (
         <RecruitmentSettingsTab campaignHandle={campaignHandle} />
       ) : activeTab === 'scheduling' ? (

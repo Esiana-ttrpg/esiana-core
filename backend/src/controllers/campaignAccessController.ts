@@ -7,9 +7,11 @@ import {
 } from '../lib/acl.js';
 import { invalidateCampaignCapabilityOverrideCache } from '../lib/campaignScopeContext.js';
 import {
+  applyCampaignRoleOverrides,
   NON_OVERRIDABLE_CAPABILITIES,
   CapabilityOverrideEffect,
 } from '../../../shared/campaignPolicy/capabilityOverrides.js';
+import { roleCapabilitiesFor } from '../../../shared/campaignPolicy/roleGrants.js';
 import {
   ALL_CAMPAIGN_CAPABILITIES,
   CampaignCapabilities,
@@ -347,8 +349,18 @@ export async function updateCampaignMemberIdentity(
     const assigneeRole = isCampaignMemberRole(targetMembership.role)
       ? targetMembership.role
       : null;
+    const assigneeViewer = assigneeRole
+      ? applyCampaignRoleOverrides(
+          roleCapabilitiesFor(assigneeRole, {
+            allowPlayerChronologyManagement:
+              req.campaign!.allowPlayerChronologyManagement,
+          }),
+          req.campaign!.roleCapabilityOverrides,
+          assigneeRole,
+        )
+      : null;
 
-    if (!canViewWikiPage(identityPage.visibility, assigneeRole)) {
+    if (!canViewWikiPage(identityPage.visibility, assigneeViewer)) {
       res.status(400).json({
         error: 'Selected page is not visible to this member',
       });
@@ -516,6 +528,8 @@ export async function updateCampaignMemberRole(
       campaignId,
     });
   }
+
+  invalidateCampaignCapabilityOverrideCache(campaignId);
 
   res.json({
     member: {
@@ -706,6 +720,8 @@ export async function leaveCampaign(
 
 const COLLABORATIVE_OVERRIDE_CAPS = [
   CampaignCapabilities.SAFETY_SUBMIT,
+  CampaignCapabilities.SAFETY_MANAGE,
+  CampaignCapabilities.AUDIO_UPLOAD,
   CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,
@@ -713,10 +729,12 @@ const COLLABORATIVE_OVERRIDE_CAPS = [
   CampaignCapabilities.PAGE_CREATE,
   CampaignCapabilities.PAGE_EDIT_OWNED,
   CampaignCapabilities.PAGE_EDIT_PARTY,
+  CampaignCapabilities.WIKI_VIEW_PARTY,
   CampaignCapabilities.QUEST_EDIT,
   CampaignCapabilities.THREAD_EDIT,
   CampaignCapabilities.LEDGER_CONTRIBUTE,
   CampaignCapabilities.ASSETS_UPLOAD,
+  CampaignCapabilities.ASSETS_VIEW,
   CampaignCapabilities.ASSETS_DELETE_OWNED,
   CampaignCapabilities.CHRONOLOGY_EDIT,
 ] as const;

@@ -40,4 +40,39 @@ describe('campaignLedgerService permissions', () => {
       true,
     );
   });
+
+  it('honors capability overrides when a set is provided', () => {
+    const contribute = new Set(['ledger.contribute']);
+    const manage = new Set(['narrative.elevated_view']);
+    assert.equal(
+      canContributeToLedger(CampaignMemberRoles.OBSERVER, contribute),
+      true,
+    );
+    assert.equal(
+      canContributeToLedger(CampaignMemberRoles.PARTICIPANT, new Set()),
+      false,
+    );
+    assert.equal(
+      canEditLedgerEntry(
+        CampaignMemberRoles.OBSERVER,
+        'user-a',
+        { createdByUserId: 'user-a' },
+        contribute,
+      ),
+      true,
+    );
+    assert.equal(
+      canEditLedgerEntry(
+        CampaignMemberRoles.PARTICIPANT,
+        'user-a',
+        { createdByUserId: 'user-b' },
+        manage,
+      ),
+      true,
+    );
+    assert.equal(
+      canManageLedgerSettings(CampaignMemberRoles.PARTICIPANT, manage),
+      true,
+    );
+  });
 });

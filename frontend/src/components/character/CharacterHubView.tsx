@@ -384,7 +384,7 @@ export function CharacterHubView({
           isDMUser ? (
             <PlayerPerspectiveToggle
               value={playerPreview ? 'party' : 'dm'}
-              onChange={(next) => setPlayerPreview(next === 'party')}
+              onChange={(next) => setPlayerPreview(next !== 'dm')}
               ariaLabel="Character cast view perspective"
             />
           ) : null

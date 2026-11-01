@@ -176,6 +176,9 @@ model SystemSetting {
   id String @id @default("GLOBAL_CONFIG")
 
   allowRegistrations Boolean @default(true)
+  /// When true, visitors must sign in before public-facing campaign content.
+  /// Campaign public access is still required. Anonymous routes remain Pass 4.
+  requireLogin       Boolean @default(true)
   /// Comma- or newline-separated email domains (e.g. example.com, guild.org).
   allowedDomains     String?
 
@@ -231,6 +234,8 @@ model SystemSetting {
   footerDiscordUrl        String?
   footerGithubUrl         String?
   footerAlignment         String  @default("center")
+  /// When true, configured footer links appear for visitors who are not signed in.
+  footerShowToUnauthorized Boolean @default(false)
 
   /// Bell badge poll interval in seconds (30–300). Default 60 for SQLite-friendly load.
   notificationPollIntervalSeconds Int @default(60)
@@ -2336,9 +2341,6 @@ model CampaignAudioSettings {
   campaignId String @id
   enabled Boolean @default(true)
   transcriptionEnabled Boolean @default(false)
-  allowContributors Boolean @default(false)
-  allowChapters Boolean @default(false)
-  allowTranscripts Boolean @default(false)
   allowPov Boolean @default(false)
   defaultVisibility String @default("campaign")
   defaultConnectionId String?

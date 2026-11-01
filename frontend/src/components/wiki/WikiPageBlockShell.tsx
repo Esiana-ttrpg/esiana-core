@@ -85,8 +85,8 @@ export function WikiPageBlockShell({
                 title="Block visibility"
               >
                 <option value="Public">Public</option>
-                <option value="Party">Party-Visible</option>
-                <option value="DM_Only">DM/Co-DM Only</option>
+                <option value="Party">Campaign</option>
+                <option value="DM_Only">GM only</option>
               </select>
             </div>
             <button

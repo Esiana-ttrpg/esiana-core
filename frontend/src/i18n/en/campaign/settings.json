@@ -1,6 +1,7 @@
 {
   "campaign.settings.pageTitle": "Campaign Settings",
   "campaign.settings.contextLabel": "Settings",
+  "campaign.settings.back": "Back",
   "campaign.settings.groupCampaign": "Campaign",
   "campaign.settings.groupSystems": "Systems",
   "campaign.settings.groupAdministration": "Administration",

@@ -56,378 +56,6 @@ tags:
   - name: Import
   - name: System
 paths:
-  /api/safety-privacy/campaigns:
-    get:
-      tags:
-        - Safety & Privacy
-      summary: List campaigns eligible for a personal request
-      security:
-        - cookieAuth: []
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SafetyPrivacyCampaign"
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: &a2
-                type: object
-                properties:
-                  error: &a1
-                    type: string
-                  code: *a1
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
-  /api/safety-privacy/recipients/{handle}:
-    get:
-      tags:
-        - Safety & Privacy
-      summary: Disclose current eligible reviewers before submission
-      security:
-        - cookieAuth: []
-      parameters:
-        - in: path
-          name: handle
-          required: true
-          schema: *a1
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SafetyPrivacyReviewer"
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: *a2
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
-  /api/safety-privacy/recordings:
-    get:
-      tags:
-        - Safety & Privacy
-      summary: Discover visible recordings associated with attendance or upload
-      security:
-        - cookieAuth: []
-      description: Grouped by campaign/session. Uses existing session and recording
-        visibility checks. Attendance or association is discovery only and is
-        never required to submit a concern.
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SafetyPrivacyRecording"
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: *a2
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
-  /api/safety-privacy/requests:
-    get:
-      tags:
-        - Safety & Privacy
-      summary: List own requests, or a capability-authorized campaign inbox
-      security:
-        - cookieAuth: []
-      description: Without campaign, returns only the authenticated requester's
-        history, including after departure. With campaign, requires current
-        safety.manage. Global administration grants no access.
-      parameters:
-        - in: query
-          name: campaign
-          schema: *a1
-          description: Campaign handle; requires safety.manage.
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SafetyPrivacyRequestListItem"
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: *a2
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
-    post:
-      tags:
-        - Safety & Privacy
-      summary: Submit a private Safety & Privacy request
-      security:
-        - cookieAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SafetyPrivacyCreate"
-      description: Requires safety.submit for current members, or retained
-        participation eligibility for former members. Does not change or delete
-        related content. Notifications contain only neutral wording and an
-        authenticated request link.
-      responses:
-        "201":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SafetyPrivacyRequest"
-        "400":
-          description: Invalid payload or incomplete reference
-          content:
-            application/json:
-              schema: *a2
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: *a2
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "409":
-          description: Reviewer list changed or no eligible reviewers
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
-  /api/safety-privacy/requests/{id}:
-    get:
-      tags:
-        - Safety & Privacy
-      summary: Read a private request, conversation and status history
-      security:
-        - cookieAuth: []
-      parameters:
-        - &a3
-          in: path
-          name: id
-          required: true
-          schema: *a1
-      description: Only the requester (including former members) or a current
-        safety.manage reviewer may read this. Records the viewed revision for the
-        reviewer unread count. Does not hydrate related content or bypass content
-        permissions.
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SafetyPrivacyDetail"
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: *a2
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
-  /api/safety-privacy/requests/{id}/messages:
-    post:
-      tags:
-        - Safety & Privacy
-      summary: Add a private request message
-      security:
-        - cookieAuth: []
-      parameters:
-        - *a3
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required:
-                - body
-              properties:
-                body:
-                  type: string
-                  minLength: 1
-                  maxLength: 10000
-      responses:
-        "201":
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SafetyPrivacyMessage"
-        "400":
-          description: Invalid message
-          content:
-            application/json:
-              schema: *a2
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: *a2
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
-  /api/safety-privacy/requests/{id}/status:
-    patch:
-      tags:
-        - Safety & Privacy
-      summary: Change request status or reopen a terminal request
-      security:
-        - cookieAuth: []
-      parameters:
-        - *a3
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SafetyPrivacyStatusUpdate"
-      responses:
-        "200":
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  updated:
-                    const: true
-        "400":
-          description: Invalid transition or missing outcome
-          content:
-            application/json:
-              schema: *a2
-        "401":
-          description: Session authentication required
-          content:
-            application/json:
-              schema: *a2
-        "403":
-          description: Insufficient capability
-          content:
-            application/json:
-              schema: *a2
-        "404":
-          description: Request or campaign unavailable
-          content:
-            application/json:
-              schema: *a2
-        "409":
-          description: Request revision changed
-          content:
-            application/json:
-              schema: *a2
-        "429":
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema: *a2
   # BEGIN GENERATED SESSION AUDIO API
   /api/campaigns/{campaignHandle}/audio/settings:
     get:
@@ -538,12 +166,6 @@ paths:
                 enabled:
                   type: boolean
                 transcriptionEnabled:
-                  type: boolean
-                allowContributors:
-                  type: boolean
-                allowChapters:
-                  type: boolean
-                allowTranscripts:
                   type: boolean
                 allowPov:
                   type: boolean
@@ -3800,6 +3422,378 @@ paths:
                   error:
                     type: string
   # END GENERATED SESSION AUDIO API
+  /api/safety-privacy/campaigns:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: List campaigns eligible for a personal request
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyCampaign"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: &a2
+                type: object
+                properties:
+                  error: &a1
+                    type: string
+                  code: *a1
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/recipients/{handle}:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: Disclose current eligible reviewers before submission
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: handle
+          required: true
+          schema: *a1
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyReviewer"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/recordings:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: Discover visible recordings associated with attendance or upload
+      security:
+        - cookieAuth: []
+      description: Grouped by campaign/session. Uses existing session and recording
+        visibility checks. Attendance or association is discovery only and is
+        never required to submit a concern.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyRecording"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: List own requests, or a capability-authorized campaign inbox
+      security:
+        - cookieAuth: []
+      description: Without campaign, returns only the authenticated requester's
+        history, including after departure. With campaign, requires current
+        safety.manage. Global administration grants no access.
+      parameters:
+        - in: query
+          name: campaign
+          schema: *a1
+          description: Campaign handle; requires safety.manage.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SafetyPrivacyRequestListItem"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+    post:
+      tags:
+        - Safety & Privacy
+      summary: Submit a private Safety & Privacy request
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafetyPrivacyCreate"
+      description: Requires safety.submit for current members, or retained
+        participation eligibility for former members. Does not change or delete
+        related content. Notifications contain only neutral wording and an
+        authenticated request link.
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyPrivacyRequest"
+        "400":
+          description: Invalid payload or incomplete reference
+          content:
+            application/json:
+              schema: *a2
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "409":
+          description: Reviewer list changed or no eligible reviewers
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests/{id}:
+    get:
+      tags:
+        - Safety & Privacy
+      summary: Read a private request, conversation and status history
+      security:
+        - cookieAuth: []
+      parameters:
+        - &a3
+          in: path
+          name: id
+          required: true
+          schema: *a1
+      description: Only the requester (including former members) or a current
+        safety.manage reviewer may read this. Records the viewed revision for the
+        reviewer unread count. Does not hydrate related content or bypass content
+        permissions.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyPrivacyDetail"
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests/{id}/messages:
+    post:
+      tags:
+        - Safety & Privacy
+      summary: Add a private request message
+      security:
+        - cookieAuth: []
+      parameters:
+        - *a3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - body
+              properties:
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 10000
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SafetyPrivacyMessage"
+        "400":
+          description: Invalid message
+          content:
+            application/json:
+              schema: *a2
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
+  /api/safety-privacy/requests/{id}/status:
+    patch:
+      tags:
+        - Safety & Privacy
+      summary: Change request status or reopen a terminal request
+      security:
+        - cookieAuth: []
+      parameters:
+        - *a3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SafetyPrivacyStatusUpdate"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    const: true
+        "400":
+          description: Invalid transition or missing outcome
+          content:
+            application/json:
+              schema: *a2
+        "401":
+          description: Session authentication required
+          content:
+            application/json:
+              schema: *a2
+        "403":
+          description: Insufficient capability
+          content:
+            application/json:
+              schema: *a2
+        "404":
+          description: Request or campaign unavailable
+          content:
+            application/json:
+              schema: *a2
+        "409":
+          description: Request revision changed
+          content:
+            application/json:
+              schema: *a2
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema: *a2
   /api/campaigns/{campaignHandle}/chronology/{entityType}/{entityId}/page:
     put:
       tags: [Chronology]

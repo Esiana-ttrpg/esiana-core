@@ -16,9 +16,17 @@ const groups: CampaignSettingsNavGroup[] = [
 function Harness() {
   const [params] = useSearchParams();
   const tab = (params.get('tab') || 'general') as CampaignSettingsTab;
-  return <CampaignSettingsNav campaignHandle="florence" campaignName="Florence" groups={groups} activeTab={tab}
-    navigationLabel="Campaign Settings" settingsLabel="Settings"
-    sectionHref={next => campaignSettingsSectionHref('florence', params, tab, next)} />;
+  return (
+    <CampaignSettingsNav
+      groups={groups}
+      activeTab={tab}
+      navigationLabel="Campaign Settings"
+      backHref="/campaigns/florence/party"
+      backLabel="Back"
+      sectionHref={next => campaignSettingsSectionHref('florence', params, tab, next)}
+      onClose={() => {}}
+    />
+  );
 }
 
 const restore: (() => void)[] = [];
@@ -38,23 +46,30 @@ async function mount(children: ReactNode) {
   return { container, unmount: () => act(async () => root.unmount()) };
 }
 
-test('Dashboard remains outside collapsed navigation; all grouped sections use real links', async () => {
+test('Back remains outside settings navigation; all grouped sections use real links', async () => {
   const ui = await mount(<RouterProvider router={createMemoryRouter([{ path: '*', element: <Harness /> }], { initialEntries: ['/campaigns/florence/settings'] })} />);
   try {
-    const dashboard = ui.container.querySelector('a')!;
+    const back = ui.container.querySelector('a')!;
     const nav = ui.container.querySelector('nav')!;
-    expect(dashboard.textContent).toBe('Dashboard');
-    expect(dashboard.getAttribute('href')).toBe('/campaigns/florence/dashboard');
-    expect(nav.contains(dashboard)).toBe(false);
+    expect(back.textContent).toBe('Back');
+    expect(back.getAttribute('href')).toBe('/campaigns/florence/party');
+    expect(nav.contains(back)).toBe(false);
     expect(nav.querySelectorAll('a')).toHaveLength(11);
-    expect(Array.from(nav.querySelectorAll('h2')).map(node => node.textContent)).toEqual(['Campaign', 'Systems', 'Administration']);
-    const toggle = ui.container.querySelector('button')!;
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    await act(async () => { toggle.click(); });
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    await act(async () => { (nav.querySelector('a[href*="tab=appearance"]') as HTMLAnchorElement).click(); });
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe('appearance');
+    expect(Array.from(nav.querySelectorAll('p')).map(node => node.textContent)).toEqual(['Campaign', 'Systems', 'Administration']);
+    expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe('general');
+  } finally { await ui.unmount(); }
+});
+
+test('switching settings sections does not change the Back destination', async () => {
+  const router = createMemoryRouter([{ path: '*', element: <Harness /> }], { initialEntries: ['/campaigns/florence/settings'] });
+  const ui = await mount(<RouterProvider router={router} />);
+  try {
+    const back = () => ui.container.querySelector('a[aria-label="Back"]');
+    expect(back()?.getAttribute('href')).toBe('/campaigns/florence/party');
+    await act(async () => { (ui.container.querySelector('a[href*="tab=appearance"]') as HTMLAnchorElement).click(); });
+    expect(router.state.location.search).toBe('?tab=appearance');
+    expect(back()?.getAttribute('href')).toBe('/campaigns/florence/party');
+    expect(ui.container.querySelector('[aria-current="page"]')?.textContent).toBe('appearance');
   } finally { await ui.unmount(); }
 });
 

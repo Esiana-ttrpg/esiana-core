@@ -153,7 +153,7 @@ export function IdentityPagePicker({
   }
 
   return (
-    <div ref={containerRef} className="relative min-w-[12rem] flex-1">
+    <div ref={containerRef} className="relative min-w-0 w-full flex-1">
       <div className="flex items-center gap-1">
         <input
           ref={inputRef}

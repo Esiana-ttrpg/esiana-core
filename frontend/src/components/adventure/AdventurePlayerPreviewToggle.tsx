@@ -8,13 +8,14 @@ export function AdventurePlayerPreviewToggle({ className = '' }: { className?: s
     return null;
   }
 
-  const { playerPreview, setPlayerPreview } = workspace;
+  const { perspective, setPerspective } = workspace;
 
   return (
     <PlayerPerspectiveToggle
       className={className}
-      value={playerPreview ? 'party' : 'dm'}
-      onChange={(next) => setPlayerPreview(next === 'party')}
+      value={perspective}
+      onChange={setPerspective}
+      publicLabel="Public"
       ariaLabel="Adventure view perspective"
     />
   );

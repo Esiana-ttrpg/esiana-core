@@ -44,6 +44,7 @@ function elevatedCtx() {
 test('visibility adapters normalize domain enums', () => {
   assert.equal(fromChronologyVisibility('DM_ONLY'), NarrativeVisibilityTier.ELEVATED_ONLY);
   assert.equal(fromWikiMapVisibility('DM_Only'), NarrativeVisibilityTier.ELEVATED_ONLY);
+  assert.equal(fromWikiMapVisibility('not-a-tier'), NarrativeVisibilityTier.ELEVATED_ONLY);
   assert.equal(fromRelationVisibility('SECRET'), NarrativeVisibilityTier.SECRET);
 });
 

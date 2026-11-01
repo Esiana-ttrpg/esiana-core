@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ImageIcon, PanelBottom, Palette, RotateCcw } from 'lucide-react';
 import { useBranding } from '@/contexts/BrandingContext';
 import { AppearanceBuilder } from '@/components/appearance/AppearanceBuilder';
-import { AdminSectionCard, FieldLabel } from '@/components/admin/AdminSectionCard';
+import { AdminSectionCard, FieldLabel, ToggleRow } from '@/components/admin/AdminSectionCard';
 import {
   controlClasses,
   secondaryButtonClasses,
@@ -45,6 +45,7 @@ export function AdminAppearanceTab() {
   const [footerDiscordUrl, setFooterDiscordUrl] = useState('');
   const [footerGithubUrl, setFooterGithubUrl] = useState('');
   const [footerAlignment, setFooterAlignment] = useState<FooterAlignment>('center');
+  const [footerShowToUnauthorized, setFooterShowToUnauthorized] = useState(false);
   const [themeProfile, setThemeProfile] = useState<ThemeProfile>(DEFAULT_THEME_PROFILE);
   const [showToast, setShowToast] = useState(false);
   const {
@@ -84,6 +85,7 @@ export function AdminAppearanceTab() {
         setFooterDiscordUrl(footer.discordUrl);
         setFooterGithubUrl(footer.githubUrl);
         setFooterAlignment(footer.alignment);
+        setFooterShowToUnauthorized(footer.showToUnauthorized);
         const profile = brandingToThemeProfile(row.branding);
         setThemeProfile(profile);
         applySystemBrandingSnapshot(row.branding, footer);
@@ -121,6 +123,7 @@ export function AdminAppearanceTab() {
         discordUrl: footerDiscordUrl.trim(),
         githubUrl: footerGithubUrl.trim(),
         alignment: footerAlignment,
+        showToUnauthorized: footerShowToUnauthorized,
       };
 
       const settings = await updateAdminSettings({
@@ -222,7 +225,7 @@ export function AdminAppearanceTab() {
 
       <AdminSectionCard
         title="Footer"
-        description="Configure site-wide footer text and links shown on hub and campaign pages."
+        description="Configure site-wide footer text and links shown on hub and campaign pages. Links stay off the sign-in landing page unless you opt in below."
         icon={PanelBottom}
       >
         <div className="space-y-4">
@@ -279,6 +282,13 @@ export function AdminAppearanceTab() {
               />
             </div>
           </div>
+
+          <ToggleRow
+            label="Show footer links to visitors who are not signed in"
+            checked={footerShowToUnauthorized}
+            onChange={setFooterShowToUnauthorized}
+            description="Off by default. When enabled, configured Terms, Privacy, Discord, and GitHub links appear on the unauthorized landing page and other unsigned-in surfaces."
+          />
 
           <fieldset className="space-y-3">
             <legend className="text-sm font-medium text-foreground">Alignment</legend>

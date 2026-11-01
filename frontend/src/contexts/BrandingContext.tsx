@@ -11,6 +11,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useDocumentBranding } from '@/hooks/useDocumentBranding';
 import { DEFAULT_FOOTER_CONFIG, normalizeFooterConfig } from '@/lib/footerConfig';
+import { INSTANCE_REQUIRES_LOGIN_DEFAULT } from '@shared/campaignPolicy/publicAccess';
 import { fetchPublicSystemStatus } from '@/lib/publicSystem';
 import { fetchUserProfile } from '@/lib/user';
 import type { FooterConfig, PublicSystemStatus, SystemBrandingSettings } from '@/types/admin';
@@ -56,6 +57,12 @@ export interface BrandingState {
     footer?: FooterConfig,
   ) => void;
   refreshBranding: (options?: { preservePreview?: boolean }) => void;
+  /** Instance login gate. Campaign public access is still required. */
+  instanceRequiresLogin: boolean;
+  allowRegistrations: boolean;
+  /** True when no users exist yet. First local/OIDC signup is still allowed. */
+  userTableEmpty: boolean;
+  brandingReady: boolean;
 }
 
 const BrandingContext = createContext<BrandingState | null>(null);
@@ -72,6 +79,12 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   const [allowCampaignSystemOverride, setAllowCampaignSystemOverride] = useState(true);
   const [campaignPref, setCampaignPref] = useState<Partial<ThemeProfile> | null>(null);
   const [previewOverlay, setPreviewOverlayState] = useState<ThemeProfile | null>(null);
+  const [instanceRequiresLogin, setInstanceRequiresLogin] = useState(
+    INSTANCE_REQUIRES_LOGIN_DEFAULT,
+  );
+  const [allowRegistrations, setAllowRegistrations] = useState(false);
+  const [userTableEmpty, setUserTableEmpty] = useState(false);
+  const [brandingReady, setBrandingReady] = useState(false);
 
   const userPrefKey = themeProfileSignature(userPref);
   const campaignPrefKey = themeProfileSignature(campaignPref);
@@ -136,6 +149,11 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
 
   const ingestPublicSystemStatus = useCallback(
     (status: PublicSystemStatus) => {
+      setInstanceRequiresLogin(
+        status.publicAccess?.requireLogin ?? INSTANCE_REQUIRES_LOGIN_DEFAULT,
+      );
+      setAllowRegistrations(status.publicAccess?.allowRegistrations === true);
+      setUserTableEmpty(status.publicAccess?.userTableEmpty === true);
       applySystemBrandingSnapshot(
         {
           globalTitle: status.globalTitle,
@@ -153,8 +171,16 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
   );
 
   const loadSystemBranding = useCallback(async () => {
-    const status = await fetchPublicSystemStatus();
-    ingestPublicSystemStatus(status);
+    try {
+      const status = await fetchPublicSystemStatus();
+      ingestPublicSystemStatus(status);
+    } catch {
+      setInstanceRequiresLogin(INSTANCE_REQUIRES_LOGIN_DEFAULT);
+      setAllowRegistrations(false);
+      setUserTableEmpty(false);
+    } finally {
+      setBrandingReady(true);
+    }
   }, [ingestPublicSystemStatus]);
 
   useDocumentBranding(globalTitle, faviconUrl);
@@ -238,6 +264,10 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       setCampaignAppearance,
       applySystemBrandingSnapshot,
       refreshBranding,
+      instanceRequiresLogin,
+      allowRegistrations,
+      userTableEmpty,
+      brandingReady,
     }),
     [
       globalTitle,
@@ -255,6 +285,10 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       setCampaignAppearance,
       applySystemBrandingSnapshot,
       refreshBranding,
+      instanceRequiresLogin,
+      allowRegistrations,
+      userTableEmpty,
+      brandingReady,
     ],
   );
 

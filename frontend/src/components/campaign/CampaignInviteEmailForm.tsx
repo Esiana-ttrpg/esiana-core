@@ -5,12 +5,14 @@ interface CampaignInviteEmailFormProps {
   disabled?: boolean;
   emailAvailable?: boolean;
   onSend: (email: string) => Promise<{ ok: boolean; error?: string; to?: string }>;
+  className?: string;
 }
 
 export function CampaignInviteEmailForm({
   disabled = false,
   emailAvailable = true,
   onSend,
+  className = 'space-y-3',
 }: CampaignInviteEmailFormProps) {
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
@@ -38,7 +40,7 @@ export function CampaignInviteEmailForm({
   const formDisabled = disabled || !emailAvailable;
 
   return (
-    <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 space-y-3">
+    <form onSubmit={(event) => void handleSubmit(event)} className={className}>
       <label className="block text-sm text-muted">
         Email invite
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">

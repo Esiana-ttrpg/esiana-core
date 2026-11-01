@@ -1,281 +1,228 @@
 # Campaign access model
 
-**Status:** Phase 1 implemented (2026-06)  
+**Status:** Permissions & visibility redesign (Passes 1–3 and 5)  
 **Code:** [`shared/campaignPolicy/`](../../shared/campaignPolicy/)  
-**Migration:** [`backend/prisma/migrations/20260604140000_campaign_access_framework/`](../../backend/prisma/migrations/20260604140000_campaign_access_framework/)  
-**Related:** [narrative-projection-semantics.md](./narrative-projection-semantics.md) (read-path visibility; separate from write ACL), [capability-migration-audit.md](./capability-migration-audit.md) (Phase 2 migration plan)
+**Related:** [narrative-projection-semantics.md](./narrative-projection-semantics.md)
 
 ---
 
 ## Purpose
 
-Campaign authorization is split into **three authority layers** so platform control, container administration, and narrative collaboration do not collapse into a single “DM” concept. Write access is resolved through a centralized capability policy; read access for hidden lore continues through narrative projection and resource visibility tiers.
+Campaign authorization is three stacked layers plus per-resource restrictions. Effective access is:
+
+`campaign capabilities (role matrix + overrides + owner/GM union) → module defaults → explicit resource restrictions`
+
+System Admin is instance-level only. Public/Anonymous is not a role. Wiki & Pages grants do not authorize Adventure, Quests, or Characters just because those modules store `WikiPage` rows.
 
 ---
 
-## Three authority layers
+## Authority layers
 
-| Layer | Scope | Mechanism | Examples |
-|-------|--------|-----------|----------|
-| **Application administration** | Entire product | `User.role` = `SYSTEM_ADMIN` + [`systemAdmin`](../../backend/src/middleware/systemAdmin.ts) middleware | Moderation, system settings, cross-tenant ops |
-| **Campaign administration** | One campaign container | `Campaign.campaignOwnerUserId` + `campaignAdminGrants` | Delete campaign, discoverability, membership governance, ownership transfer, billing (future) |
-| **Narrative authority** | In-world / story collaboration | `CampaignMember.role` + `roleGrants` | World edit, revelation, chronology, elevated view |
+| Layer | Scope | Mechanism | Narrative access |
+|-------|--------|-----------|------------------|
+| **Application administration** | Instance | `User.role = SYSTEM_ADMIN` + [`systemAdmin`](../../backend/src/middleware/systemAdmin.ts) | None. Recovery and `/api/admin/*` only. A System Admin who is a Player receives Player narrative access. |
+| **Campaign owner** | One campaign | `Campaign.campaignOwnerUserId` | Functionally equivalent to Game Master except `campaign.transfer_ownership` and self-membership protections (cannot leave, remove, or change own role). |
+| **Membership roles** | One campaign | `CampaignMember.role` + [`roleGrants.ts`](../../shared/campaignPolicy/roleGrants.ts) | Game Master, Writer, Player (`PARTICIPANT`), Observer. |
 
-### Terminology (use in code and docs)
+Application admin checks **never** flow through `can(actor, …)`.
 
-| Avoid | Use instead |
-|-------|-------------|
-| `ownerUserId` | `campaignOwnerUserId` |
-| “Platform ownership” | **Campaign administration** or **campaign ownership** |
-| `isPlatformOwner` | `isCampaignOwner` |
-| `ownershipGrants` | `campaignAdminGrants` |
-| Membership role `owner` | Not a role — use `campaignOwnerUserId` |
+### Roles (authoritative)
 
-> Campaign ownership is scoped strictly to an individual campaign container and is **not** related to global application administration.
->
-> Campaign owners control: campaign deletion, discoverability, membership management, ownership transfer, and future billing/subscription controls.
->
-> Application administrators remain a completely separate authority layer outside the campaign permission system.
+| Stored | UI label | Default narrative tier |
+|--------|----------|------------------------|
+| `GAMEMASTER` | Game Master | Elevated + campaign administration (except transfer) |
+| `WRITER` | Writer | Elevated content manage; no campaign delete/admin/transfer |
+| `PARTICIPANT` | Player | Party / campaign-visible content; collaborative writes |
+| `OBSERVER` | Observer | Party / campaign-visible reads |
+| *(none)* | Guest (display only) | Anonymous; see Public gate |
 
-Application admin checks **never** flow through `can(actor, …)` for campaign policy.
+Unknown membership role strings grant **nothing** (they must not collapse to Observer).
 
----
+### Owner and Game Master
 
-## Architecture
+Both receive `roleCapabilitiesFor(GAMEMASTER)` (owner evaluates as GM even if stored as Writer/Player) plus campaign-admin capabilities. Owner-only: `campaign.transfer_ownership`, cannot leave/remove/demote self. Transfer workflow is unchanged.
 
-```mermaid
-flowchart TB
-  subgraph appAdmin [ApplicationAdmin_OutOfScope]
-    sysAdmin[SYSTEM_ADMIN]
-  end
-  subgraph layer1 [Layer1_Discoverability]
-    priv[private]
-    unlisted[unlisted]
-    pub[public]
-  end
-  subgraph layer2a [Layer2a_CampaignAdministration]
-    campaignOwner["Campaign.campaignOwnerUserId"]
-  end
-  subgraph layer2b [Layer2b_MembershipRole]
-    gm[GAMEMASTER]
-    writer[WRITER]
-    participant[PARTICIPANT]
-    observer[OBSERVER]
-  end
-  subgraph layer3 [Layer3_PublicProfile]
-    anon[anonymous_actor]
-    caps[publicCapabilities]
-  end
-  subgraph layer4 [Layer4_CampaignPolicy]
-    canFn["can(actor, capability)"]
-  end
-  appAdmin -.->|"never mixed into campaign can()"| layer4
-  layer2a --> layer4
-  layer2b --> layer4
-  layer3 --> layer4
-  layer1 --> reads[filterByDiscoverability]
-  layer4 --> writes[authorizeMutations]
-  reads --> proj[narrativeProjection]
-```
+### Public / Anonymous
 
-**Rules:**
+Not a fifth role. When the **campaign** public-access gate is on (`Campaign.discoverability === public`), anonymous evaluation uses Observer’s **read** capabilities after Observer overrides (`campaign.view`, `wiki.view_party`, `assets.view`). Writes are never copied.
 
-- Membership role + campaign-owner flag **grant** capabilities (within campaign policy).
-- Discoverability and per-resource visibility **filter** what is shown — they do not grant edit.
-- Prefer `can(actor, capability)` in new code — not `if (role === 'DM')`.
+Anonymous visitors still need the **instance** login gate to allow public-facing access. Campaign public access alone is never sufficient. Live campaign-scoped APIs still require membership (Pass 4 deferred); Pass 4 must enforce both gates.
+
+A publicly accessible Esiana instance is **not** an instance where everyone can see everything. Public content remains subject to campaign access, Observer read capabilities, and resource restrictions.
 
 ---
 
-## Schema (Phase 1)
+## Capabilities
 
-| Model / field | Meaning |
-|---------------|---------|
-| `Campaign.campaignOwnerUserId` | Singular campaign administrator (FK → `User`, `onDelete: Restrict`) |
-| `Campaign.discoverability` | `private` \| `unlisted` \| `public` (Phase 3) |
-| `CampaignMember.role` | `GAMEMASTER` \| `WRITER` \| `PARTICIPANT` \| `OBSERVER` (stored as string) |
-| `CampaignMember.chronologyContributor` | When true + `allowPlayerChronologyManagement`, participant may edit chronology (legacy Player parity) |
+Canonical registry: [`capabilities.ts`](../../shared/campaignPolicy/capabilities.ts). Defaults: [`ROLE_GRANTS`](../../shared/campaignPolicy/roleGrants.ts). Per-campaign overrides: `CampaignRoleCapabilityOverride` (`GRANT` / `REVOKE`). Non-overridable: delete, transfer, manage roles, campaign visibility, billing.
 
-Legacy membership role strings were migrated in `20260604140000_campaign_access_framework`; runtime `legacyRoleMap` removed in Phase 3.
+### What each capability actually gates
 
-**Migration mapping:**
-
-| Legacy `role` | New `role` | Notes |
-|---------------|------------|--------|
-| `DM` (all rows) | `GAMEMASTER` | Earliest DM sets `campaignOwnerUserId` |
-| `Co-DM` | `WRITER` | |
-| `Member`, `Player` | `PARTICIPANT` | `Player` → `chronologyContributor = true` |
-| `Viewer` | `OBSERVER` | |
-
-Multiple `GAMEMASTER` rows are allowed (multi-GM narrative teams). Administrative singularity is only `campaignOwnerUserId`.
-
----
-
-## Membership roles
-
-| Internal (`CampaignMember.role`) | UI label | Narrative tier |
-|----------------------------------|----------|----------------|
-| `GAMEMASTER` | Game Master | Elevated (with `WRITER`) |
-| `WRITER` | Writer | Elevated |
-| `PARTICIPANT` | Player | Party |
-| `OBSERVER` | Observer | Party (read-only writes) |
-
-Do **not** use internal name `party` for the membership tier (collides with `NarrativePerspective.party`).
-
-Valid combined states:
-
-| User | Campaign owner? | Membership role |
-|------|-----------------|-----------------|
-| Former admin, still in campaign | yes | `WRITER` |
-| New narrative lead | no | `GAMEMASTER` |
-| Creator who delegates story | yes | `WRITER` |
-| Co-author | no | `GAMEMASTER` |
+| Identifier | Primary module | Also used by | Does not grant |
+|------------|----------------|--------------|----------------|
+| `campaign.view` | Campaign container | Prerequisite for ordinary reads | Module workspaces |
+| `campaign.manage_roles` | Members / Access matrix | — | Narrative GM-only lore |
+| `campaign.settings.edit` | Campaign settings (GM) | Audio operational settings | Discoverability (owner/GM admin) |
+| `campaign.visibility.edit` | Discoverability | — | Page visibility |
+| `campaign.delete` | Campaign container | — | Resource delete |
+| `campaign.transfer_ownership` | Owner only | — | Role change |
+| `page.create` / `page.edit_owned` / `page.edit_party` / `page.edit_any` / `page.visibility.edit` | **Standalone wiki documents** and authoring | Character **body** edits today go through `canEditPage` (shared identifier — shown once in the matrix) | Adventure Board, Quests, Threads, Session Notes workspaces |
+| `wiki.view_party` | Party-tier wiki visibility | Chronology/map/asset party reads | Unrelated module workspaces; not a blanket `wiki.view` |
+| `narrative.elevated_view` | GM-only / staff visibility | Maps ghost/staff, audio `staff` recordings | Campaign administration |
+| `quest.edit` / `thread.edit` | Native quest/thread records | — | Linked wiki page content |
+| `adventure.storyboard.edit` | Adventure Board layout | — | Linked quest/wiki visibility |
+| `maps.edit` | Map layers/markers | — | Hidden linked page/asset |
+| `assets.upload` / `assets.view` / `assets.delete_*` | Campaign assets | Audio upload (with `audio.manage` or contributor AND-gate) | Bypass recording/session visibility |
+| `audio.manage` / `audio.chapters.edit` / `audio.transcript.edit` / `audio.transcript.publish` / `audio.transcribe` | Session recordings | — | Global/campaign audio feature flags |
+| `notes.moderate` | Session notes (staff) | Schedule/note admin routes | Standalone wiki `page.*` |
+| `chronology.edit` | Events/eras | Player via `allowPlayerChronologyManagement` | Hidden linked wiki pages |
+| `discovery.reveal` | Discoveries | — | Page create |
+| `safety.submit` / `safety.manage` | Safety reports | Reviewer overrides | Campaign admin |
+| `ledger.contribute` | Downtime ledger | — | Haven/project wiki visibility |
+| `codex.view_public` | Retired from evaluation | — | Use Observer reads |
 
 ---
 
-## Capability resolution
+## Visibility dialects (compatibility)
 
-```ts
-capabilities = roleCapabilities(membershipRole, memberFlags)
-             ∪ campaignAdminCapabilities(userId === campaign.campaignOwnerUserId)
-```
+Stored values are **not** migrated. Evaluation normalizes:
 
-**Pre-ACL baseline:** policy vs enforcement matrix, open Participant decisions, and drift hotspots — [capability-inventory.md](./capability-inventory.md).
+| Stored | Evaluation tier | canView requires |
+|--------|-----------------|------------------|
+| `Public`, `PUBLIC` | public | `campaign.view` |
+| `Party`, `PARTY`, audio `campaign` | campaign | `wiki.view_party` |
+| `DM_Only`, `DM_ONLY`, `GM_ONLY`, `ELEVATED_ONLY`, audio `staff` | gmOnly | `narrative.elevated_view` |
+| audio `uploader_and_managers` | uploader | uploader or `audio.manage` |
+| unknown | deny | never treat as public |
 
-Entry points:
-
-| Module | Role |
-|--------|------|
-| [`shared/campaignPolicy/policy.ts`](../../shared/campaignPolicy/policy.ts) | `buildCampaignActor`, `can`, `resolveActorCapabilities` |
-| [`backend/src/lib/acl.ts`](../../backend/src/lib/acl.ts) | Backend wrappers + `CampaignAclContext` |
-| [`backend/src/lib/campaignScopeContext.ts`](../../backend/src/lib/campaignScopeContext.ts) | Builds `CampaignContext` on each request |
-| [`frontend/src/hooks/useCampaignPolicy.ts`](../../frontend/src/hooks/useCampaignPolicy.ts) | Client-side `can()` for UI gates |
-
-### Campaign administration (`isCampaignOwner`)
-
-| Capability | Notes |
-|------------|--------|
-| `campaign.delete` | |
-| `campaign.transfer_ownership` | Updates `campaignOwnerUserId` only |
-| `campaign.manage_roles` | Invite, kick, change membership roles |
-| `campaign.visibility.edit` | Discoverability — **owner-only Phase 1** |
-| `billing.manage` | Stub (Phase 2+) |
-
-### Gamemaster (`GAMEMASTER`)
-
-| Capability | Notes |
-|------------|--------|
-| `campaign.settings.edit` | Theme, sidebar, chronology flags — **not** discoverability |
-| `world.edit`, `wiki.edit`, `assets.manage`, `templates.manage` | |
-| `discovery.reveal`, `narrative.elevated_view`, `chronology.edit` | |
-| `rumor.moderate`, `notes.moderate` | |
-
-### Writer (`WRITER`)
-
-Same operational/narrative writes as gamemaster **except** `campaign.settings.edit` and all campaign-admin capabilities.
-
-### Participant / observer
-
-- **Participant:** `campaign.view`, party wiki read, journal/character stubs; chronology edit only with `chronologyContributor` + campaign flag.
-- **Observer:** read-only membership capabilities.
-- **Anonymous:** `PUBLIC_ANONYMOUS_CAPABILITIES` when discoverability allows (`campaign.view`, `codex.view_public`).
+Campaign discoverability (`private` / `public`) is the **campaign** container gate, not page access. It is one of two public-access gates (see below). UI labels: Public / Campaign / GM only. Do not call GM-only “Private”.
 
 ---
 
-## Discoverability (not a membership role)
+## Public access gates
 
-Persisted on `Campaign.discoverability` (`private` | `unlisted` | `public`). Implementation: [`shared/campaignPolicy/discoverability.ts`](../../shared/campaignPolicy/discoverability.ts).
+There are two separate levels of public access. **Both** must allow before an anonymous visitor can see campaign content.
 
-| Tier | Anonymous access | Global Hub listing |
-|------|------------------|-------------------|
-| `private` | No | No |
-| `unlisted` | Yes | No |
-| `public` | Yes | Yes |
+| Gate | Controlled by | What it decides |
+|------|---------------|-----------------|
+| **Instance login** | Global Admin | Whether anonymous visitors can access public-facing parts of Esiana at all. |
+| **Campaign public access** | Campaign GM / owner | Whether this campaign permits anonymous viewing of Observer-eligible content. |
 
-Recruitment (`isLookingForGroup`) requires at least `public` discoverability.
+### Settings copy
 
----
+**Global Admin → General Settings (Public access)**
 
-## Transfers and leave
+- **Require login to access Esiana**
+- When enabled, visitors must sign in before accessing campaign content. When disabled, public-facing content can be viewed without an account, subject to campaign permissions.
+- Individual campaigns still control whether they are publicly accessible. Disabling the login requirement does not make private campaigns or restricted content public.
 
-| Action | API | Affects | Does not affect |
-|--------|-----|---------|-----------------|
-| **Campaign ownership transfer** | `POST …/transfer-ownership/*` | `campaignOwnerUserId` | Membership roles |
-| **Gamemaster handoff** | `POST …/transfer-gamemaster` | Target → `GAMEMASTER`; optional caller → `WRITER` | `campaignOwnerUserId` |
-| **Leave campaign** | `DELETE …/members/me` | Membership row | Blocked if user is `campaignOwnerUserId` |
+**Campaign Settings → Access (Public campaign access)**
 
-Ownership transfer no longer swaps DM/Co-DM roles on accept (pre-Phase 1 behavior).
+- Allow visitors without an account to view content permitted by the Observer's read capabilities and resource visibility restrictions.
+- Requires public access to be allowed by the instance administrator.
 
-Middleware:
+The instance gate is stored as `SystemSetting.requireLogin` (default true). Until Pass 4, anonymous campaign routes are not enabled, so turning the setting off does not open live anonymous access. It already informs Adventure Public preview and Campaign Settings copy. Toggling campaign public access also does not open live anonymous routes.
 
-| Gate | Capability / check |
-|------|-------------------|
-| `requireCampaignOwner` | `campaign.manage_roles` (campaign owner) |
-| `requireGamemasterSettings` | `campaign.settings.edit` (gamemaster) |
-| Domain middleware | `quest.edit`, `thread.edit`, `page.edit_any`, etc. (see route table in Phase 3) |
+### How the two settings interact
 
----
+| Instance requires login | Campaign allows public | Anonymous campaign access |
+|-------------------------|------------------------|---------------------------|
+| Yes | No | Blocked |
+| Yes | Yes | Blocked |
+| No | No | Blocked |
+| No | Yes | Allowed, within Observer read permissions |
 
-## Separation from narrative projection
+Code: [`publicAccess.ts`](../../shared/campaignPolicy/publicAccess.ts) (`resolveAnonymousCampaignAccess`). Campaign-only listing/eligibility stays in [`allowsAnonymousCampaignView`](../../shared/campaignPolicy/discoverability.ts).
 
-| Concern | Module | Question answered |
-|---------|--------|-------------------|
-| **Write ACL** | `shared/campaignPolicy` | May this actor mutate campaign data? |
-| **Read projection** | `shared/narrativeProjection` | What does this actor *see* after fog, tiers, and time? |
+### Adventure Public preview
 
-```ts
-const visible = filterByResourceVisibility(actor, entries);
-const editable = visible.filter((e) => can(actor, 'wiki.edit', e));
-```
+Public is a distinct preview perspective, not a role. It stays selectable regardless of the instance login gate so a GM can see what would be publicly eligible if the instance permitted anonymous access.
 
-Elevated read view: `narrative.elevated_view` (gamemaster + writer) aligns with `isElevatedRole()` in narrative projection.
+| Preview condition | UI |
+|-------------------|----|
+| Campaign public access off | Empty state. Public stays selected. |
+| Campaign public access on, instance requires login | Show Observer-eligible content **and** state that public access is currently unavailable on the instance. |
+| Both gates allow | Show Observer-eligible content (live anonymous routes remain Pass 4). |
 
----
+The preview must not change the signed-in user's authorization. It is a presentation projection, not proof of anonymous security.
 
-## Tests
+### Pass 4
 
-- [`shared/campaignPolicy/policy.test.ts`](../../shared/campaignPolicy/policy.test.ts) — included in backend `npm test`
-- Run: `node --import tsx --test shared/campaignPolicy/policy.test.ts`
+When anonymous campaign routes are implemented, they **must** respect both gates. Do not treat `Campaign.discoverability === public` as sufficient admission. Prefer failing closed at the instance login gate before campaign content is considered, then still require the campaign gate, Observer reads, and resource restrictions.
 
 ---
 
-## Phase 2 — ACL migration (shipped, A–E)
+## Inheritance
 
-**Status:** Shipped (2026-06). Full audit: [capability-migration-audit.md](./capability-migration-audit.md). Checklist closed in [todo.md](../../todo.md).
+Evaluated dynamically. Do **not** copy module defaults onto every resource.
 
-Phases delivered: **A** Observer leak → **B0** ownership schema → **B1** registry splits → **B2** backend enforcement → **C** frontend affordances → **C+** visibility UX (initial rollout) → **D** role overrides → **E** legacy centralization (`legacyRoleMap` removal deferred until DB rows are clean).
+| Resource | Inherits | Explicit restriction |
+|----------|----------|----------------------|
+| Wiki page | Module `page.*` + `wiki.view_party` / elevated | Own `visibility`, ownership |
+| Wiki child | **None** (no parent→child) | Own visibility |
+| Map pin / object / map asset | Linked page or asset visibility | Pin/object override + revelation |
+| Attachment | Campaign gate, then asset/map rules | Asset visibility |
+| Audio | Session (wiki) visibility, then recording visibility | Recording `visibility` |
+| Chronology event | Event visibility **and** linked page separately | Both must pass |
+| Character tab | Character page visibility, then tab/`dmOnly` | Tab flags |
+| Session note | Note visibility + `notes.moderate` / author | Metadata author |
 
-Four separated concerns: campaign administration, authority (hidden capabilities), ownership (editorial), visibility (narrative presentation).
-
-## Phase 3 — Discoverability + shim removal (shipped, 2026-06)
-
-- `Campaign.discoverability` DB column; booleans removed
-- Owner three-tier discoverability UI; hub lists `public` only
-- `world.edit` / `requireOperationalManager` removed; routes use domain caps
-- `legacyRoleMap` removed; deprecated grants dropped from `roleGrants`
-- Read-path visibility uses `narrative.elevated_view` (not `page.edit_any`)
-
-## Visibility presentation (Visibility System Phase 3)
-
-Prerequisite: **Campaign access — Phase 3** (discoverability enum, read/write separation) — shipped.
-
-## Campaign access follow-ons
-
-Billing, per-resource ACL, and custom roles are **not** part of the visibility presentation track.
-
-Still open elsewhere in [todo.md](../../todo.md):
-
-- **Campaign access — UI polish** — “Campaign owner” vs “Gamemaster” settings surfaces; optional `campaignAdminUserId` rename
-- Gamemaster `campaign.visibility.edit` for collaborative publication (if needed)
-- Public campaign presentation controls (future) — per-campaign `publicCapabilities` beyond three-tier discoverability
+Linked records never inherit “open” from a public parent.
 
 ---
 
-## Applying migration on other environments
+## Resource access management
 
-```bash
-cd backend
-npx prisma db execute --schema prisma/schema.prisma \
-  --file prisma/migrations/20260604140000_campaign_access_framework/migration.sql
-npx prisma migrate resolve --applied 20260604140000_campaign_access_framework
-npx prisma generate
-```
+Game Masters and Writers may change resource visibility when they `canManage` that resource **and** have `page.visibility.edit` (or the module equivalent). Players may edit without managing access. Server validates every PATCH, including API tokens. A caller cannot grant a tier they cannot view or exceed the campaign/module ceiling.
+
+---
+
+## Module vs wiki infrastructure
+
+| Module | Workspace / native cap | Backing `WikiPage` |
+|--------|------------------------|--------------------|
+| Wiki & Pages | `page.*` | Standalone documents only |
+| Adventure | `adventure.storyboard.edit` | Linked pages still independently authorized |
+| Quests / Threads | `quest.edit` / `thread.edit` | Linked wiki hidden unless viewer can see that page |
+| Characters | Distinct workspace + `canEditPage` on identity page (shared `page.edit_*`) | Page visibility still applies |
+| Session Notes | `notes.moderate` or author | Not standalone `page.create` |
+| Maps | `maps.edit` | Pins inherit target visibility |
+| Audio | `audio.*` + `assets.upload` | Session page must be visible |
+| Safety / Integrations | `safety.*` / plugin manifest | Cannot bypass campaign visibility |
+
+---
+
+## Audio: access vs configuration
+
+Role operations live in Settings → Access (`audio.*`, `assets.upload`). Campaign Audio Settings and instance Admin Audio keep providers, storage, quotas, consent, processing, and `enabled`. `allowContributors` / `allowChapters` / `allowTranscripts` remain AND-gates with capabilities.
+
+Globally disabled audio: matrix rows stay visible as **Disabled by Global Admin**. Stored overrides are preserved. Campaign admins cannot bypass.
+
+---
+
+## Authorization boundaries
+
+New requests, new uploads, and new streams use current capabilities. An already accepted upload or open stream is not aborted solely because grants changed. Chunked continuation of that upload may finish; initiating a new upload may not. Suspension, session revocation, and resource removal are immediate.
+
+Override cache in [`campaignScopeContext.ts`](../../backend/src/lib/campaignScopeContext.ts) is invalidated on grant/role writes and is not an authorization window.
+
+---
+
+## Enforcement notes
+
+- Backend is authoritative. Frontend `can()` reflects the same shared evaluator and must receive `roleCapabilityOverrides`.
+- Pass 4 (anonymous campaign routes) is **not** enabled. `requireCampaignMembership` remains on `/api/campaigns/:handle/*`. When it is enabled, both public-access gates must allow; campaign discoverability alone is not sufficient.
+- No Prisma migration for this pass.
+
+### Intentional privilege changes
+
+- Owner-as-Player/Writer evaluates as Game Master for capabilities.
+- Non-owner Game Masters receive former owner functional grants except transfer/self-protection.
+
+### Must not broaden accidentally
+
+- System Admin ≠ GM narrative visibility.
+- Writer ≠ campaign admin / campaign delete.
+- `DM_Only` stays elevated-only.
+- Existing GRANT/REVOKE overrides keep their effect.
+- Audio contributor flags stay AND-gates.
