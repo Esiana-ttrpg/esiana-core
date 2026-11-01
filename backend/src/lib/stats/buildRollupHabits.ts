@@ -10,7 +10,7 @@ export type RollupHabits = {
   hasRollupData: boolean;
 };
 
-function isActiveDay(row: {
+export function isActiveDay(row: {
   editsCount: number;
   wordsAdded: number;
   sessionCount: number;
@@ -18,7 +18,7 @@ function isActiveDay(row: {
   return row.editsCount > 0 || row.wordsAdded > 0 || row.sessionCount > 0;
 }
 
-function computeStreak(
+export function computeStreak(
   rows: Array<{ date: Date; editsCount: number; wordsAdded: number; sessionCount: number }>,
   today: Date,
 ): number {
@@ -38,7 +38,7 @@ function computeStreak(
   return streak;
 }
 
-function computeFavoriteHour(
+export function computeFavoriteHour(
   rows: Array<{ peakHourUtc: number | null; sessionMinutes: number }>,
 ): number | null {
   const hourWeights = new Map<number, number>();
@@ -61,19 +61,18 @@ function computeFavoriteHour(
   return bestHour;
 }
 
-export async function buildRollupHabits(userId: string): Promise<RollupHabits> {
-  const now = new Date();
-  const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const streakLookback = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
-
-  const rows = await prisma.userWritingDailyRollup.findMany({
-    where: {
-      userId,
-      date: { gte: streakLookback },
-    },
-    orderBy: { date: 'desc' },
-  });
-
+export function assembleRollupHabitsFromRows(
+  rows: Array<{
+    date: Date;
+    wordsAdded: number;
+    editsCount: number;
+    sessionCount: number;
+    sessionMinutes: number;
+    peakHourUtc: number | null;
+    substantialRevisions: number;
+  }>,
+  now: Date,
+): RollupHabits {
   if (rows.length === 0) {
     return {
       wordsAdded30d: 0,
@@ -85,6 +84,7 @@ export async function buildRollupHabits(userId: string): Promise<RollupHabits> {
     };
   }
 
+  const since30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const rows30 = rows.filter((r) => r.date >= utcDateBucket(since30));
   const wordsAdded30d = rows30.reduce((sum: number, r) => sum + r.wordsAdded, 0);
   const substantialRevisions30d = rows30.reduce(
@@ -103,4 +103,19 @@ export async function buildRollupHabits(userId: string): Promise<RollupHabits> {
     favoriteWritingHour,
     hasRollupData: true,
   };
+}
+
+export async function buildRollupHabits(userId: string): Promise<RollupHabits> {
+  const now = new Date();
+  const streakLookback = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+
+  const rows = await prisma.userWritingDailyRollup.findMany({
+    where: {
+      userId,
+      date: { gte: streakLookback },
+    },
+    orderBy: { date: 'desc' },
+  });
+
+  return assembleRollupHabitsFromRows(rows, now);
 }
