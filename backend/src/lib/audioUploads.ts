@@ -9,6 +9,7 @@ import { getActiveStorageDriver } from './storage/storageRegistry.js';
 import { buildAssetLocation } from './assetLocation.js';
 import { resolveDriverForPointer } from './storage/storagePointer.js';
 import { CampaignCapabilities as C } from '../../../shared/campaignPolicy/capabilities.js';
+import { canUploadSessionAudio } from '../../../shared/campaignPolicy/audioContributorMigration.js';
 import type { CampaignContext } from '../types/api.js';
 import { readBackupManifest } from './stagedBackupZip.js';
 import { CAMPAIGN_BACKUP_FORMAT } from './campaignExport/types.js';
@@ -44,8 +45,11 @@ export async function createAudioUpload(ctx: CampaignContext, userId: string, re
   const recording = await recordingAccess(ctx, userId, recordingId);
   const [global, settings] = await Promise.all([audioSettings(), campaignAudioSettings(ctx.campaignId)]);
   assertAudio(global.enabled && settings.enabled, 403, 'uploads_disabled');
-  assertAudio(ctx.capabilities.has(C.ASSETS_UPLOAD) && (ctx.capabilities.has(C.AUDIO_MANAGE) ||
-    (settings.allowContributors && recording.uploadedByUserId === userId)), 403, 'upload_forbidden');
+  assertAudio(
+    canUploadSessionAudio(ctx.capabilities, { recordingOwner: recording.uploadedByUserId === userId }),
+    403,
+    'upload_forbidden',
+  );
   assertAudio(sizeBytes > 0n && sizeBytes <= global.maxFileBytes, 413, 'file_limit_exceeded');
   const driver = getActiveStorageDriver(); assertAudio(driver.rangeRead, 503, 'storage_does_not_support_protected_ranges');
   return serializable(async (tx) => {

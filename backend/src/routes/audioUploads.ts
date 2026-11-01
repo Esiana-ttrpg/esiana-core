@@ -4,8 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { audioHandler, assertAudio, jsonSafe, recordingAccess, campaignAudioSettings } from '../lib/audioCore.js';
+import { audioHandler, assertAudio, jsonSafe, recordingAccess } from '../lib/audioCore.js';
 import { CampaignCapabilities as C } from '../../../shared/campaignPolicy/capabilities.js';
+import { canUploadSessionAudio } from '../../../shared/campaignPolicy/audioContributorMigration.js';
 import { createAudioUpload, finalizeAudioUpload, createBackupUpload, finalizeBackupUpload, stagingPath } from '../lib/audioUploads.js';
 import { requireTokenScopes } from '../middleware/auth.js';
 import { createRateLimitHandler, rateLimitPolicy, resolveRateLimitActor } from '../lib/rateLimit/index.js';
@@ -34,8 +35,16 @@ async function load(req: CampaignScopedRequest) {
   const recording = row.recordingId ? await recordingAccess(req.campaign!, req.user!.id, row.recordingId) : null;
   if (row.purpose === 'campaign_backup') assertAudio(req.campaign!.capabilities.has(C.CAMPAIGN_SETTINGS_EDIT), 403, 'backup_upload_forbidden');
   if (req.method !== 'GET' && req.method !== 'DELETE') {
-    const settings = await campaignAudioSettings(row.campaignId), caps = req.campaign!.capabilities;
-    assertAudio(caps.has(C.ASSETS_UPLOAD) && (row.purpose === 'campaign_backup' || caps.has(C.AUDIO_MANAGE) || (settings.allowContributors && recording?.uploadedByUserId === req.user!.id)), 403, 'upload_forbidden');
+    const caps = req.campaign!.capabilities;
+    if (row.purpose === 'campaign_backup') {
+      assertAudio(caps.has(C.ASSETS_UPLOAD), 403, 'upload_forbidden');
+    } else {
+      assertAudio(
+        canUploadSessionAudio(caps, { recordingOwner: recording?.uploadedByUserId === req.user!.id }),
+        403,
+        'upload_forbidden',
+      );
+    }
   }
   assertAudio(row.expiresAt > new Date(), 410, 'upload_expired');
   return row;

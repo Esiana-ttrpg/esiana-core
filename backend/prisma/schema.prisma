@@ -2341,9 +2341,6 @@ model CampaignAudioSettings {
   campaignId String @id
   enabled Boolean @default(true)
   transcriptionEnabled Boolean @default(false)
-  allowContributors Boolean @default(false)
-  allowChapters Boolean @default(false)
-  allowTranscripts Boolean @default(false)
   allowPov Boolean @default(false)
   defaultVisibility String @default("campaign")
   defaultConnectionId String?

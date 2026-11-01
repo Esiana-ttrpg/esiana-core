@@ -53,7 +53,7 @@ export type MatrixRow = {
   globalFeature?: 'audio';
   help?: MatrixHelp;
   dependency?: MatrixDependency;
-  campaignFeature?: 'audio-contributors' | 'audio-chapters' | 'audio-transcripts' | 'audio-provider';
+  campaignFeature?: 'audio-enabled' | 'audio-provider';
 };
 
 export type MatrixSection = {
@@ -304,12 +304,6 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         capability: CampaignCapabilities.ASSETS_UPLOAD,
         label: 'Upload assets',
         description: 'Upload campaign files.',
-        campaignFeature: 'audio-contributors',
-        dependency: {
-          settingTab: 'audio',
-          settingLabel: 'Contributor uploads',
-          settingHash: 'allowContributors',
-        },
         overridableRoles: PLAYER_OBSERVER,
       },
       {
@@ -354,16 +348,27 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         overridableRoles: NONE,
       },
       {
+        capability: CampaignCapabilities.AUDIO_UPLOAD,
+        label: 'Upload recordings',
+        description: 'Create recordings and upload audio files.',
+        globalFeature: 'audio',
+        campaignFeature: 'audio-enabled',
+        help: {
+          explanation:
+            'Instance and campaign recording enablement still apply. Managers can upload to any recording; other roles upload to recordings they created.',
+        },
+        dependency: {
+          settingTab: 'audio',
+          settingLabel: 'Campaign recordings',
+          settingHash: 'campaign-audio',
+        },
+        overridableRoles: PLAYER_OBSERVER,
+      },
+      {
         capability: CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
         label: 'Edit chapters',
         description: 'Edit recording chapters.',
         globalFeature: 'audio',
-        campaignFeature: 'audio-chapters',
-        dependency: {
-          settingTab: 'audio',
-          settingLabel: 'Chapter contributions',
-          settingHash: 'allowChapters',
-        },
         overridableRoles: PLAYER_OBSERVER,
       },
       {
@@ -371,12 +376,6 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         label: 'Edit transcripts',
         description: 'Edit recording transcripts.',
         globalFeature: 'audio',
-        campaignFeature: 'audio-transcripts',
-        dependency: {
-          settingTab: 'audio',
-          settingLabel: 'Transcript contributions',
-          settingHash: 'allowTranscripts',
-        },
         overridableRoles: PLAYER_OBSERVER,
       },
       {

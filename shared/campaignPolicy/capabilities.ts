@@ -32,6 +32,7 @@ export const CampaignCapabilities = {
   ASSETS_DELETE_OWNED: 'assets.delete_owned',
   ASSETS_VIEW: 'assets.view',
   AUDIO_MANAGE: 'audio.manage',
+  AUDIO_UPLOAD: 'audio.upload',
   AUDIO_CHAPTERS_EDIT: 'audio.chapters.edit',
   AUDIO_TRANSCRIPT_EDIT: 'audio.transcript.edit',
   AUDIO_TRANSCRIPT_PUBLISH: 'audio.transcript.publish',

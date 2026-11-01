@@ -387,5 +387,19 @@ describe('matrix catalog', () => {
     assert.match(chronology.scope, /Broader calendar permissions are planned/);
     const journals = MATRIX_SECTIONS.find((section) => section.id === 'journals');
     assert.ok(journals?.rows.some((row) => row.capability === CampaignCapabilities.JOURNAL_PLANNER_ACCESS));
+    const sessions = MATRIX_SECTIONS.find((section) => section.id === 'sessions');
+    assert.ok(sessions);
+    assert.deepEqual(
+      sessions.rows.map((row) => row.capability),
+      [
+        CampaignCapabilities.NOTES_MODERATE,
+        CampaignCapabilities.AUDIO_MANAGE,
+        CampaignCapabilities.AUDIO_UPLOAD,
+        CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
+        CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
+        CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,
+        CampaignCapabilities.AUDIO_TRANSCRIBE,
+      ],
+    );
   });
 });

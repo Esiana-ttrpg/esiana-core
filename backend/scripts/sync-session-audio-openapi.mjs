@@ -16,8 +16,8 @@ const segment = object({ startMs: { type: ['integer', 'null'], minimum: 0 }, end
 const globalSettings = object({ enabled: boolean, transcriptionEnabled: boolean, maxFileBytes: bytes, maxSessionBytes: bytes,
   maxCampaignBytes: bytes, maxGlobalBytes: { ...bytes, type: ['string', 'null'] }, maxTranscriptBytes: integer,
   uploadConcurrency: integer, allowedFormats: array({ enum: ['mp3', 'm4a', 'aac', 'ogg', 'opus', 'wav', 'flac'] }) });
-const campaignSettings = object({ enabled: boolean, transcriptionEnabled: boolean, allowContributors: boolean,
-  allowChapters: boolean, allowTranscripts: boolean, allowPov: boolean, defaultVisibility: recording.properties.visibility,
+const campaignSettings = object({ enabled: boolean, transcriptionEnabled: boolean,
+  allowPov: boolean, defaultVisibility: recording.properties.visibility,
   defaultConnectionId: nullableString, defaultModelId: nullableString, maxStorageBytes: { ...bytes, type: ['string', 'null'] },
   monthlyRequests: { type: ['integer', 'null'], minimum: 0 }, monthlyDurationMs: { type: ['string', 'null'], pattern: '^\\d+$' } });
 const provider = object({ name: string, protocol: { enum: ['whisper_cpp', 'openai_transcription'] }, endpoint: { type: 'string', format: 'uri' },

@@ -17,10 +17,9 @@ export const sessionRecordingsRouter = Object.assign(Router({ mergeParams: true 
 sessionRecordingsRouter.use((req, res, next) => requireTokenScopes([req.method === 'GET' ? 'campaign:read' : 'campaign:write'])(req, res, next));
 const access = (req: CampaignScopedRequest) => recordingAccess(req.campaign!, req.user!.id, String(req.params.recordingId));
 async function edit(req: CampaignScopedRequest, kind: 'chapters' | 'transcripts' | 'manage') {
-  const ctx = req.campaign!, settings = await campaignAudioSettings(ctx.campaignId);
+  const ctx = req.campaign!;
   const recording = await access(req);
   capability(ctx, kind === 'chapters' ? C.AUDIO_CHAPTERS_EDIT : kind === 'transcripts' ? C.AUDIO_TRANSCRIPT_EDIT : C.AUDIO_MANAGE);
-  assertAudio(ctx.capabilities.has(C.AUDIO_MANAGE) || (kind === 'chapters' ? settings.allowChapters : settings.allowTranscripts), 403, 'contributions_disabled');
   return recording;
 }
 const authorizeTranscriptRevision = audioHandler(async (req, _res, next) => {
@@ -50,10 +49,10 @@ sessionRecordingsRouter.get('/sessions/:timelineId/recordings', audioHandler(asy
 }));
 sessionRecordingsRouter.post('/sessions/:timelineId/recordings', audioHandler(async (req, res) => {
   const ctx = req.campaign!, userId = req.user!.id;
-  await sessionAccess(ctx, String(req.params.timelineId)); capability(ctx, C.ASSETS_UPLOAD);
+  await sessionAccess(ctx, String(req.params.timelineId));
   const [global, settings] = await Promise.all([audioSettings(), campaignAudioSettings(ctx.campaignId)]);
   assertAudio(global.enabled && settings.enabled, 403, 'uploads_disabled');
-  assertAudio(ctx.capabilities.has(C.AUDIO_MANAGE) || settings.allowContributors, 403, 'uploads_forbidden');
+  capability(ctx, C.AUDIO_UPLOAD);
   const data = z.object({ title: z.string().trim().min(1).max(200), visibility: z.enum(RECORDING_VISIBILITIES).optional(),
     consentAcknowledged: z.literal(true) }).strict().parse(req.body);
   const visibility = data.visibility ?? settings.defaultVisibility;

@@ -61,8 +61,8 @@ campaignAudioRouter.get('/settings', audioHandler(async (req, res) => {
 }));
 campaignAudioRouter.patch('/settings', audioHandler(async (req, res) => {
   const ctx = req.campaign!; capability(ctx, C.CAMPAIGN_SETTINGS_EDIT);
-  const data = z.object({ enabled: z.boolean(), transcriptionEnabled: z.boolean(), allowContributors: z.boolean(),
-    allowChapters: z.boolean(), allowTranscripts: z.boolean(), allowPov: z.boolean(), defaultVisibility: z.enum(RECORDING_VISIBILITIES),
+  const data = z.object({ enabled: z.boolean(), transcriptionEnabled: z.boolean(),
+    allowPov: z.boolean(), defaultVisibility: z.enum(RECORDING_VISIBILITIES),
     defaultConnectionId: z.string().nullable(), defaultModelId: z.string().nullable(), maxStorageBytes: bytes.nullable(),
     monthlyRequests: z.number().int().nonnegative().nullable(), monthlyDurationMs: z.string().regex(/^\d+$/).transform(BigInt).refine((v) => v <= 9007199254740991n).nullable() }).partial().strict().parse(req.body);
   const current = await campaignAudioSettings(ctx.campaignId);

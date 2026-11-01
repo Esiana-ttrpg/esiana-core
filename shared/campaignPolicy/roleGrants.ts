@@ -11,6 +11,7 @@ const GM_WRITER_STAFF_PAGE: readonly CampaignCapability[] = [
 
 const GM_WRITER_DOMAIN: readonly CampaignCapability[] = [
   CampaignCapabilities.AUDIO_MANAGE,
+  CampaignCapabilities.AUDIO_UPLOAD,
   CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,

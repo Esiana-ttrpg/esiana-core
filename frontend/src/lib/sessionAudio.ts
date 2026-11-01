@@ -7,8 +7,7 @@ export function audioRequest<T>(campaign: string, path: string, method = 'GET', 
     ...(headers ? { headers: { 'Content-Type': 'application/json', ...headers } } : {}) });
 }
 export interface AudioConfiguration {
-  enabled: boolean; transcriptionEnabled: boolean; allowContributors: boolean; allowChapters: boolean;
-  allowTranscripts: boolean; allowPov: boolean; defaultVisibility: string;
+  enabled: boolean; transcriptionEnabled: boolean; allowPov: boolean; defaultVisibility: string;
   defaultConnectionId: string | null; defaultModelId: string | null; maxStorageBytes: string | null;
   monthlyRequests: number | null; monthlyDurationMs: string | null;
 }

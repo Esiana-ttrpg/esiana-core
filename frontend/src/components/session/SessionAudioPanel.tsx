@@ -41,10 +41,10 @@ export function SessionAudioPanel({ campaignHandle, timelineId }: { campaignHand
   const pendingSeek = useRef<{ localMs: number; play: boolean } | null>(null), abort = useRef<AbortController | null>(null);
   const recording = recordings.find((r) => r.id === selected) ?? recordings[0];
   const caps = settings?.capabilities ?? [], canManage = caps.includes('audio.manage');
-  const canChapters = caps.includes('audio.chapters.edit') && (canManage || settings?.settings.allowChapters);
-  const canTranscript = caps.includes('audio.transcript.edit') && (canManage || settings?.settings.allowTranscripts);
+  const canChapters = caps.includes('audio.chapters.edit');
+  const canTranscript = caps.includes('audio.transcript.edit');
   const canTranscribe = caps.includes('audio.transcribe');
-  const canUpload = settings?.global.enabled && settings.settings.enabled && caps.includes('assets.upload') && (canManage || settings.settings.allowContributors);
+  const canUpload = settings?.global.enabled && settings.settings.enabled && caps.includes('audio.upload');
   const request = useCallback(<T,>(path: string, method = 'GET', body?: unknown, headers?: Record<string, string>) => path.startsWith('/uploads') ?
     apiFetch<T>(`${assetUploadBase(campaignHandle)}${path.slice('/uploads'.length)}`, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }), ...(headers ? { headers: { 'Content-Type': 'application/json', ...headers } } : {}) }) :
     audioRequest<T>(campaignHandle, path, method, body, headers), [campaignHandle]);

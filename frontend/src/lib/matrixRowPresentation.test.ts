@@ -23,11 +23,37 @@ function rowFor(capability: string) {
 describe('matrix row presentation', () => {
   it('deep-links to the required audio control and keeps docs in help', () => {
     const audio = rowFor(CampaignCapabilities.AUDIO_MANAGE);
+    const upload = rowFor(CampaignCapabilities.AUDIO_UPLOAD);
+    const assets = rowFor(CampaignCapabilities.ASSETS_UPLOAD);
     assert.ok(audio);
+    assert.ok(upload);
+    assert.ok(assets);
     const setting = matrixRowSettingLink(audio, 'matrix-review', false);
     assert.equal(setting?.href, '/campaigns/matrix-review/settings?tab=audio#campaign-audio');
     assert.equal(matrixRowHelp(audio)?.docsKey, 'sessionRecordingsPrivacy');
     assert.equal(docsLinks.sessionRecordingsPrivacy.includes('session-recordings-privacy'), true);
+    assert.equal(matrixRowSettingLink(assets, 'matrix-review', false), null);
+    assert.equal(
+      matrixRowSettingLink(upload, 'matrix-review', false)?.href,
+      '/campaigns/matrix-review/settings?tab=audio#campaign-audio',
+    );
+    assert.ok(
+      matrixFeatureStatuses(upload, {
+        audioGlobalEnabled: true,
+        audioSettings: {
+          enabled: false,
+          transcriptionEnabled: false,
+          allowPov: false,
+          defaultVisibility: 'campaign',
+          defaultConnectionId: null,
+          defaultModelId: null,
+          maxStorageBytes: null,
+          monthlyRequests: null,
+          monthlyDurationMs: null,
+        },
+        hasTranscriptionProvider: null,
+      }).some((item) => item.label === 'Campaign recordings are off'),
+    );
   });
 
   it('omits Access self-links and timeline pages without the required control', () => {
@@ -51,9 +77,6 @@ describe('matrix row presentation', () => {
       audioSettings: {
         enabled: true,
         transcriptionEnabled: true,
-        allowContributors: true,
-        allowChapters: true,
-        allowTranscripts: true,
         allowPov: false,
         defaultVisibility: 'campaign',
         defaultConnectionId: null,

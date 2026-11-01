@@ -721,6 +721,7 @@ export async function leaveCampaign(
 const COLLABORATIVE_OVERRIDE_CAPS = [
   CampaignCapabilities.SAFETY_SUBMIT,
   CampaignCapabilities.SAFETY_MANAGE,
+  CampaignCapabilities.AUDIO_UPLOAD,
   CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
   CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,

@@ -86,14 +86,8 @@ export function matrixFeatureStatuses(
   if (row.globalFeature === 'audio' && input.audioGlobalEnabled === false) {
     items.push({ tone: 'disabled-global', label: 'Disabled by Global Admin' });
   }
-  if (row.campaignFeature === 'audio-contributors' && input.audioSettings && !input.audioSettings.allowContributors) {
-    items.push({ tone: 'disabled-setting', label: 'Contributor uploads are off' });
-  }
-  if (row.campaignFeature === 'audio-chapters' && input.audioSettings && !input.audioSettings.allowChapters) {
-    items.push({ tone: 'disabled-setting', label: 'Chapter contributions are off' });
-  }
-  if (row.campaignFeature === 'audio-transcripts' && input.audioSettings && !input.audioSettings.allowTranscripts) {
-    items.push({ tone: 'disabled-setting', label: 'Transcript contributions are off' });
+  if (row.campaignFeature === 'audio-enabled' && input.audioSettings && !input.audioSettings.enabled) {
+    items.push({ tone: 'disabled-setting', label: 'Campaign recordings are off' });
   }
   if (row.campaignFeature === 'audio-provider') {
     if (input.audioSettings && !input.audioSettings.transcriptionEnabled) {
