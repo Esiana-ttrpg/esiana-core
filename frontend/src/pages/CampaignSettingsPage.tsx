@@ -1,12 +1,10 @@
 import { SafetyPrivacySection } from '@/components/settings/SafetyPrivacySection';
 import { CampaignCapabilities as C } from '@shared/campaignPolicy/capabilities';
-import { apiFetch } from '@/lib/api';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Brush, CalendarDays, Clock3, GitBranch, Plug, Settings, Shield, Users, Volume2, Wrench, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams, Navigate } from 'react-router-dom';
-import { CampaignSettingsNav, type CampaignSettingsNavGroup } from '@/components/campaign/CampaignSettingsNav';
 import { campaignSettingsSectionHref } from '@/lib/campaignSettingsNavigation';
+import { useCampaignSettingsChrome } from '@/hooks/useCampaignSettingsChrome';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWiki } from '@/contexts/WikiContext';
 import { StatusTab } from '@/components/StatusTab';
@@ -18,7 +16,7 @@ import { RecruitmentSettingsTab } from '@/components/campaign/RecruitmentSetting
 import { SchedulingSettingsTab } from '@/components/campaign/SchedulingSettingsTab';
 import { TimelineSettingsTab } from '@/components/campaign/TimelineSettingsTab';
 import { WorldDevelopmentSettingsTab } from '@/components/campaign/WorldDevelopmentSettingsTab';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageShell, type PageShellWidth } from '@/components/layout/PageShell';
 import { SidebarSettingsTab } from '@/components/campaign/SidebarSettingsTab';
 import { CampaignAppearanceSettingsTab } from '@/components/campaign/CampaignAppearanceSettingsTab';
 import {
@@ -57,31 +55,8 @@ import { CampaignAudioSettingsTab } from '@/components/campaign/CampaignAudioSet
 import {
   campaignDashboardPath,
   campaignSettingsPath,
-  type CampaignSettingsTab,
 } from '@/lib/campaignPaths';
-import { isElevatedMembershipRole } from '@/types/domain';
 import { isCharacterWikiPage } from '@/lib/isCharacterWikiPage';
-
-const SETTINGS_TABS = [
-  'safety-privacy',
-  'general',
-  'access',
-  'recruitment',
-  'scheduling',
-  'audio',
-  'timeline',
-  'world-development',
-  'appearance',
-  'integrations',
-  'advanced',
-] as const satisfies readonly CampaignSettingsTab[];
-
-function parseSettingsTab(value: string | null): CampaignSettingsTab {
-  if (value && SETTINGS_TABS.includes(value as CampaignSettingsTab)) {
-    return value as CampaignSettingsTab;
-  }
-  return 'general';
-}
 
 export function CampaignSettingsPage() {
   const { t } = useTranslation();
@@ -91,42 +66,22 @@ export function CampaignSettingsPage() {
   const { user } = useAuth();
   const { campaign: wikiCampaign, flatPages, refresh: refreshWiki } = useWiki();
   const { can } = useWiki();
-  const canReviewSafety = can(C.SAFETY_MANAGE);
-  const [safetyUnreadState, setSafetyUnreadState] = useState({ campaignHandle, count: 0 });
-  const safetyUnread = canReviewSafety && safetyUnreadState.campaignHandle === campaignHandle
-    ? safetyUnreadState.count : 0;
-  const setSafetyUnread = useCallback((count: number) => {
-    setSafetyUnreadState({ campaignHandle, count });
-  }, [campaignHandle]);
-  useEffect(() => {
-    let active = true;
-    setSafetyUnread(0);
-    if (!canReviewSafety) return;
-    void apiFetch<{ unread: boolean }[]>('/safety-privacy/requests?campaign=' + encodeURIComponent(campaignHandle))
-      .then(rows => { if (active) setSafetyUnread(rows.filter(r => r.unread).length); }).catch(() => {});
-    return () => { active = false; };
-  }, [campaignHandle, canReviewSafety, setSafetyUnread]);
-  const canManageSidebar = can(C.PAGE_EDIT_ANY) || can(C.CAMPAIGN_SETTINGS_EDIT);
+  const {
+    activeTab,
+    requestedTab,
+    canManageSidebar,
+    canReviewSafety,
+    canAccessCampaignSettings,
+    setSafetyUnread,
+  } = useCampaignSettingsChrome();
   const canManageAccess = can(C.CAMPAIGN_MANAGE_ROLES);
   const canEditPublicAccess = can(C.CAMPAIGN_VISIBILITY_EDIT);
   const canManageMemberIdentity = can(C.PAGE_EDIT_ANY);
-  const canAccessCampaignSettings =
-    canReviewSafety ||
-    can(C.CAMPAIGN_SETTINGS_EDIT) ||
-    can(C.CAMPAIGN_MANAGE_ROLES) ||
-    (wikiCampaign?.role != null && isElevatedMembershipRole(wikiCampaign.role));
 
   const characterPages = useMemo(
     () => flatPages.filter((page) => isCharacterWikiPage(page, flatPages)),
     [flatPages],
   );
-
-  const requestedTab = parseSettingsTab(searchParams.get('tab'));
-  const activeTab = !canManageSidebar && canReviewSafety
-    ? 'safety-privacy'
-    : requestedTab === 'safety-privacy' && !canReviewSafety
-      ? 'general'
-      : requestedTab;
 
   const inviteLink = useCampaignInviteLink(campaignHandle, {
     enabled: activeTab === 'access' && Boolean(campaignHandle),
@@ -387,38 +342,6 @@ export function CampaignSettingsPage() {
     }
   };
 
-  const settingsGroups = useMemo<CampaignSettingsNavGroup[]>(
-    () => [
-      {
-        label: t('campaign.settings.groupCampaign'),
-        items: canManageSidebar ? [
-          { id: 'general', label: t('campaign.settings.tabGeneral'), icon: Settings },
-          { id: 'appearance', label: t('campaign.settings.tabAppearance'), icon: Brush },
-          { id: 'access', label: t('campaign.settings.tabAccess'), icon: Users },
-          { id: 'recruitment', label: t('campaign.settings.tabRecruitment'), icon: UserPlus },
-        ] : [],
-      },
-      {
-        label: t('campaign.settings.groupSystems'),
-        items: canManageSidebar ? [
-          { id: 'scheduling', label: t('campaign.settings.tabScheduling'), icon: CalendarDays },
-          { id: 'timeline', label: 'Timeline', icon: Clock3 },
-          { id: 'world-development', label: t('campaign.settings.tabDevelopment'), icon: GitBranch },
-          { id: 'audio', label: 'Audio', icon: Volume2 },
-          { id: 'integrations', label: t('campaign.settings.tabIntegrations'), icon: Plug },
-        ] : [],
-      },
-      {
-        label: t('campaign.settings.groupAdministration'),
-        items: [
-          ...(canReviewSafety ? [{ id: 'safety-privacy' as const, label: t('profile.safety.title') + (safetyUnread ? ` (${safetyUnread})` : ''), icon: Shield }] : []),
-          ...(canManageSidebar ? [{ id: 'advanced' as const, label: t('campaign.settings.tabAdvanced'), icon: Wrench }] : []),
-        ],
-      },
-    ],
-    [canManageSidebar, canReviewSafety, safetyUnread, t],
-  );
-
   if (wikiCampaign && canAccessCampaignSettings && requestedTab !== activeTab) {
     return <Navigate to={campaignSettingsSectionHref(campaignHandle, searchParams, requestedTab, activeTab)} replace />;
   }
@@ -427,19 +350,11 @@ export function CampaignSettingsPage() {
     return <Navigate to={campaignDashboardPath(campaignHandle)} replace />;
   }
 
+  const contentWidth: PageShellWidth = activeTab === 'access' ? 'wide' : 'standard';
+
   return (
-    <PageShell width="wide" className="flex min-w-0 flex-col gap-4 md:flex-row md:gap-6">
-      <CampaignSettingsNav
-        key={campaignHandle}
-        campaignHandle={campaignHandle}
-        campaignName={wikiCampaign?.name || campaignHandle}
-        groups={settingsGroups}
-        activeTab={activeTab}
-        sectionHref={tab => campaignSettingsSectionHref(campaignHandle, searchParams, activeTab, tab)}
-        navigationLabel={t('campaign.settings.pageTitle')}
-        settingsLabel={t('campaign.settings.contextLabel')}
-      />
-      <div className="min-w-0 flex-1 space-y-4 md:space-y-6">
+    <PageShell width={contentWidth} className="min-w-0">
+      <div className="min-w-0 space-y-4 md:space-y-6">
       <h1 className="sr-only">{t('campaign.settings.pageTitle')}</h1>
       {activeTab === 'safety-privacy' ? (
         canReviewSafety ? <SafetyPrivacySection key={campaignHandle} campaignHandle={campaignHandle} onUnreadChange={setSafetyUnread} /> : null

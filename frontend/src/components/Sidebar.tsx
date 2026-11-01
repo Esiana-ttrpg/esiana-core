@@ -68,7 +68,12 @@ import {
 } from '@/lib/pluginNavigation';
 import { parsePluginSidebarOrderId } from '@/lib/pluginContributions';
 import { usePluginRuntime } from '@/plugins/PluginRuntimeProvider';
-import { META_SECTION_LABEL_CLASS, SIDEBAR_ATMOSPHERE_CLASS, SIDEBAR_NAV_ITEM_CLASS, SIDEBAR_NAV_PRIMARY_CLASS } from '@/lib/surfaceLayout';
+import {
+  META_SECTION_LABEL_CLASS,
+  SIDEBAR_NAV_ITEM_CLASS,
+  SIDEBAR_NAV_PRIMARY_CLASS,
+  campaignSidebarShellClass,
+} from '@/lib/surfaceLayout';
 
 function NavItem({
   to,
@@ -823,13 +828,7 @@ export function Sidebar({
   }
 
   return (
-    <aside
-      className={`${SIDEBAR_ATMOSPHERE_CLASS} sidebar-shell relative flex h-full shrink-0 flex-col transition-[width] duration-200 ${
-        collapsed
-          ? 'sidebar-shell--collapsed w-14 max-w-14'
-          : 'w-72 max-w-[min(18rem,85vw)]'
-      } ${className}`}
-    >
+    <aside className={campaignSidebarShellClass(collapsed, className)}>
       {onClose ? (
         <div className="flex justify-end px-2 pt-2 lg:hidden">
           <button
