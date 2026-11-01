@@ -6,24 +6,54 @@ export type MatrixSectionId =
   | 'wiki'
   | 'adventure'
   | 'characters'
-  | 'worldbuilding'
-  | 'quests'
+  | 'journals'
+  | 'downtime'
   | 'chronology'
   | 'maps'
   | 'sessions'
   | 'discoveries'
+  | 'worldbuilding'
   | 'integrations';
+
+/** Published docs routes from `frontend/src/lib/docsLinks.ts`. Do not invent keys. */
+export type MatrixDocsKey =
+  | 'sessionRecordingsPrivacy'
+  | 'discoveryRevelation'
+  | 'mapsCartography'
+  | 'narrativeThreads';
+
+/** Campaign Settings tabs that actually host a required control. */
+export type MatrixSettingsTab = 'audio' | 'safety-privacy';
+
+export type MatrixHelp = {
+  explanation?: string;
+  docsKey?: MatrixDocsKey;
+  docsLabel?: string;
+};
+
+export type MatrixDependency = {
+  requiredCapability?: CampaignCapability;
+  settingTab?: MatrixSettingsTab;
+  settingLabel?: string;
+  settingHash?: string;
+};
+
+export type MatrixCoverageNote = {
+  uses: CampaignCapability;
+  note: string;
+};
 
 export type MatrixRow = {
   capability: CampaignCapability;
   label: string;
   description: string;
-  tooltip?: string;
   overridableRoles: readonly MembershipRole[];
   chronologyFlag?: boolean;
   observerUnavailable?: boolean;
   globalFeature?: 'audio';
-  campaignFeatureHint?: string;
+  help?: MatrixHelp;
+  dependency?: MatrixDependency;
+  campaignFeature?: 'audio-contributors' | 'audio-chapters' | 'audio-transcripts' | 'audio-provider';
 };
 
 export type MatrixSection = {
@@ -31,6 +61,7 @@ export type MatrixSection = {
   title: string;
   scope: string;
   rows: readonly MatrixRow[];
+  coverage?: readonly MatrixCoverageNote[];
 };
 
 const PLAYER_OBSERVER: readonly MembershipRole[] = [
@@ -44,39 +75,43 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'campaign',
     title: 'Campaign & Members',
-    scope:
-      'Campaign container access, membership, settings, and discoverability. Ownership transfer stays on the member roster.',
+    scope: 'Who can open, configure, and administer this campaign.',
     rows: [
       {
         capability: CampaignCapabilities.CAMPAIGN_VIEW,
         label: 'View campaign',
-        description:
-          'Open the campaign workspace when invited, or anonymously when both the instance login gate and campaign public access allow it.',
+        description: 'Open the campaign workspace when invited.',
+        help: {
+          explanation:
+            'Anonymous visitors also need both public-access gates. Public campaign access is the toggle above this matrix.',
+        },
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.CAMPAIGN_MANAGE_ROLES,
         label: 'Manage members and permissions',
-        description: 'Invite, change roles, and save the Access matrix.',
+        description: 'Invite members, change roles, and save this matrix.',
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.CAMPAIGN_SETTINGS_EDIT,
         label: 'Edit campaign settings',
-        description: 'Theme, sidebar, scheduling, and operational module settings.',
+        description: 'Change theme, sidebar, scheduling, and module settings.',
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.CAMPAIGN_VISIBILITY_EDIT,
         label: 'Change campaign visibility',
-        description:
-          'Campaign public access (anonymous Observer reads) and listing. Still requires the instance administrator to allow public access.',
+        description: 'Decide whether this campaign allows public Observer reads.',
+        help: {
+          explanation: 'Public campaign access is the toggle above this matrix.',
+        },
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.CAMPAIGN_DELETE,
         label: 'Delete campaign',
-        description: 'Permanently delete this campaign container.',
+        description: 'Permanently delete this campaign.',
         overridableRoles: NONE,
       },
     ],
@@ -84,46 +119,56 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'wiki',
     title: 'Wiki & Pages',
-    scope:
-      'Standalone wiki documents and their authoring. Does not open Adventure Board, Quests, or Characters workspaces.',
+    scope: 'Standalone wiki documents and the shared visibility used by other modules.',
     rows: [
       {
         capability: CampaignCapabilities.WIKI_VIEW_PARTY,
-        label: 'View campaign pages',
+        label: 'View campaign-tier content',
         description:
-          'See Party/Campaign-tier standalone wiki pages. Also used when maps, chronology, and assets check party visibility. Does not grant unrelated module workspaces.',
+          'See Campaign-tier wiki, maps, chronology, and assets that check party visibility.',
         overridableRoles: PLAYER_OBSERVER,
+      },
+      {
+        capability: CampaignCapabilities.NARRATIVE_ELEVATED_VIEW,
+        label: 'View GM-only content',
+        description: 'See GM-only wiki, maps, and staff recordings.',
+        help: {
+          explanation: 'Does not grant campaign administration.',
+        },
+        overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.PAGE_CREATE,
         label: 'Create pages',
-        description: 'Create standalone wiki documents.',
+        description: 'Create standalone wiki documents and journal library drafts.',
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_EDIT_OWNED,
         label: 'Edit own pages',
-        description:
-          'Edit USER-owned standalone wiki pages, and character identity pages that use the same ownership check.',
+        description: 'Edit USER-owned wiki pages and character identity pages you own.',
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_EDIT_PARTY,
         label: 'Edit party pages',
-        description: 'Edit PARTY-owned standalone wiki pages for the member’s party.',
+        description: 'Edit PARTY-owned wiki pages for your party.',
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_EDIT_ANY,
         label: 'Edit any page',
-        description: 'Staff bypass for standalone wiki (and character bodies that use page ownership).',
+        description: 'Staff edit for standalone wiki and character bodies that use page ownership.',
+        help: {
+          explanation:
+            'This staff grant currently includes USER-owned journal pages. There is no private-journal capability.',
+        },
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.PAGE_VISIBILITY_EDIT,
         label: 'Manage page access',
-        description:
-          'Change Public / Campaign / GM-only on a resource the actor can manage. Players with edit do not get this automatically.',
+        description: 'Change Public / Campaign / GM-only on a resource you can manage.',
         overridableRoles: NONE,
       },
     ],
@@ -131,33 +176,89 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'adventure',
     title: 'Adventure',
-    scope: 'Adventure Board workspace layout. Linked quests and wiki pages still require their own authorization.',
+    scope: 'Adventure Board, quests, and threads from the campaign Play navigation.',
     rows: [
       {
         capability: CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
         label: 'Manage storyboard',
-        description: 'Edit Adventure Board layout. Does not reveal restricted linked wiki pages or quests.',
-        tooltip: 'Linked quests and wiki pages still require their own authorization.',
+        description: 'Edit Adventure Board layout.',
         overridableRoles: NONE,
       },
-    ],
-  },
-  {
-    id: 'quests',
-    title: 'Quests & Threads',
-    scope: 'Native quest and thread records. Opening a quest does not reveal a restricted linked wiki page.',
-    rows: [
       {
         capability: CampaignCapabilities.QUEST_EDIT,
         label: 'Edit quests',
         description: 'Create and manage native quest records.',
-        tooltip: 'Opening a quest does not reveal a restricted linked wiki page.',
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.THREAD_EDIT,
         label: 'Edit threads',
         description: 'Create and manage narrative threads.',
+        help: {
+          docsKey: 'narrativeThreads',
+          docsLabel: 'Narrative threads',
+        },
+        overridableRoles: PLAYER_OBSERVER,
+      },
+    ],
+  },
+  {
+    id: 'characters',
+    title: 'Characters & Party',
+    scope: 'Character and party workspaces reuse the shared wiki and page capabilities.',
+    rows: [],
+    coverage: [
+      {
+        uses: CampaignCapabilities.WIKI_VIEW_PARTY,
+        note: 'Opening a character or party page still requires campaign-tier or GM-only view for that page.',
+      },
+      {
+        uses: CampaignCapabilities.PAGE_EDIT_OWNED,
+        note: 'Identity-page edits use the same ownership checks as standalone wiki pages.',
+      },
+    ],
+  },
+  {
+    id: 'journals',
+    title: 'Journals',
+    scope: 'Campaign publications and the Journal Planner.',
+    rows: [
+      {
+        capability: CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
+        label: 'Manage journal planner',
+        description: 'Create series, schedule releases, and orchestrate planned publications.',
+        overridableRoles: NONE,
+      },
+    ],
+    coverage: [
+      {
+        uses: CampaignCapabilities.PAGE_CREATE,
+        note: 'Journal library drafts use Create pages, not a separate journal-author capability.',
+      },
+      {
+        uses: CampaignCapabilities.PAGE_EDIT_ANY,
+        note: 'Staff Edit any page currently includes USER-owned journal pages. There is no private-journal capability.',
+      },
+    ],
+  },
+  {
+    id: 'downtime',
+    title: 'Downtime',
+    scope: 'Projects, havens, and the shared campaign ledger.',
+    rows: [
+      {
+        capability: CampaignCapabilities.DOWNTIME_MANAGE,
+        label: 'Manage downtime',
+        description: 'Create and manage downtime projects and havens.',
+        overridableRoles: NONE,
+      },
+      {
+        capability: CampaignCapabilities.LEDGER_CONTRIBUTE,
+        label: 'Contribute to ledger',
+        description: 'Add ledger entries.',
+        help: {
+          explanation: 'Linked haven or project pages still require their own view.',
+        },
         overridableRoles: PLAYER_OBSERVER,
       },
     ],
@@ -165,14 +266,19 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'chronology',
     title: 'Calendar & Chronology',
-    scope: 'Events and eras. Linked wiki pages are checked separately.',
+    scope:
+      'Current controls cover chronology events and eras. Broader calendar permissions are planned.',
     rows: [
       {
         capability: CampaignCapabilities.CHRONOLOGY_EDIT,
-        label: 'Manage chronology events',
+        label: 'Manage chronology',
         description: 'Create, edit, and delete chronology events and eras.',
         chronologyFlag: true,
         observerUnavailable: true,
+        help: {
+          explanation:
+            'The Player grant on this row is the campaign control. Broader calendar permissions are planned.',
+        },
         overridableRoles: PLAYER_ONLY,
       },
     ],
@@ -180,38 +286,46 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'maps',
     title: 'Maps & Assets',
-    scope: 'Map workspace and campaign assets. Map pins inherit linked-page or asset visibility.',
+    scope: 'Map workspace and campaign files from the World navigation.',
     rows: [
       {
         capability: CampaignCapabilities.MAPS_EDIT,
         label: 'Edit maps',
-        description: 'Edit layers, markers, and map workspace.',
-        tooltip: 'Map pins inherit linked-page visibility.',
+        description: 'Edit layers, markers, and the map workspace.',
+        help: {
+          docsKey: 'mapsCartography',
+          docsLabel: 'Maps and cartography',
+        },
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.ASSETS_VIEW,
         label: 'View assets',
-        description: 'View campaign assets the actor is otherwise allowed to see.',
+        description: 'View campaign files the actor is otherwise allowed to see.',
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.ASSETS_UPLOAD,
         label: 'Upload assets',
-        description: 'Upload campaign assets. Audio uploads also require audio manage or the campaign contributor setting.',
-        campaignFeatureHint: 'Session audio uploads also require Campaign Audio contributor settings.',
+        description: 'Upload campaign files.',
+        campaignFeature: 'audio-contributors',
+        dependency: {
+          settingTab: 'audio',
+          settingLabel: 'Contributor uploads',
+          settingHash: 'allowContributors',
+        },
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.ASSETS_DELETE_OWNED,
         label: 'Delete own assets',
-        description: 'Delete assets the member uploaded.',
+        description: 'Delete files you uploaded.',
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.ASSETS_DELETE_ANY,
         label: 'Delete any asset',
-        description: 'Staff delete for campaign assets.',
+        description: 'Staff delete for campaign files.',
         overridableRoles: NONE,
       },
     ],
@@ -219,36 +333,54 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'sessions',
     title: 'Sessions & Audio',
-    scope:
-      'Session notes and recordings. Playback and downloads share one read gate. Providers and quotas stay in Audio Settings.',
+    scope: 'Session notes and recordings from the Play navigation.',
     rows: [
       {
         capability: CampaignCapabilities.NOTES_MODERATE,
         label: 'Manage session notes',
-        description: 'Staff manage session notes. Authors may still edit their own notes without this grant.',
+        description: 'Staff-manage session notes. Authors can still edit their own notes.',
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.AUDIO_MANAGE,
         label: 'Manage recordings',
-        description: 'Recording metadata, deletion, and manager-level playback of restricted recordings.',
+        description: 'Recording metadata, deletion, and manager playback of restricted recordings.',
         globalFeature: 'audio',
+        help: {
+          docsKey: 'sessionRecordingsPrivacy',
+          docsLabel: 'Session recordings privacy',
+        },
+        dependency: {
+          settingTab: 'audio',
+          settingLabel: 'Campaign Audio',
+          settingHash: 'campaign-audio',
+        },
         overridableRoles: NONE,
       },
       {
         capability: CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
         label: 'Edit chapters',
-        description: 'Edit recording chapters when the campaign allows chapter contributions.',
+        description: 'Edit recording chapters.',
         globalFeature: 'audio',
-        campaignFeatureHint: 'Also requires Campaign Audio chapter contributions to be enabled.',
+        campaignFeature: 'audio-chapters',
+        dependency: {
+          settingTab: 'audio',
+          settingLabel: 'Chapter contributions',
+          settingHash: 'allowChapters',
+        },
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
         label: 'Edit transcripts',
-        description: 'Edit recording transcripts when the campaign allows transcript contributions.',
+        description: 'Edit recording transcripts.',
         globalFeature: 'audio',
-        campaignFeatureHint: 'Also requires Campaign Audio transcript contributions to be enabled.',
+        campaignFeature: 'audio-transcripts',
+        dependency: {
+          settingTab: 'audio',
+          settingLabel: 'Transcript contributions',
+          settingHash: 'allowTranscripts',
+        },
         overridableRoles: PLAYER_OBSERVER,
       },
       {
@@ -261,8 +393,18 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
       {
         capability: CampaignCapabilities.AUDIO_TRANSCRIBE,
         label: 'Request transcription',
-        description: 'Request permitted transcription. Does nothing if no provider is configured.',
+        description: 'Request permitted transcription.',
         globalFeature: 'audio',
+        help: {
+          docsKey: 'sessionRecordingsPrivacy',
+          docsLabel: 'Session recordings privacy',
+        },
+        campaignFeature: 'audio-provider',
+        dependency: {
+          settingTab: 'audio',
+          settingLabel: 'Transcription provider',
+          settingHash: 'transcription-provider',
+        },
         overridableRoles: PLAYER_OBSERVER,
       },
     ],
@@ -270,31 +412,63 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'discoveries',
     title: 'Discoveries',
-    scope: 'Revelation of hidden narrative content. Linked records keep their own visibility.',
+    scope: 'Revelation of hidden narrative content.',
     rows: [
       {
         capability: CampaignCapabilities.DISCOVERY_REVEAL,
         label: 'Reveal discoveries',
         description: 'Reveal hidden or draft narrative presence.',
+        help: {
+          docsKey: 'discoveryRevelation',
+          docsLabel: 'Discovery and revelation',
+        },
         overridableRoles: NONE,
+      },
+    ],
+  },
+  {
+    id: 'worldbuilding',
+    title: 'Worldbuilding',
+    scope: 'Locations, organizations, and related World modules use Wiki & Pages.',
+    rows: [
+      {
+        capability: CampaignCapabilities.RUMOR_MODERATE,
+        label: 'Moderate rumors',
+        description: 'Staff-moderate rumor records.',
+        overridableRoles: NONE,
+      },
+    ],
+    coverage: [
+      {
+        uses: CampaignCapabilities.WIKI_VIEW_PARTY,
+        note: 'Locations, organizations, bestiary, families, objects, ancestries, and similar lore pages use View campaign-tier content.',
+      },
+      {
+        uses: CampaignCapabilities.PAGE_CREATE,
+        note: 'Creating those lore pages uses Create pages. Progression, Relations, and Visual Atlas have no separate capability.',
       },
     ],
   },
   {
     id: 'integrations',
     title: 'Integrations & Safety',
-    scope: 'Safety reports and reviewer access. Plugin hosts cannot bypass campaign or resource visibility.',
+    scope: 'Safety reports. Plugins cannot bypass campaign or resource visibility.',
     rows: [
       {
         capability: CampaignCapabilities.SAFETY_SUBMIT,
         label: 'Submit safety concerns',
-        description: 'Submit safety or privacy concerns for this campaign.',
+        description: 'Submit a safety or privacy concern for this campaign.',
         overridableRoles: PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.SAFETY_MANAGE,
         label: 'Manage safety reports',
-        description: 'Review and manage safety reports. Also configurable from Safety reviewer grants.',
+        description: 'Review and manage safety reports.',
+        dependency: {
+          settingTab: 'safety-privacy',
+          settingLabel: 'Safety reviewer grants',
+          settingHash: 'safety-reviewer-grants',
+        },
         overridableRoles: PLAYER_OBSERVER,
       },
     ],
@@ -305,4 +479,12 @@ export function allMatrixCapabilities(): CampaignCapability[] {
   return MATRIX_SECTIONS.flatMap((section) =>
     section.rows.map((row) => row.capability),
   );
+}
+
+export function matrixCapabilityLabel(capability: CampaignCapability): string | null {
+  for (const section of MATRIX_SECTIONS) {
+    const row = section.rows.find((item) => item.capability === capability);
+    if (row) return row.label;
+  }
+  return null;
 }

@@ -78,6 +78,15 @@ describe('campaign policy', () => {
     assert.equal(can(actor, CampaignCapabilities.CAMPAIGN_MANAGE_ROLES), false);
     assert.equal(can(actor, CampaignCapabilities.CAMPAIGN_VISIBILITY_EDIT), false);
     assert.equal(can(actor, CampaignCapabilities.CAMPAIGN_SETTINGS_EDIT), false);
+    assert.equal(can(actor, CampaignCapabilities.JOURNAL_PLANNER_ACCESS), true);
+    assert.equal(can(actor, CampaignCapabilities.PAGE_CREATE), true);
+    assert.equal(
+      canEditPage(actor, {
+        ownerType: PageOwnerTypes.USER,
+        ownerUserId: 'other-user',
+      }),
+      true,
+    );
   });
 
   it('participant chronology when campaign allows player management', () => {
@@ -359,9 +368,24 @@ describe('resource access', () => {
 });
 
 describe('matrix catalog', () => {
-  it('lists each capability once', () => {
+  it('lists each capability once and groups adventure navigation together', () => {
     const caps = allMatrixCapabilities();
     assert.equal(new Set(caps).size, caps.length);
     assert.ok(MATRIX_SECTIONS.every((section) => section.scope.length > 0));
+    const adventure = MATRIX_SECTIONS.find((section) => section.id === 'adventure');
+    assert.ok(adventure);
+    assert.deepEqual(
+      adventure.rows.map((row) => row.capability),
+      [
+        CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
+        CampaignCapabilities.QUEST_EDIT,
+        CampaignCapabilities.THREAD_EDIT,
+      ],
+    );
+    const chronology = MATRIX_SECTIONS.find((section) => section.id === 'chronology');
+    assert.ok(chronology);
+    assert.match(chronology.scope, /Broader calendar permissions are planned/);
+    const journals = MATRIX_SECTIONS.find((section) => section.id === 'journals');
+    assert.ok(journals?.rows.some((row) => row.capability === CampaignCapabilities.JOURNAL_PLANNER_ACCESS));
   });
 });

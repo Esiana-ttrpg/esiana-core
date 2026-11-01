@@ -21,8 +21,13 @@ export function SafetyReviewerPermissions({ campaignHandle }: { campaignHandle: 
       .catch(e => active && setError(e.message));
     return () => { active = false; };
   }, [allowed, endpoint]);
+  useEffect(() => {
+    if (window.location.hash === '#safety-reviewer-grants') {
+      document.getElementById('safety-reviewer-grants')?.scrollIntoView({ block: 'start' });
+    }
+  }, [allowed]);
   if (!allowed) return null;
-  return <details className="space-y-3"><summary>{t('profile.safety.reviewerPermissions')}</summary>
+  return <details id="safety-reviewer-grants" className="space-y-3"><summary>{t('profile.safety.reviewerPermissions')}</summary>
     <p className="text-sm text-muted">{t('profile.safety.reviewerPermissionsHelp')}</p>
     {error && <p role="alert">{error}</p>}
     <form className="space-y-3" onSubmit={async e => {

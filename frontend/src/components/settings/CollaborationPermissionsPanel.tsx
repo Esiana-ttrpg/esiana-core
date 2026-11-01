@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiFetch } from '@/lib/api';
-import { audioRequest, type AudioSettingsPayload } from '@/lib/sessionAudio';
+import { audioRequest, type AudioSettingsPayload, type ProviderConnection } from '@/lib/sessionAudio';
 import { CampaignMemberRoles } from '@/types/domain';
 import { CampaignCapabilities, type CampaignCapability } from '@shared/campaignPolicy/capabilities';
 import {
@@ -11,7 +12,28 @@ import {
 } from '@shared/campaignPolicy/capabilityOverrides';
 import { MembershipRoles, MEMBERSHIP_ROLE_UI_LABELS, type MembershipRole } from '@shared/campaignPolicy/membershipRoles';
 import { campaignAdminCapabilitiesFor } from '@shared/campaignPolicy/campaignAdminGrants';
-import { MATRIX_SECTIONS, type MatrixRow } from '@shared/campaignPolicy/matrixCatalog';
+import {
+  MATRIX_SECTIONS,
+  matrixCapabilityLabel,
+  type MatrixCoverageNote,
+  type MatrixRow,
+  type MatrixSection,
+} from '@shared/campaignPolicy/matrixCatalog';
+import { DocsLearnMoreLink } from '@/components/guides/DocsLearnMoreLink';
+import { HelpTooltip } from '@/components/ui/HelpTooltip';
+import {
+  hasEnabledTranscriptionProvider,
+  matrixCellStatusLabel,
+  matrixCellTone,
+  matrixFeatureStatuses,
+  matrixGlobalAdminHelp,
+  matrixRowHasHelp,
+  matrixRowHelp,
+  matrixRowSettingLink,
+  roleHasOverride,
+  type MatrixCellTone,
+  type MatrixStatusItem,
+} from '@/lib/matrixRowPresentation';
 
 type OverrideRow = CampaignRoleCapabilityOverrideRow;
 
@@ -26,6 +48,15 @@ const EDITABLE_ROLES: readonly MembershipRole[] = [
   MembershipRoles.PARTICIPANT,
   MembershipRoles.OBSERVER,
 ];
+
+const TONE_CLASS: Record<MatrixCellTone, string> = {
+  inherited: 'border-border text-muted',
+  override: 'border-primary/40 text-primary',
+  unavailable: 'border-border text-muted',
+  'disabled-global': 'border-amber-700/40 text-amber-900 dark:text-amber-200',
+  'disabled-setting': 'border-amber-700/40 text-amber-900 dark:text-amber-200',
+  'missing-provider': 'border-amber-700/40 text-amber-900 dark:text-amber-200',
+};
 
 function stripChronologyOverrides(rows: OverrideRow[]): OverrideRow[] {
   return rows.filter(
@@ -58,6 +89,135 @@ function overridableCapabilities(): CampaignCapability[] {
   return [...caps];
 }
 
+function StatusChip({ item }: { item: MatrixStatusItem }) {
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium ${TONE_CLASS[item.tone]}`}
+    >
+      {item.label}
+    </span>
+  );
+}
+
+function CapabilityHelp({
+  row,
+  globallyDisabled,
+}: {
+  row: MatrixRow;
+  globallyDisabled: boolean;
+}) {
+  if (!matrixRowHasHelp(row, globallyDisabled)) return null;
+  const help = matrixRowHelp(row);
+  const adminHelp = matrixGlobalAdminHelp(row, globallyDisabled);
+  return (
+    <HelpTooltip label={row.label}>
+      {adminHelp ? <p>{adminHelp}</p> : null}
+      {help?.explanation ? <p>{help.explanation}</p> : null}
+      {help?.docsKey ? (
+        <DocsLearnMoreLink
+          doc={help.docsKey}
+          label={help.docsLabel ?? 'Learn more in the docs'}
+          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        />
+      ) : null}
+    </HelpTooltip>
+  );
+}
+
+function CapabilityTitle({
+  row,
+  globallyDisabled,
+  heading,
+}: {
+  row: MatrixRow;
+  globallyDisabled: boolean;
+  heading?: boolean;
+}) {
+  const TitleTag = heading ? 'h4' : 'div';
+  return (
+    <div>
+      <div className="flex items-center gap-1">
+        <TitleTag className={heading ? 'text-sm font-medium text-foreground' : 'font-medium text-foreground'}>
+          {row.label}
+        </TitleTag>
+        <CapabilityHelp row={row} globallyDisabled={globallyDisabled} />
+      </div>
+      <p className="mt-0.5 text-muted">{row.description}</p>
+    </div>
+  );
+}
+
+function CoverageNotes({ notes }: { notes: readonly MatrixCoverageNote[] }) {
+  return (
+    <ul className="space-y-1.5 px-3 py-2 text-xs text-muted">
+      {notes.map((note) => {
+        const label = matrixCapabilityLabel(note.uses) ?? note.uses;
+        return (
+          <li key={`${note.uses}-${note.note}`}>
+            Uses{' '}
+            <a
+              href={`#matrix-cap-${note.uses.replaceAll('.', '-')}`}
+              className="text-primary underline-offset-2 hover:underline"
+            >
+              {label}
+            </a>
+            . {note.note}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function RoleGrantControl({
+  role,
+  row,
+  checked,
+  editable,
+  tone,
+  onToggle,
+}: {
+  role: MembershipRole;
+  row: MatrixRow;
+  checked: boolean;
+  editable: boolean;
+  tone: MatrixCellTone;
+  onToggle: (next: boolean) => void;
+}) {
+  const status = matrixCellStatusLabel(tone);
+  const roleLabel = MEMBERSHIP_ROLE_UI_LABELS[role];
+  if (tone === 'unavailable') {
+    return (
+      <div className="flex flex-col items-start gap-1">
+        <span className="text-muted" aria-hidden>
+          —
+        </span>
+        <StatusChip item={{ tone, label: status }} />
+        <span className="sr-only">{`${row.label} for ${roleLabel}: unavailable`}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={!editable}
+        onChange={(event) => onToggle(event.target.checked)}
+        aria-label={`${row.label} for ${roleLabel}, ${status}`}
+        title={
+          tone === 'disabled-global'
+            ? 'Disabled by Global Admin'
+            : editable
+              ? `${status}. Resetting to the default removes the override.`
+              : `${status}. Not overridable here.`
+        }
+      />
+      <StatusChip item={{ tone, label: status }} />
+    </div>
+  );
+}
+
 export function CollaborationPermissionsPanel({
   campaignHandle,
   canManage,
@@ -68,6 +228,7 @@ export function CollaborationPermissionsPanel({
   isCampaignOwner?: boolean;
   onSaved?: () => void;
 }) {
+  const panelId = useId();
   const [overrides, setOverrides] = useState<OverrideRow[]>([]);
   const [allowPlayerChronologyManagement, setAllowPlayerChronologyManagement] =
     useState(false);
@@ -75,10 +236,11 @@ export function CollaborationPermissionsPanel({
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     campaign: true,
     wiki: true,
-    sessions: true,
+    adventure: true,
   });
   const [audioGlobalEnabled, setAudioGlobalEnabled] = useState<boolean | null>(null);
   const [audioSettings, setAudioSettings] = useState<AudioSettingsPayload['settings'] | null>(null);
+  const [hasTranscriptionProvider, setHasTranscriptionProvider] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,12 +270,17 @@ export function CollaborationPermissionsPanel({
       setAllowPlayerChronologyManagement(chronologyFlag);
       setSavedChronologyFlag(chronologyFlag);
       try {
-        const audio = await audioRequest<AudioSettingsPayload>(campaignHandle, '/settings');
+        const [audio, providers] = await Promise.all([
+          audioRequest<AudioSettingsPayload>(campaignHandle, '/settings'),
+          audioRequest<ProviderConnection[]>(campaignHandle, '/providers'),
+        ]);
         setAudioGlobalEnabled(audio.global.enabled);
         setAudioSettings(audio.settings);
+        setHasTranscriptionProvider(hasEnabledTranscriptionProvider(providers));
       } catch {
         setAudioGlobalEnabled(null);
         setAudioSettings(null);
+        setHasTranscriptionProvider(null);
       }
     } catch {
       setError('Could not load campaign permissions.');
@@ -161,7 +328,7 @@ export function CollaborationPermissionsPanel({
     }
     setOverrides((prev) => {
       const filtered = prev.filter(
-        (o) => !(o.role === role && o.capability === row.capability),
+        (item) => !(item.role === role && item.capability === row.capability),
       );
       const defaultGranted = resolveRoleCapability(role, row.capability, [], policyFlags);
       if (next === defaultGranted) return filtered;
@@ -216,43 +383,87 @@ export function CollaborationPermissionsPanel({
     }
   };
 
+  const cellToneFor = (role: MembershipRole, row: MatrixRow): MatrixCellTone => {
+    const globallyDisabled =
+      row.globalFeature === 'audio' && audioGlobalEnabled === false;
+    return matrixCellTone({
+      observerUnavailable: Boolean(
+        row.observerUnavailable && role === MembershipRoles.OBSERVER,
+      ),
+      globallyDisabled,
+      hasOverride:
+        row.chronologyFlag && role === MembershipRoles.PARTICIPANT
+          ? allowPlayerChronologyManagement
+          : roleHasOverride(overrides, role, row.capability),
+    });
+  };
+
   if (!canManage) return null;
   if (loading) {
     return <p className="text-sm text-muted">Loading role capabilities…</p>;
   }
 
-  return (
-    <section className="space-y-4">
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <p className="text-xs text-muted">
-        Game Master and Writer columns show effective grants. Player and Observer
-        cells write overrides. Resetting a cell to its default removes the override.
-      </p>
-      <div className="space-y-3">
-        {MATRIX_SECTIONS.map((section) => {
-          const open = openSections[section.id] !== false;
-          return (
-            <div key={section.id} className="overflow-hidden rounded-md border border-border">
-              <button
-                type="button"
-                className="flex w-full items-start justify-between gap-3 bg-surface/60 px-3 py-2 text-left"
-                onClick={() =>
-                  setOpenSections((prev) => ({ ...prev, [section.id]: !open }))
-                }
-                aria-expanded={open}
-              >
-                <span>
-                  <span className="block text-sm font-medium text-foreground">{section.title}</span>
-                  <span className="mt-0.5 block text-xs text-muted">{section.scope}</span>
-                </span>
-                <span className="text-xs text-muted">{open ? 'Hide' : 'Show'}</span>
-              </button>
-              {open ? (
-                <div className="overflow-x-auto">
+  const roleControlsFor = (row: MatrixRow) =>
+    DISPLAY_ROLES.map((role) => {
+      const globallyDisabled =
+        row.globalFeature === 'audio' && audioGlobalEnabled === false;
+      return (
+        <RoleGrantControl
+          key={role}
+          role={role}
+          row={row}
+          checked={isGranted(role, row)}
+          editable={canEditCell(role, row) && !globallyDisabled}
+          tone={cellToneFor(role, row)}
+          onToggle={(next) => toggle(role, row, next)}
+        />
+      );
+    });
+
+  const renderSection = (section: MatrixSection) => {
+    const open = openSections[section.id] === true;
+    const sectionPanelId = `${panelId}-${section.id}`;
+    const showStatus = section.rows.some(
+      (row) =>
+        matrixFeatureStatuses(row, {
+          audioGlobalEnabled,
+          audioSettings,
+          hasTranscriptionProvider,
+        }).length > 0,
+    );
+    return (
+      <div key={section.id} className="overflow-hidden rounded-md border border-border">
+        <button
+          type="button"
+          className="flex w-full items-start justify-between gap-3 bg-surface/60 px-3 py-2 text-left"
+          onClick={() =>
+            setOpenSections((prev) => ({ ...prev, [section.id]: !open }))
+          }
+          aria-expanded={open}
+          aria-controls={sectionPanelId}
+        >
+          <span>
+            <span className="block text-sm font-medium text-foreground">{section.title}</span>
+            <span className="mt-0.5 block text-xs text-muted">{section.scope}</span>
+          </span>
+          <span className="text-xs text-muted">{open ? 'Hide' : 'Show'}</span>
+        </button>
+        {open ? (
+          <div id={sectionPanelId}>
+            {section.coverage ? <CoverageNotes notes={section.coverage} /> : null}
+            {section.rows.length > 0 ? (
+              <>
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full min-w-[40rem] text-left text-xs">
+                    <caption className="sr-only">
+                      {section.title} role capabilities
+                    </caption>
                     <thead>
                       <tr className="border-y border-border/60">
                         <th className="px-3 py-2 font-medium text-muted">Capability</th>
+                        {showStatus ? (
+                          <th className="px-3 py-2 font-medium text-muted">Status</th>
+                        ) : null}
                         {DISPLAY_ROLES.map((role) => (
                           <th key={role} className="px-3 py-2 font-medium text-muted">
                             {MEMBERSHIP_ROLE_UI_LABELS[role]}
@@ -264,84 +475,138 @@ export function CollaborationPermissionsPanel({
                       {section.rows.map((row) => {
                         const globallyDisabled =
                           row.globalFeature === 'audio' && audioGlobalEnabled === false;
-                        const hint = [
-                          globallyDisabled ? 'Disabled by Global Admin' : null,
-                          row.tooltip,
-                          row.campaignFeatureHint,
-                          row.capability === CampaignCapabilities.ASSETS_UPLOAD &&
-                          audioSettings &&
-                          !audioSettings.allowContributors
-                            ? 'Campaign Audio contributor uploads are off.'
-                            : null,
-                          row.capability === CampaignCapabilities.AUDIO_CHAPTERS_EDIT &&
-                          audioSettings &&
-                          !audioSettings.allowChapters
-                            ? 'Chapter contributions are off in Campaign Audio settings.'
-                            : null,
-                          row.capability === CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT &&
-                          audioSettings &&
-                          !audioSettings.allowTranscripts
-                            ? 'Transcript contributions are off in Campaign Audio settings.'
-                            : null,
-                        ]
-                          .filter(Boolean)
-                          .join(' ');
+                        const setting = matrixRowSettingLink(
+                          row,
+                          campaignHandle,
+                          globallyDisabled,
+                        );
+                        const statuses = matrixFeatureStatuses(row, {
+                          audioGlobalEnabled,
+                          audioSettings,
+                          hasTranscriptionProvider,
+                        });
+                        const roleControls = roleControlsFor(row);
                         return (
-                          <tr key={row.capability} className="border-b border-border/60 last:border-0">
+                          <tr
+                            key={row.capability}
+                            id={`matrix-cap-${row.capability.replaceAll('.', '-')}`}
+                            className="border-b border-border/60 last:border-0"
+                          >
                             <td className="px-3 py-2 align-top">
-                              <div className="font-medium text-foreground">{row.label}</div>
-                              <div className="mt-0.5 text-muted">{row.description}</div>
-                              {hint ? (
-                                <div className="mt-1 text-[11px] text-amber-800 dark:text-amber-200">
-                                  {hint}
-                                </div>
+                              <CapabilityTitle
+                                row={row}
+                                globallyDisabled={globallyDisabled}
+                              />
+                              {setting ? (
+                                <Link
+                                  to={setting.href}
+                                  className="mt-1 inline-block text-primary underline-offset-2 hover:underline"
+                                >
+                                  {setting.label}
+                                </Link>
                               ) : null}
                             </td>
-                            {DISPLAY_ROLES.map((role) => {
-                              const checked = isGranted(role, row);
-                              const editable = canEditCell(role, row) && !globallyDisabled;
-                              if (row.observerUnavailable && role === MembershipRoles.OBSERVER) {
-                                return (
-                                  <td key={role} className="px-3 py-2 text-muted">
-                                    —
-                                  </td>
-                                );
-                              }
-                              return (
-                                <td key={role} className="px-3 py-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    disabled={!editable}
-                                    onChange={(e) => toggle(role, row, e.target.checked)}
-                                    aria-label={`${row.label} for ${MEMBERSHIP_ROLE_UI_LABELS[role]}`}
-                                    title={
-                                      globallyDisabled
-                                        ? 'Disabled by Global Admin'
-                                        : editable
-                                          ? undefined
-                                          : 'Effective grant (not overridable here)'
-                                    }
-                                  />
-                                </td>
-                              );
-                            })}
+                            {showStatus ? (
+                              <td className="px-3 py-2 align-top">
+                                {statuses.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {statuses.map((item) => (
+                                      <StatusChip key={`${item.tone}-${item.label}`} item={item} />
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </td>
+                            ) : null}
+                            {DISPLAY_ROLES.map((role, index) => (
+                              <td key={role} className="px-3 py-2 align-top">
+                                {roleControls[index]}
+                              </td>
+                            ))}
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-              ) : null}
-            </div>
-          );
-        })}
+                <div className="space-y-3 p-3 md:hidden">
+                  {section.rows.map((row) => {
+                    const globallyDisabled =
+                      row.globalFeature === 'audio' && audioGlobalEnabled === false;
+                    const setting = matrixRowSettingLink(
+                      row,
+                      campaignHandle,
+                      globallyDisabled,
+                    );
+                    const statuses = matrixFeatureStatuses(row, {
+                      audioGlobalEnabled,
+                      audioSettings,
+                      hasTranscriptionProvider,
+                    });
+                    const roleControls = roleControlsFor(row);
+                    return (
+                      <article
+                        key={row.capability}
+                        className="rounded-md border border-border/70 p-3"
+                      >
+                        <CapabilityTitle
+                          row={row}
+                          globallyDisabled={globallyDisabled}
+                          heading
+                        />
+                        {setting ? (
+                          <Link
+                            to={setting.href}
+                            className="mt-2 inline-block text-xs text-primary underline-offset-2 hover:underline"
+                          >
+                            {setting.label}
+                          </Link>
+                        ) : null}
+                        {statuses.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {statuses.map((item) => (
+                              <StatusChip key={`${item.tone}-${item.label}`} item={item} />
+                            ))}
+                          </div>
+                        ) : null}
+                        <ul className="mt-3 space-y-2">
+                          {DISPLAY_ROLES.map((role, index) => (
+                            <li
+                              key={role}
+                              className="flex items-start justify-between gap-3"
+                            >
+                              <span className="text-xs text-foreground">
+                                {MEMBERSHIP_ROLE_UI_LABELS[role]}
+                              </span>
+                              {roleControls[index]}
+                            </li>
+                          ))}
+                        </ul>
+                      </article>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
+    );
+  };
+
+  return (
+    <section className="space-y-4" aria-labelledby={`${panelId}-heading`}>
+      <h4 id={`${panelId}-heading`} className="sr-only">
+        Campaign role capability matrix
+      </h4>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <p className="text-xs text-muted">
-        Public is not a role. When both the instance login gate and this
-        campaign’s public access setting allow it, anonymous visitors inherit
-        Observer’s effective read permissions. A public instance still does not
-        grant access to private campaigns or restricted content.
+        Game Master and Writer show effective grants. Player and Observer can
+        store overrides. Resetting a cell to its default removes the override.
+      </p>
+      <div className="space-y-3">{MATRIX_SECTIONS.map(renderSection)}</div>
+      <p className="text-xs text-muted">
+        Public is not a role. When both public-access gates allow it, anonymous
+        visitors inherit Observer’s effective read permissions.
       </p>
       <button
         type="button"
