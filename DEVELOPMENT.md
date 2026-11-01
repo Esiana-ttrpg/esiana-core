@@ -96,7 +96,8 @@ Root scripts from [package.json](./package.json):
 | `pnpm run build` | Build all workspaces |
 | `pnpm run db:generate` | Regenerate Prisma client |
 | `pnpm run db:migrate:deploy` | Apply migrations (PostgreSQL) |
-| `pnpm run db:migrate:deploy:sqlite` | Apply migrations to SQLite (`dev.db`, resets by default) |
+| `pnpm run db:migrate:deploy:sqlite` | Apply pending SQLite migrations without deleting `dev.db` |
+| `pnpm run db:migrate:reset:sqlite` | Delete `dev.db` and apply all SQLite migrations |
 | `pnpm run db:migrate` | Create/apply migrations interactively (PostgreSQL) |
 | `pnpm run db:push` | Push schema without migrations (Postgres disposable dev only) |
 | `pnpm run plugins:link` | Copy sibling `community-plugins` packages into `PLUGINS_DIR` |

@@ -70,7 +70,10 @@ COPY --from=build /app/frontend/dist /usr/share/nginx/html
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/nginx-esiana.conf /etc/nginx/http.d/default.conf
 COPY docker/esiana-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh \
+COPY docker/apply-schema-migrations.sh /apply-schema-migrations.sh
+RUN chmod +x /entrypoint.sh /apply-schema-migrations.sh \
+  && test -f /app/backend/prisma/scripts/deploy-sqlite-migrations.mjs \
+  && test -f /app/backend/prisma/scripts/sqliteSchema.mjs \
   && nginx -t
 
 EXPOSE 80 3001

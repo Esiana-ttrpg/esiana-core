@@ -58,7 +58,9 @@
 
 ### Database
 
-Apply migrations before starting the updated backend.
+Schema migrations apply automatically before the API starts: PostgreSQL via `prisma migrate deploy`, SQLite via the existing normalized deploy script **without resetting the database**. The process does not start against an outdated schema.
+
+Event and Era wiki ownership is backfilled once at startup (`Campaign.chronologyWorkspacesInitialized`). Existing document IDs, content, permissions, citations, and associations are preserved. Restart retries any incomplete campaign; later startups skip campaigns that already completed. Wiki and search paths keep a defensive repair only while a campaign is still unclaimed.
 
 - `20261009120000_event_importance_and_chronology_settings` — event importance plus `ChronologySettings`.
 - `20261026120000_session_audio_processing` — recordings, processing connections, grants, jobs, and storage metadata.
@@ -71,8 +73,9 @@ Apply migrations before starting the updated backend.
 - `20261101010000_instance_require_login` — `SystemSetting.requireLogin`.
 - `20261101020000_footer_show_to_unauthorized` — optional signed-out footer.
 - `20261101030000_audio_contributor_role_grants` — folds prior audio contributor gates into role grants.
+- `20261101140000_chronology_workspaces_initialized` — one-time chronology wiki-workspace backfill flag.
 
-Existing event wiki pages named `event-<id>` are linked in place. For a complete chronology workspace folder backfill after migrate, run `pnpm --dir backend db:migrate:chronology-workspaces`.
+Existing event wiki pages named `event-<id>` are linked in place. The optional `pnpm --dir backend db:migrate:chronology-workspaces` command remains a retry hatch; it is not required for upgrade.
 
 ## [1.8.0] - 2026-10-06
 

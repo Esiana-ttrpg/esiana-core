@@ -7,7 +7,7 @@ Area-specific guidance for `/backend`. General setup, CI, and branch workflow: [
 ## Prisma conventions
 
 - **PostgreSQL** is the committed default (`schema.prisma` `provider = "postgresql"`).
-- **SQLite** is supported for solo dev — requires a local provider switch and `db:migrate:deploy:sqlite` (see [prisma/README.md](./prisma/README.md)).
+- **SQLite** is supported for solo dev — requires a local provider switch and `db:migrate:deploy:sqlite` (see [prisma/README.md](./prisma/README.md)). Docker and process start apply pending SQLite migrations without resetting the database.
 - Migrations and queries must stay portable — no PostgreSQL-only or SQLite-only SQL, triggers, or engine-specific behavior in application code.
 
 ### After schema changes

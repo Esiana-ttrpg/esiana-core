@@ -1,11 +1,10 @@
 import { prisma } from '../src/lib/prisma.js';
-import { ensureChronologyWikiWorkspaces } from '../src/lib/chronologyWikiWorkspace.js';
+import { initializeExistingChronologyWorkspaces } from '../src/lib/chronologyWikiWorkspace.js';
 
-// The same idempotent migration also runs before wiki browsing, resolution and search.
+// Startup already runs this backfill. The CLI remains an operator retry hatch.
 try {
-  const campaigns = await prisma.campaign.findMany({ select: { id: true } });
-  for (const campaign of campaigns) await ensureChronologyWikiWorkspaces(campaign.id);
-  console.log(`Checked chronology document ownership in ${campaigns.length} campaigns.`);
+  await initializeExistingChronologyWorkspaces();
+  console.log('Chronology document ownership backfill complete.');
 } finally {
   await prisma.$disconnect();
 }

@@ -3,7 +3,12 @@ import test from 'node:test';
 import { randomUUID } from 'node:crypto';
 import { prisma } from './prisma.js';
 import { buildCampaignContext } from './campaignScopeContext.js';
-import { ensureChronologyWikiWorkspaces } from './chronologyWikiWorkspace.js';
+import {
+  ensureChronologyWikiWorkspaces,
+  initializeChronologyWorkspaces,
+  initializeExistingChronologyWorkspaces,
+  repairChronologyWikiWorkspacesForCampaign,
+} from './chronologyWikiWorkspace.js';
 import { linkChronologyPage } from '../controllers/chronologyPagesController.js';
 import { createWikiPage, getCategoryIndex, getWikiPageByWorkspacePath } from '../controllers/wikiController.js';
 import { deleteCalendarEvent } from '../controllers/calendarEventsController.js';
@@ -25,7 +30,7 @@ test('authored chronology documents use the existing wiki workspaces and survive
   const campaign = await prisma.campaign.create({ data: { name: 'Florence', handle: `workspace-${stamp}`, campaignOwnerUserId: owner.id } });
   t.after(async () => {
     await prisma.campaign.delete({ where: { id: campaign.id } });
-    await prisma.user.delete({ where: { id: owner.id } }); await prisma.$disconnect();
+    await prisma.user.delete({ where: { id: owner.id } });
   });
   const context = (role: 'GAMEMASTER' | 'PARTICIPANT') => buildCampaignContext({ campaignId: campaign.id, campaignHandle: campaign.handle, campaignOwnerUserId: owner.id,
     discoverability: 'PRIVATE', userId: role === 'GAMEMASTER' ? owner.id : 'member-player', membershipRole: role, allowPlayerChronologyManagement: false, partyId: null });
@@ -33,7 +38,7 @@ test('authored chronology documents use the existing wiki workspaces and survive
   const calendar = await prisma.fantasyCalendar.create({ data: { campaignId: campaign.id, name: 'Florence', months: [{ name: 'Harvestmoon', length: 30, type: 'standard' }], weekdays: [], seasons: [], moons: [], leapDays: [] } });
   const event = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Moonrise Celebration', visibility: 'PUBLIC' } });
   const era = await saveChronologyEra(gm, { calendarId: calendar.id, name: 'Ember Age', visibility: 'PUBLIC', startDate: null, endDate: null, isCurrent: false });
-  await ensureChronologyWikiWorkspaces(campaign.id);
+  await repairChronologyWikiWorkspacesForCampaign(campaign.id);
   assert.equal(await prisma.wikiPage.count({ where: { campaignId: campaign.id } }), 0, 'page-free records do not create wiki documents or folders');
   const seededEvents = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'Events', visibility: 'Party', metadata: { seeded: true } } });
 
@@ -44,7 +49,7 @@ test('authored chronology documents use the existing wiki workspaces and survive
   await prisma.calendarEvent.update({ where: { id: event.id }, data: { wikiPageId: legacy.id } });
   await prisma.campaignEra.update({ where: { campaignId_id: { campaignId: campaign.id, id: era } }, data: { overviewPageId: oldEraPage.id } });
   const citation = await prisma.wikiLink.create({ data: { campaignId: campaign.id, sourcePageId: oldEraPage.id, targetPageId: legacy.id } });
-  await ensureChronologyWikiWorkspaces(campaign.id);
+  await repairChronologyWikiWorkspacesForCampaign(campaign.id);
   const migrated = await prisma.wikiPage.findUniqueOrThrow({ where: { id: legacy.id } });
   const migratedEra = await prisma.wikiPage.findUniqueOrThrow({ where: { id: oldEraPage.id } });
   assert.equal(migrated.workspace, 'EVENTS'); assert.equal(migratedEra.workspace, 'ERAS');
@@ -65,11 +70,11 @@ test('authored chronology documents use the existing wiki workspaces and survive
   assert.equal((await resolveWikiPageByPathKey(campaign.id, 'PAGES', 'ember-chronicle'))?.id, oldEraPage.id, 'old generic workspace bookmarks remain resolvable');
   assert.equal((await resolveWikiPageByPathKey(campaign.id, 'EVENTS', legacy.id))?.id, legacy.id, 'legacy document IDs resolve as wiki documents');
   const count = pages.length;
-  await ensureChronologyWikiWorkspaces(campaign.id);
+  await repairChronologyWikiWorkspacesForCampaign(campaign.id);
   assert.equal(await prisma.wikiPage.count({ where: { campaignId: campaign.id } }), count, 'migration does not duplicate documents');
   const unprefixedPage = await prisma.wikiPage.create({ data: { campaignId: campaign.id, title: 'Another authored chronicle', visibility: 'Party', blocks } });
   const unprefixedEvent = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Another event', wikiPageId: unprefixedPage.id } });
-  await ensureChronologyWikiWorkspaces(campaign.id);
+  await repairChronologyWikiWorkspacesForCampaign(campaign.id);
   assert.equal((await prisma.wikiPage.findUniqueOrThrow({ where: { id: unprefixedPage.id } })).workspace, 'EVENTS');
   assert.equal((await prisma.calendarEvent.findUniqueOrThrow({ where: { id: unprefixedEvent.id } })).wikiPageId, unprefixedPage.id);
 
@@ -119,7 +124,7 @@ test('authored chronology documents use the existing wiki workspaces and survive
   await prisma.$transaction(tx => linkChronologyPage(tx, gm, 'eras', newEraId, null));
   await deleteChronologyEra(gm, newEraId);
   assert.equal((await prisma.wikiPage.findUniqueOrThrow({ where: { id: newEraPageId } })).workspace, 'ERAS', 'unlinked era documents retain wiki ownership');
-  await ensureChronologyWikiWorkspaces(campaign.id);
+  await repairChronologyWikiWorkspacesForCampaign(campaign.id);
   assert.ok((await search(player, 'Riverlight')).results.some(row => row.entityId === newPageId && row.href.includes('/event-pages/')));
   assert.ok((await search(player, 'Ember')).results.some(row => row.entityId === oldEraPage.id && row.href.includes('/era-pages/')));
   await createWikiPage({ campaign: gm, user: { id: owner.id }, body: { title: 'Ember Chronicle', parentId: null }, params: {} } as any, response);
@@ -127,3 +132,61 @@ test('authored chronology documents use the existing wiki workspaces and survive
   assert.notEqual(returned.page.pathKey, 'ember-chronicle', 'new generic pages cannot reclaim a migrated wiki bookmark');
   assert.equal((await resolveWikiPageByPathKey(campaign.id, 'PAGES', 'ember-chronicle'))?.id, oldEraPage.id);
 });
+
+test('startup backfill migrates pre-1.9.0 Event and Era wiki pages once', async t => {
+  const stamp = randomUUID();
+  const owner = await prisma.user.create({ data: { email: `startup-${stamp}@example.test`, passwordHash: 'test' } });
+  const campaign = await prisma.campaign.create({ data: { name: 'Riverlight', handle: `startup-${stamp}`, campaignOwnerUserId: owner.id } });
+  t.after(async () => {
+    await prisma.campaign.delete({ where: { id: campaign.id } });
+    await prisma.user.delete({ where: { id: owner.id } });
+  });
+  const calendar = await prisma.fantasyCalendar.create({
+    data: { campaignId: campaign.id, name: 'Riverlight', months: [{ name: 'Harvestmoon', length: 30, type: 'standard' }], weekdays: [], seasons: [], moons: [], leapDays: [] },
+  });
+  const event = await prisma.calendarEvent.create({ data: { calendarId: calendar.id, title: 'Moonrise', visibility: 'PUBLIC' } });
+  const gm = await buildCampaignContext({
+    campaignId: campaign.id, campaignHandle: campaign.handle, campaignOwnerUserId: owner.id,
+    discoverability: 'PRIVATE', userId: owner.id, membershipRole: 'GAMEMASTER',
+    allowPlayerChronologyManagement: false, partyId: null,
+  });
+  const eraId = await saveChronologyEra(gm, { calendarId: calendar.id, name: 'Ember Age', visibility: 'PUBLIC', startDate: null, endDate: null, isCurrent: false });
+  const blocks = [{ id: 'original-prose', type: 'text-tiptap', title: 'Account', content: { markdown: 'Unchanged chronicle.' } }];
+  const eventPage = await prisma.wikiPage.create({
+    data: { id: `event-${event.id}`, campaignId: campaign.id, title: 'Moonrise Chronicle', visibility: 'Public', blocks, metadata: { preserved: 'citation metadata' } },
+  });
+  const eraPage = await prisma.wikiPage.create({
+    data: { campaignId: campaign.id, title: 'Ember Chronicle', visibility: 'Party', workspace: 'PAGES', pathKey: 'ember-chronicle', blocks },
+  });
+  await prisma.calendarEvent.update({ where: { id: event.id }, data: { wikiPageId: eventPage.id } });
+  await prisma.campaignEra.update({ where: { campaignId_id: { campaignId: campaign.id, id: eraId } }, data: { overviewPageId: eraPage.id } });
+  const citation = await prisma.wikiLink.create({ data: { campaignId: campaign.id, sourcePageId: eraPage.id, targetPageId: eventPage.id } });
+
+  await assert.rejects(prisma.$transaction(async tx => {
+    await initializeChronologyWorkspaces(tx, campaign.id);
+    throw new Error('rollback');
+  }), /rollback/);
+  assert.equal((await prisma.campaign.findUniqueOrThrow({ where: { id: campaign.id } })).chronologyWorkspacesInitialized, false);
+  assert.equal((await prisma.wikiPage.findUniqueOrThrow({ where: { id: eventPage.id } })).workspace, null);
+
+  await initializeExistingChronologyWorkspaces();
+  const migrated = await prisma.wikiPage.findUniqueOrThrow({ where: { id: eventPage.id } });
+  const migratedEra = await prisma.wikiPage.findUniqueOrThrow({ where: { id: eraPage.id } });
+  assert.equal(migrated.workspace, 'EVENTS');
+  assert.equal(migratedEra.workspace, 'ERAS');
+  assert.deepEqual(migrated.blocks, blocks);
+  assert.equal(migrated.visibility, 'Public');
+  assert.ok(await prisma.wikiLink.findUnique({ where: { id: citation.id } }));
+  assert.equal((await prisma.campaign.findUniqueOrThrow({ where: { id: campaign.id } })).chronologyWorkspacesInitialized, true);
+
+  await prisma.wikiPage.create({
+    data: { campaignId: campaign.id, title: 'Late chronicle', visibility: 'Party', workspace: 'PAGES', pathKey: 'late-chronicle' },
+  });
+  await ensureChronologyWikiWorkspaces(campaign.id);
+  assert.equal((await prisma.wikiPage.findUniqueOrThrow({ where: { id: eventPage.id } })).workspace, 'EVENTS');
+  assert.equal((await prisma.wikiPage.findFirstOrThrow({ where: { campaignId: campaign.id, pathKey: 'late-chronicle' } })).workspace, 'PAGES');
+
+  await initializeExistingChronologyWorkspaces();
+  assert.equal((await prisma.campaign.findUniqueOrThrow({ where: { id: campaign.id } })).chronologyWorkspacesInitialized, true);
+});
+

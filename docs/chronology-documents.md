@@ -36,11 +36,11 @@ The event route's state object is the event definition, represented as a readabl
 
 `pnpm --dir backend test:eras` applies the committed migrations to a disposable SQLite database and covers chronology permissions, optional pages, slug collisions against current, historical and deleted-record reservations, subsequent page and chronology visibility changes, stale page consequences and explicit empty sets, recurring definitions, generated events, hidden/deleted links, non-destructive era deletion and operational backup round-tripping. Frontend interaction tests cover directory filters, page creation through the wiki API, readable page navigation and view-only controls.
 
-The migration must be deployed before running the updated backend. It does not delete wiki documents. PostgreSQL uses the same portable table rebuild and inline foreign keys as SQLite.
+Schema migrations apply automatically on container start (PostgreSQL and SQLite). The process does not start against an outdated schema. The migration does not delete wiki documents. PostgreSQL uses the same portable table rebuild and inline foreign keys as SQLite.
 
 ## Workspace ownership migration
 
-Ownership repair runs idempotently before wiki-tree loads, wiki path resolution and campaign search. For a complete pre-deployment backfill, run `pnpm --dir backend db:migrate:chronology-workspaces` after schema migrations. The command uses the same campaign-scoped Prisma migration as those read paths. It creates system folders only when authored documents exist, reuses existing folders, retains document IDs and all authored data, and reindexes moved documents. Prior workspace/path-key coordinates are retained as wiki route aliases. Root folders are protected through the existing system-page deletion rules.
+Startup backfills Event and Era wiki ownership once per campaign (`chronologyWorkspacesInitialized`). The same repair remains a defensive fallback on wiki-tree, path resolution, and search until that campaign is claimed, then those reads skip the tree scan. It creates system folders only when authored documents exist, reuses existing folders, retains document IDs and all authored data, and reindexes moved documents. Prior workspace/path-key coordinates are retained as wiki route aliases. Root folders are protected through the existing system-page deletion rules. `pnpm --dir backend db:migrate:chronology-workspaces` is an optional retry hatch, not part of the normal upgrade.
 
 Chronology creation alone never creates a document or wiki folder. Page creation and linking assign wiki ownership atomically, and unlinking or chronology deletion leaves that ownership intact. Wiki page titles and paths are independent of event renames.
 

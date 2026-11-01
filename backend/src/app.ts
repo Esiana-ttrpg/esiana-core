@@ -20,6 +20,7 @@ import { setPluginHostReloader } from './lib/pluginRuntime/index.js';
 import { bootstrapStorageRegistry } from './lib/storage/storageRegistry.js';
 import { ensureStorageProviderPluginReady } from './lib/storage/ensureStorageProviderPlugin.js';
 import { initializeExistingEventCategories } from './lib/defaultEventCategories.js';
+import { initializeExistingChronologyWorkspaces } from './lib/chronologyWikiWorkspace.js';
 import { bootstrapGlobalTimeHooks } from './lib/globalTimeHooks/index.js';
 import { apiUsageLogger } from './middleware/apiLogger.js';
 import { installSystemLogCapture } from './lib/systemLogBuffer.js';
@@ -62,6 +63,7 @@ export async function createApp(): Promise<Express> {
 
   await getOrCreateSystemSettings();
   await initializeExistingEventCategories();
+  await initializeExistingChronologyWorkspaces();
   await syncEnvManagedIdentityProvider();
   const enabledOidcCount = await prisma.identityProvider.count({
     where: { enabled: true },

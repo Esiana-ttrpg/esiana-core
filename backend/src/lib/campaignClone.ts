@@ -637,6 +637,8 @@ export async function duplicateCampaign(
       const { initializeEventCategories } = await import('./defaultEventCategories.js');
       await initializeEventCategories(tx, campaign.id, { newCampaign: !copy.scheduling.calendarStructure });
     }
+    const { initializeChronologyWorkspaces } = await import('./chronologyWikiWorkspace.js');
+    await initializeChronologyWorkspaces(tx, campaign.id);
     return campaign;
   });
 

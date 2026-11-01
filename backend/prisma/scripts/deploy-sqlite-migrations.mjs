@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Deploy normalized SQLite copies without modifying canonical Prisma sources. */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -16,6 +17,7 @@ export { normalizeMigrationSqlForSqlite, normalizeSchemaPrismaForSqlite };
 export function deploySqliteMigrations({
   backendRoot = defaultBackendRoot,
   reset = process.argv.includes('--reset') || process.env.SQLITE_DB_RESET === '1',
+  generate = !process.argv.includes('--no-generate') && process.env.SQLITE_DB_GENERATE !== '0',
   databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db',
   runCommand = execFileSync,
 } = {}) {
@@ -32,9 +34,9 @@ export function deploySqliteMigrations({
   const dbPath = path.resolve(prismaRoot, dbFile);
   const schema = fs.readFileSync(schemaPath, 'utf8');
 
-  // Unique per invocation. Existing staging directories and backups are untouched.
-  // Keeping the config under backend also preserves prisma/config module resolution.
-  const workspace = fs.mkdtempSync(path.join(backendRoot, '.sqlite-deploy-'));
+  // Unique per invocation in the OS temp dir so production images can deploy
+  // as a non-root user without writing into /app/backend.
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'esiana-sqlite-deploy-'));
   try {
     const stagedMigrations = path.join(workspace, 'migrations');
     fs.mkdirSync(stagedMigrations);
@@ -71,13 +73,19 @@ export function deploySqliteMigrations({
     const prismaCli = path.join(path.dirname(require.resolve('prisma/package.json')), 'build/index.js');
     const options = { cwd: backendRoot, stdio: 'inherit', env: { ...process.env, DATABASE_URL: dbUrl } };
     runCommand(process.execPath, [prismaCli, 'migrate', 'deploy', '--config', configPath], options);
-    runCommand(process.execPath, [prismaCli, 'generate', '--config', configPath], options);
+    if (generate) {
+      runCommand(process.execPath, [prismaCli, 'generate', '--config', configPath], options);
+      console.log('Prisma Client generated for SQLite.');
+    }
     console.log(`SQLite migrations applied to ${dbUrl}`);
-    console.log('Prisma Client generated for SQLite.');
   } finally {
-    // workspace is the exact absolute directory created by this invocation.
-    const relative = path.relative(path.resolve(backendRoot), workspace);
-    if (path.dirname(relative) !== '.' || !path.basename(relative).startsWith('.sqlite-deploy-')) {
+    const tmp = fs.realpathSync(os.tmpdir());
+    const resolvedWorkspace = fs.realpathSync(workspace);
+    const prefix = tmp.endsWith(path.sep) ? tmp : tmp + path.sep;
+    const inTmp = process.platform === 'win32'
+      ? resolvedWorkspace.toLowerCase().startsWith(prefix.toLowerCase())
+      : resolvedWorkspace.startsWith(prefix);
+    if (!inTmp || !path.basename(resolvedWorkspace).startsWith('esiana-sqlite-deploy-')) {
       throw new Error('Refusing cleanup outside the SQLite deploy workspace');
     }
     fs.rmSync(workspace, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
