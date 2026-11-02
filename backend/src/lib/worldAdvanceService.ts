@@ -396,6 +396,8 @@ export async function applyWorldAdvance(
           skippedCount: 0,
         }),
         targetEpochMinute: nextEpochMinute,
+        createdByUserId: actorUserId,
+        updatedByUserId: actorUserId,
       },
     });
 
@@ -451,7 +453,10 @@ export async function applyWorldAdvance(
 
     await tx.calendarEvent.update({
       where: { id: chronologyEvent.id },
-      data: { description: JSON.stringify(payload) },
+      data: {
+        description: JSON.stringify(payload),
+        updatedByUserId: actorUserId,
+      },
     });
 
     return {

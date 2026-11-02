@@ -22,6 +22,7 @@ const EXPORT_NOTES = [
   'Unmatched historical PAGE_CREATED and PAGE_EDITED wordDelta values are exported as reconstructed net-only rows. Added versus removed is not invented.',
   'Worldbuilding domains are mutually exclusive. Factions ride organization wiki pages and stay not_yet_tracked so they are not double-counted. Relationships use LINK_CREATED, never derived EntityRelation rows.',
   'Cartography edits before map authorship instrumentation remain not_yet_tracked. Pan, zoom, and cursor exploration are excluded. Map thumbnails and titles are omitted from export.',
+  'Chronology domains are calendar events, eras, timeline-linked events, and time advances. World-advance batch stamps are excluded from events. In-world minutes advanced are separate from real-world work time. Filter by createdAt, never targetEpochMinute. Pre-instrumentation chronology edits stay not_yet_tracked.',
 ];
 
 type ContributionRow = {
@@ -197,6 +198,7 @@ export function buildPersonalStatisticsExportJson(input: {
     habits: input.payload.habits,
     worldbuilding: input.payload.worldbuilding,
     cartography: input.payload.cartography,
+    chronology: input.payload.chronology,
     contributions: input.contributions.map((row) => ({
       id: row.id,
       occurredAt: row.occurredAt.toISOString(),
@@ -241,7 +243,8 @@ function csvTable(headers: string[], rows: Array<Array<unknown>>): string {
   ].join('\n');
 }
 
-function metricValueCells(value: MetricValue): [string, string, string] {
+function metricValueCells(value: MetricValue | undefined): [string, string, string] {
+  if (!value) return ['', '', ''];
   if (value.status === 'unavailable') return [value.status, '', value.reason];
   return [value.status, String(value.amount), ''];
 }
@@ -342,6 +345,35 @@ export function renderPersonalStatisticsExportCsv(
     ]),
   );
 
+  const chronology = csvTable(
+    [
+      'domain',
+      'createdStatus',
+      'createdAmount',
+      'createdReason',
+      'periodCreatedStatus',
+      'periodCreatedAmount',
+      'periodCreatedReason',
+      'periodEditedStatus',
+      'periodEditedAmount',
+      'periodEditedReason',
+      'minutesAdvancedStatus',
+      'minutesAdvancedAmount',
+      'minutesAdvancedReason',
+      'periodMinutesAdvancedStatus',
+      'periodMinutesAdvancedAmount',
+      'periodMinutesAdvancedReason',
+    ],
+    payload.chronology.map((row) => [
+      row.domain,
+      ...metricValueCells(row.created),
+      ...metricValueCells(row.periodCreated),
+      ...metricValueCells(row.periodEdited),
+      ...metricValueCells(row.minutesAdvanced),
+      ...metricValueCells(row.periodMinutesAdvanced),
+    ]),
+  );
+
   const contributions = csvTable(
     [
       'id',
@@ -415,7 +447,7 @@ export function renderPersonalStatisticsExportCsv(
     ]),
   );
 
-  return `${header}\n\n[metricDefinitions]\n${metricDefinitions}\n\n[snapshot]\n${snapshot}\n\n[period]\n${period}\n\n[habits]\n${habits}\n\n[worldbuilding]\n${worldbuilding}\n\n[cartography]\n${cartography}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
+  return `${header}\n\n[metricDefinitions]\n${metricDefinitions}\n\n[snapshot]\n${snapshot}\n\n[period]\n${period}\n\n[habits]\n${habits}\n\n[worldbuilding]\n${worldbuilding}\n\n[cartography]\n${cartography}\n\n[chronology]\n${chronology}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
 }
 
 export async function exportOwnerPersonalStatistics(input: {

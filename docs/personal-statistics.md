@@ -146,15 +146,15 @@ Disposition:
 | Character canvas tabs | Blocked | `CharacterPageTab.blocks`; `origin` `CORE` / `CUSTOM` / `PLUGIN` / `API` | No actor on save; outside substrate. Independently stored rich-text — required future source-registry target. |
 | Character custom fields | Blocked | `CharacterField` with `origin` | Structured fields, not prose. Actor missing on update. |
 | Plugin content-sync (wiki collections) | Tracked as integration | Substrate events with `actorUserId` | Must be origin `integration`, not silent human writing. |
-| Plugin content-sync (journal / timeline-events) | Blocked | Journal has `createdByUserId`; calendar events have no actor | Timeline-event collection cannot attribute. |
+| Plugin content-sync (journal / timeline-events) | Partial | Journal has `createdByUserId`; calendar events leave actors null on sync | Integration origin must not count as human chronology authorship. |
 | Relationships / entity graph | Tracked (creates) | `NarrativeEvent LINK_CREATED`; `WikiLink.createdByUserId` | Pass 6 uses `LINK_CREATED` only. Derived `EntityRelation` is not authorship. Link edits stay `not_yet_tracked`. |
 | Maps (asset create) | Tracked | `Asset.uploadedByUserId` where `type = 'map'` | Pass 7 counts uploads. Metadata edits log `MAP_ASSET` activity. |
 | Map pins, layers, groups, scene objects, keyframes, presets | Tracked (from Pass 7) | Additive `createdByUserId` / `updatedByUserId`; `CampaignActivity` `MAP_*` | Pre-instrumentation rows stay unattributed. Historical edits are `not_yet_tracked` until an activity row exists. Import/restore leave actors null. |
 | Map exploration (pan / zoom / cursor) | Intentionally excluded | None | Not meaningful authorship; do not log. |
-| Chronology eras | Tracked | `CampaignEra.createdByUserId` / `updatedByUserId` | No `CampaignActivity` row today. |
-| Calendar events | Blocked | `createdAt` / `updatedAt` only; `TIMELINE_EVENT_CREATED` domain event | Need actor columns and durable activity. |
-| Time advances (world-advance) | Tracked | `TimeAdvanceSimulationRun` unique on `(campaignId, source, sourceRef, nextEpochMinute)`; `WorldAdvanceReceipt` | Idempotent. |
-| Time advances (manual clock) | Partial | `CampaignActivity` `TIME_TRACKING`; clock write | Hook receipts are not de-duplicated when `batchId` is missing. |
+| Chronology eras | Tracked (from Pass 8) | `CampaignEra.createdByUserId` / `updatedByUserId`; `CampaignActivity` `CAMPAIGN_ERA` | Pre-instrumentation edits stay untracked until an activity row exists. |
+| Calendar events | Tracked (from Pass 8) | Additive `createdByUserId` / `updatedByUserId`; `CampaignActivity` `CALENDAR_EVENT` | Import / plugin sync leave actors null. World-advance batch stamps are excluded from event totals. |
+| Time advances (world-advance) | Tracked | `TimeAdvanceSimulationRun` unique on `(campaignId, source, sourceRef, nextEpochMinute)` with `initiatedByUserId`; `WorldAdvanceReceipt` | Idempotent. Count runs by `createdAt`, never `targetEpochMinute`. |
+| Time advances (manual clock) | Tracked (from Pass 8) | `TimeAdvanceSimulationRun.initiatedByUserId`; `CampaignActivity` `TIME_TRACKING` | Hook receipts without `batchId` may still duplicate at the run layer; personal stats use initiated runs. |
 | Sessions (timeline + schedule) | Tracked | `CampaignSessionTimeline.authorId`; `CampaignSessionSchedule` status | Planned range is not play duration. |
 | Session attendance | Tracked | `SessionAttendance.status` | RSVP, not proof of showing up. Auto-RSVP writes `ATTENDING`. |
 | Session recordings / transcripts | Intentionally excluded as play duration | `SessionRecording.durationMs` is audio length | Do not use as session duration. Upload is attributed via `uploadedByUserId`. |
@@ -408,3 +408,22 @@ Pan, zoom, and cursor exploration are not logged. Owner statistics may
 include up to six authorized map thumbnails (`canViewWikiPage` on asset
 visibility, designed fallback when `thumbnailUrl` is missing). Export
 omits thumbnails and map titles.
+
+## Pass 8 — Chronology aggregations
+
+Same service, range, privacy, and export contract. Locked 13 IDs unchanged.
+
+`chronology[]` reports calendar events created, eras defined, timeline
+contributions (calendar events with a linked wiki page — a subset of
+events), and time advances initiated. Worldbuilding wiki event/era pages
+remain in Pass 6 domains and are not double-counted here. World-advance
+batch stamps are excluded from calendar-event totals.
+
+Creates use `createdByUserId` on calendar events and eras. Time advances
+use `TimeAdvanceSimulationRun.initiatedByUserId` and sum in-world minutes
+from `nextEpochMinute - previousEpochMinute`. Filter personal activity by
+`createdAt`, never by `targetEpochMinute`. Period edits use
+`CampaignActivity` `CALENDAR_EVENT` / `CAMPAIGN_ERA` `UPDATE` rows; if this
+user has never produced one, period edits are `unavailable` /
+`not_yet_tracked`. Timeline-contribution and time-advance period edits stay
+untracked. Export JSON/CSV gains a `chronology` section.
