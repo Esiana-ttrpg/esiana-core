@@ -239,6 +239,37 @@ export type ParticipationHistoryEntry = {
   plannedDurationMinutes: number | null;
 };
 
+/**
+ * Period-specific creative tendencies derived from writing, worldbuilding,
+ * cartography, chronology, and participation. Normalized scores, not rankings.
+ * Owner-only — never used for public leaderboards.
+ */
+export const PERSONAL_ARCHETYPE_RULESET_VERSION = 1 as const;
+
+export const PERSONAL_ARCHETYPE_IDS = [
+  'chronicler',
+  'worldsmith',
+  'cartographer',
+  'timekeeper',
+  'storyweaver',
+  'adventurer',
+  'wanderer',
+] as const;
+
+export type PersonalArchetypeId = (typeof PERSONAL_ARCHETYPE_IDS)[number];
+
+export type PersonalArchetypeScore = {
+  id: PersonalArchetypeId;
+  /** Share of this window's creative mix in [0, 1]. Scores sum to 1. */
+  score: number;
+};
+
+export type PersonalArchetypes = {
+  rulesetVersion: typeof PERSONAL_ARCHETYPE_RULESET_VERSION;
+  scores: PersonalArchetypeScore[];
+  dominantId: PersonalArchetypeId | null;
+};
+
 export type PersonalStatisticsResponse = {
   version: 1;
   computedAt: string;
@@ -278,6 +309,11 @@ export type PersonalStatisticsResponse = {
    */
   participation: ParticipationDomainStats[];
   participationHistory?: ParticipationHistoryEntry[] | null;
+  /**
+   * Owner-only period archetypes. Omitted for public / viewerAuthorized and
+   * when the window has no measurable activity.
+   */
+  archetypes?: PersonalArchetypes | null;
   linkableCampaigns: LinkableCampaign[];
   /** Owner-only writing charts. Omitted for public and compatibility adapters. */
   visualizations?: WritingVisualizations | null;
@@ -350,6 +386,7 @@ export type PersonalStatisticsExportJson = {
   chronology: ChronologyDomainStats[];
   participation: ParticipationDomainStats[];
   participationHistory: ParticipationHistoryEntry[];
+  archetypes: PersonalArchetypes | null;
   contributions: PersonalStatisticsExportContribution[];
   dailyAggregates: PersonalStatisticsExportDailyAggregate[];
   writingSessions: PersonalStatisticsExportSession[];

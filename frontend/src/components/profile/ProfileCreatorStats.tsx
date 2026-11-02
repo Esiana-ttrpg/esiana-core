@@ -8,6 +8,7 @@ import type {
   CreatorAttributionResponse,
   ParticipationDomainStats,
   ParticipationHistoryEntry,
+  PersonalArchetypes,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
   WorldbuildingDomainStats,
@@ -337,6 +338,51 @@ function ParticipationTable({
   );
 }
 
+function ArchetypesPanel({
+  archetypes,
+  t,
+}: {
+  archetypes: PersonalArchetypes;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const visible = archetypes.scores.filter((row) => row.score > 0);
+  const dominantName = archetypes.dominantId
+    ? t(`profile.creatorstats.archetypes.${archetypes.dominantId}`)
+    : null;
+  return (
+    <div className="space-y-3">
+      {dominantName ? (
+        <p className="text-sm text-foreground">
+          {t('profile.creatorstats.archetypesDominant', { name: dominantName })}
+        </p>
+      ) : null}
+      <ul className="space-y-2">
+        {visible.map((row) => {
+          const pct = Math.round(row.score * 100);
+          const label = t(`profile.creatorstats.archetypes.${row.id}`);
+          return (
+            <li key={row.id} className="space-y-1">
+              <div className="flex justify-between gap-3 text-sm text-foreground">
+                <span>{label}</span>
+                <span className="text-muted">{`${pct}%`}</span>
+              </div>
+              <div
+                className="h-1.5 w-full overflow-hidden bg-border/40"
+                role="presentation"
+              >
+                <div
+                  className="h-full bg-foreground/70"
+                  style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function ParticipationHistoryList({
   entries,
   locale,
@@ -596,6 +642,19 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
           </>
         ) : (
           <p className="text-sm text-muted">{t('profile.creatorstats.participationEmpty')}</p>
+        )}
+      </section>
+      <section className="space-y-3">
+        <h3 className={META_SECTION_LABEL_CLASS}>
+          {t('profile.creatorstats.archetypesSection')}
+        </h3>
+        <p className="text-sm text-muted">{t('profile.creatorstats.archetypesHelp')}</p>
+        {chartsLoading ? (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
+        ) : statistics?.archetypes?.scores?.length ? (
+          <ArchetypesPanel archetypes={statistics.archetypes} t={t} />
+        ) : (
+          <p className="text-sm text-muted">{t('profile.creatorstats.archetypesEmpty')}</p>
         )}
       </section>
       <section className="space-y-3">

@@ -34,6 +34,7 @@ import {
   buildParticipationHistory,
   type ParticipationSessionRecord,
 } from './assembleParticipation.js';
+import { assembleArchetypes } from './assembleArchetypes.js';
 import {
   MAP_ACTIVITY_ENTITY_TYPES,
   MapActivityEntity,
@@ -1152,6 +1153,23 @@ export async function queryPersonalStatistics(
         })
       : undefined;
 
+  const archetypes =
+    input.visibility === 'owner' && !skipPeriod
+      ? assembleArchetypes({
+          wordsAdded: period['period.wordsAdded'],
+          pagesEdited: period['period.pagesEdited'],
+          sessionMinutes: visualizationSessions.reduce(
+            (sum, session) =>
+              sum + Math.max(0, Math.round(session.activeDurationMs / 60_000)),
+            0,
+          ),
+          worldbuilding,
+          cartography,
+          chronology,
+          participation,
+        })
+      : undefined;
+
   return {
     version: 1,
     computedAt: now.toISOString(),
@@ -1174,6 +1192,7 @@ export async function queryPersonalStatistics(
     chronology,
     participation,
     ...(history ? { participationHistory: history } : {}),
+    ...(archetypes ? { archetypes } : {}),
     linkableCampaigns,
     ...(visualizations ? { visualizations } : {}),
   };
