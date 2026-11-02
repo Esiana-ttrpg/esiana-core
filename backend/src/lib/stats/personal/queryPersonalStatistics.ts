@@ -808,6 +808,7 @@ export async function queryPersonalStatistics(
         timeZone,
       })
     : null;
+  const loadArchetypeSessions = input.visibility === 'owner' && !skipPeriod;
 
   const [
     createdPages,
@@ -820,6 +821,7 @@ export async function queryPersonalStatistics(
     inferredSessions,
     writingContributions,
     visualizationSessions,
+    archetypeWritingSessions,
   ] = await Promise.all([
     prisma.wikiPage.findMany({
       where: {
@@ -954,6 +956,20 @@ export async function queryPersonalStatistics(
             completeness: true,
             documentIds: true,
           },
+        })
+      : Promise.resolve([]),
+    loadArchetypeSessions
+      ? prisma.writingSession.findMany({
+          where: {
+            userId: input.userId,
+            campaignId: { in: campaignIds },
+            startedAt: {
+              gte: range.start ?? new Date(0),
+              lt: range.end,
+            },
+            completeness: { not: 'unavailable' },
+          },
+          select: { activeDurationMs: true },
         })
       : Promise.resolve([]),
   ]);
@@ -1153,22 +1169,22 @@ export async function queryPersonalStatistics(
         })
       : undefined;
 
-  const archetypes =
-    input.visibility === 'owner' && !skipPeriod
-      ? assembleArchetypes({
-          wordsAdded: period['period.wordsAdded'],
-          pagesEdited: period['period.pagesEdited'],
-          sessionMinutes: visualizationSessions.reduce(
-            (sum, session) =>
-              sum + Math.max(0, Math.round(session.activeDurationMs / 60_000)),
-            0,
-          ),
-          worldbuilding,
-          cartography,
-          chronology,
-          participation,
-        })
-      : undefined;
+  const archetypeSessionMinutes = archetypeWritingSessions.reduce(
+    (sum, session) =>
+      sum + Math.max(0, Math.round(session.activeDurationMs / 60_000)),
+    0,
+  );
+  const archetypes = loadArchetypeSessions
+    ? assembleArchetypes({
+        wordsAdded: period['period.wordsAdded'],
+        pagesEdited: period['period.pagesEdited'],
+        sessionMinutes: archetypeSessionMinutes,
+        worldbuilding,
+        cartography,
+        chronology,
+        participation,
+      })
+    : undefined;
 
   return {
     version: 1,
