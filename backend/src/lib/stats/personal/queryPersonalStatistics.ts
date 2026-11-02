@@ -218,9 +218,10 @@ async function loadCartographyProjection(input: {
       },
       select: { createdAt: true },
     }),
-    input.skipPeriod
+    input.skipPeriod || input.visibility !== 'owner'
       ? Promise.resolve([])
-      : prisma.campaignActivity.findMany({
+      : prisma.campaignActivity.groupBy({
+          by: ['entityType', 'entityId'],
           where: {
             userId: input.userId,
             campaignId: { in: input.campaignIds },
@@ -231,7 +232,7 @@ async function loadCartographyProjection(input: {
               lt: input.rangeEnd,
             },
           },
-          select: { entityType: true, entityId: true },
+          _count: { _all: true },
         }),
     prisma.campaignActivity.findFirst({
       where: {
@@ -243,9 +244,13 @@ async function loadCartographyProjection(input: {
     }),
   ]);
 
-  const sceneEditIds = periodUpdates
-    .filter((row) => row.entityType === MapActivityEntity.SCENE_OBJECT)
-    .map((row) => row.entityId);
+  const sceneEditIds = [
+    ...new Set(
+      periodUpdates
+        .filter((row) => row.entityType === MapActivityEntity.SCENE_OBJECT)
+        .map((row) => row.entityId),
+    ),
+  ];
   const sceneKinds =
     sceneEditIds.length === 0
       ? []
@@ -256,18 +261,19 @@ async function loadCartographyProjection(input: {
   const kindById = new Map(sceneKinds.map((row) => [row.id, row.kind]));
   const periodEditsByDomain: Partial<Record<CartographyDomain, number>> = {};
   for (const row of periodUpdates) {
+    const count = row._count._all;
     if (row.entityType === MapActivityEntity.ASSET) {
-      periodEditsByDomain.maps = (periodEditsByDomain.maps ?? 0) + 1;
+      periodEditsByDomain.maps = (periodEditsByDomain.maps ?? 0) + count;
     } else if (row.entityType === MapActivityEntity.PIN) {
-      periodEditsByDomain.markers = (periodEditsByDomain.markers ?? 0) + 1;
+      periodEditsByDomain.markers = (periodEditsByDomain.markers ?? 0) + count;
     } else if (row.entityType === MapActivityEntity.LAYER) {
-      periodEditsByDomain.layers = (periodEditsByDomain.layers ?? 0) + 1;
+      periodEditsByDomain.layers = (periodEditsByDomain.layers ?? 0) + count;
     } else if (row.entityType === MapActivityEntity.SCENE_OBJECT) {
       const kind = kindById.get(row.entityId);
       if (kind === 'region') {
-        periodEditsByDomain.regions = (periodEditsByDomain.regions ?? 0) + 1;
+        periodEditsByDomain.regions = (periodEditsByDomain.regions ?? 0) + count;
       } else if (kind === 'label') {
-        periodEditsByDomain.labels = (periodEditsByDomain.labels ?? 0) + 1;
+        periodEditsByDomain.labels = (periodEditsByDomain.labels ?? 0) + count;
       }
     }
   }
