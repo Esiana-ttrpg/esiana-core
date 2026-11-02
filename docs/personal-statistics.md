@@ -315,5 +315,24 @@ reconstructed fallback) and is `partial` when any reconstructed rows are
 included. Compatibility `/creator-attribution` still returns only the 13
 locked IDs.
 
-PR 4 remains gated: 15-minute session grouping, bounded heartbeats, and
-workshop active time.
+## PR 4 — Automatic writing sessions
+
+Sessions are inferred, not flushed on every blur.
+
+- Qualifying activity is a user-origin contribution **or** a focused,
+  visible, connected editor-update heartbeat. Workshop typing counts even
+  when the draft is never published.
+- A session starts on the first qualifying activity and ends after **15
+  minutes** without one. That window groups sessions; it is not active time.
+- Documents in the same campaign belong to one session. Tabs share it.
+- `activeDurationMs` is the union of focused intervals. Hidden tabs,
+  blur, disconnects, and idle gaps are excluded. Overlapping tabs do not
+  double-count.
+- Heartbeats are throttled (30s). No keystrokes, cursors, or document
+  bodies are stored.
+- Words still come from `WritingContribution` rows linked by
+  `writingSessionId`, not client `wordDelta`.
+- Pre-instrumentation duration is not backfilled from
+  `NarrativeEvent.createdAt` gaps. Legacy blur payloads remain `partial`.
+
+The break-nudge UX in `useEditorInstrumentation` is unchanged.

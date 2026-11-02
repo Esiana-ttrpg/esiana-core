@@ -757,12 +757,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation:
-      'peakHourUtc weighted by sessionMinutes from UserWritingDailyRollup over 30d',
+      'WritingSession startedAt hour weighted by activeDurationMs; legacy CampaignActivity fallback',
     unit: 'hour_of_day',
-    source: 'UserWritingDailyRollup.peakHourUtc + sessionMinutes',
+    source: 'WritingSession.activeDurationMs (focused intervals)',
     timeSemantics: 'activity_in_period',
     attributionRules:
-      'Owner-only. UTC hour from writing-session flushes only; wiki saves do not set hour.',
+      'Owner-only. Hour from inferred writing sessions in the reporting timezone; idle, hidden, and disconnected time is excluded.',
     historicalCompleteness: 'estimated',
     reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',

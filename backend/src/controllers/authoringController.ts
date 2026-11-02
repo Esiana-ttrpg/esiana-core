@@ -2,9 +2,10 @@ import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { logCampaignActivity } from '../lib/campaignActivity.js';
-import { incrementDailyRollup } from '../lib/stats/userWritingDailyRollup.js';
-import { writingSessionRollupFields } from '../lib/stats/writing/aggregateWritingWords.js';
+import {
+  ingestLegacyWritingSession,
+  touchWritingSession,
+} from '../lib/stats/writing/writingSessionService.js';
 import { isSceneMetadataPresent } from '../lib/sceneMetadata.js';
 import { parseThreadMetadata } from '../lib/threadMetadata.js';
 import { resolveCanonicalEntityCategory } from '../../../shared/resolveCanonicalEntityCategory.js';
@@ -51,6 +52,9 @@ export async function postWritingSession(
 
   const pageId = typeof body.pageId === 'string' ? body.pageId.trim() : '';
   const pageTitle = typeof body.pageTitle === 'string' ? body.pageTitle.trim() : 'Writing session';
+  const clientInstanceKey =
+    typeof body.clientInstanceKey === 'string' ? body.clientInstanceKey.trim() : '';
+  const kindRaw = typeof body.kind === 'string' ? body.kind.trim() : '';
   const durationMs =
     typeof body.durationMs === 'number' && Number.isFinite(body.durationMs)
       ? Math.max(0, Math.floor(body.durationMs))
@@ -69,35 +73,33 @@ export async function postWritingSession(
     return;
   }
 
+  if (clientInstanceKey) {
+    const kind = kindRaw === 'interval-end' ? 'interval-end' : 'activity';
+    await touchWritingSession(prisma, {
+      userId,
+      campaignId,
+      clientInstanceKey,
+      documentId: pageId,
+      documentTitle: pageTitle,
+      kind,
+      focused: body.focused !== false,
+      visible: body.visible !== false,
+      connected: body.connected !== false,
+    });
+    res.status(204).end();
+    return;
+  }
+
   if (durationMs < 1000 && wordDelta === 0 && linksAdded === 0) {
     res.status(204).end();
     return;
   }
 
-  logCampaignActivity({
+  await ingestLegacyWritingSession(prisma, {
+    userId,
     campaignId,
-    userId,
-    actionType: 'UPDATE',
-    entityType: 'WRITING_SESSION',
-    entityId: pageId,
-    entityName: pageTitle,
-    parentContext: JSON.stringify({
-      durationMs,
-      wordDelta,
-      linksAdded,
-    }),
-    deltaBytes: wordDelta > 0 ? wordDelta : null,
-  });
-
-  const sessionAt = new Date();
-  await incrementDailyRollup(prisma, {
-    userId,
-    at: sessionAt,
-    ...writingSessionRollupFields({
-      durationMs,
-      linksAdded,
-      at: sessionAt,
-    }),
+    documentId: pageId,
+    durationMs,
   });
 
   res.status(204).end();

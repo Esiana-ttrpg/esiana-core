@@ -153,8 +153,9 @@ export function readNarrativeWordDelta(metadata: unknown): {
 export function readWritingSessionContext(parentContext: string | null): {
   wordDelta: number;
   durationMs: number;
+  writingSessionId: string | null;
 } {
-  if (!parentContext) return { wordDelta: 0, durationMs: 0 };
+  if (!parentContext) return { wordDelta: 0, durationMs: 0, writingSessionId: null };
   try {
     const parsed = JSON.parse(parentContext) as Record<string, unknown>;
     return {
@@ -166,8 +167,12 @@ export function readWritingSessionContext(parentContext: string | null): {
         typeof parsed.durationMs === 'number' && Number.isFinite(parsed.durationMs)
           ? Math.max(0, Math.trunc(parsed.durationMs))
           : 0,
+      writingSessionId:
+        typeof parsed.writingSessionId === 'string' && parsed.writingSessionId.trim()
+          ? parsed.writingSessionId.trim()
+          : null,
     };
   } catch {
-    return { wordDelta: 0, durationMs: 0 };
+    return { wordDelta: 0, durationMs: 0, writingSessionId: null };
   }
 }

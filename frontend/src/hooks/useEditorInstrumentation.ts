@@ -5,7 +5,11 @@ import {
   breakIntervalMs,
   loadBreakRemindersEnabled,
 } from '@/lib/authoringPreferences';
-import { flushWritingSession } from '@/lib/authoringApi';
+import { sendWritingSessionHeartbeat } from '@/lib/authoringApi';
+import {
+  canCountActivityHeartbeat,
+  shouldSendActivityHeartbeat,
+} from '@shared/writingSession';
 
 function countWords(text: string): number {
   const trimmed = text.trim();
@@ -16,6 +20,14 @@ function countWords(text: string): number {
 function countWikiLinks(markdown: string): number {
   const bracketMatches = markdown.match(/\[\[[^\]]+\]\]/g);
   return bracketMatches?.length ?? 0;
+}
+
+function readOnline(): boolean {
+  return typeof navigator === 'undefined' ? true : navigator.onLine;
+}
+
+function readVisible(): boolean {
+  return typeof document === 'undefined' ? true : document.visibilityState === 'visible';
 }
 
 export interface EditorInstrumentationState {
@@ -56,8 +68,14 @@ export function useEditorInstrumentation(
   const baselineLinks = useRef(0);
   const focusStartedAt = useRef<number | null>(null);
   const accumulatedMs = useRef(0);
-  const flushed = useRef(false);
   const breakFired = useRef(false);
+  const lastActivitySentAt = useRef<number | null>(null);
+  const focusedRef = useRef(false);
+  const clientInstanceKey = useRef(
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `tab-${Math.random().toString(36).slice(2)}`,
+  );
 
   const resetSession = useCallback(() => {
     if (!editor) return;
@@ -68,36 +86,45 @@ export function useEditorInstrumentation(
     setLinksAdded(0);
     accumulatedMs.current = 0;
     setSessionDurationMs(0);
-    flushed.current = false;
     breakFired.current = false;
     setBreakNudgeVisible(false);
   }, [editor]);
 
-  const flushSession = useCallback(async () => {
-    if (!enabled || flushed.current || !editor) return;
-    if (!campaignHandle || !pageId) return;
+  const sendHeartbeat = useCallback(
+    async (kind: 'activity' | 'interval-end') => {
+      if (!enabled || !editor) return;
+      if (!campaignHandle || !pageId) return;
+      const focused = kind === 'activity' ? true : isFocused;
+      const visible = readVisible();
+      const connected = readOnline();
+      if (kind === 'activity' && !canCountActivityHeartbeat({ focused, visible, online: connected })) {
+        return;
+      }
+      try {
+        await sendWritingSessionHeartbeat(campaignHandle, {
+          pageId,
+          pageTitle: pageTitle ?? 'Untitled',
+          clientInstanceKey: clientInstanceKey.current,
+          kind,
+          focused: kind === 'activity' ? true : false,
+          visible,
+          connected,
+        });
+        if (kind === 'activity') lastActivitySentAt.current = Date.now();
+        if (kind === 'interval-end') onSessionFlushRef.current?.();
+      } catch {
+        /* best-effort telemetry */
+      }
+    },
+    [enabled, editor, campaignHandle, pageId, pageTitle, isFocused],
+  );
 
-    const markdown = getWikiEditorMarkdown(editor);
-    const wordDelta = countWords(markdown) - baselineWords.current;
-    const linkDelta = Math.max(0, countWikiLinks(markdown) - baselineLinks.current);
-    const durationMs = accumulatedMs.current;
-
-    if (durationMs < 1000 && wordDelta === 0 && linkDelta === 0) return;
-
-    flushed.current = true;
-    try {
-      await flushWritingSession(campaignHandle, {
-        pageId,
-        pageTitle: pageTitle ?? 'Untitled',
-        durationMs,
-        wordDelta,
-        linksAdded: linkDelta,
-      });
-      onSessionFlushRef.current?.();
-    } catch {
-      flushed.current = false;
-    }
-  }, [enabled, editor, campaignHandle, pageId, pageTitle]);
+  const maybeSendActivity = useCallback(() => {
+    if (!focusedRef.current) return;
+    const now = Date.now();
+    if (!shouldSendActivityHeartbeat(lastActivitySentAt.current, now)) return;
+    void sendHeartbeat('activity');
+  }, [sendHeartbeat]);
 
   useEffect(() => {
     if (!editor || !enabled) return;
@@ -110,21 +137,24 @@ export function useEditorInstrumentation(
       const links = countWikiLinks(markdown);
       setSessionWordDelta(words - baselineWords.current);
       setLinksAdded(Math.max(0, links - baselineLinks.current));
+      maybeSendActivity();
     };
 
     const handleFocus = () => {
+      focusedRef.current = true;
       setIsFocused(true);
       focusStartedAt.current = Date.now();
     };
 
     const handleBlur = () => {
+      focusedRef.current = false;
       setIsFocused(false);
       if (focusStartedAt.current != null) {
         accumulatedMs.current += Date.now() - focusStartedAt.current;
         setSessionDurationMs(accumulatedMs.current);
         focusStartedAt.current = null;
       }
-      void flushSession();
+      void sendHeartbeat('interval-end');
     };
 
     editor.on('update', handleUpdate);
@@ -136,7 +166,30 @@ export function useEditorInstrumentation(
       editor.off('focus', handleFocus);
       editor.off('blur', handleBlur);
     };
-  }, [editor, enabled, flushSession, resetSession]);
+  }, [editor, enabled, maybeSendActivity, resetSession, sendHeartbeat]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const endInterval = () => {
+      void sendHeartbeat('interval-end');
+    };
+    const handleVisibility = () => {
+      if (!readVisible()) endInterval();
+    };
+    const handleOffline = () => {
+      endInterval();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('pagehide', endInterval);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('pagehide', endInterval);
+    };
+  }, [enabled, sendHeartbeat]);
 
   useEffect(() => {
     if (!enabled || !isFocused) return;

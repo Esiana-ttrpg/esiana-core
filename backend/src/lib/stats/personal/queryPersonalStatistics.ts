@@ -182,6 +182,7 @@ export async function queryPersonalStatistics(
     periodEvents,
     habitEvents,
     writingSessions,
+    inferredSessions,
     writingContributions,
   ] = await Promise.all([
     prisma.wikiPage.findMany({
@@ -251,6 +252,21 @@ export async function queryPersonalStatistics(
             createdAt: { gte: streakLookback.gte, lt: streakLookback.lt },
           },
           select: { createdAt: true, parentContext: true },
+        })
+      : Promise.resolve([]),
+    includeHabits
+      ? prisma.writingSession.findMany({
+          where: {
+            userId: input.userId,
+            campaignId: { in: campaignIds },
+            startedAt: { gte: streakLookback.gte, lt: streakLookback.lt },
+            completeness: { not: 'unavailable' },
+          },
+          select: {
+            startedAt: true,
+            activeDurationMs: true,
+            completeness: true,
+          },
         })
       : Promise.resolve([]),
     loadContributions
@@ -323,8 +339,19 @@ export async function queryPersonalStatistics(
         substantialRevisions: delta.substantialRevision ? 1 : 0,
       });
     }
+    for (const session of inferredSessions) {
+      points.push({
+        at: session.startedAt,
+        wordsAdded: 0,
+        editsCount: 0,
+        sessionCount: 1,
+        sessionMinutes: Math.max(0, Math.round(session.activeDurationMs / 60_000)),
+        substantialRevisions: 0,
+      });
+    }
     for (const session of writingSessions) {
       const context = readWritingSessionContext(session.parentContext);
+      if (context.writingSessionId) continue;
       points.push({
         at: session.createdAt,
         wordsAdded: 0,

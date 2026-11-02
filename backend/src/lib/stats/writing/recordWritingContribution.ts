@@ -97,6 +97,19 @@ export async function recordWritingContribution(
     if (existing) return;
   }
 
+  let writingSessionId = input.writingSessionId ?? null;
+  if (!writingSessionId) {
+    const { touchWritingSession } = await import('./writingSessionService.js');
+    const touched = await touchWritingSession(tx, {
+      userId: input.userId,
+      campaignId: input.campaignId,
+      documentId: input.documentId,
+      kind: 'contribution',
+      now: input.occurredAt,
+    });
+    writingSessionId = touched.sessionId;
+  }
+
   await tx.writingContribution.create({
     data: {
       userId: input.userId,
@@ -110,7 +123,7 @@ export async function recordWritingContribution(
       narrativeEventId,
       origin,
       availability: input.change.availability,
-      writingSessionId: input.writingSessionId ?? null,
+      writingSessionId,
     },
   });
 }
