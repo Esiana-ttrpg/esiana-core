@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveStatisticsRange, StatisticsRangeError } from './reportingRange.js';
+import {
+  contributionQueryWindow,
+  resolveStatisticsRange,
+  StatisticsRangeError,
+} from './reportingRange.js';
 
 describe('resolveStatisticsRange', () => {
   const now = new Date('2026-06-15T18:00:00.000Z');
@@ -59,6 +63,50 @@ describe('resolveStatisticsRange', () => {
           to: '2026-02-01',
         }),
       StatisticsRangeError,
+    );
+  });
+});
+
+describe('contributionQueryWindow', () => {
+  const streakLookback = {
+    gte: new Date('2026-02-16T00:00:00.000Z'),
+    lt: new Date('2026-06-15T18:00:00.000Z'),
+  };
+
+  it('unions habit lookback with the reporting range', () => {
+    const window = contributionQueryWindow({
+      includeHabits: true,
+      skipPeriod: false,
+      streakLookback,
+      rangeStart: new Date('2025-01-01T00:00:00.000Z'),
+      rangeEnd: new Date('2026-06-15T18:00:00.000Z'),
+    });
+    assert.equal(window?.gte.toISOString(), '2025-01-01T00:00:00.000Z');
+    assert.equal(window?.lt.toISOString(), '2026-06-15T18:00:00.000Z');
+  });
+
+  it('uses epoch when a lifetime range has no start', () => {
+    const window = contributionQueryWindow({
+      includeHabits: false,
+      skipPeriod: false,
+      streakLookback,
+      rangeStart: null,
+      rangeEnd: new Date('2026-06-15T18:00:00.000Z'),
+    });
+    assert.equal(window?.gte.toISOString(), new Date(0).toISOString());
+    assert.equal(window?.lt.toISOString(), '2026-06-15T18:00:00.000Z');
+  });
+
+  it('returns null when neither habits nor period are requested', () => {
+    assert.equal(
+      contributionQueryWindow({
+        includeHabits: false,
+        skipPeriod: true,
+        streakLookback,
+        rangeStart: new Date('2026-01-01T00:00:00.000Z'),
+        rangeEnd: new Date('2026-06-15T18:00:00.000Z'),
+      }),
+      null,
     );
   });
 });

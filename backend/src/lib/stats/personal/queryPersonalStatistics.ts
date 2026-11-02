@@ -26,6 +26,7 @@ import {
 } from '../assembleLifetimeAttribution.js';
 import { selectScopedCampaignIds } from './visibility.js';
 import {
+  contributionQueryWindow,
   createdAtFilter,
   lookbackInterval,
   resolveStatisticsRange,
@@ -168,11 +169,14 @@ export async function queryPersonalStatistics(
 
   const habitWindow = lookbackInterval(now, timeZone, 30);
   const streakLookback = lookbackInterval(now, timeZone, 120);
-  const loadContributions = includeHabits || !skipPeriod;
-  const contributionSince = includeHabits
-    ? streakLookback.gte
-    : range.start ?? new Date(0);
-  const contributionUntil = includeHabits ? streakLookback.lt : range.end;
+  const contributionWindow = contributionQueryWindow({
+    includeHabits,
+    skipPeriod,
+    streakLookback,
+    rangeStart: range.start,
+    rangeEnd: range.end,
+  });
+  const loadContributions = contributionWindow != null;
 
   const [
     createdPages,
@@ -269,13 +273,16 @@ export async function queryPersonalStatistics(
           },
         })
       : Promise.resolve([]),
-    loadContributions
+    loadContributions && contributionWindow
       ? prisma.writingContribution.findMany({
           where: {
             userId: input.userId,
             campaignId: { in: campaignIds },
             origin: 'human',
-            occurredAt: { gte: contributionSince, lt: contributionUntil },
+            occurredAt: {
+              gte: contributionWindow.gte,
+              lt: contributionWindow.lt,
+            },
           },
           select: {
             narrativeEventId: true,

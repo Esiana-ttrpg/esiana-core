@@ -1460,6 +1460,9 @@ model WritingSession {
   status           String    @default("open")
   /// measured | partial | unavailable
   completeness     String    @default("measured")
+  /// Set while status is open so each user/campaign has at most one live session.
+  openLock         String?   @unique
+  intervalVersion  Int       @default(0)
 
   user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   campaign      Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)

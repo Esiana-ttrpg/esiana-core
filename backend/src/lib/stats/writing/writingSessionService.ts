@@ -1,4 +1,4 @@
-import type { Prisma } from '../../prismaClient.js';
+import { Prisma } from '../../prismaClient.js';
 import { prisma } from '../../prisma.js';
 import { logCampaignActivity } from '../../campaignActivity.js';
 import { incrementDailyRollup } from '../userWritingDailyRollup.js';
@@ -14,6 +14,16 @@ import {
 } from '../../../../../shared/writingSession.js';
 
 type Tx = Prisma.TransactionClient;
+
+const TOUCH_RETRY_LIMIT = 8;
+
+function openLockFor(userId: string, campaignId: string): string {
+  return `${userId}:${campaignId}`;
+}
+
+function isUniqueConflict(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
 
 export type WritingHeartbeatKind = 'activity' | 'interval-end' | 'contribution';
 
@@ -44,28 +54,34 @@ function recompute(intervals: WritingSessionInterval[]): {
   };
 }
 
-async function persistSession(
+async function persistSessionVersioned(
   tx: Tx | typeof prisma,
-  sessionId: string,
+  session: { id: string; intervalVersion: number },
   input: {
     lastActivityAt?: Date;
     intervals: WritingSessionInterval[];
     documentIds: string[];
     activeDurationMs: number;
   },
-): Promise<void> {
-  await tx.writingSession.update({
-    where: { id: sessionId },
+): Promise<boolean> {
+  const result = await tx.writingSession.updateMany({
+    where: {
+      id: session.id,
+      status: 'open',
+      intervalVersion: session.intervalVersion,
+    },
     data: {
       ...(input.lastActivityAt ? { lastActivityAt: input.lastActivityAt } : {}),
       intervals: asJson(input.intervals),
       documentIds: asJson(input.documentIds),
       activeDurationMs: input.activeDurationMs,
+      intervalVersion: { increment: 1 },
     },
   });
+  return result.count === 1;
 }
 
-export async function closeWritingSession(
+async function recordClosedSessionMetrics(
   tx: Tx | typeof prisma,
   session: {
     id: string;
@@ -77,14 +93,6 @@ export async function closeWritingSession(
     completeness: string;
   },
 ): Promise<void> {
-  await tx.writingSession.update({
-    where: { id: session.id },
-    data: {
-      status: 'closed',
-      endedAt: session.lastActivityAt,
-    },
-  });
-
   if (session.activeDurationMs < 1000) return;
 
   const documentIds = uniqueDocumentIds(session.documentIds);
@@ -112,6 +120,30 @@ export async function closeWritingSession(
       at: session.lastActivityAt,
     }),
   });
+}
+
+export async function closeWritingSession(
+  tx: Tx | typeof prisma,
+  session: {
+    id: string;
+    lastActivityAt: Date;
+  },
+): Promise<boolean> {
+  const closed = await tx.writingSession.updateMany({
+    where: { id: session.id, status: 'open' },
+    data: {
+      status: 'closed',
+      endedAt: session.lastActivityAt,
+      openLock: null,
+    },
+  });
+  if (closed.count !== 1) return false;
+
+  const stored = await tx.writingSession.findUnique({
+    where: { id: session.id },
+  });
+  if (stored) await recordClosedSessionMetrics(tx, stored);
+  return true;
 }
 
 async function loadOpenSession(
@@ -148,49 +180,59 @@ export async function touchWritingSession(
     kind = 'interval-end';
   }
 
-  const existing = await loadOpenSession(tx, input.userId, input.campaignId);
-  if (existing && isWritingSessionExpired(existing.lastActivityAt, now)) {
-    await closeWritingSession(tx, existing);
-  }
+  for (let attempt = 0; attempt < TOUCH_RETRY_LIMIT; attempt += 1) {
+    let session = await loadOpenSession(tx, input.userId, input.campaignId);
+    if (session && isWritingSessionExpired(session.lastActivityAt, now)) {
+      await closeWritingSession(tx, session);
+      session = null;
+    }
 
-  let session =
-    existing && !isWritingSessionExpired(existing.lastActivityAt, now) ? existing : null;
+    if (!session) {
+      if (kind === 'interval-end') return { sessionId: null };
+      try {
+        session = await tx.writingSession.create({
+          data: {
+            userId: input.userId,
+            campaignId: input.campaignId,
+            startedAt: now,
+            lastActivityAt: now,
+            completeness: 'measured',
+            status: 'open',
+            openLock: openLockFor(input.userId, input.campaignId),
+            intervalVersion: 0,
+            intervals: asJson([]),
+            documentIds: asJson(uniqueDocumentIds([], input.documentId)),
+          },
+        });
+      } catch (error) {
+        if (!isUniqueConflict(error)) throw error;
+        continue;
+      }
+    }
 
-  if (!session) {
-    if (kind === 'interval-end') return { sessionId: null };
-    session = await tx.writingSession.create({
-      data: {
-        userId: input.userId,
-        campaignId: input.campaignId,
-        startedAt: now,
-        lastActivityAt: now,
-        completeness: 'measured',
-        status: 'open',
-        intervals: asJson([]),
-        documentIds: asJson(uniqueDocumentIds([], input.documentId)),
-      },
+    let intervals = parseWritingSessionIntervals(session.intervals);
+    if (kind === 'activity' && input.clientInstanceKey) {
+      intervals = applyActivityInterval(intervals, {
+        clientInstanceKey: input.clientInstanceKey,
+        at: now,
+      });
+    } else if (kind === 'interval-end' && input.clientInstanceKey) {
+      intervals = closeInstanceIntervals(intervals, input.clientInstanceKey);
+    }
+
+    const computed = recompute(intervals);
+    const documentIds = uniqueDocumentIds(session.documentIds, input.documentId);
+    const written = await persistSessionVersioned(tx, session, {
+      lastActivityAt: kind === 'interval-end' ? undefined : now,
+      intervals: computed.intervals,
+      documentIds,
+      activeDurationMs: computed.activeDurationMs,
     });
+    if (written) return { sessionId: session.id };
   }
 
-  let intervals = parseWritingSessionIntervals(session.intervals);
-  if (kind === 'activity' && input.clientInstanceKey) {
-    intervals = applyActivityInterval(intervals, {
-      clientInstanceKey: input.clientInstanceKey,
-      at: now,
-    });
-  } else if (kind === 'interval-end' && input.clientInstanceKey) {
-    intervals = closeInstanceIntervals(intervals, input.clientInstanceKey);
-  }
-
-  const computed = recompute(intervals);
-  const documentIds = uniqueDocumentIds(session.documentIds, input.documentId);
-  await persistSession(tx, session.id, {
-    lastActivityAt: kind === 'interval-end' ? undefined : now,
-    intervals: computed.intervals,
-    documentIds,
-    activeDurationMs: computed.activeDurationMs,
-  });
-  return { sessionId: session.id };
+  const fallback = await loadOpenSession(tx, input.userId, input.campaignId);
+  return { sessionId: fallback?.id ?? null };
 }
 
 export async function ingestLegacyWritingSession(
@@ -216,10 +258,12 @@ export async function ingestLegacyWritingSession(
       userId: input.userId,
       campaignId: input.campaignId,
       startedAt,
+      endedAt: now,
       lastActivityAt: now,
       activeDurationMs: durationMs,
-      status: 'open',
+      status: 'closed',
       completeness: 'partial',
+      openLock: null,
       intervals: asJson([
         {
           clientInstanceKey: 'legacy',
@@ -231,13 +275,5 @@ export async function ingestLegacyWritingSession(
       documentIds: asJson(uniqueDocumentIds([], input.documentId)),
     },
   });
-  await closeWritingSession(tx, {
-    id: session.id,
-    campaignId: input.campaignId,
-    userId: input.userId,
-    lastActivityAt: now,
-    activeDurationMs: durationMs,
-    documentIds: session.documentIds,
-    completeness: 'partial',
-  });
+  await recordClosedSessionMetrics(tx, session);
 }

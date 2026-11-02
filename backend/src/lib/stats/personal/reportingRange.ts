@@ -139,3 +139,26 @@ export function lookbackInterval(
     lt: now,
   };
 }
+
+/** Union of habit lookback and reporting range; null when neither window is requested. */
+export function contributionQueryWindow(input: {
+  includeHabits: boolean;
+  skipPeriod: boolean;
+  streakLookback: { gte: Date; lt: Date };
+  rangeStart: Date | null;
+  rangeEnd: Date;
+}): { gte: Date; lt: Date } | null {
+  const windows: Array<{ gte: Date; lt: Date }> = [];
+  if (input.includeHabits) windows.push(input.streakLookback);
+  if (!input.skipPeriod) {
+    windows.push({
+      gte: input.rangeStart ?? new Date(0),
+      lt: input.rangeEnd,
+    });
+  }
+  if (windows.length === 0) return null;
+  return {
+    gte: new Date(Math.min(...windows.map((window) => window.gte.getTime()))),
+    lt: new Date(Math.max(...windows.map((window) => window.lt.getTime()))),
+  };
+}

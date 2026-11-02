@@ -94,29 +94,29 @@ export function useEditorInstrumentation(
     async (kind: 'activity' | 'interval-end') => {
       if (!enabled || !editor) return;
       if (!campaignHandle || !pageId) return;
-      const focused = kind === 'activity' ? true : isFocused;
+      const focused = kind === 'activity';
       const visible = readVisible();
       const connected = readOnline();
       if (kind === 'activity' && !canCountActivityHeartbeat({ focused, visible, online: connected })) {
         return;
       }
+      if (kind === 'activity') lastActivitySentAt.current = Date.now();
       try {
         await sendWritingSessionHeartbeat(campaignHandle, {
           pageId,
           pageTitle: pageTitle ?? 'Untitled',
           clientInstanceKey: clientInstanceKey.current,
           kind,
-          focused: kind === 'activity' ? true : false,
+          focused,
           visible,
           connected,
         });
-        if (kind === 'activity') lastActivitySentAt.current = Date.now();
         if (kind === 'interval-end') onSessionFlushRef.current?.();
       } catch {
         /* best-effort telemetry */
       }
     },
-    [enabled, editor, campaignHandle, pageId, pageTitle, isFocused],
+    [enabled, editor, campaignHandle, pageId, pageTitle],
   );
 
   const maybeSendActivity = useCallback(() => {

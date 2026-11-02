@@ -42,6 +42,28 @@ function isActiveThread(metadata: unknown): boolean {
   return status === 'OPEN' || status === 'ACTIVE';
 }
 
+const CLIENT_INSTANCE_KEY_MAX = 64;
+const PAGE_ID_MAX = 128;
+
+function capClientInstanceKey(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, CLIENT_INSTANCE_KEY_MAX);
+}
+
+async function resolveCampaignPageId(
+  campaignId: string,
+  value: unknown,
+): Promise<string | null> {
+  if (typeof value !== 'string') return null;
+  const pageId = value.trim();
+  if (!pageId || pageId.length > PAGE_ID_MAX) return null;
+  const page = await prisma.wikiPage.findFirst({
+    where: { id: pageId, campaignId, deletedAt: null },
+    select: { id: true },
+  });
+  return page?.id ?? null;
+}
+
 export async function postWritingSession(
   req: CampaignScopedRequest & AuthenticatedRequest,
   res: Response,
@@ -50,10 +72,9 @@ export async function postWritingSession(
   const userId = req.user!.id;
   const body = req.body as Record<string, unknown>;
 
-  const pageId = typeof body.pageId === 'string' ? body.pageId.trim() : '';
+  const pageId = await resolveCampaignPageId(campaignId, body.pageId);
   const pageTitle = typeof body.pageTitle === 'string' ? body.pageTitle.trim() : 'Writing session';
-  const clientInstanceKey =
-    typeof body.clientInstanceKey === 'string' ? body.clientInstanceKey.trim() : '';
+  const clientInstanceKey = capClientInstanceKey(body.clientInstanceKey);
   const kindRaw = typeof body.kind === 'string' ? body.kind.trim() : '';
   const durationMs =
     typeof body.durationMs === 'number' && Number.isFinite(body.durationMs)
