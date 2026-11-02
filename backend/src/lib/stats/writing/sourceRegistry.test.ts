@@ -22,6 +22,7 @@ describe('writing source registry', () => {
     assert.equal(getWritingSource('journal.publication').implemented, false);
     assert.equal(getWritingSource('wiki.page').saveBoundary, 'explicit_save');
     assert.equal(getWritingSource('workshop.apply').saveBoundary, 'apply');
+    assert.equal(ids.includes('wiki.custom'), false);
   });
 
   it('records human wiki saves and skips import, restore, seed, and autosave', () => {

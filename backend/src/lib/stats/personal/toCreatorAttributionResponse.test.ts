@@ -25,6 +25,7 @@ describe('toCreatorAttributionResponse', () => {
         'attribution.wordsAddedMeasured': metricValue(8),
       },
       worldbuildingMix: [],
+      worldbuilding: [],
       linkableCampaigns: [],
     };
 
