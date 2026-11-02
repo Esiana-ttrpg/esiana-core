@@ -30,6 +30,11 @@ import {
 import { assembleCartographyStats } from './assembleCartography.js';
 import { assembleChronologyStats } from './assembleChronology.js';
 import {
+  assembleParticipationStats,
+  buildParticipationHistory,
+  type ParticipationSessionRecord,
+} from './assembleParticipation.js';
+import {
   MAP_ACTIVITY_ENTITY_TYPES,
   MapActivityEntity,
 } from '../../mapAuthorship.js';
@@ -39,6 +44,7 @@ import {
 } from '../../chronologyAuthorship.js';
 import { AssetTypes } from '../../../types/domain.js';
 import { WORLD_ADVANCE_CATEGORY } from '../../../../../shared/worldAdvance.js';
+import { MembershipRoles } from '../../../../../shared/campaignPolicy/membershipRoles.js';
 import { resolveLinkableCampaigns } from '../resolveLinkableCampaigns.js';
 import {
   assembleLifetimeAttributionMetrics,
@@ -453,6 +459,186 @@ async function loadChronologyProjection(input: {
   });
 }
 
+function emptyParticipation(
+  skipPeriod: boolean,
+  visibility: PersonalStatisticsVisibility,
+  rangeStart: Date | null,
+  rangeEnd: Date,
+) {
+  return assembleParticipationStats({
+    participatedCampaigns: [],
+    gmedCampaigns: [],
+    sessionsAttended: [],
+    sessionsHosted: [],
+    rangeStart,
+    rangeEnd,
+    skipPeriod,
+    visibility,
+  });
+}
+
+function toParticipationSession(row: {
+  timelinePointId: string;
+  campaignId: string;
+  plannedStartAt: Date | null;
+  plannedEndAt: Date | null;
+}): ParticipationSessionRecord {
+  return {
+    timelinePointId: row.timelinePointId,
+    campaignId: row.campaignId,
+    plannedStartAt: row.plannedStartAt,
+    plannedEndAt: row.plannedEndAt,
+  };
+}
+
+async function loadParticipationProjection(input: {
+  userId: string;
+  campaignIds: string[];
+  rangeStart: Date | null;
+  rangeEnd: Date;
+  skipPeriod: boolean;
+  visibility: PersonalStatisticsVisibility;
+  includeHistory: boolean;
+}): Promise<{
+  participation: ReturnType<typeof assembleParticipationStats>;
+  history: ReturnType<typeof buildParticipationHistory> | undefined;
+}> {
+  if (input.campaignIds.length === 0) {
+    return {
+      participation: emptyParticipation(
+        input.skipPeriod,
+        input.visibility,
+        input.rangeStart,
+        input.rangeEnd,
+      ),
+      history: input.includeHistory ? [] : undefined,
+    };
+  }
+
+  const [attendanceRows, hostedRows, ownedCampaigns, gmMemberships] = await Promise.all([
+    prisma.sessionAttendance.findMany({
+      where: {
+        userId: input.userId,
+        status: 'ATTENDING',
+        timelinePoint: {
+          campaignId: { in: input.campaignIds },
+          schedule: { status: 'COMPLETED' },
+        },
+      },
+      select: {
+        timelinePointId: true,
+        timelinePoint: {
+          select: {
+            campaignId: true,
+            schedule: {
+              select: { plannedStartAt: true, plannedEndAt: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.campaignSessionTimeline.findMany({
+      where: {
+        authorId: input.userId,
+        campaignId: { in: input.campaignIds },
+        schedule: { status: 'COMPLETED' },
+      },
+      select: {
+        id: true,
+        campaignId: true,
+        schedule: {
+          select: { plannedStartAt: true, plannedEndAt: true },
+        },
+      },
+    }),
+    prisma.campaign.findMany({
+      where: {
+        id: { in: input.campaignIds },
+        campaignOwnerUserId: input.userId,
+        archivedAt: null,
+      },
+      select: { id: true, createdAt: true },
+    }),
+    prisma.campaignMember.findMany({
+      where: {
+        userId: input.userId,
+        campaignId: { in: input.campaignIds },
+        role: MembershipRoles.GAMEMASTER,
+        campaign: { archivedAt: null },
+      },
+      select: { campaignId: true, createdAt: true },
+    }),
+  ]);
+
+  const sessionsAttended = attendanceRows.map((row) =>
+    toParticipationSession({
+      timelinePointId: row.timelinePointId,
+      campaignId: row.timelinePoint.campaignId,
+      plannedStartAt: row.timelinePoint.schedule?.plannedStartAt ?? null,
+      plannedEndAt: row.timelinePoint.schedule?.plannedEndAt ?? null,
+    }),
+  );
+  const sessionsHosted = hostedRows.map((row) =>
+    toParticipationSession({
+      timelinePointId: row.id,
+      campaignId: row.campaignId,
+      plannedStartAt: row.schedule?.plannedStartAt ?? null,
+      plannedEndAt: row.schedule?.plannedEndAt ?? null,
+    }),
+  );
+
+  const participatedCampaigns = sessionsAttended
+    .filter((row) => row.plannedStartAt != null)
+    .map((row) => ({ campaignId: row.campaignId, at: row.plannedStartAt! }));
+  // Undated completed sessions still count toward lifetime campaigns participated.
+  for (const row of sessionsAttended) {
+    if (row.plannedStartAt != null) continue;
+    participatedCampaigns.push({
+      campaignId: row.campaignId,
+      at: new Date(0),
+    });
+  }
+
+  const gmedByCampaign = new Map<string, Date>();
+  for (const row of ownedCampaigns) {
+    gmedByCampaign.set(row.id, row.createdAt);
+  }
+  for (const row of gmMemberships) {
+    const existing = gmedByCampaign.get(row.campaignId);
+    if (!existing || row.createdAt < existing) {
+      gmedByCampaign.set(row.campaignId, row.createdAt);
+    }
+  }
+  const gmedCampaigns = [...gmedByCampaign.entries()].map(([campaignId, at]) => ({
+    campaignId,
+    at,
+  }));
+
+  const participation = assembleParticipationStats({
+    participatedCampaigns,
+    gmedCampaigns,
+    sessionsAttended,
+    sessionsHosted,
+    rangeStart: input.rangeStart,
+    rangeEnd: input.rangeEnd,
+    skipPeriod: input.skipPeriod,
+    visibility: input.visibility,
+  });
+
+  if (!input.includeHistory) {
+    return { participation, history: undefined };
+  }
+
+  return {
+    participation,
+    history: buildParticipationHistory({
+      attended: sessionsAttended,
+      hosted: sessionsHosted,
+      limit: 20,
+    }),
+  };
+}
+
 export type QueryPersonalStatisticsInput = {
   userId: string;
   viewerId?: string | null;
@@ -586,6 +772,8 @@ export async function queryPersonalStatistics(
       cartography: emptyCartography(skipPeriod, input.visibility, range.start, range.end),
       ...(input.visibility === 'owner' && !skipPeriod ? { cartographyThumbnails: [] } : {}),
       chronology: emptyChronology(skipPeriod, input.visibility, range.start, range.end),
+      participation: emptyParticipation(skipPeriod, input.visibility, range.start, range.end),
+      ...(input.visibility === 'owner' && !skipPeriod ? { participationHistory: [] } : {}),
       linkableCampaigns,
       ...(includeVisualizations
         ? {
@@ -919,26 +1107,36 @@ export async function queryPersonalStatistics(
   }
 
   const privacyContext = input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile';
-  const [{ cartography, thumbnails }, chronology] = await Promise.all([
-    loadCartographyProjection({
-      userId: input.userId,
-      viewerId: input.viewerId ?? input.userId,
-      campaignIds,
-      rangeStart: range.start,
-      rangeEnd: range.end,
-      skipPeriod,
-      visibility: input.visibility,
-      includeThumbnails: input.visibility === 'owner' && !skipPeriod,
-    }),
-    loadChronologyProjection({
-      userId: input.userId,
-      campaignIds,
-      rangeStart: range.start,
-      rangeEnd: range.end,
-      skipPeriod,
-      visibility: input.visibility,
-    }),
-  ]);
+  const [{ cartography, thumbnails }, chronology, { participation, history }] =
+    await Promise.all([
+      loadCartographyProjection({
+        userId: input.userId,
+        viewerId: input.viewerId ?? input.userId,
+        campaignIds,
+        rangeStart: range.start,
+        rangeEnd: range.end,
+        skipPeriod,
+        visibility: input.visibility,
+        includeThumbnails: input.visibility === 'owner' && !skipPeriod,
+      }),
+      loadChronologyProjection({
+        userId: input.userId,
+        campaignIds,
+        rangeStart: range.start,
+        rangeEnd: range.end,
+        skipPeriod,
+        visibility: input.visibility,
+      }),
+      loadParticipationProjection({
+        userId: input.userId,
+        campaignIds,
+        rangeStart: range.start,
+        rangeEnd: range.end,
+        skipPeriod,
+        visibility: input.visibility,
+        includeHistory: input.visibility === 'owner' && !skipPeriod,
+      }),
+    ]);
   const visualizations =
     includeVisualizations && vizWindow
       ? assembleWritingVisualizations({
@@ -974,6 +1172,8 @@ export async function queryPersonalStatistics(
     cartography,
     ...(thumbnails ? { cartographyThumbnails: thumbnails } : {}),
     chronology,
+    participation,
+    ...(history ? { participationHistory: history } : {}),
     linkableCampaigns,
     ...(visualizations ? { visualizations } : {}),
   };

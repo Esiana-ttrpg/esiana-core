@@ -47,6 +47,26 @@ describe('personal statistics export', () => {
         periodEdited: metricValue(0),
       },
     ],
+    participation: [
+      {
+        domain: 'sessionsAttended',
+        total: metricValue(2),
+        periodTotal: metricValue(1),
+        plannedDurationMinutes: metricValue(240),
+        periodPlannedDurationMinutes: metricValue(120),
+        playedDurationMinutes: metricValue(0),
+      },
+    ],
+    participationHistory: [
+      {
+        timelinePointId: 'tp-1',
+        campaignId: 'camp-1',
+        plannedStartAt: '2026-06-10T18:00:00.000Z',
+        plannedEndAt: '2026-06-10T22:00:00.000Z',
+        roles: ['attended', 'hosted'],
+        plannedDurationMinutes: 240,
+      },
+    ],
     linkableCampaigns: [],
   };
 
@@ -93,6 +113,8 @@ describe('personal statistics export', () => {
     assert.equal(json.worldbuilding[0]?.domain, 'characters');
     assert.equal(json.cartography[0]?.domain, 'maps');
     assert.equal(json.chronology[0]?.domain, 'events');
+    assert.equal(json.participation[0]?.domain, 'sessionsAttended');
+    assert.equal(json.participationHistory[0]?.timelinePointId, 'tp-1');
     assert.equal(serialized.includes('Untitled map'), false);
     assert.equal(json.dailyAggregates[0]?.wordsAdded, 40);
     assert.equal(json.dailyAggregates[0]?.sessionMinutes, 3);
@@ -113,9 +135,13 @@ describe('personal statistics export', () => {
     assert.ok(csv.includes('[worldbuilding]'));
     assert.ok(csv.includes('[cartography]'));
     assert.ok(csv.includes('[chronology]'));
+    assert.ok(csv.includes('[participation]'));
+    assert.ok(csv.includes('[participationHistory]'));
     assert.ok(csv.includes('characters'));
     assert.ok(csv.includes('maps'));
     assert.ok(csv.includes('events'));
+    assert.ok(csv.includes('sessionsAttended'));
+    assert.ok(csv.includes('tp-1'));
     assert.ok(csv.includes('attribution.pagesCreated'));
     assert.ok(csv.includes('period.wordsAdded'));
     assert.ok(csv.includes('attribution.writingStreak'));

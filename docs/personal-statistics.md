@@ -427,3 +427,21 @@ from `nextEpochMinute - previousEpochMinute`. Filter personal activity by
 user has never produced one, period edits are `unavailable` /
 `not_yet_tracked`. Timeline-contribution and time-advance period edits stay
 untracked. Export JSON/CSV gains a `chronology` section.
+
+## Pass 9 — Campaigns and sessions
+
+Same service, range, privacy, and export contract. Locked 13 IDs unchanged.
+
+`participation[]` reports campaigns participated (distinct campaigns with at
+least one completed session where the user is `ATTENDING`), campaigns
+created/GM'd (`campaignOwnerUserId` ∪ `GAMEMASTER` membership), sessions
+attended (`SessionAttendance` `ATTENDING` on schedules with status
+`COMPLETED`), and sessions hosted (`CampaignSessionTimeline.authorId` on
+completed schedules). Membership alone is not attendance.
+
+Period filters use `plannedStartAt` (campaign create / GM join `createdAt` for
+GM'd counts). Planned start→end duration is `estimated` when both ends exist;
+actual play duration stays `unavailable` / `not_yet_tracked`. Session
+recording `durationMs` is never used. Owner-only `participationHistory`
+lists recent attended/hosted sessions without titles. Export JSON/CSV gains
+`participation` and `participationHistory` sections.

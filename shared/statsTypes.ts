@@ -206,6 +206,39 @@ export type ChronologyDomainStats = {
   periodMinutesAdvanced?: MetricValue;
 };
 
+/**
+ * Session and campaign participation. Membership alone is not attendance.
+ * Planned schedule ranges may be estimated; actual play stays unavailable.
+ */
+export const PARTICIPATION_DOMAINS = [
+  'campaignsParticipated',
+  'campaignsGmed',
+  'sessionsAttended',
+  'sessionsHosted',
+] as const;
+
+export type ParticipationDomain = (typeof PARTICIPATION_DOMAINS)[number];
+
+export type ParticipationDomainStats = {
+  domain: ParticipationDomain;
+  total: MetricValue;
+  periodTotal: MetricValue;
+  /** Sum of planned start→end minutes when both ends exist. Sessions only. */
+  plannedDurationMinutes?: MetricValue;
+  periodPlannedDurationMinutes?: MetricValue;
+  /** Always unavailable — scheduled ranges are not measured play. */
+  playedDurationMinutes?: MetricValue;
+};
+
+export type ParticipationHistoryEntry = {
+  timelinePointId: string;
+  campaignId: string;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+  roles: Array<'attended' | 'hosted'>;
+  plannedDurationMinutes: number | null;
+};
+
 export type PersonalStatisticsResponse = {
   version: 1;
   computedAt: string;
@@ -239,6 +272,12 @@ export type PersonalStatisticsResponse = {
    * worldbuilding wiki event/era domains.
    */
   chronology: ChronologyDomainStats[];
+  /**
+   * Campaign and session participation. Companion structured stats — not new
+   * locked MetricIds. History is owner-only.
+   */
+  participation: ParticipationDomainStats[];
+  participationHistory?: ParticipationHistoryEntry[] | null;
   linkableCampaigns: LinkableCampaign[];
   /** Owner-only writing charts. Omitted for public and compatibility adapters. */
   visualizations?: WritingVisualizations | null;
@@ -309,6 +348,8 @@ export type PersonalStatisticsExportJson = {
   worldbuilding: WorldbuildingDomainStats[];
   cartography: CartographyDomainStats[];
   chronology: ChronologyDomainStats[];
+  participation: ParticipationDomainStats[];
+  participationHistory: ParticipationHistoryEntry[];
   contributions: PersonalStatisticsExportContribution[];
   dailyAggregates: PersonalStatisticsExportDailyAggregate[];
   writingSessions: PersonalStatisticsExportSession[];
