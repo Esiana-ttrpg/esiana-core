@@ -17,6 +17,7 @@ export async function buildUserCreatorAttribution(
     visibility: owner ? 'owner' : 'public',
     range: { mode: 'all_time' },
     includeHabits: owner,
+    skipPeriod: true,
   });
   return toCreatorAttributionResponse(payload);
 }

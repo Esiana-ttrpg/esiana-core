@@ -53,6 +53,8 @@ export type QueryPersonalStatisticsInput = {
   };
   campaignId?: string | null;
   includeHabits?: boolean;
+  /** Skip the period NarrativeEvent query when the caller discards period metrics. */
+  skipPeriod?: boolean;
   now?: Date;
 };
 
@@ -121,6 +123,7 @@ export async function queryPersonalStatistics(
 
   const campaignIds = scoped.campaignIds;
   const includeHabits = input.includeHabits === true;
+  const skipPeriod = input.skipPeriod === true;
   const linkableCampaigns = await resolveLinkableCampaigns(input.userId, input.viewerId);
 
   if (campaignIds.length === 0) {
@@ -158,7 +161,6 @@ export async function queryPersonalStatistics(
     };
   }
 
-  const periodFilter = createdAtFilter(range);
   const habitWindow = lookbackInterval(now, timeZone, 30);
   const streakLookback = lookbackInterval(now, timeZone, 120);
 
@@ -207,14 +209,17 @@ export async function queryPersonalStatistics(
       select: { campaignId: true },
       distinct: ['campaignId'],
     }),
-    prisma.narrativeEvent.findMany({
-      where: {
-        campaignId: { in: campaignIds },
-        actorUserId: input.userId,
-        createdAt: periodFilter,
-      },
-      select: { type: true, createdAt: true, metadata: true, source: true },
-    }),
+    skipPeriod
+      ? Promise.resolve([])
+      : prisma.narrativeEvent.findMany({
+          where: {
+            campaignId: { in: campaignIds },
+            actorUserId: input.userId,
+            source: 'user',
+            createdAt: createdAtFilter(range),
+          },
+          select: { type: true, createdAt: true, metadata: true, source: true },
+        }),
     includeHabits
       ? prisma.narrativeEvent.findMany({
           where: {
@@ -246,28 +251,29 @@ export async function queryPersonalStatistics(
     actorEventCampaignIds: contributedCampaignIds.map((row) => row.campaignId),
   });
 
-  let periodPagesCreated = 0;
-  let periodPagesEdited = 0;
-  let periodConnections = 0;
-  let periodWordsAdded = 0;
-  for (const event of periodEvents) {
-    if (event.type === NarrativeEventType.PAGE_CREATED) periodPagesCreated += 1;
-    if (event.type === NarrativeEventType.PAGE_EDITED) periodPagesEdited += 1;
-    if (event.type === NarrativeEventType.LINK_CREATED) periodConnections += 1;
-    if (event.source === 'user') {
+  let period: PersonalStatisticsResponse['period'] = {};
+  if (!skipPeriod) {
+    let periodPagesCreated = 0;
+    let periodPagesEdited = 0;
+    let periodConnections = 0;
+    let periodWordsAdded = 0;
+    for (const event of periodEvents) {
+      if (event.type === NarrativeEventType.PAGE_CREATED) periodPagesCreated += 1;
+      if (event.type === NarrativeEventType.PAGE_EDITED) periodPagesEdited += 1;
+      if (event.type === NarrativeEventType.LINK_CREATED) periodConnections += 1;
       periodWordsAdded += readNarrativeWordDelta(event.metadata).wordsAdded;
     }
-  }
 
-  const period = filterMetricsByPrivacy(
-    {
-      'period.pagesCreated': metricValue(periodPagesCreated),
-      'period.pagesEdited': metricValue(periodPagesEdited),
-      'period.connectionsCreated': metricValue(periodConnections),
-      'period.wordsAdded': metricPartial(periodWordsAdded),
-    },
-    input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile',
-  );
+    period = filterMetricsByPrivacy(
+      {
+        'period.pagesCreated': metricValue(periodPagesCreated),
+        'period.pagesEdited': metricValue(periodPagesEdited),
+        'period.connectionsCreated': metricValue(periodConnections),
+        'period.wordsAdded': metricPartial(periodWordsAdded),
+      },
+      input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile',
+    );
+  }
 
   let habits: PersonalStatisticsResponse['habits'] = {};
   if (includeHabits) {
