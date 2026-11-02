@@ -5,6 +5,7 @@ import type { PersonalStatisticsResponse } from '../../../../../shared/statsType
 import {
   assembleExportDailyAggregates,
   buildPersonalStatisticsExportJson,
+  mergeExportContributionDetails,
   renderPersonalStatisticsExportCsv,
 } from './exportPersonalStatistics.js';
 
@@ -76,11 +77,52 @@ describe('personal statistics export', () => {
       sessions,
     });
     const csv = renderPersonalStatisticsExportCsv(json);
+    assert.ok(csv.includes('[metricDefinitions]'));
+    assert.ok(csv.includes('[snapshot]'));
+    assert.ok(csv.includes('[period]'));
+    assert.ok(csv.includes('[habits]'));
+    assert.ok(csv.includes('attribution.pagesCreated'));
+    assert.ok(csv.includes('period.wordsAdded'));
+    assert.ok(csv.includes('attribution.writingStreak'));
     assert.ok(csv.includes('[contributions]'));
     assert.ok(csv.includes('[dailyAggregates]'));
     assert.ok(csv.includes('[writingSessions]'));
     assert.ok(csv.includes('page-1'));
     assert.equal(csv.includes('Mira at the quay'), false);
+  });
+
+  it('reconstructs unmatched historical wordDelta events and keeps measured rows', () => {
+    const merged = mergeExportContributionDetails({
+      contributions,
+      events: [
+        {
+          id: 'ev-1',
+          type: 'PAGE_EDITED',
+          createdAt: new Date('2026-06-02T17:00:00.000Z'),
+          metadata: { wordDelta: 35 },
+          campaignId: 'camp-1',
+          pageId: 'page-1',
+        },
+        {
+          id: 'ev-old',
+          type: 'PAGE_EDITED',
+          createdAt: new Date('2026-06-03T17:00:00.000Z'),
+          metadata: { wordDelta: 20 },
+          campaignId: 'camp-1',
+          pageId: 'page-2',
+        },
+      ],
+      start: new Date('2026-06-01T05:00:00.000Z'),
+      end: new Date('2026-06-15T18:00:00.000Z'),
+    });
+    assert.equal(merged.length, 2);
+    assert.equal(merged[0]?.id, 'c1');
+    assert.equal(merged[0]?.wordsAdded, 40);
+    assert.equal(merged[1]?.id, 'reconstructed:ev-old');
+    assert.equal(merged[1]?.availability, 'reconstructed');
+    assert.equal(merged[1]?.wordsAdded, 20);
+    assert.equal(merged[1]?.wordsRemoved, 0);
+    assert.equal(merged[1]?.documentId, 'page-2');
   });
 
   it('aggregates only days that have activity', () => {

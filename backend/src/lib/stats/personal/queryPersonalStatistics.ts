@@ -27,6 +27,8 @@ import {
 import { selectScopedCampaignIds } from './visibility.js';
 import { campaignFreeformPagePath } from '../../../../../shared/campaignWorkspaceRoutes.js';
 import { uniqueDocumentIds } from '../../../../../shared/writingSession.js';
+import { buildCampaignContextSync } from '../../campaignScopeContext.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from '../../wikiTree.js';
 import {
   assembleWritingVisualizations,
   emptyWritingVisualizations,
@@ -482,6 +484,7 @@ export async function queryPersonalStatistics(
           documentsById: await resolveVisualizationDocuments(
             visualizationSessions,
             campaignIds,
+            input.viewerId ?? input.userId,
           ),
         })
       : undefined;
@@ -507,9 +510,96 @@ export async function queryPersonalStatistics(
   };
 }
 
+export function selectVisibleVisualizationDocuments(
+  pages: Array<{
+    id: string;
+    title: string;
+    pathKey: string | null;
+    visibility: string;
+    campaignId: string;
+    handle: string;
+  }>,
+  capabilitiesByCampaign: Map<string, WikiVisibilityViewer>,
+) {
+  const documents = new Map<
+    string,
+    { id: string; title: string; href: string }
+  >();
+  for (const page of pages) {
+    const viewer = capabilitiesByCampaign.get(page.campaignId);
+    if (!viewer || !canViewWikiPage(page.visibility, viewer)) continue;
+    documents.set(page.id, {
+      id: page.id,
+      title: page.title,
+      href: campaignFreeformPagePath(page.handle, page.pathKey ?? page.id),
+    });
+  }
+  return documents;
+}
+
+async function loadViewerCapabilitiesByCampaign(
+  viewerId: string,
+  campaignIds: string[],
+): Promise<Map<string, WikiVisibilityViewer>> {
+  const result = new Map<string, WikiVisibilityViewer>();
+  if (campaignIds.length === 0) return result;
+  const [memberships, campaigns, overrides] = await Promise.all([
+    prisma.campaignMember.findMany({
+      where: { userId: viewerId, campaignId: { in: campaignIds } },
+      select: {
+        campaignId: true,
+        role: true,
+        chronologyContributor: true,
+        partyId: true,
+      },
+    }),
+    prisma.campaign.findMany({
+      where: { id: { in: campaignIds } },
+      select: {
+        id: true,
+        handle: true,
+        campaignOwnerUserId: true,
+        discoverability: true,
+        allowPlayerChronologyManagement: true,
+      },
+    }),
+    prisma.campaignRoleCapabilityOverride.findMany({
+      where: { campaignId: { in: campaignIds } },
+      select: { campaignId: true, role: true, capability: true, effect: true },
+    }),
+  ]);
+  const membershipByCampaign = new Map(
+    memberships.map((row) => [row.campaignId, row]),
+  );
+  const overridesByCampaign = new Map<string, typeof overrides>();
+  for (const row of overrides) {
+    const list = overridesByCampaign.get(row.campaignId) ?? [];
+    list.push(row);
+    overridesByCampaign.set(row.campaignId, list);
+  }
+  for (const campaign of campaigns) {
+    const membership = membershipByCampaign.get(campaign.id);
+    const context = buildCampaignContextSync({
+      campaignId: campaign.id,
+      campaignHandle: campaign.handle,
+      campaignOwnerUserId: campaign.campaignOwnerUserId,
+      discoverability: campaign.discoverability,
+      allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement,
+      userId: viewerId,
+      membershipRole: membership?.role ?? null,
+      chronologyContributor: membership?.chronologyContributor ?? false,
+      partyId: membership?.partyId ?? null,
+      roleCapabilityOverrides: overridesByCampaign.get(campaign.id) ?? [],
+    });
+    result.set(campaign.id, { capabilities: context.capabilities });
+  }
+  return result;
+}
+
 async function resolveVisualizationDocuments(
   sessions: Array<{ documentIds: unknown }>,
   campaignIds: string[],
+  viewerId: string,
 ) {
   const ids = [
     ...new Set(sessions.flatMap((session) => uniqueDocumentIds(session.documentIds))),
@@ -525,18 +615,26 @@ async function resolveVisualizationDocuments(
       id: true,
       title: true,
       pathKey: true,
+      visibility: true,
+      campaignId: true,
       campaign: { select: { handle: true } },
     },
   });
-  return new Map(
-    pages.map((page) => [
-      page.id,
-      {
-        id: page.id,
-        title: page.title,
-        href: campaignFreeformPagePath(page.campaign.handle, page.pathKey ?? page.id),
-      },
-    ]),
+  const pageCampaignIds = [...new Set(pages.map((page) => page.campaignId))];
+  const capabilitiesByCampaign = await loadViewerCapabilitiesByCampaign(
+    viewerId,
+    pageCampaignIds,
+  );
+  return selectVisibleVisualizationDocuments(
+    pages.map((page) => ({
+      id: page.id,
+      title: page.title,
+      pathKey: page.pathKey,
+      visibility: page.visibility,
+      campaignId: page.campaignId,
+      handle: page.campaign.handle,
+    })),
+    capabilitiesByCampaign,
   );
 }
 

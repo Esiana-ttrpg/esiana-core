@@ -1,4 +1,5 @@
 import { METRIC_REGISTRY, type MetricId } from '../../../../../shared/metricRegistry.js';
+import type { MetricValue } from '../../../../../shared/metricValue.js';
 import type {
   PersonalStatisticsExportDailyAggregate,
   PersonalStatisticsExportJson,
@@ -7,6 +8,10 @@ import type {
 } from '../../../../../shared/statsTypes.js';
 import { uniqueDocumentIds } from '../../../../../shared/writingSession.js';
 import { prisma } from '../../prisma.js';
+import {
+  listResolvedWritingWordRows,
+  type NarrativeWordEvent,
+} from '../writing/aggregateWritingWords.js';
 import { calendarDateKey } from './zonedTime.js';
 import { queryPersonalStatistics } from './queryPersonalStatistics.js';
 
@@ -14,6 +19,7 @@ const EXPORT_NOTES = [
   'Word diffs measure change between two versions of a save, not original authorship.',
   'Session duration is the union of focused intervals. Fifteen minutes groups sessions; it is not active time.',
   'Document bodies, private titles, other users’ activity, and campaign names are omitted.',
+  'Unmatched historical PAGE_CREATED and PAGE_EDITED wordDelta values are exported as reconstructed net-only rows. Added versus removed is not invented.',
 ];
 
 type ContributionRow = {
@@ -74,6 +80,37 @@ function completenessOf(input: {
   if (input.reconstructed) return 'partial';
   if (input.hasActivity) return 'measured';
   return 'none';
+}
+
+export function mergeExportContributionDetails(input: {
+  contributions: ContributionRow[];
+  events: Array<NarrativeWordEvent & { campaignId: string; pageId: string | null }>;
+  start: Date;
+  end: Date;
+}): ContributionRow[] {
+  const resolved = listResolvedWritingWordRows({
+    contributions: input.contributions,
+    events: input.events,
+    start: input.start,
+    end: input.end,
+  });
+  return resolved.map((item) => {
+    if (item.kind === 'stored') return item.row as ContributionRow;
+    return {
+      id: `reconstructed:${item.event.id}`,
+      occurredAt: item.row.occurredAt,
+      campaignId: item.event.campaignId ?? '',
+      documentId: item.event.pageId ?? '',
+      sourceId: 'wiki.page',
+      wordsAdded: item.row.wordsAdded,
+      wordsRemoved: item.row.wordsRemoved,
+      netChange: item.row.netChange,
+      origin: item.row.origin,
+      availability: item.row.availability,
+      writingSessionId: null,
+      narrativeEventId: item.row.narrativeEventId,
+    };
+  });
 }
 
 export function assembleExportDailyAggregates(input: {
@@ -200,6 +237,19 @@ function csvTable(headers: string[], rows: Array<Array<unknown>>): string {
   ].join('\n');
 }
 
+function metricValueCells(value: MetricValue): [string, string, string] {
+  if (value.status === 'unavailable') return [value.status, '', value.reason];
+  return [value.status, String(value.amount), ''];
+}
+
+function metricMapRows(
+  metrics: PersonalStatisticsResponse['snapshot'],
+): Array<Array<unknown>> {
+  return Object.entries(metrics).flatMap(([id, value]) =>
+    value ? [[id, ...metricValueCells(value)]] : [],
+  );
+}
+
 export function renderPersonalStatisticsExportCsv(
   payload: PersonalStatisticsExportJson,
 ): string {
@@ -213,6 +263,34 @@ export function renderPersonalStatisticsExportCsv(
     `# campaignId=${payload.campaignId ?? ''}`,
     ...payload.provenance.notes.map((note) => `# ${note}`),
   ].join('\n');
+
+  const metricDefinitions = csvTable(
+    [
+      'id',
+      'unit',
+      'source',
+      'timeSemantics',
+      'attributionRules',
+      'historicalCompleteness',
+      'reportingClock',
+      'aggregation',
+    ],
+    payload.metricDefinitions.map((row) => [
+      row.id,
+      row.unit,
+      row.source,
+      row.timeSemantics,
+      row.attributionRules,
+      row.historicalCompleteness,
+      row.reportingClock,
+      row.aggregation,
+    ]),
+  );
+
+  const metricHeaders = ['metricId', 'status', 'amount', 'reason'];
+  const snapshot = csvTable(metricHeaders, metricMapRows(payload.snapshot));
+  const period = csvTable(metricHeaders, metricMapRows(payload.period));
+  const habits = csvTable(metricHeaders, metricMapRows(payload.habits));
 
   const contributions = csvTable(
     [
@@ -287,7 +365,7 @@ export function renderPersonalStatisticsExportCsv(
     ]),
   );
 
-  return `${header}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
+  return `${header}\n\n[metricDefinitions]\n${metricDefinitions}\n\n[snapshot]\n${snapshot}\n\n[period]\n${period}\n\n[habits]\n${habits}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
 }
 
 export async function exportOwnerPersonalStatistics(input: {
@@ -328,7 +406,10 @@ export async function exportOwnerPersonalStatistics(input: {
     ? { gte: new Date(payload.range.start), lt: new Date(payload.range.end) }
     : { lt: new Date(payload.range.end) };
 
-  const [contributions, sessions] = campaignIds.length
+  const rangeStart = payload.range.start ? new Date(payload.range.start) : new Date(0);
+  const rangeEnd = new Date(payload.range.end);
+
+  const [storedContributions, events, sessions] = campaignIds.length
     ? await Promise.all([
         prisma.writingContribution.findMany({
           where: {
@@ -353,6 +434,24 @@ export async function exportOwnerPersonalStatistics(input: {
           },
           orderBy: { occurredAt: 'asc' },
         }),
+        prisma.narrativeEvent.findMany({
+          where: {
+            campaignId: { in: campaignIds },
+            actorUserId: input.userId,
+            source: 'user',
+            type: { in: ['PAGE_CREATED', 'PAGE_EDITED'] },
+            createdAt: occurredAt,
+          },
+          select: {
+            id: true,
+            type: true,
+            createdAt: true,
+            metadata: true,
+            campaignId: true,
+            pageId: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        }),
         prisma.writingSession.findMany({
           where: {
             userId: input.userId,
@@ -372,7 +471,14 @@ export async function exportOwnerPersonalStatistics(input: {
           orderBy: { startedAt: 'asc' },
         }),
       ])
-    : [[], []];
+    : [[], [], []];
+
+  const contributions = mergeExportContributionDetails({
+    contributions: storedContributions,
+    events,
+    start: rangeStart,
+    end: rangeEnd,
+  });
 
   return buildPersonalStatisticsExportJson({
     payload,

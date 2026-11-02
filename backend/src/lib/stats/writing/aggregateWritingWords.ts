@@ -16,25 +16,22 @@ export type NarrativeWordEvent = {
   type: string;
   createdAt: Date;
   metadata: unknown;
+  campaignId?: string;
+  pageId?: string | null;
 };
 
-export type AggregatedWritingWords = {
-  wordsAdded: number;
-  wordsRemoved: number;
-  netChange: number;
-  measuredCount: number;
-  reconstructedCount: number;
-  completeness: 'measured' | 'partial' | 'reconstructed' | 'none';
-};
+export type ResolvedWritingWordRow =
+  | { kind: 'stored'; row: ContributionWordRow }
+  | { kind: 'reconstructed'; event: NarrativeWordEvent; row: ContributionWordRow };
 
 const WORD_EVENT_TYPES = new Set(['PAGE_CREATED', 'PAGE_EDITED']);
 
-export function aggregateWritingWords(input: {
+export function listResolvedWritingWordRows(input: {
   contributions: ContributionWordRow[];
   events: NarrativeWordEvent[];
   start: Date;
   end: Date;
-}): AggregatedWritingWords {
+}): ResolvedWritingWordRow[] {
   const inWindow = (at: Date) => at >= input.start && at < input.end;
   const contributionByEvent = new Map<string, ContributionWordRow>();
   const unmatched: ContributionWordRow[] = [];
@@ -45,11 +42,60 @@ export function aggregateWritingWords(input: {
     else unmatched.push(row);
   }
 
+  const resolved: ResolvedWritingWordRow[] = [];
+  const seenEvents = new Set<string>();
+
+  for (const event of input.events) {
+    if (!WORD_EVENT_TYPES.has(event.type) || !inWindow(event.createdAt)) continue;
+    seenEvents.add(event.id);
+    const contribution = contributionByEvent.get(event.id);
+    if (contribution) {
+      resolved.push({ kind: 'stored', row: contribution });
+      continue;
+    }
+    const delta = readNarrativeWordDelta(event.metadata);
+    const change = reconstructedWordChange(delta.wordsAdded - delta.wordsRemoved);
+    resolved.push({
+      kind: 'reconstructed',
+      event,
+      row: {
+        narrativeEventId: event.id,
+        occurredAt: event.createdAt,
+        wordsAdded: change.wordsAdded,
+        wordsRemoved: change.wordsRemoved,
+        netChange: change.netChange,
+        availability: change.availability,
+        origin: 'human',
+      },
+    });
+  }
+
+  for (const row of unmatched) resolved.push({ kind: 'stored', row });
+  for (const [eventId, row] of contributionByEvent) {
+    if (!seenEvents.has(eventId)) resolved.push({ kind: 'stored', row });
+  }
+  return resolved;
+}
+
+export type AggregatedWritingWords = {
+  wordsAdded: number;
+  wordsRemoved: number;
+  netChange: number;
+  measuredCount: number;
+  reconstructedCount: number;
+  completeness: 'measured' | 'partial' | 'reconstructed' | 'none';
+};
+
+export function aggregateWritingWords(input: {
+  contributions: ContributionWordRow[];
+  events: NarrativeWordEvent[];
+  start: Date;
+  end: Date;
+}): AggregatedWritingWords {
   let wordsAdded = 0;
   let wordsRemoved = 0;
   let measuredCount = 0;
   let reconstructedCount = 0;
-  const seenEvents = new Set<string>();
 
   const addRow = (row: {
     wordsAdded: number;
@@ -62,22 +108,7 @@ export function aggregateWritingWords(input: {
     else reconstructedCount += 1;
   };
 
-  for (const event of input.events) {
-    if (!WORD_EVENT_TYPES.has(event.type) || !inWindow(event.createdAt)) continue;
-    seenEvents.add(event.id);
-    const contribution = contributionByEvent.get(event.id);
-    if (contribution) {
-      addRow(contribution);
-      continue;
-    }
-    const delta = readNarrativeWordDelta(event.metadata);
-    addRow(reconstructedWordChange(delta.wordsAdded - delta.wordsRemoved));
-  }
-
-  for (const row of unmatched) addRow(row);
-  for (const [eventId, row] of contributionByEvent) {
-    if (!seenEvents.has(eventId)) addRow(row);
-  }
+  for (const item of listResolvedWritingWordRows(input)) addRow(item.row);
 
   const netChange = wordsAdded - wordsRemoved;
   let completeness: AggregatedWritingWords['completeness'] = 'none';
