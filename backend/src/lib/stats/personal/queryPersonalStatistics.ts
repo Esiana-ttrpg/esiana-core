@@ -16,6 +16,7 @@ import { aggregateWritingWords, listResolvedWritingWordRows } from '../writing/a
 import type {
   CartographyDomain,
   CartographyThumbnail,
+  ChronologyDomain,
   CreatorAttributionResponse,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
@@ -27,11 +28,17 @@ import {
   type WorldbuildingPageInput,
 } from './assembleWorldbuilding.js';
 import { assembleCartographyStats } from './assembleCartography.js';
+import { assembleChronologyStats } from './assembleChronology.js';
 import {
   MAP_ACTIVITY_ENTITY_TYPES,
   MapActivityEntity,
 } from '../../mapAuthorship.js';
+import {
+  CHRONOLOGY_EDIT_ENTITY_TYPES,
+  ChronologyActivityEntity,
+} from '../../chronologyAuthorship.js';
 import { AssetTypes } from '../../../types/domain.js';
+import { WORLD_ADVANCE_CATEGORY } from '../../../../../shared/worldAdvance.js';
 import { resolveLinkableCampaigns } from '../resolveLinkableCampaigns.js';
 import {
   assembleLifetimeAttributionMetrics,
@@ -316,6 +323,136 @@ async function loadCartographyProjection(input: {
   return { cartography, thumbnails };
 }
 
+function emptyChronology(
+  skipPeriod: boolean,
+  visibility: PersonalStatisticsVisibility,
+  rangeStart: Date | null,
+  rangeEnd: Date,
+) {
+  return assembleChronologyStats({
+    events: [],
+    eras: [],
+    timelineContributions: [],
+    timeAdvances: [],
+    periodEditsByDomain: {},
+    hasEditInstrumentation: false,
+    rangeStart,
+    rangeEnd,
+    skipPeriod,
+    visibility,
+  });
+}
+
+async function loadChronologyProjection(input: {
+  userId: string;
+  campaignIds: string[];
+  rangeStart: Date | null;
+  rangeEnd: Date;
+  skipPeriod: boolean;
+  visibility: PersonalStatisticsVisibility;
+}): Promise<ReturnType<typeof assembleChronologyStats>> {
+  if (input.campaignIds.length === 0) {
+    return emptyChronology(
+      input.skipPeriod,
+      input.visibility,
+      input.rangeStart,
+      input.rangeEnd,
+    );
+  }
+
+  const worldAdvanceCategories = await prisma.calendarEventCategory.findMany({
+    where: {
+      campaignId: { in: input.campaignIds },
+      name: WORLD_ADVANCE_CATEGORY,
+    },
+    select: { id: true },
+  });
+  const worldAdvanceCategoryIds = worldAdvanceCategories.map((row) => row.id);
+
+  const [events, eras, timeAdvances, periodUpdates, instrumentation] = await Promise.all([
+    prisma.calendarEvent.findMany({
+      where: {
+        createdByUserId: input.userId,
+        calendar: { campaignId: { in: input.campaignIds } },
+        ...(worldAdvanceCategoryIds.length > 0
+          ? {
+              OR: [
+                { categoryId: null },
+                { categoryId: { notIn: worldAdvanceCategoryIds } },
+              ],
+            }
+          : {}),
+      },
+      select: { createdAt: true, wikiPageId: true },
+    }),
+    prisma.campaignEra.findMany({
+      where: {
+        createdByUserId: input.userId,
+        campaignId: { in: input.campaignIds },
+      },
+      select: { createdAt: true },
+    }),
+    prisma.timeAdvanceSimulationRun.findMany({
+      where: {
+        initiatedByUserId: input.userId,
+        campaignId: { in: input.campaignIds },
+      },
+      select: {
+        createdAt: true,
+        previousEpochMinute: true,
+        nextEpochMinute: true,
+      },
+    }),
+    input.skipPeriod || input.visibility !== 'owner'
+      ? Promise.resolve([])
+      : prisma.campaignActivity.groupBy({
+          by: ['entityType'],
+          where: {
+            userId: input.userId,
+            campaignId: { in: input.campaignIds },
+            entityType: { in: [...CHRONOLOGY_EDIT_ENTITY_TYPES] },
+            actionType: 'UPDATE',
+            createdAt: {
+              ...(input.rangeStart ? { gte: input.rangeStart } : {}),
+              lt: input.rangeEnd,
+            },
+          },
+          _count: { _all: true },
+        }),
+    prisma.campaignActivity.findFirst({
+      where: {
+        userId: input.userId,
+        campaignId: { in: input.campaignIds },
+        entityType: { in: [...CHRONOLOGY_EDIT_ENTITY_TYPES] },
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  const periodEditsByDomain: Partial<Record<ChronologyDomain, number>> = {};
+  for (const row of periodUpdates) {
+    const count = row._count._all;
+    if (row.entityType === ChronologyActivityEntity.EVENT) {
+      periodEditsByDomain.events = (periodEditsByDomain.events ?? 0) + count;
+    } else if (row.entityType === ChronologyActivityEntity.ERA) {
+      periodEditsByDomain.eras = (periodEditsByDomain.eras ?? 0) + count;
+    }
+  }
+
+  return assembleChronologyStats({
+    events,
+    eras,
+    timelineContributions: events.filter((row) => row.wikiPageId != null),
+    timeAdvances,
+    periodEditsByDomain,
+    hasEditInstrumentation: instrumentation != null,
+    rangeStart: input.rangeStart,
+    rangeEnd: input.rangeEnd,
+    skipPeriod: input.skipPeriod,
+    visibility: input.visibility,
+  });
+}
+
 export type QueryPersonalStatisticsInput = {
   userId: string;
   viewerId?: string | null;
@@ -448,6 +585,7 @@ export async function queryPersonalStatistics(
       }),
       cartography: emptyCartography(skipPeriod, input.visibility, range.start, range.end),
       ...(input.visibility === 'owner' && !skipPeriod ? { cartographyThumbnails: [] } : {}),
+      chronology: emptyChronology(skipPeriod, input.visibility, range.start, range.end),
       linkableCampaigns,
       ...(includeVisualizations
         ? {
@@ -781,16 +919,26 @@ export async function queryPersonalStatistics(
   }
 
   const privacyContext = input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile';
-  const { cartography, thumbnails } = await loadCartographyProjection({
-    userId: input.userId,
-    viewerId: input.viewerId ?? input.userId,
-    campaignIds,
-    rangeStart: range.start,
-    rangeEnd: range.end,
-    skipPeriod,
-    visibility: input.visibility,
-    includeThumbnails: input.visibility === 'owner' && !skipPeriod,
-  });
+  const [{ cartography, thumbnails }, chronology] = await Promise.all([
+    loadCartographyProjection({
+      userId: input.userId,
+      viewerId: input.viewerId ?? input.userId,
+      campaignIds,
+      rangeStart: range.start,
+      rangeEnd: range.end,
+      skipPeriod,
+      visibility: input.visibility,
+      includeThumbnails: input.visibility === 'owner' && !skipPeriod,
+    }),
+    loadChronologyProjection({
+      userId: input.userId,
+      campaignIds,
+      rangeStart: range.start,
+      rangeEnd: range.end,
+      skipPeriod,
+      visibility: input.visibility,
+    }),
+  ]);
   const visualizations =
     includeVisualizations && vizWindow
       ? assembleWritingVisualizations({
@@ -825,6 +973,7 @@ export async function queryPersonalStatistics(
     worldbuilding,
     cartography,
     ...(thumbnails ? { cartographyThumbnails: thumbnails } : {}),
+    chronology,
     linkableCampaigns,
     ...(visualizations ? { visualizations } : {}),
   };

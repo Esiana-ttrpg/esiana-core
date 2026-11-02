@@ -181,6 +181,31 @@ export type CartographyThumbnail = {
   label: string;
 };
 
+/**
+ * Calendar/operational chronology — distinct from worldbuilding wiki event/era
+ * pages. Timeline contributions are calendar events with a linked wiki page
+ * (subset of events). World-advance batch stamps are excluded from events.
+ */
+export const CHRONOLOGY_DOMAINS = [
+  'events',
+  'eras',
+  'timelineContributions',
+  'timeAdvances',
+] as const;
+
+export type ChronologyDomain = (typeof CHRONOLOGY_DOMAINS)[number];
+
+export type ChronologyDomainStats = {
+  domain: ChronologyDomain;
+  created: MetricValue;
+  periodCreated: MetricValue;
+  periodEdited: MetricValue;
+  /** In-world minutes advanced. Present on timeAdvances only. */
+  minutesAdvanced?: MetricValue;
+  /** In-world minutes advanced in the reporting window. Owner-only. */
+  periodMinutesAdvanced?: MetricValue;
+};
+
 export type PersonalStatisticsResponse = {
   version: 1;
   computedAt: string;
@@ -208,6 +233,12 @@ export type PersonalStatisticsResponse = {
    */
   cartography: CartographyDomainStats[];
   cartographyThumbnails?: CartographyThumbnail[] | null;
+  /**
+   * Chronology calendar events, eras, timeline-linked events, and time advances.
+   * Companion structured stats — not new locked MetricIds. Distinct from
+   * worldbuilding wiki event/era domains.
+   */
+  chronology: ChronologyDomainStats[];
   linkableCampaigns: LinkableCampaign[];
   /** Owner-only writing charts. Omitted for public and compatibility adapters. */
   visualizations?: WritingVisualizations | null;
@@ -277,6 +308,7 @@ export type PersonalStatisticsExportJson = {
   habits: PersonalStatisticsResponse['habits'];
   worldbuilding: WorldbuildingDomainStats[];
   cartography: CartographyDomainStats[];
+  chronology: ChronologyDomainStats[];
   contributions: PersonalStatisticsExportContribution[];
   dailyAggregates: PersonalStatisticsExportDailyAggregate[];
   writingSessions: PersonalStatisticsExportSession[];

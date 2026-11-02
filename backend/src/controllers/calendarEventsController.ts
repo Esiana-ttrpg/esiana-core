@@ -10,6 +10,12 @@ import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import { convertEpochToCalendarState } from '../lib/timeEngine.js';
 import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
 import { CALENDAR_EVENT_IMPORTANCES, type CalendarEventImportance } from '../../../shared/calendarEventImportance.js';
+import {
+  ChronologyActivityEntity,
+  chronologyActorCreateFields,
+  chronologyActorUpdateFields,
+  logChronologyActivity,
+} from '../lib/chronologyAuthorship.js';
 
 function parseImportance(value: unknown): CalendarEventImportance | null {
   return typeof value === 'string' && (CALENDAR_EVENT_IMPORTANCES as readonly string[]).includes(value.toUpperCase())
@@ -437,6 +443,7 @@ export async function createCalendarEvent(
         targetDay,
         targetEpochMinute,
         recurrenceRule,
+        ...chronologyActorCreateFields(req.user?.id),
       },
     });
     const { syncEntityRelationsForCalendarEvent } = await import(
@@ -445,6 +452,16 @@ export async function createCalendarEvent(
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
     await reserveChronologyRoute(tx, campaignId, 'events', event.id, event.title);
     return event;
+  });
+
+  logChronologyActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: ChronologyActivityEntity.EVENT,
+    entityId: created.id,
+    entityName: created.title,
+    parentContext: calendarId,
   });
 
   dispatchDomainEvent({
@@ -659,6 +676,7 @@ export async function updateCalendarEvent(
         targetDay: body.targetDay === undefined ? existing.targetDay : toInt(body.targetDay),
         targetEpochMinute,
         recurrenceRule,
+        ...chronologyActorUpdateFields(req.user?.id),
       },
     });
     const { syncEntityRelationsForCalendarEvent } = await import(
@@ -667,6 +685,16 @@ export async function updateCalendarEvent(
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
     await reserveChronologyRoute(tx, campaignId, 'events', event.id, event.title);
     return event;
+  });
+
+  logChronologyActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: ChronologyActivityEntity.EVENT,
+    entityId: updated.id,
+    entityName: updated.title,
+    parentContext: calendarId,
   });
 
   res.json({ event: serializeEvent(updated) });
@@ -692,7 +720,7 @@ export async function deleteCalendarEvent(
 
   const existing = await prisma.calendarEvent.findFirst({
     where: { id: eventId, calendarId },
-    select: { id: true, visibility: true, wikiPageId: true },
+    select: { id: true, visibility: true, wikiPageId: true, title: true },
   });
   if (!existing || !chronologyCanView(req.campaign!, existing.visibility)) {
     res.status(404).json({ error: 'Event not found' });
@@ -707,6 +735,15 @@ export async function deleteCalendarEvent(
     if (existing.wikiPageId) await ownChronologyWikiPage(tx, campaignId, 'event', existing.wikiPageId);
     await clearEntityRelationsForCalendarEvent(tx, campaignId, eventId);
     await tx.calendarEvent.delete({ where: { id: eventId } });
+  });
+  logChronologyActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'DELETE',
+    entityType: ChronologyActivityEntity.EVENT,
+    entityId: existing.id,
+    entityName: existing.title,
+    parentContext: calendarId,
   });
   res.json({ ok: true });
 }

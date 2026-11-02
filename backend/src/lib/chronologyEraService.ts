@@ -11,6 +11,10 @@ import { parseCampaignMomentumState } from '../../../shared/factionMomentumMetad
 import { calendarEpochMinuteForDate, convertEpochToCalendarState, getMonthsForYear, parseMonths, parseLeapRules } from './timeEngine.js';
 import { chronologyCanManage, chronologyCanView, chronologyElevated } from './chronologyAccess.js';
 import { canViewWikiPage } from './wikiTree.js';
+import {
+  ChronologyActivityEntity,
+  logChronologyActivity,
+} from './chronologyAuthorship.js';
 
 const DAY = 1440n;
 type Db = Prisma.TransactionClient;
@@ -157,6 +161,15 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
           createdByUserId: userId } });
     await syncEraProjection(db, ctx.campaignId);
     await reserveChronologyRoute(db, ctx.campaignId, 'eras', era.id, name);
+    logChronologyActivity({
+      campaignId: ctx.campaignId,
+      userId,
+      actionType: existing ? 'UPDATE' : 'CREATE',
+      entityType: ChronologyActivityEntity.ERA,
+      entityId: era.id,
+      entityName: name,
+      parentContext: calendar.id,
+    });
     return era.id;
   });
 }
@@ -252,6 +265,15 @@ export async function deleteChronologyEra(
     const remaining = await db.campaignEra.findMany({ where: { campaignId: ctx.campaignId, calendarId: era.calendarId }, orderBy: { sortOrder: 'asc' } });
     for (const [sortOrder, row] of remaining.entries()) await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id: row.id } }, data: { sortOrder } });
     await syncEraProjection(db, ctx.campaignId);
+    logChronologyActivity({
+      campaignId: ctx.campaignId,
+      userId: ctx.actor.kind === 'member' ? ctx.actor.userId : null,
+      actionType: 'DELETE',
+      entityType: ChronologyActivityEntity.ERA,
+      entityId: id,
+      entityName: era.name,
+      parentContext: era.calendarId,
+    });
   };
   if (options.tx) await remove(options.tx);
   else await prisma.$transaction(remove);

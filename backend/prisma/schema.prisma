@@ -116,6 +116,11 @@ model User {
   mapObjectKeyframesUpdated MapObjectKeyframe[] @relation("MapObjectKeyframeUpdatedBy")
   mapPresetsCreated         MapPresentationPreset[] @relation("MapPresentationPresetCreatedBy")
   mapPresetsUpdated         MapPresentationPreset[] @relation("MapPresentationPresetUpdatedBy")
+  calendarEventsCreated     CalendarEvent[] @relation("CalendarEventCreatedBy")
+  calendarEventsUpdated     CalendarEvent[] @relation("CalendarEventUpdatedBy")
+  campaignErasCreated       CampaignEra[] @relation("CampaignEraCreatedBy")
+  campaignErasUpdated       CampaignEra[] @relation("CampaignEraUpdatedBy")
+  timeAdvancesInitiated     TimeAdvanceSimulationRun[] @relation("TimeAdvanceInitiatedBy")
   journalPublicationsCreated  JournalPublication[] @relation("JournalPublicationCreatedBy")
   journalPublicationsReleased JournalPublication[] @relation("JournalPublicationReleasedBy")
   journalSeriesCreated        JournalSeries[]      @relation("JournalSeriesCreatedBy")
@@ -1208,9 +1213,12 @@ model CampaignEra {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   calendar FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
   overview WikiPage? @relation(fields: [overviewPageId], references: [id], onDelete: SetNull)
+  createdBy User? @relation("CampaignEraCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("CampaignEraUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   @@id([campaignId, id])
   @@index([campaignId, calendarId, sortOrder])
+  @@index([createdByUserId])
 }
 
 /// Layer 1 — pending world event prompts from pressure projection (human-approved only).
@@ -1341,16 +1349,19 @@ model TimeAdvanceSimulationRun {
   source              String
   /// world-advance batchId when applicable
   sourceRef           String?
+  initiatedByUserId   String?
   semanticsVersion    String @default("time-hooks-v1")
   /// Compact GlobalTimeSimulationReceipt — operational/diagnostic only
   receipt             Json
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  initiatedBy User?    @relation("TimeAdvanceInitiatedBy", fields: [initiatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
   @@unique([campaignId, source, sourceRef, nextEpochMinute])
   @@index([campaignId, createdAt])
+  @@index([initiatedByUserId])
 }
 
 /// Layer 3 — idempotency receipts for world-advance batch effects.
@@ -1555,6 +1566,8 @@ model CalendarEvent {
   targetEpochMinute BigInt?
   recurrenceRule Json?
   metadata       Json?
+  createdByUserId String?
+  updatedByUserId String?
 
   calendar     FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   category     CalendarEventCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -1562,6 +1575,8 @@ model CalendarEvent {
   dependents   CalendarEvent[] @relation("CalendarEventPrerequisite")
   rumorCirculations RumorCirculation[]
   acceptedFromWorldEventSuggestion CampaignWorldEventSuggestion? @relation("CampaignWorldEventSuggestionAcceptedEvent")
+  createdBy User? @relation("CalendarEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("CalendarEventUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1576,6 +1591,7 @@ model CalendarEvent {
   @@index([targetEpochMinute])
   @@index([wikiPageId])
   @@index([targetYear, targetMonth, targetDay])
+  @@index([createdByUserId])
 }
 
 model Party {

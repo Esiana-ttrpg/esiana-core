@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import type {
   CartographyDomainStats,
   CartographyThumbnail,
+  ChronologyDomainStats,
   CreatorAttributionResponse,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
@@ -226,6 +227,63 @@ function CartographyThumbnails({
   );
 }
 
+function ChronologyTable({
+  rows,
+  locale,
+  t,
+}: {
+  rows: ChronologyDomainStats[];
+  locale: string;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <table className="w-full min-w-0 text-left text-sm">
+      <thead>
+        <tr>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colDomain')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colCreated')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodCreated')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodEdited')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colMinutesAdvanced')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.domain} className="border-t border-border/40">
+            <td className="py-1 pr-3 text-foreground">
+              {t(`profile.creatorstats.chronology.${row.domain}`)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.created, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodCreated, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodEdited, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {row.domain === 'timeAdvances'
+                ? formatWorldbuildingCell(row.minutesAdvanced, locale, t)
+                : '—'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function WorldbuildingTable({
   rows,
   locale,
@@ -398,6 +456,17 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
           </>
         ) : (
           <p className="text-sm text-muted">{t('profile.creatorstats.cartographyEmpty')}</p>
+        )}
+      </section>
+      <section className="space-y-3">
+        <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.chronologySection')}</h3>
+        <p className="text-sm text-muted">{t('profile.creatorstats.chronologyHelp')}</p>
+        {chartsLoading ? (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
+        ) : statistics?.chronology?.length ? (
+          <ChronologyTable rows={statistics.chronology} locale={i18n.language} t={t} />
+        ) : (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chronologyEmpty')}</p>
         )}
       </section>
       <section className="space-y-3">
