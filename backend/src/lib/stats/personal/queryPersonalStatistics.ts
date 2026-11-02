@@ -14,6 +14,8 @@ import {
 } from '../../../../../shared/metricValue.js';
 import { aggregateWritingWords, listResolvedWritingWordRows } from '../writing/aggregateWritingWords.js';
 import type {
+  CartographyDomain,
+  CartographyThumbnail,
   CreatorAttributionResponse,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
@@ -24,6 +26,12 @@ import {
   worldbuildingDocumentId,
   type WorldbuildingPageInput,
 } from './assembleWorldbuilding.js';
+import { assembleCartographyStats } from './assembleCartography.js';
+import {
+  MAP_ACTIVITY_ENTITY_TYPES,
+  MapActivityEntity,
+} from '../../mapAuthorship.js';
+import { AssetTypes } from '../../../types/domain.js';
 import { resolveLinkableCampaigns } from '../resolveLinkableCampaigns.js';
 import {
   assembleLifetimeAttributionMetrics,
@@ -94,6 +102,218 @@ async function loadReferencedWorldbuildingPages(input: {
   });
   for (const page of extra) pagesById.set(page.id, page);
   return pagesById;
+}
+
+function emptyCartography(
+  skipPeriod: boolean,
+  visibility: PersonalStatisticsVisibility,
+  rangeStart: Date | null,
+  rangeEnd: Date,
+) {
+  return assembleCartographyStats({
+    maps: [],
+    markers: [],
+    regions: [],
+    layers: [],
+    labels: [],
+    periodEditsByDomain: {},
+    hasEditInstrumentation: false,
+    rangeStart,
+    rangeEnd,
+    skipPeriod,
+    visibility,
+  });
+}
+
+async function loadCartographyProjection(input: {
+  userId: string;
+  viewerId: string;
+  campaignIds: string[];
+  rangeStart: Date | null;
+  rangeEnd: Date;
+  skipPeriod: boolean;
+  visibility: PersonalStatisticsVisibility;
+  includeThumbnails: boolean;
+}): Promise<{
+  cartography: ReturnType<typeof assembleCartographyStats>;
+  thumbnails: CartographyThumbnail[] | undefined;
+}> {
+  if (input.campaignIds.length === 0) {
+    return {
+      cartography: emptyCartography(
+        input.skipPeriod,
+        input.visibility,
+        input.rangeStart,
+        input.rangeEnd,
+      ),
+      thumbnails: input.includeThumbnails ? [] : undefined,
+    };
+  }
+
+  const [
+    maps,
+    markers,
+    layers,
+    regions,
+    labels,
+    periodUpdates,
+    instrumentation,
+  ] = await Promise.all([
+    prisma.asset.findMany({
+      where: {
+        campaignId: { in: input.campaignIds },
+        type: AssetTypes.MAP,
+        uploadedByUserId: input.userId,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        visibility: true,
+        thumbnailUrl: true,
+        displayName: true,
+        campaignId: true,
+        campaign: { select: { handle: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.mapPin.findMany({
+      where: {
+        createdByUserId: input.userId,
+        asset: { campaignId: { in: input.campaignIds } },
+      },
+      select: {
+        createdAt: true,
+        targetPage: {
+          select: {
+            id: true,
+            title: true,
+            parentId: true,
+            workspace: true,
+            templateType: true,
+            metadata: true,
+          },
+        },
+      },
+    }),
+    prisma.mapLayer.findMany({
+      where: {
+        createdByUserId: input.userId,
+        campaignId: { in: input.campaignIds },
+      },
+      select: { createdAt: true },
+    }),
+    prisma.mapSceneObject.findMany({
+      where: {
+        createdByUserId: input.userId,
+        campaignId: { in: input.campaignIds },
+        kind: 'region',
+      },
+      select: { createdAt: true },
+    }),
+    prisma.mapSceneObject.findMany({
+      where: {
+        createdByUserId: input.userId,
+        campaignId: { in: input.campaignIds },
+        kind: 'label',
+      },
+      select: { createdAt: true },
+    }),
+    input.skipPeriod || input.visibility !== 'owner'
+      ? Promise.resolve([])
+      : prisma.campaignActivity.groupBy({
+          by: ['entityType', 'entityId'],
+          where: {
+            userId: input.userId,
+            campaignId: { in: input.campaignIds },
+            entityType: { in: [...MAP_ACTIVITY_ENTITY_TYPES] },
+            actionType: 'UPDATE',
+            createdAt: {
+              ...(input.rangeStart ? { gte: input.rangeStart } : {}),
+              lt: input.rangeEnd,
+            },
+          },
+          _count: { _all: true },
+        }),
+    prisma.campaignActivity.findFirst({
+      where: {
+        userId: input.userId,
+        campaignId: { in: input.campaignIds },
+        entityType: { in: [...MAP_ACTIVITY_ENTITY_TYPES] },
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  const sceneEditIds = [
+    ...new Set(
+      periodUpdates
+        .filter((row) => row.entityType === MapActivityEntity.SCENE_OBJECT)
+        .map((row) => row.entityId),
+    ),
+  ];
+  const sceneKinds =
+    sceneEditIds.length === 0
+      ? []
+      : await prisma.mapSceneObject.findMany({
+          where: { id: { in: sceneEditIds }, campaignId: { in: input.campaignIds } },
+          select: { id: true, kind: true },
+        });
+  const kindById = new Map(sceneKinds.map((row) => [row.id, row.kind]));
+  const periodEditsByDomain: Partial<Record<CartographyDomain, number>> = {};
+  for (const row of periodUpdates) {
+    const count = row._count._all;
+    if (row.entityType === MapActivityEntity.ASSET) {
+      periodEditsByDomain.maps = (periodEditsByDomain.maps ?? 0) + count;
+    } else if (row.entityType === MapActivityEntity.PIN) {
+      periodEditsByDomain.markers = (periodEditsByDomain.markers ?? 0) + count;
+    } else if (row.entityType === MapActivityEntity.LAYER) {
+      periodEditsByDomain.layers = (periodEditsByDomain.layers ?? 0) + count;
+    } else if (row.entityType === MapActivityEntity.SCENE_OBJECT) {
+      const kind = kindById.get(row.entityId);
+      if (kind === 'region') {
+        periodEditsByDomain.regions = (periodEditsByDomain.regions ?? 0) + count;
+      } else if (kind === 'label') {
+        periodEditsByDomain.labels = (periodEditsByDomain.labels ?? 0) + count;
+      }
+    }
+  }
+
+  const cartography = assembleCartographyStats({
+    maps,
+    markers,
+    regions,
+    layers,
+    labels,
+    periodEditsByDomain,
+    hasEditInstrumentation: instrumentation != null,
+    rangeStart: input.rangeStart,
+    rangeEnd: input.rangeEnd,
+    skipPeriod: input.skipPeriod,
+    visibility: input.visibility,
+  });
+
+  if (!input.includeThumbnails) {
+    return { cartography, thumbnails: undefined };
+  }
+
+  const capabilities = await loadViewerCapabilitiesByCampaign(
+    input.viewerId,
+    input.campaignIds,
+  );
+  const thumbnails: CartographyThumbnail[] = [];
+  for (const map of maps) {
+    const viewer = capabilities.get(map.campaignId);
+    if (!viewer || !canViewWikiPage(map.visibility, viewer)) continue;
+    thumbnails.push({
+      id: map.id,
+      href: `/campaigns/${map.campaign.handle}/maps/${map.id}`,
+      thumbnailUrl: map.thumbnailUrl,
+      label: map.displayName?.trim() || 'Untitled map',
+    });
+    if (thumbnails.length >= 6) break;
+  }
+
+  return { cartography, thumbnails };
 }
 
 export type QueryPersonalStatisticsInput = {
@@ -226,6 +446,8 @@ export async function queryPersonalStatistics(
         skipPeriod,
         visibility: input.visibility,
       }),
+      cartography: emptyCartography(skipPeriod, input.visibility, range.start, range.end),
+      ...(input.visibility === 'owner' && !skipPeriod ? { cartographyThumbnails: [] } : {}),
       linkableCampaigns,
       ...(includeVisualizations
         ? {
@@ -559,6 +781,16 @@ export async function queryPersonalStatistics(
   }
 
   const privacyContext = input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile';
+  const { cartography, thumbnails } = await loadCartographyProjection({
+    userId: input.userId,
+    viewerId: input.viewerId ?? input.userId,
+    campaignIds,
+    rangeStart: range.start,
+    rangeEnd: range.end,
+    skipPeriod,
+    visibility: input.visibility,
+    includeThumbnails: input.visibility === 'owner' && !skipPeriod,
+  });
   const visualizations =
     includeVisualizations && vizWindow
       ? assembleWritingVisualizations({
@@ -591,6 +823,8 @@ export async function queryPersonalStatistics(
     habits: includeHabits ? filterMetricsByPrivacy(habits, privacyContext) : {},
     worldbuildingMix: buildWorldbuildingMix(createdPages),
     worldbuilding,
+    cartography,
+    ...(thumbnails ? { cartographyThumbnails: thumbnails } : {}),
     linkableCampaigns,
     ...(visualizations ? { visualizations } : {}),
   };

@@ -17,6 +17,12 @@ import {
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { toNullableInputJsonValue } from '../lib/inputJsonValue.js';
 import { AssetTypes, WikiVisibility } from '../types/domain.js';
+import {
+  logMapActivity,
+  mapActorCreateFields,
+  mapActorUpdateFields,
+  MapActivityEntity,
+} from '../lib/mapAuthorship.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import {
   displayToNormalizedPoint,
@@ -139,7 +145,17 @@ export async function createMapLayer(
       sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : 0,
       defaultEnabled: body.defaultEnabled !== false,
       color: typeof body.color === 'string' ? body.color.trim() || null : null,
+      ...mapActorCreateFields(req.user?.id),
     },
+  });
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: MapActivityEntity.LAYER,
+    entityId: layer.id,
+    entityName: layer.name,
+    parentContext: assetId,
   });
 
   res.status(201).json({
@@ -177,8 +193,19 @@ export async function updateMapLayer(
 
   const result = await prisma.mapLayer.updateMany({
     where: { id: layerId, mapAssetId: assetId, campaignId: ctx.campaignId },
-    data,
+    data: { ...data, ...mapActorUpdateFields(req.user?.id) },
   });
+  if (result.count > 0) {
+    logMapActivity({
+      campaignId: ctx.campaignId,
+      userId: req.user?.id,
+      actionType: 'UPDATE',
+      entityType: MapActivityEntity.LAYER,
+      entityId: layerId,
+      entityName: typeof data.name === 'string' ? data.name : layerId,
+      parentContext: assetId,
+    });
+  }
   if (result.count === 0) {
     res.status(404).json({ error: 'Layer not found' });
     return;
@@ -222,6 +249,15 @@ export async function deleteMapLayer(
     res.status(404).json({ error: 'Layer not found' });
     return;
   }
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'DELETE',
+    entityType: MapActivityEntity.LAYER,
+    entityId: layerId,
+    entityName: layerId,
+    parentContext: assetId,
+  });
   res.status(204).send();
 }
 
@@ -293,7 +329,17 @@ export async function createMapSceneObject(
         body.visibleUntilEpochMinute !== null
           ? BigInt(String(body.visibleUntilEpochMinute))
           : null,
+      ...mapActorCreateFields(req.user?.id),
     },
+  });
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: MapActivityEntity.SCENE_OBJECT,
+    entityId: object.id,
+    entityName: object.label ?? object.kind,
+    parentContext: assetId,
   });
 
   res.status(201).json({ object: { id: object.id } });
@@ -384,7 +430,16 @@ export async function updateMapSceneObject(
 
   await prisma.mapSceneObject.update({
     where: { id: objectId },
-    data,
+    data: { ...data, ...mapActorUpdateFields(req.user?.id) },
+  });
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: MapActivityEntity.SCENE_OBJECT,
+    entityId: objectId,
+    entityName: objectId,
+    parentContext: assetId,
   });
 
   res.json({ ok: true });
@@ -446,6 +501,15 @@ export async function deleteMapSceneObject(
   }
 
   await prisma.mapSceneObject.delete({ where: { id: objectId } });
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'DELETE',
+    entityType: MapActivityEntity.SCENE_OBJECT,
+    entityId: objectId,
+    entityName: objectId,
+    parentContext: assetId,
+  });
   res.status(204).send();
 }
 
@@ -543,7 +607,16 @@ export async function createMapObjectKeyframe(
         typeof body.revelationOverride === 'string'
           ? body.revelationOverride
           : null,
+      ...mapActorCreateFields(req.user?.id),
     },
+  });
+  logMapActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: MapActivityEntity.KEYFRAME,
+    entityId: keyframe.id,
+    entityName: objectId,
   });
 
   res.status(201).json({
@@ -632,7 +705,17 @@ export async function createMapObjectGroup(
       name,
       sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : 0,
       color: typeof body.color === 'string' ? body.color.trim() || null : null,
+      ...mapActorCreateFields(req.user?.id),
     },
+  });
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: MapActivityEntity.GROUP,
+    entityId: group.id,
+    entityName: group.name,
+    parentContext: assetId,
   });
 
   res.status(201).json({
@@ -668,8 +751,19 @@ export async function updateMapObjectGroup(
 
   const result = await prisma.mapObjectGroup.updateMany({
     where: { id: groupId, mapAssetId: assetId, campaignId: ctx.campaignId },
-    data,
+    data: { ...data, ...mapActorUpdateFields(req.user?.id) },
   });
+  if (result.count > 0) {
+    logMapActivity({
+      campaignId: ctx.campaignId,
+      userId: req.user?.id,
+      actionType: 'UPDATE',
+      entityType: MapActivityEntity.GROUP,
+      entityId: groupId,
+      entityName: typeof data.name === 'string' ? data.name : groupId,
+      parentContext: assetId,
+    });
+  }
   if (result.count === 0) {
     res.status(404).json({ error: 'Group not found' });
     return;
@@ -785,7 +879,17 @@ export async function createMapPresentationPreset(
       anchorEpochMinute,
       enabledLayerIds,
       sortOrder,
+      ...mapActorCreateFields(req.user?.id),
     },
+  });
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: MapActivityEntity.PRESET,
+    entityId: row.id,
+    entityName: row.label,
+    parentContext: assetId,
   });
 
   res.status(201).json({ preset: serializePresentationPreset(row) });
@@ -834,7 +938,16 @@ export async function updateMapPresentationPreset(
 
   const row = await prisma.mapPresentationPreset.update({
     where: { id: presetId },
-    data,
+    data: { ...data, ...mapActorUpdateFields(req.user?.id) },
+  });
+  logMapActivity({
+    campaignId: ctx.campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: MapActivityEntity.PRESET,
+    entityId: row.id,
+    entityName: row.label,
+    parentContext: assetId,
   });
 
   res.json({ preset: serializePresentationPreset(row) });

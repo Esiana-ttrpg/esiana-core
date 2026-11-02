@@ -1,6 +1,9 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import type {
+  CartographyDomainStats,
+  CartographyThumbnail,
   CreatorAttributionResponse,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
@@ -140,6 +143,87 @@ function formatWorldbuildingCell(
   const amount = readMetricAmount(value);
   if (amount == null) return t('profile.creatorstats.notYetTracked');
   return formatCompactCount(amount, locale);
+}
+
+function CartographyTable({
+  rows,
+  locale,
+  t,
+}: {
+  rows: CartographyDomainStats[];
+  locale: string;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <table className="w-full min-w-0 text-left text-sm">
+      <thead>
+        <tr>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colDomain')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colCreated')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodCreated')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodEdited')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.domain} className="border-t border-border/40">
+            <td className="py-1 pr-3 text-foreground">
+              {t(`profile.creatorstats.cartography.${row.domain}`)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.created, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodCreated, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodEdited, locale, t)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function CartographyThumbnails({
+  thumbnails,
+  t,
+}: {
+  thumbnails: CartographyThumbnail[];
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  if (thumbnails.length === 0) return null;
+  return (
+    <ul className="flex flex-wrap gap-3">
+      {thumbnails.map((map) => (
+        <li key={map.id} className="w-24">
+          <Link to={map.href} className="block min-w-0">
+            {map.thumbnailUrl ? (
+              <img
+                src={map.thumbnailUrl}
+                alt={map.label}
+                className="h-16 w-24 rounded border border-border/40 object-cover"
+              />
+            ) : (
+              <span className="flex h-16 w-24 items-center justify-center rounded border border-border/40 bg-elevated text-xs text-muted">
+                {t('profile.creatorstats.cartographyFallback')}
+              </span>
+            )}
+            <span className="mt-1 block truncate text-xs text-muted">{map.label}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function WorldbuildingTable({
@@ -297,6 +381,23 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
           <WorldbuildingTable rows={statistics.worldbuilding} locale={i18n.language} t={t} />
         ) : (
           <p className="text-sm text-muted">{t('profile.creatorstats.worldbuildingEmpty')}</p>
+        )}
+      </section>
+      <section className="space-y-3">
+        <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.cartographySection')}</h3>
+        <p className="text-sm text-muted">{t('profile.creatorstats.cartographyHelp')}</p>
+        {chartsLoading ? (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
+        ) : statistics?.cartography?.length ? (
+          <>
+            <CartographyTable rows={statistics.cartography} locale={i18n.language} t={t} />
+            <CartographyThumbnails
+              thumbnails={statistics.cartographyThumbnails ?? []}
+              t={t}
+            />
+          </>
+        ) : (
+          <p className="text-sm text-muted">{t('profile.creatorstats.cartographyEmpty')}</p>
         )}
       </section>
       <section className="space-y-3">

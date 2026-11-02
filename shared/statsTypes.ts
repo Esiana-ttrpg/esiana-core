@@ -156,6 +156,31 @@ export type WorldbuildingDomainStats = {
   periodContributed: MetricValue;
 };
 
+export const CARTOGRAPHY_DOMAINS = [
+  'maps',
+  'markers',
+  'regions',
+  'layers',
+  'labels',
+  'locationsMapped',
+] as const;
+
+export type CartographyDomain = (typeof CARTOGRAPHY_DOMAINS)[number];
+
+export type CartographyDomainStats = {
+  domain: CartographyDomain;
+  created: MetricValue;
+  periodCreated: MetricValue;
+  periodEdited: MetricValue;
+};
+
+export type CartographyThumbnail = {
+  id: string;
+  href: string;
+  thumbnailUrl: string | null;
+  label: string;
+};
+
 export type PersonalStatisticsResponse = {
   version: 1;
   computedAt: string;
@@ -177,6 +202,12 @@ export type PersonalStatisticsResponse = {
    * 13 IDs — does not redefine attribution.charactersCreated and siblings.
    */
   worldbuilding: WorldbuildingDomainStats[];
+  /**
+   * Cartography creations and editing activity. Companion structured stats —
+   * not new locked MetricIds. Thumbnails are owner-only.
+   */
+  cartography: CartographyDomainStats[];
+  cartographyThumbnails?: CartographyThumbnail[] | null;
   linkableCampaigns: LinkableCampaign[];
   /** Owner-only writing charts. Omitted for public and compatibility adapters. */
   visualizations?: WritingVisualizations | null;
@@ -245,6 +276,7 @@ export type PersonalStatisticsExportJson = {
   period: PersonalStatisticsResponse['period'];
   habits: PersonalStatisticsResponse['habits'];
   worldbuilding: WorldbuildingDomainStats[];
+  cartography: CartographyDomainStats[];
   contributions: PersonalStatisticsExportContribution[];
   dailyAggregates: PersonalStatisticsExportDailyAggregate[];
   writingSessions: PersonalStatisticsExportSession[];

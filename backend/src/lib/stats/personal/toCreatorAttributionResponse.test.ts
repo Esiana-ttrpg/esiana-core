@@ -26,6 +26,7 @@ describe('toCreatorAttributionResponse', () => {
       },
       worldbuildingMix: [],
       worldbuilding: [],
+      cartography: [],
       linkableCampaigns: [],
     };
 

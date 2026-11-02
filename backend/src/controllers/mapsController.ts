@@ -16,6 +16,12 @@ import {
   loadMapPinForPreview,
 } from '../lib/mapPinPreview.js';
 import { canViewMapAsset } from '../lib/mapAssetVisibility.js';
+import {
+  logMapActivity,
+  mapActorCreateFields,
+  mapActorUpdateFields,
+  MapActivityEntity,
+} from '../lib/mapAuthorship.js';
 import { normalizeImageCredit } from '../../../shared/imageCredit.js';
 import {
   CampaignMemberRoles,
@@ -470,8 +476,18 @@ export async function createMapPin(
       pinType,
       x_coordinate: coords.x,
       y_coordinate: coords.y,
+      ...mapActorCreateFields(req.user?.id),
     },
     include: mapPinInclude,
+  });
+  logMapActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: MapActivityEntity.PIN,
+    entityId: pin.id,
+    entityName: pin.label ?? pin.pinType,
+    parentContext: assetId,
   });
 
   if (pin.targetPageId) {
@@ -569,8 +585,17 @@ export async function updateMapPin(
 
   const pin = await prisma.mapPin.update({
     where: { id: pinId },
-    data,
+    data: { ...data, ...mapActorUpdateFields(req.user?.id) },
     include: mapPinInclude,
+  });
+  logMapActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: MapActivityEntity.PIN,
+    entityId: pin.id,
+    entityName: pin.label ?? pin.pinType,
+    parentContext: assetId,
   });
 
   if (revelation) {
@@ -628,6 +653,15 @@ export async function deleteMapPin(
     const { clearEntityRelationsForMapPin } = await import('../lib/entityRelationSyncService.js');
     await clearEntityRelationsForMapPin(tx, req.campaign!.campaignId, pinId);
     await tx.mapPin.delete({ where: { id: pinId } });
+  });
+  logMapActivity({
+    campaignId: req.campaign!.campaignId,
+    userId: req.user?.id,
+    actionType: 'DELETE',
+    entityType: MapActivityEntity.PIN,
+    entityId: pinId,
+    entityName: pinId,
+    parentContext: assetId,
   });
   res.json({ ok: true });
 }
@@ -714,6 +748,15 @@ export async function updateCampaignMap(
       imageCredit: true,
       createdAt: true,
     },
+  });
+
+  logMapActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: MapActivityEntity.ASSET,
+    entityId: updated.id,
+    entityName: updated.displayName ?? updated.id,
   });
 
   const enriched = await enrichMapAssetSummary(campaignId, updated);

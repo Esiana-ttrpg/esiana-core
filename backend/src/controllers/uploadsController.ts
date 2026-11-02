@@ -14,6 +14,7 @@ import {
 } from '../lib/uploadValidation.js';
 import { importFromUpload, importFromUrl, mapImportError, UrlImportError } from '../lib/assetImport.js';
 import { isActiveStorageUnavailableError, storageUnavailableStatusPayload } from '../lib/storageUploadErrors.js';
+import { logMapActivity, MapActivityEntity } from '../lib/mapAuthorship.js';
 import { canModifyCampaign } from '../lib/acl.js';
 import { IMPORT_STAGING_ASSET_TYPES } from '../lib/importStagingRetention.js';
 
@@ -51,6 +52,17 @@ export async function uploadCampaignImage(
           : null,
       uploadedByUserId,
     });
+
+    if (type === AssetTypes.MAP) {
+      logMapActivity({
+        campaignId,
+        userId: uploadedByUserId,
+        actionType: 'CREATE',
+        entityType: MapActivityEntity.ASSET,
+        entityId: result.asset.id,
+        entityName: result.asset.displayName ?? result.asset.id,
+      });
+    }
 
     logUploadAttempt({
       endpoint: 'campaign-upload',
