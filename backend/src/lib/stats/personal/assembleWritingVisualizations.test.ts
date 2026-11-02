@@ -22,6 +22,7 @@ describe('assembleWritingVisualizations', () => {
           wordsRemoved: 10,
           availability: 'measured',
           origin: 'human',
+          documentId: 'page-1',
         },
         {
           occurredAt: new Date('2026-06-02T18:00:00.000Z'),
@@ -29,6 +30,7 @@ describe('assembleWritingVisualizations', () => {
           wordsRemoved: 0,
           availability: 'reconstructed',
           origin: 'human',
+          documentId: 'page-2',
         },
       ],
       sessions: [
@@ -43,6 +45,7 @@ describe('assembleWritingVisualizations', () => {
       ],
       documentsById: new Map([
         ['page-1', { id: 'page-1', title: 'Mira at the quay', href: '/campaigns/demo/pages/page-1' }],
+        ['page-2', { id: 'page-2', title: 'Harbor notes', href: '/campaigns/demo/pages/page-2' }],
       ]),
     });
 
@@ -55,6 +58,10 @@ describe('assembleWritingVisualizations', () => {
     assert.equal(result.sessions[0]?.documents[0]?.title, 'Mira at the quay');
     assert.equal(result.hourly[12].wordsAdded, 40);
     assert.equal(result.hourly[13].wordsAdded, 12);
+    assert.equal(result.mostWorkedDocuments[0]?.id, 'page-1');
+    assert.equal(result.mostWorkedDocuments[0]?.contributions, 2);
+    assert.equal(result.mostWorkedDocuments[1]?.id, 'page-2');
+    assert.equal(result.mostWorkedDocuments[1]?.contributions, 1);
   });
 
   it('fills Monday-Sunday and 24-hour buckets even when a day is quiet', () => {

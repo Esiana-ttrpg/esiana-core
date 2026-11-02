@@ -3,6 +3,7 @@ import type {
   WritingDayCompleteness,
   WritingHeatmapDay,
   WritingHourlyBucket,
+  WritingMostWorkedDocument,
   WritingVisualizationDocument,
   WritingVisualizationSession,
   WritingVisualizations,
@@ -22,6 +23,7 @@ export type VisualizationContribution = {
   wordsRemoved: number;
   availability: string;
   origin: string;
+  documentId?: string | null;
 };
 
 export type VisualizationSessionRow = {
@@ -89,7 +91,42 @@ export function emptyWritingVisualizations(
     hourly: emptyHourly(),
     addedRemovedTrend: [],
     sessions: [],
+    mostWorkedDocuments: [],
   };
+}
+
+function rankMostWorkedDocuments(input: {
+  contributions: VisualizationContribution[];
+  sessions: VisualizationSessionRow[];
+  documentsById: Map<string, WritingVisualizationDocument>;
+  inWindow: (at: Date) => boolean;
+}): WritingMostWorkedDocument[] {
+  const counts = new Map<string, number>();
+  for (const row of input.contributions) {
+    if (row.origin !== 'human' || !input.inWindow(row.occurredAt)) continue;
+    const documentId = row.documentId?.trim();
+    if (!documentId || !input.documentsById.has(documentId)) continue;
+    counts.set(documentId, (counts.get(documentId) ?? 0) + 1);
+  }
+  for (const session of input.sessions) {
+    if (!input.inWindow(session.startedAt)) continue;
+    for (const documentId of uniqueDocumentIds(session.documentIds)) {
+      if (!input.documentsById.has(documentId)) continue;
+      counts.set(documentId, (counts.get(documentId) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([id, contributions]) => {
+      const doc = input.documentsById.get(id);
+      if (!doc) return null;
+      return { ...doc, contributions };
+    })
+    .filter((row): row is WritingMostWorkedDocument => row != null)
+    .sort(
+      (a, b) =>
+        b.contributions - a.contributions || a.title.localeCompare(b.title),
+    )
+    .slice(0, 8);
 }
 
 export function assembleWritingVisualizations(input: {
@@ -185,5 +222,11 @@ export function assembleWritingVisualizations(input: {
     hourly,
     addedRemovedTrend,
     sessions,
+    mostWorkedDocuments: rankMostWorkedDocuments({
+      contributions: input.contributions,
+      sessions: input.sessions,
+      documentsById: input.documentsById,
+      inWindow,
+    }),
   };
 }
