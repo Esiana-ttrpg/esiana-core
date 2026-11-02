@@ -9,6 +9,7 @@ export type ContributionWordRow = {
   netChange: number;
   availability: string;
   origin: string;
+  documentId?: string | null;
 };
 
 export type NarrativeWordEvent = {
@@ -66,6 +67,7 @@ export function listResolvedWritingWordRows(input: {
         netChange: change.netChange,
         availability: change.availability,
         origin: 'human',
+        documentId: event.pageId ?? null,
       },
     });
   }

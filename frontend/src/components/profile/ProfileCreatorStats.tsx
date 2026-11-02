@@ -4,12 +4,13 @@ import type {
   CreatorAttributionResponse,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
+  WorldbuildingDomainStats,
 } from '@shared/statsTypes';
 import type { MetricId } from '@shared/metricRegistry';
 import type { MetricValue } from '@shared/metricValue';
 import { readMetricAmount } from '@shared/metricValue';
 import { formatCompactCount } from '@/lib/metricDisplayPolicy';
-import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
+import { META_SECTION_LABEL_CLASS, META_TABLE_HEAD_CLASS } from '@/lib/surfaceLayout';
 import {
   downloadOwnerStatisticsExport,
   fetchOwnerPersonalStatistics,
@@ -131,6 +132,71 @@ function renderMetricValue(
   );
 }
 
+function formatWorldbuildingCell(
+  value: MetricValue | undefined,
+  locale: string,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  const amount = readMetricAmount(value);
+  if (amount == null) return t('profile.creatorstats.notYetTracked');
+  return formatCompactCount(amount, locale);
+}
+
+function WorldbuildingTable({
+  rows,
+  locale,
+  t,
+}: {
+  rows: WorldbuildingDomainStats[];
+  locale: string;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <table className="w-full min-w-0 text-left text-sm">
+      <thead>
+        <tr>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colDomain')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colCreated')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodCreated')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodEdited')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodContributed')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.domain} className="border-t border-border/40">
+            <td className="py-1 pr-3 text-foreground">
+              {t(`profile.creatorstats.domain.${row.domain}`)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.created, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodCreated, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodEdited, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodContributed, locale, t)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
   const { t, i18n } = useTranslation();
   const [range, setRange] = useState<PersonalStatisticsRangeMode>('year');
@@ -210,7 +276,7 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
       </section>
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.chartsSection')}</h3>
+          <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.worldbuildingSection')}</h3>
           <label className="text-sm text-muted">
             {t('profile.creatorstats.rangeLabel')}
             <select
@@ -224,6 +290,17 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
             </select>
           </label>
         </div>
+        <p className="text-sm text-muted">{t('profile.creatorstats.worldbuildingHelp')}</p>
+        {chartsLoading ? (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
+        ) : statistics?.worldbuilding?.length ? (
+          <WorldbuildingTable rows={statistics.worldbuilding} locale={i18n.language} t={t} />
+        ) : (
+          <p className="text-sm text-muted">{t('profile.creatorstats.worldbuildingEmpty')}</p>
+        )}
+      </section>
+      <section className="space-y-3">
+        <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.chartsSection')}</h3>
         {chartsLoading ? (
           <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
         ) : statistics?.visualizations ? (

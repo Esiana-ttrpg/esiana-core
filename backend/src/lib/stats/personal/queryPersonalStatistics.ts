@@ -12,13 +12,17 @@ import {
   metricValue,
   type MetricValue,
 } from '../../../../../shared/metricValue.js';
-import { aggregateWritingWords } from '../writing/aggregateWritingWords.js';
+import { aggregateWritingWords, listResolvedWritingWordRows } from '../writing/aggregateWritingWords.js';
 import type {
   CreatorAttributionResponse,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
   PersonalStatisticsVisibility,
 } from '../../../../../shared/statsTypes.js';
+import {
+  assembleWorldbuildingStats,
+  type WorldbuildingPageInput,
+} from './assembleWorldbuilding.js';
 import { resolveLinkableCampaigns } from '../resolveLinkableCampaigns.js';
 import {
   assembleLifetimeAttributionMetrics,
@@ -56,6 +60,40 @@ export class StatisticsScopeError extends Error {
 }
 
 export { StatisticsRangeError };
+
+async function loadReferencedWorldbuildingPages(input: {
+  campaignIds: string[];
+  createdPages: WorldbuildingPageInput[];
+  periodEvents: Array<{ pageId?: string | null }>;
+  documentIds: Array<string | null | undefined>;
+}): Promise<Map<string, WorldbuildingPageInput>> {
+  const pagesById = new Map<string, WorldbuildingPageInput>();
+  for (const page of input.createdPages) pagesById.set(page.id, page);
+  const missing = new Set<string>();
+  for (const event of input.periodEvents) {
+    if (event.pageId && !pagesById.has(event.pageId)) missing.add(event.pageId);
+  }
+  for (const documentId of input.documentIds) {
+    if (documentId && !pagesById.has(documentId)) missing.add(documentId);
+  }
+  if (missing.size === 0) return pagesById;
+  const extra = await prisma.wikiPage.findMany({
+    where: {
+      id: { in: [...missing] },
+      campaignId: { in: input.campaignIds },
+    },
+    select: {
+      id: true,
+      title: true,
+      parentId: true,
+      workspace: true,
+      templateType: true,
+      metadata: true,
+    },
+  });
+  for (const page of extra) pagesById.set(page.id, page);
+  return pagesById;
+}
 
 export type QueryPersonalStatisticsInput = {
   userId: string;
@@ -178,6 +216,15 @@ export async function queryPersonalStatistics(
           }
         : {},
       worldbuildingMix: [],
+      worldbuilding: assembleWorldbuildingStats({
+        createdPages: [],
+        pagesById: new Map(),
+        periodEvents: [],
+        wordRows: [],
+        lifetimeLinkCount: 0,
+        skipPeriod,
+        visibility: input.visibility,
+      }),
       linkableCampaigns,
       ...(includeVisualizations
         ? {
@@ -233,6 +280,9 @@ export async function queryPersonalStatistics(
       select: {
         id: true,
         campaignId: true,
+        title: true,
+        parentId: true,
+        workspace: true,
         templateType: true,
         metadata: true,
         stats: { select: { wordCount: true } },
@@ -269,7 +319,14 @@ export async function queryPersonalStatistics(
             source: 'user',
             createdAt: createdAtFilter(range),
           },
-          select: { id: true, type: true, createdAt: true, metadata: true, source: true },
+          select: {
+            id: true,
+            type: true,
+            createdAt: true,
+            metadata: true,
+            source: true,
+            pageId: true,
+          },
         }),
     includeHabits
       ? prisma.narrativeEvent.findMany({
@@ -327,6 +384,7 @@ export async function queryPersonalStatistics(
             netChange: true,
             availability: true,
             origin: true,
+            documentId: true,
           },
         })
       : Promise.resolve([]),
@@ -349,6 +407,31 @@ export async function queryPersonalStatistics(
         })
       : Promise.resolve([]),
   ]);
+
+  const worldbuildingPagesById = skipPeriod
+    ? new Map(createdPages.map((page) => [page.id, page]))
+    : await loadReferencedWorldbuildingPages({
+        campaignIds,
+        createdPages,
+        periodEvents,
+        documentIds: writingContributions.map((row) => row.documentId),
+      });
+  const worldbuilding = assembleWorldbuildingStats({
+    createdPages,
+    pagesById: worldbuildingPagesById,
+    periodEvents,
+    wordRows: skipPeriod
+      ? []
+      : listResolvedWritingWordRows({
+          contributions: writingContributions,
+          events: periodEvents,
+          start: range.start ?? new Date(0),
+          end: range.end,
+        }),
+    lifetimeLinkCount: linkCount,
+    skipPeriod,
+    visibility: input.visibility,
+  });
 
   const snapshot = assembleLifetimeAttributionMetrics({
     createdPages,
@@ -505,6 +588,7 @@ export async function queryPersonalStatistics(
     period,
     habits: includeHabits ? filterMetricsByPrivacy(habits, privacyContext) : {},
     worldbuildingMix: buildWorldbuildingMix(createdPages),
+    worldbuilding,
     linkableCampaigns,
     ...(visualizations ? { visualizations } : {}),
   };
