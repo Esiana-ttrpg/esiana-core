@@ -22,6 +22,7 @@ describe('toCreatorAttributionResponse', () => {
       habits: {
         'attribution.wordsAdded': metricPartial(20),
         'attribution.writingStreak': metricValue(4),
+        'attribution.wordsAddedMeasured': metricValue(8),
       },
       worldbuildingMix: [],
       linkableCampaigns: [],
@@ -32,6 +33,7 @@ describe('toCreatorAttributionResponse', () => {
     assert.equal(compat.metrics['attribution.wordsAdded']?.status, 'value');
     assert.equal(compat.metrics['attribution.writingStreak']?.status, 'value');
     assert.equal(compat.metrics['period.wordsAdded'], undefined);
+    assert.equal(compat.metrics['attribution.wordsAddedMeasured'], undefined);
     assert.equal(compat.timeZone, undefined);
   });
 });

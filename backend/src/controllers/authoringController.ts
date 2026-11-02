@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from '../middleware/auth.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { logCampaignActivity } from '../lib/campaignActivity.js';
 import { incrementDailyRollup } from '../lib/stats/userWritingDailyRollup.js';
+import { writingSessionRollupFields } from '../lib/stats/writing/aggregateWritingWords.js';
 import { isSceneMetadataPresent } from '../lib/sceneMetadata.js';
 import { parseThreadMetadata } from '../lib/threadMetadata.js';
 import { resolveCanonicalEntityCategory } from '../../../shared/resolveCanonicalEntityCategory.js';
@@ -92,12 +93,11 @@ export async function postWritingSession(
   await incrementDailyRollup(prisma, {
     userId,
     at: sessionAt,
-    wordsAdded: Math.max(0, wordDelta),
-    wordsRemoved: Math.abs(Math.min(0, wordDelta)),
-    linksCreated: linksAdded,
-    sessionCount: 1,
-    sessionMinutes: Math.max(1, Math.round(durationMs / 60_000)),
-    sessionHourUtc: sessionAt.getUTCHours(),
+    ...writingSessionRollupFields({
+      durationMs,
+      linksAdded,
+      at: sessionAt,
+    }),
   });
 
   res.status(204).end();

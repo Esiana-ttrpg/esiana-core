@@ -228,7 +228,7 @@ Historical backfill may copy `NarrativeEvent.metadata.wordDelta` into
 **net-only** contribution rows marked `reconstructed` / `incomplete`. Do not
 invent added versus removed. Unknown authorship stays unknown.
 
-## Source registry (later implementation)
+## Source registry
 
 The contribution interface is a platform writing contract, not a wiki-only
 query list. Each source registers: stable `id`, storage location, prose
@@ -236,6 +236,12 @@ extractor, actor resolution, publication/save boundary, and visibility
 context. Independently stored rich-text (character tabs, journal
 publications, plugin bodies) must be able to register later. Omissions are
 coverage-matrix rows, not hardcoded service limits.
+
+Implemented in PR 3 (`backend/src/lib/stats/writing/sourceRegistry.ts`):
+
+- `wiki.page`, `session_note`, `journal.wiki_page` — explicit wiki save
+- `workshop.apply` / `workshop.formalize` — publication boundary
+- `journal.publication` and `character.tab` — registered, not extracted yet
 
 ## Review gates before PR 2–4
 
@@ -258,21 +264,56 @@ Persistent activity records wait for explicit review of:
 PR 2 also integrates `resolveEffectiveTimezone` and remediates public
 aggregates. No statistics-specific timezone setting.
 
-## Reserved companion metric IDs (not registered)
+## Companion metric IDs
 
-These IDs are reserved in documentation only. They are **not** in
-`METRIC_REGISTRY` and must not replace the 13 locked IDs.
+The 13 locked IDs are unchanged as identifiers. PR 3 registers owner-only
+companions; they do not replace `attribution.wordsAdded` or
+`attribution.totalWordsCreated`.
 
-- `attribution.wordsAddedMeasured`
-- `attribution.wordsRemoved`
-- `attribution.netChange`
+| Metric ID | Meaning |
+| --- | --- |
+| `attribution.wordsAddedMeasured` | Measured added tokens from save/publication diffs only |
+| `attribution.wordsRemoved` | Measured (or reconstructed net-negative) removed tokens |
+| `attribution.netChange` | `added - removed` for this save; not original authorship |
+
+Still reserved, not registered:
+
 - Period-scoped created/edited companions
 - Domain metrics for maps, chronology, sessions, and archetypes
 
-## Review limits
+## PR 3 — Writing contributions
 
-PR 1 added registry metadata, regression tests, and this audit. PR 2
-remediates public aggregates, resolves reporting timezones through
-`resolveEffectiveTimezone`, and adds `GET /api/user/statistics`. It does
-not add contribution tables, word-level diffs, or inferred 15-minute
-sessions. Those remain gated for PR 3–4.
+Word-level added/removed is computed at the source's authoritative
+save/publication boundary:
+
+1. Extract prose through the registered extractor (wiki blocks today)
+2. Ignore formatting-only markup, wiki-link targets, and non-prose blocks
+3. Tokenize on Unicode word boundaries
+4. Multiset diff → `wordsAdded`, `wordsRemoved`, `netChange`
+5. Formatting-only change → `0 / 0 / 0` (the save may still count as an edit)
+
+A word diff measures change between two versions of this save. It is not
+proof of original authorship. Collaborative last-write-wins attributes only
+this save's delta.
+
+Workshop autosave still uses `emitEvents: false` and does not write
+contributions. Apply and formalize commit words against the published page
+(formalize vs empty published prose so draft autosaves are not recounted).
+Import, restore, seed, migration, repair, and plugin content-sync are
+skipped.
+
+`WritingContribution` stores measurements only — no document body or
+private title. Rows dedupe on `narrativeEventId`.
+
+Client writing-session `wordDelta` no longer increments rollup or habit
+word totals. Session minutes still count. Unmatched historical
+`NarrativeEvent.metadata.wordDelta` projects as **net-only**
+`reconstructed` / `incomplete` values. Do not invent added versus removed.
+
+`attribution.wordsAdded` now sums contribution added words (with
+reconstructed fallback) and is `partial` when any reconstructed rows are
+included. Compatibility `/creator-attribution` still returns only the 13
+locked IDs.
+
+PR 4 remains gated: 15-minute session grouping, bounded heartbeats, and
+workshop active time.

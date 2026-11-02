@@ -52,6 +52,20 @@ describe('metricRegistry', () => {
     assert.ok(METRIC_REGISTRY['attribution.favoriteWritingHour']);
   });
 
+  it('registers measured companion ids without replacing the locked 13', () => {
+    assert.ok(METRIC_REGISTRY['attribution.wordsAddedMeasured']);
+    assert.ok(METRIC_REGISTRY['attribution.wordsRemoved']);
+    assert.ok(METRIC_REGISTRY['attribution.netChange']);
+    assert.equal(
+      (PERSONAL_ATTRIBUTION_METRIC_IDS as readonly string[]).includes(
+        'attribution.wordsAddedMeasured',
+      ),
+      false,
+    );
+    assert.equal(isMetricAllowedInContext('attribution.wordsAddedMeasured', 'publicProfile'), false);
+    assert.equal(isMetricAllowedInContext('attribution.wordsAddedMeasured', 'ownerProfile'), true);
+  });
+
   it('locks the 13 personal attribution ids with 1.10 contract fields', () => {
     assert.equal(PERSONAL_ATTRIBUTION_METRIC_IDS.length, 13);
     for (const id of PERSONAL_ATTRIBUTION_METRIC_IDS) {

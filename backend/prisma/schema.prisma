@@ -73,6 +73,7 @@ model User {
   sessionTimelinePoints CampaignSessionTimeline[]
   campaignActivities    CampaignActivity[]
   writingDailyRollups   UserWritingDailyRollup[]
+  writingContributions  WritingContribution[]
   apiLogs               ApiLog[]
   apiRequestLogs        ApiRequestLog[]
   sessionAttendance     SessionAttendance[]
@@ -600,6 +601,7 @@ model Campaign {
   tags               Tag[]
   sessionTimelinePoints CampaignSessionTimeline[]
   activities           CampaignActivity[]
+  writingContributions WritingContribution[]
   pluginSettings       CampaignPluginSetting[]
   apiRequestLogs       ApiRequestLog[]
   notifications        Notification[]
@@ -1404,6 +1406,37 @@ model UserWritingDailyRollup {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+/// Measured or reconstructed word change for one save/publication. No document body.
+model WritingContribution {
+  id               String   @id @default(cuid())
+  userId           String
+  campaignId       String
+  /// Source registry id (wiki.page, workshop.apply, session_note, …).
+  sourceId         String
+  documentId       String
+  occurredAt       DateTime
+  wordsAdded       Int      @default(0)
+  wordsRemoved     Int      @default(0)
+  netChange        Int      @default(0)
+  /// Dedupes against the PAGE_CREATED / PAGE_EDITED event for this save.
+  narrativeEventId String?  @unique
+  /// human | integration | automation | import | system
+  origin           String
+  /// measured | reconstructed | incomplete
+  availability     String
+  writingSessionId String?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([campaignId, occurredAt])
+  @@index([userId, campaignId, occurredAt])
+  @@index([documentId, occurredAt])
 }
 
 model FantasyCalendar {
