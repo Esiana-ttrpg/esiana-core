@@ -23,6 +23,8 @@ const EXPORT_NOTES = [
   'Worldbuilding domains are mutually exclusive. Factions ride organization wiki pages and stay not_yet_tracked so they are not double-counted. Relationships use LINK_CREATED, never derived EntityRelation rows.',
   'Cartography edits before map authorship instrumentation remain not_yet_tracked. Pan, zoom, and cursor exploration are excluded. Map thumbnails and titles are omitted from export.',
   'Chronology domains are calendar events, eras, timeline-linked events, and time advances. World-advance batch stamps are excluded from events. In-world minutes advanced are separate from real-world work time. Filter by createdAt, never targetEpochMinute. Pre-instrumentation chronology edits stay not_yet_tracked.',
+  'Participation uses completed session schedules and ATTENDING responses. Membership alone is not attendance. Planned start/end ranges are estimated; actual play duration stays not_yet_tracked. Session recording length is never used. Campaign and session titles are omitted.',
+  'Archetypes are owner-only period tendencies from writing, worldbuilding, cartography, chronology, and participation. Scores are L1-normalized for this window (rulesetVersion), not rankings or public leaderboards.',
 ];
 
 type ContributionRow = {
@@ -199,6 +201,9 @@ export function buildPersonalStatisticsExportJson(input: {
     worldbuilding: input.payload.worldbuilding,
     cartography: input.payload.cartography,
     chronology: input.payload.chronology,
+    participation: input.payload.participation,
+    participationHistory: input.payload.participationHistory ?? [],
+    archetypes: input.payload.archetypes ?? null,
     contributions: input.contributions.map((row) => ({
       id: row.id,
       occurredAt: row.occurredAt.toISOString(),
@@ -374,6 +379,66 @@ export function renderPersonalStatisticsExportCsv(
     ]),
   );
 
+  const participation = csvTable(
+    [
+      'domain',
+      'totalStatus',
+      'totalAmount',
+      'totalReason',
+      'periodTotalStatus',
+      'periodTotalAmount',
+      'periodTotalReason',
+      'plannedDurationStatus',
+      'plannedDurationAmount',
+      'plannedDurationReason',
+      'periodPlannedDurationStatus',
+      'periodPlannedDurationAmount',
+      'periodPlannedDurationReason',
+      'playedDurationStatus',
+      'playedDurationAmount',
+      'playedDurationReason',
+    ],
+    payload.participation.map((row) => [
+      row.domain,
+      ...metricValueCells(row.total),
+      ...metricValueCells(row.periodTotal),
+      ...metricValueCells(row.plannedDurationMinutes),
+      ...metricValueCells(row.periodPlannedDurationMinutes),
+      ...metricValueCells(row.playedDurationMinutes),
+    ]),
+  );
+
+  const participationHistory = csvTable(
+    [
+      'timelinePointId',
+      'campaignId',
+      'plannedStartAt',
+      'plannedEndAt',
+      'roles',
+      'plannedDurationMinutes',
+    ],
+    payload.participationHistory.map((row) => [
+      row.timelinePointId,
+      row.campaignId,
+      row.plannedStartAt,
+      row.plannedEndAt,
+      row.roles.join(' '),
+      row.plannedDurationMinutes,
+    ]),
+  );
+
+  const archetypes = csvTable(
+    ['rulesetVersion', 'dominantId', 'id', 'score'],
+    payload.archetypes
+      ? payload.archetypes.scores.map((row) => [
+          payload.archetypes!.rulesetVersion,
+          payload.archetypes!.dominantId,
+          row.id,
+          row.score,
+        ])
+      : [],
+  );
+
   const contributions = csvTable(
     [
       'id',
@@ -447,7 +512,7 @@ export function renderPersonalStatisticsExportCsv(
     ]),
   );
 
-  return `${header}\n\n[metricDefinitions]\n${metricDefinitions}\n\n[snapshot]\n${snapshot}\n\n[period]\n${period}\n\n[habits]\n${habits}\n\n[worldbuilding]\n${worldbuilding}\n\n[cartography]\n${cartography}\n\n[chronology]\n${chronology}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
+  return `${header}\n\n[metricDefinitions]\n${metricDefinitions}\n\n[snapshot]\n${snapshot}\n\n[period]\n${period}\n\n[habits]\n${habits}\n\n[worldbuilding]\n${worldbuilding}\n\n[cartography]\n${cartography}\n\n[chronology]\n${chronology}\n\n[participation]\n${participation}\n\n[participationHistory]\n${participationHistory}\n\n[archetypes]\n${archetypes}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
 }
 
 export async function exportOwnerPersonalStatistics(input: {

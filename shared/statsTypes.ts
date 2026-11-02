@@ -206,6 +206,70 @@ export type ChronologyDomainStats = {
   periodMinutesAdvanced?: MetricValue;
 };
 
+/**
+ * Session and campaign participation. Membership alone is not attendance.
+ * Planned schedule ranges may be estimated; actual play stays unavailable.
+ */
+export const PARTICIPATION_DOMAINS = [
+  'campaignsParticipated',
+  'campaignsGmed',
+  'sessionsAttended',
+  'sessionsHosted',
+] as const;
+
+export type ParticipationDomain = (typeof PARTICIPATION_DOMAINS)[number];
+
+export type ParticipationDomainStats = {
+  domain: ParticipationDomain;
+  total: MetricValue;
+  periodTotal: MetricValue;
+  /** Sum of planned start→end minutes when both ends exist. Sessions only. */
+  plannedDurationMinutes?: MetricValue;
+  periodPlannedDurationMinutes?: MetricValue;
+  /** Always unavailable — scheduled ranges are not measured play. */
+  playedDurationMinutes?: MetricValue;
+};
+
+export type ParticipationHistoryEntry = {
+  timelinePointId: string;
+  campaignId: string;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+  roles: Array<'attended' | 'hosted'>;
+  plannedDurationMinutes: number | null;
+};
+
+/**
+ * Period-specific creative tendencies derived from writing, worldbuilding,
+ * cartography, chronology, and participation. Normalized scores, not rankings.
+ * Owner-only — never used for public leaderboards.
+ */
+export const PERSONAL_ARCHETYPE_RULESET_VERSION = 1 as const;
+
+export const PERSONAL_ARCHETYPE_IDS = [
+  'chronicler',
+  'worldsmith',
+  'cartographer',
+  'timekeeper',
+  'storyweaver',
+  'adventurer',
+  'wanderer',
+] as const;
+
+export type PersonalArchetypeId = (typeof PERSONAL_ARCHETYPE_IDS)[number];
+
+export type PersonalArchetypeScore = {
+  id: PersonalArchetypeId;
+  /** Share of this window's creative mix in [0, 1]. Scores sum to 1. */
+  score: number;
+};
+
+export type PersonalArchetypes = {
+  rulesetVersion: typeof PERSONAL_ARCHETYPE_RULESET_VERSION;
+  scores: PersonalArchetypeScore[];
+  dominantId: PersonalArchetypeId | null;
+};
+
 export type PersonalStatisticsResponse = {
   version: 1;
   computedAt: string;
@@ -239,6 +303,17 @@ export type PersonalStatisticsResponse = {
    * worldbuilding wiki event/era domains.
    */
   chronology: ChronologyDomainStats[];
+  /**
+   * Campaign and session participation. Companion structured stats — not new
+   * locked MetricIds. History is owner-only.
+   */
+  participation: ParticipationDomainStats[];
+  participationHistory?: ParticipationHistoryEntry[] | null;
+  /**
+   * Owner-only period archetypes. Omitted for public / viewerAuthorized and
+   * when the window has no measurable activity.
+   */
+  archetypes?: PersonalArchetypes | null;
   linkableCampaigns: LinkableCampaign[];
   /** Owner-only writing charts. Omitted for public and compatibility adapters. */
   visualizations?: WritingVisualizations | null;
@@ -309,6 +384,9 @@ export type PersonalStatisticsExportJson = {
   worldbuilding: WorldbuildingDomainStats[];
   cartography: CartographyDomainStats[];
   chronology: ChronologyDomainStats[];
+  participation: ParticipationDomainStats[];
+  participationHistory: ParticipationHistoryEntry[];
+  archetypes: PersonalArchetypes | null;
   contributions: PersonalStatisticsExportContribution[];
   dailyAggregates: PersonalStatisticsExportDailyAggregate[];
   writingSessions: PersonalStatisticsExportSession[];

@@ -28,6 +28,7 @@ describe('toCreatorAttributionResponse', () => {
       worldbuilding: [],
       cartography: [],
       chronology: [],
+      participation: [],
       linkableCampaigns: [],
     };
 

@@ -283,7 +283,8 @@ untouched. Compatibility `/creator-attribution` still returns only those 13.
 Still reserved as MetricIds:
 
 - Period-scoped created/edited companions on the metric registry
-- Domain metrics for maps, chronology calendars, sessions, and archetypes
+- Domain metrics for maps, chronology calendars, and sessions (Pass 6–9
+  companions). Archetypes are structured `PersonalArchetypes`, not MetricIds.
 
 ## PR 3 — Writing contributions
 
@@ -427,3 +428,35 @@ from `nextEpochMinute - previousEpochMinute`. Filter personal activity by
 user has never produced one, period edits are `unavailable` /
 `not_yet_tracked`. Timeline-contribution and time-advance period edits stay
 untracked. Export JSON/CSV gains a `chronology` section.
+
+## Pass 9 — Campaigns and sessions
+
+Same service, range, privacy, and export contract. Locked 13 IDs unchanged.
+
+`participation[]` reports campaigns participated (distinct campaigns with at
+least one completed session where the user is `ATTENDING`), campaigns
+created/GM'd (`campaignOwnerUserId` ∪ `GAMEMASTER` membership), sessions
+attended (`SessionAttendance` `ATTENDING` on schedules with status
+`COMPLETED`), and sessions hosted (`CampaignSessionTimeline.authorId` on
+completed schedules). Membership alone is not attendance.
+
+Period filters use `plannedStartAt` (campaign create / GM join `createdAt` for
+GM'd counts). Planned start→end duration is `estimated` when both ends exist;
+actual play duration stays `unavailable` / `not_yet_tracked`. Session
+recording `durationMs` is never used. Owner-only `participationHistory`
+lists recent attended/hosted sessions without titles. Export JSON/CSV gains
+`participation` and `participationHistory` sections.
+
+## Pass 10 — Archetypes
+
+Same service and reporting window. Locked 13 IDs unchanged. Owner-only —
+never shown on public profiles and never used for leaderboards.
+
+`archetypes` is derived from period writing, worldbuilding, cartography,
+chronology, and participation companions already on the personal statistics
+response. Ruleset `rulesetVersion: 1` applies deterministic soft weights, then
+L1-normalizes scores so they sum to 1 for that window. Scores describe
+creative tendencies (Chronicler, Worldsmith, Cartographer, Timekeeper,
+Storyweaver, Adventurer, Wanderer), not productivity rankings. Windows with
+no measurable activity omit the field. Export JSON/CSV gains an `archetypes`
+section with the ruleset version and normalized scores.

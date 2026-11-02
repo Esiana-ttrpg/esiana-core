@@ -6,6 +6,9 @@ import type {
   CartographyThumbnail,
   ChronologyDomainStats,
   CreatorAttributionResponse,
+  ParticipationDomainStats,
+  ParticipationHistoryEntry,
+  PersonalArchetypes,
   PersonalStatisticsRangeMode,
   PersonalStatisticsResponse,
   WorldbuildingDomainStats,
@@ -284,6 +287,152 @@ function ChronologyTable({
   );
 }
 
+function ParticipationTable({
+  rows,
+  locale,
+  t,
+}: {
+  rows: ParticipationDomainStats[];
+  locale: string;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  return (
+    <table className="w-full min-w-0 text-left text-sm">
+      <thead>
+        <tr>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colDomain')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colTotal')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPeriodCreated')}
+          </th>
+          <th className={`${META_TABLE_HEAD_CLASS} pr-3`}>
+            {t('profile.creatorstats.colPlannedMinutes')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.domain} className="border-t border-border/40">
+            <td className="py-1 pr-3 text-foreground">
+              {t(`profile.creatorstats.participation.${row.domain}`)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.total, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {formatWorldbuildingCell(row.periodTotal, locale, t)}
+            </td>
+            <td className="py-1 pr-3 text-foreground">
+              {row.domain === 'sessionsAttended' || row.domain === 'sessionsHosted'
+                ? formatWorldbuildingCell(row.plannedDurationMinutes, locale, t)
+                : '—'}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function ArchetypesPanel({
+  archetypes,
+  t,
+}: {
+  archetypes: PersonalArchetypes;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  const visible = archetypes.scores.filter((row) => row.score > 0);
+  const dominantName = archetypes.dominantId
+    ? t(`profile.creatorstats.archetypes.${archetypes.dominantId}`)
+    : null;
+  return (
+    <div className="space-y-3">
+      {dominantName ? (
+        <p className="text-sm text-foreground">
+          {t('profile.creatorstats.archetypesDominant', { name: dominantName })}
+        </p>
+      ) : null}
+      <ul className="space-y-2">
+        {visible.map((row) => {
+          const pct = Math.round(row.score * 100);
+          const label = t(`profile.creatorstats.archetypes.${row.id}`);
+          return (
+            <li key={row.id} className="space-y-1">
+              <div className="flex justify-between gap-3 text-sm text-foreground">
+                <span>{label}</span>
+                <span className="text-muted">{`${pct}%`}</span>
+              </div>
+              <div
+                className="h-1.5 w-full overflow-hidden bg-border/40"
+                role="presentation"
+              >
+                <div
+                  className="h-full bg-foreground/70"
+                  style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function ParticipationHistoryList({
+  entries,
+  locale,
+  t,
+}: {
+  entries: ParticipationHistoryEntry[];
+  locale: string;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  if (entries.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm text-muted">
+        {t('profile.creatorstats.participationHistoryHeading')}
+      </h4>
+      <ul className="space-y-1 text-sm text-foreground">
+        {entries.map((entry) => {
+          const when = entry.plannedStartAt
+            ? new Date(entry.plannedStartAt).toLocaleString(locale, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })
+            : '—';
+          const roles = entry.roles
+            .map((role) =>
+              role === 'attended'
+                ? t('profile.creatorstats.participation.roleAttended')
+                : t('profile.creatorstats.participation.roleHosted'),
+            )
+            .join(', ');
+          const minutes =
+            entry.plannedDurationMinutes != null
+              ? t('profile.creatorstats.sessionMinutes', {
+                  count: entry.plannedDurationMinutes,
+                })
+              : null;
+          return (
+            <li key={entry.timelinePointId} className="border-t border-border/40 py-1">
+              {when}
+              {' · '}
+              {roles}
+              {minutes ? ` · ${minutes}` : ''}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 function WorldbuildingTable({
   rows,
   locale,
@@ -467,6 +616,45 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
           <ChronologyTable rows={statistics.chronology} locale={i18n.language} t={t} />
         ) : (
           <p className="text-sm text-muted">{t('profile.creatorstats.chronologyEmpty')}</p>
+        )}
+      </section>
+      <section className="space-y-3">
+        <h3 className={META_SECTION_LABEL_CLASS}>
+          {t('profile.creatorstats.participationSection')}
+        </h3>
+        <p className="text-sm text-muted">{t('profile.creatorstats.participationHelp')}</p>
+        {chartsLoading ? (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
+        ) : statistics?.participation?.length ? (
+          <>
+            <ParticipationTable
+              rows={statistics.participation}
+              locale={i18n.language}
+              t={t}
+            />
+            {statistics.participationHistory?.length ? (
+              <ParticipationHistoryList
+                entries={statistics.participationHistory}
+                locale={i18n.language}
+                t={t}
+              />
+            ) : null}
+          </>
+        ) : (
+          <p className="text-sm text-muted">{t('profile.creatorstats.participationEmpty')}</p>
+        )}
+      </section>
+      <section className="space-y-3">
+        <h3 className={META_SECTION_LABEL_CLASS}>
+          {t('profile.creatorstats.archetypesSection')}
+        </h3>
+        <p className="text-sm text-muted">{t('profile.creatorstats.archetypesHelp')}</p>
+        {chartsLoading ? (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
+        ) : statistics?.archetypes?.scores?.length ? (
+          <ArchetypesPanel archetypes={statistics.archetypes} t={t} />
+        ) : (
+          <p className="text-sm text-muted">{t('profile.creatorstats.archetypesEmpty')}</p>
         )}
       </section>
       <section className="space-y-3">
