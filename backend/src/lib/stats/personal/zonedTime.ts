@@ -81,17 +81,27 @@ export function addCivilDays(date: ZonedCivilDate, days: number): ZonedCivilDate
   };
 }
 
+export function formatCivilDateKey(date: ZonedCivilDate): string {
+  return `${String(date.year).padStart(4, '0')}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+}
+
 export function calendarDateKey(at: Date, timeZone: string): string {
-  const parts = zonedParts(at, timeZone);
-  return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
+  return formatCivilDateKey(zonedParts(at, timeZone));
 }
 
 export function previousCalendarDateKey(key: string): string {
   const [year, month, day] = key.split('-').map(Number);
-  const previous = addCivilDays({ year, month, day }, -1);
-  return `${String(previous.year).padStart(4, '0')}-${String(previous.month).padStart(2, '0')}-${String(previous.day).padStart(2, '0')}`;
+  return formatCivilDateKey(addCivilDays({ year, month, day }, -1));
 }
 
 export function hourInTimeZone(at: Date, timeZone: string): number {
   return zonedParts(at, timeZone).hour;
+}
+
+/** Monday = 0 … Sunday = 6 for the civil date in `timeZone`. */
+export function weekdayMondayIndex(at: Date, timeZone: string): number {
+  const key = calendarDateKey(at, timeZone);
+  const [year, month, day] = key.split('-').map(Number);
+  const utcWeekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return (utcWeekday + 6) % 7;
 }

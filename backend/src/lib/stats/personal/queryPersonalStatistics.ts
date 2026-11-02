@@ -25,12 +25,19 @@ import {
   buildWorldbuildingMix,
 } from '../assembleLifetimeAttribution.js';
 import { selectScopedCampaignIds } from './visibility.js';
+import { campaignFreeformPagePath } from '../../../../../shared/campaignWorkspaceRoutes.js';
+import { uniqueDocumentIds } from '../../../../../shared/writingSession.js';
+import {
+  assembleWritingVisualizations,
+  emptyWritingVisualizations,
+} from './assembleWritingVisualizations.js';
 import {
   contributionQueryWindow,
   createdAtFilter,
   lookbackInterval,
   resolveStatisticsRange,
   StatisticsRangeError,
+  visualizationQueryWindow,
 } from './reportingRange.js';
 import {
   assemblePeriodHabits,
@@ -61,6 +68,8 @@ export type QueryPersonalStatisticsInput = {
   includeHabits?: boolean;
   /** Skip the period NarrativeEvent query when the caller discards period metrics. */
   skipPeriod?: boolean;
+  /** Owner charts. Defaults on for owner queries that also load period metrics. */
+  includeVisualizations?: boolean;
   now?: Date;
 };
 
@@ -130,6 +139,10 @@ export async function queryPersonalStatistics(
   const campaignIds = scoped.campaignIds;
   const includeHabits = input.includeHabits === true;
   const skipPeriod = input.skipPeriod === true;
+  const includeVisualizations =
+    input.visibility === 'owner' &&
+    !skipPeriod &&
+    input.includeVisualizations !== false;
   const linkableCampaigns = await resolveLinkableCampaigns(input.userId, input.viewerId);
 
   if (campaignIds.length === 0) {
@@ -164,6 +177,18 @@ export async function queryPersonalStatistics(
         : {},
       worldbuildingMix: [],
       linkableCampaigns,
+      ...(includeVisualizations
+        ? {
+            visualizations: emptyWritingVisualizations(
+              timeZone,
+              visualizationQueryWindow({
+                rangeStart: range.start,
+                rangeEnd: range.end,
+                timeZone,
+              }),
+            ),
+          }
+        : {}),
     };
   }
 
@@ -177,6 +202,13 @@ export async function queryPersonalStatistics(
     rangeEnd: range.end,
   });
   const loadContributions = contributionWindow != null;
+  const vizWindow = includeVisualizations
+    ? visualizationQueryWindow({
+        rangeStart: range.start,
+        rangeEnd: range.end,
+        timeZone,
+      })
+    : null;
 
   const [
     createdPages,
@@ -188,6 +220,7 @@ export async function queryPersonalStatistics(
     writingSessions,
     inferredSessions,
     writingContributions,
+    visualizationSessions,
   ] = await Promise.all([
     prisma.wikiPage.findMany({
       where: {
@@ -292,6 +325,24 @@ export async function queryPersonalStatistics(
             netChange: true,
             availability: true,
             origin: true,
+          },
+        })
+      : Promise.resolve([]),
+    vizWindow
+      ? prisma.writingSession.findMany({
+          where: {
+            userId: input.userId,
+            campaignId: { in: campaignIds },
+            startedAt: { gte: vizWindow.gte, lt: vizWindow.lt },
+            completeness: { not: 'unavailable' },
+          },
+          select: {
+            id: true,
+            startedAt: true,
+            endedAt: true,
+            activeDurationMs: true,
+            completeness: true,
+            documentIds: true,
           },
         })
       : Promise.resolve([]),
@@ -421,6 +472,20 @@ export async function queryPersonalStatistics(
   }
 
   const privacyContext = input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile';
+  const visualizations =
+    includeVisualizations && vizWindow
+      ? assembleWritingVisualizations({
+          timeZone,
+          window: vizWindow,
+          contributions: writingContributions,
+          sessions: visualizationSessions,
+          documentsById: await resolveVisualizationDocuments(
+            visualizationSessions,
+            campaignIds,
+          ),
+        })
+      : undefined;
+
   return {
     version: 1,
     computedAt: now.toISOString(),
@@ -438,7 +503,41 @@ export async function queryPersonalStatistics(
     habits: includeHabits ? filterMetricsByPrivacy(habits, privacyContext) : {},
     worldbuildingMix: buildWorldbuildingMix(createdPages),
     linkableCampaigns,
+    ...(visualizations ? { visualizations } : {}),
   };
+}
+
+async function resolveVisualizationDocuments(
+  sessions: Array<{ documentIds: unknown }>,
+  campaignIds: string[],
+) {
+  const ids = [
+    ...new Set(sessions.flatMap((session) => uniqueDocumentIds(session.documentIds))),
+  ];
+  if (ids.length === 0 || campaignIds.length === 0) return new Map();
+  const pages = await prisma.wikiPage.findMany({
+    where: {
+      id: { in: ids },
+      campaignId: { in: campaignIds },
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      title: true,
+      pathKey: true,
+      campaign: { select: { handle: true } },
+    },
+  });
+  return new Map(
+    pages.map((page) => [
+      page.id,
+      {
+        id: page.id,
+        title: page.title,
+        href: campaignFreeformPagePath(page.campaign.handle, page.pathKey ?? page.id),
+      },
+    ]),
+  );
 }
 
 function wordsMetric(

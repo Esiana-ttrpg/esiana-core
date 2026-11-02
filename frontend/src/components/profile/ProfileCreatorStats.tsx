@@ -1,11 +1,20 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CreatorAttributionResponse } from '@shared/statsTypes';
+import type {
+  CreatorAttributionResponse,
+  PersonalStatisticsRangeMode,
+  PersonalStatisticsResponse,
+} from '@shared/statsTypes';
 import type { MetricId } from '@shared/metricRegistry';
 import type { MetricValue } from '@shared/metricValue';
 import { readMetricAmount } from '@shared/metricValue';
 import { formatCompactCount } from '@/lib/metricDisplayPolicy';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
+import {
+  downloadOwnerStatisticsExport,
+  fetchOwnerPersonalStatistics,
+} from '@/lib/statsApi';
+import { WritingVisualizations } from '@/components/profile/WritingVisualizations';
 
 const CODEX_LABEL_KEYS: Record<string, string> = {
   CHARACTER: 'Characters',
@@ -124,6 +133,37 @@ function renderMetricValue(
 
 export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
   const { t, i18n } = useTranslation();
+  const [range, setRange] = useState<PersonalStatisticsRangeMode>('year');
+  const [statistics, setStatistics] = useState<PersonalStatisticsResponse | null>(null);
+  const [chartsLoading, setChartsLoading] = useState(true);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setChartsLoading(true);
+    void fetchOwnerPersonalStatistics({ range })
+      .then((payload) => {
+        if (!cancelled) setStatistics(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setStatistics(null);
+      })
+      .finally(() => {
+        if (!cancelled) setChartsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range]);
+
+  const download = async (format: 'json' | 'csv') => {
+    setExportError(null);
+    try {
+      await downloadOwnerStatisticsExport(format, { range });
+    } catch {
+      setExportError(t('profile.creatorstats.exportError'));
+    }
+  };
 
   if (!attribution) {
     return <p className="text-sm text-muted">{t('profile.creatorstats.emptyEarly')}</p>;
@@ -167,6 +207,43 @@ export function ProfileWritingTab({ attribution }: ProfileWritingTabProps) {
             </div>
           ))}
         </dl>
+      </section>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.chartsSection')}</h3>
+          <label className="text-sm text-muted">
+            {t('profile.creatorstats.rangeLabel')}
+            <select
+              className="ml-2 rounded border border-border bg-background p-2 text-foreground"
+              value={range}
+              onChange={(event) => setRange(event.target.value as PersonalStatisticsRangeMode)}
+            >
+              <option value="year">{t('profile.creatorstats.rangeYear')}</option>
+              <option value="month">{t('profile.creatorstats.rangeMonth')}</option>
+              <option value="all_time">{t('profile.creatorstats.rangeAllTime')}</option>
+            </select>
+          </label>
+        </div>
+        {chartsLoading ? (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsLoading')}</p>
+        ) : statistics?.visualizations ? (
+          <WritingVisualizations visualizations={statistics.visualizations} />
+        ) : (
+          <p className="text-sm text-muted">{t('profile.creatorstats.chartsEmpty')}</p>
+        )}
+      </section>
+      <section className="space-y-2">
+        <h3 className={META_SECTION_LABEL_CLASS}>{t('profile.creatorstats.exportSection')}</h3>
+        <p className="text-sm text-muted">{t('profile.creatorstats.exportHelp')}</p>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className="text-sm text-primary" onClick={() => void download('json')}>
+            {t('profile.creatorstats.exportJson')}
+          </button>
+          <button type="button" className="text-sm text-primary" onClick={() => void download('csv')}>
+            {t('profile.creatorstats.exportCsv')}
+          </button>
+        </div>
+        {exportError ? <p className="text-sm text-muted">{exportError}</p> : null}
       </section>
     </div>
   );

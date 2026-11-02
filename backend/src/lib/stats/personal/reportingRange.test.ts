@@ -4,6 +4,7 @@ import {
   contributionQueryWindow,
   resolveStatisticsRange,
   StatisticsRangeError,
+  visualizationQueryWindow,
 } from './reportingRange.js';
 
 describe('resolveStatisticsRange', () => {
@@ -108,5 +109,27 @@ describe('contributionQueryWindow', () => {
       }),
       null,
     );
+  });
+});
+
+describe('visualizationQueryWindow', () => {
+  it('keeps a reporting range shorter than the heatmap span', () => {
+    const window = visualizationQueryWindow({
+      rangeStart: new Date('2026-06-01T05:00:00.000Z'),
+      rangeEnd: new Date('2026-06-15T18:00:00.000Z'),
+      timeZone: 'America/Chicago',
+    });
+    assert.equal(window.gte.toISOString(), '2026-06-01T05:00:00.000Z');
+    assert.equal(window.lt.toISOString(), '2026-06-15T18:00:00.000Z');
+  });
+
+  it('clips lifetime views to the heatmap lookback', () => {
+    const window = visualizationQueryWindow({
+      rangeStart: null,
+      rangeEnd: new Date('2026-06-15T18:00:00.000Z'),
+      timeZone: 'UTC',
+    });
+    assert.equal(window.lt.toISOString(), '2026-06-15T18:00:00.000Z');
+    assert.ok(window.gte.getTime() > Date.parse('2025-01-01T00:00:00.000Z'));
   });
 });

@@ -336,3 +336,19 @@ Sessions are inferred, not flushed on every blur.
   `NarrativeEvent.createdAt` gaps. Legacy blur payloads remain `partial`.
 
 The break-nudge UX in `useEditorInstrumentation` is unchanged.
+
+## PR 5 — Writing visualizations and basic export
+
+Owner Writing tab charts use the same `queryPersonalStatistics` projection.
+They are omitted from public profiles and from `/creator-attribution`.
+
+| Chart | Source | Notes |
+| --- | --- | --- |
+| Daily contribution heatmap | `WritingContribution` + `WritingSession` grouped on reporting-timezone civil days | Day click lists that day's sessions and authorized document links (titles owner-only). Lifetime views clip to 371 days. |
+| Weekly rhythm | Same points, Monday–Sunday | Session minutes and added words. |
+| Hourly distribution | Session start and contribution time in `timeZone` | Not in-world clocks. |
+| Added vs removed trend | Daily `wordsAdded` / `wordsRemoved` | Measured change, not original authorship. Reconstructed days are `partial`. |
+
+Charts are custom SVG on surface tokens (`--stats-writing` and the small category palette). Each chart ships a table alternative. Heatmaps, hours, session history, and private titles stay owner-only.
+
+`GET /api/user/statistics/export?format=json|csv&version=1` is owner-only. It includes metric definitions, reporting period, provenance, availability states, writing contributions, daily aggregates, and writing sessions. It never includes document bodies, private titles, other users' activity, or campaign names. Campaigns appear as ids only.
