@@ -2132,6 +2132,7 @@ export async function updateWikiPageLayout(
     narrativeSource: temporalProvenance,
     narrativeAuthority: temporalAuthority,
     eventAt: temporalEventAt ?? updatedPage.updatedAt,
+    previousBlocks,
   });
 
   let responseBlocks = updatedPage.blocks;
@@ -4651,6 +4652,8 @@ export async function updateSessionNotePage(
       blocks: nextBlocks,
       actorUserId: (req as AuthenticatedRequest).user?.id,
       emitEvents: true,
+      previousBlocks: page.blocks,
+      writingSourceId: 'session_note',
     });
   } else if (title !== undefined) {
     const { upsertWikiPageDocument } = await import('../lib/search/index/searchIndexService.js');

@@ -128,7 +128,14 @@ function eventResource(row: any): ContentSyncResource {
 async function projectWikiMutation(page: any, eventType: 'create' | 'update', actorUserId?: string): Promise<void> {
   const { upsertWikiPageDocument } = await import('../search/index/searchIndexService.js');
   const { syncWikiLinksForSourcePage } = await import('../wikiLinkService.js');
-  await syncWikiLinksForSourcePage(prisma, { campaignId: page.campaignId, sourcePageId: page.id, blocks: page.blocks ?? [], actorUserId, emitEvents: true });
+  await syncWikiLinksForSourcePage(prisma, {
+    campaignId: page.campaignId,
+    sourcePageId: page.id,
+    blocks: page.blocks ?? [],
+    actorUserId,
+    emitEvents: true,
+    skipWritingContribution: true,
+  });
   await upsertWikiPageDocument(prisma, page.campaignId, page.id);
   dispatchDomainEvent({ type: eventType === 'create' ? CoreDomainEvents.WIKI_CREATED : CoreDomainEvents.WIKI_UPDATED, campaignId: page.campaignId, actorId: actorUserId, resourceType: 'wiki_page', resourceId: page.id, payload: toWikiPageEventDto(page) as unknown as Record<string, unknown> });
 }

@@ -29,7 +29,7 @@ export async function appendNarrativeEvent(
     createdAt?: Date;
     authority?: TemporalAuthority;
   },
-): Promise<void> {
+): Promise<{ id: string }> {
   const metadata =
     input.metadata || input.authority
       ? {
@@ -38,7 +38,7 @@ export async function appendNarrativeEvent(
         }
       : undefined;
 
-  await tx.narrativeEvent.create({
+  const row = await tx.narrativeEvent.create({
     data: {
       campaignId: input.campaignId,
       type: input.type,
@@ -49,7 +49,9 @@ export async function appendNarrativeEvent(
       metadata: (metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       ...(input.createdAt ? { createdAt: input.createdAt } : {}),
     },
+    select: { id: true },
   });
+  return row;
 }
 
 /** Spoiler-safe campaign activity counts for Layer 3. */

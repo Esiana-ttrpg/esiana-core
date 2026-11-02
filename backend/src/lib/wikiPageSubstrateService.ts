@@ -15,6 +15,12 @@ import { wikiLinkPeerVisibilityFilter, isElevatedWikiRole } from './wikiLinkServ
 import type { WriteProvenance } from './temporalProvenance.js';
 import { buildSaveWordDeltaMetadata } from './stats/revisionMetrics.js';
 import { incrementDailyRollup } from './stats/userWritingDailyRollup.js';
+import {
+  incompleteWordChange,
+  measureWritingChange,
+  recordWritingContribution,
+  shouldRecordWritingContribution,
+} from './stats/writing/recordWritingContribution.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -31,6 +37,9 @@ export async function syncWikiPageSubstrate(
     narrativeAuthority?: import('./temporalProvenance.js').TemporalAuthority;
     eventAt?: Date;
     isInitialCreate?: boolean;
+    previousBlocks?: unknown;
+    writingSourceId?: string;
+    skipWritingContribution?: boolean;
   },
 ): Promise<void> {
   const edges = extractWikiEdgesFromBlocks(input.blocks);
@@ -82,6 +91,7 @@ export async function syncWikiPageSubstrate(
     });
   }
 
+  let wordEventId: string | null = null;
   if (input.emitEvents !== false && input.actorUserId) {
     const eventSource = input.narrativeSource ?? 'user';
     const eventAt = input.eventAt ?? new Date();
@@ -94,12 +104,13 @@ export async function syncWikiPageSubstrate(
     };
 
     if (input.isInitialCreate) {
-      await appendNarrativeEvent(tx, {
+      const created = await appendNarrativeEvent(tx, {
         ...eventBase,
         type: NarrativeEventType.PAGE_CREATED,
         pageId: input.sourcePageId,
         metadata: wordDeltaMeta,
       });
+      wordEventId = created.id;
     }
 
     for (const targetPageId of targetPageIds) {
@@ -113,12 +124,13 @@ export async function syncWikiPageSubstrate(
       }
     }
     if (!input.isInitialCreate) {
-      await appendNarrativeEvent(tx, {
+      const edited = await appendNarrativeEvent(tx, {
         ...eventBase,
         type: NarrativeEventType.PAGE_EDITED,
         pageId: input.sourcePageId,
         metadata: wordDeltaMeta,
       });
+      wordEventId = edited.id;
     }
   }
 
@@ -255,19 +267,38 @@ export async function syncWikiPageSubstrate(
   ]);
 
   const narrativeSource = input.narrativeSource ?? 'user';
-  if (
-    input.actorUserId &&
-    narrativeSource === 'user' &&
-    input.emitEvents !== false
-  ) {
+  const recordContribution = shouldRecordWritingContribution({
+    emitEvents: input.emitEvents,
+    actorUserId: input.actorUserId,
+    narrativeSource,
+    skipWritingContribution: input.skipWritingContribution,
+  });
+  if (input.actorUserId && recordContribution) {
     const rollupAt = input.eventAt ?? now;
-    const positiveDelta = Math.max(0, wordDeltaMeta.wordDelta);
-    const negativeDelta = Math.abs(Math.min(0, wordDeltaMeta.wordDelta));
+    const sourceId = input.writingSourceId ?? 'wiki.page';
+    const previousKnown =
+      input.isInitialCreate === true || input.previousBlocks !== undefined;
+    const change = previousKnown
+      ? measureWritingChange({
+          sourceId,
+          previousBlocks: input.isInitialCreate ? [] : input.previousBlocks,
+          nextBlocks: input.blocks,
+        })
+      : incompleteWordChange(wordDeltaMeta.wordDelta);
+    await recordWritingContribution(tx, {
+      userId: input.actorUserId,
+      campaignId: input.campaignId,
+      sourceId,
+      documentId: input.sourcePageId,
+      occurredAt: rollupAt,
+      change,
+      narrativeEventId: wordEventId,
+    });
     await incrementDailyRollup(tx, {
       userId: input.actorUserId,
       at: rollupAt,
-      wordsAdded: positiveDelta,
-      wordsRemoved: negativeDelta,
+      wordsAdded: change.wordsAdded,
+      wordsRemoved: change.wordsRemoved,
       editsCount: input.isInitialCreate ? 0 : 1,
       linksCreated: newLinkCount,
       substantialRevisions: wordDeltaMeta.substantialRevision ? 1 : 0,

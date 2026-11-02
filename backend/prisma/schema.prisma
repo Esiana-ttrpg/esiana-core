@@ -73,6 +73,8 @@ model User {
   sessionTimelinePoints CampaignSessionTimeline[]
   campaignActivities    CampaignActivity[]
   writingDailyRollups   UserWritingDailyRollup[]
+  writingContributions  WritingContribution[]
+  writingSessions       WritingSession[]
   apiLogs               ApiLog[]
   apiRequestLogs        ApiRequestLog[]
   sessionAttendance     SessionAttendance[]
@@ -600,6 +602,8 @@ model Campaign {
   tags               Tag[]
   sessionTimelinePoints CampaignSessionTimeline[]
   activities           CampaignActivity[]
+  writingContributions WritingContribution[]
+  writingSessions      WritingSession[]
   pluginSettings       CampaignPluginSetting[]
   apiRequestLogs       ApiRequestLog[]
   notifications        Notification[]
@@ -1404,6 +1408,72 @@ model UserWritingDailyRollup {
 
   @@unique([userId, date])
   @@index([userId, date])
+}
+
+/// Measured or reconstructed word change for one save/publication. No document body.
+model WritingContribution {
+  id               String   @id @default(cuid())
+  userId           String
+  campaignId       String
+  /// Source registry id (wiki.page, workshop.apply, session_note, …).
+  sourceId         String
+  documentId       String
+  occurredAt       DateTime
+  wordsAdded       Int      @default(0)
+  wordsRemoved     Int      @default(0)
+  netChange        Int      @default(0)
+  /// Dedupes against the PAGE_CREATED / PAGE_EDITED event for this save.
+  narrativeEventId String?  @unique
+  /// human | integration | automation | import | system
+  origin           String
+  /// measured | reconstructed | incomplete
+  availability     String
+  writingSessionId String?
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign       Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  writingSession WritingSession? @relation(fields: [writingSessionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([campaignId, occurredAt])
+  @@index([userId, campaignId, occurredAt])
+  @@index([documentId, occurredAt])
+  @@index([writingSessionId])
+}
+
+/// Inferred writing session. 15 minutes without activity ends it; duration is focused intervals only.
+model WritingSession {
+  id               String    @id @default(cuid())
+  userId           String
+  campaignId       String
+  startedAt        DateTime
+  endedAt          DateTime?
+  lastActivityAt   DateTime
+  activeDurationMs Int       @default(0)
+  /// JSON: WritingSessionInterval[]
+  intervals        Json      @default("[]")
+  /// JSON: document ids touched during this session
+  documentIds      Json      @default("[]")
+  /// open | closed
+  status           String    @default("open")
+  /// measured | partial | unavailable
+  completeness     String    @default("measured")
+  /// Set while status is open so each user/campaign has at most one live session.
+  openLock         String?   @unique
+  intervalVersion  Int       @default(0)
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign      Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contributions WritingContribution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, campaignId, status, lastActivityAt])
+  @@index([userId, startedAt])
+  @@index([campaignId, startedAt])
 }
 
 model FantasyCalendar {

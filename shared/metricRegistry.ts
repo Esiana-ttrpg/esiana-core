@@ -96,6 +96,9 @@ export type MetricId =
   | 'period.locationsCreated'
   | 'period.wordsAdded'
   | 'attribution.wordsAdded'
+  | 'attribution.wordsAddedMeasured'
+  | 'attribution.wordsRemoved'
+  | 'attribution.netChange'
   | 'attribution.writingStreak'
   | 'attribution.writingCadence'
   | 'attribution.substantialRevisions'
@@ -626,11 +629,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation:
-      'SUM(max(metadata.wordDelta, 0)) from NarrativeEvent PAGE_EDITED in window',
+      'SUM(WritingContribution.wordsAdded) in window; unmatched NarrativeEvent wordDelta as reconstructed net-only',
     unit: 'words',
-    source: 'NarrativeEvent.metadata.wordDelta',
+    source: 'WritingContribution.wordsAdded',
     timeSemantics: 'activity_in_period',
-    attributionRules: 'Positive net deltas only; not added-versus-removed.',
+    attributionRules:
+      'Positive added tokens from measured diffs; historical events remain net-only reconstructed.',
     historicalCompleteness: 'partial',
     reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
@@ -650,12 +654,13 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       campaignMember: false,
       publicApi: false,
     },
-    aggregation: 'SUM(UserWritingDailyRollup.wordsAdded) in window',
+    aggregation:
+      'SUM(WritingContribution.wordsAdded) in window; unmatched NarrativeEvent wordDelta as reconstructed net-only',
     unit: 'words',
-    source: 'UserWritingDailyRollup.wordsAdded (UTC 30-day window)',
+    source: 'WritingContribution.wordsAdded (session wordDelta excluded)',
     timeSemantics: 'activity_in_period',
     attributionRules:
-      'Owner-only. Positive net deltas from wiki saves and writing-session flushes; can double-count.',
+      'Owner-only. Measured added words from save/publication diffs; historical events contribute net-only reconstructed rows. Client writing-session wordDelta is not counted.',
     historicalCompleteness: 'partial',
     reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
@@ -752,12 +757,12 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
       publicApi: false,
     },
     aggregation:
-      'peakHourUtc weighted by sessionMinutes from UserWritingDailyRollup over 30d',
+      'WritingSession startedAt hour weighted by activeDurationMs; legacy CampaignActivity fallback',
     unit: 'hour_of_day',
-    source: 'UserWritingDailyRollup.peakHourUtc + sessionMinutes',
+    source: 'WritingSession.activeDurationMs (focused intervals)',
     timeSemantics: 'activity_in_period',
     attributionRules:
-      'Owner-only. UTC hour from writing-session flushes only; wiki saves do not set hour.',
+      'Owner-only. Hour from inferred writing sessions in the reporting timezone; idle, hidden, and disconnected time is excluded.',
     historicalCompleteness: 'estimated',
     reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
@@ -765,6 +770,81 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     i18nLabelKey: 'profile.creatorstats.favoriteWritingHour',
     i18nDescriptionKey: 'profile.creatorstats.favoriteWritingHourDescription',
     availableFrom: '1.3.0',
+    displayPolicy: 'always',
+  },
+  'attribution.wordsAddedMeasured': {
+    id: 'attribution.wordsAddedMeasured',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation: 'SUM(WritingContribution.wordsAdded) where availability = measured',
+    unit: 'words',
+    source: 'WritingContribution measured rows only',
+    timeSemantics: 'activity_in_period',
+    attributionRules:
+      'Owner-only companion. Unicode word-boundary diff at save/publication. Does not replace attribution.wordsAdded.',
+    historicalCompleteness: 'measured',
+    reportingClock: 'real_world',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.wordsAddedMeasured',
+    i18nDescriptionKey: 'profile.creatorstats.wordsAddedMeasuredDescription',
+    availableFrom: '1.10.0',
+    displayPolicy: 'always',
+  },
+  'attribution.wordsRemoved': {
+    id: 'attribution.wordsRemoved',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation: 'SUM(WritingContribution.wordsRemoved) in window',
+    unit: 'words',
+    source: 'WritingContribution.wordsRemoved',
+    timeSemantics: 'activity_in_period',
+    attributionRules:
+      'Owner-only companion. Measured removed tokens at save/publication; reconstructed rows never invent a removed side for a positive net.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.wordsRemoved',
+    i18nDescriptionKey: 'profile.creatorstats.wordsRemovedDescription',
+    availableFrom: '1.10.0',
+    displayPolicy: 'always',
+  },
+  'attribution.netChange': {
+    id: 'attribution.netChange',
+    kind: 'attribution',
+    owner: 'editor',
+    privacy: {
+      publicProfile: false,
+      ownerProfile: true,
+      campaignMember: false,
+      publicApi: false,
+    },
+    aggregation: 'SUM(WritingContribution.netChange) in window',
+    unit: 'words',
+    source: 'WritingContribution.netChange',
+    timeSemantics: 'activity_in_period',
+    attributionRules:
+      'Owner-only companion. added - removed for this save; not original authorship of the document.',
+    historicalCompleteness: 'partial',
+    reportingClock: 'real_world',
+    softDeletePolicy: 'exclude_deleted',
+    refreshCadence: 'realtime',
+    i18nLabelKey: 'profile.creatorstats.netChange',
+    i18nDescriptionKey: 'profile.creatorstats.netChangeDescription',
+    availableFrom: '1.10.0',
     displayPolicy: 'always',
   },
 };

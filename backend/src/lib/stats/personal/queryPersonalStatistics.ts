@@ -2,12 +2,17 @@ import { prisma } from '../../prisma.js';
 import { getOrCreateSystemSettings } from '../../systemSettings.js';
 import { resolveEffectiveTimezone } from '../../timezone.js';
 import { NarrativeEventType } from '../../narrativeEventService.js';
-import { filterMetricsByPrivacy } from '../../../../../shared/metricRegistry.js';
+import {
+  filterMetricsByPrivacy,
+  PERSONAL_ATTRIBUTION_METRIC_IDS,
+} from '../../../../../shared/metricRegistry.js';
 import {
   metricPartial,
   metricUnavailable,
   metricValue,
+  type MetricValue,
 } from '../../../../../shared/metricValue.js';
+import { aggregateWritingWords } from '../writing/aggregateWritingWords.js';
 import type {
   CreatorAttributionResponse,
   PersonalStatisticsRangeMode,
@@ -21,6 +26,7 @@ import {
 } from '../assembleLifetimeAttribution.js';
 import { selectScopedCampaignIds } from './visibility.js';
 import {
+  contributionQueryWindow,
   createdAtFilter,
   lookbackInterval,
   resolveStatisticsRange,
@@ -163,6 +169,14 @@ export async function queryPersonalStatistics(
 
   const habitWindow = lookbackInterval(now, timeZone, 30);
   const streakLookback = lookbackInterval(now, timeZone, 120);
+  const contributionWindow = contributionQueryWindow({
+    includeHabits,
+    skipPeriod,
+    streakLookback,
+    rangeStart: range.start,
+    rangeEnd: range.end,
+  });
+  const loadContributions = contributionWindow != null;
 
   const [
     createdPages,
@@ -172,6 +186,8 @@ export async function queryPersonalStatistics(
     periodEvents,
     habitEvents,
     writingSessions,
+    inferredSessions,
+    writingContributions,
   ] = await Promise.all([
     prisma.wikiPage.findMany({
       where: {
@@ -218,7 +234,7 @@ export async function queryPersonalStatistics(
             source: 'user',
             createdAt: createdAtFilter(range),
           },
-          select: { type: true, createdAt: true, metadata: true, source: true },
+          select: { id: true, type: true, createdAt: true, metadata: true, source: true },
         }),
     includeHabits
       ? prisma.narrativeEvent.findMany({
@@ -228,7 +244,7 @@ export async function queryPersonalStatistics(
             source: 'user',
             createdAt: { gte: streakLookback.gte, lt: streakLookback.lt },
           },
-          select: { type: true, createdAt: true, metadata: true, source: true },
+          select: { id: true, type: true, createdAt: true, metadata: true, source: true },
         })
       : Promise.resolve([]),
     includeHabits
@@ -240,6 +256,43 @@ export async function queryPersonalStatistics(
             createdAt: { gte: streakLookback.gte, lt: streakLookback.lt },
           },
           select: { createdAt: true, parentContext: true },
+        })
+      : Promise.resolve([]),
+    includeHabits
+      ? prisma.writingSession.findMany({
+          where: {
+            userId: input.userId,
+            campaignId: { in: campaignIds },
+            startedAt: { gte: streakLookback.gte, lt: streakLookback.lt },
+            completeness: { not: 'unavailable' },
+          },
+          select: {
+            startedAt: true,
+            activeDurationMs: true,
+            completeness: true,
+          },
+        })
+      : Promise.resolve([]),
+    loadContributions && contributionWindow
+      ? prisma.writingContribution.findMany({
+          where: {
+            userId: input.userId,
+            campaignId: { in: campaignIds },
+            origin: 'human',
+            occurredAt: {
+              gte: contributionWindow.gte,
+              lt: contributionWindow.lt,
+            },
+          },
+          select: {
+            narrativeEventId: true,
+            occurredAt: true,
+            wordsAdded: true,
+            wordsRemoved: true,
+            netChange: true,
+            availability: true,
+            origin: true,
+          },
         })
       : Promise.resolve([]),
   ]);
@@ -256,20 +309,24 @@ export async function queryPersonalStatistics(
     let periodPagesCreated = 0;
     let periodPagesEdited = 0;
     let periodConnections = 0;
-    let periodWordsAdded = 0;
     for (const event of periodEvents) {
       if (event.type === NarrativeEventType.PAGE_CREATED) periodPagesCreated += 1;
       if (event.type === NarrativeEventType.PAGE_EDITED) periodPagesEdited += 1;
       if (event.type === NarrativeEventType.LINK_CREATED) periodConnections += 1;
-      periodWordsAdded += readNarrativeWordDelta(event.metadata).wordsAdded;
     }
+    const periodWords = aggregateWritingWords({
+      contributions: writingContributions,
+      events: periodEvents,
+      start: range.start ?? new Date(0),
+      end: range.end,
+    });
 
     period = filterMetricsByPrivacy(
       {
         'period.pagesCreated': metricValue(periodPagesCreated),
         'period.pagesEdited': metricValue(periodPagesEdited),
         'period.connectionsCreated': metricValue(periodConnections),
-        'period.wordsAdded': metricPartial(periodWordsAdded),
+        'period.wordsAdded': wordsMetric(periodWords.wordsAdded, periodWords.completeness),
       },
       input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile',
     );
@@ -289,11 +346,22 @@ export async function queryPersonalStatistics(
         substantialRevisions: delta.substantialRevision ? 1 : 0,
       });
     }
+    for (const session of inferredSessions) {
+      points.push({
+        at: session.startedAt,
+        wordsAdded: 0,
+        editsCount: 0,
+        sessionCount: 1,
+        sessionMinutes: Math.max(0, Math.round(session.activeDurationMs / 60_000)),
+        substantialRevisions: 0,
+      });
+    }
     for (const session of writingSessions) {
       const context = readWritingSessionContext(session.parentContext);
+      if (context.writingSessionId) continue;
       points.push({
         at: session.createdAt,
-        wordsAdded: Math.max(0, context.wordDelta),
+        wordsAdded: 0,
         editsCount: 0,
         sessionCount: 1,
         sessionMinutes: Math.max(1, Math.round(context.durationMs / 60_000)),
@@ -306,7 +374,13 @@ export async function queryPersonalStatistics(
       windowStart: habitWindow.gte,
       streakLookbackStart: streakLookback.gte,
     });
-    if (!assembled.hasActivityData) {
+    const habitWords = aggregateWritingWords({
+      contributions: writingContributions,
+      events: habitEvents,
+      start: habitWindow.gte,
+      end: now,
+    });
+    if (!assembled.hasActivityData && habitWords.completeness === 'none') {
       habits = {
         'attribution.wordsAdded': metricUnavailable('not_yet_tracked'),
         'attribution.writingStreak': metricUnavailable('not_yet_tracked'),
@@ -316,7 +390,25 @@ export async function queryPersonalStatistics(
       };
     } else {
       habits = {
-        'attribution.wordsAdded': metricPartial(assembled.wordsAdded),
+        'attribution.wordsAdded': wordsMetric(habitWords.wordsAdded, habitWords.completeness),
+        'attribution.wordsAddedMeasured':
+          habitWords.measuredCount > 0
+            ? metricValue(
+                writingContributions
+                  .filter(
+                    (row) =>
+                      row.availability === 'measured' &&
+                      row.occurredAt >= habitWindow.gte &&
+                      row.occurredAt < now,
+                  )
+                  .reduce((sum, row) => sum + row.wordsAdded, 0),
+              )
+            : metricUnavailable('not_yet_tracked'),
+        'attribution.wordsRemoved': wordsMetric(
+          habitWords.wordsRemoved,
+          habitWords.completeness,
+        ),
+        'attribution.netChange': wordsMetric(habitWords.netChange, habitWords.completeness),
         'attribution.writingStreak': metricValue(assembled.writingStreak),
         'attribution.writingCadence': metricValue(assembled.writingCadence),
         'attribution.substantialRevisions': metricValue(assembled.substantialRevisions),
@@ -349,22 +441,35 @@ export async function queryPersonalStatistics(
   };
 }
 
+function wordsMetric(
+  amount: number,
+  completeness: 'measured' | 'partial' | 'reconstructed' | 'none',
+): MetricValue {
+  if (completeness === 'measured' || completeness === 'none') return metricValue(amount);
+  return metricPartial(amount);
+}
+
 export function toCreatorAttributionResponse(
   payload: PersonalStatisticsResponse,
 ): CreatorAttributionResponse {
-  const habits = { ...payload.habits };
-  if (habits['attribution.wordsAdded']?.status === 'partial') {
-    habits['attribution.wordsAdded'] = metricValue(
-      habits['attribution.wordsAdded'].amount,
+  const merged = {
+    ...payload.snapshot,
+    ...payload.habits,
+  };
+  if (merged['attribution.wordsAdded']?.status === 'partial') {
+    merged['attribution.wordsAdded'] = metricValue(
+      merged['attribution.wordsAdded'].amount,
     );
+  }
+  const metrics: CreatorAttributionResponse['metrics'] = {};
+  for (const id of PERSONAL_ATTRIBUTION_METRIC_IDS) {
+    const value = merged[id];
+    if (value) metrics[id] = value;
   }
   return {
     computedAt: payload.computedAt,
     refreshCadence: payload.refreshCadence,
-    metrics: {
-      ...payload.snapshot,
-      ...habits,
-    },
+    metrics,
     worldbuildingMix: payload.worldbuildingMix,
     linkableCampaigns: payload.linkableCampaigns,
   };
