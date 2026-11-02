@@ -52,3 +52,33 @@ export type CreatorAttributionResponse = {
   worldbuildingMix: WorldbuildingMixEntry[];
   linkableCampaigns: LinkableCampaign[];
 };
+
+export type PersonalStatisticsVisibility =
+  | 'owner'
+  | 'viewerAuthorized'
+  | 'public';
+
+export type PersonalStatisticsRangeMode =
+  | 'all_time'
+  | 'year'
+  | 'month'
+  | 'custom';
+
+export type PersonalStatisticsResponse = {
+  version: 1;
+  computedAt: string;
+  refreshCadence: 'realtime';
+  timeZone: string;
+  visibilityContext: PersonalStatisticsVisibility;
+  range: {
+    mode: PersonalStatisticsRangeMode;
+    start: string | null;
+    end: string;
+  };
+  campaignId: string | null;
+  snapshot: Partial<Record<MetricId, MetricValue>>;
+  period: Partial<Record<MetricId, MetricValue>>;
+  habits: Partial<Record<MetricId, MetricValue>>;
+  worldbuildingMix: WorldbuildingMixEntry[];
+  linkableCampaigns: LinkableCampaign[];
+};

@@ -42,6 +42,8 @@ describe('metricRegistry', () => {
     assert.equal(isMetricAllowedInContext('attribution.writingStreak', 'publicProfile'), false);
     assert.equal(isMetricAllowedInContext('attribution.writingStreak', 'ownerProfile'), true);
     assert.equal(isMetricAllowedInContext('period.wordsAdded', 'campaignMember'), true);
+    assert.equal(isMetricAllowedInContext('period.wordsAdded', 'ownerProfile'), true);
+    assert.equal(isMetricAllowedInContext('period.wordsAdded', 'publicProfile'), false);
     assert.equal(isMetricAllowedInContext('attribution.wordsAdded', 'publicProfile'), false);
   });
 

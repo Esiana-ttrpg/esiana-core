@@ -38,7 +38,11 @@ import {
   putUserTemplateResource,
 } from '../controllers/userCampaignDefaultsController.js';
 import { getUserHub } from '../controllers/hubController.js';
-import { getOwnerCreatorAttribution, getOwnerUserActivity } from '../controllers/statsController.js';
+import {
+  getOwnerCreatorAttribution,
+  getOwnerPersonalStatistics,
+  getOwnerUserActivity,
+} from '../controllers/statsController.js';
 import {
   pinCampaign,
   reorderCampaignPins,
@@ -139,6 +143,7 @@ userRouter.use(rateLimitPolicy('mutation'));
 
 userRouter.get('/hub', getUserHub);
 userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
+userRouter.get('/statistics', getOwnerPersonalStatistics);
 userRouter.get('/activity', getOwnerUserActivity);
 userRouter.put('/campaigns/:campaignId/pin', pinCampaign);
 userRouter.delete('/campaigns/:campaignId/pin', unpinCampaign);

@@ -465,7 +465,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     source: 'CampaignMember ∩ (WikiPage.createdByUserId ∪ NarrativeEvent.actorUserId)',
     timeSemantics: 'lifetime',
     attributionRules:
-      'Current membership intersected with created pages or any actor events. Public aggregates currently include private campaigns — documented leak, remediating is PR 2.',
+      'Current membership intersected with created pages or any actor events. Public and public-API aggregates use only public campaigns.',
     historicalCompleteness: 'partial',
     reportingClock: 'real_world',
     softDeletePolicy: 'exclude_deleted',
@@ -480,7 +480,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     owner: 'campaign',
     privacy: {
       publicProfile: false,
-      ownerProfile: false,
+      ownerProfile: true,
       campaignMember: true,
       publicApi: false,
     },
@@ -503,7 +503,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     owner: 'campaign',
     privacy: {
       publicProfile: false,
-      ownerProfile: false,
+      ownerProfile: true,
       campaignMember: true,
       publicApi: false,
     },
@@ -526,7 +526,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     owner: 'derived',
     privacy: {
       publicProfile: false,
-      ownerProfile: false,
+      ownerProfile: true,
       campaignMember: true,
       publicApi: false,
     },
@@ -549,7 +549,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     owner: 'campaign',
     privacy: {
       publicProfile: false,
-      ownerProfile: false,
+      ownerProfile: true,
       campaignMember: true,
       publicApi: false,
     },
@@ -573,7 +573,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     owner: 'campaign',
     privacy: {
       publicProfile: false,
-      ownerProfile: false,
+      ownerProfile: true,
       campaignMember: true,
       publicApi: false,
     },
@@ -597,7 +597,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     owner: 'campaign',
     privacy: {
       publicProfile: false,
-      ownerProfile: false,
+      ownerProfile: true,
       campaignMember: true,
       publicApi: false,
     },
@@ -621,7 +621,7 @@ export const METRIC_REGISTRY: Record<MetricId, MetricDefinition> = {
     owner: 'editor',
     privacy: {
       publicProfile: false,
-      ownerProfile: false,
+      ownerProfile: true,
       campaignMember: true,
       publicApi: false,
     },

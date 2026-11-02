@@ -12,6 +12,12 @@ import { buildUserCreatorAttribution } from '../lib/stats/buildUserCreatorAttrib
 import { buildCampaignStatistics } from '../lib/stats/buildCampaignStatistics.js';
 import { metricUnavailable } from '../../../shared/metricValue.js';
 import { buildUserActivityFeed } from '../lib/stats/buildUserActivityFeed.js';
+import {
+  queryPersonalStatistics,
+  StatisticsRangeError,
+  StatisticsScopeError,
+} from '../lib/stats/personal/queryPersonalStatistics.js';
+import type { PersonalStatisticsRangeMode } from '../../../shared/statsTypes.js';
 
 function parseActivityLimit(raw: unknown): number {
   const n = typeof raw === 'string' ? Number(raw) : typeof raw === 'number' ? raw : NaN;
@@ -64,6 +70,64 @@ export async function getOwnerCreatorAttribution(
     worldbuildingMix: payload.worldbuildingMix,
     linkableCampaigns: payload.linkableCampaigns,
   });
+}
+
+const RANGE_MODES = new Set<PersonalStatisticsRangeMode>([
+  'all_time',
+  'year',
+  'month',
+  'custom',
+]);
+
+export async function getOwnerPersonalStatistics(
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const versionRaw = req.query.version;
+  const version = versionRaw == null || versionRaw === '' ? 1 : Number(versionRaw);
+  if (version !== 1) {
+    res.status(400).json({ error: 'Unsupported statistics version' });
+    return;
+  }
+
+  const rangeRaw = typeof req.query.range === 'string' ? req.query.range : 'all_time';
+  if (!RANGE_MODES.has(rangeRaw as PersonalStatisticsRangeMode)) {
+    res.status(400).json({ error: 'range must be all_time, year, month, or custom' });
+    return;
+  }
+
+  const campaignId =
+    typeof req.query.campaignId === 'string' && req.query.campaignId.trim()
+      ? req.query.campaignId.trim()
+      : null;
+  const from = typeof req.query.from === 'string' ? req.query.from : null;
+  const to = typeof req.query.to === 'string' ? req.query.to : null;
+
+  try {
+    const payload = await queryPersonalStatistics({
+      userId: req.user!.id,
+      viewerId: req.user!.id,
+      visibility: 'owner',
+      range: {
+        mode: rangeRaw as PersonalStatisticsRangeMode,
+        from,
+        to,
+      },
+      campaignId,
+      includeHabits: true,
+    });
+    res.json(payload);
+  } catch (error) {
+    if (error instanceof StatisticsRangeError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    if (error instanceof StatisticsScopeError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function getCampaignWorldStats(
