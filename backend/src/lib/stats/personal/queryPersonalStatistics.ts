@@ -21,6 +21,7 @@ import type {
 } from '../../../../../shared/statsTypes.js';
 import {
   assembleWorldbuildingStats,
+  worldbuildingDocumentId,
   type WorldbuildingPageInput,
 } from './assembleWorldbuilding.js';
 import { resolveLinkableCampaigns } from '../resolveLinkableCampaigns.js';
@@ -408,26 +409,27 @@ export async function queryPersonalStatistics(
       : Promise.resolve([]),
   ]);
 
+  const worldbuildingWordRows = skipPeriod
+    ? []
+    : listResolvedWritingWordRows({
+        contributions: writingContributions,
+        events: periodEvents,
+        start: range.start ?? new Date(0),
+        end: range.end,
+      });
   const worldbuildingPagesById = skipPeriod
     ? new Map(createdPages.map((page) => [page.id, page]))
     : await loadReferencedWorldbuildingPages({
         campaignIds,
         createdPages,
         periodEvents,
-        documentIds: writingContributions.map((row) => row.documentId),
+        documentIds: worldbuildingWordRows.map(worldbuildingDocumentId),
       });
   const worldbuilding = assembleWorldbuildingStats({
     createdPages,
     pagesById: worldbuildingPagesById,
     periodEvents,
-    wordRows: skipPeriod
-      ? []
-      : listResolvedWritingWordRows({
-          contributions: writingContributions,
-          events: periodEvents,
-          start: range.start ?? new Date(0),
-          end: range.end,
-        }),
+    wordRows: worldbuildingWordRows,
     lifetimeLinkCount: linkCount,
     skipPeriod,
     visibility: input.visibility,

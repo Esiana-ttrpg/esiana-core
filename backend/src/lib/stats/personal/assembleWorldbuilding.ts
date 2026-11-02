@@ -105,7 +105,7 @@ function contributedMetric(bucket: DomainBucket): MetricValue {
   return metricValue(bucket.wordsAdded);
 }
 
-function documentIdFor(item: ResolvedWritingWordRow): string | null {
+export function worldbuildingDocumentId(item: ResolvedWritingWordRow): string | null {
   if (item.kind === 'stored') return item.row.documentId ?? null;
   return item.event.pageId ?? item.row.documentId ?? null;
 }
@@ -160,7 +160,7 @@ export function assembleWorldbuildingStats(input: {
     }
 
     for (const item of input.wordRows) {
-      const documentId = documentIdFor(item);
+      const documentId = worldbuildingDocumentId(item);
       if (!documentId) continue;
       const page = input.pagesById.get(documentId);
       if (!page) continue;
