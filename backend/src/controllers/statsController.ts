@@ -17,6 +17,10 @@ import {
   StatisticsRangeError,
   StatisticsScopeError,
 } from '../lib/stats/personal/queryPersonalStatistics.js';
+import {
+  exportOwnerPersonalStatistics,
+  renderPersonalStatisticsExportCsv,
+} from '../lib/stats/personal/exportPersonalStatistics.js';
 import type { PersonalStatisticsRangeMode } from '../../../shared/statsTypes.js';
 
 function parseActivityLimit(raw: unknown): number {
@@ -116,6 +120,74 @@ export async function getOwnerPersonalStatistics(
       campaignId,
       includeHabits: true,
     });
+    res.json(payload);
+  } catch (error) {
+    if (error instanceof StatisticsRangeError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    if (error instanceof StatisticsScopeError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+}
+
+export async function getOwnerPersonalStatisticsExport(
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const versionRaw = req.query.version;
+  const version = versionRaw == null || versionRaw === '' ? 1 : Number(versionRaw);
+  if (version !== 1) {
+    res.status(400).json({ error: 'Unsupported statistics version' });
+    return;
+  }
+
+  const formatRaw = typeof req.query.format === 'string' ? req.query.format : 'json';
+  if (formatRaw !== 'json' && formatRaw !== 'csv') {
+    res.status(400).json({ error: 'format must be json or csv' });
+    return;
+  }
+
+  const rangeRaw = typeof req.query.range === 'string' ? req.query.range : 'all_time';
+  if (!RANGE_MODES.has(rangeRaw as PersonalStatisticsRangeMode)) {
+    res.status(400).json({ error: 'range must be all_time, year, month, or custom' });
+    return;
+  }
+
+  const campaignId =
+    typeof req.query.campaignId === 'string' && req.query.campaignId.trim()
+      ? req.query.campaignId.trim()
+      : null;
+  const from = typeof req.query.from === 'string' ? req.query.from : null;
+  const to = typeof req.query.to === 'string' ? req.query.to : null;
+
+  try {
+    const payload = await exportOwnerPersonalStatistics({
+      userId: req.user!.id,
+      range: {
+        mode: rangeRaw as PersonalStatisticsRangeMode,
+        from,
+        to,
+      },
+      campaignId,
+    });
+    if (formatRaw === 'csv') {
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        'attachment; filename="esiana-writing-statistics.csv"',
+      );
+      res.send(renderPersonalStatisticsExportCsv(payload));
+      return;
+    }
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="esiana-writing-statistics.json"',
+    );
     res.json(payload);
   } catch (error) {
     if (error instanceof StatisticsRangeError) {

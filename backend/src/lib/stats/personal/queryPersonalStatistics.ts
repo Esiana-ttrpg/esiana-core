@@ -25,12 +25,21 @@ import {
   buildWorldbuildingMix,
 } from '../assembleLifetimeAttribution.js';
 import { selectScopedCampaignIds } from './visibility.js';
+import { campaignFreeformPagePath } from '../../../../../shared/campaignWorkspaceRoutes.js';
+import { uniqueDocumentIds } from '../../../../../shared/writingSession.js';
+import { buildCampaignContextSync } from '../../campaignScopeContext.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from '../../wikiTree.js';
+import {
+  assembleWritingVisualizations,
+  emptyWritingVisualizations,
+} from './assembleWritingVisualizations.js';
 import {
   contributionQueryWindow,
   createdAtFilter,
   lookbackInterval,
   resolveStatisticsRange,
   StatisticsRangeError,
+  visualizationQueryWindow,
 } from './reportingRange.js';
 import {
   assemblePeriodHabits,
@@ -61,6 +70,8 @@ export type QueryPersonalStatisticsInput = {
   includeHabits?: boolean;
   /** Skip the period NarrativeEvent query when the caller discards period metrics. */
   skipPeriod?: boolean;
+  /** Owner charts. Defaults on for owner queries that also load period metrics. */
+  includeVisualizations?: boolean;
   now?: Date;
 };
 
@@ -130,6 +141,10 @@ export async function queryPersonalStatistics(
   const campaignIds = scoped.campaignIds;
   const includeHabits = input.includeHabits === true;
   const skipPeriod = input.skipPeriod === true;
+  const includeVisualizations =
+    input.visibility === 'owner' &&
+    !skipPeriod &&
+    input.includeVisualizations !== false;
   const linkableCampaigns = await resolveLinkableCampaigns(input.userId, input.viewerId);
 
   if (campaignIds.length === 0) {
@@ -164,6 +179,18 @@ export async function queryPersonalStatistics(
         : {},
       worldbuildingMix: [],
       linkableCampaigns,
+      ...(includeVisualizations
+        ? {
+            visualizations: emptyWritingVisualizations(
+              timeZone,
+              visualizationQueryWindow({
+                rangeStart: range.start,
+                rangeEnd: range.end,
+                timeZone,
+              }),
+            ),
+          }
+        : {}),
     };
   }
 
@@ -177,6 +204,13 @@ export async function queryPersonalStatistics(
     rangeEnd: range.end,
   });
   const loadContributions = contributionWindow != null;
+  const vizWindow = includeVisualizations
+    ? visualizationQueryWindow({
+        rangeStart: range.start,
+        rangeEnd: range.end,
+        timeZone,
+      })
+    : null;
 
   const [
     createdPages,
@@ -188,6 +222,7 @@ export async function queryPersonalStatistics(
     writingSessions,
     inferredSessions,
     writingContributions,
+    visualizationSessions,
   ] = await Promise.all([
     prisma.wikiPage.findMany({
       where: {
@@ -292,6 +327,24 @@ export async function queryPersonalStatistics(
             netChange: true,
             availability: true,
             origin: true,
+          },
+        })
+      : Promise.resolve([]),
+    vizWindow
+      ? prisma.writingSession.findMany({
+          where: {
+            userId: input.userId,
+            campaignId: { in: campaignIds },
+            startedAt: { gte: vizWindow.gte, lt: vizWindow.lt },
+            completeness: { not: 'unavailable' },
+          },
+          select: {
+            id: true,
+            startedAt: true,
+            endedAt: true,
+            activeDurationMs: true,
+            completeness: true,
+            documentIds: true,
           },
         })
       : Promise.resolve([]),
@@ -421,6 +474,21 @@ export async function queryPersonalStatistics(
   }
 
   const privacyContext = input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile';
+  const visualizations =
+    includeVisualizations && vizWindow
+      ? assembleWritingVisualizations({
+          timeZone,
+          window: vizWindow,
+          contributions: writingContributions,
+          sessions: visualizationSessions,
+          documentsById: await resolveVisualizationDocuments(
+            visualizationSessions,
+            campaignIds,
+            input.viewerId ?? input.userId,
+          ),
+        })
+      : undefined;
+
   return {
     version: 1,
     computedAt: now.toISOString(),
@@ -438,7 +506,136 @@ export async function queryPersonalStatistics(
     habits: includeHabits ? filterMetricsByPrivacy(habits, privacyContext) : {},
     worldbuildingMix: buildWorldbuildingMix(createdPages),
     linkableCampaigns,
+    ...(visualizations ? { visualizations } : {}),
   };
+}
+
+export function selectVisibleVisualizationDocuments(
+  pages: Array<{
+    id: string;
+    title: string;
+    pathKey: string | null;
+    visibility: string;
+    campaignId: string;
+    handle: string;
+  }>,
+  capabilitiesByCampaign: Map<string, WikiVisibilityViewer>,
+) {
+  const documents = new Map<
+    string,
+    { id: string; title: string; href: string }
+  >();
+  for (const page of pages) {
+    const viewer = capabilitiesByCampaign.get(page.campaignId);
+    if (!viewer || !canViewWikiPage(page.visibility, viewer)) continue;
+    documents.set(page.id, {
+      id: page.id,
+      title: page.title,
+      href: campaignFreeformPagePath(page.handle, page.pathKey ?? page.id),
+    });
+  }
+  return documents;
+}
+
+async function loadViewerCapabilitiesByCampaign(
+  viewerId: string,
+  campaignIds: string[],
+): Promise<Map<string, WikiVisibilityViewer>> {
+  const result = new Map<string, WikiVisibilityViewer>();
+  if (campaignIds.length === 0) return result;
+  const [memberships, campaigns, overrides] = await Promise.all([
+    prisma.campaignMember.findMany({
+      where: { userId: viewerId, campaignId: { in: campaignIds } },
+      select: {
+        campaignId: true,
+        role: true,
+        chronologyContributor: true,
+        partyId: true,
+      },
+    }),
+    prisma.campaign.findMany({
+      where: { id: { in: campaignIds } },
+      select: {
+        id: true,
+        handle: true,
+        campaignOwnerUserId: true,
+        discoverability: true,
+        allowPlayerChronologyManagement: true,
+      },
+    }),
+    prisma.campaignRoleCapabilityOverride.findMany({
+      where: { campaignId: { in: campaignIds } },
+      select: { campaignId: true, role: true, capability: true, effect: true },
+    }),
+  ]);
+  const membershipByCampaign = new Map(
+    memberships.map((row) => [row.campaignId, row]),
+  );
+  const overridesByCampaign = new Map<string, typeof overrides>();
+  for (const row of overrides) {
+    const list = overridesByCampaign.get(row.campaignId) ?? [];
+    list.push(row);
+    overridesByCampaign.set(row.campaignId, list);
+  }
+  for (const campaign of campaigns) {
+    const membership = membershipByCampaign.get(campaign.id);
+    const context = buildCampaignContextSync({
+      campaignId: campaign.id,
+      campaignHandle: campaign.handle,
+      campaignOwnerUserId: campaign.campaignOwnerUserId,
+      discoverability: campaign.discoverability,
+      allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement,
+      userId: viewerId,
+      membershipRole: membership?.role ?? null,
+      chronologyContributor: membership?.chronologyContributor ?? false,
+      partyId: membership?.partyId ?? null,
+      roleCapabilityOverrides: overridesByCampaign.get(campaign.id) ?? [],
+    });
+    result.set(campaign.id, { capabilities: context.capabilities });
+  }
+  return result;
+}
+
+async function resolveVisualizationDocuments(
+  sessions: Array<{ documentIds: unknown }>,
+  campaignIds: string[],
+  viewerId: string,
+) {
+  const ids = [
+    ...new Set(sessions.flatMap((session) => uniqueDocumentIds(session.documentIds))),
+  ];
+  if (ids.length === 0 || campaignIds.length === 0) return new Map();
+  const pages = await prisma.wikiPage.findMany({
+    where: {
+      id: { in: ids },
+      campaignId: { in: campaignIds },
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      title: true,
+      pathKey: true,
+      visibility: true,
+      campaignId: true,
+      campaign: { select: { handle: true } },
+    },
+  });
+  const pageCampaignIds = [...new Set(pages.map((page) => page.campaignId))];
+  const capabilitiesByCampaign = await loadViewerCapabilitiesByCampaign(
+    viewerId,
+    pageCampaignIds,
+  );
+  return selectVisibleVisualizationDocuments(
+    pages.map((page) => ({
+      id: page.id,
+      title: page.title,
+      pathKey: page.pathKey,
+      visibility: page.visibility,
+      campaignId: page.campaignId,
+      handle: page.campaign.handle,
+    })),
+    capabilitiesByCampaign,
+  );
 }
 
 function wordsMetric(

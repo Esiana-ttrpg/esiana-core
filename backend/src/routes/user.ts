@@ -41,6 +41,7 @@ import { getUserHub } from '../controllers/hubController.js';
 import {
   getOwnerCreatorAttribution,
   getOwnerPersonalStatistics,
+  getOwnerPersonalStatisticsExport,
   getOwnerUserActivity,
 } from '../controllers/statsController.js';
 import {
@@ -143,6 +144,7 @@ userRouter.use(rateLimitPolicy('mutation'));
 
 userRouter.get('/hub', getUserHub);
 userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
+userRouter.get('/statistics/export', getOwnerPersonalStatisticsExport);
 userRouter.get('/statistics', getOwnerPersonalStatistics);
 userRouter.get('/activity', getOwnerUserActivity);
 userRouter.put('/campaigns/:campaignId/pin', pinCampaign);

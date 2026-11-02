@@ -4,6 +4,7 @@ import {
   calendarDateKey,
   hourInTimeZone,
   startOfZonedDay,
+  weekdayMondayIndex,
   zonedTimeToUtc,
 } from './zonedTime.js';
 
@@ -29,5 +30,11 @@ describe('zonedTime', () => {
     const at = new Date('2026-06-15T03:30:00.000Z');
     const start = startOfZonedDay(at, 'America/New_York');
     assert.equal(calendarDateKey(start, 'America/New_York'), '2026-06-14');
+  });
+
+  it('numbers weekdays Monday-first in the reporting timezone', () => {
+    const monday = new Date('2026-06-15T17:00:00.000Z');
+    assert.equal(weekdayMondayIndex(monday, 'America/Chicago'), 0);
+    assert.equal(weekdayMondayIndex(new Date('2026-06-14T17:00:00.000Z'), 'UTC'), 6);
   });
 });

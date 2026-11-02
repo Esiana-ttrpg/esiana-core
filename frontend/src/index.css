@@ -85,6 +85,15 @@ html {
   --accent-gold: #c8a96b;
   --accent-warm: #9f7a45;
   --accent-soft: #e0c48f;
+  --stats-writing: #d4a574;
+  --stats-worldbuilding: #c89bb5;
+  --stats-maps: #7eb8a8;
+  --stats-chronology: #8aa4c8;
+  --stats-campaigns: #b59ad0;
+  --stats-writing-1: color-mix(in srgb, var(--stats-writing) 28%, var(--color-depth-2));
+  --stats-writing-2: color-mix(in srgb, var(--stats-writing) 48%, var(--color-depth-2));
+  --stats-writing-3: color-mix(in srgb, var(--stats-writing) 70%, var(--color-depth-2));
+  --stats-writing-4: var(--stats-writing);
   /* Surface role tokens — cinematic narrative workspace (tonal layering) */
   --focal-luminance-mode: narrative-dark;
   --color-canvas: #090b11;

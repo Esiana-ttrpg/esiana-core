@@ -1,5 +1,12 @@
 import type { PersonalStatisticsRangeMode } from '../../../../../shared/statsTypes.js';
-import { addCivilDays, startOfZonedDay, zonedParts, zonedTimeToUtc } from './zonedTime.js';
+import {
+  addCivilDays,
+  formatCivilDateKey,
+  startOfZonedDay,
+  zonedParts,
+  zonedTimeToUtc,
+  type ZonedCivilDate,
+} from './zonedTime.js';
 
 export type ResolveStatisticsRangeInput = {
   mode: PersonalStatisticsRangeMode;
@@ -161,4 +168,37 @@ export function contributionQueryWindow(input: {
     gte: new Date(Math.min(...windows.map((window) => window.gte.getTime()))),
     lt: new Date(Math.max(...windows.map((window) => window.lt.getTime()))),
   };
+}
+
+/** GitHub-style heatmap span: 53 weeks of civil days. */
+export const VISUALIZATION_MAX_DAYS = 371;
+
+export function visualizationQueryWindow(input: {
+  rangeStart: Date | null;
+  rangeEnd: Date;
+  timeZone: string;
+}): { gte: Date; lt: Date } {
+  const lookback = lookbackInterval(input.rangeEnd, input.timeZone, VISUALIZATION_MAX_DAYS);
+  if (!input.rangeStart || input.rangeStart.getTime() < lookback.gte.getTime()) {
+    return lookback;
+  }
+  return { gte: input.rangeStart, lt: input.rangeEnd };
+}
+
+export function enumerateCalendarDateKeys(
+  gte: Date,
+  lt: Date,
+  timeZone: string,
+): string[] {
+  if (lt.getTime() <= gte.getTime()) return [];
+  const lastKey = formatCivilDateKey(zonedParts(new Date(lt.getTime() - 1), timeZone));
+  const keys: string[] = [];
+  let civil: ZonedCivilDate = zonedParts(gte, timeZone);
+  for (let i = 0; i < VISUALIZATION_MAX_DAYS + 2; i += 1) {
+    const key = formatCivilDateKey(civil);
+    keys.push(key);
+    if (key === lastKey) break;
+    civil = addCivilDays(civil, 1);
+  }
+  return keys;
 }

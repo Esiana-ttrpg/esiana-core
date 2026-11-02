@@ -22214,6 +22214,72 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
       description: "Authorization: Authenticated application user session. Uses the user's resolved timezone; no statistics-specific timezone override."
+  /api/user/statistics/export:
+    get:
+      tags:
+        - User Account
+      summary: Export Owner Writing Statistics
+      operationId: get_api_user_statistics_export
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: version
+          in: query
+          schema:
+            type: integer
+            default: 1
+            enum: [1]
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [all_time, year, month, custom]
+            default: all_time
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+        - name: campaignId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Owner-only JSON or CSV of writing contributions, daily aggregates, and writing sessions. Omits document bodies, private titles, other users' activity, and campaign names.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+            text/csv:
+              schema:
+                type: string
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session. Owner-only writing export. Uses the user's resolved timezone; no statistics-specific timezone override."
   /api/user/developer/quota:
     get:
       tags:

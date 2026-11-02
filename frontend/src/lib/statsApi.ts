@@ -17,19 +17,57 @@ export async function fetchOwnerCreatorAttribution(): Promise<CreatorAttribution
   return apiFetch<CreatorAttributionResponse>('/user/creator-attribution');
 }
 
-export async function fetchOwnerPersonalStatistics(options?: {
+function personalStatisticsParams(options?: {
   range?: PersonalStatisticsRangeMode;
   from?: string;
   to?: string;
   campaignId?: string;
-}): Promise<PersonalStatisticsResponse> {
+}): URLSearchParams {
   const params = new URLSearchParams();
   params.set('version', '1');
   if (options?.range) params.set('range', options.range);
   if (options?.from) params.set('from', options.from);
   if (options?.to) params.set('to', options.to);
   if (options?.campaignId) params.set('campaignId', options.campaignId);
+  return params;
+}
+
+export async function fetchOwnerPersonalStatistics(options?: {
+  range?: PersonalStatisticsRangeMode;
+  from?: string;
+  to?: string;
+  campaignId?: string;
+}): Promise<PersonalStatisticsResponse> {
+  const params = personalStatisticsParams(options);
   return apiFetch<PersonalStatisticsResponse>(`/user/statistics?${params.toString()}`);
+}
+
+export async function downloadOwnerStatisticsExport(
+  format: 'json' | 'csv',
+  options?: {
+    range?: PersonalStatisticsRangeMode;
+    from?: string;
+    to?: string;
+    campaignId?: string;
+  },
+): Promise<void> {
+  const params = personalStatisticsParams(options);
+  params.set('format', format);
+  const res = await fetch(`/api/user/statistics/export?${params.toString()}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error('Statistics export could not be downloaded.');
+  }
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = `esiana-writing-statistics.${format}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(href);
 }
 
 export async function fetchCampaignWorldStats(

@@ -73,6 +73,7 @@ Shared behavior for touched surfaces (see `ambient-motion.css`, `:focus-visible`
 | `--atmosphere-glow-alpha-focal` | Opt-in focal bloom (0.10–0.14) |
 | `--atmosphere-glow-alpha-dramatic` | Hero / map / event bloom (0.16–0.22) |
 | `--accent-gold` / `--accent-warm` / `--accent-soft` | Warm navigation and metadata accents |
+| `--stats-writing` / `--stats-worldbuilding` / `--stats-maps` / `--stats-chronology` / `--stats-campaigns` | Small category palette for personal statistics charts and later Wrapped reuse. Heatmap steps `--stats-writing-1`…`4`. |
 | `--atmosphere-region-fade-strength` | Region-compose fade opacity (from `ambientContrastBias`) |
 | `--atmosphere-shadow-alpha` | Box-shadow opacity multiplier |
 | `--atmosphere-shadow-blur` | Box-shadow blur radius |
