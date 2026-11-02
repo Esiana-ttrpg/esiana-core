@@ -27,6 +27,8 @@ function unimplementedExtractor(): string {
 /**
  * Platform writing contract. Wiki blocks ship first; independently stored
  * rich-text registers here later instead of becoming hardcoded queries.
+ * Custom workspace pages (`CampaignWorkspace.CUSTOM`) use `wiki.page` —
+ * they are not a separate table or hardcoded stats query.
  */
 export const WRITING_SOURCES: Record<string, WritingSourceDefinition> = {
   'wiki.page': {

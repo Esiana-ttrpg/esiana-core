@@ -128,6 +128,34 @@ export type WritingVisualizations = {
   sessions: WritingVisualizationSession[];
 };
 
+/** Mutually exclusive worldbuilding domains. Factions are organization-backed. */
+export const WORLDBUILDING_DOMAINS = [
+  'characters',
+  'locations',
+  'organizations',
+  'families',
+  'factions',
+  'relationships',
+  'creatures',
+  'events',
+  'eras',
+  'custom',
+] as const;
+
+export type WorldbuildingDomain = (typeof WORLDBUILDING_DOMAINS)[number];
+
+export type WorldbuildingDomainStats = {
+  domain: WorldbuildingDomain;
+  /** Lifetime pages (or LINK_CREATED for relationships) this user created. */
+  created: MetricValue;
+  /** PAGE_CREATED (or LINK_CREATED) in the reporting window. */
+  periodCreated: MetricValue;
+  /** PAGE_EDITED in the reporting window. Owner-only. */
+  periodEdited: MetricValue;
+  /** Human word contributions on classified documents in the window. Owner-only. */
+  periodContributed: MetricValue;
+};
+
 export type PersonalStatisticsResponse = {
   version: 1;
   computedAt: string;
@@ -144,6 +172,11 @@ export type PersonalStatisticsResponse = {
   period: Partial<Record<MetricId, MetricValue>>;
   habits: Partial<Record<MetricId, MetricValue>>;
   worldbuildingMix: WorldbuildingMixEntry[];
+  /**
+   * Per-domain creations / edits / word contributions. Companion to the locked
+   * 13 IDs — does not redefine attribution.charactersCreated and siblings.
+   */
+  worldbuilding: WorldbuildingDomainStats[];
   linkableCampaigns: LinkableCampaign[];
   /** Owner-only writing charts. Omitted for public and compatibility adapters. */
   visualizations?: WritingVisualizations | null;
@@ -211,6 +244,7 @@ export type PersonalStatisticsExportJson = {
   snapshot: PersonalStatisticsResponse['snapshot'];
   period: PersonalStatisticsResponse['period'];
   habits: PersonalStatisticsResponse['habits'];
+  worldbuilding: WorldbuildingDomainStats[];
   contributions: PersonalStatisticsExportContribution[];
   dailyAggregates: PersonalStatisticsExportDailyAggregate[];
   writingSessions: PersonalStatisticsExportSession[];

@@ -22259,7 +22259,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Owner-only JSON or CSV of writing contributions, daily aggregates, and writing sessions. Omits document bodies, private titles, other users' activity, and campaign names.
+          description: Owner-only JSON or CSV of writing contributions, worldbuilding domain totals, daily aggregates, and writing sessions. Omits document bodies, private titles, other users' activity, and campaign names.
           content:
             application/json:
               schema:

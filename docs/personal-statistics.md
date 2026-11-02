@@ -136,9 +136,9 @@ Disposition:
 | Characters workspace | Tracked | Same wiki substrate; codex type `CHARACTER` | Tree category not used in personal counts. |
 | Locations workspace | Tracked | Same; `LOCATION` | Same. |
 | Organizations workspace | Tracked | Same; `ORGANIZATION` | Same. |
-| Families, ancestries, objects, bestiary, rules, adventures, threads, havens, projects | Tracked (wiki create/edit) | Same substrate when the page is a wiki page | Personal lifetime mix may include them; dedicated metrics are reserved, not computed. |
-| Events / eras wiki pages | Tracked (wiki create/edit) | Wiki substrate | Chronology-specific actions are separate rows below. |
-| Custom workspaces (`CampaignWorkspace.CUSTOM`) | Tracked (wiki create/edit) | Wiki substrate when content is a `WikiPage` | No first-class index route; must stay on the source registry, not hardcoded queries. |
+| Families, ancestries, objects, bestiary, rules, adventures, threads, havens, projects | Tracked (wiki create/edit) | Same substrate when the page is a wiki page | Pass 6 computes dedicated family and creature (bestiary) domain stats. Ancestries, objects, rules, adventures, threads, havens, and projects remain in mix only. |
+| Events / eras wiki pages | Tracked (wiki create/edit) | Wiki substrate; `chronologyWikiDocumentKind` + `EVENTS` / `ERAS` workspace | Pass 6 domain stats. Calendar events and time advances remain Pass 8. |
+| Custom workspaces (`CampaignWorkspace.CUSTOM`) | Tracked (wiki create/edit) | Wiki substrate when content is a `WikiPage`; contributions via `wiki.page` | Classified from `WikiPage.workspace`. No extra table query. |
 | Workshop drafts | Partial / blocked for words | Autosave updates stats with `emitEvents: false`; apply/formalize emits `PAGE_EDITED` | Active writing time during unpublished editing is not durably attributed. Word contributions should commit at apply/formalize and dedupe. |
 | Session notes | Tracked | Per-author `SESSION_NOTE` + substrate | Uploads look like human saves. |
 | Journals workspace pages | Tracked | Wiki substrate | |
@@ -147,7 +147,7 @@ Disposition:
 | Character custom fields | Blocked | `CharacterField` with `origin` | Structured fields, not prose. Actor missing on update. |
 | Plugin content-sync (wiki collections) | Tracked as integration | Substrate events with `actorUserId` | Must be origin `integration`, not silent human writing. |
 | Plugin content-sync (journal / timeline-events) | Blocked | Journal has `createdByUserId`; calendar events have no actor | Timeline-event collection cannot attribute. |
-| Relationships / entity graph | Partial | `WikiLink.createdByUserId`; `NarrativeEvent LINK_CREATED`; `EntityRelation` is derived and has **no actor** | Do not treat derived `EntityRelation` rows as authorship. |
+| Relationships / entity graph | Tracked (creates) | `NarrativeEvent LINK_CREATED`; `WikiLink.createdByUserId` | Pass 6 uses `LINK_CREATED` only. Derived `EntityRelation` is not authorship. Link edits stay `not_yet_tracked`. |
 | Maps (asset create) | Tracked | `Asset.uploadedByUserId` where `type = 'map'` | Edit of map metadata is not attributed. |
 | Map pins, layers, groups, scene objects, keyframes, presets | Blocked | `createdAt` / `updatedAt` only | Need additive `createdByUserId` / `updatedByUserId` and activity rows. |
 | Map exploration (pan / zoom / cursor) | Intentionally excluded | None | Not meaningful authorship; do not log. |
@@ -276,10 +276,14 @@ companions; they do not replace `attribution.wordsAdded` or
 | `attribution.wordsRemoved` | Measured (or reconstructed net-negative) removed tokens |
 | `attribution.netChange` | `added - removed` for this save; not original authorship |
 
-Still reserved, not registered:
+Pass 6 does **not** add those domain counts as MetricIds. They live on
+`PersonalStatisticsResponse.worldbuilding[]` so the locked 13 IDs stay
+untouched. Compatibility `/creator-attribution` still returns only those 13.
 
-- Period-scoped created/edited companions
-- Domain metrics for maps, chronology, sessions, and archetypes
+Still reserved as MetricIds:
+
+- Period-scoped created/edited companions on the metric registry
+- Domain metrics for maps, chronology calendars, sessions, and archetypes
 
 ## PR 3 — Writing contributions
 
@@ -352,3 +356,35 @@ They are omitted from public profiles and from `/creator-attribution`.
 Charts are custom SVG on surface tokens (`--stats-writing` and the small category palette). Each chart ships a table alternative. Heatmaps, hours, session history, and private titles stay owner-only.
 
 `GET /api/user/statistics/export?format=json|csv&version=1` is owner-only. JSON and CSV both include metric definitions, snapshot / period / habit values, provenance, availability states, writing contributions, daily aggregates, and writing sessions. Unmatched historical `NarrativeEvent` wordDelta rows are reconstructed as net-only contribution details (deduped on `narrativeEventId`). It never includes document bodies, private titles, other users' activity, or campaign names. Campaigns appear as ids only. Heatmap document links run through `canViewWikiPage` with per-campaign capabilities.
+
+## Pass 6 — Worldbuilding aggregations
+
+Same `queryPersonalStatistics` service, range, privacy, and export contract.
+The 13 locked attribution IDs are unchanged, including
+`resolveWikiCodexType({ templateType, metadata })` without page id for
+`attribution.charactersCreated` / `locationsCreated` / `organizationsCreated`.
+
+`worldbuilding[]` reports creations vs meaningful edits vs attributable
+word contributions, separately, for:
+
+| Domain | Created | Period created | Period edited | Period contributed |
+| --- | --- | --- | --- | --- |
+| Characters, locations, organizations, families, creatures | Lifetime created pages in that exclusive domain | `PAGE_CREATED` | `PAGE_EDITED` | Human `WritingContribution` words (reconstructed nets are `partial`) |
+| Events, eras | Wiki pages whose `chronologyWikiDocumentKind` is event/era, or `EVENTS` / `ERAS` workspace | Same | Same | Same |
+| Custom wiki | `WikiPage.workspace === CUSTOM` via `wiki.page` / workshop sources | Same | Same | Same |
+| Relationships | Lifetime `LINK_CREATED` | `LINK_CREATED` in window | `unavailable` / `not_yet_tracked` | `unavailable` / `not_yet_tracked` (the create is the contribution) |
+| Factions | `unavailable` / `not_yet_tracked` | Same | Same | Same |
+
+Classifier is mutually exclusive: chronology kind, then workspace, then
+metadata-only codex. A custom page with character metadata counts as
+custom, not a character. Quests, journals, session notes, and other
+structural templates are omitted from these domains.
+
+Factions are organization-backed (reputation / momentum on organization
+wiki pages). Counting them as a peer would double-count wiki-backed
+entities, so the row is explicit and untracked.
+
+Public visibility still sees lifetime `created`. Period edits and word
+contributions are owner-only (`unavailable` / `private`). Export JSON/CSV
+gains a `worldbuilding` section. Portfolio artwork is not part of this
+aggregation pass.
