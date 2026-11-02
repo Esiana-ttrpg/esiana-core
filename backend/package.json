@@ -53,7 +53,7 @@
     "express-rate-limit": "^8.7.1",
     "jsonwebtoken": "^9.0.2",
     "jszip": "^3.10.2",
-    "linkedom": "^0.18.13",
+    "linkedom": "^0.18.14",
     "mammoth": "^1.13.0",
     "multer": "^2.5.0",
     "music-metadata": "^12.3.2",
