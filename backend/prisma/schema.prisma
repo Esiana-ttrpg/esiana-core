@@ -104,6 +104,18 @@ model User {
   wikiPagesOwned            WikiPage[] @relation("WikiPageOwnerUser")
   wikiPagesCreated          WikiPage[] @relation("WikiPageCreatedBy")
   assetsUploaded            Asset[]    @relation("AssetUploadedBy")
+  mapPinsCreated            MapPin[]   @relation("MapPinCreatedBy")
+  mapPinsUpdated            MapPin[]   @relation("MapPinUpdatedBy")
+  mapLayersCreated          MapLayer[] @relation("MapLayerCreatedBy")
+  mapLayersUpdated          MapLayer[] @relation("MapLayerUpdatedBy")
+  mapObjectGroupsCreated    MapObjectGroup[] @relation("MapObjectGroupCreatedBy")
+  mapObjectGroupsUpdated    MapObjectGroup[] @relation("MapObjectGroupUpdatedBy")
+  mapSceneObjectsCreated    MapSceneObject[] @relation("MapSceneObjectCreatedBy")
+  mapSceneObjectsUpdated    MapSceneObject[] @relation("MapSceneObjectUpdatedBy")
+  mapObjectKeyframesCreated MapObjectKeyframe[] @relation("MapObjectKeyframeCreatedBy")
+  mapObjectKeyframesUpdated MapObjectKeyframe[] @relation("MapObjectKeyframeUpdatedBy")
+  mapPresetsCreated         MapPresentationPreset[] @relation("MapPresentationPresetCreatedBy")
+  mapPresetsUpdated         MapPresentationPreset[] @relation("MapPresentationPresetUpdatedBy")
   journalPublicationsCreated  JournalPublication[] @relation("JournalPublicationCreatedBy")
   journalPublicationsReleased JournalPublication[] @relation("JournalPublicationReleasedBy")
   journalSeriesCreated        JournalSeries[]      @relation("JournalSeriesCreatedBy")
@@ -2585,11 +2597,15 @@ model MapPin {
   pinType       String  @default("Location")
   x_coordinate  Float
   y_coordinate  Float
+  createdByUserId String?
+  updatedByUserId String?
 
   asset       Asset            @relation("MapPinOnAsset", fields: [assetId], references: [id], onDelete: Cascade)
   targetPage  WikiPage?        @relation(fields: [targetPageId], references: [id], onDelete: SetNull)
   targetAsset Asset?           @relation("MapPinNestedMap", fields: [targetAssetId], references: [id], onDelete: SetNull)
   sceneObject MapSceneObject?  @relation("MapPinSceneObject")
+  createdBy   User?            @relation("MapPinCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy   User?            @relation("MapPinUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2597,6 +2613,7 @@ model MapPin {
   @@index([assetId])
   @@index([targetPageId])
   @@index([targetAssetId])
+  @@index([createdByUserId])
 }
 
 /// Diegetic overlay stack on a map (borders, routes, ruins). Affects presence when disabled.
@@ -2608,16 +2625,21 @@ model MapLayer {
   sortOrder      Int     @default(0)
   defaultEnabled Boolean @default(true)
   color          String?
+  createdByUserId String?
+  updatedByUserId String?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
-  objects  MapSceneObject[]
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  objects   MapSceneObject[]
+  createdBy User?     @relation("MapLayerCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapLayerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([mapAssetId])
   @@index([campaignId])
+  @@index([createdByUserId])
 }
 
 /// Editor-only organization for scene objects (does not affect presence).
@@ -2628,16 +2650,21 @@ model MapObjectGroup {
   name       String
   color      String?
   sortOrder  Int    @default(0)
+  createdByUserId String?
+  updatedByUserId String?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
-  objects  MapSceneObject[]
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  objects   MapSceneObject[]
+  createdBy User?     @relation("MapObjectGroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapObjectGroupUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([mapAssetId])
   @@index([campaignId])
+  @@index([createdByUserId])
 }
 
 /// Unified map primitive: pins (via mapPinId), regions, labels, paths, tokens.
@@ -2660,6 +2687,8 @@ model MapSceneObject {
   pinType                 String?
   visibleFromEpochMinute  BigInt?
   visibleUntilEpochMinute BigInt?
+  createdByUserId         String?
+  updatedByUserId         String?
 
   campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
@@ -2667,6 +2696,8 @@ model MapSceneObject {
   group     MapObjectGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   mapPin    MapPin?         @relation("MapPinSceneObject", fields: [mapPinId], references: [id], onDelete: Cascade)
   keyframes MapObjectKeyframe[]
+  createdBy User?     @relation("MapSceneObjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapSceneObjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2679,6 +2710,7 @@ model MapSceneObject {
   @@index([targetAssetId])
   @@index([visibleFromEpochMinute])
   @@index([visibleUntilEpochMinute])
+  @@index([createdByUserId])
 }
 
 /// Explicit temporal override at a chronology instant (no morphing — discrete swaps).
@@ -2690,13 +2722,18 @@ model MapObjectKeyframe {
   styleOverride        Json?
   visibilityOverride   String?
   revelationOverride   String?
+  createdByUserId      String?
+  updatedByUserId      String?
 
   sceneObject MapSceneObject @relation(fields: [sceneObjectId], references: [id], onDelete: Cascade)
+  createdBy   User?          @relation("MapObjectKeyframeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy   User?          @relation("MapObjectKeyframeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([sceneObjectId, effectiveEpochMinute])
+  @@index([createdByUserId])
 }
 
 /// Layer 3 — era shortcut for map chronology scrub (anchor epoch + default layer toggles).
@@ -2709,15 +2746,20 @@ model MapPresentationPreset {
   /// JSON string[] of MapLayer ids enabled when this preset is selected (empty = no override).
   enabledLayerIds   Json   @default("[]")
   sortOrder         Int    @default(0)
+  createdByUserId   String?
+  updatedByUserId   String?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("MapPresentationPresetCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapPresentationPresetUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([mapAssetId])
   @@index([campaignId])
+  @@index([createdByUserId])
 }
 
 /// Canonical cross-system reveal state for maps, wiki pages/blocks, timeline, journals, and search.

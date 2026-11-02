@@ -466,6 +466,8 @@ export async function ensurePinSceneObjects(
         geometry: pointGeometry(norm),
         visibility: WikiVisibility.PUBLIC,
         revelation: 'REVEALED',
+        createdByUserId: pin.createdByUserId,
+        updatedByUserId: pin.updatedByUserId ?? pin.createdByUserId,
       },
     });
   }
@@ -499,6 +501,7 @@ export async function syncSceneObjectFromPin(
         targetPageId: pin.targetPageId,
         targetAssetId: pin.targetAssetId,
         geometry: pointGeometry(norm),
+        updatedByUserId: pin.updatedByUserId ?? pin.createdByUserId,
       },
     });
     return;
@@ -517,6 +520,8 @@ export async function syncSceneObjectFromPin(
       geometry: pointGeometry(norm),
       visibility: WikiVisibility.PUBLIC,
       revelation: 'REVEALED',
+      createdByUserId: pin.createdByUserId,
+      updatedByUserId: pin.updatedByUserId ?? pin.createdByUserId,
     },
   });
 }

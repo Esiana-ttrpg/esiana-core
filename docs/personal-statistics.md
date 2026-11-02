@@ -148,8 +148,8 @@ Disposition:
 | Plugin content-sync (wiki collections) | Tracked as integration | Substrate events with `actorUserId` | Must be origin `integration`, not silent human writing. |
 | Plugin content-sync (journal / timeline-events) | Blocked | Journal has `createdByUserId`; calendar events have no actor | Timeline-event collection cannot attribute. |
 | Relationships / entity graph | Tracked (creates) | `NarrativeEvent LINK_CREATED`; `WikiLink.createdByUserId` | Pass 6 uses `LINK_CREATED` only. Derived `EntityRelation` is not authorship. Link edits stay `not_yet_tracked`. |
-| Maps (asset create) | Tracked | `Asset.uploadedByUserId` where `type = 'map'` | Edit of map metadata is not attributed. |
-| Map pins, layers, groups, scene objects, keyframes, presets | Blocked | `createdAt` / `updatedAt` only | Need additive `createdByUserId` / `updatedByUserId` and activity rows. |
+| Maps (asset create) | Tracked | `Asset.uploadedByUserId` where `type = 'map'` | Pass 7 counts uploads. Metadata edits log `MAP_ASSET` activity. |
+| Map pins, layers, groups, scene objects, keyframes, presets | Tracked (from Pass 7) | Additive `createdByUserId` / `updatedByUserId`; `CampaignActivity` `MAP_*` | Pre-instrumentation rows stay unattributed. Historical edits are `not_yet_tracked` until an activity row exists. Import/restore leave actors null. |
 | Map exploration (pan / zoom / cursor) | Intentionally excluded | None | Not meaningful authorship; do not log. |
 | Chronology eras | Tracked | `CampaignEra.createdByUserId` / `updatedByUserId` | No `CampaignActivity` row today. |
 | Calendar events | Blocked | `createdAt` / `updatedAt` only; `TIMELINE_EVENT_CREATED` domain event | Need actor columns and durable activity. |
@@ -388,3 +388,23 @@ Public visibility still sees lifetime `created`. Period edits and word
 contributions are owner-only (`unavailable` / `private`). Export JSON/CSV
 gains a `worldbuilding` section. Portfolio artwork is not part of this
 aggregation pass.
+
+## Pass 7 — Cartography aggregations
+
+Same service, range, privacy, and export contract. Locked 13 IDs unchanged.
+
+`cartography[]` reports maps uploaded, markers (pins), regions, layers,
+labels, and location-linked pins. Location-mapped is a subset of markers,
+not a second exclusive domain. Scene-object pins synced from `MapPin` are
+not counted again.
+
+Creates use `Asset.uploadedByUserId` for maps and `createdByUserId` on
+pins, layers, regions, and labels. Import, restore, and seed leave those
+actors null. Period edits use `CampaignActivity` `MAP_*` `UPDATE` rows.
+If this user has never produced a map activity row, period edits are
+`unavailable` / `not_yet_tracked` rather than a silent zero.
+
+Pan, zoom, and cursor exploration are not logged. Owner statistics may
+include up to six authorized map thumbnails (`canViewWikiPage` on asset
+visibility, designed fallback when `thumbnailUrl` is missing). Export
+omits thumbnails and map titles.

@@ -21,6 +21,7 @@ const EXPORT_NOTES = [
   'Document bodies, private titles, other users’ activity, and campaign names are omitted.',
   'Unmatched historical PAGE_CREATED and PAGE_EDITED wordDelta values are exported as reconstructed net-only rows. Added versus removed is not invented.',
   'Worldbuilding domains are mutually exclusive. Factions ride organization wiki pages and stay not_yet_tracked so they are not double-counted. Relationships use LINK_CREATED, never derived EntityRelation rows.',
+  'Cartography edits before map authorship instrumentation remain not_yet_tracked. Pan, zoom, and cursor exploration are excluded. Map thumbnails and titles are omitted from export.',
 ];
 
 type ContributionRow = {
@@ -195,6 +196,7 @@ export function buildPersonalStatisticsExportJson(input: {
     period: input.payload.period,
     habits: input.payload.habits,
     worldbuilding: input.payload.worldbuilding,
+    cartography: input.payload.cartography,
     contributions: input.contributions.map((row) => ({
       id: row.id,
       occurredAt: row.occurredAt.toISOString(),
@@ -319,6 +321,27 @@ export function renderPersonalStatisticsExportCsv(
     ]),
   );
 
+  const cartography = csvTable(
+    [
+      'domain',
+      'createdStatus',
+      'createdAmount',
+      'createdReason',
+      'periodCreatedStatus',
+      'periodCreatedAmount',
+      'periodCreatedReason',
+      'periodEditedStatus',
+      'periodEditedAmount',
+      'periodEditedReason',
+    ],
+    payload.cartography.map((row) => [
+      row.domain,
+      ...metricValueCells(row.created),
+      ...metricValueCells(row.periodCreated),
+      ...metricValueCells(row.periodEdited),
+    ]),
+  );
+
   const contributions = csvTable(
     [
       'id',
@@ -392,7 +415,7 @@ export function renderPersonalStatisticsExportCsv(
     ]),
   );
 
-  return `${header}\n\n[metricDefinitions]\n${metricDefinitions}\n\n[snapshot]\n${snapshot}\n\n[period]\n${period}\n\n[habits]\n${habits}\n\n[worldbuilding]\n${worldbuilding}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
+  return `${header}\n\n[metricDefinitions]\n${metricDefinitions}\n\n[snapshot]\n${snapshot}\n\n[period]\n${period}\n\n[habits]\n${habits}\n\n[worldbuilding]\n${worldbuilding}\n\n[cartography]\n${cartography}\n\n[contributions]\n${contributions}\n\n[dailyAggregates]\n${daily}\n\n[writingSessions]\n${sessions}\n`;
 }
 
 export async function exportOwnerPersonalStatistics(input: {

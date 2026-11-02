@@ -31,6 +31,14 @@ describe('personal statistics export', () => {
         periodContributed: metricValue(40),
       },
     ],
+    cartography: [
+      {
+        domain: 'maps',
+        created: metricValue(1),
+        periodCreated: metricValue(0),
+        periodEdited: metricValue(2),
+      },
+    ],
     linkableCampaigns: [],
   };
 
@@ -75,6 +83,8 @@ describe('personal statistics export', () => {
     assert.equal(serialized.includes('Mira'), false);
     assert.ok(json.metricDefinitions.some((row) => row.id === 'attribution.pagesCreated'));
     assert.equal(json.worldbuilding[0]?.domain, 'characters');
+    assert.equal(json.cartography[0]?.domain, 'maps');
+    assert.equal(serialized.includes('Untitled map'), false);
     assert.equal(json.dailyAggregates[0]?.wordsAdded, 40);
     assert.equal(json.dailyAggregates[0]?.sessionMinutes, 3);
   });
@@ -92,7 +102,9 @@ describe('personal statistics export', () => {
     assert.ok(csv.includes('[period]'));
     assert.ok(csv.includes('[habits]'));
     assert.ok(csv.includes('[worldbuilding]'));
+    assert.ok(csv.includes('[cartography]'));
     assert.ok(csv.includes('characters'));
+    assert.ok(csv.includes('maps'));
     assert.ok(csv.includes('attribution.pagesCreated'));
     assert.ok(csv.includes('period.wordsAdded'));
     assert.ok(csv.includes('attribution.writingStreak'));
