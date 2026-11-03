@@ -8,10 +8,13 @@
 export const WRAPPED_EXPORT_WIDTH = 1080;
 export const WRAPPED_EXPORT_HEIGHT = 1920;
 
-/** True when an image URL is safe to omit from the share-safe export tree. */
+/** True when artwork must be omitted from the share-safe export tree. */
 export function isRemoteCampaignArtworkUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   try {
+    // Absolute http(s) URLs are never loaded into the export tree.
+    if (/^https?:\/\//i.test(url)) return true;
+    if (typeof window === 'undefined') return true;
     const parsed = new URL(url, window.location.origin);
     return parsed.origin !== window.location.origin;
   } catch {

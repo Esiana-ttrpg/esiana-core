@@ -49,11 +49,11 @@ function metricFamilyFromPeriod(
     const words = stats.period['period.wordsAdded'];
     if (!words) return 'not_yet_tracked';
     if (words.status === 'unavailable') return words.reason;
-    if (words.status === 'partial' || words.status === 'estimated') return words.status === 'estimated' ? 'reconstructed' : 'partial';
+    if (words.status === 'partial') return 'partial';
+    if (words.status === 'estimated') return 'reconstructed';
     const viz = stats.visualizations?.heatmapDays;
     if (viz?.some((d) => d.completeness === 'partial')) return 'partial';
-    if (viz?.some((d) => d.completeness === 'measured')) return 'measured';
-    return words.status === 'zero' ? 'measured' : 'measured';
+    return 'measured';
   }
   if (family === 'participation') {
     const row = stats.participation.find((p) => p.domain === 'sessionsAttended');
