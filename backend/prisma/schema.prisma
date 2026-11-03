@@ -101,6 +101,7 @@ model User {
   partyRegionVisitsCreated  PartyRegionVisit[] @relation("VisitCreatedBy")
   campaignPins              UserCampaignPin[]
   hubAttentionDismissals    UserHubAttentionDismissal[]
+  wrappedSnapshots          UserWrappedSnapshot[]
   wikiPagesOwned            WikiPage[] @relation("WikiPageOwnerUser")
   wikiPagesCreated          WikiPage[] @relation("WikiPageCreatedBy")
   assetsUploaded            Asset[]    @relation("AssetUploadedBy")
@@ -2845,6 +2846,27 @@ model UserHubAttentionDismissal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, dismissKey])
+}
+
+/// Annual Wrapped calculation snapshot (metrics + slide IDs only; no titles/art).
+model UserWrappedSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  year           Int
+  schemaVersion  Int      @default(1)
+  /// preview | completed
+  edition        String
+  payload        Json
+  generatedAt    DateTime @default(now())
+  regeneratedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year])
+  @@index([userId, year])
 }
 
 // ---------------------------------------------------------------------------

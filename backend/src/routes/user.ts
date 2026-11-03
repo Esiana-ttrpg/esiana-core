@@ -45,6 +45,11 @@ import {
   getOwnerUserActivity,
 } from '../controllers/statsController.js';
 import {
+  getOwnerWrappedYear,
+  getOwnerWrappedYears,
+  postOwnerWrappedYearRegenerate,
+} from '../controllers/wrappedController.js';
+import {
   pinCampaign,
   reorderCampaignPins,
   unpinCampaign,
@@ -146,6 +151,9 @@ userRouter.get('/hub', getUserHub);
 userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
 userRouter.get('/statistics/export', getOwnerPersonalStatisticsExport);
 userRouter.get('/statistics', getOwnerPersonalStatistics);
+userRouter.get('/wrapped/years', getOwnerWrappedYears);
+userRouter.get('/wrapped/:year', getOwnerWrappedYear);
+userRouter.post('/wrapped/:year/regenerate', postOwnerWrappedYearRegenerate);
 userRouter.get('/activity', getOwnerUserActivity);
 userRouter.put('/campaigns/:campaignId/pin', pinCampaign);
 userRouter.delete('/campaigns/:campaignId/pin', unpinCampaign);
