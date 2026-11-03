@@ -22510,7 +22510,7 @@ paths:
   /api/users/{id}/wrapped/{year}:
     get:
       tags:
-        - Users
+        - Public Profiles
       summary: Get Published Wrapped Year Edition
       operationId: get_api_users_id_wrapped_year
       x-esiana-authorization:
