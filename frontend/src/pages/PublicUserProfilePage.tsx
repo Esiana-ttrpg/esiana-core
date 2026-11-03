@@ -252,6 +252,7 @@ export function PublicUserProfilePage() {
             <ProfileWritingTab
               attribution={attribution}
               displayName={profile.displayName ?? profile.username}
+              userId={id}
             />
           </div>
         ) : null}

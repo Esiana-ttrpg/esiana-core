@@ -35,6 +35,7 @@ import { YourCampaignsPage } from '@/pages/YourCampaignsPage';
 import { SchedulePage } from '@/pages/SchedulePage';
 import { CampaignDefaultEditorPage } from '@/pages/settings/CampaignDefaultEditorPage';
 import { PublicUserProfilePage } from '@/pages/PublicUserProfilePage';
+import { WrappedYearPage } from '@/pages/WrappedYearPage';
 import { CharacterPortfolioPage } from '@/pages/portfolio/CharacterPortfolioPage';
 import { PortfolioCharacterPage } from '@/pages/portfolio/PortfolioCharacterPage';
 import { ManagePortfolioPage } from '@/pages/portfolio/ManagePortfolioPage';
@@ -104,6 +105,7 @@ export default function App() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
             <Route path="users/:id" element={<PublicUserProfilePage />} />
+            <Route path="users/:id/wrapped/:year" element={<WrappedYearPage />} />
             <Route
               path="users/:id/characters/:characterId"
               element={<PublicPortfolioCharacterPage />}

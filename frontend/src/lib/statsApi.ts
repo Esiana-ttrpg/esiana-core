@@ -5,6 +5,10 @@ import type {
   PersonalStatisticsResponse,
   UserActivityResponse,
 } from '@shared/statsTypes';
+import type {
+  WrappedYearResponse,
+  WrappedYearsResponse,
+} from '@shared/wrappedTypes';
 import { apiFetch } from './api';
 
 export async function fetchPublicCreatorAttribution(
@@ -100,4 +104,22 @@ export async function fetchOwnerUserActivity(
   if (options?.before) params.set('before', options.before);
   const qs = params.toString();
   return apiFetch<UserActivityResponse>(`/user/activity${qs ? `?${qs}` : ''}`);
+}
+
+export async function fetchOwnerWrappedYears(): Promise<WrappedYearsResponse> {
+  return apiFetch<WrappedYearsResponse>('/user/wrapped/years');
+}
+
+export async function fetchOwnerWrappedYear(
+  year: number,
+): Promise<WrappedYearResponse> {
+  return apiFetch<WrappedYearResponse>(`/user/wrapped/${year}`);
+}
+
+export async function regenerateOwnerWrappedYear(
+  year: number,
+): Promise<WrappedYearResponse> {
+  return apiFetch<WrappedYearResponse>(`/user/wrapped/${year}/regenerate`, {
+    method: 'POST',
+  });
 }

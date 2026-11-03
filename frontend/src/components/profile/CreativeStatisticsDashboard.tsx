@@ -40,6 +40,7 @@ import { PeriodHeadlineCards } from '@/components/profile/stats/PeriodHeadlineCa
 import { MostWorkedOnGallery } from '@/components/profile/stats/MostWorkedOnGallery';
 import { ActiveCampaignsSection } from '@/components/profile/stats/ActiveCampaignsSection';
 import { ChronologyTimeline } from '@/components/profile/stats/ChronologyTimeline';
+import { WrappedArchiveSection } from '@/components/wrapped/WrappedArchiveSection';
 
 function formatFavoriteHour(hourUtc: number, locale: string): string {
   const date = new Date(Date.UTC(2020, 0, 1, hourUtc, 0));
@@ -52,9 +53,11 @@ function formatFavoriteHour(hourUtc: number, locale: string): string {
 export function CreativeStatisticsDashboard({
   attribution,
   displayName,
+  userId,
 }: {
   attribution: CreatorAttributionResponse | null;
   displayName: string;
+  userId: string;
 }) {
   const { t, i18n } = useTranslation();
   const customDefaults = useMemo(() => defaultCustomRange(), []);
@@ -254,6 +257,8 @@ export function CreativeStatisticsDashboard({
           <StatsEmptyState message={t('profile.creatorstats.loadError')} />
         ) : null}
       </header>
+
+      <WrappedArchiveSection userId={userId} />
 
       {!isAllTime && statistics && !chartsLoading ? (
         <PeriodHeadlineCards

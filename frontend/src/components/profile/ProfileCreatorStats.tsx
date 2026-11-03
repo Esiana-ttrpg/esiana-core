@@ -75,14 +75,17 @@ export function ProfileCreatorStatsOverview({
 export function ProfileWritingTab({
   attribution,
   displayName,
+  userId,
 }: {
   attribution: CreatorAttributionResponse | null;
   displayName: string;
+  userId: string;
 }) {
   return (
     <CreativeStatisticsDashboard
       attribution={attribution}
       displayName={displayName}
+      userId={userId}
     />
   );
 }
