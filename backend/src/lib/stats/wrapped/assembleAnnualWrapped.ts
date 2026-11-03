@@ -41,6 +41,12 @@ async function resolveReportingTimezone(userId: string): Promise<string> {
   });
 }
 
+function mapUnavailableReason(
+  reason: 'not_yet_tracked' | 'insufficient_data' | 'private',
+): WrappedCoverageStatus {
+  return reason === 'not_yet_tracked' ? 'not_yet_tracked' : 'unavailable';
+}
+
 function metricFamilyFromPeriod(
   stats: PersonalStatisticsResponse,
   family: WrappedCoverageIndicator['family'],
@@ -48,17 +54,19 @@ function metricFamilyFromPeriod(
   if (family === 'writing') {
     const words = stats.period['period.wordsAdded'];
     if (!words) return 'not_yet_tracked';
-    if (words.status === 'unavailable') return words.reason;
+    if (words.status === 'unavailable') return mapUnavailableReason(words.reason);
     if (words.status === 'partial') return 'partial';
     if (words.status === 'estimated') return 'reconstructed';
-    const viz = stats.visualizations?.heatmapDays;
+    const viz = stats.visualizations?.heatmap;
     if (viz?.some((d) => d.completeness === 'partial')) return 'partial';
     return 'measured';
   }
   if (family === 'participation') {
     const row = stats.participation.find((p) => p.domain === 'sessionsAttended');
     if (!row) return 'not_yet_tracked';
-    if (row.periodTotal.status === 'unavailable') return row.periodTotal.reason;
+    if (row.periodTotal.status === 'unavailable') {
+      return mapUnavailableReason(row.periodTotal.reason);
+    }
     return 'measured';
   }
   if (family === 'campaigns') {
@@ -70,19 +78,23 @@ function metricFamilyFromPeriod(
   if (family === 'worldbuilding') {
     const created = stats.period['period.pagesCreated'];
     if (!created) return 'not_yet_tracked';
-    if (created.status === 'unavailable') return created.reason;
+    if (created.status === 'unavailable') return mapUnavailableReason(created.reason);
     return 'measured';
   }
   if (family === 'cartography') {
     const row = stats.cartography[0];
     if (!row) return 'not_yet_tracked';
-    if (row.periodCreated.status === 'unavailable') return row.periodCreated.reason;
+    if (row.periodCreated.status === 'unavailable') {
+      return mapUnavailableReason(row.periodCreated.reason);
+    }
     return 'measured';
   }
   if (family === 'chronology') {
     const row = stats.chronology[0];
     if (!row) return 'not_yet_tracked';
-    if (row.periodCreated.status === 'unavailable') return row.periodCreated.reason;
+    if (row.periodCreated.status === 'unavailable') {
+      return mapUnavailableReason(row.periodCreated.reason);
+    }
     return 'measured';
   }
   return 'unavailable';
@@ -157,7 +169,7 @@ function byCampaignFromActive(
 function monthlyFromVisualizations(
   stats: PersonalStatisticsResponse,
 ): WrappedCalculationV1['monthlyActivity'] {
-  const days = stats.visualizations?.heatmapDays ?? [];
+  const days = stats.visualizations?.heatmap ?? [];
   const byMonth = new Map<number, { activeDays: number; contributions: number }>();
   for (let m = 1; m <= 12; m += 1) {
     byMonth.set(m, { activeDays: 0, contributions: 0 });
