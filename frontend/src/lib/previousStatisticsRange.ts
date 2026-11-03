@@ -64,16 +64,20 @@ function addDays(civil: CivilDate, deltaDays: number): CivilDate {
   };
 }
 
-function civilKeyInZone(date: Date, timeZone: string): string {
-  const parts = civilPartsInZone(date, timeZone);
-  return formatCivil(parts);
+function utcDayOrdinal(civil: CivilDate): number {
+  return Math.floor(Date.UTC(civil.year, civil.month - 1, civil.day) / 86_400_000);
+}
+
+/** Last civil day included by an exclusive end instant. */
+function lastIncludedCivil(end: Date, timeZone: string): CivilDate {
+  return civilPartsInZone(new Date(end.getTime() - 1), timeZone);
 }
 
 /**
  * Preceding comparable window for period deltas and dual-series charts.
  * - month: prior calendar month, same elapsed civil days
  * - year: prior calendar year, same elapsed civil days
- * - custom: equivalent elapsed duration ending at the current window start
+ * - custom: equivalent civil-day span ending at the current window start
  * All-time has no comparison.
  *
  * Custom `to` is an exclusive civil day (matches statistics range API).
@@ -93,7 +97,7 @@ export function previousComparableQuery(input: {
   if (input.mode === 'month' || input.mode === 'year') {
     const deltaMonths = input.mode === 'month' ? -1 : -12;
     const startCivil = civilPartsInZone(start, input.timeZone);
-    const endCivil = civilPartsInZone(end, input.timeZone);
+    const endCivil = lastIncludedCivil(end, input.timeZone);
     const prevStart = addMonths(startCivil, deltaMonths);
     const prevEndDay = addMonths(
       { year: endCivil.year, month: endCivil.month, day: endCivil.day },
@@ -108,13 +112,15 @@ export function previousComparableQuery(input: {
     };
   }
 
-  const durationMs = end.getTime() - start.getTime();
-  const prevEnd = start;
-  const prevStart = new Date(prevEnd.getTime() - durationMs);
+  const startCivil = civilPartsInZone(start, input.timeZone);
+  const lastIncluded = lastIncludedCivil(end, input.timeZone);
+  const dayCount = utcDayOrdinal(lastIncluded) - utcDayOrdinal(startCivil) + 1;
+  if (dayCount <= 0) return null;
+  const prevStart = addDays(startCivil, -dayCount);
   return {
     range: 'custom',
-    from: civilKeyInZone(prevStart, input.timeZone),
-    to: civilKeyInZone(prevEnd, input.timeZone),
+    from: formatCivil(prevStart),
+    to: formatCivil(startCivil),
   };
 }
 
@@ -152,17 +158,17 @@ export function formatPeriodWindowLabel(input: {
   if (input.mode === 'all_time') return null;
 
   const end = new Date(input.end);
-  const endCivil = civilPartsInZone(end, input.timeZone);
+  const start = input.start ? new Date(input.start) : end;
+  const yearAnchor = input.start ? start : end;
 
   if (input.mode === 'year') {
     return new Intl.DateTimeFormat(input.locale, {
       timeZone: input.timeZone,
       year: 'numeric',
-    }).format(end);
+    }).format(yearAnchor);
   }
 
   if (input.mode === 'month') {
-    const start = input.start ? new Date(input.start) : end;
     return new Intl.DateTimeFormat(input.locale, {
       timeZone: input.timeZone,
       month: 'long',
@@ -170,7 +176,7 @@ export function formatPeriodWindowLabel(input: {
     }).format(start);
   }
 
-  const start = input.start ? new Date(input.start) : end;
+  const lastIncluded = new Date(end.getTime() - 1);
   const startLabel = new Intl.DateTimeFormat(input.locale, {
     timeZone: input.timeZone,
     month: 'short',
@@ -182,7 +188,7 @@ export function formatPeriodWindowLabel(input: {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(end);
+  }).format(lastIncluded);
   if (startLabel === endLabel) return startLabel;
   return `${startLabel} – ${endLabel}`;
 }
@@ -196,13 +202,15 @@ export function formatShortPeriodWindowLabel(input: {
   locale: string;
 }): string | null {
   if (!input.start && input.mode !== 'year') return null;
-  const anchor = input.start ? new Date(input.start) : new Date(input.end);
+  const end = new Date(input.end);
+  const start = input.start ? new Date(input.start) : end;
+  const yearAnchor = input.start ? start : end;
 
   if (input.mode === 'year') {
     return new Intl.DateTimeFormat(input.locale, {
       timeZone: input.timeZone,
       year: 'numeric',
-    }).format(new Date(input.end));
+    }).format(yearAnchor);
   }
 
   if (input.mode === 'month') {
@@ -210,7 +218,7 @@ export function formatShortPeriodWindowLabel(input: {
       timeZone: input.timeZone,
       month: 'short',
       year: 'numeric',
-    }).format(anchor);
+    }).format(start);
   }
 
   return new Intl.DateTimeFormat(input.locale, {
@@ -218,7 +226,7 @@ export function formatShortPeriodWindowLabel(input: {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-  }).format(anchor);
+  }).format(start);
 }
 
 export function formatPeriodComparisonCaption(input: {

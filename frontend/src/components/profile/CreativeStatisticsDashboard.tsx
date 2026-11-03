@@ -19,6 +19,7 @@ import {
 import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
 import {
   defaultCustomRange,
+  nextCivilDayKey,
   StatisticsRangeControls,
   type StatisticsRangeSelection,
 } from '@/components/profile/StatisticsRangeControls';
@@ -74,10 +75,15 @@ export function CreativeStatisticsDashboard({
     if (selection.mode !== 'custom') {
       return { range: selection.mode };
     }
-    if (!selection.from || !selection.to || selection.from >= selection.to) {
+    // UI dates are inclusive; API `to` is exclusive start-of-day.
+    if (!selection.from || !selection.to || selection.from > selection.to) {
       return null;
     }
-    return { range: 'custom' as const, from: selection.from, to: selection.to };
+    return {
+      range: 'custom' as const,
+      from: selection.from,
+      to: nextCivilDayKey(selection.to),
+    };
   }, [selection]);
 
   useEffect(() => {

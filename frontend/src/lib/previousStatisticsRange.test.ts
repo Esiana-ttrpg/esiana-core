@@ -47,6 +47,35 @@ describe('previousComparableQuery', () => {
       null,
     );
   });
+
+  it('measures custom windows in civil days, not elapsed ms', () => {
+    // Inclusive Oct 1–3 → exclusive end Oct 4 00:00 PDT (3 civil days).
+    const prior = previousComparableQuery({
+      mode: 'custom',
+      start: '2026-10-01T07:00:00.000Z',
+      end: '2026-10-04T07:00:00.000Z',
+      timeZone: 'America/Los_Angeles',
+    });
+    assert.deepEqual(prior, {
+      range: 'custom',
+      from: '2026-09-28',
+      to: '2026-10-01',
+    });
+  });
+
+  it('uses last included day when end is exclusive midnight', () => {
+    const prior = previousComparableQuery({
+      mode: 'month',
+      start: '2026-11-01T07:00:00.000Z',
+      end: '2026-11-03T07:00:00.000Z',
+      timeZone: 'America/Los_Angeles',
+    });
+    assert.deepEqual(prior, {
+      range: 'custom',
+      from: '2026-10-01',
+      to: '2026-10-03',
+    });
+  });
 });
 
 describe('possessiveName', () => {

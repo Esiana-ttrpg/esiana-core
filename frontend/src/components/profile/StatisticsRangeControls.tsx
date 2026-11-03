@@ -20,6 +20,19 @@ export function defaultCustomRange(): { from: string; to: string } {
   return { from: localDateKey(from), to: localDateKey(to) };
 }
 
+/** Inclusive civil `YYYY-MM-DD` → next civil day for exclusive API `to`. */
+export function nextCivilDayKey(dateKey: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey.trim());
+  if (!match) return dateKey;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const next = new Date(Date.UTC(year, month - 1, day + 1));
+  return localDateKey(
+    new Date(next.getUTCFullYear(), next.getUTCMonth(), next.getUTCDate()),
+  );
+}
+
 export function StatisticsRangeControls({
   selection,
   onChange,

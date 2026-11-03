@@ -57,10 +57,10 @@ import {
   buildWorldbuildingMix,
 } from '../assembleLifetimeAttribution.js';
 import { selectScopedCampaignIds } from './visibility.js';
-import { campaignFreeformPagePath } from '../../../../../shared/campaignWorkspaceRoutes.js';
 import { uniqueDocumentIds } from '../../../../../shared/writingSession.js';
 import { buildCampaignContextSync } from '../../campaignScopeContext.js';
 import { canViewWikiPage, type WikiVisibilityViewer } from '../../wikiTree.js';
+import { buildWikiPageHref } from '../../wikiLinkService.js';
 import {
   assembleWritingVisualizations,
   emptyWritingVisualizations,
@@ -634,8 +634,12 @@ async function loadParticipationProjection(input: {
   });
 
   const playSessions: Array<{ campaignId: string; at: Date }> = [];
+  const seenPlayPoints = new Set<string>();
   for (const row of [...sessionsAttended, ...sessionsHosted]) {
     if (row.plannedStartAt == null) continue;
+    // Same merge key as buildParticipationHistory — one point per timeline session.
+    if (seenPlayPoints.has(row.timelinePointId)) continue;
+    seenPlayPoints.add(row.timelinePointId);
     playSessions.push({ campaignId: row.campaignId, at: row.plannedStartAt });
   }
 
@@ -742,6 +746,9 @@ export async function queryPersonalStatistics(
     input.visibility === 'owner' &&
     !skipPeriod &&
     input.includeVisualizations !== false;
+  // Owner period queries still need writing sessions for active-campaign ranking
+  // even when chart visualizations are disabled.
+  const loadVisualizationSessions = input.visibility === 'owner' && !skipPeriod;
   const linkableCampaigns = await resolveLinkableCampaigns(input.userId, input.viewerId);
 
   if (campaignIds.length === 0) {
@@ -815,7 +822,7 @@ export async function queryPersonalStatistics(
     rangeEnd: range.end,
   });
   const loadContributions = contributionWindow != null;
-  const vizWindow = includeVisualizations
+  const vizWindow = loadVisualizationSessions
     ? visualizationQueryWindow({
         rangeStart: range.start,
         rangeEnd: range.end,
@@ -1365,6 +1372,10 @@ export function selectVisibleVisualizationDocuments(
     visibility: string;
     campaignId: string;
     handle: string;
+    parentId?: string | null;
+    templateType?: string | null;
+    workspace?: string | null;
+    metadata?: unknown;
     thumbnailUrl?: string | null;
   }>,
   capabilitiesByCampaign: Map<string, WikiVisibilityViewer>,
@@ -1379,7 +1390,15 @@ export function selectVisibleVisualizationDocuments(
     documents.set(page.id, {
       id: page.id,
       title: page.title,
-      href: campaignFreeformPagePath(page.handle, page.pathKey ?? page.id),
+      href: buildWikiPageHref(page.handle, {
+        id: page.id,
+        title: page.title,
+        parentId: page.parentId ?? null,
+        templateType: page.templateType ?? '',
+        workspace: page.workspace,
+        pathKey: page.pathKey,
+        metadata: page.metadata,
+      }),
       thumbnailUrl: page.thumbnailUrl ?? null,
     });
   }
@@ -1472,6 +1491,10 @@ async function resolveVisualizationDocuments(
       id: true,
       title: true,
       pathKey: true,
+      parentId: true,
+      templateType: true,
+      workspace: true,
+      metadata: true,
       visibility: true,
       campaignId: true,
       campaign: { select: { handle: true } },
@@ -1497,6 +1520,10 @@ async function resolveVisualizationDocuments(
         id: page.id,
         title: page.title,
         pathKey: page.pathKey,
+        parentId: page.parentId,
+        templateType: page.templateType,
+        workspace: page.workspace,
+        metadata: page.metadata,
         visibility: page.visibility,
         campaignId: page.campaignId,
         handle: page.campaign.handle,
