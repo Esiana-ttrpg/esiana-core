@@ -178,7 +178,7 @@ export async function getOwnerPersonalStatisticsExport(
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader(
         'Content-Disposition',
-        'attachment; filename="esiana-writing-statistics.csv"',
+        'attachment; filename="esiana-personal-statistics.csv"',
       );
       res.send(renderPersonalStatisticsExportCsv(payload));
       return;
@@ -186,7 +186,7 @@ export async function getOwnerPersonalStatisticsExport(
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
-      'attachment; filename="esiana-writing-statistics.json"',
+      'attachment; filename="esiana-personal-statistics.json"',
     );
     res.json(payload);
   } catch (error) {

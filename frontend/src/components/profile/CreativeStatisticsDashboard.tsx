@@ -412,6 +412,9 @@ export function CreativeStatisticsDashboard({
 
       <section className="space-y-3 border-t border-border pt-6">
         <h3 className="text-sm text-foreground">{t('profile.creatorstats.exportSection')}</h3>
+        <p className="max-w-2xl text-sm text-muted">
+          {t('profile.creatorstats.exportHelp')}
+        </p>
         <div className="flex flex-wrap gap-3">
           <button
             type="button"

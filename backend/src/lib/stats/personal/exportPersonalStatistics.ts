@@ -266,13 +266,15 @@ export function renderPersonalStatisticsExportCsv(
   payload: PersonalStatisticsExportJson,
 ): string {
   const header = [
-    '# Esiana writing statistics export v1',
+    '# Esiana personal statistics export v1',
     `# exportedAt=${payload.exportedAt}`,
     `# timeZone=${payload.timeZone}`,
     `# range.mode=${payload.range.mode}`,
     `# range.start=${payload.range.start ?? ''}`,
     `# range.end=${payload.range.end}`,
     `# campaignId=${payload.campaignId ?? ''}`,
+    '# sections=metricDefinitions,snapshot,period,habits,worldbuilding,cartography,chronology,participation,participationHistory,archetypes,contributions,dailyAggregates,writingSessions',
+    '# units=words,minutes,ms,civil-dates; timestamps=UTC ISO-8601; dailyAggregates.date=reporting-timezone civil day',
     ...payload.provenance.notes.map((note) => `# ${note}`),
   ].join('\n');
 
@@ -428,13 +430,14 @@ export function renderPersonalStatisticsExportCsv(
   );
 
   const archetypes = csvTable(
-    ['rulesetVersion', 'dominantId', 'id', 'score'],
+    ['rulesetVersion', 'dominantId', 'id', 'score', 'availability'],
     payload.archetypes
       ? payload.archetypes.scores.map((row) => [
           payload.archetypes!.rulesetVersion,
           payload.archetypes!.dominantId,
           row.id,
           row.score,
+          row.availability,
         ])
       : [],
   );

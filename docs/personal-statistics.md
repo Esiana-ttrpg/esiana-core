@@ -356,7 +356,14 @@ They are omitted from public profiles and from `/creator-attribution`.
 
 Charts are custom SVG on surface tokens (`--stats-writing` and the small category palette). Each chart ships a table alternative. Heatmaps, hours, session history, and private titles stay owner-only.
 
-`GET /api/user/statistics/export?format=json|csv&version=1` is owner-only. JSON and CSV both include metric definitions, snapshot / period / habit values, provenance, availability states, writing contributions, daily aggregates, and writing sessions. Unmatched historical `NarrativeEvent` wordDelta rows are reconstructed as net-only contribution details (deduped on `narrativeEventId`). It never includes document bodies, private titles, other users' activity, or campaign names. Campaigns appear as ids only. Heatmap document links run through `canViewWikiPage` with per-campaign capabilities.
+`GET /api/user/statistics/export?format=json|csv&version=1` is owner-only.
+Milestone A shipped writing contributions, daily aggregates, and sessions.
+Pass 6–10 added companion domains to the same export; Pass 12 documents the
+full multi-domain contract. Unmatched historical `NarrativeEvent` wordDelta
+rows are reconstructed as net-only contribution details (deduped on
+`narrativeEventId`). It never includes document bodies, private titles, other
+users' activity, or campaign names. Campaigns appear as ids only. Heatmap
+document links run through `canViewWikiPage` with per-campaign capabilities.
 
 ## Pass 6 — Worldbuilding aggregations
 
@@ -500,3 +507,56 @@ Visual storytelling (Hardcover-inspired, presentation-only):
 
 Exports and the shared statistics API remain the contract; previous-period
 comparisons reuse the same owner statistics endpoint.
+
+## Pass 12 — Comprehensive exports and validation
+
+Same owner service, range, privacy, and timezone rules. Locked 13 IDs
+unchanged. `GET /api/user/creator-attribution` and
+`GET /api/users/:id/creator-attribution` remain as compatibility adapters.
+
+### Export contract (`version=1`)
+
+`GET /api/user/statistics/export?format=json|csv&version=1&range=&from=&to=&campaignId=`
+is **owner-only** (authenticated subject = export subject). There is no
+privileged cross-user export on this route.
+
+| Field / section | Unit / shape | Notes |
+| --- | --- | --- |
+| `version` | integer `1` | Bump only with an additive schema change |
+| `exportedAt` | UTC ISO-8601 | Generation time |
+| `timeZone` | IANA id | Resolved via `resolveEffectiveTimezone`; never a query override |
+| `range` | `mode`, `start`, `end` | Half-open; `start` null for all-time; timestamps UTC |
+| `campaignId` | string \| null | Optional membership-scoped filter |
+| `provenance` | `timestamps: UTC`, `reportingClock: real_world`, notes[] | Interprets units and incompleteness |
+| `metricDefinitions[]` | registry fields | unit, source, timeSemantics, attribution, completeness, clock, aggregation |
+| `snapshot` / `period` / `habits` | `MetricValue` map | status + amount or unavailable reason |
+| `worldbuilding[]` / `cartography[]` / `chronology[]` / `participation[]` | domain rows | Same companion shapes as the statistics API |
+| `participationHistory[]` | session ids + planned times | No titles |
+| `archetypes` | rulesetVersion, dominantId, scores[{id,score,availability}] | `score: null` when unavailable |
+| `contributions[]` | words added/removed/net | Includes reconstructed net-only historical rows |
+| `dailyAggregates[]` | civil `date` in `timeZone` | words, sessionCount, sessionMinutes, completeness |
+| `writingSessions[]` | `activeDurationMs` | Focused union only; idle gaps excluded |
+
+CSV is sectioned (`[worldbuilding]`, `[cartography]`, …) with the same
+domains. Comment headers document sections, units, and civil-day semantics.
+Filenames: `esiana-personal-statistics.{json,csv}`.
+
+**Never exported:** document bodies, private titles, campaign names,
+visualizations, active-campaign artwork, other users’ activity, or
+hidden-campaign metadata beyond opaque campaign ids the owner already knows.
+
+### Validation coverage
+
+| Concern | Where it is enforced |
+| --- | --- |
+| Ranges and time zones | `reportingRange.test.ts`, `zonedTime.test.ts`; custom `to` exclusive |
+| Attribution / privacy | `visibility.test.ts`; public aggregates exclude private campaigns |
+| Session idle exclusion | `shared/writingSession.test.ts` — 15-minute idle ends sessions; blur closes intervals without idle tail |
+| Multi-tab dedupe | Same — overlapping tab intervals union, do not sum |
+| Historical incompleteness | Export reconstruction tests; `availability` / day `completeness` |
+| Permission / scope changes | Membership + discoverability re-projected each query; out-of-scope `campaignId` → unknown empty set |
+| Export / API parity | Export JSON mirrors companion domains from `queryPersonalStatistics`; charts (`visualizations`, `activeCampaigns`) stay screen-only |
+| Accessible chart alternatives | Writing + domain charts ship `sr-only` lists or visible tables; tendencies include a text list under the radar |
+| Performance bounds | Lifetime heatmap clips to 371 civil days; export skips visualization assembly |
+
+Owner Statistics UI downloads use the same range params as the dashboard.
