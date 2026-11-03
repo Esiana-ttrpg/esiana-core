@@ -669,32 +669,32 @@ export function NewCampaignWizard({
       aria-modal="true"
       aria-labelledby="new-campaign-wizard-title"
     >
-      <div className="flex min-h-full items-center justify-center p-4">
-      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
-          <div>
+      <div className="flex min-h-full items-stretch justify-center sm:items-center sm:p-4">
+      <div className="flex h-[100dvh] max-h-[100dvh] w-full max-w-5xl flex-col overflow-hidden border-0 border-border bg-surface shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:border">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0 pr-3">
             <h2
               id="new-campaign-wizard-title"
-              className="flex items-center gap-2 text-xl font-semibold text-foreground"
+              className="flex items-center gap-2 text-lg font-semibold text-foreground sm:text-xl"
             >
-              <Plus className="size-5 text-primary" />
-              New Campaign Wizard
+              <Plus className="size-5 shrink-0 text-primary" />
+              <span className="truncate">New Campaign Wizard</span>
             </h2>
-            <p className="mt-1 text-sm text-muted">
+            <p className="mt-1 hidden text-sm text-muted sm:block">
               Build a campaign foundation, import your lore, and launch access controls.
             </p>
           </div>
           <button
             type="button"
             onClick={handleResetAndClose}
-            className="rounded-lg p-1.5 text-muted transition-colors hover:bg-elevated hover:text-foreground"
+            className="shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-elevated hover:text-foreground"
             aria-label="Close new campaign wizard"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        <div className="shrink-0 border-b border-border px-6 py-4">
+        <div className="shrink-0 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
           {!createdCampaign ? (
             <WizardStepNav
               steps={steps}
@@ -708,7 +708,7 @@ export function NewCampaignWizard({
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           {createdCampaign ? (
             <WizardCreatedPanel
               campaign={createdCampaign}
@@ -1489,7 +1489,7 @@ export function NewCampaignWizard({
         </div>
 
         {!createdCampaign ? (
-        <div className="flex shrink-0 items-center justify-between border-t border-border px-6 py-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3 sm:px-6 sm:py-4">
           <button
             type="button"
             onClick={step === 0 ? handleResetAndClose : handleBack}
@@ -1498,7 +1498,7 @@ export function NewCampaignWizard({
             {step === 0 ? 'Cancel' : 'Back'}
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {steps[step]?.optional ? (
               <button
                 type="button"
@@ -1523,7 +1523,7 @@ export function NewCampaignWizard({
             {currentStepId === 'review'
               ? submitting
                 ? 'Creating…'
-                : 'Confirm & Create Campaign'
+                : 'Create Campaign'
               : 'Next'}
           </button>
           </div>
