@@ -415,7 +415,9 @@ function SignatureSlide({ data, t }: WrappedSlideProps) {
     <SlideShell title={t('profile.wrapped.slides.signatureAchievement')}>
       {dominant ? (
         <p className="text-2xl font-semibold sm:text-3xl">
-          {t('profile.wrapped.slides.archetype', { archetype: dominant })}
+          {t('profile.wrapped.slides.archetype', {
+            archetype: t(`profile.creatorstats.archetypes.${dominant}`),
+          })}
         </p>
       ) : (
         <p className="text-muted-foreground">{t('profile.wrapped.slides.summaryLead')}</p>

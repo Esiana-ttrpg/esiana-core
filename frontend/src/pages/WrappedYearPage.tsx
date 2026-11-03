@@ -60,7 +60,7 @@ export function WrappedYearPage() {
     return <Navigate to={`/users/${id}`} replace />;
   }
 
-  if (!Number.isInteger(year) || year < 2000) {
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     return <Navigate to={`/users/${id}?tab=writing`} replace />;
   }
 

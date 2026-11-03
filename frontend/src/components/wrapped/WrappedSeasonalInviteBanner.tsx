@@ -20,6 +20,13 @@ export function WrappedSeasonalInviteBanner() {
   const { user, isAuthenticated } = useAuth();
   const [invite, setInvite] = useState<SeasonalInvite | null>(null);
   const [hidden, setHidden] = useState(false);
+  const accountId = user?.id ?? null;
+
+  // Reset local dismiss when the signed-in account changes so a new account
+  // can see its invite; same-account refreshes keep the dismissal.
+  useEffect(() => {
+    setHidden(false);
+  }, [accountId]);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {

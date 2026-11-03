@@ -1,3 +1,4 @@
+import { Prisma } from '../../prismaClient.js';
 import type {
   WrappedCalculationV1,
   WrappedYearResponse,
@@ -12,7 +13,11 @@ import {
   assembleAnnualWrapped,
   isWrappedYearEligible,
 } from './assembleAnnualWrapped.js';
-import { civilYearNow, resolveWrappedEdition } from './editionState.js';
+import {
+  civilYearNow,
+  hasWrappedYearStarted,
+  resolveWrappedEdition,
+} from './editionState.js';
 import { reauthorizeWrappedPresentation } from './reauthorizeWrappedPresentation.js';
 
 async function resolveReportingTimezone(userId: string): Promise<string> {
@@ -31,6 +36,23 @@ async function resolveReportingTimezone(userId: string): Promise<string> {
 
 function parseCalculation(payload: unknown): WrappedCalculationV1 {
   return payload as WrappedCalculationV1;
+}
+
+function unstartedYearSummary(input: {
+  year: number;
+  edition: 'preview' | 'completed';
+}): WrappedYearSummary {
+  return {
+    year: input.year,
+    eligible: false,
+    editionTier: 'unavailable',
+    edition: input.edition,
+    coverageDisclosure: {
+      writingReliableFrom: null,
+      isPartialYearWriting: false,
+    },
+    reasons: ['year_not_started'],
+  };
 }
 
 /**
@@ -63,7 +85,9 @@ export async function listWrappedYears(input: {
   for (const year of years) {
     const edition = resolveWrappedEdition({ year, timeZone, now });
     const existing = byYear.get(year);
-    if (existing && edition === 'completed') {
+    // Only reuse stored payload when both the request and the row are completed.
+    // Preview-stored rows must be recomputed so the archive reflects completed metrics.
+    if (existing && existing.edition === 'completed' && edition === 'completed') {
       const calc = parseCalculation(existing.payload);
       summaries.push({
         year,
@@ -78,7 +102,7 @@ export async function listWrappedYears(input: {
       continue;
     }
 
-    // Preview years (or missing completed): assemble live for eligibility.
+    // Preview years (or missing/preview-stored completed): assemble live.
     const calc = await assembleAnnualWrapped({
       userId: input.userId,
       year,
@@ -103,31 +127,68 @@ async function persistSnapshot(input: {
   userId: string;
   calc: WrappedCalculationV1;
   regenerated: boolean;
-}): Promise<{ generatedAt: Date; regeneratedAt: Date | null }> {
+}): Promise<{
+  calc: WrappedCalculationV1;
+  generatedAt: Date;
+  regeneratedAt: Date | null;
+}> {
   const now = new Date(input.calc.generatedAt);
-  const existing = await prisma.userWrappedSnapshot.findUnique({
+  let existing = await prisma.userWrappedSnapshot.findUnique({
     where: {
       userId_year: { userId: input.userId, year: input.calc.year },
     },
   });
 
   if (!existing) {
-    const created = await prisma.userWrappedSnapshot.create({
-      data: {
-        userId: input.userId,
-        year: input.calc.year,
-        schemaVersion: WRAPPED_SCHEMA_VERSION,
-        edition: input.calc.edition,
-        payload: input.calc as object,
-        generatedAt: now,
-      },
-    });
-    return { generatedAt: created.generatedAt, regeneratedAt: null };
+    try {
+      const created = await prisma.userWrappedSnapshot.create({
+        data: {
+          userId: input.userId,
+          year: input.calc.year,
+          schemaVersion: WRAPPED_SCHEMA_VERSION,
+          edition: input.calc.edition,
+          payload: input.calc as object,
+          generatedAt: now,
+        },
+      });
+      return {
+        calc: input.calc,
+        generatedAt: created.generatedAt,
+        regeneratedAt: null,
+      };
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== 'P2002'
+      ) {
+        throw error;
+      }
+      existing = await prisma.userWrappedSnapshot.findUniqueOrThrow({
+        where: {
+          userId_year: { userId: input.userId, year: input.calc.year },
+        },
+      });
+    }
   }
 
-  const regeneratedAt = input.regenerated || existing.edition !== input.calc.edition
-    ? now
-    : existing.regeneratedAt;
+  // Concurrent create lost the race: preserve an already-completed row on
+  // non-regeneration reads instead of overwriting frozen metrics.
+  if (
+    !input.regenerated &&
+    existing.edition === 'completed' &&
+    input.calc.edition === 'completed'
+  ) {
+    return {
+      calc: parseCalculation(existing.payload),
+      generatedAt: existing.generatedAt,
+      regeneratedAt: existing.regeneratedAt,
+    };
+  }
+
+  const regeneratedAt =
+    input.regenerated || existing.edition !== input.calc.edition
+      ? now
+      : existing.regeneratedAt;
 
   const updated = await prisma.userWrappedSnapshot.update({
     where: { id: existing.id },
@@ -143,6 +204,7 @@ async function persistSnapshot(input: {
     },
   });
   return {
+    calc: input.calc,
     generatedAt: updated.generatedAt,
     regeneratedAt: updated.regeneratedAt,
   };
@@ -160,6 +222,13 @@ export async function getWrappedYear(input: {
     timeZone,
     now,
   });
+
+  if (!hasWrappedYearStarted({ year: input.year, timeZone, now })) {
+    return {
+      unavailable: true,
+      summary: unstartedYearSummary({ year: input.year, edition }),
+    };
+  }
 
   const existing = await prisma.userWrappedSnapshot.findUnique({
     where: {
@@ -188,6 +257,7 @@ export async function getWrappedYear(input: {
       calc,
       regenerated: false,
     });
+    calc = saved.calc;
     generatedAt = saved.generatedAt;
     regeneratedAt = saved.regeneratedAt;
   } else {
@@ -203,6 +273,7 @@ export async function getWrappedYear(input: {
       calc,
       regenerated: false,
     });
+    calc = saved.calc;
     generatedAt = saved.generatedAt;
     regeneratedAt = saved.regeneratedAt;
   }
@@ -242,6 +313,13 @@ export async function regenerateWrappedYear(input: {
     now,
   });
 
+  if (!hasWrappedYearStarted({ year: input.year, timeZone, now })) {
+    return {
+      unavailable: true,
+      summary: unstartedYearSummary({ year: input.year, edition }),
+    };
+  }
+
   let calc = await assembleAnnualWrapped({
     userId: input.userId,
     year: input.year,
@@ -255,6 +333,8 @@ export async function regenerateWrappedYear(input: {
     regenerated: true,
   });
 
+  // Keep regenerate's local calculation for eligibility/response; only timestamps
+  // come from persistence (do not swap in a concurrent completed row here).
   if (!isWrappedYearEligible(calc)) {
     return {
       unavailable: true,

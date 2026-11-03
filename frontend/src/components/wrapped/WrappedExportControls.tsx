@@ -2,10 +2,12 @@ import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { WrappedFinalCardPreset, WrappedYearResponse } from '@shared/wrappedTypes';
+import { fetchOwnerWrappedYear } from '@/lib/statsApi';
 import { WrappedFinalExportCard } from './WrappedFinalExportCard';
 import {
   assertNoCampaignIdsInShareModel,
   buildShareSafeFinalCard,
+  type ShareSafeFinalCardModel,
 } from './shareSafeFields';
 import { captureWrappedPng, shareOrDownloadWrappedPng } from './exportWrappedPng';
 
@@ -15,20 +17,35 @@ const PRESETS: WrappedFinalCardPreset[] = [
   'storyteller',
 ];
 
+function waitForNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 export function WrappedExportControls({ data }: { data: WrappedYearResponse }) {
   const { t, i18n } = useTranslation();
   const [preset, setPreset] = useState<WrappedFinalCardPreset>('storyteller');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportModel, setExportModel] = useState<ShareSafeFinalCardModel>(() =>
+    buildShareSafeFinalCard(data, 'storyteller'),
+  );
   const exportHostRef = useRef<HTMLDivElement>(null);
 
-  const model = buildShareSafeFinalCard(data, preset);
+  const previewModel = buildShareSafeFinalCard(data, preset);
 
   const runExport = async () => {
     setBusy(true);
     setError(null);
     try {
+      const fresh = await fetchOwnerWrappedYear(data.year);
+      const model = buildShareSafeFinalCard(fresh, preset);
       assertNoCampaignIdsInShareModel(model);
+      setExportModel(model);
+      await waitForNextPaint();
       const node = exportHostRef.current?.querySelector(
         '[data-wrapped-export-root="true"]',
       ) as HTMLElement | null;
@@ -36,8 +53,8 @@ export function WrappedExportControls({ data }: { data: WrappedYearResponse }) {
       const blob = await captureWrappedPng(node);
       await shareOrDownloadWrappedPng({
         blob,
-        year: data.year,
-        title: t('profile.wrapped.title', { year: data.year }),
+        year: fresh.year,
+        title: t('profile.wrapped.title', { year: fresh.year }),
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
@@ -68,7 +85,7 @@ export function WrappedExportControls({ data }: { data: WrappedYearResponse }) {
           </button>
         ))}
       </div>
-      <WrappedFinalExportCard model={model} t={t} locale={i18n.language} />
+      <WrappedFinalExportCard model={previewModel} t={t} locale={i18n.language} />
       <button
         type="button"
         disabled={busy}
@@ -94,7 +111,7 @@ export function WrappedExportControls({ data }: { data: WrappedYearResponse }) {
           }}
         >
           <WrappedFinalExportCard
-            model={model}
+            model={exportModel}
             t={t}
             locale={i18n.language}
             exportMode

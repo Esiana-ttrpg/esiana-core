@@ -23,6 +23,20 @@ export function civilYearNow(timeZone: string, now: Date): number {
 }
 
 /**
+ * True when the calendar year has started in the reporting timezone
+ * (Jan 1 of `year` is at or before `now`). Future years must not enter
+ * preview assembly — their reporting ranges would invert.
+ */
+export function hasWrappedYearStarted(input: {
+  year: number;
+  timeZone: string;
+  now: Date;
+}): boolean {
+  const yearStart = zonedTimeToUtc(input.timeZone, input.year, 1, 1);
+  return input.now.getTime() >= yearStart.getTime();
+}
+
+/**
  * Seasonal invite target year:
  * Dec 15–31 → current local year (preview)
  * Jan 1–15 → previous local year (completed)

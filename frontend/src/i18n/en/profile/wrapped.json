@@ -12,6 +12,7 @@
   "profile.wrapped.progress": "{{current}} of {{total}}",
   "profile.wrapped.archiveHeading": "Yearly Wrapped",
   "profile.wrapped.archiveHelp": "A storytelling retrospective of your year across Esiana.",
+  "profile.wrapped.archiveRetry": "Try again",
   "profile.wrapped.openYear": "Wrapped {{year}}",
   "profile.wrapped.openPreview": "Wrapped {{year}} (in progress)",
   "profile.wrapped.slideCounter": "Slide {{current}} of {{total}}",

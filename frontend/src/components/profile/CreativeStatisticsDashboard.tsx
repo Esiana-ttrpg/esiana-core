@@ -145,7 +145,12 @@ export function CreativeStatisticsDashboard({
   };
 
   if (!attribution) {
-    return <StatsEmptyState message={t('profile.creatorstats.emptyEarly')} />;
+    return (
+      <div className="space-y-6">
+        <StatsEmptyState message={t('profile.creatorstats.emptyEarly')} />
+        <WrappedArchiveSection userId={userId} />
+      </div>
+    );
   }
 
   const isAllTime = selection.mode === 'all_time';

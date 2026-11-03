@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  hasWrappedYearStarted,
   resolveSeasonalWrappedTargetYear,
   resolveWrappedEdition,
   wrappedInviteDismissKey,
@@ -33,6 +34,30 @@ describe('resolveWrappedEdition', () => {
       now: new Date('2027-01-01T04:30:00.000Z'),
     });
     assert.equal(edition, 'preview');
+  });
+});
+
+describe('hasWrappedYearStarted', () => {
+  it('rejects future calendar years that have not started locally', () => {
+    assert.equal(
+      hasWrappedYearStarted({
+        year: 2027,
+        timeZone: 'UTC',
+        now: new Date('2026-11-02T12:00:00.000Z'),
+      }),
+      false,
+    );
+  });
+
+  it('accepts the current local year', () => {
+    assert.equal(
+      hasWrappedYearStarted({
+        year: 2026,
+        timeZone: 'UTC',
+        now: new Date('2026-11-02T12:00:00.000Z'),
+      }),
+      true,
+    );
   });
 });
 

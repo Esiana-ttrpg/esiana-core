@@ -35,11 +35,21 @@ export function shareSafeArtworkUrl(
   return url;
 }
 
+const FONT_READY_TIMEOUT_MS = 1500;
+
 export async function waitForDocumentFonts(): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts?.ready) return;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
-    await document.fonts.ready;
+    await Promise.race([
+      document.fonts.ready,
+      new Promise<void>((resolve) => {
+        timeoutId = setTimeout(resolve, FONT_READY_TIMEOUT_MS);
+      }),
+    ]);
   } catch {
     // Font readiness is best-effort for export fidelity.
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
   }
 }

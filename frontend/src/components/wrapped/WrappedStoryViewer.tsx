@@ -7,6 +7,22 @@ import {
   WRAPPED_VISUALIZATION_REGISTRY,
   type WrappedSlideProps,
 } from './WrappedSlideVisualizations';
+import { shouldDeferSlideAdvanceKey } from './wrappedStoryViewerKeys';
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'textarea:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+function listFocusable(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (el) => el.offsetParent !== null || el === document.activeElement,
+  );
+}
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() =>
@@ -39,6 +55,7 @@ export function WrappedStoryViewer({
   const [index, setIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   useBodyScrollLock(true);
 
@@ -54,7 +71,69 @@ export function WrappedStoryViewer({
   );
 
   useEffect(() => {
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const inerted: HTMLElement[] = [];
+    let node: HTMLElement | null = rootRef.current;
+    while (node && node !== document.body) {
+      const parent = node.parentElement;
+      if (!parent) break;
+      for (const sibling of Array.from(parent.children)) {
+        if (sibling !== node && sibling instanceof HTMLElement && !sibling.inert) {
+          sibling.inert = true;
+          inerted.push(sibling);
+        }
+      }
+      node = parent;
+    }
+
+    const focusFrame = requestAnimationFrame(() => {
+      rootRef.current?.focus();
+    });
+
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      for (const el of inerted) el.inert = false;
+      const restore = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (restore && document.contains(restore)) restore.focus();
+    };
+  }, []);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        const root = rootRef.current;
+        if (!root) return;
+        const nodes = listFocusable(root);
+        if (nodes.length === 0) {
+          event.preventDefault();
+          root.focus();
+          return;
+        }
+        const first = nodes[0]!;
+        const last = nodes[nodes.length - 1]!;
+        const active = document.activeElement;
+        if (event.shiftKey) {
+          if (active === first || !root.contains(active)) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else if (active === last || !root.contains(active)) {
+          event.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+
+      if (
+        (event.key === ' ' || event.key === 'Enter') &&
+        shouldDeferSlideAdvanceKey(event.key, event.target)
+      ) {
+        return;
+      }
+
       if (event.key === 'ArrowRight' || event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
         go(index + 1);
@@ -72,10 +151,6 @@ export function WrappedStoryViewer({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [go, index, total]);
-
-  useEffect(() => {
-    rootRef.current?.focus();
-  }, []);
 
   const slideProps: WrappedSlideProps = useMemo(
     () => ({
@@ -95,7 +170,8 @@ export function WrappedStoryViewer({
     <div
       ref={rootRef}
       tabIndex={-1}
-      role="region"
+      role="dialog"
+      aria-modal="true"
       aria-roledescription="carousel"
       aria-label={t('profile.wrapped.title', { year: data.year })}
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm outline-none"
@@ -127,15 +203,19 @@ export function WrappedStoryViewer({
               total,
             })}
           </p>
-          <button
-            type="button"
-            className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-            onClick={() => setPauseMotion((v) => !v)}
-          >
-            {pauseMotion
-              ? t('profile.wrapped.resumeMotion')
-              : t('profile.wrapped.pauseMotion')}
-          </button>
+          {prefersReduced ? (
+            <span className="w-[7.5rem]" aria-hidden="true" />
+          ) : (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => setPauseMotion((v) => !v)}
+            >
+              {pauseMotion
+                ? t('profile.wrapped.resumeMotion')
+                : t('profile.wrapped.pauseMotion')}
+            </button>
+          )}
         </header>
 
         <div
@@ -179,6 +259,7 @@ export function WrappedStoryViewer({
             onClick={() => go(index + 1)}
           />
           <article
+            key={index}
             className="relative z-0 h-full overflow-y-auto"
             aria-label={current ? t(current.narrativeKey) : undefined}
             style={{

@@ -101,9 +101,12 @@ campaign-scoped ranking rows that would disclose private activity.
 ## Slide registry
 
 Shared registry (`shared/wrapped/slideRegistry.ts`) defines metadata and
-eligibility. Backend selection produces the ordered manifest stored on the
-snapshot. The frontend renders visualization ids from that manifest only — it
-does not independently decide eligibility.
+eligibility. Snapshots store only **slide IDs** and metrics — not resolved
+manifest metadata. On every read, `buildSlideManifest` applies the current
+registry (titles, visualization ids, narrative keys) to those stored IDs so
+existing snapshots pick up registry updates without regeneration. The frontend
+renders visualization ids from that read-time manifest only — it does not
+independently decide eligibility.
 
 Fellow Adventurers is optional and dependency-gated on reliable
 **completed-session** `ATTENDING` records. Membership, invitations, and

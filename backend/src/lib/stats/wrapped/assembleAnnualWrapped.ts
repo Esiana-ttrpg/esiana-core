@@ -1,5 +1,7 @@
 import type { MetricId } from '../../../../../shared/metricRegistry.js';
 import {
+  metricEstimated,
+  metricPartial,
   metricUnavailable,
   metricValue,
   readMetricAmount,
@@ -216,6 +218,51 @@ function deltaMetric(current: MetricValue | undefined, previous: MetricValue | u
   return metricValue(a - b);
 }
 
+/** Writing coverage for comparative use, including the reliable-from floor year. */
+function writingCoverageForYear(
+  stats: PersonalStatisticsResponse,
+  year: number,
+): WrappedCoverageStatus {
+  const writing = metricFamilyFromPeriod(stats, 'writing');
+  const writingFloorYear = Number(WRAPPED_WRITING_RELIABLE_FROM.slice(0, 4));
+  if (year <= writingFloorYear && writing === 'measured') return 'partial';
+  return writing;
+}
+
+/**
+ * Carry incomplete writing baseline status into a computed delta so YoY growth
+ * is not presented as fully measured when the prior (or current) year is partial
+ * or reconstructed.
+ */
+function writingAwareDelta(
+  current: MetricValue | undefined,
+  previous: MetricValue | undefined,
+  baseline: WrappedCoverageStatus,
+): MetricValue {
+  const raw = deltaMetric(current, previous);
+  if (raw.status === 'unavailable') return raw;
+  if (baseline === 'reconstructed') return metricEstimated(raw.amount);
+  if (baseline === 'partial') return metricPartial(raw.amount);
+  return raw;
+}
+
+function comparativeWritingBaseline(
+  previous: WrappedCoverageStatus,
+  current: WrappedCoverageStatus,
+): WrappedCoverageStatus {
+  if (previous === 'reconstructed' || current === 'reconstructed') return 'reconstructed';
+  if (previous === 'partial' || current === 'partial') return 'partial';
+  if (
+    previous === 'unavailable' ||
+    previous === 'not_yet_tracked' ||
+    current === 'unavailable' ||
+    current === 'not_yet_tracked'
+  ) {
+    return previous === 'measured' ? current : previous;
+  }
+  return 'measured';
+}
+
 const COMPARATIVE_METRIC_IDS: MetricId[] = [
   'period.wordsAdded',
   'period.pagesCreated',
@@ -363,16 +410,30 @@ export async function assembleAnnualWrapped(input: {
     ) != null
   );
 
+  const previousWriting = previousStats
+    ? writingCoverageForYear(previousStats, input.year - 1)
+    : 'unavailable';
+  const currentWriting = writingCoverageForYear(stats, input.year);
+  const writingBaseline = comparativeWritingBaseline(previousWriting, currentWriting);
+
   const deltas: Partial<Record<MetricId, MetricValue>> = {};
   if (previousStats && previousEligible) {
     for (const id of COMPARATIVE_METRIC_IDS) {
-      deltas[id] = deltaMetric(stats.period[id], previousStats.period[id]);
+      deltas[id] = writingAwareDelta(
+        stats.period[id],
+        previousStats.period[id],
+        writingBaseline,
+      );
     }
   }
 
-  const comparativeCoverage: WrappedCoverageStatus = previousEligible
-    ? 'measured'
-    : 'unavailable';
+  const comparativeCoverage: WrappedCoverageStatus = !previousEligible
+    ? 'unavailable'
+    : writingBaseline === 'measured'
+      ? 'measured'
+      : writingBaseline === 'reconstructed' || writingBaseline === 'partial'
+        ? writingBaseline
+        : 'partial';
 
   const coverage = buildCoverage(stats, fellows.coverage, comparativeCoverage, input.year);
   const writingFloorYear = Number(WRAPPED_WRITING_RELIABLE_FROM.slice(0, 4));

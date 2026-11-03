@@ -118,6 +118,9 @@ export async function reauthorizeWrappedPresentation(input: {
       sessionsHosted: metricUnavailable('private'),
       campaignsParticipated: metricUnavailable('private'),
     };
+    // worlds-explored depends on campaign participation disclosure; drop it when
+    // byCampaign is empty and campaignsParticipated is unavailable.
+    calc.slideIds = calc.slideIds.filter((id) => id !== 'worlds-explored');
   }
 
   calc.referencedCampaignIds = Object.keys(calc.metrics.byCampaign);

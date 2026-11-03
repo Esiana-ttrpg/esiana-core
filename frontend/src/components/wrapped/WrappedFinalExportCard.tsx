@@ -109,7 +109,9 @@ export function WrappedFinalExportCard({
               style={{ fontSize: exportMode ? 30 : 14 }}
             >
               {t('profile.wrapped.slides.archetype', {
-                archetype: model.dominantArchetype,
+                archetype: t(
+                  `profile.creatorstats.archetypes.${model.dominantArchetype}`,
+                ),
               })}
             </p>
           ) : null}

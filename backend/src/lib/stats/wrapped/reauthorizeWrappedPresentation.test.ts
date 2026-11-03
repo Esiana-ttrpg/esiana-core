@@ -39,6 +39,28 @@ function repickTopCampaign(
     : null;
 }
 
+/**
+ * Mirrors slide filtering after redaction leaves byCampaign empty and
+ * campaignsParticipated unavailable (see reauthorizeWrappedPresentation).
+ */
+function filterSlidesAfterFullCampaignRedaction(slideIds: string[]): string[] {
+  return slideIds.filter((id) => id !== 'worlds-explored' && id !== 'top-campaign');
+}
+
+describe('worlds-explored slide after full campaign redaction', () => {
+  it('excludes worlds-explored when byCampaign is empty and participation is withheld', () => {
+    assert.deepEqual(
+      filterSlidesAfterFullCampaignRedaction([
+        'year-intro',
+        'worlds-explored',
+        'top-campaign',
+        'year-summary',
+      ]),
+      ['year-intro', 'year-summary'],
+    );
+  });
+});
+
 describe('lost-access campaign redaction ranking', () => {
   it('re-picks top campaign among authorized campaigns using active-campaign order', () => {
     const byCampaign = {
