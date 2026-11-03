@@ -4,6 +4,7 @@ import {
   WRAPPED_EXPORT_WIDTH,
   waitForDocumentFonts,
 } from '@/lib/wrappedPngFeasibility';
+import { shareWrappedImageFile } from '@/lib/wrappedShare';
 
 export async function captureWrappedPng(node: HTMLElement): Promise<Blob> {
   await waitForDocumentFonts();
@@ -37,38 +38,5 @@ export async function shareOrDownloadWrappedPng(input: {
   year: number;
   title: string;
 }): Promise<'shared' | 'downloaded'> {
-  const file = new File([input.blob], `esiana-wrapped-${input.year}.png`, {
-    type: 'image/png',
-  });
-
-  const canShare =
-    typeof navigator !== 'undefined' &&
-    typeof navigator.share === 'function' &&
-    (!navigator.canShare || navigator.canShare({ files: [file] }));
-
-  if (canShare) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: input.title,
-        text: input.title,
-      });
-      return 'shared';
-    } catch (error) {
-      // User cancel should not fall through to download spam.
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        throw error;
-      }
-    }
-  }
-
-  const href = URL.createObjectURL(input.blob);
-  const link = document.createElement('a');
-  link.href = href;
-  link.download = file.name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(href);
-  return 'downloaded';
+  return shareWrappedImageFile(input);
 }

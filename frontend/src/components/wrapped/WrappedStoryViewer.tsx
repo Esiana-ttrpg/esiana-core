@@ -43,10 +43,12 @@ export function WrappedStoryViewer({
   data,
   backHref,
   renderFooter,
+  renderHeaderActions,
 }: {
   data: WrappedYearResponse;
   backHref: string;
   renderFooter?: (index: number, total: number) => ReactNode;
+  renderHeaderActions?: () => ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const prefersReduced = usePrefersReducedMotion();
@@ -203,19 +205,20 @@ export function WrappedStoryViewer({
               total,
             })}
           </p>
-          {prefersReduced ? (
-            <span className="w-[7.5rem]" aria-hidden="true" />
-          ) : (
-            <button
-              type="button"
-              className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-              onClick={() => setPauseMotion((v) => !v)}
-            >
-              {pauseMotion
-                ? t('profile.wrapped.resumeMotion')
-                : t('profile.wrapped.pauseMotion')}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {renderHeaderActions?.()}
+            {prefersReduced ? null : (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+                onClick={() => setPauseMotion((v) => !v)}
+              >
+                {pauseMotion
+                  ? t('profile.wrapped.resumeMotion')
+                  : t('profile.wrapped.pauseMotion')}
+              </button>
+            )}
+          </div>
         </header>
 
         <div

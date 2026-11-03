@@ -240,6 +240,18 @@ export function resolveEditionTier(slideCount: number): WrappedEditionTier {
   return 'unavailable';
 }
 
+/**
+ * Seasonal invite discovery states — never gate invite `active` solely on
+ * eligibility; map the assembled tier so CTAs never promise a 404 edition.
+ */
+export function resolveWrappedInviteAvailability(
+  editionTier: WrappedEditionTier,
+): 'ready' | 'limited' | 'unavailable' {
+  if (editionTier === 'full') return 'ready';
+  if (editionTier === 'short') return 'limited';
+  return 'unavailable';
+}
+
 export function buildSlideManifest(
   slideIds: WrappedSlideId[],
 ): Array<{

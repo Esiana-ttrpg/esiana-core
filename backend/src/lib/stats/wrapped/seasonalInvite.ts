@@ -1,18 +1,31 @@
-import type { WrappedEdition } from '../../../../../shared/wrappedTypes.js';
+import { resolveWrappedInviteAvailability } from '../../../../../shared/wrapped/slideRegistry.js';
+import type {
+  WrappedEdition,
+  WrappedInviteAvailability,
+} from '../../../../../shared/wrappedTypes.js';
 import { prisma } from '../../prisma.js';
 import { resolveEffectiveTimezone } from '../../timezone.js';
 import { getOrCreateSystemSettings } from '../../systemSettings.js';
+import { assembleAnnualWrapped } from './assembleAnnualWrapped.js';
 import {
   resolveSeasonalWrappedTargetYear,
   resolveWrappedEdition,
   wrappedInviteDismissKey,
 } from './editionState.js';
+import { getWrappedFeatureFlags } from './wrappedFeatureFlags.js';
 
 export type WrappedSeasonalInviteResponse = {
   version: 1;
   active: boolean;
   year: number | null;
   edition: WrappedEdition | null;
+  /** Discovery state — does not gate `active` by itself. */
+  availability: WrappedInviteAvailability | null;
+  /**
+   * Path for the CTA. Ready/limited → owner year viewer.
+   * Unavailable → public /wrapped introduction (never a personalized 404).
+   */
+  href: string | null;
   dismissKey: string | null;
   dismissed: boolean;
   timeZone: string;
@@ -23,17 +36,32 @@ export async function getWrappedSeasonalInvite(input: {
   now?: Date;
 }): Promise<WrappedSeasonalInviteResponse> {
   const now = input.now ?? new Date();
-  const [user, settings] = await Promise.all([
+  const [user, settings, flags] = await Promise.all([
     prisma.user.findUnique({
       where: { id: input.userId },
       select: { timezone: true },
     }),
     getOrCreateSystemSettings(),
+    getWrappedFeatureFlags(),
   ]);
   const timeZone = resolveEffectiveTimezone({
     userTimezone: user?.timezone ?? null,
     systemDefaultTimezone: settings.defaultTimezone,
   });
+
+  if (!flags.wrappedEnabled) {
+    return {
+      version: 1,
+      active: false,
+      year: null,
+      edition: null,
+      availability: null,
+      href: null,
+      dismissKey: null,
+      dismissed: false,
+      timeZone,
+    };
+  }
 
   const year = resolveSeasonalWrappedTargetYear({ timeZone, now });
   if (year == null) {
@@ -42,6 +70,8 @@ export async function getWrappedSeasonalInvite(input: {
       active: false,
       year: null,
       edition: null,
+      availability: null,
+      href: null,
       dismissKey: null,
       dismissed: false,
       timeZone,
@@ -60,11 +90,26 @@ export async function getWrappedSeasonalInvite(input: {
   const dismissed = Boolean(dismissal);
   const edition = resolveWrappedEdition({ year, timeZone, now });
 
+  // Assemble without persisting — invite must not create snapshot side effects.
+  const calc = await assembleAnnualWrapped({
+    userId: input.userId,
+    year,
+    now,
+  });
+  const availability = resolveWrappedInviteAvailability(calc.editionTier);
+  const href =
+    availability === 'unavailable'
+      ? '/wrapped'
+      : `/users/${input.userId}/wrapped/${year}`;
+
   return {
     version: 1,
+    // Stay active for discovery even when unavailable — CTA goes to /wrapped.
     active: !dismissed,
     year,
     edition,
+    availability,
+    href,
     dismissKey,
     dismissed,
     timeZone,

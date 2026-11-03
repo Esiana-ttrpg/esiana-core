@@ -8,6 +8,7 @@ import {
   getPublicPortfolioCharacter,
   getUserAssetFile,
 } from '../controllers/portfolioController.js';
+import { getPublishedWrappedYear } from '../controllers/wrappedController.js';
 import { authenticateApiOrSession, optionalAuth, requireTokenScopes } from '../middleware/auth.js';
 import { API_TOKEN_SCOPES } from '../lib/apiToken.js';
 import { rateLimitPolicy } from '../lib/rateLimit/index.js';
@@ -24,6 +25,7 @@ usersPublicRouter.get(
 usersPublicRouter.get('/:id/public-profile', optionalAuth, getPublicUserProfile);
 usersPublicRouter.get('/:id/creator-attribution', optionalAuth, getPublicCreatorAttribution);
 usersPublicRouter.get('/:id/activity', optionalAuth, getPublicUserActivity);
+usersPublicRouter.get('/:id/wrapped/:year', optionalAuth, getPublishedWrappedYear);
 usersPublicRouter.get(
   '/:id/characters/:characterId',
   authenticateApiOrSession,

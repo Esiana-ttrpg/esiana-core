@@ -19,6 +19,12 @@ function sampleResponse(): WrappedYearResponse {
     timeZone: 'UTC',
     generatedAt: '2026-12-20T00:00:00.000Z',
     regeneratedAt: null,
+    access: 'owner',
+    publication: {
+      status: 'unpublished',
+      publishedAt: null,
+      publicPublishingEnabled: true,
+    },
     calculation: {
       schemaVersion: WRAPPED_SCHEMA_VERSION,
       year: 2026,

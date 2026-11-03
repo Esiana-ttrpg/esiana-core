@@ -87,16 +87,40 @@ is always re-authorized on read.
 `POST /api/user/wrapped/:year/regenerate` rebuilds the calculation.
 Never use a side-effecting GET.
 
-## APIs (owner only)
+## APIs
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/user/wrapped/years` | Eligible years + coverage summaries |
-| GET | `/api/user/wrapped/:year` | Calculation + authorized presentation + slide manifest |
-| POST | `/api/user/wrapped/:year/regenerate` | Rebuild calculation |
+| GET | `/api/user/wrapped/years` | Eligible years + coverage summaries (owner) |
+| GET | `/api/user/wrapped/:year` | Calculation + authorized presentation + slide manifest (owner) |
+| POST | `/api/user/wrapped/:year/regenerate` | Rebuild private calculation (does not update published freeze) |
+| POST | `/api/user/wrapped/:year/publish` | Freeze current presentation for public access |
+| DELETE | `/api/user/wrapped/:year/publish` | Unpublish; public URL immediately 404s |
+| GET | `/api/users/:id/wrapped/:year` | Public published edition only (404 otherwise) |
+| GET | `/api/user/wrapped/seasonal-invite` | Seasonal invite with availability + CTA href |
 
-On read, lost campaign access redacts campaign presentation **and** drops
+On owner read, lost campaign access redacts campaign presentation **and** drops
 campaign-scoped ranking rows that would disclose private activity.
+
+### Publication
+
+Wrapped remains **owner-only by default**. Explicit publish stores a **frozen**
+`publishedPayload` (calculation + presentation at publish time). Public readers
+never call owner statistics APIs and do not receive live campaign membership
+re-authorization. Regenerating the private edition does **not** update the
+published freeze — republishing is an explicit action.
+
+Unpublished canonical URLs (`/users/:id/wrapped/:year`) return the same 404 as
+a missing resource; they must not reveal whether a private edition exists.
+
+### Global feature flags (`SystemSetting`)
+
+| Flag | Default | Effect |
+| --- | --- | --- |
+| `wrappedEnabled` | on | Disables invite, owner assembly/viewer when off |
+| `publicWrappedPublishingEnabled` | on | Blocks new publishes and anonymous access to previously published editions without deleting private snapshots |
+
+PNG download / native image share do not have separate toggles.
 
 ## Slide registry
 
@@ -132,3 +156,19 @@ Dec 15–Jan 15 local promotes Wrapped for the **target year**:
 - Jan 1–15 → previous year completed
 
 Dismissal key: `wrapped-invite:{year}` (one key for both windows).
+
+Invite `active` stays true during the window (unless dismissed / feature off)
+for **feature discovery**. Availability is separate:
+
+| Availability | Meaning | CTA |
+| --- | --- | --- |
+| `ready` | Full eligible edition | `/users/:id/wrapped/:year` |
+| `limited` | Meaningful short edition | same viewer |
+| `unavailable` | No qualifying edition | `/wrapped` public intro |
+
+Never promise a personalized edition that navigates to a generic 404.
+
+## Public introduction
+
+`/wrapped` is a public landing page with fictional sample content and
+sign-in/registration CTAs. It must not load personal statistics.

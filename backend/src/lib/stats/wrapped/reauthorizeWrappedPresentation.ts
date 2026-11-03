@@ -3,6 +3,7 @@ import { buildSlideManifest } from '../../../../../shared/wrapped/slideRegistry.
 import type {
   WrappedCalculationV1,
   WrappedCampaignPresentation,
+  WrappedPublicationStatus,
   WrappedSlideManifestEntry,
   WrappedYearResponse,
 } from '../../../../../shared/wrappedTypes.js';
@@ -21,6 +22,9 @@ export async function reauthorizeWrappedPresentation(input: {
   calculation: WrappedCalculationV1;
   generatedAt: string;
   regeneratedAt: string | null;
+  publication?: WrappedPublicationStatus;
+  owner?: { id: string; displayName: string };
+  access?: 'owner' | 'public';
 }): Promise<WrappedYearResponse> {
   const calc = structuredClone(input.calculation);
   const campaignIds = [...new Set(calc.referencedCampaignIds)];
@@ -134,11 +138,18 @@ export async function reauthorizeWrappedPresentation(input: {
     timeZone: calc.timeZone,
     generatedAt: input.generatedAt,
     regeneratedAt: input.regeneratedAt,
+    access: input.access ?? 'owner',
+    ...(input.owner ? { owner: input.owner } : {}),
     calculation: calc,
     presentation: {
       campaigns,
       redactedCampaignIds,
     },
     slideManifest,
+    publication: input.publication ?? {
+      status: 'unpublished',
+      publishedAt: null,
+      publicPublishingEnabled: true,
+    },
   };
 }

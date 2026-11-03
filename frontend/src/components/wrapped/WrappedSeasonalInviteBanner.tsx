@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { WrappedInviteAvailability } from '@shared/wrappedTypes';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch } from '@/lib/api';
 import { dismissHubAttention } from '@/lib/hub';
@@ -10,6 +11,8 @@ type SeasonalInvite = {
   active: boolean;
   year: number | null;
   edition: 'preview' | 'completed' | null;
+  availability: WrappedInviteAvailability | null;
+  href: string | null;
   dismissKey: string | null;
   dismissed: boolean;
   timeZone: string;
@@ -22,8 +25,6 @@ export function WrappedSeasonalInviteBanner() {
   const [hidden, setHidden] = useState(false);
   const accountId = user?.id ?? null;
 
-  // Reset local dismiss when the signed-in account changes so a new account
-  // can see its invite; same-account refreshes keep the dismissal.
   useEffect(() => {
     setHidden(false);
   }, [accountId]);
@@ -46,14 +47,35 @@ export function WrappedSeasonalInviteBanner() {
     };
   }, [isAuthenticated, user]);
 
-  if (!user || !invite?.active || !invite.year || !invite.dismissKey || hidden) {
+  if (
+    !user ||
+    !invite?.active ||
+    !invite.year ||
+    !invite.dismissKey ||
+    !invite.href ||
+    !invite.availability ||
+    hidden
+  ) {
     return null;
   }
 
-  const title =
-    invite.edition === 'preview'
-      ? t('profile.wrapped.seasonal.titlePreview', { year: invite.year })
-      : t('profile.wrapped.seasonal.title', { year: invite.year });
+  const titleKey =
+    invite.availability === 'unavailable'
+      ? 'profile.wrapped.seasonal.titleDiscover'
+      : invite.availability === 'limited'
+        ? invite.edition === 'preview'
+          ? 'profile.wrapped.seasonal.titleLimitedPreview'
+          : 'profile.wrapped.seasonal.titleLimited'
+        : invite.edition === 'preview'
+          ? 'profile.wrapped.seasonal.titlePreview'
+          : 'profile.wrapped.seasonal.title';
+
+  const ctaKey =
+    invite.availability === 'unavailable'
+      ? 'profile.wrapped.seasonal.ctaDiscover'
+      : 'profile.wrapped.seasonal.cta';
+
+  const title = t(titleKey, { year: invite.year });
 
   return (
     <div
@@ -65,10 +87,10 @@ export function WrappedSeasonalInviteBanner() {
         <p className="text-sm text-foreground">{title}</p>
         <div className="flex items-center gap-3">
           <Link
-            to={`/users/${user.id}/wrapped/${invite.year}`}
+            to={invite.href}
             className="text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            {t('profile.wrapped.seasonal.cta')}
+            {t(ctaKey)}
           </Link>
           <button
             type="button"

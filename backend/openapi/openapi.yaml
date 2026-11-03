@@ -22326,7 +22326,7 @@ paths:
         - cookieAuth: []
       responses:
         "200":
-          description: Owner-only seasonal Wrapped invitation state for the Dec 15–Jan 15 local window, including target year, edition (preview or completed), dismiss key, and whether the invite is dismissed.
+          description: Owner-only seasonal Wrapped invitation state for the Dec 15–Jan 15 local window, including target year, edition (preview or completed), availability (ready|limited|unavailable), CTA href, dismiss key, and whether the invite is dismissed. Availability does not alone gate active — unavailable invites link to the public /wrapped introduction.
           content:
             application/json:
               schema:
@@ -22425,7 +22425,128 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user session. Rebuilds the annual calculation snapshot for corrections, deletions, or permission changes."
+      description: "Authorization: Authenticated application user session. Rebuilds the private annual calculation snapshot only — does not update a published freeze."
+  /api/user/wrapped/{year}/publish:
+    post:
+      tags:
+        - User Account
+      summary: Publish Wrapped Year Edition
+      operationId: post_api_user_wrapped_year_publish
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+          description: Calendar year of the Wrapped edition to publish.
+      responses:
+        "200":
+          description: Freezes the current owner presentation into a public payload for the canonical /users/{id}/wrapped/{year} URL. Requires publicWrappedPublishingEnabled.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session. Publishing does not change campaign, profile, library, or document permissions."
+    delete:
+      tags:
+        - User Account
+      summary: Unpublish Wrapped Year Edition
+      operationId: delete_api_user_wrapped_year_publish
+      x-esiana-authorization:
+        boundary: own-user-account
+        requires:
+          - Authenticated application user session
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+          description: Calendar year of the Wrapped edition to unpublish.
+      responses:
+        "200":
+          description: Clears the published freeze so the public URL immediately returns 404. Private snapshot remains.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Authenticated application user session. Unpublish revokes anonymous access without deleting the private Wrapped snapshot."
+  /api/users/{id}/wrapped/{year}:
+    get:
+      tags:
+        - Users
+      summary: Get Published Wrapped Year Edition
+      operationId: get_api_users_id_wrapped_year
+      x-esiana-authorization:
+        boundary: public-published-resource
+        requires:
+          - Optional authentication (anonymous allowed when published)
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Owner user id of the published Wrapped edition.
+        - name: year
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+          description: Calendar year of the published Wrapped edition.
+      responses:
+        "200":
+          description: Frozen public Wrapped presentation for an explicitly published edition. Does not call owner statistics APIs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+      description: "Authorization: Public when published and publicWrappedPublishingEnabled. Unpublished or disabled publishing always 404 — never reveals whether a private edition exists."
   /api/user/developer/quota:
     get:
       tags:

@@ -19,6 +19,8 @@ import {
   resolveWrappedEdition,
 } from './editionState.js';
 import { reauthorizeWrappedPresentation } from './reauthorizeWrappedPresentation.js';
+import { getWrappedFeatureFlags } from './wrappedFeatureFlags.js';
+import type { WrappedPublicationStatus } from '../../../../../shared/wrappedTypes.js';
 
 async function resolveReportingTimezone(userId: string): Promise<string> {
   const [user, settings] = await Promise.all([
@@ -67,12 +69,32 @@ export function candidateWrappedYears(timeZone: string, now: Date): number[] {
   return years;
 }
 
+async function publicationStatusFor(
+  userId: string,
+  year: number,
+  publicPublishingEnabled: boolean,
+): Promise<WrappedPublicationStatus> {
+  const row = await prisma.userWrappedSnapshot.findUnique({
+    where: { userId_year: { userId, year } },
+    select: { publishedAt: true },
+  });
+  return {
+    status: row?.publishedAt ? 'published' : 'unpublished',
+    publishedAt: row?.publishedAt?.toISOString() ?? null,
+    publicPublishingEnabled,
+  };
+}
+
 export async function listWrappedYears(input: {
   userId: string;
   now?: Date;
 }): Promise<WrappedYearsResponse> {
   const now = input.now ?? new Date();
+  const flags = await getWrappedFeatureFlags();
   const timeZone = await resolveReportingTimezone(input.userId);
+  if (!flags.wrappedEnabled) {
+    return { version: 1, timeZone, years: [] };
+  }
   const years = candidateWrappedYears(timeZone, now);
 
   const stored = await prisma.userWrappedSnapshot.findMany({
@@ -216,12 +238,20 @@ export async function getWrappedYear(input: {
   now?: Date;
 }): Promise<WrappedYearResponse | { unavailable: true; summary: WrappedYearSummary }> {
   const now = input.now ?? new Date();
+  const flags = await getWrappedFeatureFlags();
   const timeZone = await resolveReportingTimezone(input.userId);
   const edition = resolveWrappedEdition({
     year: input.year,
     timeZone,
     now,
   });
+
+  if (!flags.wrappedEnabled) {
+    return {
+      unavailable: true,
+      summary: unstartedYearSummary({ year: input.year, edition }),
+    };
+  }
 
   if (!hasWrappedYearStarted({ year: input.year, timeZone, now })) {
     return {
@@ -292,11 +322,19 @@ export async function getWrappedYear(input: {
     };
   }
 
+  const publication = await publicationStatusFor(
+    input.userId,
+    input.year,
+    flags.publicWrappedPublishingEnabled,
+  );
+
   return reauthorizeWrappedPresentation({
     userId: input.userId,
     calculation: calc,
     generatedAt: generatedAt.toISOString(),
     regeneratedAt: regeneratedAt?.toISOString() ?? null,
+    access: 'owner',
+    publication,
   });
 }
 
@@ -306,12 +344,20 @@ export async function regenerateWrappedYear(input: {
   now?: Date;
 }): Promise<WrappedYearResponse | { unavailable: true; summary: WrappedYearSummary }> {
   const now = input.now ?? new Date();
+  const flags = await getWrappedFeatureFlags();
   const timeZone = await resolveReportingTimezone(input.userId);
   const edition = resolveWrappedEdition({
     year: input.year,
     timeZone,
     now,
   });
+
+  if (!flags.wrappedEnabled) {
+    return {
+      unavailable: true,
+      summary: unstartedYearSummary({ year: input.year, edition }),
+    };
+  }
 
   if (!hasWrappedYearStarted({ year: input.year, timeZone, now })) {
     return {
@@ -327,6 +373,8 @@ export async function regenerateWrappedYear(input: {
   });
   calc = { ...calc, edition };
 
+  // Private payload only — publishedPayload / publishedAt are intentionally untouched
+  // so regenerate never silently updates a public edition.
   const saved = await persistSnapshot({
     userId: input.userId,
     calc,
@@ -349,10 +397,18 @@ export async function regenerateWrappedYear(input: {
     };
   }
 
+  const publication = await publicationStatusFor(
+    input.userId,
+    input.year,
+    flags.publicWrappedPublishingEnabled,
+  );
+
   return reauthorizeWrappedPresentation({
     userId: input.userId,
     calculation: calc,
     generatedAt: saved.generatedAt.toISOString(),
     regeneratedAt: saved.regeneratedAt?.toISOString() ?? null,
+    access: 'owner',
+    publication,
   });
 }

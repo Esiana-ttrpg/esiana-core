@@ -140,6 +140,13 @@ export type WrappedCampaignPresentation = {
  * API response: frozen calculation + freshly authorized presentation.
  * Campaign-scoped values for unauthorized campaigns are omitted or unavailable.
  */
+export type WrappedPublicationStatus = {
+  status: 'unpublished' | 'published';
+  publishedAt: string | null;
+  /** False when the instance disables public Wrapped publishing. */
+  publicPublishingEnabled: boolean;
+};
+
 export type WrappedYearResponse = {
   version: 1;
   year: number;
@@ -147,6 +154,12 @@ export type WrappedYearResponse = {
   timeZone: string;
   generatedAt: string;
   regeneratedAt: string | null;
+  /** Owner private read vs frozen public presentation. */
+  access: 'owner' | 'public';
+  owner?: {
+    id: string;
+    displayName: string;
+  };
   calculation: WrappedCalculationV1;
   presentation: {
     campaigns: Record<string, WrappedCampaignPresentation>;
@@ -158,7 +171,17 @@ export type WrappedYearResponse = {
     redactedCampaignIds: string[];
   };
   slideManifest: WrappedSlideManifestEntry[];
+  publication: WrappedPublicationStatus;
 };
+
+/** Frozen body stored on UserWrappedSnapshot.publishedPayload. */
+export type WrappedPublishedPayloadV1 = {
+  schemaVersion: 1;
+  calculation: WrappedCalculationV1;
+  presentation: WrappedYearResponse['presentation'];
+};
+
+export type WrappedInviteAvailability = 'ready' | 'limited' | 'unavailable';
 
 export type WrappedSlideManifestEntry = {
   id: WrappedSlideId;

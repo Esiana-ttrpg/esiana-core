@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { metricUnavailable, metricValue } from '../metricValue.js';
 import {
   resolveEditionTier,
+  resolveWrappedInviteAvailability,
   selectWrappedSlideIds,
   WRAPPED_SLIDE_REGISTRY,
 } from './slideRegistry.js';
@@ -64,6 +65,14 @@ describe('resolveEditionTier', () => {
     assert.equal(resolveEditionTier(10), 'full');
     assert.equal(resolveEditionTier(5), 'short');
     assert.equal(resolveEditionTier(2), 'unavailable');
+  });
+});
+
+describe('resolveWrappedInviteAvailability', () => {
+  it('maps edition tiers to seasonal discovery states', () => {
+    assert.equal(resolveWrappedInviteAvailability('full'), 'ready');
+    assert.equal(resolveWrappedInviteAvailability('short'), 'limited');
+    assert.equal(resolveWrappedInviteAvailability('unavailable'), 'unavailable');
   });
 });
 

@@ -123,3 +123,27 @@ export async function regenerateOwnerWrappedYear(
     method: 'POST',
   });
 }
+
+export async function publishOwnerWrappedYear(
+  year: number,
+): Promise<WrappedYearResponse> {
+  return apiFetch<WrappedYearResponse>(`/user/wrapped/${year}/publish`, {
+    method: 'POST',
+  });
+}
+
+export async function unpublishOwnerWrappedYear(
+  year: number,
+): Promise<WrappedYearResponse> {
+  return apiFetch<WrappedYearResponse>(`/user/wrapped/${year}/publish`, {
+    method: 'DELETE',
+  });
+}
+
+/** Public published edition — 404 when unpublished (existence not revealed). */
+export async function fetchPublishedWrappedYear(
+  userId: string,
+  year: number,
+): Promise<WrappedYearResponse> {
+  return apiFetch<WrappedYearResponse>(`/users/${userId}/wrapped/${year}`);
+}
