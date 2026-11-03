@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
+import { getWrappedSeasonalInvite } from '../lib/stats/wrapped/seasonalInvite.js';
 import {
   getWrappedYear,
   listWrappedYears,
@@ -17,6 +18,14 @@ export async function getOwnerWrappedYears(
   res: Response,
 ): Promise<void> {
   const payload = await listWrappedYears({ userId: req.user!.id });
+  res.json(payload);
+}
+
+export async function getOwnerWrappedSeasonalInvite(
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> {
+  const payload = await getWrappedSeasonalInvite({ userId: req.user!.id });
   res.json(payload);
 }
 

@@ -4,6 +4,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { CampaignRecencyRecorder } from '@/components/layout/CampaignRecencyRecorder';
 import { Footer } from '@/components/layout/Footer';
 import { SystemAnnouncementBanner } from '@/components/layout/SystemAnnouncementBanner';
+import { WrappedSeasonalInviteBanner } from '@/components/wrapped/WrappedSeasonalInviteBanner';
 import { WikiProvider, useWiki } from '@/contexts/WikiContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { campaignAppearanceFromApi, useBranding } from '@/contexts/BrandingContext';
@@ -285,6 +286,7 @@ function CampaignLayoutShell() {
       <SystemAnnouncementBanner />
       <div data-print-hide>
         <AppHeader />
+        <WrappedSeasonalInviteBanner />
       </div>
       <div className={`${CANVAS_ATMOSPHERE_AMBIENT_CLASS} flex min-h-0 flex-1`}>
         <div className="hidden min-h-0 shrink-0 self-stretch lg:flex" data-print-hide>

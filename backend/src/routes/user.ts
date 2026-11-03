@@ -45,6 +45,7 @@ import {
   getOwnerUserActivity,
 } from '../controllers/statsController.js';
 import {
+  getOwnerWrappedSeasonalInvite,
   getOwnerWrappedYear,
   getOwnerWrappedYears,
   postOwnerWrappedYearRegenerate,
@@ -152,6 +153,7 @@ userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
 userRouter.get('/statistics/export', getOwnerPersonalStatisticsExport);
 userRouter.get('/statistics', getOwnerPersonalStatistics);
 userRouter.get('/wrapped/years', getOwnerWrappedYears);
+userRouter.get('/wrapped/seasonal-invite', getOwnerWrappedSeasonalInvite);
 userRouter.get('/wrapped/:year', getOwnerWrappedYear);
 userRouter.post('/wrapped/:year/regenerate', postOwnerWrappedYearRegenerate);
 userRouter.get('/activity', getOwnerUserActivity);
