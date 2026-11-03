@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ApiError } from '@/lib/api';
 import { fetchOwnerWrappedYear } from '@/lib/statsApi';
 import { WrappedStoryViewer } from '@/components/wrapped/WrappedStoryViewer';
+import { WrappedExportControls } from '@/components/wrapped/WrappedExportControls';
 import { StatsEmptyState, StatsLoadingState } from '@/components/profile/stats/StatsChartFrame';
 
 export function WrappedYearPage() {
@@ -94,5 +95,13 @@ export function WrappedYearPage() {
     );
   }
 
-  return <WrappedStoryViewer data={data} backHref={backHref} />;
+  return (
+    <WrappedStoryViewer
+      data={data}
+      backHref={backHref}
+      renderFooter={(index, total) =>
+        index === total - 1 ? <WrappedExportControls data={data} /> : null
+      }
+    />
+  );
 }

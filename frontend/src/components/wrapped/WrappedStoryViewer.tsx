@@ -26,11 +26,11 @@ function usePrefersReducedMotion(): boolean {
 export function WrappedStoryViewer({
   data,
   backHref,
-  footer,
+  renderFooter,
 }: {
   data: WrappedYearResponse;
   backHref: string;
-  footer?: ReactNode;
+  renderFooter?: (index: number, total: number) => ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const prefersReduced = usePrefersReducedMotion();
@@ -189,7 +189,9 @@ export function WrappedStoryViewer({
           </article>
         </div>
 
-        {footer ? <div className="border-t border-border p-4">{footer}</div> : null}
+        {renderFooter ? (
+          <div className="border-t border-border p-4">{renderFooter(index, total)}</div>
+        ) : null}
       </div>
     </div>
   );

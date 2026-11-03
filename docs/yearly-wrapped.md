@@ -116,6 +116,11 @@ PNG export is a separate privacy surface. Only fields on
 reveal restricted activity are excluded by default. Restricted artwork must
 never enter the export DOM tree.
 
+Final-card presets (`adventurer` | `worldbuilder` | `storyteller`) change which
+allowlisted personal/participation totals are featured — not underlying
+measurement. Capture is client-side 1080×1920 via `html-to-image` with themed
+CSS fallbacks only (see [wrapped-png-feasibility.md](./wrapped-png-feasibility.md)).
+
 ## Seasonal invite
 
 Dec 15–Jan 15 local promotes Wrapped for the **target year**:
