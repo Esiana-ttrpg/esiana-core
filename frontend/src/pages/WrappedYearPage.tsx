@@ -49,7 +49,7 @@ export function WrappedYearPage() {
   }, [authLoading, isSelf, year]);
 
   if (authLoading) {
-    return <StatsLoadingState />;
+    return <StatsLoadingState message={t('profile.wrapped.loading')} />;
   }
 
   if (!user) {
@@ -69,7 +69,7 @@ export function WrappedYearPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <StatsLoadingState />
+        <StatsLoadingState message={t('profile.wrapped.loading')} />
       </div>
     );
   }

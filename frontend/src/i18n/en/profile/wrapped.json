@@ -5,6 +5,7 @@
   "profile.wrapped.partialCoverage": "Based on activity recorded since {{from}}.",
   "profile.wrapped.unavailable": "Not enough recorded activity for a Wrapped edition yet.",
   "profile.wrapped.loadError": "Could not load Wrapped. Try again shortly.",
+  "profile.wrapped.loading": "Loading your year…",
   "profile.wrapped.close": "Close",
   "profile.wrapped.prev": "Previous",
   "profile.wrapped.next": "Next",
