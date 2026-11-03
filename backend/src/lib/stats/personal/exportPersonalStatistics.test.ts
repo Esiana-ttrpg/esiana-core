@@ -142,6 +142,7 @@ describe('personal statistics export', () => {
       sessions,
     });
     const csv = renderPersonalStatisticsExportCsv(json);
+    assert.ok(csv.includes('# Esiana personal statistics export v1'));
     assert.ok(csv.includes('[metricDefinitions]'));
     assert.ok(csv.includes('[snapshot]'));
     assert.ok(csv.includes('[period]'));
@@ -153,6 +154,7 @@ describe('personal statistics export', () => {
     assert.ok(csv.includes('[participationHistory]'));
     assert.ok(csv.includes('[archetypes]'));
     assert.ok(csv.includes('chronicler'));
+    assert.ok(csv.includes('unavailable'));
     assert.ok(csv.includes('characters'));
     assert.ok(csv.includes('maps'));
     assert.ok(csv.includes('events'));
@@ -166,6 +168,57 @@ describe('personal statistics export', () => {
     assert.ok(csv.includes('[writingSessions]'));
     assert.ok(csv.includes('page-1'));
     assert.equal(csv.includes('Mira at the quay'), false);
+  });
+
+  it('keeps export/API domain parity and omits screen-only presentation fields', () => {
+    const json = buildPersonalStatisticsExportJson({
+      payload: {
+        ...payload,
+        activeCampaigns: [
+          {
+            campaignId: 'camp-1',
+            name: 'Secret Table',
+            handle: 'secret',
+            href: '/c/secret',
+            contributions: 3,
+            activeDays: 2,
+            pagesTouched: 1,
+            artworkUrl: null,
+          },
+        ],
+        visualizations: {
+          heatmap: [],
+          weeklyRhythm: [],
+          hourlyDistribution: [],
+          wordsTrend: [],
+          mostWorkedDocuments: [],
+        },
+      } as PersonalStatisticsResponse,
+      exportedAt: new Date('2026-06-15T18:00:00.000Z'),
+      contributions,
+      sessions,
+    });
+    assert.equal(json.version, 1);
+    assert.equal(json.visibilityContext, 'owner');
+    assert.ok(json.worldbuilding.length);
+    assert.ok(json.cartography.length);
+    assert.ok(json.chronology.length);
+    assert.ok(json.participation.length);
+    assert.ok(json.participationHistory.length);
+    assert.ok(json.archetypes);
+    assert.equal(
+      json.archetypes?.scores.find((row) => row.id === 'timekeeper')?.availability,
+      'unavailable',
+    );
+    assert.equal(
+      json.archetypes?.scores.find((row) => row.id === 'timekeeper')?.score,
+      null,
+    );
+    const serialized = JSON.stringify(json);
+    assert.equal(serialized.includes('activeCampaigns'), false);
+    assert.equal(serialized.includes('visualizations'), false);
+    assert.equal(serialized.includes('Secret Table'), false);
+    assert.equal(serialized.includes('linkableCampaigns'), false);
   });
 
   it('reconstructs unmatched historical wordDelta events and keeps measured rows', () => {

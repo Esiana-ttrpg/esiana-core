@@ -22218,7 +22218,7 @@ paths:
     get:
       tags:
         - User Account
-      summary: Export Owner Writing Statistics
+      summary: Export Owner Personal Statistics
       operationId: get_api_user_statistics_export
       x-esiana-authorization:
         boundary: own-user-account
@@ -22259,7 +22259,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Owner-only JSON or CSV of writing contributions, worldbuilding, cartography, and chronology domain totals, daily aggregates, and writing sessions. Omits document bodies, private titles, other users' activity, and campaign names.
+          description: Owner-only versioned JSON or CSV of personal statistics — metric definitions, snapshot/period/habits, worldbuilding, cartography, chronology, participation, archetypes, writing contributions, daily aggregates, and writing sessions. Omits document bodies, private titles, visualizations, active-campaign artwork, other users' activity, and campaign names.
           content:
             application/json:
               schema:
@@ -22279,7 +22279,7 @@ paths:
           $ref: "#/components/responses/RateLimited"
         "500":
           $ref: "#/components/responses/InternalError"
-      description: "Authorization: Authenticated application user session. Owner-only writing export. Uses the user's resolved timezone; no statistics-specific timezone override."
+      description: "Authorization: Authenticated application user session. Owner-only personal statistics export. Uses the user's resolved timezone; no statistics-specific timezone override. Privileged access must follow explicit authorization — this endpoint never exports another user's statistics."
   /api/user/developer/quota:
     get:
       tags:
