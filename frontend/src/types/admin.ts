@@ -73,6 +73,11 @@ export interface SystemPluginRegistrySettings {
   registryUrl: string;
 }
 
+export interface SystemWrappedSettings {
+  enabled: boolean;
+  publicPublishingEnabled: boolean;
+}
+
 export interface SystemSettings {
   id: string;
   registration: SystemRegistrationSettings;
@@ -81,6 +86,7 @@ export interface SystemSettings {
   uploads: SystemUploadSettings;
   urlImports: SystemUrlImportSettings;
   status: SystemStatusSettings;
+  wrapped?: SystemWrappedSettings;
   plugins: SystemPluginRegistrySettings;
   branding: SystemBrandingSettings;
   footer: FooterConfig;
@@ -99,6 +105,7 @@ export interface SystemSettingsPatch {
   uploads?: Partial<SystemUploadSettings>;
   urlImports?: Partial<SystemUrlImportSettings>;
   status?: Partial<SystemStatusSettings> & SystemStatusSettingsPatch;
+  wrapped?: Partial<SystemWrappedSettings>;
   plugins?: Partial<SystemPluginRegistrySettings>;
   branding?: Partial<SystemBrandingSettings>;
   footer?: Partial<FooterConfig>;
@@ -147,6 +154,7 @@ export interface PublicSystemStatus {
   defaultTimezone: string;
   defaultUiLocale: string | null;
   publicAccess?: SystemPublicAccessSettings;
+  wrapped?: SystemWrappedSettings;
 }
 
 export interface PluginCompatibilityMeta {

@@ -82,6 +82,10 @@ export function serializeSystemSettings(row: SystemSetting) {
       systemBannerText: row.systemBannerText ?? '',
       systemBannerExpiresAt: row.systemBannerExpiresAt?.toISOString() ?? null,
     },
+    wrapped: {
+      enabled: row.wrappedEnabled ?? true,
+      publicPublishingEnabled: row.publicWrappedPublishingEnabled ?? true,
+    },
     plugins: {
       registryUrl: row.pluginRegistryUrl ?? DEFAULT_PLUGIN_REGISTRY_URL,
     },
@@ -144,6 +148,10 @@ export function serializePublicSystemSettings(
       requireLogin: row.requireLogin ?? true,
       allowRegistrations: row.allowRegistrations ?? true,
       userTableEmpty: options?.userTableEmpty === true,
+    },
+    wrapped: {
+      enabled: row.wrappedEnabled ?? true,
+      publicPublishingEnabled: row.publicWrappedPublishingEnabled ?? true,
     },
   };
 }
