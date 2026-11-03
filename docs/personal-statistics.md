@@ -460,3 +460,43 @@ creative tendencies (Chronicler, Worldsmith, Cartographer, Timekeeper,
 Storyweaver, Adventurer, Wanderer), not productivity rankings. Windows with
 no measurable activity omit the field. Export JSON/CSV gains an `archetypes`
 section with the ruleset version and normalized scores.
+
+## Pass 11 — Profile Statistics redesign
+
+Owner Statistics tab (profile destination, not Campaign Home chrome) is a
+Writing-first composition: prominent reporting-window control (month / year /
+all time / custom), summary orbit, writing heatmap as gravitational center,
+habits, archetypes, then worldbuilding, cartography (with authorized map
+artwork), chronology, participation, featured session pages, and export.
+
+Category accents reuse `--stats-writing` / `--stats-worldbuilding` /
+`--stats-maps` / `--stats-chronology` / `--stats-campaigns`
+(`frontend/src/lib/statsCategoryPalette.ts`).
+
+Public profiles keep basic totals on Overview only — no habits, hours,
+heatmaps, session lists, private titles, archetypes, or hidden-campaign
+leakage. The Statistics tab remains owner-only.
+
+Owner presentation is a creative dashboard (`CreativeStatisticsDashboard`):
+headline metrics, Your Worlds (most-active campaigns), Writing Rhythm,
+Creative Footprint, Worlds You've Shaped, and Adventures Together.
+
+Visual storytelling (Hardcover-inspired, presentation-only):
+- Period headline cards compare the selected window to the preceding equivalent
+  duration (not lifetime totals). Lifetime cards appear only for All time.
+- Active campaigns (`activeCampaigns`) rank up to three campaigns by period
+  active days, then qualified contribution events (writing, page craft, maps,
+  chronology, play — not raw word volume). Cards use campaign hero artwork
+  with a themed name fallback; the whole card links to the campaign dashboard.
+- Creative tendencies use a radar chart. Ruleset v1 soft-weights mixed units,
+  L1-normalizes measured axes, and keeps unavailable axes as `score: null`
+  (never silent zeros).
+- Hourly chart defaults to the active-hour window with ±1h padding and an
+  optional full 24-hour view.
+- Most-worked gallery reuses authorized wiki featured images and map
+  thumbnails from existing visualization/cartography payloads.
+- Chart data keeps screen-reader alternatives; large duplicate tables under
+  charts are avoided.
+
+Exports and the shared statistics API remain the contract; previous-period
+comparisons reuse the same owner statistics endpoint.

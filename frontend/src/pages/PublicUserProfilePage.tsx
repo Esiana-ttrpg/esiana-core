@@ -248,9 +248,12 @@ export function PublicUserProfilePage() {
         ) : null}
 
         {activeTab === 'writing' && isSelf ? (
-          <PagePanel className="p-6">
-            <ProfileWritingTab attribution={attribution} />
-          </PagePanel>
+          <div className="min-w-0">
+            <ProfileWritingTab
+              attribution={attribution}
+              displayName={profile.displayName ?? profile.username}
+            />
+          </div>
         ) : null}
 
         {activeTab === 'activity' ? (

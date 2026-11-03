@@ -11,9 +11,19 @@ import {
 import { readMetricAmount, type MetricValue } from '../../../../../shared/metricValue.js';
 
 /**
- * Pass 10 ruleset v1 — period activity only. Scores are L1-normalized
- * creative-tendency weights for this reporting window, not rankings or
- * cross-user comparisons.
+ * Pass 10 ruleset v1 — period activity only.
+ *
+ * Normalization model (documented):
+ * 1. Each archetype accumulates a raw score from soft-weighted period signals
+ *    (words, edits, session minutes, domain creates/edits, participation).
+ *    Units are deliberately mixed; weights convert them into a tendency shape,
+ *    not comparable absolute volumes (a map edit ≠ a word written).
+ * 2. An axis is `unavailable` when every contributing MetricValue for that
+ *    axis is missing or `unavailable`. Unavailable axes are excluded from the
+ *    L1 denominator and keep `score: null` (never coerced to zero).
+ * 3. Measured axes (including true zeros) are L1-normalized so their scores
+ *    sum to 1 when any measured raw activity exists. All-zero measured windows
+ *    yield measured scores of 0 without inventing equal shares.
  */
 export type ArchetypeSignalInput = {
   wordsAdded: MetricValue | undefined;
@@ -29,6 +39,14 @@ function amount(value: MetricValue | undefined): number {
   return readMetricAmount(value) ?? 0;
 }
 
+function isTracked(value: MetricValue | undefined): boolean {
+  return value != null && value.status !== 'unavailable';
+}
+
+function anyTracked(values: Array<MetricValue | undefined>): boolean {
+  return values.some(isTracked);
+}
+
 function sumWorldbuilding(
   rows: WorldbuildingDomainStats[],
   field: 'periodCreated' | 'periodEdited',
@@ -40,6 +58,17 @@ function sumWorldbuilding(
     total += amount(row[field]);
   }
   return total;
+}
+
+function worldbuildingTracked(
+  rows: WorldbuildingDomainStats[],
+  field: 'periodCreated' | 'periodEdited',
+  domains?: Set<string>,
+): boolean {
+  return rows.some((row) => {
+    if (domains && !domains.has(row.domain)) return false;
+    return isTracked(row[field]);
+  });
 }
 
 function sumCartography(
@@ -62,6 +91,14 @@ function participationPeriod(
 ): number {
   const row = rows.find((entry) => entry.domain === domain);
   return amount(row?.periodTotal);
+}
+
+function participationTracked(
+  rows: ParticipationDomainStats[],
+  domain: ParticipationDomainStats['domain'],
+): boolean {
+  const row = rows.find((entry) => entry.domain === domain);
+  return isTracked(row?.periodTotal);
 }
 
 function chronologyMinutesAdvanced(rows: ChronologyDomainStats[]): number {
@@ -96,7 +133,6 @@ const WEIGHTS = {
   timekeeper: {
     created: 10,
     edited: 6,
-    /** In-world hours advanced contribute lightly. */
     hoursAdvanced: 2,
   },
   storyweaver: {
@@ -125,6 +161,47 @@ const WORLDSMITH_DOMAINS = new Set([
   'eras',
   'custom',
 ]);
+
+function axisAvailability(input: ArchetypeSignalInput): Record<PersonalArchetypeId, boolean> {
+  const writingTracked =
+    isTracked(input.wordsAdded) ||
+    isTracked(input.pagesEdited) ||
+    input.sessionMinutes > 0;
+  const worldsmithTracked =
+    worldbuildingTracked(input.worldbuilding, 'periodCreated', WORLDSMITH_DOMAINS) ||
+    worldbuildingTracked(input.worldbuilding, 'periodEdited', WORLDSMITH_DOMAINS);
+  const cartographyTracked =
+    input.cartography.some((row) => isTracked(row.periodCreated) || isTracked(row.periodEdited));
+  const chronologyTracked =
+    input.chronology.some(
+      (row) =>
+        isTracked(row.periodCreated) ||
+        isTracked(row.periodEdited) ||
+        isTracked(row.periodMinutesAdvanced),
+    );
+  const storyweaverTracked =
+    participationTracked(input.participation, 'campaignsGmed') ||
+    participationTracked(input.participation, 'sessionsHosted');
+  const adventurerTracked =
+    participationTracked(input.participation, 'sessionsAttended') ||
+    anyTracked([
+      input.worldbuilding.find((row) => row.domain === 'characters')?.periodCreated,
+      input.worldbuilding.find((row) => row.domain === 'characters')?.periodEdited,
+    ]);
+  const wandererTracked =
+    participationTracked(input.participation, 'campaignsParticipated') ||
+    participationTracked(input.participation, 'campaignsGmed');
+
+  return {
+    chronicler: writingTracked,
+    worldsmith: worldsmithTracked,
+    cartographer: cartographyTracked,
+    timekeeper: chronologyTracked,
+    storyweaver: storyweaverTracked,
+    adventurer: adventurerTracked,
+    wanderer: wandererTracked,
+  };
+}
 
 function rawScores(input: ArchetypeSignalInput): Record<PersonalArchetypeId, number> {
   const wordsAdded = amount(input.wordsAdded);
@@ -197,16 +274,34 @@ function rawScores(input: ArchetypeSignalInput): Record<PersonalArchetypeId, num
 }
 
 /**
- * Largest-remainder normalization to four decimal places. Deterministic for
- * equal remainders by PERSONAL_ARCHETYPE_IDS order.
+ * Largest-remainder normalization to four decimal places among measured axes.
+ * Unavailable axes keep score null. Deterministic for equal remainders by
+ * PERSONAL_ARCHETYPE_IDS order.
  */
 export function normalizeArchetypeScores(
   raw: Record<PersonalArchetypeId, number>,
+  measured: Record<PersonalArchetypeId, boolean>,
 ): PersonalArchetypes['scores'] {
-  const total = PERSONAL_ARCHETYPE_IDS.reduce((sum, id) => sum + Math.max(0, raw[id]), 0);
-  if (total <= 0) return [];
+  const measuredIds = PERSONAL_ARCHETYPE_IDS.filter((id) => measured[id]);
+  const total = measuredIds.reduce((sum, id) => sum + Math.max(0, raw[id]), 0);
 
-  const exact = PERSONAL_ARCHETYPE_IDS.map((id) => {
+  if (measuredIds.length === 0) {
+    return PERSONAL_ARCHETYPE_IDS.map((id) => ({
+      id,
+      score: null,
+      availability: 'unavailable' as const,
+    }));
+  }
+
+  if (total <= 0) {
+    return PERSONAL_ARCHETYPE_IDS.map((id) =>
+      measured[id]
+        ? { id, score: 0, availability: 'measured' as const }
+        : { id, score: null, availability: 'unavailable' as const },
+    );
+  }
+
+  const exact = measuredIds.map((id) => {
     const share = Math.max(0, raw[id]) / total;
     const floored = Math.floor(share * 10_000) / 10_000;
     return { id, floored, remainder: share * 10_000 - floored * 10_000 };
@@ -221,23 +316,42 @@ export function normalizeArchetypeScores(
     const target = byRemainder[i % byRemainder.length];
     if (!target) break;
     target.floored = Math.round((target.floored + 0.0001) * 10_000) / 10_000;
-    allocated = Math.round((allocated + 0.0001) * 10_000) / 10_000;
   }
 
-  return exact
-    .map((row) => ({ id: row.id, score: row.floored }))
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return PERSONAL_ARCHETYPE_IDS.indexOf(a.id) - PERSONAL_ARCHETYPE_IDS.indexOf(b.id);
-    });
+  const byId = new Map(exact.map((row) => [row.id, row.floored]));
+  return PERSONAL_ARCHETYPE_IDS.map((id) => {
+    if (!measured[id]) {
+      return { id, score: null, availability: 'unavailable' as const };
+    }
+    return {
+      id,
+      score: byId.get(id) ?? 0,
+      availability: 'measured' as const,
+    };
+  });
 }
 
 export function assembleArchetypes(input: ArchetypeSignalInput): PersonalArchetypes | null {
-  const scores = normalizeArchetypeScores(rawScores(input));
-  if (scores.length === 0) return null;
+  const measured = axisAvailability(input);
+  const raw = rawScores(input);
+  const scores = normalizeArchetypeScores(raw, measured);
+  const measuredActivity = scores.some(
+    (row) => row.availability === 'measured' && (row.score ?? 0) > 0,
+  );
+  if (!measuredActivity) return null;
+
+  const dominant =
+    [...scores]
+      .filter((row) => row.availability === 'measured' && row.score != null)
+      .sort((a, b) => {
+        const delta = (b.score ?? 0) - (a.score ?? 0);
+        if (delta !== 0) return delta;
+        return PERSONAL_ARCHETYPE_IDS.indexOf(a.id) - PERSONAL_ARCHETYPE_IDS.indexOf(b.id);
+      })[0] ?? null;
+
   return {
     rulesetVersion: PERSONAL_ARCHETYPE_RULESET_VERSION,
     scores,
-    dominantId: scores[0]?.id ?? null,
+    dominantId: dominant?.id ?? null,
   };
 }

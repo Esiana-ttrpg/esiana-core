@@ -45,6 +45,24 @@ export type LinkableCampaign = {
   isLookingForGroup: boolean;
 };
 
+/**
+ * Owner-only period ranking of campaigns by meaningful activity
+ * (active days first, then qualified contribution events — not raw word counts).
+ */
+export type ActiveCampaignSummary = {
+  id: string;
+  name: string;
+  handle: string;
+  href: string;
+  coverImageUrl: string | null;
+  /** Distinct civil days with qualifying activity in the reporting timezone. */
+  activeDays: number;
+  /** Count of qualifying activity events (writing, pages, maps, chronology, play). */
+  contributions: number;
+  /** Distinct wiki pages touched in the window. */
+  pagesTouched: number;
+};
+
 export type CreatorAttributionResponse = {
   computedAt: string;
   refreshCadence: 'realtime';
@@ -106,6 +124,8 @@ export type WritingVisualizationDocument = {
   id: string;
   title: string;
   href: string;
+  /** Authorized featured-image thumbnail when the viewer may see the page. */
+  thumbnailUrl?: string | null;
 };
 
 export type WritingVisualizationSession = {
@@ -118,6 +138,11 @@ export type WritingVisualizationSession = {
   documents: WritingVisualizationDocument[];
 };
 
+/** Ranked pages touched in the reporting window (contributions + sessions). */
+export type WritingMostWorkedDocument = WritingVisualizationDocument & {
+  contributions: number;
+};
+
 export type WritingVisualizations = {
   timeZone: string;
   window: { start: string; end: string };
@@ -126,6 +151,7 @@ export type WritingVisualizations = {
   hourly: WritingHourlyBucket[];
   addedRemovedTrend: WritingAddedRemovedPoint[];
   sessions: WritingVisualizationSession[];
+  mostWorkedDocuments: WritingMostWorkedDocument[];
 };
 
 /** Mutually exclusive worldbuilding domains. Factions are organization-backed. */
@@ -260,8 +286,13 @@ export type PersonalArchetypeId = (typeof PERSONAL_ARCHETYPE_IDS)[number];
 
 export type PersonalArchetypeScore = {
   id: PersonalArchetypeId;
-  /** Share of this window's creative mix in [0, 1]. Scores sum to 1. */
-  score: number;
+  /**
+   * L1 share among measured axes in [0, 1]. `0` means measured zero activity.
+   * `null` means the axis is unavailable (not silently zero).
+   * Measured scores among available axes sum to 1 when any activity exists.
+   */
+  score: number | null;
+  availability: 'measured' | 'unavailable';
 };
 
 export type PersonalArchetypes = {
@@ -315,6 +346,11 @@ export type PersonalStatisticsResponse = {
    */
   archetypes?: PersonalArchetypes | null;
   linkableCampaigns: LinkableCampaign[];
+  /**
+   * Owner-only: up to three campaigns ranked by period activity, with artwork.
+   * Omitted for public / viewerAuthorized and when the window is skipped.
+   */
+  activeCampaigns?: ActiveCampaignSummary[] | null;
   /** Owner-only writing charts. Omitted for public and compatibility adapters. */
   visualizations?: WritingVisualizations | null;
 };

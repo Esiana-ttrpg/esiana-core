@@ -36,6 +36,10 @@ import {
 } from './assembleParticipation.js';
 import { assembleArchetypes } from './assembleArchetypes.js';
 import {
+  assembleActiveCampaigns,
+  type ActiveCampaignActivityPoint,
+} from './assembleActiveCampaigns.js';
+import {
   MAP_ACTIVITY_ENTITY_TYPES,
   MapActivityEntity,
 } from '../../mapAuthorship.js';
@@ -47,15 +51,16 @@ import { AssetTypes } from '../../../types/domain.js';
 import { WORLD_ADVANCE_CATEGORY } from '../../../../../shared/worldAdvance.js';
 import { MembershipRoles } from '../../../../../shared/campaignPolicy/membershipRoles.js';
 import { resolveLinkableCampaigns } from '../resolveLinkableCampaigns.js';
+import { extractHeroImageUrl } from '../../recruitmentListing.js';
 import {
   assembleLifetimeAttributionMetrics,
   buildWorldbuildingMix,
 } from '../assembleLifetimeAttribution.js';
 import { selectScopedCampaignIds } from './visibility.js';
-import { campaignFreeformPagePath } from '../../../../../shared/campaignWorkspaceRoutes.js';
 import { uniqueDocumentIds } from '../../../../../shared/writingSession.js';
 import { buildCampaignContextSync } from '../../campaignScopeContext.js';
 import { canViewWikiPage, type WikiVisibilityViewer } from '../../wikiTree.js';
+import { buildWikiPageHref } from '../../wikiLinkService.js';
 import {
   assembleWritingVisualizations,
   emptyWritingVisualizations,
@@ -503,6 +508,7 @@ async function loadParticipationProjection(input: {
 }): Promise<{
   participation: ReturnType<typeof assembleParticipationStats>;
   history: ReturnType<typeof buildParticipationHistory> | undefined;
+  playSessions: Array<{ campaignId: string; at: Date }>;
 }> {
   if (input.campaignIds.length === 0) {
     return {
@@ -513,6 +519,7 @@ async function loadParticipationProjection(input: {
         input.rangeEnd,
       ),
       history: input.includeHistory ? [] : undefined,
+      playSessions: [],
     };
   }
 
@@ -626,8 +633,18 @@ async function loadParticipationProjection(input: {
     visibility: input.visibility,
   });
 
+  const playSessions: Array<{ campaignId: string; at: Date }> = [];
+  const seenPlayPoints = new Set<string>();
+  for (const row of [...sessionsAttended, ...sessionsHosted]) {
+    if (row.plannedStartAt == null) continue;
+    // Same merge key as buildParticipationHistory — one point per timeline session.
+    if (seenPlayPoints.has(row.timelinePointId)) continue;
+    seenPlayPoints.add(row.timelinePointId);
+    playSessions.push({ campaignId: row.campaignId, at: row.plannedStartAt });
+  }
+
   if (!input.includeHistory) {
-    return { participation, history: undefined };
+    return { participation, history: undefined, playSessions };
   }
 
   return {
@@ -637,6 +654,7 @@ async function loadParticipationProjection(input: {
       hosted: sessionsHosted,
       limit: 20,
     }),
+    playSessions,
   };
 }
 
@@ -728,6 +746,9 @@ export async function queryPersonalStatistics(
     input.visibility === 'owner' &&
     !skipPeriod &&
     input.includeVisualizations !== false;
+  // Owner period queries still need writing sessions for active-campaign ranking
+  // even when chart visualizations are disabled.
+  const loadVisualizationSessions = input.visibility === 'owner' && !skipPeriod;
   const linkableCampaigns = await resolveLinkableCampaigns(input.userId, input.viewerId);
 
   if (campaignIds.length === 0) {
@@ -801,7 +822,7 @@ export async function queryPersonalStatistics(
     rangeEnd: range.end,
   });
   const loadContributions = contributionWindow != null;
-  const vizWindow = includeVisualizations
+  const vizWindow = loadVisualizationSessions
     ? visualizationQueryWindow({
         rangeStart: range.start,
         rangeEnd: range.end,
@@ -878,6 +899,7 @@ export async function queryPersonalStatistics(
             metadata: true,
             source: true,
             pageId: true,
+            campaignId: true,
           },
         }),
     includeHabits
@@ -937,6 +959,7 @@ export async function queryPersonalStatistics(
             availability: true,
             origin: true,
             documentId: true,
+            campaignId: true,
           },
         })
       : Promise.resolve([]),
@@ -955,6 +978,7 @@ export async function queryPersonalStatistics(
             activeDurationMs: true,
             completeness: true,
             documentIds: true,
+            campaignId: true,
           },
         })
       : Promise.resolve([]),
@@ -1124,8 +1148,14 @@ export async function queryPersonalStatistics(
   }
 
   const privacyContext = input.visibility === 'owner' ? 'ownerProfile' : 'publicProfile';
-  const [{ cartography, thumbnails }, chronology, { participation, history }] =
-    await Promise.all([
+  const includeActiveCampaigns = input.visibility === 'owner' && !skipPeriod;
+  const [
+    { cartography, thumbnails },
+    chronology,
+    { participation, history, playSessions },
+    craftActivityRows,
+    activeCampaignRows,
+  ] = await Promise.all([
       loadCartographyProjection({
         userId: input.userId,
         viewerId: input.viewerId ?? input.userId,
@@ -1153,6 +1183,34 @@ export async function queryPersonalStatistics(
         visibility: input.visibility,
         includeHistory: input.visibility === 'owner' && !skipPeriod,
       }),
+      includeActiveCampaigns
+        ? prisma.campaignActivity.findMany({
+            where: {
+              userId: input.userId,
+              campaignId: { in: campaignIds },
+              entityType: {
+                in: [...MAP_ACTIVITY_ENTITY_TYPES, ...CHRONOLOGY_EDIT_ENTITY_TYPES],
+              },
+              actionType: 'UPDATE',
+              createdAt: {
+                ...(range.start ? { gte: range.start } : {}),
+                lt: range.end,
+              },
+            },
+            select: { campaignId: true, createdAt: true },
+          })
+        : Promise.resolve([]),
+      includeActiveCampaigns
+        ? prisma.campaign.findMany({
+            where: { id: { in: campaignIds }, archivedAt: null },
+            select: {
+              id: true,
+              name: true,
+              handle: true,
+              dashboardConfig: true,
+            },
+          })
+        : Promise.resolve([]),
     ]);
   const visualizations =
     includeVisualizations && vizWindow
@@ -1162,7 +1220,12 @@ export async function queryPersonalStatistics(
           contributions: writingContributions,
           sessions: visualizationSessions,
           documentsById: await resolveVisualizationDocuments(
-            visualizationSessions,
+            {
+              sessions: visualizationSessions,
+              contributionDocumentIds: writingContributions.map(
+                (row) => row.documentId,
+              ),
+            },
             campaignIds,
             input.viewerId ?? input.userId,
           ),
@@ -1183,6 +1246,32 @@ export async function queryPersonalStatistics(
         cartography,
         chronology,
         participation,
+      })
+    : undefined;
+
+  const activeCampaigns = includeActiveCampaigns
+    ? assembleActiveCampaigns({
+        timeZone,
+        rangeStart: range.start,
+        rangeEnd: range.end,
+        campaigns: new Map(
+          activeCampaignRows.map((row) => [
+            row.id,
+            {
+              id: row.id,
+              name: row.name,
+              handle: row.handle,
+              coverImageUrl: extractHeroImageUrl(row.dashboardConfig),
+            },
+          ]),
+        ),
+        points: buildActiveCampaignActivityPoints({
+          periodEvents,
+          writingContributions,
+          visualizationSessions,
+          craftActivityRows,
+          playSessions,
+        }),
       })
     : undefined;
 
@@ -1210,8 +1299,69 @@ export async function queryPersonalStatistics(
     ...(history ? { participationHistory: history } : {}),
     ...(archetypes ? { archetypes } : {}),
     linkableCampaigns,
+    ...(activeCampaigns ? { activeCampaigns } : {}),
     ...(visualizations ? { visualizations } : {}),
   };
+}
+
+function buildActiveCampaignActivityPoints(input: {
+  periodEvents: Array<{
+    campaignId: string;
+    createdAt: Date;
+    pageId?: string | null;
+    type: string;
+  }>;
+  writingContributions: Array<{
+    campaignId: string;
+    occurredAt: Date;
+    documentId?: string | null;
+    origin: string;
+  }>;
+  visualizationSessions: Array<{
+    campaignId: string;
+    startedAt: Date;
+    documentIds: unknown;
+  }>;
+  craftActivityRows: Array<{ campaignId: string; createdAt: Date }>;
+  playSessions: Array<{ campaignId: string; at: Date }>;
+}): ActiveCampaignActivityPoint[] {
+  const points: ActiveCampaignActivityPoint[] = [];
+
+  for (const event of input.periodEvents) {
+    // PAGE_EDITED overlaps WritingContribution; keep creates/links as distinct craft.
+    if (event.type === NarrativeEventType.PAGE_EDITED) continue;
+    points.push({
+      campaignId: event.campaignId,
+      at: event.createdAt,
+      pageId: event.pageId,
+    });
+  }
+  for (const row of input.writingContributions) {
+    if (row.origin !== 'human') continue;
+    points.push({
+      campaignId: row.campaignId,
+      at: row.occurredAt,
+      pageId: row.documentId,
+    });
+  }
+  for (const session of input.visualizationSessions) {
+    points.push({ campaignId: session.campaignId, at: session.startedAt });
+    for (const pageId of uniqueDocumentIds(session.documentIds)) {
+      points.push({
+        campaignId: session.campaignId,
+        at: session.startedAt,
+        pageId,
+        countsAsContribution: false,
+      });
+    }
+  }
+  for (const row of input.craftActivityRows) {
+    points.push({ campaignId: row.campaignId, at: row.createdAt });
+  }
+  for (const row of input.playSessions) {
+    points.push({ campaignId: row.campaignId, at: row.at });
+  }
+  return points;
 }
 
 export function selectVisibleVisualizationDocuments(
@@ -1222,12 +1372,17 @@ export function selectVisibleVisualizationDocuments(
     visibility: string;
     campaignId: string;
     handle: string;
+    parentId?: string | null;
+    templateType?: string | null;
+    workspace?: string | null;
+    metadata?: unknown;
+    thumbnailUrl?: string | null;
   }>,
   capabilitiesByCampaign: Map<string, WikiVisibilityViewer>,
 ) {
   const documents = new Map<
     string,
-    { id: string; title: string; href: string }
+    { id: string; title: string; href: string; thumbnailUrl: string | null }
   >();
   for (const page of pages) {
     const viewer = capabilitiesByCampaign.get(page.campaignId);
@@ -1235,7 +1390,16 @@ export function selectVisibleVisualizationDocuments(
     documents.set(page.id, {
       id: page.id,
       title: page.title,
-      href: campaignFreeformPagePath(page.handle, page.pathKey ?? page.id),
+      href: buildWikiPageHref(page.handle, {
+        id: page.id,
+        title: page.title,
+        parentId: page.parentId ?? null,
+        templateType: page.templateType ?? '',
+        workspace: page.workspace,
+        pathKey: page.pathKey,
+        metadata: page.metadata,
+      }),
+      thumbnailUrl: page.thumbnailUrl ?? null,
     });
   }
   return documents;
@@ -1301,12 +1465,20 @@ async function loadViewerCapabilitiesByCampaign(
 }
 
 async function resolveVisualizationDocuments(
-  sessions: Array<{ documentIds: unknown }>,
+  input: {
+    sessions: Array<{ documentIds: unknown }>;
+    contributionDocumentIds?: Array<string | null | undefined>;
+  },
   campaignIds: string[],
   viewerId: string,
 ) {
   const ids = [
-    ...new Set(sessions.flatMap((session) => uniqueDocumentIds(session.documentIds))),
+    ...new Set([
+      ...input.sessions.flatMap((session) => uniqueDocumentIds(session.documentIds)),
+      ...(input.contributionDocumentIds ?? []).filter(
+        (id): id is string => typeof id === 'string' && id.length > 0,
+      ),
+    ]),
   ];
   if (ids.length === 0 || campaignIds.length === 0) return new Map();
   const pages = await prisma.wikiPage.findMany({
@@ -1319,9 +1491,16 @@ async function resolveVisualizationDocuments(
       id: true,
       title: true,
       pathKey: true,
+      parentId: true,
+      templateType: true,
+      workspace: true,
+      metadata: true,
       visibility: true,
       campaignId: true,
       campaign: { select: { handle: true } },
+      featuredImage: {
+        select: { thumbnailUrl: true, displayUrl: true, url: true, visibility: true },
+      },
     },
   });
   const pageCampaignIds = [...new Set(pages.map((page) => page.campaignId))];
@@ -1330,14 +1509,29 @@ async function resolveVisualizationDocuments(
     pageCampaignIds,
   );
   return selectVisibleVisualizationDocuments(
-    pages.map((page) => ({
-      id: page.id,
-      title: page.title,
-      pathKey: page.pathKey,
-      visibility: page.visibility,
-      campaignId: page.campaignId,
-      handle: page.campaign.handle,
-    })),
+    pages.map((page) => {
+      const viewer = capabilitiesByCampaign.get(page.campaignId);
+      const image = page.featuredImage;
+      const imageAllowed =
+        image != null &&
+        viewer != null &&
+        canViewWikiPage(image.visibility, viewer);
+      return {
+        id: page.id,
+        title: page.title,
+        pathKey: page.pathKey,
+        parentId: page.parentId,
+        templateType: page.templateType,
+        workspace: page.workspace,
+        metadata: page.metadata,
+        visibility: page.visibility,
+        campaignId: page.campaignId,
+        handle: page.campaign.handle,
+        thumbnailUrl: imageAllowed
+          ? image.thumbnailUrl ?? image.displayUrl ?? image.url
+          : null,
+      };
+    }),
     capabilitiesByCampaign,
   );
 }
