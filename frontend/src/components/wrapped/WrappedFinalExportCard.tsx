@@ -60,7 +60,7 @@ export function WrappedFinalExportCard({
             className="mt-3 text-muted-foreground"
             style={{ fontSize: exportMode ? 32 : 14 }}
           >
-            {t(`wrapped.export.preset${capitalize(model.preset)}`)}
+            {t(`profile.wrapped.export.preset${capitalize(model.preset)}`)}
           </p>
         </div>
 
@@ -108,7 +108,7 @@ export function WrappedFinalExportCard({
               className="mt-3 font-medium"
               style={{ fontSize: exportMode ? 30 : 14 }}
             >
-              {t('wrapped.slides.archetype', {
+              {t('profile.wrapped.slides.archetype', {
                 archetype: model.dominantArchetype,
               })}
             </p>

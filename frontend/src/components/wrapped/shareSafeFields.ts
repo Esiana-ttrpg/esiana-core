@@ -18,19 +18,19 @@ const PRESET_FIELDS: Record<
   Array<{ id: (typeof WRAPPED_SHARE_SAFE_FIELD_IDS)[number]; labelKey: string }>
 > = {
   adventurer: [
-    { id: 'participation.campaignsParticipated', labelKey: 'wrapped.slides.campaignsCount' },
-    { id: 'participation.sessionsAttended', labelKey: 'wrapped.slides.sessionsAttended' },
-    { id: 'participation.sessionsHosted', labelKey: 'wrapped.slides.sessionsHosted' },
+    { id: 'participation.campaignsParticipated', labelKey: 'profile.wrapped.slides.campaignsCount' },
+    { id: 'participation.sessionsAttended', labelKey: 'profile.wrapped.slides.sessionsAttended' },
+    { id: 'participation.sessionsHosted', labelKey: 'profile.wrapped.slides.sessionsHosted' },
   ],
   worldbuilder: [
-    { id: 'personal.period.pagesCreated', labelKey: 'wrapped.slides.pagesCreated' },
-    { id: 'personal.period.pagesEdited', labelKey: 'wrapped.slides.pagesEdited' },
-    { id: 'participation.campaignsParticipated', labelKey: 'wrapped.slides.campaignsCount' },
+    { id: 'personal.period.pagesCreated', labelKey: 'profile.wrapped.slides.pagesCreated' },
+    { id: 'personal.period.pagesEdited', labelKey: 'profile.wrapped.slides.pagesEdited' },
+    { id: 'participation.campaignsParticipated', labelKey: 'profile.wrapped.slides.campaignsCount' },
   ],
   storyteller: [
-    { id: 'personal.period.wordsAdded', labelKey: 'wrapped.slides.wordsWritten' },
-    { id: 'personal.period.pagesCreated', labelKey: 'wrapped.slides.pagesCreated' },
-    { id: 'participation.sessionsAttended', labelKey: 'wrapped.slides.sessionsAttended' },
+    { id: 'personal.period.wordsAdded', labelKey: 'profile.wrapped.slides.wordsWritten' },
+    { id: 'personal.period.pagesCreated', labelKey: 'profile.wrapped.slides.pagesCreated' },
+    { id: 'participation.sessionsAttended', labelKey: 'profile.wrapped.slides.sessionsAttended' },
   ],
 };
 

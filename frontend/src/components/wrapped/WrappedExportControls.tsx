@@ -44,7 +44,7 @@ export function WrappedExportControls({ data }: { data: WrappedYearResponse }) {
         setBusy(false);
         return;
       }
-      setError(t('wrapped.export.error'));
+      setError(t('profile.wrapped.export.error'));
     } finally {
       setBusy(false);
     }
@@ -64,7 +64,7 @@ export function WrappedExportControls({ data }: { data: WrappedYearResponse }) {
             }`}
             onClick={() => setPreset(value)}
           >
-            {t(`wrapped.export.preset${value[0]!.toUpperCase()}${value.slice(1)}`)}
+            {t(`profile.wrapped.export.preset${value[0]!.toUpperCase()}${value.slice(1)}`)}
           </button>
         ))}
       </div>
@@ -75,7 +75,7 @@ export function WrappedExportControls({ data }: { data: WrappedYearResponse }) {
         className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted/40 disabled:opacity-60"
         onClick={() => void runExport()}
       >
-        {busy ? '…' : t('wrapped.export.share')}
+        {busy ? '…' : t('profile.wrapped.export.share')}
       </button>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

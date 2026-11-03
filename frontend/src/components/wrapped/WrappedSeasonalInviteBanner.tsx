@@ -45,8 +45,8 @@ export function WrappedSeasonalInviteBanner() {
 
   const title =
     invite.edition === 'preview'
-      ? t('wrapped.seasonal.titlePreview', { year: invite.year })
-      : t('wrapped.seasonal.title', { year: invite.year });
+      ? t('profile.wrapped.seasonal.titlePreview', { year: invite.year })
+      : t('profile.wrapped.seasonal.title', { year: invite.year });
 
   return (
     <div
@@ -61,7 +61,7 @@ export function WrappedSeasonalInviteBanner() {
             to={`/users/${user.id}/wrapped/${invite.year}`}
             className="text-sm font-medium text-primary underline-offset-4 hover:underline"
           >
-            {t('wrapped.seasonal.cta')}
+            {t('profile.wrapped.seasonal.cta')}
           </Link>
           <button
             type="button"
@@ -73,7 +73,7 @@ export function WrappedSeasonalInviteBanner() {
               });
             }}
           >
-            {t('wrapped.seasonal.dismiss')}
+            {t('profile.wrapped.seasonal.dismiss')}
           </button>
         </div>
       </div>

@@ -77,7 +77,7 @@ function YearIntroSlide({ data, t }: WrappedSlideProps) {
       title={t('profile.wrapped.title', { year: data.year })}
     >
       <p className="max-w-prose text-base text-muted-foreground sm:text-lg">
-        {t('wrapped.slides.summaryLead')}
+        {t('profile.wrapped.slides.summaryLead')}
       </p>
       {disclosure.isPartialYearWriting && disclosure.writingReliableFrom ? (
         <p className="text-sm text-muted-foreground">
@@ -96,9 +96,9 @@ function WorldsExploredSlide({ data, t, locale }: WrappedSlideProps) {
     readMetricAmount(data.calculation.metrics.participation.campaignsParticipated) ||
     0;
   return (
-    <SlideShell title={t('wrapped.slides.worldsExplored')}>
+    <SlideShell title={t('profile.wrapped.slides.worldsExplored')}>
       <MetricBlock
-        label={t('wrapped.slides.campaignsCount', { count })}
+        label={t('profile.wrapped.slides.campaignsCount', { count })}
         value={formatCompactCount(
           { status: 'value', amount: count },
           locale,
@@ -119,11 +119,11 @@ function AdventureLogSlide({ data, t, locale }: WrappedSlideProps) {
     locale,
   );
   return (
-    <SlideShell title={t('wrapped.slides.adventureLog')}>
+    <SlideShell title={t('profile.wrapped.slides.adventureLog')}>
       <div className="grid gap-6">
         {attended ? (
           <MetricBlock
-            label={t('wrapped.slides.sessionsAttended', {
+            label={t('profile.wrapped.slides.sessionsAttended', {
               count: readMetricAmount(
                 data.calculation.metrics.participation.sessionsAttended,
               ),
@@ -134,7 +134,7 @@ function AdventureLogSlide({ data, t, locale }: WrappedSlideProps) {
         ) : null}
         {hosted ? (
           <MetricBlock
-            label={t('wrapped.slides.sessionsHosted', {
+            label={t('profile.wrapped.slides.sessionsHosted', {
               count: readMetricAmount(
                 data.calculation.metrics.participation.sessionsHosted,
               ),
@@ -162,11 +162,11 @@ function CreativeLegacySlide({ data, t, locale }: WrappedSlideProps) {
     locale,
   );
   return (
-    <SlideShell title={t('wrapped.slides.creativeLegacy')}>
+    <SlideShell title={t('profile.wrapped.slides.creativeLegacy')}>
       <div className="grid gap-6">
         {words ? (
           <MetricBlock
-            label={t('wrapped.slides.wordsWritten', {
+            label={t('profile.wrapped.slides.wordsWritten', {
               count: readMetricAmount(
                 data.calculation.metrics.personal['period.wordsAdded'],
               ),
@@ -177,7 +177,7 @@ function CreativeLegacySlide({ data, t, locale }: WrappedSlideProps) {
         ) : null}
         {pages ? (
           <MetricBlock
-            label={t('wrapped.slides.pagesCreated', {
+            label={t('profile.wrapped.slides.pagesCreated', {
               count: readMetricAmount(
                 data.calculation.metrics.personal['period.pagesCreated'],
               ),
@@ -188,7 +188,7 @@ function CreativeLegacySlide({ data, t, locale }: WrappedSlideProps) {
         ) : null}
         {edits ? (
           <MetricBlock
-            label={t('wrapped.slides.pagesEdited', {
+            label={t('profile.wrapped.slides.pagesEdited', {
               count: readMetricAmount(
                 data.calculation.metrics.personal['period.pagesEdited'],
               ),
@@ -208,14 +208,14 @@ function TopCampaignSlide({ data, t }: WrappedSlideProps) {
     : null;
   if (!top || !presentation?.authorized) {
     return (
-      <SlideShell title={t('wrapped.slides.topCampaign')}>
+      <SlideShell title={t('profile.wrapped.slides.topCampaign')}>
         <p className="text-muted-foreground">{t('profile.wrapped.unavailable')}</p>
       </SlideShell>
     );
   }
   const fallback = buildCampaignGradientStyle(presentation.handle || presentation.id);
   return (
-    <SlideShell title={t('wrapped.slides.topCampaign')}>
+    <SlideShell title={t('profile.wrapped.slides.topCampaign')}>
       <div
         className="relative overflow-hidden rounded-xl border border-border"
         style={{ minHeight: '14rem', ...(!presentation.coverImageUrl ? fallback : {}) }}
@@ -233,7 +233,7 @@ function TopCampaignSlide({ data, t }: WrappedSlideProps) {
             {presentation.name}
           </p>
           <p className="text-sm" style={{ color: HUB_ARTWORK_FOREGROUND_MUTED }}>
-            {t('wrapped.slides.topCampaignWhy', {
+            {t('profile.wrapped.slides.topCampaignWhy', {
               days: top.activeDays,
               contributions: top.contributions,
             })}
@@ -248,7 +248,7 @@ function WritingRhythmSlide({ data, t, locale, reducedMotion }: WrappedSlideProp
   const months = data.calculation.monthlyActivity;
   const max = Math.max(1, ...months.map((m) => m.activeDays));
   return (
-    <SlideShell title={t('wrapped.slides.writingRhythm')}>
+    <SlideShell title={t('profile.wrapped.slides.writingRhythm')}>
       <div className="grid grid-cols-12 items-end gap-1" aria-hidden="true">
         {months.map((m) => (
           <div
@@ -265,7 +265,7 @@ function WritingRhythmSlide({ data, t, locale, reducedMotion }: WrappedSlideProp
         ))}
       </div>
       <p className="text-sm text-muted-foreground">
-        {t('wrapped.slides.activeDays', {
+        {t('profile.wrapped.slides.activeDays', {
           count: months.reduce((sum, m) => sum + m.activeDays, 0),
         })}
       </p>
@@ -287,7 +287,7 @@ function WorldBuildSlide({ data, t, locale }: WrappedSlideProps) {
     locale,
   );
   return (
-    <SlideShell title={t('wrapped.slides.worldYouHelpedBuild')}>
+    <SlideShell title={t('profile.wrapped.slides.worldYouHelpedBuild')}>
       <div className="grid gap-5">
         {characters ? (
           <MetricBlock
@@ -305,7 +305,7 @@ function WorldBuildSlide({ data, t, locale }: WrappedSlideProps) {
         ) : null}
         {pages ? (
           <MetricBlock
-            label={t('wrapped.slides.pagesCreated', {
+            label={t('profile.wrapped.slides.pagesCreated', {
               count: readMetricAmount(
                 data.calculation.metrics.personal['period.pagesCreated'],
               ),
@@ -322,23 +322,23 @@ function BiggestMonthSlide({ data, t, locale }: WrappedSlideProps) {
   const peak = data.calculation.biggestMonth;
   if (!peak) {
     return (
-      <SlideShell title={t('wrapped.slides.biggestMonth')}>
+      <SlideShell title={t('profile.wrapped.slides.biggestMonth')}>
         <p className="text-muted-foreground">{t('profile.wrapped.unavailable')}</p>
       </SlideShell>
     );
   }
   return (
-    <SlideShell title={t('wrapped.slides.biggestMonth')}>
+    <SlideShell title={t('profile.wrapped.slides.biggestMonth')}>
       <MetricBlock
-        label={t('wrapped.slides.monthPeak', {
+        label={t('profile.wrapped.slides.monthPeak', {
           month: monthLabel(peak.month, locale),
         })}
         value={monthLabel(peak.month, locale)}
         accent={STATS_CATEGORY_CSS_VAR.writing}
       />
       <p className="text-sm text-muted-foreground">
-        {t('wrapped.slides.activeDays', { count: peak.activeDays })} ·{' '}
-        {t('wrapped.slides.contributions', { count: peak.contributions })}
+        {t('profile.wrapped.slides.activeDays', { count: peak.activeDays })} ·{' '}
+        {t('profile.wrapped.slides.contributions', { count: peak.contributions })}
       </p>
     </SlideShell>
   );
@@ -350,10 +350,10 @@ function FellowAdventurersSlide({ data, t, locale }: WrappedSlideProps) {
     locale,
   );
   return (
-    <SlideShell title={t('wrapped.slides.fellowAdventurers')}>
+    <SlideShell title={t('profile.wrapped.slides.fellowAdventurers')}>
       {fellows ? (
         <MetricBlock
-          label={t('wrapped.slides.fellowsCount', {
+          label={t('profile.wrapped.slides.fellowsCount', {
             count: readMetricAmount(
               data.calculation.metrics.shared.fellowAdventurerCount,
             ),
@@ -378,14 +378,14 @@ function YearComparedSlide({ data, t, locale }: WrappedSlideProps) {
     locale,
   );
   return (
-    <SlideShell title={t('wrapped.slides.yearCompared')}>
+    <SlideShell title={t('profile.wrapped.slides.yearCompared')}>
       <p className="text-sm text-muted-foreground">
         vs {data.calculation.metrics.comparative.previousYear}
       </p>
       <div className="grid gap-5">
         {words ? (
           <MetricBlock
-            label={t('wrapped.slides.wordsWritten', {
+            label={t('profile.wrapped.slides.wordsWritten', {
               count: readMetricAmount(
                 data.calculation.metrics.comparative.deltas['period.wordsAdded'],
               ),
@@ -396,7 +396,7 @@ function YearComparedSlide({ data, t, locale }: WrappedSlideProps) {
         ) : null}
         {pages ? (
           <MetricBlock
-            label={t('wrapped.slides.pagesCreated', {
+            label={t('profile.wrapped.slides.pagesCreated', {
               count: readMetricAmount(
                 data.calculation.metrics.comparative.deltas['period.pagesCreated'],
               ),
@@ -412,13 +412,13 @@ function YearComparedSlide({ data, t, locale }: WrappedSlideProps) {
 function SignatureSlide({ data, t }: WrappedSlideProps) {
   const dominant = data.calculation.archetypes?.dominantId;
   return (
-    <SlideShell title={t('wrapped.slides.signatureAchievement')}>
+    <SlideShell title={t('profile.wrapped.slides.signatureAchievement')}>
       {dominant ? (
         <p className="text-2xl font-semibold sm:text-3xl">
-          {t('wrapped.slides.archetype', { archetype: dominant })}
+          {t('profile.wrapped.slides.archetype', { archetype: dominant })}
         </p>
       ) : (
-        <p className="text-muted-foreground">{t('wrapped.slides.summaryLead')}</p>
+        <p className="text-muted-foreground">{t('profile.wrapped.slides.summaryLead')}</p>
       )}
     </SlideShell>
   );
@@ -435,17 +435,17 @@ function YearSummarySlide({ data, t, locale }: WrappedSlideProps) {
   );
   const worlds = Object.keys(data.calculation.metrics.byCampaign).length;
   return (
-    <SlideShell title={t('wrapped.slides.yearSummary')}>
-      <p className="text-lg text-muted-foreground">{t('wrapped.slides.summaryLead')}</p>
+    <SlideShell title={t('profile.wrapped.slides.yearSummary')}>
+      <p className="text-lg text-muted-foreground">{t('profile.wrapped.slides.summaryLead')}</p>
       <div className="grid grid-cols-2 gap-6">
         <MetricBlock
-          label={t('wrapped.slides.campaignsCount', { count: worlds })}
+          label={t('profile.wrapped.slides.campaignsCount', { count: worlds })}
           value={String(worlds)}
           accent={STATS_CATEGORY_CSS_VAR.campaigns}
         />
         {sessions ? (
           <MetricBlock
-            label={t('wrapped.slides.sessionsAttended', {
+            label={t('profile.wrapped.slides.sessionsAttended', {
               count: readMetricAmount(
                 data.calculation.metrics.participation.sessionsAttended,
               ),
@@ -455,7 +455,7 @@ function YearSummarySlide({ data, t, locale }: WrappedSlideProps) {
         ) : null}
         {words ? (
           <MetricBlock
-            label={t('wrapped.slides.wordsWritten', {
+            label={t('profile.wrapped.slides.wordsWritten', {
               count: readMetricAmount(
                 data.calculation.metrics.personal['period.wordsAdded'],
               ),
