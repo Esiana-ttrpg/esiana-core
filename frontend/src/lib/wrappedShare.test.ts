@@ -89,8 +89,26 @@ describe('wrapped share helpers', () => {
         url: 'https://example.test/users/u/wrapped/2026',
         title: 'Wrapped',
       });
-      assert.equal(result, 'copied');
+      assert.deepEqual(result, { outcome: 'copied' });
       assert.equal(copied, 'https://example.test/users/u/wrapped/2026');
+    } finally {
+      Object.defineProperty(globalThis, 'navigator', {
+        configurable: true,
+        value: previousNavigator,
+      });
+    }
+  });
+
+  it('returns the canonical URL for manual selection when share and clipboard fail', async () => {
+    const previousNavigator = globalThis.navigator;
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {},
+    });
+    try {
+      const url = 'https://example.test/users/u/wrapped/2026';
+      const result = await shareWrappedLink({ url, title: 'Wrapped' });
+      assert.deepEqual(result, { outcome: 'manual', url });
     } finally {
       Object.defineProperty(globalThis, 'navigator', {
         configurable: true,

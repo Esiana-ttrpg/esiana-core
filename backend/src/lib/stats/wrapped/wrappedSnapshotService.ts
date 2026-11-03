@@ -193,13 +193,10 @@ async function persistSnapshot(input: {
     }
   }
 
-  // Concurrent create lost the race: preserve an already-completed row on
-  // non-regeneration reads instead of overwriting frozen metrics.
-  if (
-    !input.regenerated &&
-    existing.edition === 'completed' &&
-    input.calc.edition === 'completed'
-  ) {
+  // Non-regenerating writes must never overwrite a completed freeze, even when
+  // the incoming calc reports preview (e.g. preview-resolved response / race).
+  // Regenerate continues through the update path below.
+  if (!input.regenerated && existing.edition === 'completed') {
     return {
       calc: parseCalculation(existing.payload),
       generatedAt: existing.generatedAt,

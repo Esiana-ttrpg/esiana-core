@@ -106,23 +106,28 @@ export function WrappedStoryViewer({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Tab') {
-        const root = rootRef.current;
-        if (!root) return;
-        const nodes = listFocusable(root);
+        // Prefer an open sharing/manage dialog (portaled outside the viewer).
+        const sharing = document.querySelector(
+          '[data-wrapped-sharing-dialog="true"]',
+        );
+        const trapRoot =
+          sharing instanceof HTMLElement ? sharing : rootRef.current;
+        if (!trapRoot) return;
+        const nodes = listFocusable(trapRoot);
         if (nodes.length === 0) {
           event.preventDefault();
-          root.focus();
+          trapRoot.focus();
           return;
         }
         const first = nodes[0]!;
         const last = nodes[nodes.length - 1]!;
         const active = document.activeElement;
         if (event.shiftKey) {
-          if (active === first || !root.contains(active)) {
+          if (active === first || !trapRoot.contains(active)) {
             event.preventDefault();
             last.focus();
           }
-        } else if (active === last || !root.contains(active)) {
+        } else if (active === last || !trapRoot.contains(active)) {
           event.preventDefault();
           first.focus();
         }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { WrappedFinalCardPreset, WrappedYearResponse } from '@shared/wrappedTypes';
@@ -47,17 +47,32 @@ export function WrappedExportControls({
   const [preset, setPreset] = useState<WrappedFinalCardPreset>('storyteller');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [manualUrl, setManualUrl] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [confirmPublish, setConfirmPublish] = useState(false);
   const [exportModel, setExportModel] = useState<ShareSafeFinalCardModel>(() =>
     buildShareSafeFinalCard(data, 'storyteller'),
   );
   const exportHostRef = useRef<HTMLDivElement>(null);
+  const shareDialogRef = useRef<HTMLDivElement>(null);
   const isOwner = data.access === 'owner';
   const published = data.publication.status === 'published';
   const canPublish = data.publication.publicPublishingEnabled;
 
   const previewModel = buildShareSafeFinalCard(data, preset);
+
+  useEffect(() => {
+    if (!shareOpen) return;
+    const frame = requestAnimationFrame(() => {
+      const root = shareDialogRef.current;
+      if (!root) return;
+      const focusable = root.querySelector<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? root).focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [shareOpen, confirmPublish]);
 
   const captureFreshPng = async (): Promise<{ blob: Blob; year: number }> => {
     const fresh = await fetchOwnerWrappedYear(data.year);
@@ -76,6 +91,7 @@ export function WrappedExportControls({
   const runDownload = async () => {
     setBusy(true);
     setError(null);
+    setManualUrl(null);
     try {
       const { blob, year } = await captureFreshPng();
       downloadWrappedBlob(blob, `esiana-wrapped-${year}.png`);
@@ -90,13 +106,18 @@ export function WrappedExportControls({
   const runShareImage = async () => {
     setBusy(true);
     setError(null);
+    setManualUrl(null);
     try {
       const { blob, year } = await captureFreshPng();
-      await shareWrappedImageFile({
+      const outcome = await shareWrappedImageFile({
         blob,
         year,
         title: t('profile.wrapped.title', { year }),
       });
+      if (outcome === 'downloaded') {
+        setError(t('profile.wrapped.share.downloadFallback'));
+        return;
+      }
       setShareOpen(false);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -109,22 +130,29 @@ export function WrappedExportControls({
   const runShareLink = async (alreadyPublished: boolean) => {
     setBusy(true);
     setError(null);
+    setManualUrl(null);
     try {
-      let next = data;
       if (!alreadyPublished) {
         if (!canPublish) {
           setError(t('profile.wrapped.share.publishingDisabled'));
           return;
         }
-        next = await publishOwnerWrappedYear(data.year);
+        const next = await publishOwnerWrappedYear(data.year);
         onPublicationChange?.(next);
+        setConfirmPublish(false);
+        setError(t('profile.wrapped.share.linkReady'));
+        return;
       }
       const url = canonicalWrappedUrl(userId, data.year);
-      await shareWrappedLink({
+      const result = await shareWrappedLink({
         url,
         title: t('profile.wrapped.title', { year: data.year }),
       });
-      setConfirmPublish(false);
+      if (result.outcome === 'manual') {
+        setManualUrl(result.url);
+        setError(t('profile.wrapped.share.manualLinkHelp'));
+        return;
+      }
       setShareOpen(false);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -162,6 +190,7 @@ export function WrappedExportControls({
           className="flex-1 rounded-md border border-primary bg-primary/10 px-3 py-2 text-sm font-medium hover:bg-primary/15 disabled:opacity-60"
           onClick={() => {
             setError(null);
+            setManualUrl(null);
             setConfirmPublish(false);
             setShareOpen(true);
           }}
@@ -177,12 +206,17 @@ export function WrappedExportControls({
           {busy ? '…' : t('profile.wrapped.export.download')}
         </button>
       </div>
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error && !shareOpen ? (
+        <p className="text-sm text-destructive">{error}</p>
+      ) : null}
 
       {shareOpen
         ? createPortal(
             <div
-              className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-4 sm:items-center"
+              ref={shareDialogRef}
+              data-wrapped-sharing-dialog="true"
+              tabIndex={-1}
+              className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-4 outline-none sm:items-center"
               role="dialog"
               aria-modal="true"
               aria-label={t('profile.wrapped.share.dialogTitle')}
@@ -195,6 +229,23 @@ export function WrappedExportControls({
                 <h2 className="text-base font-semibold">
                   {t('profile.wrapped.share.dialogTitle')}
                 </h2>
+                {error ? (
+                  <p className="text-sm text-destructive">{error}</p>
+                ) : null}
+                {manualUrl ? (
+                  <label className="block space-y-1 text-sm">
+                    <span className="text-muted-foreground">
+                      {t('profile.wrapped.share.manualLinkLabel')}
+                    </span>
+                    <input
+                      type="text"
+                      readOnly
+                      value={manualUrl}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                  </label>
+                ) : null}
                 {!confirmPublish ? (
                   <>
                     <button

@@ -3,6 +3,11 @@
  * Image share never publishes. Link share uses the canonical owner URL.
  */
 
+export type ShareLinkResult =
+  | { outcome: 'shared' }
+  | { outcome: 'copied' }
+  | { outcome: 'manual'; url: string };
+
 export async function shareWrappedImageFile(input: {
   blob: Blob;
   year: number;
@@ -38,7 +43,7 @@ export async function shareWrappedImageFile(input: {
 export async function shareWrappedLink(input: {
   url: string;
   title: string;
-}): Promise<'shared' | 'copied'> {
+}): Promise<ShareLinkResult> {
   const canShare =
     typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
@@ -49,7 +54,7 @@ export async function shareWrappedLink(input: {
         text: input.title,
         url: input.url,
       });
-      return 'shared';
+      return { outcome: 'shared' };
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
@@ -58,11 +63,16 @@ export async function shareWrappedLink(input: {
   }
 
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(input.url);
-    return 'copied';
+    try {
+      await navigator.clipboard.writeText(input.url);
+      return { outcome: 'copied' };
+    } catch {
+      // Fall through to manual URL display.
+    }
   }
 
-  throw new Error('Unable to share or copy link');
+  // Caller should show a selectable read-only field with the canonical URL.
+  return { outcome: 'manual', url: input.url };
 }
 
 export function downloadWrappedBlob(blob: Blob, filename: string): 'downloaded' {

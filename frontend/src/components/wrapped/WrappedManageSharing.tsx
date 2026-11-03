@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { WrappedYearResponse } from '@shared/wrappedTypes';
 import {
   publishOwnerWrappedYear,
   unpublishOwnerWrappedYear,
 } from '@/lib/statsApi';
-import { canonicalWrappedUrl, shareWrappedLink } from '@/lib/wrappedShare';
+import { canonicalWrappedUrl } from '@/lib/wrappedShare';
 
 export function WrappedManageSharing({
   data,
@@ -23,24 +23,43 @@ export function WrappedManageSharing({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [manualUrl, setManualUrl] = useState<string | null>(null);
   const [confirmPublish, setConfirmPublish] = useState(false);
-
-  if (!open || data.access !== 'owner') return null;
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const published = data.publication.status === 'published';
   const canPublish = data.publication.publicPublishingEnabled;
   const url = canonicalWrappedUrl(userId, data.year);
 
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      const root = dialogRef.current;
+      if (!root) return;
+      const focusable = root.querySelector<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? root).focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, confirmPublish]);
+
+  if (!open || data.access !== 'owner') return null;
+
   const copyLink = async () => {
     setBusy(true);
     setError(null);
+    setManualUrl(null);
     try {
-      await shareWrappedLink({
-        url,
-        title: t('profile.wrapped.title', { year: data.year }),
-      });
+      if (!navigator.clipboard?.writeText) {
+        setManualUrl(url);
+        setError(t('profile.wrapped.share.manualLinkHelp'));
+        return;
+      }
+      await navigator.clipboard.writeText(url);
     } catch {
-      setError(t('profile.wrapped.share.linkError'));
+      setManualUrl(url);
+      setError(t('profile.wrapped.share.manualLinkHelp'));
     } finally {
       setBusy(false);
     }
@@ -49,6 +68,7 @@ export function WrappedManageSharing({
   const publish = async () => {
     setBusy(true);
     setError(null);
+    setManualUrl(null);
     try {
       const next = await publishOwnerWrappedYear(data.year);
       onChange(next);
@@ -63,6 +83,7 @@ export function WrappedManageSharing({
   const unpublish = async () => {
     setBusy(true);
     setError(null);
+    setManualUrl(null);
     try {
       const next = await unpublishOwnerWrappedYear(data.year);
       onChange(next);
@@ -75,7 +96,10 @@ export function WrappedManageSharing({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-4 sm:items-center"
+      ref={dialogRef}
+      data-wrapped-sharing-dialog="true"
+      tabIndex={-1}
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-4 outline-none sm:items-center"
       role="dialog"
       aria-modal="true"
       aria-label={t('profile.wrapped.manage.title')}
@@ -137,8 +161,8 @@ export function WrappedManageSharing({
                 </button>
                 <button
                   type="button"
-                  disabled={busy}
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40"
+                  disabled={busy || !canPublish}
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40 disabled:opacity-60"
                   onClick={() => {
                     setConfirmPublish(true);
                   }}
@@ -168,6 +192,20 @@ export function WrappedManageSharing({
         )}
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {manualUrl ? (
+          <label className="block space-y-1 text-sm">
+            <span className="text-muted-foreground">
+              {t('profile.wrapped.share.manualLinkLabel')}
+            </span>
+            <input
+              type="text"
+              readOnly
+              value={manualUrl}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          </label>
+        ) : null}
         <button
           type="button"
           className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"

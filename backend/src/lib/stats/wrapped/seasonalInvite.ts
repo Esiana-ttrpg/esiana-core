@@ -1,5 +1,6 @@
 import { resolveWrappedInviteAvailability } from '../../../../../shared/wrapped/slideRegistry.js';
 import type {
+  WrappedCalculationV1,
   WrappedEdition,
   WrappedInviteAvailability,
 } from '../../../../../shared/wrappedTypes.js';
@@ -13,6 +14,10 @@ import {
   wrappedInviteDismissKey,
 } from './editionState.js';
 import { getWrappedFeatureFlags } from './wrappedFeatureFlags.js';
+
+function parseStoredCalculation(payload: unknown): WrappedCalculationV1 {
+  return payload as WrappedCalculationV1;
+}
 
 export type WrappedSeasonalInviteResponse = {
   version: 1;
@@ -90,12 +95,27 @@ export async function getWrappedSeasonalInvite(input: {
   const dismissed = Boolean(dismissal);
   const edition = resolveWrappedEdition({ year, timeZone, now });
 
-  // Assemble without persisting — invite must not create snapshot side effects.
-  const calc = await assembleAnnualWrapped({
-    userId: input.userId,
-    year,
-    now,
+  // Match year-page selection: completed freeze when present, else live assembly.
+  // Invite never persists — avoid snapshot side effects on banner fetch.
+  const existing = await prisma.userWrappedSnapshot.findUnique({
+    where: { userId_year: { userId: input.userId, year } },
+    select: { edition: true, payload: true },
   });
+
+  let calc: WrappedCalculationV1;
+  if (edition === 'completed' && existing?.edition === 'completed') {
+    calc = {
+      ...parseStoredCalculation(existing.payload),
+      edition: 'completed',
+    };
+  } else {
+    calc = await assembleAnnualWrapped({
+      userId: input.userId,
+      year,
+      now,
+    });
+  }
+
   const availability = resolveWrappedInviteAvailability(calc.editionTier);
   const href =
     availability === 'unavailable'

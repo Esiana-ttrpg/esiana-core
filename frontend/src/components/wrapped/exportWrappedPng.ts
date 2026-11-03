@@ -6,6 +6,36 @@ import {
 } from '@/lib/wrappedPngFeasibility';
 import { shareWrappedImageFile } from '@/lib/wrappedShare';
 
+/** Bound toPng so stalled font stylesheet/file work cannot hang export forever. */
+const TOPNG_TIMEOUT_MS = 12_000;
+
+async function toPngBounded(node: HTMLElement): Promise<string> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      toPng(node, {
+        width: WRAPPED_EXPORT_WIDTH,
+        height: WRAPPED_EXPORT_HEIGHT,
+        pixelRatio: 1,
+        cacheBust: true,
+        // Skip remote font embedding — document.fonts.ready is already bounded.
+        fontEmbedCSS: '',
+        backgroundColor:
+          getComputedStyle(document.documentElement)
+            .getPropertyValue('--color-card')
+            .trim() || '#111111',
+      }),
+      new Promise<string>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('PNG capture timed out'));
+        }, TOPNG_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
+
 export async function captureWrappedPng(node: HTMLElement): Promise<Blob> {
   await waitForDocumentFonts();
 
@@ -15,16 +45,7 @@ export async function captureWrappedPng(node: HTMLElement): Promise<Blob> {
     throw new Error('Share-safe export tree must not include images');
   }
 
-  const dataUrl = await toPng(node, {
-    width: WRAPPED_EXPORT_WIDTH,
-    height: WRAPPED_EXPORT_HEIGHT,
-    pixelRatio: 1,
-    cacheBust: true,
-    backgroundColor: getComputedStyle(document.documentElement)
-      .getPropertyValue('--color-card')
-      .trim() || '#111111',
-  });
-
+  const dataUrl = await toPngBounded(node);
   const response = await fetch(dataUrl);
   const blob = await response.blob();
   if (blob.size <= 0) {

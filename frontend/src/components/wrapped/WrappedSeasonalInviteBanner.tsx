@@ -16,6 +16,8 @@ type SeasonalInvite = {
   dismissKey: string | null;
   dismissed: boolean;
   timeZone: string;
+  /** Account that owns this invite payload — used to reject stale responses. */
+  accountId: string;
 };
 
 export function WrappedSeasonalInviteBanner() {
@@ -25,8 +27,11 @@ export function WrappedSeasonalInviteBanner() {
   const [hidden, setHidden] = useState(false);
   const accountId = user?.id ?? null;
 
+  // Reset local dismiss and clear prior-account invite when the signed-in
+  // account changes; same-account refreshes keep the dismissal.
   useEffect(() => {
     setHidden(false);
+    setInvite(null);
   }, [accountId]);
 
   useEffect(() => {
@@ -34,10 +39,13 @@ export function WrappedSeasonalInviteBanner() {
       setInvite(null);
       return;
     }
+    const forAccountId = user.id;
     let cancelled = false;
-    void apiFetch<SeasonalInvite>('/user/wrapped/seasonal-invite')
+    void apiFetch<Omit<SeasonalInvite, 'accountId'>>('/user/wrapped/seasonal-invite')
       .then((payload) => {
-        if (!cancelled) setInvite(payload);
+        // Reject stale responses that arrive after an account switch.
+        if (cancelled || forAccountId !== accountId) return;
+        setInvite({ ...payload, accountId: forAccountId });
       })
       .catch(() => {
         if (!cancelled) setInvite(null);
@@ -45,11 +53,13 @@ export function WrappedSeasonalInviteBanner() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, accountId]);
 
   if (
     !user ||
+    !accountId ||
     !invite?.active ||
+    invite.accountId !== accountId ||
     !invite.year ||
     !invite.dismissKey ||
     !invite.href ||

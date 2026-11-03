@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
+import { fetchAuthProviders } from '@/lib/federatedIdentity';
 import {
   canCreateAccount,
   canOfferRegistrationAction,
@@ -20,16 +21,37 @@ export function WrappedIntroPage() {
   const { allowRegistrations, userTableEmpty } = useBranding();
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [showRegister, setShowRegister] = useState(false);
 
   const registrationAvailable = canCreateAccount({
     allowRegistrations,
     userTableEmpty,
   });
-  const showRegister = canOfferRegistrationAction({
-    canCreateAccount: registrationAvailable,
-    localLoginEnabled: true,
-    hasOidcProviders: false,
-  });
+
+  useEffect(() => {
+    if (!registrationAvailable) {
+      setShowRegister(false);
+      return;
+    }
+    let cancelled = false;
+    void fetchAuthProviders()
+      .then((data) => {
+        if (cancelled) return;
+        setShowRegister(
+          canOfferRegistrationAction({
+            canCreateAccount: true,
+            localLoginEnabled: data.localLoginEnabled !== false,
+            hasOidcProviders: (data.providers ?? []).length > 0,
+          }),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setShowRegister(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [registrationAvailable]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-10 px-4 py-10">

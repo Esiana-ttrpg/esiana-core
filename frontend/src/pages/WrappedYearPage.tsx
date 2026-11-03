@@ -25,12 +25,17 @@ export function WrappedYearPage() {
   const [loading, setLoading] = useState(true);
   const [manageOpen, setManageOpen] = useState(false);
 
-  const isSelf = Boolean(user && user.id === id);
+  const signedInId = user?.id ?? null;
+  const isSelf = Boolean(signedInId && signedInId === id);
   const yearValid = Number.isInteger(year) && year >= 2000 && year <= 2100;
+  const requestKey = `${id}:${year}:${signedInId ?? 'anon'}`;
 
   useEffect(() => {
     if (authLoading || !yearValid) return;
     let cancelled = false;
+    // Reset before rendering a new edition so prior data cannot flash.
+    setData(null);
+    setManageOpen(false);
     setLoading(true);
     setError(false);
     setUnavailable(false);
@@ -60,7 +65,7 @@ export function WrappedYearPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isSelf, year, id, yearValid]);
+  }, [authLoading, isSelf, year, id, yearValid, signedInId]);
 
   if (authLoading) {
     return <StatsLoadingState message={t('profile.wrapped.loading')} />;
@@ -115,7 +120,7 @@ export function WrappedYearPage() {
   }
 
   return (
-    <>
+    <div key={requestKey}>
       <WrappedStoryViewer
         data={data}
         backHref={backHref}
@@ -149,6 +154,6 @@ export function WrappedYearPage() {
         onClose={() => setManageOpen(false)}
         onChange={setData}
       />
-    </>
+    </div>
   );
 }
