@@ -1,3 +1,4 @@
+import type { ChangeEvent, FocusEvent } from 'react';
 import type { ScheduleCadence, ScheduleDraft } from './types';
 
 const SCHEDULE_OPTIONS: Array<{
@@ -12,15 +13,69 @@ const SCHEDULE_OPTIONS: Array<{
   { id: 'none', label: 'Not scheduled', hint: 'No table cadence for now.' },
 ];
 
+/**
+ * Native date/time controls inside the wizard dialog.
+ * Mobile uses 16px text + 44px min height; laptop keeps standard form density.
+ */
+export const wizardTemporalInputClassName =
+  'min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-base text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/30 sm:min-h-10 sm:text-sm';
+
 interface SchedulingStepProps {
   schedule: ScheduleDraft | null;
   onChange: (schedule: ScheduleDraft | null) => void;
 }
 
-function isOptionSelected(schedule: ScheduleDraft | null, optionId: (typeof SCHEDULE_OPTIONS)[number]['id']): boolean {
+function isOptionSelected(
+  schedule: ScheduleDraft | null,
+  optionId: (typeof SCHEDULE_OPTIONS)[number]['id'],
+): boolean {
   if (!schedule) return false;
   if (optionId === 'none') return !schedule.enabled;
   return schedule.enabled && schedule.cadence === optionId;
+}
+
+function openNativePicker(input: HTMLInputElement) {
+  const picker = (
+    input as HTMLInputElement & { showPicker?: () => void }
+  ).showPicker;
+  if (typeof picker !== 'function') return;
+  try {
+    picker.call(input);
+  } catch {
+    /* Unsupported, already open, or blocked — native focus still works. */
+  }
+}
+
+function WizardTemporalInput({
+  id,
+  type,
+  value,
+  onChange,
+}: {
+  id: string;
+  type: 'date' | 'time';
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  function handleFocus(event: FocusEvent<HTMLInputElement>) {
+    event.currentTarget.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+  }
+
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    onChange(event.target.value);
+  }
+
+  return (
+    <input
+      id={id}
+      type={type}
+      value={value}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onClick={(event) => openNativePicker(event.currentTarget)}
+      className={wizardTemporalInputClassName}
+    />
+  );
 }
 
 export function SchedulingStep({ schedule, onChange }: SchedulingStepProps) {
@@ -71,29 +126,27 @@ export function SchedulingStep({ schedule, onChange }: SchedulingStepProps) {
       </div>
 
       {schedule?.enabled ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+          <div className="min-w-0">
             <label className="mb-1 block text-xs text-muted" htmlFor="wizard-first-session-date">
               First session date <span className="text-muted/80">(optional)</span>
             </label>
-            <input
+            <WizardTemporalInput
               id="wizard-first-session-date"
               type="date"
               value={schedule.firstSessionDate ?? ''}
-              onChange={(e) => patch({ firstSessionDate: e.target.value })}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              onChange={(firstSessionDate) => patch({ firstSessionDate })}
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-xs text-muted" htmlFor="wizard-first-session-time">
               Time <span className="text-muted/80">(optional)</span>
             </label>
-            <input
+            <WizardTemporalInput
               id="wizard-first-session-time"
               type="time"
               value={schedule.firstSessionTime ?? ''}
-              onChange={(e) => patch({ firstSessionTime: e.target.value })}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              onChange={(firstSessionTime) => patch({ firstSessionTime })}
             />
           </div>
         </div>
