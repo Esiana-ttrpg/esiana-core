@@ -54,6 +54,8 @@ export type MatrixRow = {
   help?: MatrixHelp;
   dependency?: MatrixDependency;
   campaignFeature?: 'audio-enabled' | 'audio-provider';
+  /** When true, Edit-style grants imply Edit Own in UI help. */
+  impliesEditOwn?: boolean;
 };
 
 export type MatrixSection = {
@@ -64,11 +66,16 @@ export type MatrixSection = {
   coverage?: readonly MatrixCoverageNote[];
 };
 
-const PLAYER_OBSERVER: readonly MembershipRole[] = [
+/** Non-owner roles that may receive or revoke ordinary capabilities. */
+const WRITER_PLAYER_OBSERVER: readonly MembershipRole[] = [
+  MembershipRoles.WRITER,
   MembershipRoles.PARTICIPANT,
   MembershipRoles.OBSERVER,
 ];
-const PLAYER_ONLY: readonly MembershipRole[] = [MembershipRoles.PARTICIPANT];
+const WRITER_PLAYER: readonly MembershipRole[] = [
+  MembershipRoles.WRITER,
+  MembershipRoles.PARTICIPANT,
+];
 const NONE: readonly MembershipRole[] = [];
 
 export const MATRIX_SECTIONS: readonly MatrixSection[] = [
@@ -122,50 +129,55 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         label: 'View campaign-tier content',
         description:
           'See Campaign-tier wiki, maps, chronology, and assets that check party visibility.',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.NARRATIVE_ELEVATED_VIEW,
         label: 'View GM-only content',
         description: 'See GM-only wiki, maps, and staff recordings.',
         help: {
-          explanation: 'Does not grant campaign administration.',
+          explanation:
+            'Does not grant campaign administration. Visibility always takes precedence over edit.',
         },
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_CREATE,
         label: 'Create pages',
         description: 'Create standalone wiki documents and journal library drafts.',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_EDIT_OWNED,
-        label: 'Edit own pages',
-        description: 'Edit USER-owned wiki pages and character identity pages you own.',
-        overridableRoles: PLAYER_OBSERVER,
+        label: 'Edit own',
+        description:
+          'Edit USER-owned wiki pages and character identity pages you own.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_EDIT_PARTY,
         label: 'Edit party pages',
-        description: 'Edit PARTY-owned wiki pages for your party.',
-        overridableRoles: PLAYER_OBSERVER,
+        description:
+          'Edit PARTY-owned collaborative wiki pages for your party. Distinct from Edit own because party ownership is a separate ownership type.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_EDIT_ANY,
-        label: 'Edit any page',
-        description: 'Staff edit for standalone wiki and character bodies that use page ownership.',
+        label: 'Edit',
+        description:
+          'Edit accessible wiki and character pages regardless of ownership. Includes Edit own.',
         help: {
           explanation:
-            'This staff grant currently includes USER-owned journal pages. There is no private-journal capability.',
+            'Does not bypass GM-only visibility. Currently includes USER-owned journal pages; there is no private-journal capability.',
         },
-        overridableRoles: NONE,
+        impliesEditOwn: true,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.PAGE_VISIBILITY_EDIT,
         label: 'Manage page access',
         description: 'Change Public / Campaign / GM-only on a resource you can manage.',
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
   },
@@ -178,13 +190,13 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         capability: CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
         label: 'Manage storyboard',
         description: 'Edit Adventure Board layout.',
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.QUEST_EDIT,
         label: 'Edit quests',
         description: 'Create and manage native quest records.',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.THREAD_EDIT,
@@ -194,7 +206,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           docsKey: 'narrativeThreads',
           docsLabel: 'Narrative threads',
         },
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
   },
@@ -210,7 +222,11 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
       },
       {
         uses: CampaignCapabilities.PAGE_EDIT_OWNED,
-        note: 'Identity-page edits use the same ownership checks as standalone wiki pages.',
+        note: 'Identity-page edits use the same ownership checks as standalone wiki pages (Edit own).',
+      },
+      {
+        uses: CampaignCapabilities.PAGE_EDIT_ANY,
+        note: 'Staff Edit grants edit regardless of character ownership without separate sheet permissions.',
       },
     ],
   },
@@ -223,7 +239,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         capability: CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
         label: 'Manage journal planner',
         description: 'Create series, schedule releases, and orchestrate planned publications.',
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
     coverage: [
@@ -232,8 +248,8 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         note: 'Journal library drafts use Create pages, not a separate journal-author capability.',
       },
       {
-        uses: CampaignCapabilities.PAGE_EDIT_ANY,
-        note: 'Staff Edit any page currently includes USER-owned journal pages. There is no private-journal capability.',
+        uses: CampaignCapabilities.PAGE_EDIT_OWNED,
+        note: 'Editing your own journal drafts uses Edit own via page ownership.',
       },
     ],
   },
@@ -246,7 +262,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         capability: CampaignCapabilities.DOWNTIME_MANAGE,
         label: 'Manage downtime',
         description: 'Create and manage downtime projects and havens.',
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.LEDGER_CONTRIBUTE,
@@ -255,7 +271,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         help: {
           explanation: 'Linked haven or project pages still require their own view.',
         },
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
   },
@@ -263,19 +279,52 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
     id: 'chronology',
     title: 'Calendar & Chronology',
     scope:
-      'Current controls cover chronology events and eras. Broader calendar permissions are planned.',
+      'Event contribution is separate from structural chronology management (eras, timelines, calendars).',
     rows: [
+      {
+        capability: CampaignCapabilities.CHRONOLOGY_EVENT_CREATE,
+        label: 'Create events',
+        description:
+          'Create chronology events (birthdays, discoveries, shared history). Does not require Manage chronology.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
+      {
+        capability: CampaignCapabilities.CHRONOLOGY_EVENT_EDIT_OWNED,
+        label: 'Edit own events',
+        description: 'Edit chronology events you created.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
+      {
+        capability: CampaignCapabilities.CHRONOLOGY_EVENT_EDIT,
+        label: 'Edit events',
+        description: 'Edit accessible chronology events regardless of authorship. Includes Edit own events.',
+        impliesEditOwn: true,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
+      {
+        capability: CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED,
+        label: 'Delete own events',
+        description: 'Delete chronology events you created.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
+      {
+        capability: CampaignCapabilities.CHRONOLOGY_ERA_CREATE,
+        label: 'Create eras',
+        description: 'Create eras without full chronology management.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
       {
         capability: CampaignCapabilities.CHRONOLOGY_EDIT,
         label: 'Manage chronology',
-        description: 'Create, edit, and delete chronology events and eras.',
+        description:
+          'Structural management: eras, timelines, calendar configuration, and staff event controls. Implies all event contribution capabilities.',
         chronologyFlag: true,
         observerUnavailable: true,
         help: {
           explanation:
-            'The Player grant on this row is the campaign control. Broader calendar permissions are planned.',
+            'The Player checkbox for this row is the legacy allowPlayerChronologyManagement campaign control. Prefer Create events for ordinary Player contributions. Legacy management flag is retained for compatibility and intended for eventual consolidation into this matrix.',
         },
-        overridableRoles: PLAYER_ONLY,
+        overridableRoles: WRITER_PLAYER,
       },
     ],
   },
@@ -292,31 +341,32 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           docsKey: 'mapsCartography',
           docsLabel: 'Maps and cartography',
         },
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.ASSETS_VIEW,
         label: 'View assets',
         description: 'View campaign files the actor is otherwise allowed to see.',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.ASSETS_UPLOAD,
         label: 'Upload assets',
         description: 'Upload campaign files.',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.ASSETS_DELETE_OWNED,
         label: 'Delete own assets',
         description: 'Delete files you uploaded.',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.ASSETS_DELETE_ANY,
         label: 'Delete any asset',
-        description: 'Staff delete for campaign files.',
-        overridableRoles: NONE,
+        description: 'Delete campaign files regardless of uploader. Includes Delete own assets.',
+        impliesEditOwn: true,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
   },
@@ -328,13 +378,15 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
       {
         capability: CampaignCapabilities.NOTES_MODERATE,
         label: 'Manage session notes',
-        description: 'Staff-manage session notes. Authors can still edit their own notes.',
-        overridableRoles: NONE,
+        description:
+          'Staff-manage session notes. Authors can still edit their own notes without this grant.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.AUDIO_MANAGE,
         label: 'Manage recordings',
-        description: 'Recording metadata, deletion, and manager playback of restricted recordings.',
+        description:
+          'Recording metadata, deletion, and manager playback of restricted recordings.',
         globalFeature: 'audio',
         help: {
           docsKey: 'sessionRecordingsPrivacy',
@@ -345,7 +397,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           settingLabel: 'Campaign Audio',
           settingHash: 'campaign-audio',
         },
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.AUDIO_UPLOAD,
@@ -362,28 +414,28 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           settingLabel: 'Campaign recordings',
           settingHash: 'campaign-audio',
         },
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.AUDIO_CHAPTERS_EDIT,
         label: 'Edit chapters',
         description: 'Edit recording chapters.',
         globalFeature: 'audio',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.AUDIO_TRANSCRIPT_EDIT,
         label: 'Edit transcripts',
         description: 'Edit recording transcripts.',
         globalFeature: 'audio',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.AUDIO_TRANSCRIPT_PUBLISH,
         label: 'Publish revisions',
         description: 'Publish transcript revisions.',
         globalFeature: 'audio',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.AUDIO_TRANSCRIBE,
@@ -400,7 +452,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           settingLabel: 'Transcription provider',
           settingHash: 'transcription-provider',
         },
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
   },
@@ -417,7 +469,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           docsKey: 'discoveryRevelation',
           docsLabel: 'Discovery and revelation',
         },
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
   },
@@ -430,7 +482,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         capability: CampaignCapabilities.RUMOR_MODERATE,
         label: 'Moderate rumors',
         description: 'Staff-moderate rumor records.',
-        overridableRoles: NONE,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
     coverage: [
@@ -453,7 +505,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
         capability: CampaignCapabilities.SAFETY_SUBMIT,
         label: 'Submit safety concerns',
         description: 'Submit a safety or privacy concern for this campaign.',
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
         capability: CampaignCapabilities.SAFETY_MANAGE,
@@ -464,7 +516,7 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           settingLabel: 'Safety reviewer grants',
           settingHash: 'safety-reviewer-grants',
         },
-        overridableRoles: PLAYER_OBSERVER,
+        overridableRoles: WRITER_PLAYER_OBSERVER,
       },
     ],
   },
@@ -480,6 +532,27 @@ export function matrixCapabilityLabel(capability: CampaignCapability): string | 
   for (const section of MATRIX_SECTIONS) {
     const row = section.rows.find((item) => item.capability === capability);
     if (row) return row.label;
+  }
+  return null;
+}
+
+/** Capabilities that appear as editable cells for at least one non-GM role. */
+export function overridableMatrixCapabilities(): CampaignCapability[] {
+  const caps = new Set<CampaignCapability>();
+  for (const section of MATRIX_SECTIONS) {
+    for (const row of section.rows) {
+      if (row.overridableRoles.length > 0) caps.add(row.capability);
+    }
+  }
+  return [...caps];
+}
+
+export function matrixRowFor(
+  capability: CampaignCapability,
+): MatrixRow | null {
+  for (const section of MATRIX_SECTIONS) {
+    const row = section.rows.find((item) => item.capability === capability);
+    if (row) return row;
   }
   return null;
 }

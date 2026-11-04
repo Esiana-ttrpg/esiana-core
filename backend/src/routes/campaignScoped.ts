@@ -373,6 +373,10 @@ import {
   requireCampaignMembership,
   requireCampaignOwner,
   requireChronologyManager,
+  requireChronologyEventCreate,
+  requireChronologyEventEdit,
+  requireChronologyEventDelete,
+  requireChronologyEraCreate,
   requireGamemasterSettings,
   requireNonObserverMember,
   requireQuestEdit,
@@ -531,7 +535,7 @@ campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemaster
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
 campaignScopedRouter.put('/chronology/:entityType/:entityId/page', requireChronologyManager, setChronologyPage);
 campaignScopedRouter.get('/chronology/eras', listEras);
-campaignScopedRouter.post('/chronology/eras', requireChronologyManager, createEra);
+campaignScopedRouter.post('/chronology/eras', requireChronologyEraCreate, createEra);
 campaignScopedRouter.put('/chronology/eras/order', requireChronologyManager, reorderEras);
 campaignScopedRouter.get('/chronology/eras/:eraId/impact', requireChronologyManager, eraImpact);
 campaignScopedRouter.put('/chronology/eras/:eraId', requireChronologyManager, updateEra);
@@ -661,17 +665,17 @@ campaignScopedRouter.delete(
 campaignScopedRouter.get('/calendars/:calendarId/events', listCalendarEvents);
 campaignScopedRouter.post(
   '/calendars/:calendarId/events',
-  requireChronologyManager,
+  requireChronologyEventCreate,
   createCalendarEvent,
 );
 campaignScopedRouter.patch(
   '/calendars/:calendarId/events/:eventId',
-  requireChronologyManager,
+  requireChronologyEventEdit,
   updateCalendarEvent,
 );
 campaignScopedRouter.delete(
   '/calendars/:calendarId/events/:eventId',
-  requireChronologyManager,
+  requireChronologyEventDelete,
   deleteCalendarEvent,
 );
 

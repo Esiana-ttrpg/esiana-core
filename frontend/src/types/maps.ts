@@ -46,6 +46,7 @@ export interface CampaignMapAsset {
 export interface CampaignMapDetail {
   map: CampaignMapAsset;
   linkedWikiPages: MapLinkedPage[];
+  canEdit?: boolean;
 }
 
 export interface MapPinDto {

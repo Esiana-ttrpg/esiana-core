@@ -131,6 +131,17 @@ function ChronologyWorkspace() {
     : null;
 
   const canManageChronologyAccess = can(CampaignCapabilities.CHRONOLOGY_EDIT);
+  const canCreateEvent = can(CampaignCapabilities.CHRONOLOGY_EVENT_CREATE);
+  const canCreateEra = can(CampaignCapabilities.CHRONOLOGY_ERA_CREATE);
+  const canEditAnyEvent = can(CampaignCapabilities.CHRONOLOGY_EVENT_EDIT);
+  const canEditOwnEvent = can(CampaignCapabilities.CHRONOLOGY_EVENT_EDIT_OWNED);
+  /** Event contribution UI; ownership still enforced by the API. */
+  const canContributeEvents =
+    canCreateEvent ||
+    canEditAnyEvent ||
+    canEditOwnEvent ||
+    canManageChronologyAccess;
+  const canManageEras = canManageChronologyAccess || canCreateEra;
   const elevatedView = can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW);
   const loadVersion = useRef(0);
   const loadedFeedScope = useRef('');
@@ -352,7 +363,7 @@ function ChronologyWorkspace() {
         activeCalendarId={activeView === 'feed' ? timeBundle?.calendars.find(row => row.isMasterTime)?.id
           : activeView === 'eras' ? erasSession.snapshot?.track ?? searchParams.get('track') ?? undefined : browseCalendarId}
         contextLabel={contextLabel}
-        canCreateEvent={canManageChronologyAccess}
+        canCreateEvent={canCreateEvent}
         onCreateEvent={() => void openCreateEvent()}
         settingsHref={campaignTimeTrackingPath(campaignHandle)}
       />
@@ -379,7 +390,7 @@ function ChronologyWorkspace() {
               occurrence={bundle.occurrences.find(row => row.baseEventId === selectedEvent.id && row.isStart)}
               timeBundle={timeBundle} categories={bundle.categories} editableEvents={bundle.baseEvents}
               calendarLike={(() => { const calendar = timeBundle.calendars.find(row => row.id === selectedEvent.calendarId); return calendar ? historicalClock(calendar).axis?.calendar ?? null : null; })()}
-              canManage={canManageChronologyAccess} onMutated={handleEventMutated} onDeleted={async () => { await handleEventDeleted(); navigate(campaignEventPath(campaignHandle, '').replace(/\/$/, '')); }} />
+              canManage={canContributeEvents} onMutated={handleEventMutated} onDeleted={async () => { await handleEventDeleted(); navigate(campaignEventPath(campaignHandle, '').replace(/\/$/, '')); }} />
           </article> : <p className="p-6 text-muted">Event unavailable.</p> : <EventsDirectory bundle={bundle} campaignHandle={campaignHandle} />)}
           {route.eraSlug && !selectedEra && <p className="p-6 text-muted">Era unavailable.</p>}
           {activeView === 'feed' && overlayBundle && (
@@ -397,7 +408,7 @@ function ChronologyWorkspace() {
               chronologyBundle={bundle}
               baseEvents={bundle.baseEvents}
               categories={bundle.categories}
-              canManage={canManageChronologyAccess}
+              canManage={canContributeEvents}
               onBrowseAnchorChange={handleCalendarBrowse}
               onEventMutated={handleEventMutated}
             />
@@ -407,7 +418,7 @@ function ChronologyWorkspace() {
             <HistoricalTimeline campaignHandle={campaignHandle} bundle={bundle} timeBundle={timeBundle}
               onInspectionChange={handleInspection}
               session={timelineSession} navigationRequest={eraNavigation}
-              canManage={canManageChronologyAccess} onBrowseAnchorChange={handleCalendarBrowse}
+              canManage={canContributeEvents} onBrowseAnchorChange={handleCalendarBrowse}
               onMutated={handleEventMutated} onDeleted={handleEventDeleted}
               onRevealEvent={handleRevealEvent} categoryFooter={categoryFooter} />
           )}
@@ -420,7 +431,7 @@ function ChronologyWorkspace() {
               onErasChanged={() => load(true)}
               campaignHandle={campaignHandle}
               timeBundle={timeBundle}
-              canManage={canManageChronologyAccess}
+              canManage={canManageEras}
               onEventMutated={handleEventMutated}
               onEventDeleted={handleEventDeleted}
               onRevealEvent={handleRevealEvent}
@@ -434,7 +445,7 @@ function ChronologyWorkspace() {
         </div>
       )}
 
-      {canManageChronologyAccess && showCreateModal && bundle && timeBundle && (
+      {canCreateEvent && showCreateModal && bundle && timeBundle && (
         <ChronologyCreateEventDialog
           campaignHandle={campaignHandle}
           calendars={timeBundle.calendars}

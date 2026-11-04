@@ -123,6 +123,44 @@ describe('resolveRoleCapability', () => {
       false,
     );
   });
+
+  it('participant defaults include event create without chronology manage', () => {
+    assert.equal(
+      resolveRoleCapability(
+        MembershipRoles.PARTICIPANT,
+        CampaignCapabilities.CHRONOLOGY_EVENT_CREATE,
+        [],
+        { allowPlayerChronologyManagement: false },
+      ),
+      true,
+    );
+    assert.equal(
+      resolveRoleCapability(
+        MembershipRoles.PARTICIPANT,
+        CampaignCapabilities.CHRONOLOGY_ERA_CREATE,
+        [],
+        { allowPlayerChronologyManagement: false },
+      ),
+      false,
+    );
+  });
+
+  it('writer can revoke maps.edit via override', () => {
+    assert.equal(
+      resolveRoleCapability(
+        MembershipRoles.WRITER,
+        CampaignCapabilities.MAPS_EDIT,
+        [
+          {
+            role: MembershipRoles.WRITER,
+            capability: CampaignCapabilities.MAPS_EDIT,
+            effect: CapabilityOverrideEffect.REVOKE,
+          },
+        ],
+      ),
+      false,
+    );
+  });
 });
 
 describe('normalizeCapabilityOverrides', () => {

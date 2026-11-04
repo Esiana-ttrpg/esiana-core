@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { canManageChronology } from '../lib/acl.js';
+import { canManageChronology } from '../../../shared/campaignPolicy/policy.js';
 import { CampaignMemberRoles, type CampaignMemberRole } from '../types/domain.js';
 import {
   captureDualRegionPayloads,
@@ -56,7 +56,7 @@ export async function postLocationVisit(
     return;
   }
   const role = (scope.role as CampaignMemberRole | null) ?? null;
-  if (!canManageChronology(role, scope.allowPlayerChronologyManagement)) {
+  if (!canManageChronology(scope.actor)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
@@ -319,7 +319,7 @@ export async function postPromoteVisitSuggestion(
     return;
   }
   const role = (scope.role as CampaignMemberRole | null) ?? null;
-  if (!canManageChronology(role, scope.allowPlayerChronologyManagement)) {
+  if (!canManageChronology(scope.actor)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }

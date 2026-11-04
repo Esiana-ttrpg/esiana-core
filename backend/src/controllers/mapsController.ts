@@ -23,15 +23,14 @@ import {
   MapActivityEntity,
 } from '../lib/mapAuthorship.js';
 import { normalizeImageCredit } from '../../../shared/imageCredit.js';
-import {
-  CampaignMemberRoles,
-  type CampaignMemberRole,
-} from '../types/domain.js';
+import { type CampaignMemberRole } from '../types/domain.js';
 import {
   buildPageDiscoveryMap,
   isPageVisibleToParty,
 } from '../lib/discoveryProjectionService.js';
 import { ContentRevelationStates } from '../../../shared/contentPresence.js';
+import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
+import { can } from '../../../shared/campaignPolicy/policy.js';
 
 const mapPinInclude = {
   targetPage: {
@@ -209,8 +208,10 @@ export async function listCampaignMaps(
 
   const campaignId = req.campaign!.campaignId;
   const role = req.campaign!.role as CampaignMemberRole | null;
-  const canManage =
-    role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER;
+  const canManage = can(
+    req.campaign!.actor,
+    CampaignCapabilities.MAPS_EDIT,
+  );
 
   const enriched = await Promise.all(
     assets.map((asset) => enrichMapAssetSummary(campaignId, asset)),
@@ -283,6 +284,7 @@ export async function getCampaignMap(
   res.json({
     map: enriched,
     linkedWikiPages: enriched.linkedPage ? [enriched.linkedPage] : [],
+    canEdit: can(req.campaign!.actor, CampaignCapabilities.MAPS_EDIT),
   });
 }
 

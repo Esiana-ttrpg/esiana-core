@@ -41,7 +41,9 @@ const DISPLAY_ROLES: readonly MembershipRole[] = [
   MembershipRoles.OBSERVER,
 ];
 
+/** Non-GM roles that may store capability overrides. */
 const EDITABLE_ROLES: readonly MembershipRole[] = [
+  MembershipRoles.WRITER,
   MembershipRoles.PARTICIPANT,
   MembershipRoles.OBSERVER,
 ];
@@ -55,9 +57,17 @@ const TONE_CLASS: Record<MatrixCellTone, string> = {
   'missing-provider': 'border-amber-700/40 text-amber-900 dark:text-amber-200',
 };
 
-function stripChronologyOverrides(rows: OverrideRow[]): OverrideRow[] {
+/**
+ * Player chronology management uses the legacy campaign flag, not GRANT/REVOKE.
+ * Keep Writer (and other non-Player) chronology.edit overrides intact.
+ */
+function stripPlayerChronologyOverrides(rows: OverrideRow[]): OverrideRow[] {
   return rows.filter(
-    (row) => row.capability !== CampaignCapabilities.CHRONOLOGY_EDIT,
+    (row) =>
+      !(
+        row.capability === CampaignCapabilities.CHRONOLOGY_EDIT &&
+        row.role === MembershipRoles.PARTICIPANT
+      ),
   );
 }
 
@@ -166,6 +176,27 @@ function CoverageNotes({ notes }: { notes: readonly MatrixCoverageNote[] }) {
   );
 }
 
+function lockedReason(
+  role: MembershipRole,
+  row: MatrixRow,
+  globallyDisabled: boolean,
+): string {
+  if (globallyDisabled) return 'Disabled by Global Admin';
+  if (role === MembershipRoles.GAMEMASTER) {
+    return 'Game Master grants are fixed for campaign ownership protections';
+  }
+  if (row.observerUnavailable && role === MembershipRoles.OBSERVER) {
+    return 'Not available for Observer';
+  }
+  if (row.overridableRoles.length === 0) {
+    return 'Protected campaign capability — not configurable per role';
+  }
+  if (!row.overridableRoles.includes(role)) {
+    return `Not configurable for ${MEMBERSHIP_ROLE_UI_LABELS[role]}`;
+  }
+  return 'Not overridable here';
+}
+
 function RoleGrantControl({
   role,
   row,
@@ -173,6 +204,7 @@ function RoleGrantControl({
   editable,
   unavailable,
   globallyDisabled,
+  modified,
   onToggle,
 }: {
   role: MembershipRole;
@@ -181,6 +213,7 @@ function RoleGrantControl({
   editable: boolean;
   unavailable: boolean;
   globallyDisabled: boolean;
+  modified?: boolean;
   onToggle: (next: boolean) => void;
 }) {
   const roleLabel = MEMBERSHIP_ROLE_UI_LABELS[role];
@@ -194,21 +227,23 @@ function RoleGrantControl({
       </div>
     );
   }
+  const lockTitle = lockedReason(role, row, globallyDisabled);
   return (
-    <input
-      type="checkbox"
-      checked={checked}
-      disabled={!editable}
-      onChange={(event) => onToggle(event.target.checked)}
-      aria-label={`${row.label} for ${roleLabel}`}
-      title={
-        globallyDisabled
-          ? 'Disabled by Global Admin'
-          : editable
-            ? undefined
-            : 'Not overridable here'
-      }
-    />
+    <label
+      className={`inline-flex items-center gap-1 ${modified ? 'rounded-sm ring-2 ring-primary/50' : ''}`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={!editable}
+        onChange={(event) => onToggle(event.target.checked)}
+        aria-label={`${row.label} for ${roleLabel}`}
+        title={editable ? (row.impliesEditOwn ? 'Includes Edit own' : undefined) : lockTitle}
+      />
+      {modified ? (
+        <span className="sr-only">Modified from saved value</span>
+      ) : null}
+    </label>
   );
 }
 
@@ -239,6 +274,8 @@ export function CollaborationPermissionsPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [savedOverrides, setSavedOverrides] = useState<OverrideRow[]>([]);
+  const [filterQuery, setFilterQuery] = useState('');
 
   const policyFlags = useMemo(
     () => ({ allowPlayerChronologyManagement }),
@@ -246,6 +283,47 @@ export function CollaborationPermissionsPanel({
   );
 
   const editableCaps = useMemo(() => overridableCapabilities(), []);
+
+  const dirty = useMemo(() => {
+    if (allowPlayerChronologyManagement !== savedChronologyFlag) return true;
+    const key = (row: OverrideRow) =>
+      `${row.role}|${row.capability}|${row.effect}`;
+    const current = new Set(overrides.map(key));
+    const saved = new Set(savedOverrides.map(key));
+    if (current.size !== saved.size) return true;
+    for (const item of current) if (!saved.has(item)) return true;
+    return false;
+  }, [
+    allowPlayerChronologyManagement,
+    savedChronologyFlag,
+    overrides,
+    savedOverrides,
+  ]);
+
+  const filteredSections = useMemo((): readonly MatrixSection[] => {
+    const q = filterQuery.trim().toLowerCase();
+    if (!q) return MATRIX_SECTIONS;
+    const next: MatrixSection[] = [];
+    for (const section of MATRIX_SECTIONS) {
+      const sectionHit =
+        section.title.toLowerCase().includes(q) ||
+        section.scope.toLowerCase().includes(q);
+      const rows = section.rows.filter(
+        (row) =>
+          sectionHit ||
+          row.label.toLowerCase().includes(q) ||
+          row.description.toLowerCase().includes(q) ||
+          row.capability.toLowerCase().includes(q),
+      );
+      if (!sectionHit && rows.length === 0) continue;
+      next.push({
+        ...section,
+        rows,
+        coverage: section.coverage,
+      });
+    }
+    return next;
+  }, [filterQuery]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -261,7 +339,9 @@ export function CollaborationPermissionsPanel({
       ]);
       const chronologyFlag =
         campaignData.campaign.allowPlayerChronologyManagement ?? false;
-      setOverrides(stripChronologyOverrides(overrideData.overrides ?? []));
+      const loaded = stripPlayerChronologyOverrides(overrideData.overrides ?? []);
+      setOverrides(loaded);
+      setSavedOverrides(loaded);
       setAllowPlayerChronologyManagement(chronologyFlag);
       setSavedChronologyFlag(chronologyFlag);
       try {
@@ -289,7 +369,7 @@ export function CollaborationPermissionsPanel({
   }, [canManage, load]);
 
   const isGranted = (role: MembershipRole, row: MatrixRow): boolean => {
-    if (role === MembershipRoles.GAMEMASTER || role === MembershipRoles.WRITER) {
+    if (role === MembershipRoles.GAMEMASTER) {
       return staffEffective(role, row.capability, overrides);
     }
     if (row.observerUnavailable && role === MembershipRoles.OBSERVER) {
@@ -303,6 +383,30 @@ export function CollaborationPermissionsPanel({
       return allowPlayerChronologyManagement;
     }
     return resolveRoleCapability(role, row.capability, overrides, policyFlags);
+  };
+
+  const isCellModified = (role: MembershipRole, row: MatrixRow): boolean => {
+    if (!EDITABLE_ROLES.includes(role) || !canEditCell(role, row)) return false;
+    if (
+      row.chronologyFlag &&
+      row.capability === CampaignCapabilities.CHRONOLOGY_EDIT &&
+      role === MembershipRoles.PARTICIPANT
+    ) {
+      return allowPlayerChronologyManagement !== savedChronologyFlag;
+    }
+    const current = resolveRoleCapability(
+      role,
+      row.capability,
+      overrides,
+      policyFlags,
+    );
+    const saved = resolveRoleCapability(
+      role,
+      row.capability,
+      savedOverrides,
+      { allowPlayerChronologyManagement: savedChronologyFlag },
+    );
+    return current !== saved;
   };
 
   const canEditCell = (role: MembershipRole, row: MatrixRow): boolean => {
@@ -347,7 +451,7 @@ export function CollaborationPermissionsPanel({
     setNotice(null);
     try {
       const normalized = normalizeCapabilityOverrides(
-        stripChronologyOverrides(overrides),
+        stripPlayerChronologyOverrides(overrides),
         policyFlags,
         EDITABLE_ROLES,
         editableCaps,
@@ -371,7 +475,10 @@ export function CollaborationPermissionsPanel({
         setSavedChronologyFlag(allowPlayerChronologyManagement);
       }
 
-      setOverrides([...preserved, ...normalized]);
+      const next = [...preserved, ...normalized];
+      setOverrides(next);
+      setSavedOverrides(next);
+      setNotice('Permissions saved.');
       onSaved?.();
     } catch {
       setError('Could not save campaign permissions.');
@@ -421,6 +528,7 @@ export function CollaborationPermissionsPanel({
             row.observerUnavailable && role === MembershipRoles.OBSERVER,
           )}
           globallyDisabled={globallyDisabled}
+          modified={isCellModified(role, row)}
           onToggle={(next) => toggle(role, row, next)}
         />
       );
@@ -464,14 +572,17 @@ export function CollaborationPermissionsPanel({
                     <caption className="sr-only">
                       {section.title} role capabilities
                     </caption>
-                    <thead>
+                    <thead className="sticky top-0 z-10 bg-surface">
                       <tr className="border-y border-border/60">
                         <th className="px-3 py-2 font-medium text-muted">Capability</th>
                         {showStatus ? (
                           <th className="px-3 py-2 font-medium text-muted">Status</th>
                         ) : null}
                         {DISPLAY_ROLES.map((role) => (
-                          <th key={role} className="px-3 py-2 font-medium text-muted">
+                          <th
+                            key={role}
+                            className="sticky top-0 px-3 py-2 font-medium text-muted"
+                          >
                             {MEMBERSHIP_ROLE_UI_LABELS[role]}
                           </th>
                         ))}
@@ -606,11 +717,31 @@ export function CollaborationPermissionsPanel({
       </h4>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <p className="text-xs text-muted">
-        Game Master and Writer show effective grants. Player and Observer can
-        store overrides.
+        Game Master grants are fixed. Writer, Player, and Observer can store
+        overrides for configurable capabilities. Defaults favor cooperative
+        storytelling; personal ownership and GM-only visibility remain
+        protected.
       </p>
-      <div className="space-y-3">{MATRIX_SECTIONS.map(renderSection)}</div>
-      <p className="text-xs text-muted">Public is not a campaign role.</p>
+      <label className="block text-xs text-muted">
+        <span className="sr-only">Filter permissions</span>
+        <input
+          type="search"
+          value={filterQuery}
+          onChange={(event) => setFilterQuery(event.target.value)}
+          placeholder="Filter permissions…"
+          className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm text-foreground"
+        />
+      </label>
+      {dirty ? (
+        <p className="text-xs text-primary" role="status">
+          Unsaved changes — save to apply, or reset to discard.
+        </p>
+      ) : null}
+      <div className="space-y-3">{filteredSections.map(renderSection)}</div>
+      <p className="text-xs text-muted">
+        Public is not a campaign role. Edit includes Edit own where marked.
+        Visibility always takes precedence over edit.
+      </p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -623,7 +754,7 @@ export function CollaborationPermissionsPanel({
         <button
           type="button"
           className="rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-surface/80 disabled:opacity-50"
-          disabled={saving}
+          disabled={saving || !dirty}
           onClick={() => void save()}
         >
           {saving ? 'Saving…' : 'Save permissions'}

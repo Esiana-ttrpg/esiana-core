@@ -3,7 +3,10 @@ import { reserveChronologyRoute } from '../lib/chronologyRoutes.js';
 import type { Response } from 'express';
 import { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
-import { canManageChronology } from '../lib/acl.js';
+import {
+  canEditChronologyEvent,
+  canDeleteChronologyEvent,
+} from '../../../shared/campaignPolicy/policy.js';
 import { chronologyCanView, chronologyElevated } from '../lib/chronologyAccess.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
@@ -224,10 +227,6 @@ export async function listCalendarEvents(
     return;
   }
 
-  const canManage = canManageChronology(
-    req.campaign?.role ?? null,
-    req.campaign?.allowPlayerChronologyManagement ?? false,
-  );
   const events = await prisma.calendarEvent.findMany({
     where: {
       calendarId,
@@ -501,6 +500,10 @@ export async function updateCalendarEvent(
     res.status(404).json({ error: 'Event not found' });
     return;
   }
+  if (!canEditChronologyEvent(req.campaign!.actor, existing.createdByUserId)) {
+    res.status(403).json({ error: 'Forbidden: event edit not permitted' });
+    return;
+  }
 
   const body = (req.body ?? {}) as Record<string, unknown>;
   const title =
@@ -720,10 +723,20 @@ export async function deleteCalendarEvent(
 
   const existing = await prisma.calendarEvent.findFirst({
     where: { id: eventId, calendarId },
-    select: { id: true, visibility: true, wikiPageId: true, title: true },
+    select: {
+      id: true,
+      visibility: true,
+      wikiPageId: true,
+      title: true,
+      createdByUserId: true,
+    },
   });
   if (!existing || !chronologyCanView(req.campaign!, existing.visibility)) {
     res.status(404).json({ error: 'Event not found' });
+    return;
+  }
+  if (!canDeleteChronologyEvent(req.campaign!.actor, existing.createdByUserId)) {
+    res.status(403).json({ error: 'Forbidden: event delete not permitted' });
     return;
   }
 
