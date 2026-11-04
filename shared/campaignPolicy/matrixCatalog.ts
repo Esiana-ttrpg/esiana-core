@@ -256,12 +256,27 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
   {
     id: 'downtime',
     title: 'Downtime',
-    scope: 'Projects, havens, and the shared campaign ledger.',
+    scope:
+      'Havens, projects, hirelings, and the ledger. Nested spaces, upgrades, and progress inherit the parent resource’s authorization.',
     rows: [
+      {
+        capability: CampaignCapabilities.DOWNTIME_DELETE_OWNED,
+        label: 'Delete own downtime resources',
+        description: 'Delete your USER-owned resources. Shared resources require Manage downtime.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
+      {
+        capability: CampaignCapabilities.DOWNTIME_CREATE,
+        label: 'Create downtime resources',
+        description:
+          'Create havens, projects, and hireling relationships. Does not grant Manage downtime.',
+        overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
       {
         capability: CampaignCapabilities.DOWNTIME_MANAGE,
         label: 'Manage downtime',
-        description: 'Create and manage downtime projects and havens.',
+        description:
+          'Administer any downtime resource, including other users’ personal havens/projects, ledger settings, and scheduled effects.',
         overridableRoles: WRITER_PLAYER_OBSERVER,
       },
       {
@@ -272,6 +287,20 @@ export const MATRIX_SECTIONS: readonly MatrixSection[] = [
           explanation: 'Linked haven or project pages still require their own view.',
         },
         overridableRoles: WRITER_PLAYER_OBSERVER,
+      },
+    ],
+    coverage: [
+      {
+        uses: CampaignCapabilities.PAGE_EDIT_OWNED,
+        note: 'Editing your USER-owned haven or project (spaces, upgrades, progress, hirelings on your characters) uses Edit own via linked wiki ownership.',
+      },
+      {
+        uses: CampaignCapabilities.PAGE_EDIT_PARTY,
+        note: 'Collaborating on PARTY-owned downtime pages uses Edit party pages.',
+      },
+      {
+        uses: CampaignCapabilities.WIKI_VIEW_PARTY,
+        note: 'Viewing downtime pages still requires campaign-tier or GM-only view for that page.',
       },
     ],
   },

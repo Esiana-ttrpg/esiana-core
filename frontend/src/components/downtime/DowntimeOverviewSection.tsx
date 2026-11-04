@@ -10,6 +10,7 @@ interface DowntimeOverviewSectionProps {
   campaignHandle: string;
   overview: DowntimeHubOverviewPayload;
   canManage: boolean;
+  canCreate?: boolean;
   canContributeToLedger: boolean;
   onCreateProject: () => void;
   onCreateHaven: () => void;
@@ -49,7 +50,7 @@ function ActivityRow({ item }: { item: DowntimeOverviewActivity }) {
     : <div className="flex min-w-0 gap-3 py-2">{content}</div>;
 }
 
-export function DowntimeOverviewSection({ campaignHandle, overview, canManage, canContributeToLedger, onCreateProject, onCreateHaven, onAddLedgerEntry }: DowntimeOverviewSectionProps) {
+export function DowntimeOverviewSection({ campaignHandle, overview, canManage, canCreate = canManage, canContributeToLedger, onCreateProject, onCreateHaven, onAddLedgerEntry }: DowntimeOverviewSectionProps) {
   const chronologyHref = overview.currentDowntimePeriod?.chronologyFeedHref ?? campaignChronologyPath(campaignHandle);
   return <div className="downtime-party-sheet-grid overflow-hidden rounded-lg border border-border bg-border">
     <SheetRegion area="current">
@@ -77,7 +78,7 @@ export function DowntimeOverviewSection({ campaignHandle, overview, canManage, c
         {project.durationTotalMinutes !== '0' ? <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted/40" role="progressbar" aria-label={`${project.title} progress`} aria-valuenow={project.progressPercent} aria-valuemin={0} aria-valuemax={100}><div className="h-full bg-primary/45" style={{ width: `${Math.max(0, Math.min(100, project.progressPercent))}%` }} /></div> : null}
         <p className="mt-1 text-xs text-muted-foreground">{project.blockersSummary ?? project.requiresSummary ?? project.operationPostureLabel ?? 'Ready for the next campaign-time advance.'}</p>
       </li>)}</ul> : <div className="mt-3 min-h-24"><p className="text-sm font-medium text-foreground">No active projects.</p><p className="mt-1 max-w-md text-sm text-muted-foreground">Track something the party is working toward over time.</p></div>}
-      {canManage ? <div className="mt-3"><ActionButton onClick={onCreateProject}>Start a project</ActionButton></div> : null}
+      {canCreate ? <div className="mt-3"><ActionButton onClick={onCreateProject}>Start a project</ActionButton></div> : null}
     </SheetRegion>
 
     <SheetRegion area="funds">
@@ -92,7 +93,7 @@ export function DowntimeOverviewSection({ campaignHandle, overview, canManage, c
     <SheetRegion area="havens">
       <div className="flex items-center justify-between gap-3"><SectionHeading>Havens & holdings</SectionHeading><TextLink to={sectionLink(campaignHandle, 'havens')}>All havens</TextLink></div>
       {overview.havens.length > 0 ? <ul className="mt-3 divide-y divide-border/70">{overview.havens.map((haven) => <li key={haven.id} className="py-2.5 first:pt-1"><Link to={haven.href} className="font-medium text-foreground hover:text-primary">{haven.title}</Link><p className="mt-0.5 text-xs text-muted-foreground">{haven.subtitle}{haven.pressureHeadline ? ` · ${haven.pressureHeadline}` : ''}</p></li>)}</ul> : <div className="mt-3 min-h-16"><p className="text-sm font-medium text-foreground">No havens or holdings yet.</p><p className="mt-1 text-sm text-muted-foreground">Add a place the party maintains.</p></div>}
-      {canManage ? <div className="mt-3"><ActionButton onClick={onCreateHaven}>Add a haven</ActionButton></div> : null}
+      {canCreate ? <div className="mt-3"><ActionButton onClick={onCreateHaven}>Add a haven</ActionButton></div> : null}
     </SheetRegion>
 
     <SheetRegion area="reputation">

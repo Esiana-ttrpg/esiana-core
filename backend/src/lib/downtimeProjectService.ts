@@ -23,7 +23,8 @@ import { applyProjectOutcomes } from './projectOutcomeService.js';
 import { emitProjectCompletionLedgerSuggestions } from './ledgerSuggestionEmitters.js';
 import { fieldsToPrismaUpdate, rowToFields } from './downtimeProjectFields.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
-import { canViewWikiPage } from './wikiTree.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from './wikiTree.js';
+import { resolveDefaultPageOwnership } from './pageOwnershipDefaults.js';
 
 export { rowToFields, fieldsToPrismaUpdate };
 
@@ -55,6 +56,9 @@ export type CreateDowntimeProjectInput = {
   operationPosture?: string | null;
   fields?: Partial<DowntimeProjectFields>;
   blocks?: Array<Record<string, unknown>> | null;
+  creatorRole?: CampaignMemberRole | null;
+  defaultPartyId?: string | null;
+  requestedOwnerType?: string | null;
 };
 
 export type UpdateDowntimeProjectInput = Partial<DowntimeProjectFields> & {
@@ -116,7 +120,7 @@ export function toDowntimeProjectDetail(
 
 function isWikiPageVisible(
   row: ProjectWithWiki,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): boolean {
   if (row.wikiPage.deletedAt != null) return false;
   return canViewWikiPage(row.wikiPage.visibility, role);
@@ -178,7 +182,7 @@ function buildListWhere(
 export async function listDowntimeProjectDetails(
   campaignId: string,
   campaignHandle: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
   options: ListDowntimeProjectsOptions = {},
 ): Promise<Array<{ project: DowntimeProjectDetail; wikiMetadata: unknown }>> {
   const rows = await prisma.downtimeProject.findMany({
@@ -199,7 +203,7 @@ export async function listDowntimeProjectDetails(
 export async function listDowntimeProjects(
   campaignId: string,
   campaignHandle: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
   options: ListDowntimeProjectsOptions = {},
 ): Promise<DowntimeProjectSummary[]> {
   const rows = await prisma.downtimeProject.findMany({
@@ -233,7 +237,7 @@ export async function getDowntimeProject(
   campaignId: string,
   campaignHandle: string,
   projectId: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): Promise<DowntimeProjectDetail | null> {
   const row = await prisma.downtimeProject.findFirst({
     where: { id: projectId, campaignId },
@@ -247,7 +251,7 @@ export async function getDowntimeProjectByWikiPageId(
   campaignId: string,
   campaignHandle: string,
   wikiPageId: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): Promise<(DowntimeProjectDetail & { wikiMetadata: unknown; blocks: unknown }) | null> {
   const row = await prisma.downtimeProject.findFirst({
     where: { wikiPageId, campaignId },
@@ -326,6 +330,14 @@ export async function createDowntimeProject(
       ? input.visibility.trim()
       : WikiVisibility.PARTY;
 
+  const ownership = resolveDefaultPageOwnership({
+    creatorUserId: actorUserId,
+    creatorRole: input.creatorRole ?? null,
+    defaultPartyId: input.defaultPartyId ?? null,
+    requestedOwnerType: input.requestedOwnerType,
+    templateType: bootstrap.templateType,
+  });
+
   const created = await prisma.$transaction(async (tx) => {
     const wikiPage = await tx.wikiPage.create({
       data: {
@@ -339,6 +351,10 @@ export async function createDowntimeProject(
           Object.keys(bootstrap.wikiMetadata).length > 0
             ? (bootstrap.wikiMetadata as Prisma.InputJsonValue)
             : undefined,
+        ownerType: ownership.ownerType,
+        ownerUserId: ownership.ownerUserId,
+        ownerPartyId: ownership.ownerPartyId,
+        createdByUserId: ownership.createdByUserId,
       },
       select: { id: true },
     });

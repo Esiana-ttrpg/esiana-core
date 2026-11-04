@@ -388,6 +388,7 @@ import {
   requireRumorModerate,
   requireDiscoveryReveal,
   requireDowntimeManage,
+  requireDowntimeCreate,
   requirePageVisibilityEdit,
   requirePageEditAny,
   requireAdventureStoryboardEdit,
@@ -722,17 +723,17 @@ campaignScopedRouter.get('/downtime/projects/:id/overview', getDowntimeProjectOv
 campaignScopedRouter.get('/downtime/projects/:id', getDowntimeProjectHandler);
 campaignScopedRouter.post(
   '/downtime/projects',
-  requireDowntimeManage,
+  requireDowntimeCreate,
   createDowntimeProjectHandler,
 );
 campaignScopedRouter.patch(
   '/downtime/projects/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   updateDowntimeProjectHandler,
 );
 campaignScopedRouter.delete(
   '/downtime/projects/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   deleteDowntimeProjectHandler,
 );
 campaignScopedRouter.get('/downtime/havens', listDowntimeHavensHandler);
@@ -741,23 +742,27 @@ campaignScopedRouter.get('/downtime/havens/:id', getDowntimeHavenHandler);
 campaignScopedRouter.get('/downtime/havens/:id/overview', getDowntimeHavenOverviewHandler);
 campaignScopedRouter.post(
   '/downtime/havens',
-  requireDowntimeManage,
+  requireDowntimeCreate,
   createDowntimeHavenHandler,
 );
 campaignScopedRouter.patch(
   '/downtime/havens/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   updateDowntimeHavenHandler,
 );
 campaignScopedRouter.delete(
   '/downtime/havens/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   deleteDowntimeHavenHandler,
 );
 campaignScopedRouter.get('/downtime/people', listDowntimePeopleHandler);
 campaignScopedRouter.get('/downtime/people/by-character/:pageId', getDowntimePersonByCharacterHandler);
-campaignScopedRouter.post('/downtime/people', requireDowntimeManage, createDowntimePersonHandler);
-campaignScopedRouter.patch('/downtime/people/:id', requireDowntimeManage, updateDowntimePersonHandler);
+campaignScopedRouter.post('/downtime/people', requireDowntimeCreate, createDowntimePersonHandler);
+campaignScopedRouter.patch(
+  '/downtime/people/:id',
+  requireCampaignMember,
+  updateDowntimePersonHandler,
+);
 campaignScopedRouter.get('/downtime/ledger', getCampaignLedgerHandler);
 campaignScopedRouter.get('/downtime/ledger/suggestions', listLedgerSuggestionsHandler);
 campaignScopedRouter.post(

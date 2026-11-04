@@ -20,6 +20,7 @@ import {
   type HavenStatus,
   type ProjectHavenEffectPayload,
 } from './havenMetadata.js';
+import { resolveDefaultPageOwnership } from './pageOwnershipDefaults.js';
 import {
   fieldsToPrismaCreate,
   fieldsToPrismaUpdate,
@@ -27,7 +28,7 @@ import {
 } from './downtimeHavenFields.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
 import { emitHavenUpkeepLedgerSuggestionIfEligible } from './ledgerSuggestionEmitters.js';
-import { canViewWikiPage } from './wikiTree.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from './wikiTree.js';
 import { SIMULATION_PROJECT_STATUSES } from './projectMetadata.js';
 import {
   applySimulationDeltas,
@@ -59,6 +60,10 @@ export type CreateDowntimeHavenInput = {
   visibility?: string;
   fields?: Partial<DowntimeHavenFields>;
   blocks?: Array<Record<string, unknown>> | null;
+  /** When set, resolves USER/PARTY/STAFF ownership on the linked wiki page. */
+  creatorRole?: CampaignMemberRole | null;
+  defaultPartyId?: string | null;
+  requestedOwnerType?: string | null;
 };
 
 export type UpdateDowntimeHavenInput = Partial<DowntimeHavenFields> & {
@@ -98,7 +103,7 @@ const havenInclude = {
 
 function isWikiPageVisible(
   row: HavenWithWiki,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): boolean {
   if (row.wikiPage.deletedAt != null) return false;
   return canViewWikiPage(row.wikiPage.visibility, role);
@@ -177,7 +182,7 @@ export function toDowntimeHavenDetail(
 export async function listDowntimeHavens(
   campaignId: string,
   campaignHandle: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): Promise<DowntimeHavenDetail[]> {
   const rows = await prisma.downtimeHaven.findMany({
     where: {
@@ -213,7 +218,7 @@ export async function getDowntimeHaven(
   campaignId: string,
   campaignHandle: string,
   havenId: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): Promise<DowntimeHavenDetail | null> {
   const row = await prisma.downtimeHaven.findFirst({
     where: { id: havenId, campaignId },
@@ -238,7 +243,7 @@ export async function getDowntimeHavenByWikiPageId(
   campaignId: string,
   campaignHandle: string,
   wikiPageId: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): Promise<(DowntimeHavenDetail & { blocks: unknown }) | null> {
   const row = await prisma.downtimeHaven.findFirst({
     where: { wikiPageId, campaignId },
@@ -295,6 +300,14 @@ export async function createDowntimeHaven(
       ? input.visibility.trim()
       : WikiVisibility.PARTY;
 
+  const ownership = resolveDefaultPageOwnership({
+    creatorUserId: actorUserId,
+    creatorRole: input.creatorRole ?? null,
+    defaultPartyId: input.defaultPartyId ?? null,
+    requestedOwnerType: input.requestedOwnerType,
+    templateType: bootstrap.templateType,
+  });
+
   const created = await prisma.$transaction(async (tx) => {
     const wikiPage = await tx.wikiPage.create({
       data: {
@@ -304,6 +317,10 @@ export async function createDowntimeHaven(
         templateType: bootstrap.templateType,
         visibility,
         blocks: bootstrap.blocks as Prisma.InputJsonValue,
+        ownerType: ownership.ownerType,
+        ownerUserId: ownership.ownerUserId,
+        ownerPartyId: ownership.ownerPartyId,
+        createdByUserId: ownership.createdByUserId,
       },
       select: { id: true },
     });
@@ -557,13 +574,14 @@ export async function countDowntimeHavens(campaignId: string): Promise<number> {
 export async function resolveWikiPageTitles(
   campaignId: string,
   pageIds: string[],
+  viewer?: WikiVisibilityViewer,
 ): Promise<Map<string, string>> {
   if (pageIds.length === 0) return new Map();
   const pages = await prisma.wikiPage.findMany({
     where: { campaignId, id: { in: pageIds }, deletedAt: null },
-    select: { id: true, title: true },
+    select: { id: true, title: true, visibility: true },
   });
-  return new Map(pages.map((page) => [page.id, page.title]));
+  return new Map(pages.filter((page) => viewer === undefined || canViewWikiPage(page.visibility, viewer)).map((page) => [page.id, page.title]));
 }
 
 export type HavenThreatPatchInput = {

@@ -14,6 +14,7 @@ import {
   canEditChronologyEvent,
   canManageChronology,
 } from '../../../shared/campaignPolicy/policy.js';
+import { canCreateDowntimeResource } from '../../../shared/campaignPolicy/downtimeAccess.js';
 import {
   CampaignCapabilities,
   type CampaignCapability,
@@ -200,6 +201,22 @@ export const requireDiscoveryReveal = requireCapability(
 export const requireDowntimeManage = requireCapability(
   CampaignCapabilities.DOWNTIME_MANAGE,
 );
+
+export function requireDowntimeCreate(
+  req: CampaignScopedRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.campaign?.isMember) {
+    res.status(403).json({ error: 'Forbidden: downtime create not permitted' });
+    return;
+  }
+  if (!canCreateDowntimeResource(req.campaign.actor)) {
+    res.status(403).json({ error: 'Forbidden: downtime create not permitted' });
+    return;
+  }
+  next();
+}
 export const requirePageVisibilityEdit = requireCapability(
   CampaignCapabilities.PAGE_VISIBILITY_EDIT,
 );

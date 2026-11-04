@@ -1,6 +1,13 @@
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { canManageNotebooksFromActor } from '../lib/acl.js';
+import {
+  canCreateDowntimeResource,
+  canChangeDowntimeVisibility,
+  canManageDowntime,
+  canDeleteDowntimeResource,
+  canEditDowntimeResource,
+  loadProjectWikiOwnership,
+} from '../lib/downtimeAuthorization.js';
 import {
   createDowntimeProject,
   deleteDowntimeProject,
@@ -9,6 +16,9 @@ import {
   listDowntimeProjects,
   updateDowntimeProject,
 } from '../lib/downtimeProjectService.js';
+import { prisma } from '../lib/prisma.js';
+import { isDeepStrictEqual } from 'node:util';
+import { parseDowntimeProjectFields } from '../../../shared/projectMetadata.js';
 import { buildProjectOverviewPayload } from '../lib/buildDowntimePresentation.js';
 import { listDowntimePeople } from '../lib/downtimePeopleService.js';
 import {
@@ -39,7 +49,7 @@ export async function listDowntimeProjectsHandler(
   const projects = await listDowntimeProjects(
     ctx.campaignId,
     campaignHandle,
-    ctx.role,
+    ctx,
     { status: status as ProjectStatus | undefined, havenPageId, includeTerminal },
   );
 
@@ -58,7 +68,7 @@ export async function getDowntimeProjectHandler(
     ctx.campaignId,
     campaignHandle,
     projectId,
-    ctx.role,
+    ctx,
   );
 
   if (!project) {
@@ -66,7 +76,14 @@ export async function getDowntimeProjectHandler(
     return;
   }
 
-  res.json({ project });
+  const ownership = await loadProjectWikiOwnership(ctx.campaignId, project.id);
+  res.json({
+    project,
+    canDelete: ownership ? canDeleteDowntimeResource(ctx.actor, ownership) : false,
+    canEdit: ownership
+      ? canEditDowntimeResource(ctx.actor, ownership)
+      : false,
+  });
 }
 
 export async function getDowntimeProjectByWikiPageHandler(
@@ -81,7 +98,7 @@ export async function getDowntimeProjectByWikiPageHandler(
     ctx.campaignId,
     campaignHandle,
     wikiPageId,
-    ctx.role,
+    ctx,
   );
 
   if (!project) {
@@ -90,7 +107,14 @@ export async function getDowntimeProjectByWikiPageHandler(
   }
 
   const { wikiMetadata: _meta, blocks: _blocks, ...detail } = project;
-  res.json({ project: detail });
+  const ownership = await loadProjectWikiOwnership(ctx.campaignId, detail.id);
+  res.json({
+    project: detail,
+    canDelete: ownership ? canDeleteDowntimeResource(ctx.actor, ownership) : false,
+    canEdit: ownership
+      ? canEditDowntimeResource(ctx.actor, ownership)
+      : false,
+  });
 }
 
 export async function getDowntimeProjectOverviewHandler(
@@ -105,7 +129,7 @@ export async function getDowntimeProjectOverviewHandler(
     ctx.campaignId,
     campaignHandle,
     projectId,
-    ctx.role,
+    ctx,
   );
 
   if (!projectRow) {
@@ -117,7 +141,7 @@ export async function getDowntimeProjectOverviewHandler(
     ctx.campaignId,
     campaignHandle,
     projectRow.wikiPageId,
-    ctx.role,
+    ctx,
   );
 
   if (!withBlocks) {
@@ -127,7 +151,7 @@ export async function getDowntimeProjectOverviewHandler(
 
   const { wikiMetadata, blocks, ...project } = withBlocks;
 
-  const people = await listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, false);
+  const people = await listDowntimePeople(ctx.campaignId, campaignHandle, ctx, false);
   const overview = await buildProjectOverviewPayload({
     project,
     wikiMetadata,
@@ -135,6 +159,7 @@ export async function getDowntimeProjectOverviewHandler(
     campaignId: ctx.campaignId,
     campaignHandle,
     role: ctx.role,
+    viewer: ctx,
     assignedPeople: people.people.filter((person) => person.status === 'ACTIVE' && person.assignment?.kind === 'project' && person.assignment.id === projectId),
   });
 
@@ -146,12 +171,16 @@ export async function createDowntimeProjectHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canManageNotebooksFromActor(ctx.actor)) {
+  if (!canCreateDowntimeResource(ctx.actor)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
   const body = req.body ?? {};
+  if (!canChangeDowntimeVisibility(ctx.actor, 'PARTY', body.visibility)) {
+    res.status(403).json({ error: 'Forbidden: visibility change not permitted' });
+    return;
+  }
   const title = typeof body.title === 'string' ? body.title : '';
 
   const constraints = Array.isArray(body.constraints)
@@ -173,6 +202,11 @@ export async function createDowntimeProjectHandler(
         .filter((entry: { label: string; kind: 'requirement' | 'obstacle' }) => entry.label.length > 0)
     : undefined;
 
+  if (!canManageDowntime(ctx.actor) && parseDowntimeProjectFields(body.fields).outcomes.length > 0) {
+    res.status(403).json({ error: 'Forbidden: automated world effects require downtime.manage' });
+    return;
+  }
+
   const result = await createDowntimeProject(
     ctx.campaignId,
     ctx.campaignHandle ?? ctx.campaignId,
@@ -188,6 +222,10 @@ export async function createDowntimeProjectHandler(
         typeof body.operationPosture === 'string' ? body.operationPosture : undefined,
       fields: typeof body.fields === 'object' && body.fields ? body.fields : undefined,
       blocks: Array.isArray(body.blocks) ? body.blocks : undefined,
+      creatorRole: ctx.role,
+      defaultPartyId: ctx.partyId ?? null,
+      requestedOwnerType:
+        typeof body.ownerType === 'string' ? body.ownerType : undefined,
     },
   );
 
@@ -204,12 +242,17 @@ export async function updateDowntimeProjectHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canManageNotebooksFromActor(ctx.actor)) {
+  const projectId = String(req.params.id);
+  const ownership = await loadProjectWikiOwnership(ctx.campaignId, projectId);
+  if (!ownership) {
+    res.status(404).json({ error: 'Project not found.' });
+    return;
+  }
+  if (!canEditDowntimeResource(ctx.actor, ownership)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
-  const projectId = String(req.params.id);
   const body = req.body ?? {};
 
   const patch: Record<string, unknown> = {};
@@ -243,6 +286,25 @@ export async function updateDowntimeProjectHandler(
     }
   }
 
+  if (!canChangeDowntimeVisibility(ctx.actor, ownership.visibility, patch.visibility)) {
+    res.status(403).json({ error: 'Forbidden: visibility change not permitted' });
+    return;
+  }
+
+  if (!canManageDowntime(ctx.actor)) {
+    const current = await prisma.downtimeProject.findFirst({
+      where: { id: projectId, campaignId: ctx.campaignId }, select: { outcomes: true },
+    });
+    const existingOutcomes = parseDowntimeProjectFields({ outcomes: current?.outcomes }).outcomes;
+    const nextOutcomes = patch.outcomes === undefined ? existingOutcomes :
+      parseDowntimeProjectFields({ outcomes: patch.outcomes }).outcomes;
+    if (!isDeepStrictEqual(existingOutcomes, nextOutcomes) ||
+        (patch.status === 'COMPLETED' && nextOutcomes.length > 0)) {
+      res.status(403).json({ error: 'Forbidden: automated world effects require downtime.manage' });
+      return;
+    }
+  }
+
   const result = await updateDowntimeProject(
     ctx.campaignId,
     ctx.campaignHandle ?? ctx.campaignId,
@@ -264,12 +326,17 @@ export async function deleteDowntimeProjectHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canManageNotebooksFromActor(ctx.actor)) {
+  const projectId = String(req.params.id);
+  const ownership = await loadProjectWikiOwnership(ctx.campaignId, projectId);
+  if (!ownership) {
+    res.status(404).json({ error: 'Project not found.' });
+    return;
+  }
+  if (!canDeleteDowntimeResource(ctx.actor, ownership)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
-  const projectId = String(req.params.id);
   const result = await deleteDowntimeProject(ctx.campaignId, projectId);
 
   if (!result.ok) {

@@ -23,6 +23,8 @@ const GM_WRITER_DOMAIN: readonly CampaignCapability[] = [
   CampaignCapabilities.QUEST_EDIT,
   CampaignCapabilities.THREAD_EDIT,
   CampaignCapabilities.MAPS_EDIT,
+  CampaignCapabilities.DOWNTIME_CREATE,
+  CampaignCapabilities.DOWNTIME_DELETE_OWNED,
   CampaignCapabilities.DOWNTIME_MANAGE,
   CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
   CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
@@ -64,6 +66,8 @@ const PARTICIPANT_COLLABORATIVE: readonly CampaignCapability[] = [
   CampaignCapabilities.ASSETS_DELETE_OWNED,
   CampaignCapabilities.ASSETS_VIEW,
   CampaignCapabilities.LEDGER_CONTRIBUTE,
+  CampaignCapabilities.DOWNTIME_CREATE,
+  CampaignCapabilities.DOWNTIME_DELETE_OWNED,
   ...PARTICIPANT_CHRONOLOGY_CONTRIBUTE,
 ];
 

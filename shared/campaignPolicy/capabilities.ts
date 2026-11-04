@@ -23,6 +23,10 @@ export const CampaignCapabilities = {
   QUEST_EDIT: 'quest.edit',
   THREAD_EDIT: 'thread.edit',
   MAPS_EDIT: 'maps.edit',
+  /** Create havens, projects, and hireling relationships (not campaign admin). */
+  DOWNTIME_CREATE: 'downtime.create',
+  DOWNTIME_DELETE_OWNED: 'downtime.delete_owned',
+  /** Administer any downtime resource and campaign downtime settings. */
   DOWNTIME_MANAGE: 'downtime.manage',
   ADVENTURE_STORYBOARD_EDIT: 'adventure.storyboard.edit',
   JOURNAL_PLANNER_ACCESS: 'journal_planner.access',

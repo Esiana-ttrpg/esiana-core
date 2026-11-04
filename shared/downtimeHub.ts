@@ -422,6 +422,7 @@ export type DowntimePersonLine = {
   canEdit: boolean;
 };
 export type DowntimeHubPeoplePayload = {
+  characterOptions?: Array<{ id: string; label: string }>;
   people: DowntimePersonLine[];
   summary: { active: number; assignedToProjects: number; assignedToHavens: number; unassigned: number };
   assignmentOptions: {

@@ -16,7 +16,8 @@ import {
 import {
   buildHavenSituationCards,
 } from '../lib/buildHavenPresentation.js';
-import { canManageNotebooksFromActor } from '../lib/acl.js';
+import { canViewWikiPage } from '../lib/wikiTree.js';
+import { canManageDowntime } from '../lib/downtimeAuthorization.js';
 import { buildCreativeDriftScan } from '../lib/creativeDriftService.js';
 import { buildConvergenceOverlay } from '../lib/chronologyConvergenceService.js';
 import { buildDashboardChronometer } from '../lib/buildDashboardChronometer.js';
@@ -55,7 +56,7 @@ async function loadPresentationContext(
   campaignHandle: string,
 ) {
   const ctx = req.campaign!;
-  const canManage = canManageNotebooksFromActor(ctx.actor);
+  const canManage = canManageDowntime(ctx.actor);
 
   const [campaign, chronometer, creativeDrift, snapshots, batches] = await Promise.all([
     prisma.campaign.findUnique({
@@ -106,7 +107,7 @@ export async function buildDowntimeHubResponse(
   const ctx = req.campaign!;
   const section = normalizeDowntimeSection(req.query.section);
   const campaignHandle = ctx.campaignHandle ?? ctx.campaignId;
-  const canManage = canManageNotebooksFromActor(ctx.actor);
+  const canManage = canManageDowntime(ctx.actor);
 
   const category = await prisma.wikiPage.findFirst({
     where: { id: downtimeRootId, campaignId: ctx.campaignId, deletedAt: null },
@@ -120,7 +121,7 @@ export async function buildDowntimeHubResponse(
     },
   });
 
-  if (!category || !isDowntimeCategoryPage(category.metadata)) {
+  if (!category || !canViewWikiPage(category.visibility, ctx) || !isDowntimeCategoryPage(category.metadata)) {
     res.status(404).json({ error: 'Downtime category page not found' });
     return;
   }
@@ -155,9 +156,9 @@ export async function buildDowntimeHubResponse(
           select: { capturedAtEpochMinute: true },
         }),
         buildCurrentDowntimePeriodPresentation({ campaignId: ctx.campaignId, campaignHandle }),
-        listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx.role, { includeTerminal: true }),
-        listDowntimeHavens(ctx.campaignId, campaignHandle, ctx.role),
-        listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, canManage),
+        listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx, { includeTerminal: true }),
+        listDowntimeHavens(ctx.campaignId, campaignHandle, ctx),
+        listDowntimePeople(ctx.campaignId, campaignHandle, ctx, canManage),
         buildLedgerHubPayload(ctx.campaignId, campaignHandle, ctx.role, req.user?.id ?? null),
         buildReputationHubPayload(ctx.campaignId, campaignHandle, ctx.role),
         canManage
@@ -168,7 +169,7 @@ export async function buildDowntimeHubResponse(
     const currentEpochMinute = campaign?.currentEpochMinute ?? 0n;
     const projectCards = buildDowntimeProjectOperationCards(projects);
     const residentPageIds = [...new Set(havens.flatMap((haven) => haven.residentPageIds))];
-    const residentTitles = await resolveWikiPageTitles(ctx.campaignId, residentPageIds);
+    const residentTitles = await resolveWikiPageTitles(ctx.campaignId, residentPageIds, ctx);
     const residentLabelsByHaven = new Map<string, string[]>();
     for (const haven of havens) {
       residentLabelsByHaven.set(
@@ -235,7 +236,7 @@ export async function buildDowntimeHubResponse(
     const projects = await listDowntimeProjectDetails(
       ctx.campaignId,
       campaignHandle,
-      ctx.role,
+      ctx,
       { includeTerminal: true },
     );
     payload.projects = {
@@ -244,7 +245,7 @@ export async function buildDowntimeHubResponse(
     };
   } else if (section === 'havens') {
     const [havens, campaign] = await Promise.all([
-      listDowntimeHavens(ctx.campaignId, campaignHandle, ctx.role),
+      listDowntimeHavens(ctx.campaignId, campaignHandle, ctx),
       prisma.campaign.findUnique({
         where: { id: ctx.campaignId },
         select: { currentEpochMinute: true },
@@ -256,6 +257,7 @@ export async function buildDowntimeHubResponse(
       const labels = await resolveWikiPageTitles(
         ctx.campaignId,
         haven.residentPageIds,
+        ctx,
       );
       residentLabelsByHaven.set(
         haven.id,
@@ -275,7 +277,7 @@ export async function buildDowntimeHubResponse(
     payload.people = await listDowntimePeople(
       ctx.campaignId,
       campaignHandle,
-      ctx.role,
+      ctx,
       canManage,
     );
   } else if (section === 'reputation') {

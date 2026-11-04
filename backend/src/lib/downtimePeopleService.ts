@@ -1,9 +1,10 @@
-import type { CampaignMemberRole } from '../types/domain.js';
 import { WikiVisibility } from '../types/domain.js';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
-import { canViewWikiPage } from './wikiTree.js';
+import { ownershipFromWiki, canEditDowntimePerson, canEditDowntimeResource } from './downtimeAuthorization.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from './wikiTree.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
+import { isCharacterEntityPage } from '../../../shared/resolveCanonicalEntityCategory.js';
 import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import { RESERVED_PATH_KEY_SEGMENTS } from '../../../shared/campaignWorkspaceRoutes.js';
 import { generatePathKeyFromTitle } from '../../../shared/pathKeyUtils.js';
@@ -14,9 +15,9 @@ type RelationshipType = (typeof TYPES)[number];
 type RelationshipStatus = (typeof STATUSES)[number];
 
 const include = {
-  characterPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } },
-  haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } } } },
-  project: { include: { wikiPage: { select: { id: true, title: true, visibility: true, workspace: true, pathKey: true, templateType: true } } } },
+  characterPage: { select: { id: true, title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true, workspace: true, pathKey: true, templateType: true } },
+  haven: { include: { wikiPage: { select: { id: true, title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true, workspace: true, pathKey: true, templateType: true } } } },
+  project: { include: { wikiPage: { select: { id: true, title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true, workspace: true, pathKey: true, templateType: true } } } },
 } satisfies Prisma.DowntimePersonRelationshipInclude;
 
 function text(value: unknown, max = 500): string | null {
@@ -57,10 +58,10 @@ export function buildHirelingCharacterRouting(title: string, existingCharacterPa
   };
 }
 
-function present(row: any, handle: string, role: CampaignMemberRole | null, canEdit: boolean) {
-  const target = row.haven && canViewWikiPage(row.haven.wikiPage.visibility, role)
+function present(row: any, handle: string, role: WikiVisibilityViewer, canEdit: boolean) {
+  const target = row.haven && row.haven.wikiPage.deletedAt == null && canViewWikiPage(row.haven.wikiPage.visibility, role)
     ? { kind: 'haven' as const, id: row.haven.id, label: row.haven.wikiPage.title, href: buildWikiPageHref(handle, row.haven.wikiPage) }
-    : row.project && canViewWikiPage(row.project.wikiPage.visibility, role)
+    : row.project && row.project.wikiPage.deletedAt == null && canViewWikiPage(row.project.wikiPage.visibility, role)
       ? { kind: 'project' as const, id: row.project.id, label: row.project.wikiPage.title, href: buildWikiPageHref(handle, row.project.wikiPage) }
       : null;
   const compensationLabel = row.compensationUnpaid
@@ -86,23 +87,42 @@ function present(row: any, handle: string, role: CampaignMemberRole | null, canE
   };
 }
 
-export async function listDowntimePeople(campaignId: string, handle: string, role: CampaignMemberRole | null, canEdit: boolean) {
-  const [rows, havens, projects] = await Promise.all([
+export async function listDowntimePeople(campaignId: string, handle: string, role: WikiVisibilityViewer, canEdit: boolean) {
+  const [rows, havens, projects, pages] = await Promise.all([
     prisma.downtimePersonRelationship.findMany({ where: { campaignId }, include, orderBy: [{ status: 'asc' }, { characterPage: { title: 'asc' } }] }),
-    prisma.downtimeHaven.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
-    prisma.downtimeProject.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
+    prisma.downtimeHaven.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
+    prisma.downtimeProject.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
+    prisma.wikiPage.findMany({
+      where: { campaignId, deletedAt: null },
+      select: { id: true, title: true, parentId: true, templateType: true, metadata: true,
+        visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true },
+    }),
   ]);
   const people = rows
     .filter((row) => row.relationshipType === 'HIRELING')
-    .filter((row) => canViewWikiPage(row.characterPage.visibility, role))
-    .map((row) => present(row, handle, role, canEdit));
+    .filter((row) => row.characterPage.deletedAt == null && canViewWikiPage(row.characterPage.visibility, role))
+    .map((row) => present(row, handle, role,
+      role && typeof role === 'object' && 'actor' in role && role.actor
+        ? canEditDowntimePerson(role.actor, ownershipFromWiki(row.characterPage)) &&
+          (!row.haven || canEditDowntimeResource(role.actor, ownershipFromWiki(row.haven.wikiPage))) &&
+          (!row.project || canEditDowntimeResource(role.actor, ownershipFromWiki(row.project.wikiPage)))
+        : canEdit));
   const active = people.filter((person) => person.status === 'ACTIVE');
   return {
     people,
+    characterOptions: pages.filter((page) => isCharacterEntityPage(page, pages) &&
+      canViewWikiPage(page.visibility, role) &&
+      role && typeof role === 'object' && 'actor' in role && role.actor &&
+      canEditDowntimePerson(role.actor, ownershipFromWiki(page)))
+      .map((page) => ({ id: page.id, label: page.title })),
     summary: { active: active.length, assignedToProjects: active.filter((p) => p.assignment?.kind === 'project').length, assignedToHavens: active.filter((p) => p.assignment?.kind === 'haven').length, unassigned: active.filter((p) => !p.assignment).length },
     assignmentOptions: {
-      havens: havens.filter((row) => canViewWikiPage(row.wikiPage.visibility, role)).map((row) => ({ id: row.id, label: row.wikiPage.title })),
-      projects: projects.filter((row) => canViewWikiPage(row.wikiPage.visibility, role)).map((row) => ({ id: row.id, label: row.wikiPage.title })),
+      havens: havens.filter((row) => row.wikiPage.deletedAt == null && canViewWikiPage(row.wikiPage.visibility, role) &&
+        (!(role && typeof role === 'object' && 'actor' in role && role.actor) ||
+          canEditDowntimeResource(role.actor, ownershipFromWiki(row.wikiPage)))).map((row) => ({ id: row.id, label: row.wikiPage.title })),
+      projects: projects.filter((row) => row.wikiPage.deletedAt == null && canViewWikiPage(row.wikiPage.visibility, role) &&
+        (!(role && typeof role === 'object' && 'actor' in role && role.actor) ||
+          canEditDowntimeResource(role.actor, ownershipFromWiki(row.wikiPage)))).map((row) => ({ id: row.id, label: row.wikiPage.title })),
     },
   };
 }
@@ -140,7 +160,22 @@ export async function createDowntimePerson(campaignId: string, actorUserId: stri
           characterName!,
           candidates.flatMap((page) => page.workspace === CampaignWorkspace.CHARACTERS && page.pathKey ? [page.pathKey] : []),
         );
-        const page = await tx.wikiPage.create({ data: { campaignId, parentId: folder.id, title: characterName!, visibility: WikiVisibility.PARTY, templateType: 'CHARACTER', workspace: routing.workspace, pathKey: routing.pathKey, metadata: { character: {} }, createdByUserId: actorUserId }, select: { id: true } });
+        const page = await tx.wikiPage.create({
+          data: {
+            campaignId,
+            parentId: folder.id,
+            title: characterName!,
+            visibility: WikiVisibility.PARTY,
+            templateType: 'CHARACTER',
+            workspace: routing.workspace,
+            pathKey: routing.pathKey,
+            metadata: { character: {} },
+            createdByUserId: actorUserId,
+            ownerType: 'USER',
+            ownerUserId: actorUserId,
+          },
+          select: { id: true },
+        });
         pageId = page.id;
       }
       const existing = await tx.downtimePersonRelationship.findFirst({ where: { campaignId, characterPageId: pageId!, status: 'ACTIVE' } });
@@ -186,4 +221,4 @@ export async function updateDowntimePerson(campaignId: string, id: string, actor
   } catch (error) { return { ok: false as const, status: 400, error: error instanceof Error ? error.message : 'Unable to update relationship.' }; }
 }
 
-export function presentDowntimePerson(row: unknown, handle: string, role: CampaignMemberRole | null, canEdit: boolean) { return present(row, handle, role, canEdit); }
+export function presentDowntimePerson(row: unknown, handle: string, role: WikiVisibilityViewer, canEdit: boolean) { return present(row, handle, role, canEdit); }

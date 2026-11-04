@@ -1,6 +1,12 @@
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { canManageNotebooksFromActor } from '../lib/acl.js';
+import {
+  canCreateDowntimeResource,
+  canChangeDowntimeVisibility,
+  canDeleteDowntimeResource,
+  canEditDowntimeResource,
+  loadHavenWikiOwnership,
+} from '../lib/downtimeAuthorization.js';
 import {
   createDowntimeHaven,
   deleteDowntimeHaven,
@@ -22,7 +28,7 @@ export async function listDowntimeHavensHandler(
   const ctx = req.campaign!;
   const campaignHandle = ctx.campaignHandle ?? ctx.campaignId;
 
-  const havens = await listDowntimeHavens(ctx.campaignId, campaignHandle, ctx.role);
+  const havens = await listDowntimeHavens(ctx.campaignId, campaignHandle, ctx);
   res.json({ havens });
 }
 
@@ -38,7 +44,7 @@ export async function getDowntimeHavenHandler(
     ctx.campaignId,
     campaignHandle,
     havenId,
-    ctx.role,
+    ctx,
   );
 
   if (!haven) {
@@ -46,7 +52,14 @@ export async function getDowntimeHavenHandler(
     return;
   }
 
-  res.json({ haven });
+  const ownership = await loadHavenWikiOwnership(ctx.campaignId, haven.id);
+  res.json({
+    haven,
+    canDelete: ownership ? canDeleteDowntimeResource(ctx.actor, ownership) : false,
+    canEdit: ownership
+      ? canEditDowntimeResource(ctx.actor, ownership)
+      : false,
+  });
 }
 
 export async function getDowntimeHavenByWikiPageHandler(
@@ -61,7 +74,7 @@ export async function getDowntimeHavenByWikiPageHandler(
     ctx.campaignId,
     campaignHandle,
     wikiPageId,
-    ctx.role,
+    ctx,
   );
 
   if (!haven) {
@@ -70,7 +83,14 @@ export async function getDowntimeHavenByWikiPageHandler(
   }
 
   const { blocks: _blocks, ...detail } = haven;
-  res.json({ haven: detail });
+  const ownership = await loadHavenWikiOwnership(ctx.campaignId, detail.id);
+  res.json({
+    haven: detail,
+    canDelete: ownership ? canDeleteDowntimeResource(ctx.actor, ownership) : false,
+    canEdit: ownership
+      ? canEditDowntimeResource(ctx.actor, ownership)
+      : false,
+  });
 }
 
 export async function getDowntimeHavenOverviewHandler(
@@ -95,7 +115,7 @@ export async function getDowntimeHavenOverviewHandler(
     ctx.campaignId,
     campaignHandle,
     havenRecord.wikiPageId,
-    ctx.role,
+    ctx,
   );
 
   if (!havenWithBlocks) {
@@ -108,16 +128,16 @@ export async function getDowntimeHavenOverviewHandler(
       where: { id: ctx.campaignId },
       select: { currentEpochMinute: true },
     }),
-    listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx.role, {
+    listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx, {
       havenPageId: havenWithBlocks.wikiPageId,
       includeTerminal: false,
     }),
-    resolveWikiPageTitles(ctx.campaignId, havenWithBlocks.residentPageIds),
+    resolveWikiPageTitles(ctx.campaignId, havenWithBlocks.residentPageIds, ctx),
     prisma.wikiPage.findFirst({
       where: { id: havenWithBlocks.wikiPageId, campaignId: ctx.campaignId },
       select: { featuredImageId: true },
     }),
-    listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, false),
+    listDowntimePeople(ctx.campaignId, campaignHandle, ctx, false),
   ]);
 
   const { blocks, ...haven } = havenWithBlocks;
@@ -142,12 +162,16 @@ export async function createDowntimeHavenHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canManageNotebooksFromActor(ctx.actor)) {
+  if (!canCreateDowntimeResource(ctx.actor)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
   const body = req.body ?? {};
+  if (!canChangeDowntimeVisibility(ctx.actor, 'PARTY', body.visibility)) {
+    res.status(403).json({ error: 'Forbidden: visibility change not permitted' });
+    return;
+  }
   const title = typeof body.title === 'string' ? body.title : '';
 
   const result = await createDowntimeHaven(
@@ -161,6 +185,10 @@ export async function createDowntimeHavenHandler(
       fields:
         typeof body.fields === 'object' && body.fields ? body.fields : undefined,
       blocks: Array.isArray(body.blocks) ? body.blocks : undefined,
+      creatorRole: ctx.role,
+      defaultPartyId: ctx.partyId ?? null,
+      requestedOwnerType:
+        typeof body.ownerType === 'string' ? body.ownerType : undefined,
     },
   );
 
@@ -177,12 +205,17 @@ export async function updateDowntimeHavenHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canManageNotebooksFromActor(ctx.actor)) {
+  const havenId = String(req.params.id);
+  const ownership = await loadHavenWikiOwnership(ctx.campaignId, havenId);
+  if (!ownership) {
+    res.status(404).json({ error: 'Haven not found.' });
+    return;
+  }
+  if (!canEditDowntimeResource(ctx.actor, ownership)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
-  const havenId = String(req.params.id);
   const body = req.body ?? {};
 
   const patch: Record<string, unknown> = {};
@@ -227,6 +260,11 @@ export async function updateDowntimeHavenHandler(
     }
   }
 
+  if (!canChangeDowntimeVisibility(ctx.actor, ownership.visibility, patch.visibility)) {
+    res.status(403).json({ error: 'Forbidden: visibility change not permitted' });
+    return;
+  }
+
   const result = await updateDowntimeHaven(
     ctx.campaignId,
     ctx.campaignHandle ?? ctx.campaignId,
@@ -248,12 +286,17 @@ export async function deleteDowntimeHavenHandler(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (!canManageNotebooksFromActor(ctx.actor)) {
+  const havenId = String(req.params.id);
+  const ownership = await loadHavenWikiOwnership(ctx.campaignId, havenId);
+  if (!ownership) {
+    res.status(404).json({ error: 'Haven not found.' });
+    return;
+  }
+  if (!canDeleteDowntimeResource(ctx.actor, ownership)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }
 
-  const havenId = String(req.params.id);
   const result = await deleteDowntimeHaven(ctx.campaignId, havenId);
 
   if (!result.ok) {

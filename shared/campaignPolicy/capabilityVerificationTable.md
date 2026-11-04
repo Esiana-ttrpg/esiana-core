@@ -14,6 +14,8 @@ Derived from `matrixCatalog.ts` and the implementation audit. Copy into the PR d
 | `journal_planner.access` | Y/N/N | W,P,O | `requireJournalPlannerAccess` | Journals → Manage planner | coverage unlock |
 | `maps.edit` | Y/N/N | W,P,O | `requireMapsEdit` + map UI `can(MAPS_EDIT)` | Maps → Edit maps | maps hub/viewer |
 | `notes.moderate` | Y/N/N | W,P,O | `requireNotesModerate` | Sessions → Manage notes | matrix unlock |
+| `downtime.create` | Y/Y/N | W,P,O | `requireDowntimeCreate` + effective visibility | Downtime / Create | Downtime HTTP regression |
+| `downtime.delete_owned` | Y/Y/N | W,P,O | linked USER owner + visibility | Downtime / Delete own | Downtime HTTP regression |
 | `downtime.manage` | Y/N/N | W,P,O | `requireDowntimeManage` | Downtime → Manage | matrix unlock |
 | `audio.manage` | Y/N/N | W,P,O | sessionRecordings routes | Sessions → Manage recordings | existing audio tests |
 | `adventure.storyboard.edit` | Y/N/N | W,P,O | `requireAdventureStoryboardEdit` | Adventure → Manage storyboard | matrix unlock |
