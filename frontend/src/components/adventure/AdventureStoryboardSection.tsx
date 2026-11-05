@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
 import { STORYBOARD_PRESETS } from '@shared/storyboardProjection';
 import {
   fetchAdventureHub,
@@ -138,14 +138,7 @@ export function AdventureStoryboardSection({
 
   const createButton = useMemo(
     () => (
-      <button
-        type="button"
-        onClick={() => setIsCreateSceneOpen(true)}
-        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
-      >
-        <Plus className="size-4" />
-        New Scene
-      </button>
+      <WorkspaceActionBar create={{ label: 'New Scene', onClick: () => setIsCreateSceneOpen(true) }} />
     ),
     [],
   );
