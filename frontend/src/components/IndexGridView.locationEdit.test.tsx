@@ -43,6 +43,7 @@ test('saving a location cell refreshes the parent collection', async () => {
     await act(async () => root.render(<MemoryRouter><IndexGridView categoryPageId="root" categoryTitle="Locations"
       campaignHandle="campaign" pageById={new Map()} onMetadataSaved={reload}
       children={[{ id: 'one', title: 'Observatory', parentId: 'root', visibility: 'Party', updatedAt: '2025-01-01', snippet: '' }]} /></MemoryRouter>));
+    expect(container.querySelector('table')?.className).toContain('operator-index-table--locations');
     const edit = [...container.querySelectorAll('button')].find(button => button.textContent?.includes('North'))!;
     await act(async () => edit.click());
     const input = container.querySelector('input')!;
