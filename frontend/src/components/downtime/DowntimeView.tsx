@@ -167,7 +167,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   ]);
 
   const sectionTrailing = useMemo(() => {
-    if (activeSection === 'ledger' && sectionData?.ledger) {
+    if (activeSection === 'ledger' && !loadingSection && sectionData?.ledger) {
       return (
         <div className="flex flex-wrap items-center gap-2">
           {canManage ? (
@@ -224,6 +224,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   }, [
     activeSection,
     sectionData,
+    loadingSection,
     canManage,
     canContributeToLedger,
   ]);
@@ -244,7 +245,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
               ? undefined
               : null
             : activeSection === 'ledger'
-              ? canContributeToLedger
+              ? canContributeToLedger && !loadingSection && sectionData?.ledger
                 ? undefined
                 : null
               : null
@@ -289,6 +290,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
           headerConfig && activeSection ? (
             <WorkspaceHeader
               title={headerConfig.displayTitle}
+              compact
               actions={activeSection ? sectionToolbar : undefined}
               activeFilters={activeFilters}
             />
