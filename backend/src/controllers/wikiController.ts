@@ -22,6 +22,9 @@ import {
   loadCalendarEventDescriptionForLorePage,
 } from '../lib/eventLoreWiki.js';
 import { buildWikiTree, canViewWikiPage } from '../lib/wikiTree.js';
+import { rejectUnverifiedAudiencePreview } from '../lib/adventureAudiencePreview.js';
+import { resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { restrictThreadMetadata } from '../lib/adventureAudienceMetadata.js';
 import { isHubPageVisible } from '../lib/hubVisibility.js';
 import { normalizeSidebarConfig, isSidebarConfigBlank } from '../lib/sidebarConfig.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
@@ -801,6 +804,8 @@ export async function getWikiTree(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
 
   await ensureQuickAccessCategoryTitle(ctx.campaignId);
   await ensureRemoveLegacyDashboardWikiPage(ctx.campaignId);
@@ -1468,6 +1473,8 @@ export async function getWikiPage(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureChronologyWikiWorkspaces(ctx.campaignId);
 
@@ -3386,6 +3393,7 @@ async function buildQuestHubResponse(
 ): Promise<void> {
   const ctx = req.campaign!;
   const canManage = canManageNotebooks(ctx.actor);
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer, canManage || hasElevatedNarrativeView(ctx.actor), res)) return;
   const previewAsPlayer =
     req.query.previewAsPlayer === 'true' || req.query.previewAsPlayer === '1';
   const effectiveCanManage = canManage && !previewAsPlayer;
@@ -3433,11 +3441,9 @@ async function buildQuestHubResponse(
   }));
 
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
-  const effectiveViewerCtx =
-    viewerCtx && previewAsPlayer && canManage
-      ? { ...viewerCtx, perspective: 'party' as const }
-      : viewerCtx;
-  const visibilityViewer = effectiveViewerCtx ?? ctx.role;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, viewerCtx);
+  const effectiveViewerCtx = audience.narrativeViewer;
+  const visibilityViewer = audience.preview ? audience.visibilityViewer : effectiveViewerCtx ?? ctx.role;
 
   const visibleRows = collectVisibleQuestSubtreeRows(
     questRows,
@@ -3495,7 +3501,8 @@ async function buildQuestHubResponse(
     campaignId: ctx.campaignId,
     campaignHandle,
     targetPageIds: visibleIds,
-    role: ctx.role,
+    role: audience.preview ? null : ctx.role,
+    canViewPage: audience.preview ? audience.canViewPage : undefined,
   });
 
   const pagesWithTags =
@@ -3524,10 +3531,15 @@ async function buildQuestHubResponse(
     lifecycleFilteredRows,
     questsRootId,
     (row) => {
-      const quest = sanitizeQuestMetadataForRole(
+      const parsedQuest = sanitizeQuestMetadataForRole(
         parseQuestMetadata(row.metadata),
         hasElevatedNarrativeView(ctx.actor) && !previewAsPlayer,
       );
+      const quest = audience.preview ? {
+        ...parsedQuest,
+        questGiverId: null,
+        factionId: null,
+      } : parsedQuest;
       const lifecycleState = lifecycleMap.get(row.id) ?? null;
       const questGiver = quest.questGiverId
         ? refById.get(quest.questGiverId)
@@ -3616,6 +3628,8 @@ export async function getQuestHubBySystemKey(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const questsRootId = await ensureQuestsSystemCategoryKey(ctx.campaignId);
   if (!questsRootId) {
     res.status(404).json({ error: 'Quests category page not found' });
@@ -3629,6 +3643,8 @@ export async function getQuestHubIndex(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureQuestsSystemCategoryKey(ctx.campaignId);
   await buildQuestHubResponse(req, res, pageId);
@@ -3641,6 +3657,7 @@ async function buildThreadHubResponse(
 ): Promise<void> {
   const ctx = req.campaign!;
   const canManage = canManageNotebooks(ctx.actor);
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer, canManage || hasElevatedNarrativeView(ctx.actor), res)) return;
   const previewAsPlayer =
     req.query.previewAsPlayer === 'true' || req.query.previewAsPlayer === '1';
   const effectiveCanManage = canManage && !previewAsPlayer;
@@ -3688,11 +3705,9 @@ async function buildThreadHubResponse(
   }));
 
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
-  const effectiveViewerCtx =
-    viewerCtx && previewAsPlayer && canManage
-      ? { ...viewerCtx, perspective: 'party' as const }
-      : viewerCtx;
-  const visibilityViewer = effectiveViewerCtx ?? ctx.role;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, viewerCtx);
+  const effectiveViewerCtx = audience.narrativeViewer;
+  const visibilityViewer = audience.preview ? audience.visibilityViewer : effectiveViewerCtx ?? ctx.role;
 
   const visibleRows = collectVisibleThreadSubtreeRows(
     threadRows,
@@ -3762,10 +3777,12 @@ async function buildThreadHubResponse(
     threadsRootId,
     (row) => {
       const parsedThread = parseThreadMetadataWithWarnings(row.metadata);
-      const thread = sanitizeThreadMetadataForRole(
+      const parsedFields = sanitizeThreadMetadataForRole(
         parsedThread.fields,
         effectiveCanManage,
       );
+      // Page visibility alone does not establish lifecycle/discovery access to related records.
+      const thread = audience.preview ? restrictThreadMetadata(parsedFields, new Set()) : parsedFields;
       const lifecycleState = lifecycleMap.get(row.id) ?? null;
       const related = thread.relatedPageIds
         .map((id) => refById.get(id))
@@ -3837,6 +3854,8 @@ export async function getThreadHubBySystemKey(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const threadsRootId = await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
   if (!threadsRootId) {
     res.status(404).json({ error: 'Narrative threads category page not found' });
@@ -3850,6 +3869,8 @@ export async function getThreadHubIndex(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
   await buildThreadHubResponse(req, res, pageId);

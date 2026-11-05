@@ -48,6 +48,7 @@ interface IndexGridViewProps {
   selectedCharacterId?: string | null;
   onSelectCharacter?: (characterId: string) => void;
   isDMUser?: boolean;
+  onMetadataSaved?: () => void | Promise<void>;
 }
 
 type EditingCell = { pageId: string; column: string } | null;
@@ -92,6 +93,7 @@ export function IndexGridView({
   selectedCharacterId = null,
   onSelectCharacter,
   isDMUser: isDMUserProp = false,
+  onMetadataSaved,
 }: IndexGridViewProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const { flatPages } = useWiki();
@@ -200,6 +202,7 @@ export function IndexGridView({
         ),
       );
       setEditingCell(null);
+      await onMetadataSaved?.();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Unable to save metadata');
     } finally {

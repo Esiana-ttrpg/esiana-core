@@ -72,6 +72,14 @@ jobs:
           pnpm test
           pnpm test:downtime-permissions
 
+      - name: Run audience database HTTP regression
+        working-directory: backend
+        env:
+          DATABASE_URL: file:./ci-test.db
+          TEST_DATABASE_URL: file:./ci-test.db
+          DATABASE_PROVIDER: sqlite
+        run: node --import tsx --test src/routes/adventureAudience.database.http.test.ts
+
   test-postgres:
     runs-on: ubuntu-latest
     services:

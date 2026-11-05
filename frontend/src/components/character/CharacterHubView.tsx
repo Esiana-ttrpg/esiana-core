@@ -386,6 +386,7 @@ export function CharacterHubView({
               value={playerPreview ? 'party' : 'dm'}
               onChange={(next) => setPlayerPreview(next !== 'dm')}
               ariaLabel="Character cast view perspective"
+              previewUnavailableReason="Party preview is temporarily unavailable."
             />
           ) : null
         }

@@ -81,6 +81,8 @@ export async function batchSessionBacklinksForPages(input: {
   campaignHandle: string;
   targetPageIds: string[];
   role: string | null;
+  /** Additional request-scoped restriction, applied before grouping and limits. */
+  canViewPage?: (visibility: string) => boolean;
   limitPerTarget?: number;
 }): Promise<Map<string, SessionPageBacklinkRow[]>> {
   const limit = input.limitPerTarget ?? 10;
@@ -114,7 +116,7 @@ export async function batchSessionBacklinksForPages(input: {
         where: { campaignId: input.campaignId },
         select: { id: true, visibility: true },
       })
-    ).map((p) => [p.id, p.visibility]),
+    ).map((p) => [p.id, input.canViewPage && !input.canViewPage(p.visibility) ? 'DM_Only' : p.visibility]),
   );
 
   const links = await prisma.wikiLink.findMany({
@@ -143,6 +145,7 @@ export async function batchSessionBacklinksForPages(input: {
 
   for (const link of links) {
     const source = link.sourcePage;
+    if (input.canViewPage && !input.canViewPage(source.visibility)) continue;
     if (!isSessionLogSourcePage(source, parentById)) continue;
 
     const bucket = grouped.get(link.targetPageId) ?? [];

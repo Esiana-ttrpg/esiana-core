@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { act, useState, type ReactNode } from 'react';
+import { act, type ReactNode } from 'react';
 import { parseHTML } from 'linkedom';
 import type { AdventurePreviewPerspective } from '@/lib/adventurePreview';
 
@@ -9,9 +9,6 @@ const workspace = {
   perspective: 'dm' as AdventurePreviewPerspective,
   setPerspective: (_next: AdventurePreviewPerspective) => {},
   playerPreview: false,
-  publicPreview: false,
-  publicPreviewEligible: false,
-  publicPreviewGate: 'campaign' as const,
 };
 
 vi.mock('@/contexts/AdventureWorkspaceContext', () => ({
@@ -46,46 +43,18 @@ async function mount(children: ReactNode) {
   return { container, unmount: () => act(async () => root.unmount()) };
 }
 
-test('Adventure toggle keeps Public selected after GM and Player', async () => {
+test('Adventure preview options stay unavailable until server projections are verified', async () => {
   const { AdventurePlayerPreviewToggle } = await import('./AdventurePlayerPreviewToggle');
-
-  function Harness() {
-    const [perspective, setPerspective] = useState<AdventurePreviewPerspective>('dm');
-    workspace.perspective = perspective;
-    workspace.setPerspective = setPerspective;
-    workspace.playerPreview = perspective !== 'dm';
-    workspace.publicPreview = perspective === 'public';
-    return (
-      <div>
-        <AdventurePlayerPreviewToggle />
-        <p data-testid="state">{perspective}</p>
-      </div>
-    );
-  }
-
-  const ui = await mount(<Harness />);
+  const setPerspective = vi.fn();
+  workspace.perspective = 'dm';
+  workspace.setPerspective = setPerspective;
+  const ui = await mount(<AdventurePlayerPreviewToggle />);
   try {
-    const press = async (label: string) => {
-      const button = Array.from(ui.container.querySelectorAll('button')).find(
-        (node) => node.textContent === label,
-      );
-      expect(button).toBeTruthy();
-      await act(async () => {
-        button!.click();
-      });
-    };
-
-    await press('Player');
-    expect(ui.container.querySelector('[data-testid="state"]')?.textContent).toBe('party');
-    await press('Public');
-    expect(ui.container.querySelector('[data-testid="state"]')?.textContent).toBe('public');
-    const publicButton = Array.from(ui.container.querySelectorAll('button')).find(
-      (node) => node.textContent === 'Public',
-    );
-    expect(publicButton?.getAttribute('aria-pressed')).toBe('true');
-    await press('GM');
-    expect(ui.container.querySelector('[data-testid="state"]')?.textContent).toBe('dm');
-  } finally {
-    await ui.unmount();
-  }
+    const buttons = Array.from(ui.container.querySelectorAll('button'));
+    expect(buttons.map(button => button.textContent)).toEqual(['GM', 'Party']);
+    expect(buttons[1].disabled).toBe(true);
+    expect(ui.container.textContent).toContain('temporarily unavailable');
+    await act(async () => buttons[1].click());
+    expect(setPerspective).not.toHaveBeenCalled();
+  } finally { await ui.unmount(); }
 });

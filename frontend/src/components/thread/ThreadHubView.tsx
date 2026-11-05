@@ -40,6 +40,7 @@ import type { StoryFilterState } from '@/lib/workspacePersistence';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { ThreadsLensViewToggle } from '@/components/thread/ThreadsLensViewToggle';
 import { campaignAdventureHubPath } from '@/lib/campaignPaths';
+import { ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE } from '@/lib/adventurePreview';
 
 interface ThreadHubViewProps {
   campaignHandle: string;
@@ -231,6 +232,8 @@ export function ThreadHubView({
               ) : null}
               <button
                 type="button"
+                disabled={!ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE}
+                title={ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE ? undefined : 'Party preview is temporarily unavailable.'}
                 onClick={() => setPlayerPreviewLocal((value) => !value)}
                 className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
               >

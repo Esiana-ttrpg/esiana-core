@@ -68,6 +68,13 @@ export function BrowseVisibilityIndicator(props: {
       narrativeStatus: props.narrativeStatus,
       isFuture: props.isFuture,
     });
+  const accessTier = resolveVisibilityTierLabel({ pageVisibility: props.pageVisibility });
+  if ((accessTier === 'staff' || accessTier === 'restricted') && accessTier !== tier) {
+    return <span className="inline-flex flex-wrap gap-1">
+      <VisibilityTierChip tier={accessTier} compact={props.compact} />
+      {shouldShowVisibilityTierChip(tier) ? <VisibilityTierChip tier={tier} compact={props.compact} /> : null}
+    </span>;
+  }
   if (!shouldShowVisibilityTierChip(tier)) return null;
   return <VisibilityTierChip tier={tier} compact={props.compact} />;
 }
