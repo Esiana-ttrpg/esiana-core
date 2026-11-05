@@ -368,6 +368,13 @@ export function writeWorkspaceBrowseState(scope: WorkspaceBrowseScope, state: Wo
     localStorage.setItem(scopedKey(scope, 'view'), JSON.stringify(viewMode));
   } catch { /* Storage can be unavailable. */ }
 }
+
+/** Persist only the user's change, without adopting temporary URL overrides. */
+export function updateStoredWorkspaceBrowseState(
+  scope: WorkspaceBrowseScope, config: WorkspaceBrowseConfig, update: Partial<WorkspaceBrowseState>,
+): void {
+  writeWorkspaceBrowseState(scope, { ...readWorkspaceBrowseState(scope, config), ...update });
+}
 /** URL parameters override only the corresponding saved fields; invalid explicit values use defaults. */
 export function resolveWorkspaceBrowseUrl(saved: WorkspaceBrowseState, params: URLSearchParams, config: WorkspaceBrowseConfig): WorkspaceBrowseState {
   const overrides: Record<string, unknown> = {};

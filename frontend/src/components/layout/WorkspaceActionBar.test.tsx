@@ -66,3 +66,18 @@ test('an empty creation menu does not render a button', async () => {
   try { expect(ui.container.querySelector('button')).toBeNull(); }
   finally { await ui.unmount(); }
 });
+
+test('disabled single and menu actions expose the disabled attribute', async () => {
+  const single = await mount(<WorkspaceActionBar create={{ label: 'New', onClick: vi.fn(), disabled: true }} />);
+  try { expect(single.container.querySelector('button')?.hasAttribute('disabled')).toBe(true); }
+  finally { await single.unmount(); }
+
+  const menu = await mount(<WorkspaceActionBar create={{ label: 'Create', actions: [
+    { label: 'Unavailable', onClick: vi.fn(), disabled: true },
+  ] }} />);
+  try {
+    await act(async () => menu.container.querySelector('button')!.click());
+    const action = [...menu.container.querySelectorAll('button')].find(button => button.textContent === 'Unavailable');
+    expect(action?.hasAttribute('disabled')).toBe(true);
+  } finally { await menu.unmount(); }
+});

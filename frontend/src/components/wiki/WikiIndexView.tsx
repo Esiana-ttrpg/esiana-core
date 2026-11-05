@@ -54,7 +54,7 @@ import {
   writeCategoryIndexBrowseSnapshot,
   readWorkspaceBrowseState,
   resolveWorkspaceBrowseUrl,
-  writeWorkspaceBrowseState,
+  updateStoredWorkspaceBrowseState,
   writeWorkspaceBrowseUrl,
   type WorkspaceBrowseState,
   type WorkspaceBrowseConfig,
@@ -172,7 +172,7 @@ function EntityBrowser({
   }, [scope, browseConfig, urlParams]);
   function updateLocationBrowse(update: Partial<WorkspaceBrowseState>) {
     const next = { ...locationBrowse, ...update };
-    if (scope) writeWorkspaceBrowseState(scope, next);
+    if (scope) updateStoredWorkspaceBrowseState(scope, browseConfig, update);
     setUrlParams(writeWorkspaceBrowseUrl(urlParams, next));
   }
   const searchQuery = isLocations ? locationBrowse.searchQuery : legacySearch;
@@ -226,18 +226,18 @@ function EntityBrowser({
   }, [loadIndex]);
 
   useEffect(() => {
-    if (isLocations || !campaignHandle || !categoryPageId || browseHydrated) return;
+    if (!campaignHandle || !categoryPageId || browseHydrated) return;
     const snapshot = readCategoryIndexBrowseSnapshot(
       campaignHandle,
       categoryPageId,
     );
-    if (snapshot?.searchQuery !== undefined) {
+    if (!isLocations && snapshot?.searchQuery !== undefined) {
       setSearchQuery(snapshot.searchQuery);
     }
-    if (snapshot?.viewMode) {
+    if (!isLocations && snapshot?.viewMode) {
       setViewMode(snapshot.viewMode);
     }
-    if (snapshot?.refineState) {
+    if (!isLocations && snapshot?.refineState) {
       setRefineState(snapshot.refineState);
     }
     if (snapshot?.columnKeys) {
@@ -265,7 +265,7 @@ function EntityBrowser({
   }, [children, facetDefs, categoryTitle, isLocations]);
 
   useEffect(() => {
-    if (isLocations || !browseHydrated || !campaignHandle) return;
+    if (!browseHydrated || !campaignHandle) return;
     writeCategoryIndexBrowseSnapshot(campaignHandle, categoryPageId, {
       searchQuery,
       refineState,
@@ -310,8 +310,11 @@ function EntityBrowser({
 
   const locationGroups = useMemo(() => {
     if (!isLocations || viewMode === 'hierarchy' || locationBrowse.group !== 'region') return null;
-    return groupLocationBrowseChildren(filteredChildren, child =>
-      resolveLocationRegionLabel(parseLocationMetadata(child.metadata), flatPages));
+    return groupLocationBrowseChildren(filteredChildren, child => {
+      const location = parseLocationMetadata(child.metadata);
+      return { regionPageId: location.regionPageId, region: location.region,
+        label: resolveLocationRegionLabel(location, flatPages) };
+    });
   }, [isLocations, viewMode, locationBrowse.group, filteredChildren, flatPages]);
 
   const activeRefineChips = useMemo(
@@ -534,13 +537,13 @@ function EntityBrowser({
         />
       ) : locationGroups ? (
         <div className="col-span-full space-y-6">
-          {locationGroups.map(([label, items]) => (
-            <section key={label} aria-label={label}>
+          {locationGroups.map(({ key, label, children: items }) => (
+            <section key={key} aria-label={label}>
               <h2 className="mb-2 text-sm font-medium text-muted">{label}</h2>
               {viewMode === 'table' ? <IndexGridView
                 children={items} categoryPageId={categoryPageId} categoryTitle={categoryTitle}
                 campaignHandle={campaignHandle} pageById={pageById} allIndexChildren={children}
-                selectedOptionalColumnKeys={selectedOptionalColumnKeys} /> : (
+                selectedOptionalColumnKeys={selectedOptionalColumnKeys} onMetadataSaved={loadIndex} /> : (
                 <div className="entity-catalog-grid">
                   {items.map(child => <EntityCatalogTile key={child.id} child={child}
                     categoryPageId={categoryPageId} categoryTitle={categoryTitle} campaignHandle={campaignHandle}
@@ -558,6 +561,7 @@ function EntityBrowser({
           campaignHandle={campaignHandle}
           pageById={pageById}
           allIndexChildren={children}
+          onMetadataSaved={loadIndex}
           selectedOptionalColumnKeys={selectedOptionalColumnKeys}
           onOpenCharacterSettings={
             categoryTitle === 'Characters' ? handleOpenCharacterSettings : undefined

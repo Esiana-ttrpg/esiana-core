@@ -32,13 +32,20 @@ test('storyboard projection removes hidden nodes, edge provenance and authored l
   assert.equal(projection.edges.length, 1);
   assert.doesNotMatch(serialized, /secret/);
   assert.equal(layout.nodes.length, 3);
+  assert.equal(restrictStoryboardEdges([{ ...edge('a', 'b'), visibility: ' campaign ' }], ids, () => true).length, 1);
+  assert.equal(restrictStoryboardEdges([{ ...edge('a', 'b'), visibility: 'CAMPAIGN' }], ids, () => false).length, 0);
 });
 
 test('arc projection computes associations only from visible quest inputs', () => {
-  const quests = [{ id: 'visible', title: 'Visible quest', parentId: 'root', metadata: { questStatus: 'ACTIVE' } }];
+  const quests = [
+    { id: 'arc', title: 'Arc', parentId: 'root', metadata: { arcKind: 'campaign_arc', containedPageIds: ['visible'] } },
+    { id: 'visible', title: 'Visible quest', parentId: 'root', metadata: { questStatus: 'ACTIVE' } },
+  ];
   const scenes = [{ id: 'scene', title: 'Scene', parentId: 'root', metadata: { sceneStatus: 'READY', linkedObjectivePageIds: ['secret-objective'], linkedQuestPageIds: ['visible', 'secret-quest'] } }];
   const safe = restrictArcInputs('root', quests, scenes);
   const projection = buildArcHierarchyProjection({ questsRootId: 'root', questRows: safe.quests, sceneRows: safe.scenes });
   assert.doesNotMatch(JSON.stringify(projection), /secret/);
   assert.equal(projection.sceneObjectiveCounts.scene, 0);
+  const quest = projection.roots[0]?.children.find(node => node.id === 'visible');
+  assert.equal(quest?.children.find(node => node.kind === 'scene_ref')?.id, 'scene');
 });

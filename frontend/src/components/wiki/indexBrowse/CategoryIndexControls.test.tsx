@@ -87,3 +87,22 @@ test('reset filters leaves grouping and sort untouched', async () => {
     expect(directionChange).not.toHaveBeenCalled();
   } finally { await ui.unmount(); }
 });
+
+test('explicit reset overrides take precedence over the fallback callback', async () => {
+  const fallback = vi.fn();
+  const resetFilters = vi.fn();
+  const resetAll = vi.fn();
+  const ui = await mount(<CategoryIndexRefinePopover facetDefs={[]} refineState={{}} children={[]}
+    categoryTitle="Locations" onRefineChange={() => {}} activeCount={1} onResetRefine={fallback}
+    onResetFilters={resetFilters} onResetAll={resetAll}
+    grouping={{ value: 'region', defaultValue: 'none', options: [], onChange: vi.fn() }} />);
+  try {
+    await act(async () => ui.container.querySelector('button')!.click());
+    const buttons = [...ui.container.querySelectorAll('button')];
+    await act(async () => buttons.find(button => button.textContent === 'Reset filters')!.click());
+    await act(async () => buttons.find(button => button.textContent === 'Reset all')!.click());
+    expect(resetFilters).toHaveBeenCalledOnce();
+    expect(resetAll).toHaveBeenCalledOnce();
+    expect(fallback).not.toHaveBeenCalled();
+  } finally { await ui.unmount(); }
+});

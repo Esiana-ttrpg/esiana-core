@@ -11,15 +11,26 @@ export function sortLocationBrowseChildren(
   });
 }
 
+export interface LocationBrowseGroup {
+  key: string;
+  label: string;
+  children: CategoryIndexChild[];
+}
+
 export function groupLocationBrowseChildren(
-  children: readonly CategoryIndexChild[], regionFor: (child: CategoryIndexChild) => string | null,
-): [string, CategoryIndexChild[]][] {
-  const groups = new Map<string, CategoryIndexChild[]>();
+  children: readonly CategoryIndexChild[],
+  regionFor: (child: CategoryIndexChild) => { regionPageId: string | null; region: string | null; label: string | null },
+): LocationBrowseGroup[] {
+  const groups = new Map<string, LocationBrowseGroup>();
   for (const child of children) {
-    const label = regionFor(child) || 'No region';
-    const items = groups.get(label) ?? [];
-    items.push(child);
-    groups.set(label, items);
+    const { regionPageId, region, label } = regionFor(child);
+    const text = region?.trim().normalize('NFKC') ?? '';
+    const pageId = regionPageId?.trim();
+    const key = pageId ? JSON.stringify(['page', pageId])
+      : text ? JSON.stringify(['text', text.toLowerCase()]) : JSON.stringify(['unset']);
+    const group = groups.get(key) ?? { key, label: label?.trim() || text || (pageId ? 'Unknown region' : 'No region'), children: [] };
+    group.children.push(child);
+    groups.set(key, group);
   }
-  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label) || a.key.localeCompare(b.key));
 }

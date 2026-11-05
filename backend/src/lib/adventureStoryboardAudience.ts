@@ -17,7 +17,7 @@ export function restrictStoryboardLayout(layout: StoryboardViewV1, visibleIds: R
 export function restrictStoryboardEdges(edges: readonly EntityGraphEdge[], visibleIds: ReadonlySet<string>,
   canView: (visibility: string) => boolean = () => true): EntityGraphEdge[] {
   return edges.filter(edge => edge.visible === true &&
-    edge.visibility != null && ['PUBLIC', 'PARTY'].includes(edge.visibility.trim().toUpperCase()) && canView(edge.visibility) &&
+    edge.visibility != null && ['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(edge.visibility.trim().toUpperCase()) && canView(edge.visibility) &&
     visibleIds.has(edge.source.entityId) &&
     visibleIds.has(edge.target.entityId) && (!edge.sourcePageId || visibleIds.has(edge.sourcePageId)));
 }

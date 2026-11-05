@@ -1,5 +1,5 @@
 ﻿import { afterEach, beforeEach, expect, test } from 'vitest';
-import { readWorkspaceBrowseState, resolveWorkspaceBrowseUrl, writeWorkspaceBrowseState, writeWorkspaceBrowseUrl,
+import { readWorkspaceBrowseState, resolveWorkspaceBrowseUrl, updateStoredWorkspaceBrowseState, writeWorkspaceBrowseState, writeWorkspaceBrowseUrl,
   type WorkspaceBrowseConfig, type WorkspaceBrowseState } from './categoryIndexBrowseStorage';
 
 const defaults: WorkspaceBrowseState = { searchQuery: '', refineState: {}, group: 'none', sort: 'name', direction: 'asc', viewMode: 'table' };
@@ -44,5 +44,14 @@ test('explicit URL fields override saved fields; history snapshots resolve indep
   expect(resolveWorkspaceBrowseUrl(saved, new URLSearchParams('view=invalid&direction=wrong&filters=broken'), config))
     .toEqual({ ...saved, viewMode: 'table', direction: 'asc', refineState: {} });
   expect(resolveWorkspaceBrowseUrl(saved, new URLSearchParams('group=none'), config)).toEqual({ ...saved, group: 'none' });
+});
+
+test('changing one preference does not persist other URL overrides', () => {
+  writeWorkspaceBrowseState(scope, saved);
+  const urlState = resolveWorkspaceBrowseUrl(saved, new URLSearchParams('q=temporary&view=hierarchy'), config);
+  expect(urlState.searchQuery).toBe('temporary');
+  updateStoredWorkspaceBrowseState(scope, config, { sort: 'name' });
+  expect(readWorkspaceBrowseState(scope, config)).toEqual({ ...saved, sort: 'name' });
+  expect(writeWorkspaceBrowseUrl(new URLSearchParams(), { ...urlState, sort: 'name' }).get('q')).toBe('temporary');
 });
 
