@@ -97,6 +97,27 @@ export function patchWorkshopTabSaveState(
 
 const STORAGE_PREFIX = 'esiana:workspace:';
 
+/** Remove obsolete perspective values across campaigns without touching other preferences. */
+export function clearLegacyAdventurePerspectives(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const storage = window.localStorage;
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (!key?.startsWith(STORAGE_PREFIX)) continue;
+      let state: unknown;
+      try { state = JSON.parse(storage.getItem(key) ?? 'null'); } catch { continue; }
+      if (!state || typeof state !== 'object' || Array.isArray(state)) continue;
+      const preferences = state as Record<string, unknown>;
+      if (!('adventurePerspective' in preferences) || isAdventurePreviewPerspective(preferences.adventurePerspective)) continue;
+      delete preferences.adventurePerspective;
+      storage.setItem(key, JSON.stringify(preferences));
+    }
+  } catch {
+    // Preference cleanup must never affect campaign access.
+  }
+}
+
 function storageKey(campaignHandle: string): string {
   return `${STORAGE_PREFIX}${campaignHandle}`;
 }
@@ -108,7 +129,10 @@ export function readCampaignWorkspaceState(
   try {
     const raw = window.localStorage.getItem(storageKey(campaignHandle));
     if (!raw) return {};
-    return JSON.parse(raw) as CampaignWorkspaceState;
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as CampaignWorkspaceState
+      : {};
   } catch {
     return {};
   }

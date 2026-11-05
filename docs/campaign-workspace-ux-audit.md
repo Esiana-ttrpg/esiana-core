@@ -13,7 +13,7 @@ Source inventory, 2026-11-04. This is a starting point for independently reviewa
 
 ## Coverage matrix
 
-This matrix records source entry points and observed control families, not an assertion that every nested workflow or access path has been verified. “Category” means the shared category toolbar/refine/view infrastructure is present in the indicated entry point; it does not imply every capability is implemented. Audience preview is explicitly identified only where observed; ordinary backend authorization still applies elsewhere. For each migration, inspect actual create permissions, search, sort, grouping, indicators, persistence and mobile behavior in context.
+This matrix records source entry points and observed control families, not an assertion that every nested workflow or access path has been verified. Ã¢â‚¬Å“CategoryÃ¢â‚¬Â means the shared category toolbar/refine/view infrastructure is present in the indicated entry point; it does not imply every capability is implemented. Audience preview is explicitly identified only where observed; ordinary backend authorization still applies elsewhere. For each migration, inspect actual create permissions, search, sort, grouping, indicators, persistence and mobile behavior in context.
 
 | Workspace | Entry point / navigation | Current controls and migration focus |
 | --- | --- | --- |
@@ -86,13 +86,19 @@ The shared audience control uses GM/Party labels and explains that the party bas
 
 Party preview is disabled until every Adventure response and secondary request is verified. `resolveAdventureAudience` supplies a reduced request-local viewer; Quest and Thread hub projections and selected Adventure paths use it. Metadata and storyboard projections omit details whose independent access cannot yet be established. These omissions are temporary and require an explicit product decision before the preview is re-enabled.
 
-The Adventure, Quest and Thread hub handlers, raw storyboard and time-tracking handlers reject explicit preview requests from elevated callers while the contract is incomplete. Ordinary player access continues through existing campaign authorization. Public content and public campaign access remain separate from workspace perspectives.
+The Adventure, Quest, Thread and Character hub handlers, raw storyboard, time-tracking, wiki tree and direct wiki-page handlers reject explicit preview requests from elevated callers while the contract is incomplete. Ordinary player access continues through existing campaign authorization. Public content and public campaign access remain separate from workspace perspectives.
 Adventure request inventory for the remaining HTTP and client audit:
 
 - `GET /wiki/adventure-hub[/:pageId]`: section-specific Adventure payloads. Preview guard remains active; scenes, arcs, investigation, scene timeline, sessions and timeline need separate response audits.
 - `GET /wiki/quests-hub[/:pageId]` and `/wiki/threads-hub[/:pageId]`: Quest and Thread views. Preview guard remains active; record blocks, lifecycle, associations, backlinks, category metadata and role overrides need endpoint tests.
 - `GET /adventure/storyboard`: raw management layout, guarded by management access, and rejects unsupported Party preview requests. It must not be used as a preview data source without a verified reduced contract.
-- `GET /time-tracking`: QuestHub makes a secondary request without an audience parameter. It rejects explicit unsupported Party preview requests; its normal response and state lifetime need audit before preview is enabled.
+- `GET /time-tracking`: QuestHub passes the Party preview parameter to this secondary request. The handler rejects explicit unsupported Party preview requests; its normal response and state lifetime need audit before preview is enabled.
 - Wiki tree/context and related page routes feed navigation and references outside these hub payloads; the browser must not carry a manager-context response into preview, and ordinary page permissions must remain authoritative.
 
 Public is not a workspace perspective. Published campaign access retains its own authorization.
+
+Legacy invalid audience selections are removed from stored workspace preferences on read while preserving unrelated preferences. Missing selections resolve from the current actor's elevated status; they do not grant access. Adventure's rendered subtree is keyed by account, campaign, category and effective perspective so a later verified audience switch starts with fresh component state. Quest's time-tracking request now carries the preview parameter, and standalone Quest, Thread and Character preview controls remain disabled while the server guard is active.
+
+The guarded campaign-router test passes against an isolated schema-only SQLite database for manager and writer preview rejection, ordinary player Quest/Thread and tree access, direct restricted-page denial, and outsider/anonymous denial. The staged SQLite schema omits JSON defaults rejected by Prisma db push; this is not a migration or production parity test. The preview projections remain guarded: expanded HTTP security coverage, secondary-request verification, frontend switching and browser acceptance are still required.
+
+PR 3 delivers the shared controls and containment only. Adventure Party preview implementation and verification are deferred to the separate issue draft in `artifacts/adventure-party-preview-issue.md`; the retained reduced-context code is not authorization to enable it. Character preview needs a separate domain audit. The next workspace migration is Locations toolbar and responsive presentation, using its existing browse-state integration.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchAdventureHub, type AdventureHubPayload } from '@/lib/adventure';
 import {
   adventureViewHref,
@@ -31,6 +32,13 @@ interface AdventureViewProps {
 }
 
 export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewProps) {
+  const { perspective } = useAdventureWorkspace();
+  const { user } = useAuth();
+  return <AdventureViewContents key={JSON.stringify([user?.id ?? null, campaignHandle, categoryPageId, perspective])}
+    campaignHandle={campaignHandle} categoryPageId={categoryPageId} />;
+}
+
+function AdventureViewContents({ campaignHandle, categoryPageId }: AdventureViewProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isDMUser, playerPreview } =

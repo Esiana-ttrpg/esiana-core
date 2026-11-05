@@ -15,6 +15,7 @@ import {
   type AdventurePreviewPerspective,
 } from '@/lib/adventurePreview';
 import {
+  clearLegacyAdventurePerspectives,
   patchAdventurePerspective,
   readAdventurePerspective,
 } from '@/lib/workspacePersistence';
@@ -37,6 +38,8 @@ export function AdventureWorkspaceProvider({ children }: { children: ReactNode }
   );
 
   const isDMUser = hasElevatedView;
+
+  useEffect(() => { clearLegacyAdventurePerspectives(); }, []);
 
   useEffect(() => {
     setPerspectiveState(readAdventurePerspective(campaignHandle));

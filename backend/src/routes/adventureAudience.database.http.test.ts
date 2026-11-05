@@ -26,22 +26,34 @@ test('campaign router enforces Party-preview guard and campaign boundaries', asy
   const { signAuthTokenForUser } = await import('../middleware/auth.js');
   const { campaignScopedRouter } = await import('./campaignScoped.js');
   const stamp = randomUUID();
-  const ids = ['owner', 'player', 'outsider'].map(name => `${name}-${stamp}`);
-  const [ownerId, playerId, outsiderId] = ids;
+  const ids = ['owner', 'player', 'outsider', 'writer'].map(name => `${name}-${stamp}`);
+  const [ownerId, playerId, outsiderId, writerId] = ids;
   const campaignId = `audience-${stamp}`;
   const handle = `audience-${stamp}`;
+  const questsId = `quests-${stamp}`;
+  const threadsId = `threads-${stamp}`;
+  const secretPageId = `secret-${stamp}`;
   let server: ReturnType<typeof createServer> | undefined;
   try {
     for (const id of ids) await prisma.user.create({ data: { id, email: `${id}@example.invalid` } });
     await prisma.campaign.create({ data: { id: campaignId, handle, name: 'Audience test', campaignOwnerUserId: ownerId,
-      discoverability: 'private', members: { create: [{ userId: ownerId, role: 'GAMEMASTER' }, { userId: playerId, role: 'PARTICIPANT' }] },
+      discoverability: 'private', members: { create: [{ userId: ownerId, role: 'GAMEMASTER' },
+        { userId: playerId, role: 'PARTICIPANT' }, { userId: writerId, role: 'WRITER' }] },
       wikiPages: { create: [
-        { title: 'Quests', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'quests' } },
-        { title: 'Narrative Threads', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'narrative_threads' } },
+        { id: questsId, title: 'Quests', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'quests' } },
+        { id: threadsId, title: 'Narrative Threads', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'narrative_threads' } },
         { title: 'Public landmark', visibility: 'Public', blocks: [], metadata: {} },
         { title: 'Party landmark', visibility: 'Party', blocks: [], metadata: {} },
-        { title: 'Hidden landmark', visibility: 'DM_Only', blocks: [], metadata: {} },
+        { id: secretPageId, title: 'Hidden landmark', visibility: 'DM_Only', blocks: [], metadata: {} },
       ] } } });
+    for (const [title, parentId, visibility, metadata] of [
+      ['Shared quest', questsId, 'Party', { questStatus: 'ACTIVE' }],
+      ['Hidden quest sentinel', questsId, 'DM_Only', { questStatus: 'ACTIVE' }],
+      ['Shared thread', threadsId, 'Party', { threadKind: 'mystery', threadStatus: 'OPEN' }],
+      ['Hidden thread sentinel', threadsId, 'DM_Only', { threadKind: 'mystery', threadStatus: 'OPEN' }],
+    ] as const) {
+      await prisma.wikiPage.create({ data: { campaignId, title, parentId, visibility, blocks: [], metadata } });
+    }
     const cookies = new Map<string, string>();
     for (const id of ids) {
       const user = await prisma.user.findUniqueOrThrow({ where: { id } });
@@ -55,15 +67,36 @@ test('campaign router enforces Party-preview guard and campaign boundaries', asy
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const base = `http://127.0.0.1:${address.port}/api/campaigns/${handle}`;
-    for (const path of ['/wiki/adventure-hub', '/wiki/quests-hub', '/wiki/threads-hub', '/adventure/storyboard', '/time-tracking']) {
-      const response = await fetch(`${base}${path}?previewAsPlayer=true`, { headers: { cookie: cookies.get(ownerId)! } });
-      assert.equal(response.status, 503, path);
+    for (const path of ['/wiki/adventure-hub', `/wiki/adventure-hub/${questsId}`, '/wiki/quests-hub',
+      `/wiki/quests-hub/${questsId}`, '/wiki/threads-hub', `/wiki/threads-hub/${threadsId}`,
+      '/adventure/storyboard', '/time-tracking', '/wiki/tree', `/wiki/${secretPageId}`,
+      `/wiki/character-hub/${secretPageId}`]) {
+      for (const id of [ownerId, writerId]) {
+        const response = await fetch(`${base}${path}?previewAsPlayer=true`, { headers: { cookie: cookies.get(id)! } });
+        assert.equal(response.status, 503, `${id}: ${path}`);
+      }
     }
+    const gmTree = await fetch(`${base}/wiki/tree`, { headers: { cookie: cookies.get(ownerId)! } });
+    assert.equal(gmTree.status, 200);
+    assert.match(await gmTree.text(), /Hidden landmark/);
     const playerTree = await fetch(`${base}/wiki/tree`, { headers: { cookie: cookies.get(playerId)! } });
     assert.equal(playerTree.status, 200);
     const treeText = await playerTree.text();
     assert.match(treeText, /Party landmark/);
     assert.doesNotMatch(treeText, /Hidden landmark/);
+    const deniedPage = await fetch(`${base}/wiki/${secretPageId}?previewAsPlayer=true`, { headers: { cookie: cookies.get(playerId)! } });
+    assert.ok([403, 404].includes(deniedPage.status));
+    assert.doesNotMatch(await deniedPage.text(), /Hidden landmark/);
+    for (const [path, shared, hidden] of [
+      ['/wiki/quests-hub', 'Shared quest', 'Hidden quest sentinel'],
+      ['/wiki/threads-hub', 'Shared thread', 'Hidden thread sentinel'],
+    ]) {
+      const response = await fetch(`${base}${path}?previewAsPlayer=true`, { headers: { cookie: cookies.get(playerId)! } });
+      assert.equal(response.status, 200, path);
+      const body = await response.text();
+      assert.match(body, new RegExp(shared));
+      assert.doesNotMatch(body, new RegExp(hidden));
+    }
     const outsider = await fetch(`${base}/wiki/adventure-hub?previewAsPlayer=true`, { headers: { cookie: cookies.get(outsiderId)! } });
     assert.ok([401, 403, 404].includes(outsider.status));
     const anonymous = await fetch(`${base}/wiki/adventure-hub?previewAsPlayer=true`);

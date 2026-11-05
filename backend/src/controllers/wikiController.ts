@@ -804,6 +804,8 @@ export async function getWikiTree(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
 
   await ensureQuickAccessCategoryTitle(ctx.campaignId);
   await ensureRemoveLegacyDashboardWikiPage(ctx.campaignId);
@@ -1471,6 +1473,8 @@ export async function getWikiPage(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureChronologyWikiWorkspaces(ctx.campaignId);
 

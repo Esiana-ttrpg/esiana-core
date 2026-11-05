@@ -40,6 +40,7 @@ import {
   type QuestHubTypeFilters,
 } from '@/lib/questHubFilters';
 import { useCampaignActor } from '@/hooks/useCampaignActor';
+import { ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE } from '@/lib/adventurePreview';
 import type { QuestHubNode, QuestHubPayload, WikiTreeNode } from '@/types/wiki';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
@@ -169,7 +170,8 @@ export function QuestHubView({
 
   useEffect(() => {
     let cancelled = false;
-    void fetchTimeTracking(campaignHandle)
+    setCalendarLike(null);
+    void fetchTimeTracking(campaignHandle, { previewAsPlayer })
       .then((bundle) => {
         if (!cancelled) {
           setCalendarLike(resolveMasterCalendarLike(bundle));
@@ -181,7 +183,7 @@ export function QuestHubView({
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle]);
+  }, [campaignHandle, previewAsPlayer]);
 
   useEffect(() => {
     if (!campaignHandle || !categoryPageId || browseHydrated) return;
@@ -516,6 +518,8 @@ export function QuestHubView({
           isDMUser && !embedded ? (
             <button
               type="button"
+              disabled={!ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE}
+              title={ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE ? undefined : 'Party preview is temporarily unavailable.'}
               onClick={() => setPlayerPreviewLocal((prev) => !prev)}
               className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                 playerPreview
