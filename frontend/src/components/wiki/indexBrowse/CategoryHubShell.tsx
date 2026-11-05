@@ -57,6 +57,7 @@ export function CategoryHubShell({
   className = '',
   catalogGridClass = 'hub-stagger-grid',
   composition = 'hub',
+  headerDensity = 'default',
   inlineContextual = false,
   narrativeLayoutClassName = '',
   narrativeLayoutStyle,
@@ -86,6 +87,7 @@ export function CategoryHubShell({
       narrativeLayoutStyle={narrativeLayoutStyle}
       header={
         <WorkspaceHeader
+          compact={headerDensity === 'compact'}
           breadcrumbs={showCrumbNav ? breadcrumbs : undefined}
           eyebrow={eyebrow}
           title={title}

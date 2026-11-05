@@ -410,8 +410,11 @@ function EntityBrowser({
   return (
     <>
       <CategoryHubShell
+        headerDensity={isLocations ? 'compact' : 'default'}
         catalogGridClass={
-          isEntityCatalogCategory(categoryTitle) && viewMode === 'card'
+          isLocations && viewMode !== 'card'
+            ? 'w-full min-w-0'
+            : isEntityCatalogCategory(categoryTitle) && viewMode === 'card'
             ? 'entity-catalog-grid'
             : 'hub-stagger-grid'
         }
@@ -424,7 +427,7 @@ function EntityBrowser({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <FolderOpen className="size-6 text-primary" strokeWidth={1.25} />
+            <FolderOpen className={`${isLocations ? 'size-4' : 'size-6'} text-primary`} strokeWidth={1.25} aria-hidden />
             {categoryTitle}
           </>
         }

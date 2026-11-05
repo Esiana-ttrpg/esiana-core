@@ -217,7 +217,7 @@ export function IndexGridView({
           Some columns hidden at this width — switch to card view or widen the window.
         </p>
       ) : null}
-      <table className="operator-index-table w-full">
+      <table className={`operator-index-table w-full${isLocationsCategory ? ' operator-index-table--locations' : ''}`}>
         <colgroup>
           <col className="operator-index-table__col-name" />
           {metadataColumns.map((column) => (
@@ -235,7 +235,9 @@ export function IndexGridView({
                 key={column}
                 className="px-4 py-3 text-left text-sm font-semibold text-foreground"
               >
-                {getCategoryColumnHeaderLabel(column)}
+                {isLocationsCategory && column === 'Parent/Region'
+                  ? 'Parent / Region'
+                  : getCategoryColumnHeaderLabel(column)}
               </th>
             ))}
             <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
@@ -325,7 +327,7 @@ export function IndexGridView({
                         className="flex min-w-0 items-start gap-2 text-sm font-medium text-primary hover:text-primary"
                       >
                         <FileText className="mt-0.5 size-4 shrink-0" />
-                        <span className="break-words">{child.title}</span>
+                        <span className="min-w-0 break-words">{child.title}</span>
                       </Link>
                     )}
                     <DiscoveryStateBadge discovery={child.discovery} surface="browse" compact />
@@ -386,7 +388,7 @@ export function IndexGridView({
                   return (
                     <td key={column} className="min-w-0 px-4 py-3 align-top text-sm text-foreground">
                       {isEditing ? (
-                        <div className="flex items-center gap-2">
+                        <div className={`flex items-center gap-2${isLocationsCategory ? ' flex-wrap' : ''}`}>
                           <input
                             autoFocus
                             value={editingValue}
@@ -399,7 +401,7 @@ export function IndexGridView({
                                 cancelEditing();
                               }
                             }}
-                            className="min-w-[150px] rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-primary/60"
+                            className={`${isLocationsCategory ? 'min-w-0 w-full lg:w-auto lg:min-w-[150px]' : 'min-w-[150px]'} rounded-lg border border-border bg-background px-3 py-2 text-foreground outline-none focus:border-primary/60`}
                           />
                           <button
                             type="button"
