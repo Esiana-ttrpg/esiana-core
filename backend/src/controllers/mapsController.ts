@@ -30,7 +30,7 @@ import {
 } from '../lib/discoveryProjectionService.js';
 import { ContentRevelationStates } from '../../../shared/contentPresence.js';
 import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
-import { can } from '../../../shared/campaignPolicy/policy.js';
+import { can, resolveActorCapabilities } from '../../../shared/campaignPolicy/policy.js';
 
 const mapPinInclude = {
   targetPage: {
@@ -298,6 +298,7 @@ export async function listMapPins(
   }
 
   const role = req.campaign!.role as CampaignMemberRole | null;
+  const capabilities = resolveActorCapabilities(req.campaign!.actor);
   if (!canViewMapAsset(asset.visibility, req.campaign!)) {
     res.status(404).json({ error: 'Map not found' });
     return;
@@ -312,7 +313,7 @@ export async function listMapPins(
   });
 
   const serialized = pins
-    .map((pin) => serializeMapPinForRole(pin, role))
+    .map((pin) => serializeMapPinForRole(pin, role, capabilities))
     .filter((pin): pin is NonNullable<typeof pin> => pin !== null);
 
   res.json({ pins: serialized });
@@ -327,7 +328,7 @@ export async function getMapPinPreview(
   const campaignId = req.campaign!.campaignId;
 
   const pin = await loadMapPinForPreview(campaignId, pinId);
-  const payload = pin ? buildMapPinPreviewPayload(pin, role) : null;
+  const payload = pin ? buildMapPinPreviewPayload(pin, role, resolveActorCapabilities(req.campaign!.actor)) : null;
 
   if (!payload) {
     res.status(404).json({ error: 'Pin not found' });
@@ -501,7 +502,7 @@ export async function createMapPin(
 
   const role = req.campaign!.role as CampaignMemberRole | null;
   res.status(201).json({
-    pin: serializeMapPinForRole(pin, role),
+    pin: serializeMapPinForRole(pin, role, resolveActorCapabilities(req.campaign!.actor)),
   });
 }
 
@@ -625,7 +626,7 @@ export async function updateMapPin(
   }
 
   const role = req.campaign!.role as CampaignMemberRole | null;
-  res.json({ pin: serializeMapPinForRole(pin, role) });
+  res.json({ pin: serializeMapPinForRole(pin, role, resolveActorCapabilities(req.campaign!.actor)) });
 }
 
 export async function deleteMapPin(

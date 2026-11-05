@@ -141,6 +141,7 @@ function ChronologyWorkspace() {
     canEditAnyEvent ||
     canEditOwnEvent ||
     canManageChronologyAccess;
+  const canRevealEvents = can(CampaignCapabilities.DISCOVERY_REVEAL);
   const canManageEras = canManageChronologyAccess || canCreateEra;
   const elevatedView = can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW);
   const loadVersion = useRef(0);
@@ -418,7 +419,7 @@ function ChronologyWorkspace() {
             <HistoricalTimeline campaignHandle={campaignHandle} bundle={bundle} timeBundle={timeBundle}
               onInspectionChange={handleInspection}
               session={timelineSession} navigationRequest={eraNavigation}
-              canManage={canContributeEvents} onBrowseAnchorChange={handleCalendarBrowse}
+              canManage={canContributeEvents} canReveal={canRevealEvents} onBrowseAnchorChange={handleCalendarBrowse}
               onMutated={handleEventMutated} onDeleted={handleEventDeleted}
               onRevealEvent={handleRevealEvent} categoryFooter={categoryFooter} />
           )}

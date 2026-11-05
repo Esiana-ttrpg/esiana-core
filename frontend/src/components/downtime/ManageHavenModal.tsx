@@ -449,7 +449,7 @@ export function ManageHavenModal({
           axes: simulationAxes,
           lockedAxes,
         } : undefined,
-        ledgerSimulationHints: {
+        ledgerSimulationHints: canManageSimulation ? {
           ledgerUpkeepSuggestionsEnabled,
           upkeepCost: upkeepCost.trim()
             ? Number.parseInt(upkeepCost.trim(), 10)
@@ -457,7 +457,7 @@ export function ManageHavenModal({
           constructionCost: constructionCost.trim()
             ? Number.parseInt(constructionCost.trim(), 10)
             : null,
-        },
+        } : undefined,
       };
 
       if (activitySummary.trim()) {

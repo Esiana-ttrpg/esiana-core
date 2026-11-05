@@ -225,7 +225,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
       </section>
     </article> : <p className="text-sm text-muted">{!bundle.calendars.length ? 'No calendars available.' : params.has('era') || !bundle.calendars.some(row => row.id === track) ? 'This era or calendar is unavailable. Select an available period.' : 'No eras configured for this calendar.'}</p>}
     <ChronologyEventSidebar campaignHandle={ledger.campaignHandle} timeBundle={ledger.timeBundle} baseEvent={bundle.baseEvents.find(base => base.id === inspection?.baseEventId) ?? null}
-      calendarName={definition?.name} categories={bundle.categories} editableEvents={bundle.baseEvents} calendarLike={axis?.calendar ?? null} canManage={bundle.baseEvents.find(base => base.id === inspection?.baseEventId)?.canEdit ?? false}
+      calendarName={definition?.name} categories={bundle.categories} editableEvents={bundle.baseEvents} calendarLike={axis?.calendar ?? null} canManage={bundle.baseEvents.find(base => base.id === inspection?.baseEventId)?.canEdit ?? false} canReveal={can(CampaignCapabilities.DISCOVERY_REVEAL)}
       open={!!inspection} occurrence={occurrence} dateSeed={occurrence?.start} onClose={() => setSelectedKey(null)}
       onMutated={ledger.onEventMutated} onDeleted={async () => { setSelectedKey(null); await ledger.onEventDeleted(); }} onRevealEvent={ledger.onRevealEvent} />
     {draft && like && <EraDialog title={editing ? 'Edit era' : 'Create era'} busy={busy} onClose={() => setDraft(null)}>

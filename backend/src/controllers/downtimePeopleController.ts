@@ -1,4 +1,3 @@
-import { isCharacterEntityPage } from '../../../shared/resolveCanonicalEntityCategory.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import {
@@ -85,12 +84,6 @@ export async function createDowntimePersonHandler(
     }
     if (!canEditDowntimePerson(ctx.actor, ownership)) {
       res.status(403).json({ error: 'Forbidden' });
-      return;
-    }
-    const pages = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } });
-    const page = pages.find((candidate) => candidate.id === characterPageId);
-    if (!page || !isCharacterEntityPage(page, pages)) {
-      res.status(400).json({ error: 'A Character page is required.' });
       return;
     }
   }

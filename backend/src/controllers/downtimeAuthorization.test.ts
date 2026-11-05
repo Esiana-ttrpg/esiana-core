@@ -196,7 +196,7 @@ test('Downtime API authorization and default Player participation', async (t) =>
     Object.assign(pageFor(haven), { visibility: 'PARTY', ownerUserId: 'enve' });
   });
   await t.test('simulation controls stay administrative while ordinary haven saves succeed', async () => {
-    for (const body of [{ havenSimulation: { enabled: true } }, { fields: { havenSimulation: { enabled: true } } }, { fields: { simulationHints: { enabled: true } } }]) {
+    for (const body of [{ havenSimulation: { enabled: true } }, { fields: { havenSimulation: { enabled: true } } }, { fields: { simulationHints: { enabled: true } } }, { ledgerSimulationHints: { upkeepCost: 50 } }, { fields: { ledgerSimulationHints: { upkeepCost: 50 } } }]) {
       assert.equal((await call('PATCH', `/havens/${haven.id}`, body)).status, 403);
     }
     assert.equal((await call('PATCH', `/havens/${haven.id}`, { title: 'Ordinary save' })).status, 200);

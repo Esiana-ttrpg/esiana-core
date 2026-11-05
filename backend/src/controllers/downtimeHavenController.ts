@@ -232,6 +232,7 @@ export async function updateDowntimeHavenHandler(
   if (typeof body.appendActivity === 'object' && body.appendActivity) {
     patch.appendActivity = body.appendActivity;
   }
+  if (body.ledgerSimulationHints !== undefined) patch.ledgerSimulationHints = body.ledgerSimulationHints;
   if (typeof body.havenSimulation === 'object' && body.havenSimulation) {
     patch.havenSimulation = body.havenSimulation;
   }
@@ -270,7 +271,7 @@ export async function updateDowntimeHavenHandler(
     return;
   }
 
-  if ((patch.havenSimulation !== undefined || patch.simulationHints !== undefined) && !canManageDowntime(ctx.actor)) {
+  if ((patch.havenSimulation !== undefined || patch.simulationHints !== undefined || patch.ledgerSimulationHints !== undefined) && !canManageDowntime(ctx.actor)) {
     res.status(403).json({ error: 'Forbidden: simulation settings require downtime.manage' });
     return;
   }

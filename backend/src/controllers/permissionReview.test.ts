@@ -7,7 +7,7 @@ import { CampaignCapabilities as C } from '../../../shared/campaignPolicy/capabi
 import { chronologyCanCreateEvent, chronologyCanCreateEra } from '../lib/chronologyAccess.js';
 import { requireChronologyEventCreate, requireChronologyEraCreate, requireChronologyEventDelete } from '../middleware/campaignScope.js';
 import { getChronologyTimelineBundle } from './chronologyController.js';
-import { listCampaignMaps, getCampaignMap } from './mapsController.js';
+import { listCampaignMaps, getCampaignMap, listMapPins, getMapPinPreview } from './mapsController.js';
 import { buildConvergenceOverlay } from '../lib/chronologyConvergenceService.js';
 import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import { listDowntimePeople } from '../lib/downtimePeopleService.js';
@@ -146,4 +146,28 @@ test('chronology timeline advertises event-specific editing and deletion authori
     { capability: C.CHRONOLOGY_EVENT_DELETE_OWNED, effect: 'REVOKE' },
   ]), query: {} } as any, createOnly as any);
   assert.deepEqual(createOnly.body.baseEvents.map((event: any) => [event.canEdit, event.canDelete]), [[false, false], [false, false]]);
+});
+
+test('visible parent maps do not disclose pin targets after elevation is revoked', async (t) => {
+  function stub(object: any, key: string, fn: any) { const original = object[key]; object[key] = fn; t.after(() => { object[key] = original; }); }
+  const pins = ['Public', 'DM_Only'].map((visibility) => ({
+    id: `pin-${visibility}`, targetPageId: `page-${visibility}`, targetAssetId: null,
+    x_coordinate: 1, y_coordinate: 2, label: `label-${visibility}`, pinType: 'Location',
+    targetPage: { id: `page-${visibility}`, title: `title-${visibility}`, visibility, blocks: [] }, targetAsset: null,
+  }));
+  stub(prisma.asset, 'findFirst', async () => ({ id: 'parent', visibility: 'Public', type: 'MAP' }));
+  stub(prisma.mapPin, 'findMany', async () => pins);
+  stub(prisma.mapPin, 'findFirst', async ({ where }: any) => pins.find((pin) => pin.id === where.id) ?? null);
+  for (const [campaign, elevated] of [
+    [scope('WRITER', [{ capability: C.NARRATIVE_ELEVATED_VIEW, effect: 'REVOKE' }]), false],
+    [scope('PARTICIPANT', [{ capability: C.NARRATIVE_ELEVATED_VIEW, effect: 'GRANT' }]), true],
+  ] as const) {
+    const res = response();
+    await listMapPins({ campaign, params: { assetId: 'parent' } } as any, res as any);
+    assert.equal(res.body.pins.length, elevated ? 2 : 1);
+    if (!elevated) assert.doesNotMatch(JSON.stringify(res.body), /page-DM_Only|title-DM_Only|label-DM_Only/);
+    const preview = response();
+    await getMapPinPreview({ campaign, params: { pinId: 'pin-DM_Only' } } as any, preview as any);
+    assert.equal(preview.code, elevated ? 200 : 404);
+  }
 });

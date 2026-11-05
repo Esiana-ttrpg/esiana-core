@@ -182,7 +182,10 @@ export async function createDowntimePerson(campaignId: string, actorUserId: stri
       }
       await authorizeDowntimePersonWrite(tx, actor, campaignId, pageId!, raw);
       if (characterPageId) {
-        const pages = await tx.wikiPage.findMany({ where: { campaignId, deletedAt: null } });
+        const pages = await tx.wikiPage.findMany({
+          where: { campaignId, deletedAt: null },
+          select: { id: true, title: true, parentId: true, templateType: true, metadata: true },
+        });
         const character = pages.find((page) => page.id === characterPageId);
         if (!character || !isCharacterEntityPage(character, pages)) throw new Error('A Character page is required.');
       }
