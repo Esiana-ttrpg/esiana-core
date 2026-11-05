@@ -47,6 +47,11 @@ test('Downtime API authorization and default Player participation', async (t) =>
     const original = object[key]; object[key] = fn;
     t.after(() => { object[key] = original; });
   }
+  let beforeWikiLock: (() => void) | undefined;
+  replace(prisma, '$executeRaw', async (sql: TemplateStringsArray) => {
+    if (sql.join('').includes('WikiPage')) { const run = beforeWikiLock; beforeWikiLock = undefined; run?.(); }
+    return 1;
+  });
   replace(prisma, '$transaction', async (callback: any) => callback(prisma));
   for (const table of Object.keys(tables)) {
     const delegate = (prisma as any)[table];
@@ -80,12 +85,13 @@ test('Downtime API authorization and default Player participation', async (t) =>
 
   let role = 'PARTICIPANT';
   let isMember = true;
+  let partyId: string | null = 'party';
   let overrides: Array<{ role: string; capability: string; effect: string }> = [];
   const context = () => ({ campaignId: 'campaign', campaignHandle: 'campaign', role,
-    partyId: 'party', isMember, capabilities: new Set(),
+    partyId, isMember, capabilities: new Set(),
     actor: buildCampaignActor({ kind: isMember ? 'member' : 'anonymous', userId: 'enve', membershipRole: role,
       campaignOwnerUserId: 'gm', discoverability: 'private', allowPlayerChronologyManagement: false,
-      partyId: 'party', roleCapabilityOverrides: overrides }),
+      partyId, roleCapabilityOverrides: overrides }),
   });
   const app = express(); app.use(express.json());
   app.use((req: any, _res, next) => { req.user = { id: 'enve' }; req.campaign = context(); req.authMethod = 'apiToken'; next(); });
@@ -188,6 +194,28 @@ test('Downtime API authorization and default Player participation', async (t) =>
       assert.equal((await call('POST', '/people', { characterName: 'Sera', relationshipType: 'HIRELING', havenId: haven.id })).status, 403);
     }
     Object.assign(pageFor(haven), { visibility: 'PARTY', ownerUserId: 'enve' });
+  });
+  await t.test('simulation controls stay administrative while ordinary haven saves succeed', async () => {
+    for (const body of [{ havenSimulation: { enabled: true } }, { fields: { havenSimulation: { enabled: true } } }, { fields: { simulationHints: { enabled: true } } }]) {
+      assert.equal((await call('PATCH', `/havens/${haven.id}`, body)).status, 403);
+    }
+    assert.equal((await call('PATCH', `/havens/${haven.id}`, { title: 'Ordinary save' })).status, 200);
+    partyId = null;
+    for (const route of ['/havens', '/projects']) assert.equal((await call('POST', route, { title: 'Orphaned party', ownerType: 'PARTY' })).status, 400);
+    partyId = 'party';
+  });
+  await t.test('non-Character wiki pages cannot become hirelings', async () => {
+    const target = await prisma.wikiPage.create({ data: { campaignId: 'campaign', title: 'A location',
+      metadata: { entityCategory: 'locations' }, ownerType: 'USER', ownerUserId: 'enve' } });
+    assert.equal((await call('POST', '/people', { characterPageId: target.id, relationshipType: 'HIRELING' })).status, 400);
+  });
+  await t.test('assignment authorization is revalidated after taking canonical wiki write locks', async () => {
+    const before = tables.downtimePersonRelationship.find((row) => row.id === hireling.id);
+    const originalHaven = before.havenId;
+    beforeWikiLock = () => { pageFor(haven).visibility = 'GM_ONLY'; };
+    assert.equal((await call('PATCH', `/people/${hireling.id}`, { havenId: haven.id, projectId: null })).status, 403);
+    assert.equal(before.havenId, originalHaven);
+    pageFor(haven).visibility = 'PARTY';
   });
   await t.test('Observer grants work; Player and Writer revocations affect reads and writes', async () => {
     role = 'OBSERVER';

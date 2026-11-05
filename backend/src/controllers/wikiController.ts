@@ -2337,7 +2337,7 @@ export async function updateWikiPageMetadata(
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId },
-    select: { id: true, title: true, parentId: true, metadata: true },
+    select: { id: true, title: true, parentId: true, metadata: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true },
   });
 
   if (!page) {
@@ -2929,7 +2929,10 @@ export async function updateWikiPageMetadata(
   }
 
   if (characterPatchInput) {
-    if (!canManage) {
+    const ownerType = page.ownerType === PageOwnerTypes.USER || page.ownerType === PageOwnerTypes.PARTY
+      ? page.ownerType : PageOwnerTypes.STAFF;
+    if (page.deletedAt != null || !canViewWikiPage(page.visibility, ctx) ||
+        !canEditPage(ctx.actor, { ownerType, ownerUserId: page.ownerUserId, ownerPartyId: page.ownerPartyId })) {
       res.status(403).json({ error: 'Forbidden' });
       return;
     }

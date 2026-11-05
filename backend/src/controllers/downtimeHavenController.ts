@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import {
   canCreateDowntimeResource,
+  canManageDowntime,
   canChangeDowntimeVisibility,
   canDeleteDowntimeResource,
   canEditDowntimeResource,
@@ -172,6 +173,10 @@ export async function createDowntimeHavenHandler(
     res.status(403).json({ error: 'Forbidden: visibility change not permitted' });
     return;
   }
+  if (body.ownerType === 'PARTY' && !ctx.partyId) {
+    res.status(400).json({ error: 'PARTY ownership requires a default campaign party.' });
+    return;
+  }
   const title = typeof body.title === 'string' ? body.title : '';
 
   const result = await createDowntimeHaven(
@@ -262,6 +267,11 @@ export async function updateDowntimeHavenHandler(
 
   if (!canChangeDowntimeVisibility(ctx.actor, ownership.visibility, patch.visibility)) {
     res.status(403).json({ error: 'Forbidden: visibility change not permitted' });
+    return;
+  }
+
+  if ((patch.havenSimulation !== undefined || patch.simulationHints !== undefined) && !canManageDowntime(ctx.actor)) {
+    res.status(403).json({ error: 'Forbidden: simulation settings require downtime.manage' });
     return;
   }
 

@@ -390,7 +390,7 @@ function ChronologyWorkspace() {
               occurrence={bundle.occurrences.find(row => row.baseEventId === selectedEvent.id && row.isStart)}
               timeBundle={timeBundle} categories={bundle.categories} editableEvents={bundle.baseEvents}
               calendarLike={(() => { const calendar = timeBundle.calendars.find(row => row.id === selectedEvent.calendarId); return calendar ? historicalClock(calendar).axis?.calendar ?? null : null; })()}
-              canManage={canContributeEvents} onMutated={handleEventMutated} onDeleted={async () => { await handleEventDeleted(); navigate(campaignEventPath(campaignHandle, '').replace(/\/$/, '')); }} />
+              canManage={selectedEvent.canEdit ?? false} onMutated={handleEventMutated} onDeleted={async () => { await handleEventDeleted(); navigate(campaignEventPath(campaignHandle, '').replace(/\/$/, '')); }} />
           </article> : <p className="p-6 text-muted">Event unavailable.</p> : <EventsDirectory bundle={bundle} campaignHandle={campaignHandle} />)}
           {route.eraSlug && !selectedEra && <p className="p-6 text-muted">Era unavailable.</p>}
           {activeView === 'feed' && overlayBundle && (

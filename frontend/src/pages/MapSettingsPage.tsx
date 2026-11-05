@@ -29,12 +29,12 @@ export function MapSettingsPage() {
   const campaignHandle = readCampaignHandle(params);
   const assetId = params.assetId ?? '';
   const navigate = useNavigate();
-  const { flatPages, can: wikiCan } = useWiki();
+  const { flatPages, campaign, can: wikiCan } = useWiki();
 
   const [detail, setDetail] = useState<CampaignMapDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const canManage = wikiCan(CampaignCapabilities.MAPS_EDIT);
+  const canManage = campaign ? wikiCan(CampaignCapabilities.MAPS_EDIT) : Boolean(detail?.canEdit);
   const [displayName, setDisplayName] = useState('');
   const [visibility, setVisibility] = useState('Public');
   const [savingName, setSavingName] = useState(false);

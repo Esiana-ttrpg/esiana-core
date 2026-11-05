@@ -33,6 +33,8 @@ export interface MoonOverride {
 }
 
 export interface TimelineBaseEventRecord {
+  canEdit?: boolean;
+  canDelete?: boolean;
   slug?: string;
   slugAliases?: string[];
   wikiPageId?: string | null;

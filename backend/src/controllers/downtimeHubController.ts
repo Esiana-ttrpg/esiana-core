@@ -1,3 +1,8 @@
+import type { ConvergenceTimelineEntry } from '../../../shared/chronologyConvergence.js';
+import { isElevatedMembershipRole } from '../../../shared/campaignPolicy/membershipRoles.js';
+import type { CampaignContext } from '../types/api.js';
+import { chronologyCanManage, chronologyElevated } from '../lib/chronologyAccess.js';
+import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { SnapshotKind } from '../../../shared/narrativeSnapshots.js';
@@ -51,6 +56,19 @@ function placeholderPayload(section: Exclude<DowntimeSectionId, 'worldEvents'>) 
   };
 }
 
+export function canInspectSuppressedDowntimeEvents(ctx: CampaignContext): boolean {
+  return isElevatedMembershipRole(ctx.role ?? '') && canManageDowntime(ctx.actor) &&
+    chronologyCanManage(ctx) && chronologyElevated(ctx);
+}
+
+export function filterDowntimeOverlayEntries(ctx: CampaignContext, entries: ConvergenceTimelineEntry[]) {
+  if (canInspectSuppressedDowntimeEvents(ctx)) return entries;
+  // Elevated projection can mark unrevealed entries visible; the downtime review
+  // surface still requires both administrative capabilities to expose them.
+  return entries.filter((entry) => entry.projection.visible &&
+    entry.projection.revelationState !== 'HIDDEN' && entry.projection.revelationState !== 'DRAFT');
+}
+
 async function loadPresentationContext(
   req: CampaignScopedRequest,
   campaignHandle: string,
@@ -79,6 +97,7 @@ async function loadPresentationContext(
   ]);
 
   const overlay = await buildConvergenceOverlay({
+    capabilityOverrides: narrativeCapabilitiesFromActor(ctx.actor),
     campaignId: ctx.campaignId,
     campaignHandle,
     role: ctx.role,
@@ -86,14 +105,14 @@ async function loadPresentationContext(
     window: { mode: 'YEAR_RANGE', from: '0', to: '9999' },
     domains: [...DOWNTIME_WORLD_EVENT_DOMAINS],
     sessionLinkedOnly: false,
-    includeSuppressed: canManage,
+    includeSuppressed: canInspectSuppressedDowntimeEvents(ctx),
   });
 
   return {
     currentEpochMinute: campaign?.currentEpochMinute ?? 0n,
     chronometer,
     sinceEpochMinute: snapshots?.capturedAtEpochMinute ?? null,
-    overlayEntries: overlay.entries,
+    overlayEntries: filterDowntimeOverlayEntries(ctx, overlay.entries),
     creativeDrift,
     latestWorldAdvanceHeadline: batches[0]?.headline ?? null,
   };
@@ -279,6 +298,7 @@ export async function buildDowntimeHubResponse(
       campaignHandle,
       ctx,
       canManage,
+      true,
     );
   } else if (section === 'reputation') {
     const { buildReputationHubPayload } = await import('../lib/buildReputationPresentation.js');

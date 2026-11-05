@@ -1,10 +1,11 @@
 import { WikiVisibility } from '../types/domain.js';
 import type { Prisma } from './prismaClient.js';
 import { prisma } from './prisma.js';
-import { ownershipFromWiki, canEditDowntimePerson, canEditDowntimeResource } from './downtimeAuthorization.js';
+import { ownershipFromWiki, canEditDowntimePerson, canEditDowntimeResource, authorizeDowntimePersonWrite, DowntimeAuthorizationError } from './downtimeAuthorization.js';
 import { canViewWikiPage, type WikiVisibilityViewer } from './wikiTree.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
 import { isCharacterEntityPage } from '../../../shared/resolveCanonicalEntityCategory.js';
+import type { CampaignActor } from '../../../shared/campaignPolicy/policy.js';
 import { CampaignWorkspace } from '../../../shared/campaignWorkspace.js';
 import { RESERVED_PATH_KEY_SEGMENTS } from '../../../shared/campaignWorkspaceRoutes.js';
 import { generatePathKeyFromTitle } from '../../../shared/pathKeyUtils.js';
@@ -87,17 +88,18 @@ function present(row: any, handle: string, role: WikiVisibilityViewer, canEdit: 
   };
 }
 
-export async function listDowntimePeople(campaignId: string, handle: string, role: WikiVisibilityViewer, canEdit: boolean) {
+export async function listDowntimePeople(campaignId: string, handle: string, role: WikiVisibilityViewer, canEdit: boolean, includeCharacterOptions = false) {
   const [rows, havens, projects, pages] = await Promise.all([
     prisma.downtimePersonRelationship.findMany({ where: { campaignId }, include, orderBy: [{ status: 'asc' }, { characterPage: { title: 'asc' } }] }),
     prisma.downtimeHaven.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
     prisma.downtimeProject.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
-    prisma.wikiPage.findMany({
+    includeCharacterOptions ? prisma.wikiPage.findMany({
       where: { campaignId, deletedAt: null },
       select: { id: true, title: true, parentId: true, templateType: true, metadata: true,
         visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true },
-    }),
+    }) : Promise.resolve([]),
   ]);
+  const pageById = new Map(pages.map((page) => [page.id, page]));
   const people = rows
     .filter((row) => row.relationshipType === 'HIRELING')
     .filter((row) => row.characterPage.deletedAt == null && canViewWikiPage(row.characterPage.visibility, role))
@@ -110,11 +112,11 @@ export async function listDowntimePeople(campaignId: string, handle: string, rol
   const active = people.filter((person) => person.status === 'ACTIVE');
   return {
     people,
-    characterOptions: pages.filter((page) => isCharacterEntityPage(page, pages) &&
+    ...(includeCharacterOptions ? { characterOptions: pages.filter((page) => isCharacterEntityPage(page, pages, pageById) &&
       canViewWikiPage(page.visibility, role) &&
       role && typeof role === 'object' && 'actor' in role && role.actor &&
       canEditDowntimePerson(role.actor, ownershipFromWiki(page)))
-      .map((page) => ({ id: page.id, label: page.title })),
+      .map((page) => ({ id: page.id, label: page.title })) } : {}),
     summary: { active: active.length, assignedToProjects: active.filter((p) => p.assignment?.kind === 'project').length, assignedToHavens: active.filter((p) => p.assignment?.kind === 'haven').length, unassigned: active.filter((p) => !p.assignment).length },
     assignmentOptions: {
       havens: havens.filter((row) => row.wikiPage.deletedAt == null && canViewWikiPage(row.wikiPage.visibility, role) &&
@@ -137,7 +139,7 @@ async function addHirelingTag(tx: Prisma.TransactionClient, campaignId: string, 
   await tx.wikiPage.update({ where: { id: pageId }, data: { tags: { connectOrCreate: { where: { campaignId_name: { campaignId, name: 'hireling' } }, create: { campaignId, name: 'hireling', label: 'Hireling' } } } } });
 }
 
-export async function createDowntimePerson(campaignId: string, actorUserId: string, raw: Record<string, unknown>) {
+export async function createDowntimePerson(campaignId: string, actorUserId: string, raw: Record<string, unknown>, actor: CampaignActor) {
   const relationshipType = typeOf(raw.relationshipType);
   if (!relationshipType) return { ok: false as const, status: 400, error: 'Relationship must be Hireling, Follower, or Member.' };
   const characterPageId = text(raw.characterPageId, 100);
@@ -178,6 +180,12 @@ export async function createDowntimePerson(campaignId: string, actorUserId: stri
         });
         pageId = page.id;
       }
+      await authorizeDowntimePersonWrite(tx, actor, campaignId, pageId!, raw);
+      if (characterPageId) {
+        const pages = await tx.wikiPage.findMany({ where: { campaignId, deletedAt: null } });
+        const character = pages.find((page) => page.id === characterPageId);
+        if (!character || !isCharacterEntityPage(character, pages)) throw new Error('A Character page is required.');
+      }
       const existing = await tx.downtimePersonRelationship.findFirst({ where: { campaignId, characterPageId: pageId!, status: 'ACTIVE' } });
       if (existing) throw new Error('This Character already has an active Downtime relationship.');
       const havenId = text(raw.havenId, 100);
@@ -189,15 +197,17 @@ export async function createDowntimePerson(campaignId: string, actorUserId: stri
     });
     return { ok: true as const, row: created };
   } catch (error) {
-    return { ok: false as const, status: 400, error: error instanceof Error ? error.message : 'Unable to create relationship.' };
+    return { ok: false as const, status: error instanceof DowntimeAuthorizationError ? 403 : 400, error: error instanceof Error ? error.message : 'Unable to create relationship.' };
   }
 }
 
-export async function updateDowntimePerson(campaignId: string, id: string, actorUserId: string, raw: Record<string, unknown>) {
-  const current = await prisma.downtimePersonRelationship.findFirst({ where: { id, campaignId } });
-  if (!current) return { ok: false as const, status: 404, error: 'Relationship not found.' };
+export async function updateDowntimePerson(campaignId: string, id: string, actorUserId: string, raw: Record<string, unknown>, actor: CampaignActor) {
   try {
     const row = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`UPDATE "DowntimePersonRelationship" SET "id" = "id" WHERE "id" = ${id} AND "campaignId" = ${campaignId}`;
+      const current = await tx.downtimePersonRelationship.findFirst({ where: { id, campaignId } });
+      if (!current) throw new Error('Relationship not found.');
+      await authorizeDowntimePersonWrite(tx, actor, campaignId, current.characterPageId, raw, current);
       const havenId = raw.havenId === undefined ? current.havenId : text(raw.havenId, 100);
       const projectId = raw.projectId === undefined ? current.projectId : text(raw.projectId, 100);
       await validateAssignment(tx, campaignId, havenId, projectId);
@@ -218,7 +228,7 @@ export async function updateDowntimePerson(campaignId: string, id: string, actor
       return updated;
     });
     return { ok: true as const, row };
-  } catch (error) { return { ok: false as const, status: 400, error: error instanceof Error ? error.message : 'Unable to update relationship.' }; }
+  } catch (error) { return { ok: false as const, status: error instanceof DowntimeAuthorizationError ? 403 : 400, error: error instanceof Error ? error.message : 'Unable to update relationship.' }; }
 }
 
 export function presentDowntimePerson(row: unknown, handle: string, role: WikiVisibilityViewer, canEdit: boolean) { return present(row, handle, role, canEdit); }

@@ -225,7 +225,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
       </section>
     </article> : <p className="text-sm text-muted">{!bundle.calendars.length ? 'No calendars available.' : params.has('era') || !bundle.calendars.some(row => row.id === track) ? 'This era or calendar is unavailable. Select an available period.' : 'No eras configured for this calendar.'}</p>}
     <ChronologyEventSidebar campaignHandle={ledger.campaignHandle} timeBundle={ledger.timeBundle} baseEvent={bundle.baseEvents.find(base => base.id === inspection?.baseEventId) ?? null}
-      calendarName={definition?.name} categories={bundle.categories} editableEvents={bundle.baseEvents} calendarLike={axis?.calendar ?? null} canManage={ledger.canManage}
+      calendarName={definition?.name} categories={bundle.categories} editableEvents={bundle.baseEvents} calendarLike={axis?.calendar ?? null} canManage={bundle.baseEvents.find(base => base.id === inspection?.baseEventId)?.canEdit ?? false}
       open={!!inspection} occurrence={occurrence} dateSeed={occurrence?.start} onClose={() => setSelectedKey(null)}
       onMutated={ledger.onEventMutated} onDeleted={async () => { setSelectedKey(null); await ledger.onEventDeleted(); }} onRevealEvent={ledger.onRevealEvent} />
     {draft && like && <EraDialog title={editing ? 'Edit era' : 'Create era'} busy={busy} onClose={() => setDraft(null)}>
@@ -250,7 +250,7 @@ export function ErasView({ bundle, onErasChanged, onTimeline, session, onInspect
             setDraft({ ...draft, [key]: date, ...(!editing && !visibilityTouched && elevated && future ? { visibility: 'DM_ONLY' as const } : {}) });
           }} />}</fieldset>)}
         <label>Visibility <select value={draft.visibility} onChange={e => { setVisibilityTouched(true); setDraft({ ...draft, visibility: e.target.value as EraInput['visibility'] }); }}><option value="PUBLIC">Public</option><option value="PARTY">Party</option>{elevated && <option value="DM_ONLY">DM only</option>}</select></label>
-        <label className="block"><input type="checkbox" checked={draft.isCurrent} onChange={e => setDraft({ ...draft, isCurrent: e.target.checked })} /> Make current</label>
+        <label className="block"><input type="checkbox" disabled={!can(CampaignCapabilities.CHRONOLOGY_EDIT)} checked={draft.isCurrent} onChange={e => setDraft({ ...draft, isCurrent: e.target.checked })} /> Make current</label>
         <p>Description</p><WikiTipTapEditor content={draft.description ?? ''} onChange={description => setDraft({ ...draft, description })} wikiTree={[]} />
         </fieldset>
         {error && <p role="alert">{error}</p>}

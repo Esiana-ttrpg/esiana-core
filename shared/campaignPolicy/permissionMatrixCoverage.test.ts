@@ -1,3 +1,4 @@
+import { evaluateResourceAccess } from './resourceAccess.js';
 /**
  * PERMISSION_MATRIX_COVERAGE — living inventory for #460.
  * Asserts catalog completeness and documents page.edit_* / chronology semantics.
@@ -174,6 +175,10 @@ describe('PERMISSION_MATRIX_COVERAGE', () => {
     });
     assert.equal(can(player, CampaignCapabilities.PAGE_EDIT_ANY), true);
     assert.equal(can(player, CampaignCapabilities.NARRATIVE_ELEVATED_VIEW), false);
+    const access = evaluateResourceAccess(player, { module: 'wiki', visibility: 'DM_Only',
+      ownership: { ownerType: PageOwnerTypes.USER, ownerUserId: 'other' } });
+    assert.equal(access.canView, false);
+    assert.equal(access.canManage, false);
   });
 
   it('players create events without chronology management by default', () => {
@@ -215,6 +220,32 @@ describe('PERMISSION_MATRIX_COVERAGE', () => {
     for (const cap of CHRONOLOGY_CONTRIBUTION_CAPABILITIES) {
       assert.equal(can(writer, cap), true, cap);
     }
+    const player = buildCampaignActor({ kind: 'member', userId: 'p-1', membershipRole: MembershipRoles.PARTICIPANT,
+      ...campaignBase, allowPlayerChronologyManagement: false,
+      roleCapabilityOverrides: [{ role: MembershipRoles.PARTICIPANT, capability: CampaignCapabilities.CHRONOLOGY_EDIT, effect: 'GRANT' }] });
+    for (const cap of CHRONOLOGY_CONTRIBUTION_CAPABILITIES) assert.equal(can(player, cap), true, cap);
+  });
+
+  it('chronology management respects explicit contribution revocations', () => {
+    for (const role of [MembershipRoles.WRITER, MembershipRoles.PARTICIPANT]) {
+      const actor = buildCampaignActor({ kind: 'member', userId: 'p-1', membershipRole: role, ...campaignBase,
+        allowPlayerChronologyManagement: false,
+        roleCapabilityOverrides: [
+          { role, capability: CampaignCapabilities.CHRONOLOGY_EDIT, effect: 'GRANT' },
+          { role, capability: CampaignCapabilities.CHRONOLOGY_EVENT_CREATE, effect: 'REVOKE' },
+        ] });
+      assert.equal(canManageChronology(actor), true);
+      assert.equal(canCreateChronologyEvent(actor), false);
+      assert.equal(can(actor, CampaignCapabilities.CHRONOLOGY_ERA_CREATE), true);
+    }
+  });
+
+  it('event Edit alone never grants Delete for other creators', () => {
+    const actor = buildCampaignActor({ kind: 'member', userId: 'p-1', membershipRole: MembershipRoles.PARTICIPANT, ...campaignBase,
+      roleCapabilityOverrides: [{ role: MembershipRoles.PARTICIPANT, capability: CampaignCapabilities.CHRONOLOGY_EVENT_EDIT, effect: 'GRANT' }] });
+    assert.equal(canEditChronologyEvent(actor, 'other'), true);
+    assert.equal(canDeleteChronologyEvent(actor, 'other'), false);
+    assert.equal(canDeleteChronologyEvent(actor, 'p-1'), true);
   });
 
   it('overridableMatrixCapabilities excludes owner-locked rows', () => {

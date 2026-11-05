@@ -734,7 +734,7 @@ export function CollaborationPermissionsPanel({
       </label>
       {dirty ? (
         <p className="text-xs text-primary" role="status">
-          Unsaved changes — save to apply, or reset to discard.
+          Unsaved changes — save to apply, or reset to defaults.
         </p>
       ) : null}
       <div className="space-y-3">{filteredSections.map(renderSection)}</div>

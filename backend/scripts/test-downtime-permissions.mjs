@@ -39,12 +39,19 @@ try {
   db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: databaseUrl }, { timestampFormat: 'unixepoch-ms' }) });
   // Controllers/services share this isolated client via the existing Prisma boundary.
   globalThis.prisma = db;
+  const { env } = await import('../src/config/env.ts');
+  Object.assign(env, { nodeEnv: 'test', databaseProvider: 'sqlite', databaseUrl });
   process.env.NODE_ENV = 'test';
-  const { buildCampaignActor } = await import('../../shared/campaignPolicy/policy.ts');
-  const { requireDowntimeCreate, requireCampaignMember } = await import('../src/middleware/campaignScope.ts');
+  process.env.DATABASE_PROVIDER = 'sqlite';
+  process.env.DATABASE_URL = databaseUrl;
+  const { buildCampaignActor, resolveActorCapabilities } = await import('../../shared/campaignPolicy/policy.ts');
+  const { requireDowntimeCreate, requireCampaignMember, requireChronologyEraCreate, requireChronologyEventCreate } = await import('../src/middleware/campaignScope.ts');
   const havens = await import('../src/controllers/downtimeHavenController.ts');
   const projects = await import('../src/controllers/downtimeProjectController.ts');
   const people = await import('../src/controllers/downtimePeopleController.ts');
+  const { updateWikiPageMetadata } = await import('../src/controllers/wikiController.ts');
+  const { createEra } = await import('../src/controllers/chronologyErasController.ts');
+  const { createCalendarEvent } = await import('../src/controllers/calendarEventsController.ts');
   const { buildDowntimeHubResponse } = await import('../src/controllers/downtimeHubController.ts');
   const owner = await db.user.create({ data: { email: 'gm@downtime.test' } });
   const player = await db.user.create({ data: { email: 'enve@downtime.test' } });
@@ -56,7 +63,7 @@ try {
   const actor = buildCampaignActor({ kind: 'member', userId: player.id, campaignOwnerUserId: owner.id,
     membershipRole: 'PARTICIPANT', discoverability: 'private', allowPlayerChronologyManagement: false, partyId: party.id });
   const context = { campaignId: campaign.id, campaignHandle: campaign.handle, role: 'PARTICIPANT',
-    isMember: true, partyId: party.id, actor };
+    isMember: true, partyId: party.id, actor, capabilities: resolveActorCapabilities(actor) };
   const app = express(); app.use(express.json());
   app.use((req, _res, next) => { req.campaign = context; req.user = { id: player.id }; next(); });
   for (const [path, handlers, name] of [['havens', havens, 'Haven'], ['projects', projects, 'Project']]) {
@@ -65,9 +72,12 @@ try {
     app.patch(`/${path}/:id`, requireCampaignMember, handlers[`updateDowntime${name}Handler`]);
     app.delete(`/${path}/:id`, requireCampaignMember, handlers[`deleteDowntime${name}Handler`]);
   }
+  app.post('/chronology/eras', requireChronologyEraCreate, createEra);
+  app.post('/calendars/:calendarId/events', requireChronologyEventCreate, createCalendarEvent);
   app.post('/people', requireDowntimeCreate, people.createDowntimePersonHandler);
   app.patch('/people/:id', requireCampaignMember, people.updateDowntimePersonHandler);
   app.get('/people', people.listDowntimePeopleHandler);
+  app.patch('/wiki/:pageId/metadata', requireCampaignMember, updateWikiPageMetadata);
   app.get('/hub/:id', (req, res) => buildDowntimeHubResponse(req, res, req.params.id));
   server = app.listen(0, '127.0.0.1'); await once(server, 'listening');
   const port = server.address().port;
@@ -84,6 +94,14 @@ try {
   await request('PATCH', `/projects/${project.id}`, { fields: { durationElapsedMinutes: '100' } });
   const { person } = await request('POST', '/people', { characterName: 'Neris', relationshipType: 'HIRELING', havenId: haven.id }, 201);
   await request('PATCH', `/people/${person.id}`, { notes: 'Charting the coast' });
+  await request('PATCH', `/wiki/${person.characterPageId}/metadata`, { metadata: { profession: 'Cartographer' } });
+  assert.equal((await db.wikiPage.findUniqueOrThrow({ where: { id: person.characterPageId } })).metadata.profession, 'Cartographer');
+  await db.wikiPage.update({ where: { id: person.characterPageId }, data: { ownerUserId: owner.id } });
+  await request('PATCH', `/wiki/${person.characterPageId}/metadata`, { metadata: { profession: 'Denied' } }, 403);
+  await db.wikiPage.update({ where: { id: person.characterPageId }, data: { ownerUserId: player.id, visibility: 'GM_ONLY' } });
+  await request('PATCH', `/wiki/${person.characterPageId}/metadata`, { metadata: { profession: 'Denied' } }, 403);
+  await db.wikiPage.update({ where: { id: person.characterPageId }, data: { visibility: 'PARTY' } });
+
   const stored = await db.downtimeHaven.findUniqueOrThrow({ where: { id: haven.id }, include: { wikiPage: true } });
   assert.equal(stored.wikiPage.ownerUserId, player.id);
   assert.equal(stored.spaces[0].label, 'Map room'); assert.equal(stored.upgrades[0].label, 'Restored roof');
@@ -106,7 +124,44 @@ try {
   await request('GET', `/havens/${haven.id}`, undefined, 404);
   await request('PATCH', `/havens/${haven.id}`, { title: 'Denied' }, 403);
   await request('DELETE', `/havens/${haven.id}`, undefined, 403);
-  console.log('PASS: default Player acceptance flow over HTTP with isolated SQLite persistence, including ownership and visibility denials.');
+  const { authorizeDowntimePersonWrite } = await import('../src/lib/downtimeAuthorization.ts');
+  await assert.rejects(db.$transaction((tx) => authorizeDowntimePersonWrite(tx, actor, campaign.id,
+    person.characterPageId, { havenId: haven.id })), /Forbidden/);
+  await db.wikiPage.update({ where: { id: haven.wikiPageId }, data: { visibility: 'PARTY' } });
+  const beforeLock = await db.wikiPage.findUniqueOrThrow({ where: { id: haven.wikiPageId } });
+  const competingWriter = new Database(path.join(directory, 'acceptance.db'), { timeout: 0 });
+  try {
+    await db.$transaction(async (tx) => {
+      await authorizeDowntimePersonWrite(tx, actor, campaign.id, person.characterPageId, { havenId: haven.id });
+      // A visibility UPDATE on another connection cannot cross the authorization/write interval.
+      assert.throws(() => competingWriter.prepare('UPDATE "WikiPage" SET "visibility" = ? WHERE "id" = ?')
+        .run('GM_ONLY', haven.wikiPageId), /locked/);
+      await tx.downtimePersonRelationship.update({ where: { id: person.id }, data: { notes: 'Authorized while visibility is locked' } });
+    });
+    const afterLock = await db.wikiPage.findUniqueOrThrow({ where: { id: haven.wikiPageId } });
+    assert.equal(afterLock.updatedAt.getTime(), beforeLock.updatedAt.getTime(), 'authorization locks preserve wiki timestamps');
+    assert.equal(afterLock.visibility, 'PARTY');
+    competingWriter.prepare('UPDATE "WikiPage" SET "visibility" = ? WHERE "id" = ?').run('GM_ONLY', haven.wikiPageId);
+    assert.equal((await db.wikiPage.findUniqueOrThrow({ where: { id: haven.wikiPageId } })).visibility, 'GM_ONLY');
+  } finally { competingWriter.close(); }
+  const calendar = await db.fantasyCalendar.create({ data: { campaignId: campaign.id, name: 'World calendar',
+    weekdays: [{ name: 'First', length: 1 }], months: [{ name: 'First', length: 30, type: 'standard' }], seasons: [], moons: [], leapDays: [] } });
+  const grantObserver = (granted) => {
+    context.role = 'OBSERVER';
+    context.actor = buildCampaignActor({ kind: 'member', userId: player.id, campaignOwnerUserId: owner.id,
+      membershipRole: 'OBSERVER', discoverability: 'private', allowPlayerChronologyManagement: false, partyId: party.id,
+      roleCapabilityOverrides: granted ? ['chronology.era.create', 'chronology.event.create'].map((capability) => ({ role: 'OBSERVER', capability, effect: 'GRANT' })) : [] });
+    context.capabilities = resolveActorCapabilities(context.actor);
+  };
+  grantObserver(false);
+  const eraInput = { calendarId: calendar.id, name: 'Age of quiet waters', startDate: null, endDate: null, visibility: 'PARTY', isCurrent: false };
+  await request('POST', '/chronology/eras', eraInput, 403);
+  await request('POST', `/calendars/${calendar.id}/events`, { title: 'A discovery' }, 403);
+  grantObserver(true);
+  await request('POST', '/chronology/eras', eraInput, 201);
+  await request('POST', '/chronology/eras', { ...eraInput, name: 'Not allowed to replace the current era', isCurrent: true }, 403);
+  await request('POST', `/calendars/${calendar.id}/events`, { title: 'A discovery' }, 201);
+  console.log('PASS: default Player acceptance flow over HTTP with isolated SQLite persistence, including identity saves, visibility denials, concurrent visibility-write exclusion, and Observer chronology creation.');
 } finally {
   if (server) await new Promise((resolve) => server.close(resolve));
   if (db) await db.$disconnect();

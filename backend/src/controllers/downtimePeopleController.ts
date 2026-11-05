@@ -1,3 +1,4 @@
+import { isCharacterEntityPage } from '../../../shared/resolveCanonicalEntityCategory.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import {
@@ -28,6 +29,7 @@ export async function listDowntimePeopleHandler(
     ctx.campaignHandle ?? ctx.campaignId,
     ctx,
     canEditAny,
+    true,
   );
   res.json(payload);
 }
@@ -43,6 +45,7 @@ export async function getDowntimePersonByCharacterHandler(
     ctx.campaignHandle ?? ctx.campaignId,
     ctx,
     canEditAny,
+    true,
   );
   const matches = payload.people.filter(
     (person) => person.characterPageId === String(req.params.pageId),
@@ -84,6 +87,12 @@ export async function createDowntimePersonHandler(
       res.status(403).json({ error: 'Forbidden' });
       return;
     }
+    const pages = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } });
+    const page = pages.find((candidate) => candidate.id === characterPageId);
+    if (!page || !isCharacterEntityPage(page, pages)) {
+      res.status(400).json({ error: 'A Character page is required.' });
+      return;
+    }
   }
 
   if (!(await canAssignDowntimePerson(ctx.actor, ctx.campaignId, body))) {
@@ -95,6 +104,7 @@ export async function createDowntimePersonHandler(
     ctx.campaignId,
     req.user!.id,
     body,
+    ctx.actor,
   );
   if (!result.ok) {
     res.status(result.status).json({ error: result.error });
@@ -141,6 +151,7 @@ export async function updateDowntimePersonHandler(
     personId,
     req.user!.id,
     req.body ?? {},
+    ctx.actor,
   );
   if (!result.ok) {
     res.status(result.status).json({ error: result.error });

@@ -70,7 +70,7 @@ export function ChronologyEventSidebar({
             categories={categories}
             editableEvents={editableEvents}
             calendarLike={calendarLike}
-            canManage={canManage}
+            canManage={baseEvent.canEdit ?? false}
             dateSeed={dateSeed}
             onMutated={onMutated}
             onDeleted={onDeleted}

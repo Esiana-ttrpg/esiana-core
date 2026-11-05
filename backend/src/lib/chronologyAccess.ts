@@ -14,11 +14,11 @@ export function chronologyCanManage(ctx: CampaignContext): boolean {
 }
 
 export function chronologyCanCreateEvent(ctx: CampaignContext): boolean {
-  return ctx.role !== 'OBSERVER' && canCreateChronologyEvent(ctx.actor);
+  return ctx.isMember && canCreateChronologyEvent(ctx.actor);
 }
 
 export function chronologyCanCreateEra(ctx: CampaignContext): boolean {
-  return ctx.role !== 'OBSERVER' && canCreateChronologyEra(ctx.actor);
+  return ctx.isMember && canCreateChronologyEra(ctx.actor);
 }
 
 export function chronologyCanEditEvent(

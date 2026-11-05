@@ -52,6 +52,7 @@ import {
 import {
   buildNarrativeViewerContext,
   type NarrativeViewerContext,
+  type NarrativeViewerCapabilities,
 } from '../../../shared/narrativeProjection.js';
 import { collectDowntimePeriodAnchors } from './downtimePeriodProjectionService.js';
 import { buildWikiPagePathMap } from './wikiPageHrefSelect.js';
@@ -65,6 +66,7 @@ type BuildOverlayInput = {
   role: string | null;
   allowPlayerChronologyManagement: boolean;
   elevatedNarrativeView?: boolean;
+  capabilityOverrides?: Partial<NarrativeViewerCapabilities>;
   window: ChronologyWindowQuery;
   domains: ChronologyDomainKindValue[] | null;
   sessionLinkedOnly: boolean;
@@ -515,7 +517,7 @@ function domainEnabled(
 export async function buildConvergenceOverlay(
   input: BuildOverlayInput,
 ): Promise<ConvergenceOverlayBundle> {
-  const canManage = input.elevatedNarrativeView ?? isElevatedMembershipRole(input.role ?? '');
+  const canManage = input.capabilityOverrides?.isElevatedWiki ?? input.elevatedNarrativeView ?? isElevatedMembershipRole(input.role ?? '');
   const includeSuppressed = input.includeSuppressed && canManage;
 
   const [dateParts, campaign] = await Promise.all([
@@ -533,6 +535,7 @@ export async function buildConvergenceOverlay(
       dateParts,
     },
     allowPlayerChronologyManagement: input.allowPlayerChronologyManagement,
+    capabilityOverrides: input.capabilityOverrides,
   });
 
   const anchors: CanonicalChronologyAnchor[] = [];

@@ -1,3 +1,4 @@
+import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { ADVENTURE_HUB_TITLE } from '../lib/adventureConstants.js';
@@ -1075,6 +1076,7 @@ export async function buildAdventureHubResponse(
 
   if (section === 'timeline') {
     const overlay = await buildConvergenceOverlay({
+      capabilityOverrides: narrativeCapabilitiesFromActor(ctx.actor),
       campaignId: ctx.campaignId,
       campaignHandle,
       role: ctx.role,

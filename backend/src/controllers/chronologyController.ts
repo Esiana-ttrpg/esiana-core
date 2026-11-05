@@ -4,7 +4,7 @@ import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { canManageChronology as policyCanManageChronology } from '../../../shared/campaignPolicy/policy.js';
-import { chronologyCanView, chronologyElevated } from '../lib/chronologyAccess.js';
+import { chronologyCanView, chronologyElevated, chronologyCanEditEvent, chronologyCanDeleteEvent } from '../lib/chronologyAccess.js';
 import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import { ensureChronologyEras, listChronologyEras, eraMatchesMinute } from '../lib/chronologyEraService.js';
 import { calendarEpochMinuteForDate } from '../lib/timeEngine.js';
@@ -111,6 +111,7 @@ export async function getChronologyTimelineBundle(
         targetDay: true,
         targetEpochMinute: true,
         recurrenceRule: true,
+        createdByUserId: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -156,6 +157,8 @@ export async function getChronologyTimelineBundle(
   const baseEvents = visibleEvents.map((event) => ({
     ...event,
     ...routes.get(event.id),
+    canEdit: chronologyCanEditEvent(req.campaign!, event.createdByUserId),
+    canDelete: chronologyCanDeleteEvent(req.campaign!, event.createdByUserId),
     wikiPageId: event.wikiPageId && visiblePageIds.has(event.wikiPageId) ? event.wikiPageId : null,
     targetEpochMinute: event.targetEpochMinute?.toString() ?? null,
     createdAt: event.createdAt.toISOString(),
@@ -270,6 +273,7 @@ export async function getChronologyOverlayBundle(
   );
 
   const bundle = await buildConvergenceOverlay({
+    capabilityOverrides: narrativeCapabilitiesFromActor(req.campaign!.actor),
     campaignId,
     campaignHandle,
     elevatedNarrativeView: chronologyElevated(req.campaign!),

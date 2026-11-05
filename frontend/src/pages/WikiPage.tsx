@@ -580,8 +580,7 @@ function WikiPageDocument() {
     });
 
   const canInitializeEventLore =
-    wikiCan(CampaignCapabilities.CHRONOLOGY_EDIT) ||
-    wikiCan(CampaignCapabilities.CHRONOLOGY_EVENT_CREATE);
+    wikiCan(CampaignCapabilities.CHRONOLOGY_EDIT);
 
   const isSessionNotePage = pageData?.templateType === 'SESSION_NOTE';
   const sessionNoteMeta = isSessionNotePage

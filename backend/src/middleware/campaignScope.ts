@@ -266,7 +266,7 @@ export function requireChronologyEventCreate(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!req.campaign || req.campaign.role === 'OBSERVER') {
+  if (!req.campaign?.isMember) {
     res.status(403).json({ error: 'Forbidden: event creation not permitted' });
     return;
   }
@@ -282,7 +282,7 @@ export function requireChronologyEraCreate(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!req.campaign || req.campaign.role === 'OBSERVER') {
+  if (!req.campaign?.isMember) {
     res.status(403).json({ error: 'Forbidden: era creation not permitted' });
     return;
   }
@@ -323,7 +323,7 @@ export function requireChronologyEventDelete(
     return;
   }
   if (
-    !policyCan(req.campaign.actor, CampaignCapabilities.CHRONOLOGY_EVENT_EDIT) &&
+    !policyCan(req.campaign.actor, CampaignCapabilities.CHRONOLOGY_EDIT) &&
     !policyCan(
       req.campaign.actor,
       CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED,

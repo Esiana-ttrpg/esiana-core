@@ -207,7 +207,6 @@ export async function listCampaignMaps(
   });
 
   const campaignId = req.campaign!.campaignId;
-  const role = req.campaign!.role as CampaignMemberRole | null;
   const canManage = can(
     req.campaign!.actor,
     CampaignCapabilities.MAPS_EDIT,
@@ -223,7 +222,7 @@ export async function listCampaignMaps(
   const presenceMap = await buildPageDiscoveryMap(campaignId, linkedPageIds);
 
   function isMapDiscoveredForParty(map: (typeof enriched)[number]): boolean {
-    if (!canViewMapAsset(map.visibility, role)) return false;
+    if (!canViewMapAsset(map.visibility, req.campaign!)) return false;
     if (map.linkedPage?.id) {
       return isPageVisibleToParty(presenceMap, map.linkedPage.id);
     }
@@ -231,13 +230,13 @@ export async function listCampaignMaps(
   }
 
   const roleVisible = enriched.filter((map) =>
-    canViewMapAsset(map.visibility, role),
+    canViewMapAsset(map.visibility, req.campaign!),
   );
   const partyMaps = canManage
-    ? enriched
-    : enriched.filter((map) => isMapDiscoveredForParty(map));
+    ? roleVisible
+    : roleVisible.filter((map) => isMapDiscoveredForParty(map));
 
-  const undiscoveredCount = canManage ? 0 : enriched.length - partyMaps.length;
+  const undiscoveredCount = canManage ? 0 : roleVisible.length - partyMaps.length;
 
   const maps = partyMaps.map((map) => {
     const linkedPageId = map.linkedPage?.id;
@@ -273,10 +272,9 @@ export async function getCampaignMap(
   }
 
   const campaignId = req.campaign!.campaignId;
-  const role = req.campaign!.role as CampaignMemberRole | null;
   const enriched = await enrichMapAssetSummary(campaignId, asset);
 
-  if (!canViewMapAsset(enriched.visibility, role)) {
+  if (!canViewMapAsset(enriched.visibility, req.campaign!)) {
     res.status(404).json({ error: 'Map not found' });
     return;
   }
@@ -300,7 +298,7 @@ export async function listMapPins(
   }
 
   const role = req.campaign!.role as CampaignMemberRole | null;
-  if (!canViewMapAsset(asset.visibility, role)) {
+  if (!canViewMapAsset(asset.visibility, req.campaign!)) {
     res.status(404).json({ error: 'Map not found' });
     return;
   }

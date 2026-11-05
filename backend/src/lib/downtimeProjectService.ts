@@ -1,3 +1,4 @@
+import { lockDowntimeWikiPages } from './downtimeAuthorization.js';
 import type { DowntimeProject, Prisma } from './prismaClient.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import { WikiVisibility } from '../types/domain.js';
@@ -303,6 +304,9 @@ export async function createDowntimeProject(
   | { ok: true; project: DowntimeProjectDetail }
   | { ok: false; status: number; error: string }
 > {
+  if (input.requestedOwnerType === 'PARTY' && !input.defaultPartyId) {
+    return { ok: false, status: 400, error: 'PARTY ownership requires a default campaign party.' };
+  }
   const bootstrap = bootstrapDowntimeProjectOnCreate({
     title: input.title,
     operationBrief: input.operationBrief,
@@ -485,6 +489,7 @@ export async function updateDowntimeProject(
     patch.status === 'COMPLETED' && currentFields.status !== 'COMPLETED';
 
   const updated = await prisma.$transaction(async (tx) => {
+    if (patch.visibility !== undefined) await lockDowntimeWikiPages(tx, campaignId, [existing.wikiPageId]);
     if (
       patch.title !== undefined ||
       patch.visibility !== undefined ||

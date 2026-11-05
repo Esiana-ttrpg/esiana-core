@@ -139,7 +139,12 @@ export function resolveActorCapabilities(
   const caps = new Set([...withOverrides, ...adminCaps]);
   // Structural chronology management implies all contribution capabilities.
   if (caps.has(CampaignCapabilities.CHRONOLOGY_EDIT)) {
-    for (const c of CHRONOLOGY_CONTRIBUTION_CAPABILITIES) caps.add(c);
+    for (const c of CHRONOLOGY_CONTRIBUTION_CAPABILITIES) {
+      const explicitlyRevoked = actor.campaign.roleCapabilityOverrides?.some(
+        (row) => row.role === role && row.capability === c && row.effect === 'REVOKE',
+      );
+      if (!explicitlyRevoked) caps.add(c);
+    }
   }
   return caps;
 }
@@ -201,7 +206,7 @@ export function canDeleteChronologyEvent(
   actor: CampaignActor,
   createdByUserId?: string | null,
 ): boolean {
-  if (can(actor, CampaignCapabilities.CHRONOLOGY_EVENT_EDIT)) return true;
+  if (can(actor, CampaignCapabilities.CHRONOLOGY_EDIT)) return true;
   if (!can(actor, CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED)) return false;
   return (
     actor.kind === 'member' &&

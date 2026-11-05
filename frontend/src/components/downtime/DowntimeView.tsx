@@ -73,7 +73,8 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   const [ledgerSort, setLedgerSort] = useState<LedgerSortMode>('newest');
 
   const canManage = can(CampaignCapabilities.DOWNTIME_MANAGE);
-  const canCreate = Boolean(campaign?.isMember) && can(CampaignCapabilities.WIKI_VIEW_PARTY) &&
+  const canCreate = Boolean(campaign?.isMember) && can(CampaignCapabilities.CAMPAIGN_VIEW) &&
+    (can(CampaignCapabilities.WIKI_VIEW_PARTY) || can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW)) &&
     (can(CampaignCapabilities.DOWNTIME_CREATE) || canManage);
 
   const canContributeToLedger =

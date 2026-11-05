@@ -181,6 +181,10 @@ export async function createDowntimeProjectHandler(
     res.status(403).json({ error: 'Forbidden: visibility change not permitted' });
     return;
   }
+  if (body.ownerType === 'PARTY' && !ctx.partyId) {
+    res.status(400).json({ error: 'PARTY ownership requires a default campaign party.' });
+    return;
+  }
   const title = typeof body.title === 'string' ? body.title : '';
 
   const constraints = Array.isArray(body.constraints)
