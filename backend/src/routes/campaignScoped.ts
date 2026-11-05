@@ -373,6 +373,10 @@ import {
   requireCampaignMembership,
   requireCampaignOwner,
   requireChronologyManager,
+  requireChronologyEventCreate,
+  requireChronologyEventEdit,
+  requireChronologyEventDelete,
+  requireChronologyEraCreate,
   requireGamemasterSettings,
   requireNonObserverMember,
   requireQuestEdit,
@@ -384,6 +388,7 @@ import {
   requireRumorModerate,
   requireDiscoveryReveal,
   requireDowntimeManage,
+  requireDowntimeCreate,
   requirePageVisibilityEdit,
   requirePageEditAny,
   requireAdventureStoryboardEdit,
@@ -531,7 +536,7 @@ campaignScopedRouter.get('/discord/:destinationId/deliveries', requireGamemaster
 campaignScopedRouter.get('/time-tracking', getCampaignTimeTracking);
 campaignScopedRouter.put('/chronology/:entityType/:entityId/page', requireChronologyManager, setChronologyPage);
 campaignScopedRouter.get('/chronology/eras', listEras);
-campaignScopedRouter.post('/chronology/eras', requireChronologyManager, createEra);
+campaignScopedRouter.post('/chronology/eras', requireChronologyEraCreate, createEra);
 campaignScopedRouter.put('/chronology/eras/order', requireChronologyManager, reorderEras);
 campaignScopedRouter.get('/chronology/eras/:eraId/impact', requireChronologyManager, eraImpact);
 campaignScopedRouter.put('/chronology/eras/:eraId', requireChronologyManager, updateEra);
@@ -661,17 +666,17 @@ campaignScopedRouter.delete(
 campaignScopedRouter.get('/calendars/:calendarId/events', listCalendarEvents);
 campaignScopedRouter.post(
   '/calendars/:calendarId/events',
-  requireChronologyManager,
+  requireChronologyEventCreate,
   createCalendarEvent,
 );
 campaignScopedRouter.patch(
   '/calendars/:calendarId/events/:eventId',
-  requireChronologyManager,
+  requireChronologyEventEdit,
   updateCalendarEvent,
 );
 campaignScopedRouter.delete(
   '/calendars/:calendarId/events/:eventId',
-  requireChronologyManager,
+  requireChronologyEventDelete,
   deleteCalendarEvent,
 );
 
@@ -718,17 +723,17 @@ campaignScopedRouter.get('/downtime/projects/:id/overview', getDowntimeProjectOv
 campaignScopedRouter.get('/downtime/projects/:id', getDowntimeProjectHandler);
 campaignScopedRouter.post(
   '/downtime/projects',
-  requireDowntimeManage,
+  requireDowntimeCreate,
   createDowntimeProjectHandler,
 );
 campaignScopedRouter.patch(
   '/downtime/projects/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   updateDowntimeProjectHandler,
 );
 campaignScopedRouter.delete(
   '/downtime/projects/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   deleteDowntimeProjectHandler,
 );
 campaignScopedRouter.get('/downtime/havens', listDowntimeHavensHandler);
@@ -737,23 +742,27 @@ campaignScopedRouter.get('/downtime/havens/:id', getDowntimeHavenHandler);
 campaignScopedRouter.get('/downtime/havens/:id/overview', getDowntimeHavenOverviewHandler);
 campaignScopedRouter.post(
   '/downtime/havens',
-  requireDowntimeManage,
+  requireDowntimeCreate,
   createDowntimeHavenHandler,
 );
 campaignScopedRouter.patch(
   '/downtime/havens/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   updateDowntimeHavenHandler,
 );
 campaignScopedRouter.delete(
   '/downtime/havens/:id',
-  requireDowntimeManage,
+  requireCampaignMember,
   deleteDowntimeHavenHandler,
 );
 campaignScopedRouter.get('/downtime/people', listDowntimePeopleHandler);
 campaignScopedRouter.get('/downtime/people/by-character/:pageId', getDowntimePersonByCharacterHandler);
-campaignScopedRouter.post('/downtime/people', requireDowntimeManage, createDowntimePersonHandler);
-campaignScopedRouter.patch('/downtime/people/:id', requireDowntimeManage, updateDowntimePersonHandler);
+campaignScopedRouter.post('/downtime/people', requireDowntimeCreate, createDowntimePersonHandler);
+campaignScopedRouter.patch(
+  '/downtime/people/:id',
+  requireCampaignMember,
+  updateDowntimePersonHandler,
+);
 campaignScopedRouter.get('/downtime/ledger', getCampaignLedgerHandler);
 campaignScopedRouter.get('/downtime/ledger/suggestions', listLedgerSuggestionsHandler);
 campaignScopedRouter.post(

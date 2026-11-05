@@ -1,3 +1,8 @@
+import type { ConvergenceTimelineEntry } from '../../../shared/chronologyConvergence.js';
+import { isElevatedMembershipRole } from '../../../shared/campaignPolicy/membershipRoles.js';
+import type { CampaignContext } from '../types/api.js';
+import { chronologyCanManage, chronologyElevated } from '../lib/chronologyAccess.js';
+import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { SnapshotKind } from '../../../shared/narrativeSnapshots.js';
@@ -16,7 +21,8 @@ import {
 import {
   buildHavenSituationCards,
 } from '../lib/buildHavenPresentation.js';
-import { canManageNotebooksFromActor } from '../lib/acl.js';
+import { canViewWikiPage } from '../lib/wikiTree.js';
+import { canManageDowntime } from '../lib/downtimeAuthorization.js';
 import { buildCreativeDriftScan } from '../lib/creativeDriftService.js';
 import { buildConvergenceOverlay } from '../lib/chronologyConvergenceService.js';
 import { buildDashboardChronometer } from '../lib/buildDashboardChronometer.js';
@@ -50,12 +56,25 @@ function placeholderPayload(section: Exclude<DowntimeSectionId, 'worldEvents'>) 
   };
 }
 
+export function canInspectSuppressedDowntimeEvents(ctx: CampaignContext): boolean {
+  return isElevatedMembershipRole(ctx.role ?? '') && canManageDowntime(ctx.actor) &&
+    chronologyCanManage(ctx) && chronologyElevated(ctx);
+}
+
+export function filterDowntimeOverlayEntries(ctx: CampaignContext, entries: ConvergenceTimelineEntry[]) {
+  if (canInspectSuppressedDowntimeEvents(ctx)) return entries;
+  // Elevated projection can mark unrevealed entries visible; the downtime review
+  // surface still requires both administrative capabilities to expose them.
+  return entries.filter((entry) => entry.projection.visible &&
+    entry.projection.revelationState !== 'HIDDEN' && entry.projection.revelationState !== 'DRAFT');
+}
+
 async function loadPresentationContext(
   req: CampaignScopedRequest,
   campaignHandle: string,
 ) {
   const ctx = req.campaign!;
-  const canManage = canManageNotebooksFromActor(ctx.actor);
+  const canManage = canManageDowntime(ctx.actor);
 
   const [campaign, chronometer, creativeDrift, snapshots, batches] = await Promise.all([
     prisma.campaign.findUnique({
@@ -78,6 +97,7 @@ async function loadPresentationContext(
   ]);
 
   const overlay = await buildConvergenceOverlay({
+    capabilityOverrides: narrativeCapabilitiesFromActor(ctx.actor),
     campaignId: ctx.campaignId,
     campaignHandle,
     role: ctx.role,
@@ -85,14 +105,14 @@ async function loadPresentationContext(
     window: { mode: 'YEAR_RANGE', from: '0', to: '9999' },
     domains: [...DOWNTIME_WORLD_EVENT_DOMAINS],
     sessionLinkedOnly: false,
-    includeSuppressed: canManage,
+    includeSuppressed: canInspectSuppressedDowntimeEvents(ctx),
   });
 
   return {
     currentEpochMinute: campaign?.currentEpochMinute ?? 0n,
     chronometer,
     sinceEpochMinute: snapshots?.capturedAtEpochMinute ?? null,
-    overlayEntries: overlay.entries,
+    overlayEntries: filterDowntimeOverlayEntries(ctx, overlay.entries),
     creativeDrift,
     latestWorldAdvanceHeadline: batches[0]?.headline ?? null,
   };
@@ -106,7 +126,7 @@ export async function buildDowntimeHubResponse(
   const ctx = req.campaign!;
   const section = normalizeDowntimeSection(req.query.section);
   const campaignHandle = ctx.campaignHandle ?? ctx.campaignId;
-  const canManage = canManageNotebooksFromActor(ctx.actor);
+  const canManage = canManageDowntime(ctx.actor);
 
   const category = await prisma.wikiPage.findFirst({
     where: { id: downtimeRootId, campaignId: ctx.campaignId, deletedAt: null },
@@ -120,7 +140,7 @@ export async function buildDowntimeHubResponse(
     },
   });
 
-  if (!category || !isDowntimeCategoryPage(category.metadata)) {
+  if (!category || !canViewWikiPage(category.visibility, ctx) || !isDowntimeCategoryPage(category.metadata)) {
     res.status(404).json({ error: 'Downtime category page not found' });
     return;
   }
@@ -155,9 +175,9 @@ export async function buildDowntimeHubResponse(
           select: { capturedAtEpochMinute: true },
         }),
         buildCurrentDowntimePeriodPresentation({ campaignId: ctx.campaignId, campaignHandle }),
-        listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx.role, { includeTerminal: true }),
-        listDowntimeHavens(ctx.campaignId, campaignHandle, ctx.role),
-        listDowntimePeople(ctx.campaignId, campaignHandle, ctx.role, canManage),
+        listDowntimeProjectDetails(ctx.campaignId, campaignHandle, ctx, { includeTerminal: true }),
+        listDowntimeHavens(ctx.campaignId, campaignHandle, ctx),
+        listDowntimePeople(ctx.campaignId, campaignHandle, ctx, canManage),
         buildLedgerHubPayload(ctx.campaignId, campaignHandle, ctx.role, req.user?.id ?? null),
         buildReputationHubPayload(ctx.campaignId, campaignHandle, ctx.role),
         canManage
@@ -168,7 +188,7 @@ export async function buildDowntimeHubResponse(
     const currentEpochMinute = campaign?.currentEpochMinute ?? 0n;
     const projectCards = buildDowntimeProjectOperationCards(projects);
     const residentPageIds = [...new Set(havens.flatMap((haven) => haven.residentPageIds))];
-    const residentTitles = await resolveWikiPageTitles(ctx.campaignId, residentPageIds);
+    const residentTitles = await resolveWikiPageTitles(ctx.campaignId, residentPageIds, ctx);
     const residentLabelsByHaven = new Map<string, string[]>();
     for (const haven of havens) {
       residentLabelsByHaven.set(
@@ -235,7 +255,7 @@ export async function buildDowntimeHubResponse(
     const projects = await listDowntimeProjectDetails(
       ctx.campaignId,
       campaignHandle,
-      ctx.role,
+      ctx,
       { includeTerminal: true },
     );
     payload.projects = {
@@ -244,7 +264,7 @@ export async function buildDowntimeHubResponse(
     };
   } else if (section === 'havens') {
     const [havens, campaign] = await Promise.all([
-      listDowntimeHavens(ctx.campaignId, campaignHandle, ctx.role),
+      listDowntimeHavens(ctx.campaignId, campaignHandle, ctx),
       prisma.campaign.findUnique({
         where: { id: ctx.campaignId },
         select: { currentEpochMinute: true },
@@ -256,6 +276,7 @@ export async function buildDowntimeHubResponse(
       const labels = await resolveWikiPageTitles(
         ctx.campaignId,
         haven.residentPageIds,
+        ctx,
       );
       residentLabelsByHaven.set(
         haven.id,
@@ -275,8 +296,9 @@ export async function buildDowntimeHubResponse(
     payload.people = await listDowntimePeople(
       ctx.campaignId,
       campaignHandle,
-      ctx.role,
+      ctx,
       canManage,
+      true,
     );
   } else if (section === 'reputation') {
     const { buildReputationHubPayload } = await import('../lib/buildReputationPresentation.js');

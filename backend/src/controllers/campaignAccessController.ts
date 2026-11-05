@@ -16,6 +16,7 @@ import {
   ALL_CAMPAIGN_CAPABILITIES,
   CampaignCapabilities,
 } from '../../../shared/campaignPolicy/capabilities.js';
+import { overridableMatrixCapabilities } from '../../../shared/campaignPolicy/matrixCatalog.js';
 import { membershipRoleUiLabel } from '../../../shared/campaignPolicy/membershipRoles.js';
 import {
   mapMemberToIdentityFields,
@@ -718,7 +719,10 @@ export async function leaveCampaign(
   res.json({ ok: true });
 }
 
-const COLLABORATIVE_OVERRIDE_CAPS = [
+/** Capabilities editable for Writer/Player/Observer via the Collaboration matrix. */
+const CONFIGURABLE_OVERRIDE_CAPS = overridableMatrixCapabilities();
+
+const COLLABORATIVE_CAP_SET = new Set<string>([
   CampaignCapabilities.SAFETY_SUBMIT,
   CampaignCapabilities.SAFETY_MANAGE,
   CampaignCapabilities.AUDIO_UPLOAD,
@@ -729,6 +733,7 @@ const COLLABORATIVE_OVERRIDE_CAPS = [
   CampaignCapabilities.PAGE_CREATE,
   CampaignCapabilities.PAGE_EDIT_OWNED,
   CampaignCapabilities.PAGE_EDIT_PARTY,
+  CampaignCapabilities.PAGE_EDIT_ANY,
   CampaignCapabilities.WIKI_VIEW_PARTY,
   CampaignCapabilities.QUEST_EDIT,
   CampaignCapabilities.THREAD_EDIT,
@@ -737,18 +742,21 @@ const COLLABORATIVE_OVERRIDE_CAPS = [
   CampaignCapabilities.ASSETS_VIEW,
   CampaignCapabilities.ASSETS_DELETE_OWNED,
   CampaignCapabilities.CHRONOLOGY_EDIT,
-] as const;
+  CampaignCapabilities.CHRONOLOGY_EVENT_CREATE,
+  CampaignCapabilities.CHRONOLOGY_EVENT_EDIT_OWNED,
+  CampaignCapabilities.CHRONOLOGY_EVENT_EDIT,
+  CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED,
+  CampaignCapabilities.CHRONOLOGY_ERA_CREATE,
+  CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
+]);
 
-const OPERATIONAL_OVERRIDE_CAPS = [
-  CampaignCapabilities.SAFETY_MANAGE,
-  CampaignCapabilities.AUDIO_MANAGE,
-  CampaignCapabilities.PAGE_EDIT_ANY,
-  CampaignCapabilities.PAGE_VISIBILITY_EDIT,
-  CampaignCapabilities.MAPS_EDIT,
-  CampaignCapabilities.DOWNTIME_MANAGE,
-  CampaignCapabilities.ASSETS_DELETE_ANY,
-  CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
-] as const;
+const COLLABORATIVE_OVERRIDE_CAPS = CONFIGURABLE_OVERRIDE_CAPS.filter((cap) =>
+  COLLABORATIVE_CAP_SET.has(cap),
+);
+
+const OPERATIONAL_OVERRIDE_CAPS = CONFIGURABLE_OVERRIDE_CAPS.filter(
+  (cap) => !COLLABORATIVE_CAP_SET.has(cap),
+);
 
 export async function listCampaignCapabilityOverrides(
   req: CampaignScopedRequest,

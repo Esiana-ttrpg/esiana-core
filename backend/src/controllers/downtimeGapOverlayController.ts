@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { canManageChronology } from '../lib/acl.js';
+import { canManageChronology } from '../../../shared/campaignPolicy/policy.js';
 import { parseDowntimeGapOverlay } from '../../../shared/downtimeAnnotations.js';
 import { upsertDowntimeGapOverlay } from '../lib/downtimeGapOverlays.js';
 
@@ -9,9 +9,7 @@ export async function putDowntimeGapOverlay(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (
-    !canManageChronology(ctx.role, ctx.allowPlayerChronologyManagement)
-  ) {
+  if (!canManageChronology(ctx.actor)) {
     res.status(403).json({ error: 'Chronology management required' });
     return;
   }

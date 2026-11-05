@@ -384,7 +384,12 @@ describe('matrix catalog', () => {
     );
     const chronology = MATRIX_SECTIONS.find((section) => section.id === 'chronology');
     assert.ok(chronology);
-    assert.match(chronology.scope, /Broader calendar permissions are planned/);
+    assert.match(chronology.scope, /Event contribution is separate/);
+    assert.ok(
+      chronology.rows.some(
+        (row) => row.capability === CampaignCapabilities.CHRONOLOGY_EVENT_CREATE,
+      ),
+    );
     const journals = MATRIX_SECTIONS.find((section) => section.id === 'journals');
     assert.ok(journals?.rows.some((row) => row.capability === CampaignCapabilities.JOURNAL_PLANNER_ACCESS));
     const sessions = MATRIX_SECTIONS.find((section) => section.id === 'sessions');

@@ -98,10 +98,11 @@ export type BuildNarrativeViewerContextInput = {
     role: string | null;
     campaignNow: CampaignChronologyNow;
     allowPlayerChronologyManagement?: boolean;
+    capabilityOverrides?: Partial<NarrativeViewerCapabilities>;
 };
 export declare function isElevatedRole(role: string | null | undefined): boolean;
 export declare function derivePerspective(isElevated: boolean): NarrativePerspective;
-export declare function buildNarrativeViewerCapabilities(role: string | null, allowPlayerChronologyManagement?: boolean): NarrativeViewerCapabilities;
+export declare function buildNarrativeViewerCapabilities(role: string | null, allowPlayerChronologyManagement?: boolean, capabilityOverrides?: Partial<NarrativeViewerCapabilities>): NarrativeViewerCapabilities;
 export declare function buildNarrativeViewerContext(input: BuildNarrativeViewerContextInput): NarrativeViewerContext;
 export declare function isManagerView(ctx: NarrativeViewerContext): boolean;
 export declare function fromChronologyVisibility(visibility: string | null | undefined): NarrativeVisibilityTierValue;

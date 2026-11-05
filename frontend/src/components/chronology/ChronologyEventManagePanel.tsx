@@ -37,7 +37,18 @@ export function ChronologyEventManagePanel(
   props: ChronologyEventManagePanelProps,
 ) {
   const [open, setOpen] = useState(false);
-  if (!props.canManage) return null;
+  const deletion = useChronologyEventEditor({
+    campaignHandle: props.campaignHandle, baseEvent: props.baseEvent,
+    calendarLike: props.calendarLike, onDeleted: props.onDeleted, onMutated: props.onMutated,
+  });
+  if (!props.canManage || !props.baseEvent.canEdit) {
+    if (!props.baseEvent.canDelete) return null;
+    return <div>
+      <button type="button" disabled={deletion.deleting} onClick={() => void deletion.deleteEvent()}
+        className="rounded border border-red-800/60 px-3 py-2 text-xs text-red-200">Delete event</button>
+      {deletion.error ? <p role="alert">{deletion.error}</p> : null}
+    </div>;
+  }
   return (
     <>
       <button
@@ -98,7 +109,7 @@ export function ChronologyEventForm({
     onStateChange?.(editor.isDirty, editor.saving || editor.deleting);
   }, [editor.isDirty, editor.saving, editor.deleting, onStateChange]);
 
-  if (!canManage) {
+  if (!canManage || (mode === 'edit' && !baseEvent.canEdit)) {
     return null;
   }
 
@@ -138,7 +149,7 @@ export function ChronologyEventForm({
             className="block w-full rounded-md border border-border bg-background px-2 py-2 text-sm"
           />
         </label>
-        {mode === 'edit' && (
+        {mode === 'edit' && baseEvent.canDelete && (
           <ChronologyLoreLink
             campaignHandle={campaignHandle}
             baseEventId={baseEvent.id}
@@ -390,7 +401,7 @@ export function ChronologyEventForm({
                 ? 'Create event'
                 : 'Save changes'}
           </button>
-          {mode === 'edit' && (
+          {mode === 'edit' && baseEvent.canDelete && (
             <button
               type="button"
               onClick={() => void editor.deleteEvent()}

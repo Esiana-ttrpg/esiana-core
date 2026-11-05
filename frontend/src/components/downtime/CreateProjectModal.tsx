@@ -21,6 +21,7 @@ import type { WikiTreeNode } from '@/types/wiki';
 
 interface CreateProjectModalProps {
   open: boolean;
+  canManageEffects?: boolean;
   campaignHandle: string;
   flatPages: WikiTreeNode[];
   onClose: () => void;
@@ -47,6 +48,7 @@ function nextDraftId(): string {
 
 export function CreateProjectModal({
   open,
+  canManageEffects = false,
   campaignHandle,
   flatPages,
   onClose,
@@ -389,7 +391,7 @@ export function CreateProjectModal({
               </div>
             </section>
 
-            <details className={sectionClass}>
+            {canManageEffects ? <details className={sectionClass}>
               <summary className="cursor-pointer text-sm font-medium text-foreground">
                 Treasury impact (optional)
               </summary>
@@ -445,7 +447,7 @@ export function CreateProjectModal({
                   />
                 </label>
               </div>
-            </details>
+            </details> : null}
 
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
           </div>

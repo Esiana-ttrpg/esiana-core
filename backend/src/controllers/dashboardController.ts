@@ -100,6 +100,7 @@ export async function getDashboardBundle(
       : Promise.resolve(null),
     enabledIds.has('worldEvents')
       ? buildDashboardWorldEventsFeed({
+          actor: req.campaign!.actor,
           campaignId,
           campaignHandle,
           role,
@@ -109,6 +110,7 @@ export async function getDashboardBundle(
       : Promise.resolve(null),
     enabledIds.has('factionsAtWar')
       ? buildFactionConflictFeed({
+          actor: req.campaign!.actor,
           campaignId,
           campaignHandle,
           role,

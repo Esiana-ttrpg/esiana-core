@@ -246,11 +246,12 @@ export async function fetchDowntimeProject(
 export async function fetchDowntimeProjectByWikiPage(
   campaignHandle: string,
   wikiPageId: string,
-): Promise<DowntimeProjectDetail> {
-  const response = await apiFetch<{ project: DowntimeProjectDetail }>(
-    `/campaigns/${campaignHandle}/downtime/projects/by-wiki/${wikiPageId}`,
-  );
-  return response.project;
+): Promise<DowntimeProjectDetail & { canEdit?: boolean; canDelete?: boolean }> {
+  const response = await apiFetch<{
+    project: DowntimeProjectDetail;
+    canEdit?: boolean; canDelete?: boolean;
+  }>(`/campaigns/${campaignHandle}/downtime/projects/by-wiki/${wikiPageId}`);
+  return { ...response.project, canDelete: response.canDelete, canEdit: response.canEdit };
 }
 
 export async function fetchDowntimeProjectOverview(
@@ -353,11 +354,12 @@ export async function fetchDowntimeHavens(
 export async function fetchDowntimeHavenByWikiPage(
   campaignHandle: string,
   wikiPageId: string,
-): Promise<DowntimeHavenDetail> {
-  const response = await apiFetch<{ haven: DowntimeHavenDetail }>(
-    `/campaigns/${campaignHandle}/downtime/havens/by-wiki/${wikiPageId}`,
-  );
-  return response.haven;
+): Promise<DowntimeHavenDetail & { canEdit?: boolean; canDelete?: boolean }> {
+  const response = await apiFetch<{
+    haven: DowntimeHavenDetail;
+    canEdit?: boolean; canDelete?: boolean;
+  }>(`/campaigns/${campaignHandle}/downtime/havens/by-wiki/${wikiPageId}`);
+  return { ...response.haven, canDelete: response.canDelete, canEdit: response.canEdit };
 }
 
 export async function fetchDowntimeHaven(

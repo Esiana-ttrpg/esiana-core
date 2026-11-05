@@ -86,8 +86,9 @@ export async function loadMapPinForPreview(
 export function buildMapPinPreviewPayload(
   pin: LoadedPin,
   role: CampaignMemberRole | null,
+  capabilities?: ReadonlySet<string>,
 ): MapPinPreviewPayload | null {
-  if (!isPinVisibleToRole(pin, role)) return null;
+  if (!isPinVisibleToRole(pin, role, capabilities)) return null;
 
   const page = pin.targetPage;
   if (!page && pin.targetAsset) {
@@ -109,7 +110,7 @@ export function buildMapPinPreviewPayload(
   return {
     title: page.title,
     excerpt: extractWikiPageExcerpt(page.blocks, {
-      includeDmOnlyBlocks: isElevatedMapRole(role),
+      includeDmOnlyBlocks: isElevatedMapRole(role, capabilities),
     }),
     visibility: page.visibility,
     wikiPageId: page.id,

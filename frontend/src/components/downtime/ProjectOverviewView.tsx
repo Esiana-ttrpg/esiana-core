@@ -21,6 +21,8 @@ interface ProjectOverviewViewProps {
   breadcrumbs: Array<{ id: string; title: string }>;
   flatPages: WikiTreeNode[];
   canManage: boolean;
+  canDelete?: boolean;
+  canManageEffects?: boolean;
 }
 
 function formatStatusLabel(status: string): string {
@@ -46,6 +48,8 @@ export function ProjectOverviewView({
   breadcrumbs,
   flatPages,
   canManage,
+  canDelete = false,
+  canManageEffects = false,
 }: ProjectOverviewViewProps) {
   const [overview, setOverview] = useState<DowntimeProjectOverviewPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -115,7 +119,7 @@ export function ProjectOverviewView({
           <span />
         )}
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {canManage ? (
+          {canManage || canDelete ? (
             <button
               type="button"
               onClick={() => setIsManageOpen(true)}
@@ -302,6 +306,9 @@ export function ProjectOverviewView({
       ) : null}
 
       <ManageProjectModal
+        canEdit={canManage}
+        canManageEffects={canManageEffects}
+        canDelete={canDelete}
         open={isManageOpen}
         campaignHandle={campaignHandle}
         projectId={projectId}

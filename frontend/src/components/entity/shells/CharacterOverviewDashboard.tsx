@@ -36,7 +36,8 @@ export function CharacterOverviewDashboard({
   inspectorFocusField,
 }: EntityOverviewProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
-  const canEdit = isEditingPage && isDMUser;
+  // Page ownership / PAGE_EDIT_* already gate isEditingPage — do not require elevated view.
+  const canEdit = isEditingPage;
   const campaignNow = useCampaignChronologyNow(campaignHandle);
   const biographyBlock = findBiographyBlock(blocks);
   const bioContent = (biographyBlock?.content as Record<string, unknown>) ?? { markdown: '' };

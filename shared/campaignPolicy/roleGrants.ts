@@ -1,4 +1,8 @@
-import { CampaignCapabilities, type CampaignCapability } from './capabilities.js';
+import {
+  CampaignCapabilities,
+  CHRONOLOGY_CONTRIBUTION_CAPABILITIES,
+  type CampaignCapability,
+} from './capabilities.js';
 import { MembershipRoles, type MembershipRole } from './membershipRoles.js';
 
 const GM_WRITER_STAFF_PAGE: readonly CampaignCapability[] = [
@@ -19,6 +23,8 @@ const GM_WRITER_DOMAIN: readonly CampaignCapability[] = [
   CampaignCapabilities.QUEST_EDIT,
   CampaignCapabilities.THREAD_EDIT,
   CampaignCapabilities.MAPS_EDIT,
+  CampaignCapabilities.DOWNTIME_CREATE,
+  CampaignCapabilities.DOWNTIME_DELETE_OWNED,
   CampaignCapabilities.DOWNTIME_MANAGE,
   CampaignCapabilities.ADVENTURE_STORYBOARD_EDIT,
   CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
@@ -31,6 +37,7 @@ const GM_WRITER_DOMAIN: readonly CampaignCapability[] = [
 
 const GM_WRITER_NARRATIVE_STAFF: readonly CampaignCapability[] = [
   CampaignCapabilities.CHRONOLOGY_EDIT,
+  ...CHRONOLOGY_CONTRIBUTION_CAPABILITIES,
   CampaignCapabilities.DISCOVERY_REVEAL,
   CampaignCapabilities.NARRATIVE_ELEVATED_VIEW,
   CampaignCapabilities.WIKI_VIEW_PARTY,
@@ -44,6 +51,13 @@ const GM_WRITER_OPERATIONAL: readonly CampaignCapability[] = [
   ...GM_WRITER_DOMAIN,
 ];
 
+/** Player collaborative defaults — create/edit shared lore and events without admin. */
+const PARTICIPANT_CHRONOLOGY_CONTRIBUTE: readonly CampaignCapability[] = [
+  CampaignCapabilities.CHRONOLOGY_EVENT_CREATE,
+  CampaignCapabilities.CHRONOLOGY_EVENT_EDIT_OWNED,
+  CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED,
+];
+
 const PARTICIPANT_COLLABORATIVE: readonly CampaignCapability[] = [
   CampaignCapabilities.PAGE_CREATE,
   CampaignCapabilities.PAGE_EDIT_OWNED,
@@ -52,6 +66,9 @@ const PARTICIPANT_COLLABORATIVE: readonly CampaignCapability[] = [
   CampaignCapabilities.ASSETS_DELETE_OWNED,
   CampaignCapabilities.ASSETS_VIEW,
   CampaignCapabilities.LEDGER_CONTRIBUTE,
+  CampaignCapabilities.DOWNTIME_CREATE,
+  CampaignCapabilities.DOWNTIME_DELETE_OWNED,
+  ...PARTICIPANT_CHRONOLOGY_CONTRIBUTE,
 ];
 
 const PARTICIPANT_BASE: readonly CampaignCapability[] = [
@@ -70,6 +87,11 @@ const OBSERVER_BASE: readonly CampaignCapability[] = [
 
 export type MemberCapabilityFlags = {
   chronologyContributor?: boolean;
+  /**
+   * Legacy Player chronology-management bridge.
+   * Intended for eventual consolidation into capability-matrix overrides.
+   * When true, grants `chronology.edit` (and implied contribution) to Players.
+   */
   allowPlayerChronologyManagement?: boolean;
 };
 
@@ -94,8 +116,10 @@ export function roleCapabilitiesFor(
       break;
     case MembershipRoles.PARTICIPANT:
       for (const c of PARTICIPANT_BASE) caps.add(c);
+      // Legacy: allowPlayerChronologyManagement grants full chronology management.
       if (flags.allowPlayerChronologyManagement) {
         caps.add(CampaignCapabilities.CHRONOLOGY_EDIT);
+        for (const c of CHRONOLOGY_CONTRIBUTION_CAPABILITIES) caps.add(c);
       }
       break;
     case MembershipRoles.OBSERVER:

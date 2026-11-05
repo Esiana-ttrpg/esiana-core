@@ -2,12 +2,19 @@ import type { Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
 import {
   canAccessCampaign,
-  canManageChronology,
   canModifyCampaign,
   normalizeCampaignMemberRole,
 } from '../lib/acl.js';
 import { buildCampaignContext } from '../lib/campaignScopeContext.js';
-import { can as policyCan } from '../../../shared/campaignPolicy/policy.js';
+import {
+  can as policyCan,
+  canCreateChronologyEvent,
+  canCreateChronologyEra,
+  canDeleteChronologyEvent,
+  canEditChronologyEvent,
+  canManageChronology,
+} from '../../../shared/campaignPolicy/policy.js';
+import { canCreateDowntimeResource } from '../../../shared/campaignPolicy/downtimeAccess.js';
 import {
   CampaignCapabilities,
   type CampaignCapability,
@@ -194,6 +201,22 @@ export const requireDiscoveryReveal = requireCapability(
 export const requireDowntimeManage = requireCapability(
   CampaignCapabilities.DOWNTIME_MANAGE,
 );
+
+export function requireDowntimeCreate(
+  req: CampaignScopedRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.campaign?.isMember) {
+    res.status(403).json({ error: 'Forbidden: downtime create not permitted' });
+    return;
+  }
+  if (!canCreateDowntimeResource(req.campaign.actor)) {
+    res.status(403).json({ error: 'Forbidden: downtime create not permitted' });
+    return;
+  }
+  next();
+}
 export const requirePageVisibilityEdit = requireCapability(
   CampaignCapabilities.PAGE_VISIBILITY_EDIT,
 );
@@ -207,8 +230,8 @@ export const requirePageCreate = requireCapability(
   CampaignCapabilities.PAGE_CREATE,
 );
 // Planner / release-rule orchestration is an optional automation surface,
-// separate from basic journal authorship (PAGE_CREATE). Default ON for
-// GM/Writer, overridable OFF/ON per role in Player permissions.
+// separate from basic journal authorship (PAGE_CREATE). Configurable for
+// Writer / Player / Observer via the Collaboration permission matrix.
 export const requireJournalPlannerAccess = requireCapability(
   CampaignCapabilities.JOURNAL_PLANNER_ACCESS,
 );
@@ -229,9 +252,7 @@ export function requireChronologyManager(
     });
     return;
   }
-  if (
-    !policyCan(req.campaign.actor, CampaignCapabilities.CHRONOLOGY_EDIT)
-  ) {
+  if (!canManageChronology(req.campaign.actor)) {
     res.status(403).json({
       error: 'Forbidden: chronology management not permitted',
     });
@@ -239,6 +260,83 @@ export function requireChronologyManager(
   }
   next();
 }
+
+export function requireChronologyEventCreate(
+  req: CampaignScopedRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.campaign?.isMember) {
+    res.status(403).json({ error: 'Forbidden: event creation not permitted' });
+    return;
+  }
+  if (!canCreateChronologyEvent(req.campaign.actor)) {
+    res.status(403).json({ error: 'Forbidden: event creation not permitted' });
+    return;
+  }
+  next();
+}
+
+export function requireChronologyEraCreate(
+  req: CampaignScopedRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.campaign?.isMember) {
+    res.status(403).json({ error: 'Forbidden: era creation not permitted' });
+    return;
+  }
+  if (!canCreateChronologyEra(req.campaign.actor)) {
+    res.status(403).json({ error: 'Forbidden: era creation not permitted' });
+    return;
+  }
+  next();
+}
+
+export function requireChronologyEventEdit(
+  req: CampaignScopedRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.campaign || req.campaign.role === 'OBSERVER') {
+    res.status(403).json({ error: 'Forbidden: event edit not permitted' });
+    return;
+  }
+  // Ownership checked in the controller after the event is loaded.
+  if (
+    !policyCan(req.campaign.actor, CampaignCapabilities.CHRONOLOGY_EVENT_EDIT) &&
+    !policyCan(req.campaign.actor, CampaignCapabilities.CHRONOLOGY_EVENT_EDIT_OWNED)
+  ) {
+    res.status(403).json({ error: 'Forbidden: event edit not permitted' });
+    return;
+  }
+  next();
+}
+
+export function requireChronologyEventDelete(
+  req: CampaignScopedRequest,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.campaign || req.campaign.role === 'OBSERVER') {
+    res.status(403).json({ error: 'Forbidden: event delete not permitted' });
+    return;
+  }
+  if (
+    !policyCan(req.campaign.actor, CampaignCapabilities.CHRONOLOGY_EDIT) &&
+    !policyCan(
+      req.campaign.actor,
+      CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED,
+    )
+  ) {
+    res.status(403).json({ error: 'Forbidden: event delete not permitted' });
+    return;
+  }
+  next();
+}
+
+/** Re-export for controllers that need ownership helpers after load. */
+export { canEditChronologyEvent, canDeleteChronologyEvent };
 
 /** Narrative/table campaign settings — gamemaster. */
 export function requireGamemasterSettings(

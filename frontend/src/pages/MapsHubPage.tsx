@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, Plus } from 'lucide-react';
 import { useWiki } from '@/contexts/WikiContext';
-import { fetchCampaign } from '@/lib/campaigns';
-import { CampaignMemberRoles } from '@/types/domain';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import {
   deleteCampaignMap,
   fetchCampaignMaps,
@@ -50,7 +49,7 @@ interface MapsHubPageProps {
 }
 
 export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps) {
-  const { flatPages } = useWiki();
+  const { flatPages, can: wikiCan } = useWiki();
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const [maps, setMaps] = useState<CampaignMapAsset[]>([]);
   const [discoverySummary, setDiscoverySummary] =
@@ -58,7 +57,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [canManage, setCanManage] = useState(false);
+  const canManage = wikiCan(CampaignCapabilities.MAPS_EDIT);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<MapsBrowseViewMode>('hierarchy');
   const [browseHydrated, setBrowseHydrated] = useState(false);
@@ -76,16 +75,9 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
     setLoading(true);
     setError(null);
     try {
-      const [mapsPayload, campaign] = await Promise.all([
-        fetchCampaignMaps(campaignHandle),
-        fetchCampaign(campaignHandle),
-      ]);
+      const mapsPayload = await fetchCampaignMaps(campaignHandle);
       setMaps(mapsPayload.maps);
       setDiscoverySummary(mapsPayload.discoverySummary ?? null);
-      setCanManage(
-        campaign.role === CampaignMemberRoles.GAMEMASTER ||
-          campaign.role === CampaignMemberRoles.WRITER,
-      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load maps');
     } finally {

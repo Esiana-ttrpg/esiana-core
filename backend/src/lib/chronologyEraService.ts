@@ -9,7 +9,7 @@ import type { CampaignContext } from '../types/api.js';
 import type { ChronologyEra, EraDate, EraDeletionImpact, EraInput } from '../../../shared/chronologyEras.js';
 import { parseCampaignMomentumState } from '../../../shared/factionMomentumMetadata.js';
 import { calendarEpochMinuteForDate, convertEpochToCalendarState, getMonthsForYear, parseMonths, parseLeapRules } from './timeEngine.js';
-import { chronologyCanManage, chronologyCanView, chronologyElevated } from './chronologyAccess.js';
+import { chronologyCanManage, chronologyCanView, chronologyElevated, chronologyCanCreateEra } from './chronologyAccess.js';
 import { canViewWikiPage } from './wikiTree.js';
 import {
   ChronologyActivityEntity,
@@ -126,7 +126,8 @@ async function lock(db: Db, campaignId: string) {
 }
 
 export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, userId?: string, id?: string) {
-  requireManager(ctx);
+  if (id) requireManager(ctx);
+  else if (!chronologyCanCreateEra(ctx)) throw new EraError('Era creation is not permitted.', 403);
   await ensureChronologyEras(ctx.campaignId);
   return prisma.$transaction(async db => {
     await lock(db, ctx.campaignId);
@@ -148,6 +149,7 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
     if (input.description != null && typeof input.description !== 'string') throw new EraError('Description must be text.');
     // Setting current must not silently mutate a hidden current era.
     if (input.isCurrent) {
+      if (!chronologyCanManage(ctx)) throw new EraError('Changing the current era requires chronology management.', 403);
       const current = await db.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true } });
       if (current && !chronologyCanView(ctx, current.visibility)) throw new EraError('The current era cannot be changed with your access.', 403);
       await db.campaignEra.updateMany({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true }, data: { isCurrent: false } });

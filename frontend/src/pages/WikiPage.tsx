@@ -579,7 +579,8 @@ function WikiPageDocument() {
       templateType: pageData?.templateType,
     });
 
-  const canInitializeEventLore = wikiCan(CampaignCapabilities.CHRONOLOGY_EDIT);
+  const canInitializeEventLore =
+    wikiCan(CampaignCapabilities.CHRONOLOGY_EDIT);
 
   const isSessionNotePage = pageData?.templateType === 'SESSION_NOTE';
   const sessionNoteMeta = isSessionNotePage

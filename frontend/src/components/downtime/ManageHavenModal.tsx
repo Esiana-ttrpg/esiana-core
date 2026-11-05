@@ -1,3 +1,5 @@
+import { useWiki } from '@/contexts/WikiContext';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
@@ -93,6 +95,9 @@ export function ManageHavenModal({
   onClose,
   onUpdated,
 }: ManageHavenModalProps) {
+  const { can } = useWiki();
+  const canManageSimulation = can(CampaignCapabilities.DOWNTIME_MANAGE);
+  const availableTabs = HAVEN_TABS.filter(([id]) => id !== 'simulation' || canManageSimulation);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -438,13 +443,13 @@ export function ManageHavenModal({
         passiveBenefits: nextBenefits,
         threats,
         upgrades,
-        havenSimulation: {
+        havenSimulation: canManageSimulation ? {
           enabled: simulationEnabled,
           pausedReason: simulationPausedReason.trim() || null,
           axes: simulationAxes,
           lockedAxes,
-        },
-        ledgerSimulationHints: {
+        } : undefined,
+        ledgerSimulationHints: canManageSimulation ? {
           ledgerUpkeepSuggestionsEnabled,
           upkeepCost: upkeepCost.trim()
             ? Number.parseInt(upkeepCost.trim(), 10)
@@ -452,7 +457,7 @@ export function ManageHavenModal({
           constructionCost: constructionCost.trim()
             ? Number.parseInt(constructionCost.trim(), 10)
             : null,
-        },
+        } : undefined,
       };
 
       if (activitySummary.trim()) {
@@ -502,11 +507,11 @@ export function ManageHavenModal({
               <label className="block md:hidden">
                 <span className="mb-1 block text-xs font-medium text-muted-foreground">Section</span>
                 <select value={activeTab} onChange={(event) => setActiveTab(event.target.value as HavenTab)} className={fieldClass}>
-                  {HAVEN_TABS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+                  {availableTabs.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
                 </select>
               </label>
               <div role="tablist" aria-label="Manage haven sections" className="hidden grid-cols-3 gap-1 md:grid lg:grid-cols-7">
-                {HAVEN_TABS.map(([id, label], index) => <button key={id} id={`manage-haven-tab-${id}`} type="button" role="tab" aria-controls={`manage-haven-panel-${id}`} aria-selected={activeTab === id} tabIndex={activeTab === id ? 0 : -1} onClick={() => setActiveTab(id)} onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); const offset = event.key === 'ArrowRight' ? 1 : -1; const next = HAVEN_TABS[(index + offset + HAVEN_TABS.length) % HAVEN_TABS.length]; setActiveTab(next[0]); requestAnimationFrame(() => document.getElementById(`manage-haven-tab-${next[0]}`)?.focus()); }} className={`rounded px-2 py-2 text-xs font-medium ${activeTab === id ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{label}</button>)}
+                {availableTabs.map(([id, label], index) => <button key={id} id={`manage-haven-tab-${id}`} type="button" role="tab" aria-controls={`manage-haven-panel-${id}`} aria-selected={activeTab === id} tabIndex={activeTab === id ? 0 : -1} onClick={() => setActiveTab(id)} onKeyDown={(event) => { if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return; event.preventDefault(); const offset = event.key === 'ArrowRight' ? 1 : -1; const next = availableTabs[(index + offset + availableTabs.length) % availableTabs.length]; setActiveTab(next[0]); requestAnimationFrame(() => document.getElementById(`manage-haven-tab-${next[0]}`)?.focus()); }} className={`rounded px-2 py-2 text-xs font-medium ${activeTab === id ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{label}</button>)}
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
@@ -872,7 +877,7 @@ export function ManageHavenModal({
               </div>
             </div>
 
-            <div className={`${sectionClass} ${activeTab === 'simulation' ? '' : 'hidden'}`}>
+            <div className={`${sectionClass} ${activeTab === 'simulation' && canManageSimulation ? '' : 'hidden'}`}>
               <p className="text-sm font-medium text-foreground">Time simulation</p>
               <p className="text-xs text-muted-foreground">
                 When enabled, this haven drifts with campaign time (opt-in per haven).
@@ -940,7 +945,7 @@ export function ManageHavenModal({
               })}
             </div>
 
-            <details className={`${sectionClass} ${activeTab === 'simulation' ? '' : 'hidden'}`}>
+            <details className={`${sectionClass} ${activeTab === 'simulation' && canManageSimulation ? '' : 'hidden'}`}>
               <summary className="cursor-pointer text-sm font-medium text-foreground">
                 Treasury impact (optional)
               </summary>

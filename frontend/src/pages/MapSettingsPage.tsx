@@ -13,9 +13,8 @@ import {
   updateCampaignMapDisplayName,
 } from '@/lib/maps';
 import { campaignPath, campaignWikiPath, readCampaignHandle } from '@/lib/campaignPaths';
-import { fetchCampaign } from '@/lib/campaigns';
-import { CampaignMemberRoles } from '@/types/domain';
 import { useWiki } from '@/contexts/WikiContext';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { mapDisplayTitle } from '@/types/maps';
 import type { CampaignMapDetail } from '@/types/maps';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -30,12 +29,12 @@ export function MapSettingsPage() {
   const campaignHandle = readCampaignHandle(params);
   const assetId = params.assetId ?? '';
   const navigate = useNavigate();
-  const { flatPages } = useWiki();
+  const { flatPages, campaign, can: wikiCan } = useWiki();
 
   const [detail, setDetail] = useState<CampaignMapDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [canManage, setCanManage] = useState(false);
+  const canManage = campaign ? wikiCan(CampaignCapabilities.MAPS_EDIT) : Boolean(detail?.canEdit);
   const [displayName, setDisplayName] = useState('');
   const [visibility, setVisibility] = useState('Public');
   const [savingName, setSavingName] = useState(false);
@@ -65,17 +64,10 @@ export function MapSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [mapDetail, campaign] = await Promise.all([
-        fetchCampaignMap(campaignHandle, assetId),
-        fetchCampaign(campaignHandle),
-      ]);
+      const mapDetail = await fetchCampaignMap(campaignHandle, assetId);
       setDetail(mapDetail);
       setDisplayName(mapDetail.map.displayName ?? '');
       setVisibility(mapDetail.map.visibility ?? 'Public');
-      setCanManage(
-        campaign.role === CampaignMemberRoles.GAMEMASTER ||
-          campaign.role === CampaignMemberRoles.WRITER,
-      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load map settings');
     } finally {

@@ -17,6 +17,7 @@ interface ChronologyEventSidebarProps {
   editableEvents: TimelineBaseEventRecord[];
   calendarLike: FantasyCalendarLike | null;
   canManage: boolean;
+  canReveal?: boolean;
   dateSeed?: ChronologyDateParts | null;
   occurrence?: TimelineOccurrenceRecord | null;
   open: boolean;
@@ -37,6 +38,7 @@ export function ChronologyEventSidebar({
   editableEvents,
   calendarLike,
   canManage,
+  canReveal = false,
   dateSeed = null,
   occurrence = null,
   open,
@@ -55,7 +57,7 @@ export function ChronologyEventSidebar({
       <div className="space-y-3 text-sm">
         {comparisonContext && <div className="space-y-1 text-xs text-muted">{comparisonContext}</div>}
         <p className="text-base font-semibold text-foreground">{baseEvent.title}</p>
-        {canManage && onRevealEvent && (
+        {canReveal && onRevealEvent && (
           <button type="button" onClick={() => void onRevealEvent(baseEvent.id)}
             className="min-h-11 rounded border border-border px-3 text-xs text-muted hover:text-foreground">
             Reveal To Party
@@ -70,7 +72,7 @@ export function ChronologyEventSidebar({
             categories={categories}
             editableEvents={editableEvents}
             calendarLike={calendarLike}
-            canManage={canManage}
+            canManage={baseEvent.canEdit ?? false}
             dateSeed={dateSeed}
             onMutated={onMutated}
             onDeleted={onDeleted}

@@ -28,10 +28,9 @@ export type CanonicalEntityCategoryInput = {
 
 function isPageUnderCategoryTitle(
   pageId: string,
-  flatPages: readonly WikiPageWorkspaceInput[],
+  pageById: ReadonlyMap<string, WikiPageWorkspaceInput>,
   categoryTitle: string,
 ): boolean {
-  const pageById = new Map(flatPages.map((p) => [p.id, p]));
   let current = pageById.get(pageId)?.parentId ?? null;
   const visited = new Set<string>();
   while (current) {
@@ -64,13 +63,14 @@ const CATEGORY_TITLE_TO_ENTITY_KEY: Record<string, string> = {
 export function resolveCanonicalEntityCategory(
   page: CanonicalEntityCategoryInput,
   flatPages: readonly WikiPageWorkspaceInput[] = [],
+  pageById: ReadonlyMap<string, WikiPageWorkspaceInput> = new Map(flatPages.map((page) => [page.id, page])),
 ): string | null {
   const fromMetadata = readEntityCategoryFromMetadata(page.metadata);
   if (fromMetadata) return fromMetadata;
 
   if (flatPages.length > 0) {
     for (const [title, key] of Object.entries(CATEGORY_TITLE_TO_ENTITY_KEY)) {
-      if (isPageUnderCategoryTitle(page.id, flatPages, title)) {
+      if (isPageUnderCategoryTitle(page.id, pageById, title)) {
         return key;
       }
     }
@@ -88,6 +88,7 @@ export function resolveCanonicalEntityCategory(
 export function isCharacterEntityPage(
   page: CanonicalEntityCategoryInput,
   flatPages: readonly WikiPageWorkspaceInput[] = [],
+  pageById?: ReadonlyMap<string, WikiPageWorkspaceInput>,
 ): boolean {
-  return resolveCanonicalEntityCategory(page, flatPages) === 'characters';
+  return resolveCanonicalEntityCategory(page, flatPages, pageById) === 'characters';
 }

@@ -3,8 +3,9 @@ import { chronologyRouteMap } from '../lib/chronologyRoutes.js';
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
-import { canManageChronology } from '../lib/acl.js';
-import { chronologyCanView, chronologyElevated } from '../lib/chronologyAccess.js';
+import { canManageChronology as policyCanManageChronology } from '../../../shared/campaignPolicy/policy.js';
+import { chronologyCanView, chronologyElevated, chronologyCanEditEvent, chronologyCanDeleteEvent } from '../lib/chronologyAccess.js';
+import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import { ensureChronologyEras, listChronologyEras, eraMatchesMinute } from '../lib/chronologyEraService.js';
 import { calendarEpochMinuteForDate } from '../lib/timeEngine.js';
 import { type EraHistory } from '../lib/eraOccurrenceHistory.js';
@@ -36,10 +37,7 @@ export async function getChronologyTimelineBundle(
   res: Response,
 ): Promise<void> {
   const campaignId = req.campaign!.campaignId;
-  const canManage = canManageChronology(
-    req.campaign?.role ?? null,
-    req.campaign?.allowPlayerChronologyManagement ?? false,
-  );
+  const canManage = policyCanManageChronology(req.campaign!.actor);
 
   const windowMode = String(req.query.windowMode ?? 'YEAR_RANGE');
   const from = String(req.query.from ?? '0');
@@ -113,6 +111,7 @@ export async function getChronologyTimelineBundle(
         targetDay: true,
         targetEpochMinute: true,
         recurrenceRule: true,
+        createdByUserId: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -133,6 +132,7 @@ export async function getChronologyTimelineBundle(
     },
     allowPlayerChronologyManagement:
       req.campaign?.allowPlayerChronologyManagement ?? false,
+    capabilityOverrides: narrativeCapabilitiesFromActor(req.campaign!.actor),
   });
   const visibleEvents = chronologyElevated(req.campaign!)
     ? events
@@ -157,6 +157,8 @@ export async function getChronologyTimelineBundle(
   const baseEvents = visibleEvents.map((event) => ({
     ...event,
     ...routes.get(event.id),
+    canEdit: chronologyCanEditEvent(req.campaign!, event.createdByUserId),
+    canDelete: chronologyCanDeleteEvent(req.campaign!, event.createdByUserId),
     wikiPageId: event.wikiPageId && visiblePageIds.has(event.wikiPageId) ? event.wikiPageId : null,
     targetEpochMinute: event.targetEpochMinute?.toString() ?? null,
     createdAt: event.createdAt.toISOString(),
@@ -258,10 +260,7 @@ export async function getChronologyOverlayBundle(
   const campaignHandle =
     req.campaign!.campaignHandle ??
     String(req.params.campaignHandle ?? req.params.campaignId ?? '');
-  const canManage = canManageChronology(
-    req.campaign?.role ?? null,
-    req.campaign?.allowPlayerChronologyManagement ?? false,
-  );
+  const canManage = policyCanManageChronology(req.campaign!.actor);
 
   const windowMode = String(req.query.windowMode ?? 'YEAR_RANGE');
   const from = String(req.query.from ?? '0');
@@ -274,6 +273,7 @@ export async function getChronologyOverlayBundle(
   );
 
   const bundle = await buildConvergenceOverlay({
+    capabilityOverrides: narrativeCapabilitiesFromActor(req.campaign!.actor),
     campaignId,
     campaignHandle,
     elevatedNarrativeView: chronologyElevated(req.campaign!),

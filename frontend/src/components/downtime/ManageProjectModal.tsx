@@ -30,6 +30,9 @@ import type { WikiTreeNode } from '@/types/wiki';
 
 interface ManageProjectModalProps {
   open: boolean;
+  canDelete?: boolean;
+  canEdit?: boolean;
+  canManageEffects?: boolean;
   campaignHandle: string;
   projectId: string;
   flatPages: WikiTreeNode[];
@@ -69,6 +72,9 @@ function formatStatusOption(status: ProjectStatus): string {
 
 export function ManageProjectModal({
   open,
+  canDelete = false,
+  canEdit = false,
+  canManageEffects = false,
   campaignHandle,
   projectId,
   flatPages,
@@ -222,7 +228,7 @@ export function ManageProjectModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!canEdit || !title.trim()) return;
 
     setSubmitting(true);
     setError(null);
@@ -242,7 +248,7 @@ export function ManageProjectModal({
         havenPageId,
         resources,
         blockers,
-        outcomes: buildOutcomesPayload(),
+        outcomes: canManageEffects ? buildOutcomesPayload() : undefined,
       });
 
       onUpdated?.();
@@ -255,6 +261,7 @@ export function ManageProjectModal({
   }
 
   async function handleDelete() {
+    if (!canDelete) return;
     if (!window.confirm('Delete this planned operation? This cannot be undone.')) return;
     setSubmitting(true);
     setError(null);
@@ -297,6 +304,7 @@ export function ManageProjectModal({
               <p className="text-sm text-muted-foreground">Loading…</p>
             ) : (
               <>
+                <fieldset disabled={!canEdit} className="contents">
                 <section className={sectionClass}>
                   <label className="block text-sm text-muted-foreground">
                     Title
@@ -370,7 +378,7 @@ export function ManageProjectModal({
                       disabled={isTerminal}
                     >
                       {allowedStatuses.map((s) => (
-                        <option key={s} value={s}>
+                        <option key={s} value={s} disabled={s === 'COMPLETED' && outcomes.length > 0 && !canManageEffects}>
                           {formatStatusOption(s)}
                         </option>
                       ))}
@@ -530,7 +538,7 @@ export function ManageProjectModal({
                       </div>
                     </section>
 
-                    <details className={sectionClass}>
+                    {canManageEffects ? <details className={sectionClass}>
                       <summary className="cursor-pointer text-sm font-medium text-foreground">
                         Treasury impact (optional)
                       </summary>
@@ -568,7 +576,7 @@ export function ManageProjectModal({
                           />
                         </label>
                       </div>
-                    </details>
+                    </details> : null}
                   </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
@@ -576,7 +584,8 @@ export function ManageProjectModal({
                   </p>
                 )}
 
-                {status === 'PLANNED' ? (
+                </fieldset>
+                {canDelete && status === 'PLANNED' ? (
                   <section className={sectionClass}>
                     <button
                       type="button"
@@ -604,7 +613,7 @@ export function ManageProjectModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || loading || !title.trim() || isTerminal}
+              disabled={!canEdit || submitting || loading || !title.trim() || isTerminal}
               className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
             >
               {submitting ? 'Saving…' : 'Save changes'}
