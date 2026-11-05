@@ -8,7 +8,6 @@ import {
   publicCampaignAccessStatusMessage,
   resolveAnonymousCampaignAccess,
   resolvePublicCampaignAccessStatus,
-  resolvePublicPreviewGate,
 } from './publicAccess.js';
 
 describe('public access gates', () => {
@@ -61,37 +60,6 @@ describe('public access gates', () => {
         campaignAllowsPublic: true,
       }),
       false,
-    );
-  });
-
-  it('keeps Public preview selectable and distinguishes instance vs campaign blocks', () => {
-    assert.equal(
-      resolvePublicPreviewGate({
-        instanceRequiresLogin: true,
-        campaignAllowsPublic: false,
-      }),
-      'campaign',
-    );
-    assert.equal(
-      resolvePublicPreviewGate({
-        instanceRequiresLogin: true,
-        campaignAllowsPublic: true,
-      }),
-      'instance-notice',
-    );
-    assert.equal(
-      resolvePublicPreviewGate({
-        instanceRequiresLogin: false,
-        campaignAllowsPublic: false,
-      }),
-      'campaign',
-    );
-    assert.equal(
-      resolvePublicPreviewGate({
-        instanceRequiresLogin: false,
-        campaignAllowsPublic: true,
-      }),
-      'none',
     );
   });
 

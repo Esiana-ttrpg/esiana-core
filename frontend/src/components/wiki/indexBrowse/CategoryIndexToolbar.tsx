@@ -3,13 +3,17 @@ import { CategoryIndexViewToggle } from '@/components/wiki/indexBrowse/CategoryI
 import {
   WorkspaceActionBar,
   type WorkspaceCreateAction,
+  type WorkspaceCreateMenu,
 } from '@/components/layout/WorkspaceActionBar';
 import type { CategoryIndexViewMode } from '@/lib/categoryIndexBrowseStorage';
 
 interface CategoryIndexToolbarProps {
+  title?: ReactNode;
+  audience?: ReactNode;
   createLabel: string;
   onCreate: () => void;
   createAction?: ReactNode | null;
+  createMenu?: WorkspaceCreateMenu;
   resultCountLabel?: string | null;
   refineControl?: ReactNode;
   sortControl?: ReactNode;
@@ -30,9 +34,12 @@ interface CategoryIndexToolbarProps {
 }
 
 export function CategoryIndexToolbar({
+  title,
+  audience,
   createLabel,
   onCreate,
   createAction,
+  createMenu,
   refineControl,
   sortControl,
   viewMode,
@@ -51,20 +58,23 @@ export function CategoryIndexToolbar({
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
         showHierarchy={allowedViews?.includes('hierarchy') ?? true}
+        allowedViews={allowedViews}
         tableViewTitle={tableViewTitle}
         hierarchyLabel={hierarchyLabel}
       />
     ) : null);
 
-  const createSlot: WorkspaceCreateAction | ReactNode | null =
-    createAction === null
+  const createSlot: WorkspaceCreateAction | WorkspaceCreateMenu | ReactNode | null =
+    createMenu ?? (createAction === null
       ? null
       : createAction === undefined
         ? { label: createLabel, onClick: onCreate }
-        : createAction;
+        : createAction);
 
   return (
     <WorkspaceActionBar
+      title={title}
+      audience={audience}
       refine={refineControl}
       sort={sortControl}
       view={viewSlot}

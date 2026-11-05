@@ -306,3 +306,87 @@ export function readStoredMapsHubViewModeFromLegacy(): MapsHubBrowseSnapshot['vi
     return null;
   }
 }
+
+/** Scoped category browse preferences. URL values are transient overrides. */
+export interface WorkspaceBrowseState {
+  searchQuery: string;
+  refineState: CategoryIndexRefineState;
+  group: string;
+  sort: string;
+  direction: 'asc' | 'desc';
+  viewMode: CategoryIndexViewMode;
+}
+export interface WorkspaceBrowseConfig {
+  defaults: WorkspaceBrowseState;
+  groups: readonly string[];
+  sorts: readonly string[];
+  views: readonly CategoryIndexViewMode[];
+  facetIds: readonly string[];
+}
+export interface WorkspaceBrowseScope { userId: string; campaignHandle: string; workspaceId: string }
+
+function scopedKey(scope: WorkspaceBrowseScope, part: 'browse' | 'view'): string {
+  return `esiana.workspaceBrowse.v1.${part}.${JSON.stringify([scope.userId, scope.campaignHandle, scope.workspaceId])}`;
+}
+function validRefine(value: unknown, facetIds: readonly string[]): CategoryIndexRefineState | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const result: CategoryIndexRefineState = {};
+  for (const [facet, options] of Object.entries(value)) {
+    if (!facetIds.includes(facet) || !options || typeof options !== 'object' || Array.isArray(options)) continue;
+    const entries = Object.entries(options).filter(([, selected]) => typeof selected === 'boolean') as [string, boolean][];
+    result[facet] = Object.fromEntries(entries);
+  }
+  return result;
+}
+function parseJson(value: string | null): unknown {
+  try { return value === null ? undefined : JSON.parse(value); } catch { return undefined; }
+}
+export function normalizeWorkspaceBrowseState(value: unknown, config: WorkspaceBrowseConfig): WorkspaceBrowseState {
+  const input = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const { defaults } = config;
+  return {
+    searchQuery: typeof input.searchQuery === 'string' ? input.searchQuery : defaults.searchQuery,
+    refineState: validRefine(input.refineState, config.facetIds) ?? defaults.refineState,
+    group: typeof input.group === 'string' && config.groups.includes(input.group) ? input.group : defaults.group,
+    sort: typeof input.sort === 'string' && config.sorts.includes(input.sort) ? input.sort : defaults.sort,
+    direction: input.direction === 'asc' || input.direction === 'desc' ? input.direction : defaults.direction,
+    viewMode: typeof input.viewMode === 'string' && config.views.includes(input.viewMode as CategoryIndexViewMode)
+      ? input.viewMode as CategoryIndexViewMode : defaults.viewMode,
+  };
+}
+export function readWorkspaceBrowseState(scope: WorkspaceBrowseScope, config: WorkspaceBrowseConfig): WorkspaceBrowseState {
+  try {
+    const browse = parseJson(localStorage.getItem(scopedKey(scope, 'browse')));
+    const view = parseJson(localStorage.getItem(scopedKey(scope, 'view')));
+    return normalizeWorkspaceBrowseState({ ...(browse && typeof browse === 'object' ? browse : {}), viewMode: view }, config);
+  } catch { return normalizeWorkspaceBrowseState({}, config); }
+}
+export function writeWorkspaceBrowseState(scope: WorkspaceBrowseScope, state: WorkspaceBrowseState): void {
+  try {
+    const { viewMode, ...browse } = state;
+    localStorage.setItem(scopedKey(scope, 'browse'), JSON.stringify(browse));
+    localStorage.setItem(scopedKey(scope, 'view'), JSON.stringify(viewMode));
+  } catch { /* Storage can be unavailable. */ }
+}
+/** URL parameters override only the corresponding saved fields; invalid explicit values use defaults. */
+export function resolveWorkspaceBrowseUrl(saved: WorkspaceBrowseState, params: URLSearchParams, config: WorkspaceBrowseConfig): WorkspaceBrowseState {
+  const overrides: Record<string, unknown> = {};
+  const fields = { q: 'searchQuery', filters: 'refineState', group: 'group', sort: 'sort', direction: 'direction', view: 'viewMode' } as const;
+  for (const [param, field] of Object.entries(fields)) {
+    if (params.has(param)) overrides[field] = param === 'filters' ? parseJson(params.get(param)) : params.get(param);
+  }
+  return normalizeWorkspaceBrowseState({ ...saved, ...overrides }, config);
+}
+export function writeWorkspaceBrowseUrl(params: URLSearchParams, state: WorkspaceBrowseState): URLSearchParams {
+  const next = new URLSearchParams(params);
+  next.set('q', state.searchQuery);
+  const excluded = Object.fromEntries(Object.entries(state.refineState).map(([facet, options]) => [
+    facet, Object.fromEntries(Object.entries(options).filter(([, selected]) => !selected)),
+  ]).filter(([, options]) => Object.keys(options).length > 0));
+  next.set('filters', JSON.stringify(excluded));
+  next.set('group', state.group);
+  next.set('sort', state.sort);
+  next.set('direction', state.direction);
+  next.set('view', state.viewMode);
+  return next;
+}

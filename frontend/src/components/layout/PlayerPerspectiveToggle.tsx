@@ -1,11 +1,13 @@
+import { useId } from 'react';
+
 interface PlayerPerspectiveToggleProps {
-  value: 'dm' | 'party' | 'public';
-  onChange: (value: 'dm' | 'party' | 'public') => void;
+  value: 'dm' | 'party';
+  onChange: (value: 'dm' | 'party') => void;
   className?: string;
   dmLabel?: string;
   partyLabel?: string;
-  publicLabel?: string;
   ariaLabel?: string;
+  previewUnavailableReason?: string;
 }
 
 const segmentClass =
@@ -16,14 +18,16 @@ export function PlayerPerspectiveToggle({
   onChange,
   className = '',
   dmLabel = 'GM',
-  partyLabel = 'Player',
-  publicLabel,
+  partyLabel = 'Party',
   ariaLabel = 'View perspective',
+  previewUnavailableReason,
 }: PlayerPerspectiveToggleProps) {
+  const descriptionId = useId();
   return (
     <div
       role="group"
       aria-label={ariaLabel}
+      aria-describedby={value === 'party' ? descriptionId : undefined}
       className={`inline-flex shrink-0 rounded-lg border border-border bg-surface/80 p-0.5 ${className}`}
     >
       <button
@@ -41,8 +45,10 @@ export function PlayerPerspectiveToggle({
       <button
         type="button"
         aria-pressed={value === 'party'}
+        title={previewUnavailableReason ?? 'Shared party content; individual access may differ'}
+        disabled={Boolean(previewUnavailableReason)}
         onClick={() => onChange('party')}
-        className={`${segmentClass} ${
+        className={`${segmentClass} disabled:cursor-not-allowed disabled:opacity-50 ${
           value === 'party'
             ? 'bg-primary/15 text-primary shadow-sm'
             : 'text-muted hover:text-foreground'
@@ -50,20 +56,9 @@ export function PlayerPerspectiveToggle({
       >
         {partyLabel}
       </button>
-      {publicLabel ? (
-        <button
-          type="button"
-          aria-pressed={value === 'public'}
-          onClick={() => onChange('public')}
-          className={`${segmentClass} ${
-            value === 'public'
-              ? 'bg-primary/15 text-primary shadow-sm'
-              : 'text-muted hover:text-foreground'
-          }`}
-        >
-          {publicLabel}
-        </button>
-      ) : null}
+      {value === 'party' ? <span id={descriptionId} className="sr-only">
+        Party preview shows shared content; individual access may differ.
+      </span> : null}
     </div>
   );
 }

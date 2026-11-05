@@ -164,9 +164,19 @@ export function patchThreadsLens(
 
 export function readAdventurePerspective(
   campaignHandle: string,
-): AdventurePreviewPerspective {
-  const stored = readCampaignWorkspaceState(campaignHandle).adventurePerspective;
-  return isAdventurePreviewPerspective(stored) ? stored : 'dm';
+): AdventurePreviewPerspective | null {
+  const state = readCampaignWorkspaceState(campaignHandle);
+  const stored = state.adventurePerspective;
+  if (isAdventurePreviewPerspective(stored)) return stored;
+  if (stored !== undefined && typeof window !== 'undefined') {
+    try {
+      delete state.adventurePerspective;
+      window.localStorage.setItem(storageKey(campaignHandle), JSON.stringify(state));
+    } catch {
+      // A blocked or full store must not turn an invalid preference into authority.
+    }
+  }
+  return null;
 }
 
 export function patchAdventurePerspective(

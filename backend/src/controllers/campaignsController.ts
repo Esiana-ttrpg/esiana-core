@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { rejectUnverifiedAudiencePreview } from '../lib/adventureAudiencePreview.js';
 import { AudioError } from '../lib/audioCore.js';
 import { Prisma, type FantasyCalendar } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
@@ -10,6 +11,8 @@ import {
   canModifyCampaignAsGamemaster,
   isCampaignOwner,
   normalizeCampaignMemberRole,
+  canManageNotebooksFromActor,
+  hasElevatedNarrativeView,
 } from '../lib/acl.js';
 import { can } from '../../../shared/campaignPolicy/policy.js';
 import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
@@ -1769,6 +1772,9 @@ export async function getCampaignTimeTracking(
   req: CampaignScopedRequest,
   res: Response,
 ): Promise<void> {
+  const ctx = req.campaign!;
+  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
+    canManageNotebooksFromActor(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const campaignId = req.campaign!.campaignId;
   const campaign = await prisma.campaign.findUnique({
     where: { id: campaignId },

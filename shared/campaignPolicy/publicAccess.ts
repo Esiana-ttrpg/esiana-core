@@ -91,22 +91,3 @@ export function allowsAnonymousCampaignAccess(input: {
 }): boolean {
   return resolveAnonymousCampaignAccess(input) === 'allowed';
 }
-
-/**
- * Adventure Public preview stays selectable regardless of the instance gate.
- * Campaign-off is an empty state. Instance-off is a notice over eligible content.
- */
-export type PublicPreviewGate = 'none' | 'campaign' | 'instance-notice';
-
-export function resolvePublicPreviewGate(input: {
-  instanceRequiresLogin?: boolean;
-  campaignAllowsPublic: boolean;
-}): PublicPreviewGate {
-  if (!input.campaignAllowsPublic) return 'campaign';
-  const requireLogin =
-    input.instanceRequiresLogin === undefined
-      ? instanceRequiresLogin()
-      : input.instanceRequiresLogin;
-  if (requireLogin) return 'instance-notice';
-  return 'none';
-}

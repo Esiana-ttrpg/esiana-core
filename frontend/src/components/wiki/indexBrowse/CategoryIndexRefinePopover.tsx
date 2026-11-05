@@ -23,10 +23,28 @@ interface CategoryIndexRefinePopoverProps {
   customBody?: ReactNode;
   activeCount?: number;
   onResetRefine?: () => void;
+  onResetFilters?: () => void;
+  onResetAll?: () => void;
   /** In-popover list filter — only when meaningful refine (facets or custom body) exists */
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  /** Optional presentation controls; callers apply these to their visible records. */
+  grouping?: RefineChoiceControl;
+  sorting?: RefineSortControl;
+}
+
+export interface RefineChoiceControl {
+  value: string;
+  defaultValue: string;
+  options: readonly { value: string; label: string }[];
+  onChange: (value: string) => void;
+}
+
+export interface RefineSortControl extends RefineChoiceControl {
+  direction: 'asc' | 'desc';
+  defaultDirection: 'asc' | 'desc';
+  onDirectionChange: (direction: 'asc' | 'desc') => void;
 }
 
 function chipClass(active: boolean): string {
@@ -44,9 +62,13 @@ export function CategoryIndexRefinePopover({
   customBody,
   activeCount,
   onResetRefine,
+  onResetFilters,
+  onResetAll,
   searchQuery,
   onSearchChange,
   searchPlaceholder,
+  grouping,
+  sorting,
 }: CategoryIndexRefinePopoverProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -58,10 +80,15 @@ export function CategoryIndexRefinePopover({
     children,
     categoryTitle,
   );
-  const hasActive =
+  const hasPresentationChange = Boolean(
+    (grouping && grouping.value !== grouping.defaultValue) ||
+    (sorting && (sorting.value !== sorting.defaultValue || sorting.direction !== sorting.defaultDirection)),
+  );
+  const hasFilters = (
     activeCount !== undefined
       ? activeCount > 0
-      : hasFacetRefine || hasTextFilter;
+      : hasFacetRefine || hasTextFilter);
+  const hasActive = hasPresentationChange || hasFilters;
 
   useEffect(() => {
     if (!open) return;
@@ -74,7 +101,7 @@ export function CategoryIndexRefinePopover({
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [open]);
 
-  if (facetDefs.length === 0 && !customBody) return null;
+  if (facetDefs.length === 0 && !customBody && !grouping && !sorting) return null;
 
   const showInPopoverSearch = Boolean(onSearchChange && searchPlaceholder);
 
@@ -95,7 +122,7 @@ export function CategoryIndexRefinePopover({
         Refine
         {hasActive && (
           <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium">
-            {activeCount ?? '•'}
+            {activeCount !== undefined && !hasPresentationChange ? activeCount : '•'}
           </span>
         )}
       </button>
@@ -155,10 +182,40 @@ export function CategoryIndexRefinePopover({
             </div>
           )}
 
-          {hasActive && (
+          {grouping ? (
+            <label className={`mt-3 block ${META_SECTION_LABEL_CLASS}`}>
+              Group by
+              <select value={grouping.value} onChange={event => grouping.onChange(event.target.value)}
+                className="mt-1 block w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-foreground">
+                {grouping.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          ) : null}
+          {sorting ? (
+            <div className="mt-3 flex gap-2">
+              <label className={`min-w-0 flex-1 ${META_SECTION_LABEL_CLASS}`}>
+                Sort by
+                <select value={sorting.value} onChange={event => sorting.onChange(event.target.value)}
+                  className="mt-1 block w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-foreground">
+                  {sorting.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label className={META_SECTION_LABEL_CLASS}>
+                Direction
+                <select value={sorting.direction} onChange={event => sorting.onDirectionChange(event.target.value as 'asc' | 'desc')}
+                  className="mt-1 block rounded border border-border bg-surface px-2 py-1.5 text-sm text-foreground">
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
+
+          {hasFilters && (
             <button
               type="button"
               onClick={() => {
+                if (onResetFilters) { onResetFilters(); return; }
                 if (onResetRefine) {
                   onResetRefine();
                 } else {
@@ -170,8 +227,22 @@ export function CategoryIndexRefinePopover({
               }}
               className="mt-3 text-xs text-muted underline-offset-2 hover:text-primary hover:underline"
             >
-              Reset refine
+              {grouping || sorting ? 'Reset filters' : 'Reset refine'}
             </button>
+          )}
+          {(grouping || sorting) && hasActive && (
+            <button type="button" className="ml-3 mt-3 text-xs text-muted underline-offset-2 hover:text-primary hover:underline"
+              onClick={() => {
+                if (onResetAll) { onResetAll(); return; }
+                if (onResetRefine) onResetRefine();
+                else onRefineChange(resetCategoryIndexRefine(facetDefs, children, categoryTitle));
+                onSearchChange?.('');
+                if (grouping) grouping.onChange(grouping.defaultValue);
+                if (sorting) {
+                  sorting.onChange(sorting.defaultValue);
+                  sorting.onDirectionChange(sorting.defaultDirection);
+                }
+              }}>Reset all</button>
           )}
 
           <p className="mt-3 text-[11px] text-muted">
