@@ -327,7 +327,7 @@ export function IndexGridView({
                         className="flex min-w-0 items-start gap-2 text-sm font-medium text-primary hover:text-primary"
                       >
                         <FileText className="mt-0.5 size-4 shrink-0" />
-                        <span className="break-words">{child.title}</span>
+                        <span className="min-w-0 break-words">{child.title}</span>
                       </Link>
                     )}
                     <DiscoveryStateBadge discovery={child.discovery} surface="browse" compact />
