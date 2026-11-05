@@ -73,11 +73,6 @@ function AdventureViewContents({ campaignHandle, categoryPageId }: AdventureView
     setHeaderActions(actions);
   }, []);
 
-  useEffect(() => {
-    headerActionsRef.current = null;
-    setHeaderActions(null);
-  }, [activeView, threadsLens]);
-
   const showRefineToolbar = activeView === 'unresolved';
   const storyRefineActive =
     Boolean(filters.recent) || Boolean((filters.search ?? '').trim().length > 0);
@@ -163,38 +158,35 @@ function AdventureViewContents({ campaignHandle, categoryPageId }: AdventureView
       <CategoryHubShell
         composition="hub"
         title="Adventure Board"
-        beforeActions={isDMUser ? <AdventurePlayerPreviewToggle /> : null}
+        headerDensity="compact"
         belowToolbar={
           <StoryViewTabs basePath={basePath} activeView={activeView} isDMUser={isDMUser} />
         }
         actions={
-          <>
-            {headerActions}
-            {showRefineToolbar ? (
-              <WorkspaceActionBar
-                refine={
-                  <CategoryIndexRefinePopover
-                    facetDefs={[]}
-                    refineState={{}}
-                    children={[]}
-                    categoryTitle="Adventure"
-                    onRefineChange={() => {}}
-                    activeCount={storyRefineActive ? 1 : undefined}
-                    onResetRefine={() => handleFiltersChange({ search: '', recent: false })}
-                    searchQuery={filters.search ?? ''}
-                    onSearchChange={(value) => handleFiltersChange({ search: value })}
-                    searchPlaceholder="Filter narrative stateâ€¦"
-                    customBody={
-                      <StoryNarrativeFilterPanel
-                        filters={filters}
-                        onFiltersChange={handleFiltersChange}
-                      />
-                    }
+          <WorkspaceActionBar
+            audience={isDMUser ? <AdventurePlayerPreviewToggle /> : null}
+            refine={
+              showRefineToolbar ? <CategoryIndexRefinePopover
+                facetDefs={[]}
+                refineState={{}}
+                children={[]}
+                categoryTitle="Adventure"
+                onRefineChange={() => {}}
+                activeCount={storyRefineActive ? 1 : undefined}
+                onResetRefine={() => handleFiltersChange({ search: '', recent: false })}
+                searchQuery={filters.search ?? ''}
+                onSearchChange={(value) => handleFiltersChange({ search: value })}
+                searchPlaceholder="Filter narrative stateâ€¦"
+                customBody={
+                  <StoryNarrativeFilterPanel
+                    filters={filters}
+                    onFiltersChange={handleFiltersChange}
                   />
                 }
-              />
-            ) : null}
-          </>
+              /> : null
+            }
+            trailing={headerActions}
+          />
         }
         contextual={contextualRail}
         inlineContextual={showContextualRail}

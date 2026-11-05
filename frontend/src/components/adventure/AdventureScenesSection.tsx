@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
 import { fetchAdventureHub, type AdventureHubPayload } from '@/lib/adventure';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SceneEditorCard } from '@/components/progression/SceneEditorCard';
@@ -45,14 +45,7 @@ export function AdventureScenesSection({
 
   const createButton = useMemo(
     () => (
-      <button
-        type="button"
-        onClick={() => setIsCreateSceneOpen(true)}
-        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
-      >
-        <Plus className="size-4" />
-        New Scene
-      </button>
+      <WorkspaceActionBar create={{ label: 'New Scene', onClick: () => setIsCreateSceneOpen(true) }} />
     ),
     [],
   );
