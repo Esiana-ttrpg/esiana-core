@@ -57,6 +57,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const canManage = wikiCan(CampaignCapabilities.MAPS_EDIT);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<MapsBrowseViewMode>('hierarchy');
@@ -73,13 +74,13 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
 
   const reload = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setLoadError(null);
     try {
       const mapsPayload = await fetchCampaignMaps(campaignHandle);
       setMaps(mapsPayload.maps);
       setDiscoverySummary(mapsPayload.discoverySummary ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to load maps');
+      setLoadError(err instanceof Error ? err.message : 'Unable to load maps');
     } finally {
       setLoading(false);
     }
@@ -198,6 +199,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
   return (
     <CategoryHubShell
       composition="studio"
+      headerDensity="compact"
       catalogGridClass="space-y-6"
       breadcrumbs={
         <WikiPageBreadcrumbs
@@ -208,7 +210,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
       breadcrumbCrumbs={indexBreadcrumbs}
       title={
         <>
-          <Map className="size-6 text-primary" strokeWidth={1.25} />
+          <Map className="size-4 text-primary" strokeWidth={1.25} />
           Maps
         </>
       }
@@ -220,6 +222,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
           resultCountLabel={resultCountLabel}
           refineControl={
             <CategoryIndexRefinePopover
+              mobileFullWidth
               facetDefs={[]}
               refineState={{}}
               children={[]}
@@ -244,7 +247,7 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
         </p>
       ) : null}
 
-      {discoverySummary && discoverySummary.undiscoveredCount > 0 ? (
+      {!loadError && discoverySummary && discoverySummary.undiscoveredCount > 0 ? (
         <CategoryIndexDiscoveryBanner
           undiscoveredCount={discoverySummary.undiscoveredCount}
           discoveredCount={discoverySummary.discoveredCount}
@@ -256,6 +259,13 @@ export function MapsHubPage({ campaignHandle, categoryPageId }: MapsHubPageProps
       {loading ? (
         <div className="flex justify-center py-16">
           <LoadingSpinner />
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          <p>{loadError}</p>
+          <button type="button" className="mt-2 underline" onClick={() => void reload()}>
+            Try again
+          </button>
         </div>
       ) : emptyVariant ? (
         <CategoryIndexEmptyStatePanel
