@@ -398,6 +398,7 @@ export function BestiaryHubView({
     <>
       <CategoryHubShell
         composition="codex"
+        headerDensity="compact"
         inlineContextual={showInlineRail}
         narrativeLayoutClassName={
           showInlineRail ? 'narrative-layout--bestiary-hub-inline' : ''
@@ -413,7 +414,7 @@ export function BestiaryHubView({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <Skull className="size-6 text-primary" strokeWidth={1.25} />
+            <Skull className="size-4 text-primary" strokeWidth={1.25} />
             Hunter Catalog
           </>
         }
