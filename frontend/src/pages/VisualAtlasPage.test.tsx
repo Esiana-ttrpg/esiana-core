@@ -39,9 +39,11 @@ test('category buttons filter the atlas and announce the selected category', asy
   const { container, unmount } = await mount();
   try {
     const characters = [...container.querySelectorAll('button')].find(button => button.textContent === 'Characters')!;
+    const all = [...container.querySelectorAll('button')].find(button => button.textContent === 'All')!;
     expect(container.textContent).toContain('Moon Harbor');
     await act(async () => characters.click());
     expect(characters.getAttribute('aria-pressed')).toBe('true');
+    expect(all.getAttribute('aria-pressed')).toBe('false');
     expect(container.textContent).toContain('Ariadne');
     expect(container.textContent).not.toContain('Moon Harbor');
   } finally { await unmount(); }
@@ -53,7 +55,9 @@ test('a failed atlas request can be retried', async () => {
   const { container, unmount } = await mount();
   try {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('Atlas unavailable');
+    expect(fixture.fetchAtlas).toHaveBeenCalledTimes(1);
     await act(async () => [...container.querySelectorAll('button')].find(button => button.textContent === 'Try again')!.click());
+    expect(fixture.fetchAtlas).toHaveBeenCalledTimes(2);
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(container.textContent).toContain('Visual Atlas collects images');
   } finally { await unmount(); }

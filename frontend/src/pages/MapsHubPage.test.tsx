@@ -29,7 +29,9 @@ async function mount() {
   const { createRoot } = await import('react-dom/client');
   const root = createRoot(container);
   await act(async () => root.render(<MemoryRouter><MapsHubPage campaignHandle="test" categoryPageId="maps" /></MemoryRouter>));
-  return { container, unmount: () => act(async () => root.unmount()) };
+  return { container,
+    setCampaign: (campaignHandle: string) => act(async () => root.render(<MemoryRouter><MapsHubPage campaignHandle={campaignHandle} categoryPageId="maps" /></MemoryRouter>)),
+    unmount: () => act(async () => root.unmount()) };
 }
 
 test('empty maps show upload only to users with map editing access', async () => {
@@ -42,6 +44,20 @@ test('empty maps show upload only to users with map editing access', async () =>
       expect(Boolean([...container.querySelectorAll('button')].find(button => button.textContent?.includes('Upload map')))).toBe(canManage);
     } finally { await unmount(); }
   }
+});
+
+test('a failed reload hides the previously loaded discovery summary', async () => {
+  fixture.canManage = false;
+  fixture.fetchMaps.mockReset().mockResolvedValueOnce({ maps: [], discoverySummary: { discoveredCount: 1, undiscoveredCount: 2 } })
+    .mockRejectedValueOnce(new Error('Maps unavailable'));
+  const { container, setCampaign, unmount } = await mount();
+  try {
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('2 undiscovered');
+    await setCampaign('another-campaign');
+    expect(fixture.fetchMaps).toHaveBeenCalledTimes(2);
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Maps unavailable');
+    expect(container.querySelector('[role="status"]')).toBeNull();
+  } finally { await unmount(); }
 });
 
 test('a failed catalog load shows an error and can be retried', async () => {
