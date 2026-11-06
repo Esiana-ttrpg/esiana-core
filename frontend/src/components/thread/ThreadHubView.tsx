@@ -191,6 +191,7 @@ export function ThreadHubView({
         viewControl={threadsLensViewControl}
         refineControl={
           <CategoryIndexRefinePopover
+            mobileFullWidth
             facetDefs={[]}
             refineState={{}}
             children={[]}
@@ -212,7 +213,7 @@ export function ThreadHubView({
         }
         trailing={
           isDMUser && !embedded ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {resolvedAdventureBase ? (
                 <Link
                   to={adventureViewHref(resolvedAdventureBase, 'threads')}
@@ -285,7 +286,9 @@ export function ThreadHubView({
         <p className="text-sm text-muted">
           {searchQuery || refineCount > 0
             ? 'No threads match your filters.'
-            : 'No narrative threads yet. Create one to track open story pressure.'}
+            : isDMUser
+              ? 'No narrative threads yet. Create one to track open story pressure.'
+              : 'No narrative threads yet.'}
         </p>
       ) : (
         <div className="space-y-8">
@@ -413,13 +416,14 @@ export function ThreadHubView({
   return (
     <>
       <CategoryHubShell
+        headerDensity="compact"
         breadcrumbs={
           <WikiPageBreadcrumbs crumbs={indexBreadcrumbs} campaignHandle={campaignHandle} />
         }
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <GitBranch className="size-6 text-amber-400" strokeWidth={1.25} />
+            <GitBranch className="size-4 text-amber-400" strokeWidth={1.25} />
             {categoryTitle}
           </>
         }
