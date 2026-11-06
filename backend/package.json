@@ -58,7 +58,7 @@
     "mammoth": "^1.13.0",
     "multer": "^2.5.0",
     "music-metadata": "^12.3.2",
-    "nodemailer": "^10.1.4",
+    "nodemailer": "^10.3.1",
     "openid-client": "^6.8.8",
     "pg": "^8.16.3",
     "sharp": "^0.35.5",
