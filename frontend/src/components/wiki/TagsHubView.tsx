@@ -52,24 +52,32 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const lastRequestedTagId = useRef<string | undefined>(initialTagId);
+  const requestId = useRef(0);
+  const loadedCampaign = useRef(campaignHandle);
 
   const loadHub = useCallback(
     async (tagId?: string) => {
+      const currentRequest = ++requestId.current;
+      if (loadedCampaign.current !== campaignHandle) {
+        loadedCampaign.current = campaignHandle;
+        setTags([]);
+        setSelectedTagId(null);
+      }
       lastRequestedTagId.current = tagId;
       setLoading(true);
       setError(null);
+      setPages([]);
       try {
         const data = await fetchTagsHub(campaignHandle, tagId);
+        if (currentRequest !== requestId.current) return;
         setTags(data.tags ?? []);
         setSelectedTagId(data.selectedTagId);
         setPages(data.pages ?? []);
       } catch (err) {
+        if (currentRequest !== requestId.current) return;
         setError(err instanceof Error ? err.message : 'Failed to load tags');
-        setTags([]);
-        setPages([]);
-        setSelectedTagId(null);
       } finally {
-        setLoading(false);
+        if (currentRequest === requestId.current) setLoading(false);
       }
     },
     [campaignHandle],
@@ -77,6 +85,7 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
 
   useEffect(() => {
     void loadHub(initialTagId);
+    return () => { requestId.current += 1; };
   }, [loadHub, initialTagId]);
 
   function handleSelectTag(tagId: string) {
@@ -167,12 +176,32 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
         />
       }
     >
+      {tags.length > 0 ? (
+        <section>
+          <div className="flex flex-wrap gap-2">
+            {(selectedTagId ? tags : filteredTags).map((tag) => (
+              <TagChip key={tag.id} name={tag.name} label={tag.label} icon={tag.icon}
+                iconAssetUrl={tag.iconAssetUrl} color={tag.color} count={tag.pageCount}
+                selected={tag.id === selectedTagId} onClick={() => handleSelectTag(tag.id)} />
+            ))}
+          </div>
+        </section>
+      ) : null}
       {error ? (
         <div role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
           <p>{error}</p>
           <button type="button" className="mt-2 underline" onClick={() => void loadHub(lastRequestedTagId.current)}>
             Try again
           </button>
+          {lastRequestedTagId.current ? (
+            <button type="button" className="ml-4 mt-2 underline" onClick={() => {
+              setSelectedTagId(null);
+              setSearchQuery('');
+              void loadHub();
+            }}>
+              All tags
+            </button>
+          ) : null}
         </div>
       ) : (
         <>
@@ -181,26 +210,10 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
               <p className="text-sm text-muted">
                 No tags yet. Assign tags from any wiki page using the wrench menu.
               </p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {(selectedTagId ? tags : filteredTags).map((tag) => (
-                  <TagChip
-                    key={tag.id}
-                    name={tag.name}
-                    label={tag.label}
-                    icon={tag.icon}
-                    iconAssetUrl={tag.iconAssetUrl}
-                    color={tag.color}
-                    count={tag.pageCount}
-                    selected={tag.id === selectedTagId}
-                    onClick={() => handleSelectTag(tag.id)}
-                  />
-                ))}
-              </div>
-            )}
+            ) : null}
           </section>
 
-          {canManage && selectedTag ? (
+          {canManage && selectedTag && !loading ? (
             <TagAppearanceEditor
               campaignHandle={campaignHandle}
               tag={selectedTag}

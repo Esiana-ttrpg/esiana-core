@@ -4,9 +4,12 @@ import { parseHTML } from 'linkedom';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityBrowserView } from './WikiIndexView';
 
-const fixture = vi.hoisted(() => ({ canCreate: true, fetchIndex: vi.fn() }));
+const fixture = vi.hoisted(() => ({ canCreate: true, role: 'GAMEMASTER', isMember: true, fetchIndex: vi.fn() }));
 vi.mock('@/contexts/WikiContext', () => ({
-  useWiki: () => ({ campaignHandle: 'test', flatPages: [], refresh: vi.fn(), campaign: { role: 'GAMEMASTER' },
+  useWiki: () => ({ campaignHandle: 'test', flatPages: [
+    { id: 'parent', title: 'Custom Parent', parentId: null },
+    { id: 'category', title: 'Families', parentId: 'parent' },
+  ], refresh: vi.fn(), campaign: { role: fixture.role, isMember: fixture.isMember },
     can: (capability: string) => capability === 'page.create' && fixture.canCreate }),
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user' } }) }));
@@ -32,14 +35,16 @@ async function mount(categoryTitle: string) {
   const container = window.document.getElementById('root')!;
   const { createRoot } = await import('react-dom/client');
   const root = createRoot(container);
-  await act(async () => root.render(<MemoryRouter>
+  const render = () => root.render(<MemoryRouter>
     <EntityBrowserView categoryPageId="category" categoryTitle={categoryTitle} />
-  </MemoryRouter>));
-  return { container, unmount: () => act(async () => root.unmount()) };
+  </MemoryRouter>);
+  await act(async () => render());
+  return { container, rerender: () => act(async () => render()), unmount: () => act(async () => root.unmount()) };
 }
 
 test.each(['Objects', 'Families', 'Rules/Resources', 'Locations'])('%s shows a permission-aware empty state', async (category) => {
   fixture.canCreate = false;
+  fixture.role = 'GAMEMASTER'; fixture.isMember = true;
   fixture.fetchIndex.mockReset().mockResolvedValue({ children: [] });
   const ui = await mount(category);
   try {
@@ -51,7 +56,7 @@ test.each(['Objects', 'Families', 'Rules/Resources', 'Locations'])('%s shows a p
 });
 
 test('authorized users can open creation from the toolbar', async () => {
-  fixture.canCreate = true;
+  fixture.canCreate = true; fixture.role = 'PARTICIPANT'; fixture.isMember = true;
   fixture.fetchIndex.mockReset().mockResolvedValue({ children: [] });
   const ui = await mount('Objects');
   try {
@@ -60,15 +65,23 @@ test('authorized users can open creation from the toolbar', async () => {
     expect(create).toBeTruthy();
     await act(async () => create!.click());
     expect(ui.container.querySelector('[role="dialog"]')).toBeTruthy();
+    fixture.canCreate = false;
+    await ui.rerender();
+    expect(ui.container.querySelector('[role="dialog"]')).toBeNull();
+    fixture.canCreate = true;
+    await ui.rerender();
+    expect(ui.container.querySelector('[role="dialog"]')).toBeNull();
   } finally { await ui.unmount(); }
 });
 
 test('a failed index load shows an error and a working retry, not an empty catalog', async () => {
-  fixture.canCreate = true;
+  fixture.canCreate = true; fixture.role = 'GAMEMASTER'; fixture.isMember = true;
   fixture.fetchIndex.mockReset().mockRejectedValueOnce(new Error('Index unavailable')).mockResolvedValueOnce({ children: [] });
   const ui = await mount('Families');
   try {
     expect(ui.container.querySelector('[role="alert"]')?.textContent).toContain('Index unavailable');
+    expect(ui.container.querySelector('h1')?.textContent).toBe('Families');
+    expect(ui.container.querySelector('nav[aria-label="Breadcrumb"]')?.textContent).toContain('Custom Parent');
     expect(ui.container.textContent).not.toContain('No entries');
     expect(ui.container.textContent).not.toContain('Create Family');
     await act(async () => [...ui.container.querySelectorAll('button')].find(button => button.textContent === 'Try again')!.click());
@@ -76,3 +89,15 @@ test('a failed index load shows an error and a working retry, not an empty catal
     expect(ui.container.textContent).toContain('No entries');
   } finally { await ui.unmount(); }
 });
+
+test.each([{ role: 'OBSERVER', isMember: true }, { role: 'PARTICIPANT', isMember: false }])(
+  'does not offer wiki creation to an observer or non-member with a grant', async ({ role, isMember }) => {
+    fixture.canCreate = true; fixture.role = role; fixture.isMember = isMember;
+    fixture.fetchIndex.mockReset().mockResolvedValue({ children: [] });
+    const ui = await mount('Objects');
+    try {
+      expect(ui.container.textContent).not.toContain('Create Object');
+      expect(ui.container.textContent).toContain('No entries');
+    } finally { await ui.unmount(); }
+  },
+);

@@ -4,9 +4,9 @@ import { parseHTML } from 'linkedom';
 import { MemoryRouter } from 'react-router-dom';
 import { OrganizationHubView } from './OrganizationHubView';
 
-const fixture = vi.hoisted(() => ({ canCreate: true, fetchIndex: vi.fn() }));
+const fixture = vi.hoisted(() => ({ canCreate: true, role: 'GAMEMASTER', fetchIndex: vi.fn() }));
 vi.mock('@/contexts/WikiContext', () => ({
-  useWiki: () => ({ campaignHandle: 'test', flatPages: [], refresh: vi.fn(), can: (capability: string) => capability === 'page.create' && fixture.canCreate }),
+  useWiki: () => ({ campaignHandle: 'test', flatPages: [], refresh: vi.fn(), campaign: { isMember: true, role: fixture.role }, can: (capability: string) => capability === 'page.create' && fixture.canCreate }),
 }));
 vi.mock('@/lib/wiki', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/lib/wiki')>(),
@@ -38,7 +38,7 @@ async function mount() {
 }
 
 test('empty organizations retain the create action for authorized users', async () => {
-  fixture.canCreate = true;
+  fixture.canCreate = true; fixture.role = 'GAMEMASTER';
   fixture.fetchIndex.mockReset().mockResolvedValue({ children: [] });
   const { container, unmount } = await mount();
   try {
@@ -52,7 +52,7 @@ test('empty organizations retain the create action for authorized users', async 
 });
 
 test('empty organizations do not invite users without page creation access', async () => {
-  fixture.canCreate = false;
+  fixture.canCreate = false; fixture.role = 'GAMEMASTER';
   fixture.fetchIndex.mockReset().mockResolvedValue({ children: [] });
   const { container, unmount } = await mount();
   try {
@@ -63,7 +63,7 @@ test('empty organizations do not invite users without page creation access', asy
 });
 
 test('failed loads show an error and retry instead of an empty invitation', async () => {
-  fixture.canCreate = true;
+  fixture.canCreate = true; fixture.role = 'GAMEMASTER';
   fixture.fetchIndex.mockReset().mockRejectedValueOnce(new Error('Unable to load organizations'))
     .mockResolvedValueOnce({ children: [] });
   const { container, unmount } = await mount();
@@ -75,5 +75,15 @@ test('failed loads show an error and retry instead of an empty invitation', asyn
     expect(container.querySelector('[role="alert"]')).toBeNull();
     expect(container.textContent).toContain('No entries in Organizations yet.');
     expect(container.textContent).toContain('Catalog Organization');
+  } finally { await unmount(); }
+});
+
+test('an observer granted page creation does not receive a wiki creation action', async () => {
+  fixture.canCreate = true; fixture.role = 'OBSERVER';
+  fixture.fetchIndex.mockReset().mockResolvedValue({ children: [] });
+  const { container, unmount } = await mount();
+  try {
+    expect(container.textContent).toContain('No entries in Organizations yet.');
+    expect(container.textContent).not.toContain('Catalog Organization');
   } finally { await unmount(); }
 });

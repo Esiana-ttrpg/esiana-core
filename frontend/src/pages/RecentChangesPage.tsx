@@ -256,9 +256,15 @@ export function RecentChangesPage() {
       />
 
       {error && (
-        <p role="alert" className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-          {error}
-        </p>
+        <div role="alert" className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          <p>{error}</p>
+          {page > 1 ? (
+            <button type="button" disabled={loading} onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="mt-2 inline-flex items-center gap-1 underline disabled:opacity-50">
+              <ChevronLeft className="size-4" /> Previous
+            </button>
+          ) : null}
+        </div>
       )}
 
       {!error && (buckets.length === 0 ? (

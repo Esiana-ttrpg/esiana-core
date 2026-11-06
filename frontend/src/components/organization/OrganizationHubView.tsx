@@ -23,6 +23,7 @@ import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryInde
 import { CategoryIndexEmptyStatePanel } from '@/components/wiki/indexBrowse/CategoryIndexEmptyStatePanel';
 import { WorkspaceModeToggle } from '@/components/layout/WorkspaceModeToggle';
 import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
+import { MembershipRoles } from '@shared/campaignPolicy/membershipRoles';
 import { getCategoryEmptyCatalogMessage } from '@/lib/categoryBrowseRegistry';
 import { projectCategoryIndexBrowseChildren } from '@/lib/categoryIndexBrowse';
 import {
@@ -48,8 +49,9 @@ export function OrganizationHubView({
   campaignHandle,
 }: OrganizationHubViewProps) {
   const params = useParams<{ campaignHandle?: string }>();
-  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, can } = useWiki();
-  const canCreate = can(CampaignCapabilities.PAGE_CREATE);
+  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, can, campaign } = useWiki();
+  const canCreate = Boolean(campaign?.isMember) && campaign?.role !== MembershipRoles.OBSERVER &&
+    can(CampaignCapabilities.PAGE_CREATE);
   const resolvedSlug = readCampaignHandle(params) || wikiCampaignSlug || campaignHandle;
   const navigate = useNavigate();
 
@@ -59,6 +61,10 @@ export function OrganizationHubView({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [groupMode, setGroupMode] = useState<OrganizationGroupMode>('hierarchy');
   const [standings, setStandings] = useState<ReputationStandingCard[]>([]);
+
+  useEffect(() => {
+    if (!canCreate) setIsCreateOpen(false);
+  }, [canCreate]);
 
   const categoryTitle = useMemo(() => {
     const node = flatPages.find((p) => p.id === categoryPageId);
