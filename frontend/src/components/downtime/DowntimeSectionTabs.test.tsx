@@ -3,13 +3,14 @@ import { act } from 'react';
 import { parseHTML } from 'linkedom';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { DowntimeSectionTabs } from './DowntimeSectionTabs';
+import { readDowntimeSectionFromSearch } from '@/lib/downtimeLayout';
 
 const restore: (() => void)[] = [];
 afterEach(() => { for (const cleanup of restore.splice(0).reverse()) cleanup(); });
 
 function Navigation() {
   const location = useLocation();
-  return <><DowntimeSectionTabs basePath="/downtime" activeSection={location.search.includes('ledger') ? 'ledger' : null} />
+  return <><DowntimeSectionTabs basePath="/downtime" activeSection={readDowntimeSectionFromSearch(location.search)} />
     <span data-testid="location">{location.pathname}{location.search}</span></>;
 }
 
@@ -31,10 +32,24 @@ test('highlights the selected query section and keyboard navigation opens the hi
     expect(tabs.filter(tab => tab.className.includes('border-accent')).map(tab => tab.textContent)).toEqual(['Ledger']);
     const trigger = container.querySelector('button[aria-haspopup="listbox"]')!;
     await act(async () => trigger.dispatchEvent(new window.Event('click', { bubbles: true })));
+    const focusedOption = [...container.querySelectorAll('[role="option"]')].find(option => option.textContent === 'Projects')!;
+    await act(async () => focusedOption.dispatchEvent(new window.Event('focusin', { bubbles: true })));
+    const enter = new window.Event('keydown', { bubbles: true, cancelable: true });
+    Object.defineProperty(enter, 'key', { value: 'Enter' });
+    await act(async () => focusedOption.dispatchEvent(enter));
+    expect(enter.defaultPrevented).toBe(false);
+    // LinkeDOM does not perform the browser's native Enter-to-click default action.
+    await act(async () => {
+      const click = new window.Event('click', { bubbles: true, cancelable: true });
+      Object.defineProperty(click, 'button', { value: 0 });
+      focusedOption.dispatchEvent(click);
+    });
+    expect(container.querySelector('[data-testid="location"]')?.textContent).toBe('/downtime?section=projects');
+    await act(async () => trigger.dispatchEvent(new window.Event('click', { bubbles: true })));
     await act(async () => {
       const event = new window.Event('keydown', { bubbles: true, cancelable: true });
       Object.defineProperty(event, 'key', { value: 'ArrowUp' });
-      window.document.dispatchEvent(event);
+      trigger.dispatchEvent(event);
     });
     const highlighted = [...container.querySelectorAll('[role="option"]')].find(option => option.className.includes('bg-elevated/80'));
     const expectedHref = highlighted?.getAttribute('href');
@@ -42,7 +57,7 @@ test('highlights the selected query section and keyboard navigation opens the hi
     await act(async () => {
       const event = new window.Event('keydown', { bubbles: true, cancelable: true });
       Object.defineProperty(event, 'key', { value: 'Enter' });
-      window.document.dispatchEvent(event);
+      trigger.dispatchEvent(event);
     });
     expect(container.querySelector('[data-testid="location"]')?.textContent).toBe(expectedHref);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');

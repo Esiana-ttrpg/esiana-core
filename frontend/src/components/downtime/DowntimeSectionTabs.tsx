@@ -66,20 +66,27 @@ export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSection
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as Node | null;
+      const inMenu = Boolean(target && menuRef.current?.contains(target));
+      const onTrigger = Boolean(target && triggerRef.current?.contains(target));
+      if (!inMenu && !onTrigger) return;
+
       if (event.key === 'Escape') {
+        event.preventDefault();
         setMenuOpen(false);
         triggerRef.current?.focus();
         return;
       }
-      if (!menuOpen) return;
 
-      if (event.key === 'ArrowDown') {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
-        setHighlightIndex((prev) => Math.min(prev + 1, tabs.length - 1));
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        setHighlightIndex((prev) => Math.max(prev - 1, 0));
+        const nextIndex = event.key === 'ArrowDown'
+          ? Math.min(highlightIndex + 1, tabs.length - 1)
+          : Math.max(highlightIndex - 1, 0);
+        setHighlightIndex(nextIndex);
+        if (inMenu) menuRef.current?.querySelectorAll<HTMLAnchorElement>('[role="option"]')[nextIndex]?.focus();
       } else if (event.key === 'Enter' || event.key === ' ') {
+        if (inMenu && event.key === 'Enter') return;
         event.preventDefault();
         if (tabs[highlightIndex]) {
           navigate(tabs[highlightIndex].href);
@@ -162,6 +169,7 @@ export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSection
                   to={tab.href}
                   role="option"
                   aria-selected={isSelected}
+                  onFocus={() => setHighlightIndex(index)}
                   onClick={() => setMenuOpen(false)}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 text-sm ${
                     isHighlighted ? 'bg-elevated/80' : ''
