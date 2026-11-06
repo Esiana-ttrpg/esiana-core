@@ -53,14 +53,27 @@ test('does not expose event creation without the create capability', async () =>
   } finally { await ui.unmount(); }
 });
 
-test('event creation explains the missing calendar and can be closed', async () => {
-  const { window } = parseHTML('<html><body><div id="root"></div></body></html>');
+test('event creation uses the native modal and Escape closes the unavailable state', async () => {
+  const { window } = parseHTML('<html><body><button id="background">Background</button><div id="root"></div></body></html>');
   for (const [key, value] of Object.entries({ window, document: window.document, Node: window.Node,
     HTMLElement: window.HTMLElement, Event: window.Event, IS_REACT_ACT_ENVIRONMENT: true })) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, key);
     Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
     restore.push(() => previous ? Object.defineProperty(globalThis, key, previous) : Reflect.deleteProperty(globalThis, key));
   }
+  let active: HTMLElement | null = window.document.getElementById('background') as HTMLElement;
+  Object.defineProperty(window.document, 'activeElement', { configurable: true, get: () => active });
+  for (const [method, value] of Object.entries({
+    focus(this: HTMLElement) { active = this; },
+    getClientRects() { return [{ width: 1, height: 1 }]; },
+    showModal(this: HTMLElement) { this.setAttribute('open', ''); this.querySelector<HTMLElement>('button')?.focus(); },
+    close(this: HTMLElement) { this.removeAttribute('open'); },
+  })) {
+    const previous = Object.getOwnPropertyDescriptor(window.HTMLElement.prototype, method);
+    Object.defineProperty(window.HTMLElement.prototype, method, { configurable: true, writable: true, value });
+    restore.push(() => previous ? Object.defineProperty(window.HTMLElement.prototype, method, previous) : Reflect.deleteProperty(window.HTMLElement.prototype, method));
+  }
+  Object.defineProperty(window, 'history', { configurable: true, value: { state: null, go: vi.fn() } });
   const container = window.document.getElementById('root')!;
   const { createRoot } = await import('react-dom/client');
   const root = createRoot(container);
@@ -68,8 +81,20 @@ test('event creation explains the missing calendar and can be closed', async () 
   try {
     await act(async () => root.render(<MemoryRouter><ChronologyCreateEventDialog campaignHandle="test"
       calendars={[]} categories={[]} events={[]} initialDate={null} onClose={close} onMutated={() => {}} /></MemoryRouter>));
-    expect(container.querySelector('[role="dialog"]')?.textContent).toContain('A calendar is required');
-    await act(async () => container.querySelector('button')!.click());
+    const dialog = window.document.querySelector('dialog')!;
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(dialog.textContent).toContain('A calendar is required');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    for (const shift of [false, true]) {
+      const tab = new window.Event('keydown', { bubbles: true, cancelable: true });
+      Object.defineProperties(tab, { key: { value: 'Tab' }, shiftKey: { value: shift } });
+      await act(async () => dialog.querySelector('button')!.dispatchEvent(tab));
+      expect(tab.defaultPrevented).toBe(true);
+      expect(dialog.contains(window.document.activeElement)).toBe(true);
+    }
+    await act(async () => dialog.dispatchEvent(new window.Event('cancel', { bubbles: false, cancelable: true })));
     expect(close).toHaveBeenCalledOnce();
+    await act(async () => dialog.querySelector('button')!.click());
+    expect(close).toHaveBeenCalledTimes(2);
   } finally { await act(async () => root.unmount()); }
 });

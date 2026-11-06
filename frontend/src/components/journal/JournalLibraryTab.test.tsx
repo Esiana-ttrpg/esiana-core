@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { JournalLibraryTab } from './JournalLibraryTab';
 
 const fixture = vi.hoisted(() => ({ fetchLibrary: vi.fn(), canCreate: true }));
-const translate = vi.hoisted(() => (key: string) => key);
+const translate = vi.hoisted(() => (key: string, options?: { defaultValue?: string }) => options?.defaultValue ?? key);
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: translate }) }));
 vi.mock('@/contexts/WikiContext', () => ({
   useWiki: () => ({ campaign: { isCampaignOwner: false }, can: (capability: string) => capability === 'page.create' && fixture.canCreate }),

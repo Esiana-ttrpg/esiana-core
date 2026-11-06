@@ -37,6 +37,7 @@ afterEach(() => { for (const cleanup of restore.splice(0).reverse()) cleanup(); 
 
 test('trajectory Refine affects displayed rows and reset restores them', async () => {
   const { window } = parseHTML('<html><body><div id="root"></div></body></html>');
+  window.document.oninput = null;
   for (const [key, value] of Object.entries({ window, document: window.document, Node: window.Node,
     HTMLElement: window.HTMLElement, Event: window.Event, IS_REACT_ACT_ENVIRONMENT: true })) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, key);
@@ -66,7 +67,30 @@ test('trajectory Refine affects displayed rows and reset restores them', async (
     expect(container.textContent).toContain('No trajectories match your filters.');
     await act(async () => button('Reset refine')!.click());
     expect(container.textContent).toContain('Lantern Keeper');
+    vi.useFakeTimers();
+    const search = container.querySelector<HTMLInputElement>('input[aria-label="Search trajectories…"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(search), 'value')!.set!.call(search, 'Keeper');
+      search.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    const trigger = container.querySelector<HTMLButtonElement>('button[aria-haspopup="dialog"]')!;
+    await act(async () => trigger.click());
+    await act(async () => vi.advanceTimersByTime(250));
+    expect(container.textContent).toContain('Lantern Keeper');
+    expect(container.textContent).not.toContain('Harbor Guild');
+    await act(async () => trigger.click());
+    const reopened = container.querySelector<HTMLInputElement>('input[aria-label="Search trajectories…"]')!;
+    expect(reopened.value).toBe('Keeper');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(reopened), 'value')!.set!.call(reopened, 'not-found');
+      reopened.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    await act(async () => button('Reset refine')!.click());
+    await act(async () => vi.advanceTimersByTime(250));
+    expect(container.textContent).toContain('Harbor Guild');
+    expect(container.textContent).toContain('Lantern Keeper');
+    vi.useRealTimers();
     await act(async () => button('Trajectory')!.click());
     expect([...container.querySelectorAll('[role="dialog"]')].some(dialog => dialog.textContent === 'Create trajectory')).toBe(true);
-  } finally { await act(async () => root.unmount()); }
+  } finally { vi.useRealTimers(); await act(async () => root.unmount()); }
 });

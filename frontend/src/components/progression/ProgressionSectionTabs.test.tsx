@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, vi } from 'vitest';
 import { act } from 'react';
 import { parseHTML } from 'linkedom';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -29,11 +29,14 @@ test('mobile keyboard navigation selects the highlighted section and respects fo
     await act(async () => root.render(<MemoryRouter initialEntries={['/progression?section=trajectories']}><Navigation /></MemoryRouter>));
     const trigger = container.querySelector('button[aria-haspopup="listbox"]')!;
     await act(async () => trigger.dispatchEvent(new window.Event('click', { bubbles: true })));
+    const nextOption = [...container.querySelectorAll<HTMLElement>('[role="option"]')].find(option => option.textContent?.includes('Developments'))!;
+    const focusNext = vi.spyOn(nextOption, 'focus');
     await act(async () => {
       const event = new window.Event('keydown', { bubbles: true, cancelable: true });
       Object.defineProperty(event, 'key', { value: 'ArrowDown' });
       trigger.dispatchEvent(event);
     });
+    expect(focusNext).toHaveBeenCalledOnce();
     await act(async () => {
       const event = new window.Event('keydown', { bubbles: true, cancelable: true });
       Object.defineProperty(event, 'key', { value: 'Enter' });
@@ -43,6 +46,7 @@ test('mobile keyboard navigation selects the highlighted section and respects fo
     await act(async () => trigger.dispatchEvent(new window.Event('click', { bubbles: true })));
     const history = [...container.querySelectorAll('[role="option"]')].find(option => option.textContent?.includes('History'))!;
     await act(async () => history.dispatchEvent(new window.Event('focusin', { bubbles: true })));
+    expect(history.className).toContain('bg-elevated/80');
     const enter = new window.Event('keydown', { bubbles: true, cancelable: true });
     Object.defineProperty(enter, 'key', { value: 'Enter' });
     await act(async () => history.dispatchEvent(enter));

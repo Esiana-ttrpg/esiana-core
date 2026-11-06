@@ -70,7 +70,7 @@ export function ProgressionSectionTabs({
           ? Math.min(highlightIndex + 1, PROGRESSION_SECTIONS.length - 1)
           : Math.max(highlightIndex - 1, 0);
         setHighlightIndex(nextIndex);
-        if (inMenu) menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]')[nextIndex]?.focus();
+        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]')[nextIndex]?.focus();
       } else if (onTrigger && (event.key === 'Enter' || event.key === ' ')) {
         event.preventDefault();
         const section = PROGRESSION_SECTIONS[highlightIndex];
