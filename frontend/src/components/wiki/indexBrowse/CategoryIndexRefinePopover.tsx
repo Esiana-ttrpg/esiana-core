@@ -29,6 +29,8 @@ interface CategoryIndexRefinePopoverProps {
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  /** Use the viewport width for a popover whose trigger can wrap to the left on mobile. */
+  mobileFullWidth?: boolean;
   /** Optional presentation controls; callers apply these to their visible records. */
   grouping?: RefineChoiceControl;
   sorting?: RefineSortControl;
@@ -67,6 +69,7 @@ export function CategoryIndexRefinePopover({
   searchQuery,
   onSearchChange,
   searchPlaceholder,
+  mobileFullWidth = false,
   grouping,
   sorting,
 }: CategoryIndexRefinePopoverProps) {
@@ -131,7 +134,7 @@ export function CategoryIndexRefinePopover({
         <div
           role="dialog"
           aria-label="Refine results"
-          className="absolute right-0 z-30 mt-2 max-h-[min(70vh,24rem)] w-[min(100vw-2rem,22rem)] overflow-y-auto rounded-lg border border-border bg-elevated p-3 shadow-lg"
+          className={`absolute right-0 z-30 mt-2 max-h-[min(70vh,24rem)] w-[min(100vw-2rem,22rem)] overflow-y-auto rounded-lg border border-border bg-elevated p-3 shadow-lg ${mobileFullWidth ? 'max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:w-auto' : ''}`}
         >
           {showInPopoverSearch ? (
             <div className="mb-3">
