@@ -56,11 +56,13 @@ export function CategoryIndexEmptyStatePanel({
       <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-16 text-center">
         {icon ?? <FileText className="mx-auto mb-3 size-10 text-muted" />}
         <p className="text-muted">{state.message}</p>
-        <p className="mx-auto mt-3 max-w-md text-sm text-muted">
-          Use{' '}
-          <span className="font-medium text-foreground">{createLabel}</span> in the header to add
-          your first {itemLabel.toLowerCase()}.
-        </p>
+        {input.canCreate ? (
+          <p className="mx-auto mt-3 max-w-md text-sm text-muted">
+            Use{' '}
+            <span className="font-medium text-foreground">{createLabel}</span> in the header to add
+            your first {itemLabel.toLowerCase()}.
+          </p>
+        ) : null}
       </div>
     );
   }
