@@ -21,6 +21,7 @@ import { StoryboardSection } from '@/components/adventure/StoryboardSection';
 import { SceneTimelineSection } from '@/components/adventure/SceneTimelineSection';
 import { CreateSceneModal } from '@/components/adventure/CreateSceneModal';
 import { useWiki } from '@/contexts/WikiContext';
+import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import type { StoryboardViewV1 } from '@/lib/sceneMetadata';
 
 interface AdventureStoryboardSectionProps {
@@ -36,6 +37,7 @@ export function AdventureStoryboardSection({
   onHeaderActionsChange,
 }: AdventureStoryboardSectionProps) {
   const { flatPages, refresh } = useWiki();
+  const { playerPreview, isDMUser } = useAdventureWorkspace();
   const location = useLocation();
   const navigate = useNavigate();
   const basePath = campaignAdventureHubPath(campaignHandle);
@@ -80,14 +82,17 @@ export function AdventureStoryboardSection({
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'scene-timeline',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'scenes',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'sessions',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
         ]);
         if (requestId !== loadRequestIdRef.current) return;
@@ -100,10 +105,12 @@ export function AdventureStoryboardSection({
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'scenes',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'sessions',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
         ]);
         if (requestId !== loadRequestIdRef.current) return;
@@ -126,7 +133,7 @@ export function AdventureStoryboardSection({
         setLoading(false);
       }
     }
-  }, [activeLens, campaignHandle, questsCategoryId]);
+  }, [activeLens, campaignHandle, questsCategoryId, isDMUser, playerPreview]);
 
   useEffect(() => {
     void loadViewData();

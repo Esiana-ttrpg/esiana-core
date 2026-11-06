@@ -5,12 +5,10 @@ import test from 'node:test';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 
-test('campaign router enforces Party-preview guard and campaign boundaries', async t => {
-  if (!process.env.TEST_DATABASE_URL) { t.skip('TEST_DATABASE_URL is required'); return; }
-  if ((globalThis as { prisma?: unknown }).prisma) {
-    t.skip('Run separately so the test database is selected before Prisma initialization');
-    return;
-  }
+test('campaign router enforces Party-preview guard and campaign boundaries', async () => {
+  assert.ok(process.env.TEST_DATABASE_URL, 'TEST_DATABASE_URL is required for this security test');
+  assert.equal((globalThis as { prisma?: unknown }).prisma, undefined,
+    'Run separately so the test database is selected before Prisma initialization');
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
   // An independently generated SQLite client lets this suite use an isolated
   // database without replacing the working tree's generated Prisma client.
@@ -33,6 +31,9 @@ test('campaign router enforces Party-preview guard and campaign boundaries', asy
   const questsId = `quests-${stamp}`;
   const threadsId = `threads-${stamp}`;
   const secretPageId = `secret-${stamp}`;
+  const hiddenQuestId = `hidden-quest-${stamp}`;
+  const otherCampaignId = `other-${stamp}`;
+  const otherPageId = `other-page-${stamp}`;
   let server: ReturnType<typeof createServer> | undefined;
   try {
     for (const id of ids) await prisma.user.create({ data: { id, email: `${id}@example.invalid` } });
@@ -52,8 +53,15 @@ test('campaign router enforces Party-preview guard and campaign boundaries', asy
       ['Shared thread', threadsId, 'Party', { threadKind: 'mystery', threadStatus: 'OPEN' }],
       ['Hidden thread sentinel', threadsId, 'DM_Only', { threadKind: 'mystery', threadStatus: 'OPEN' }],
     ] as const) {
-      await prisma.wikiPage.create({ data: { campaignId, title, parentId, visibility, blocks: [], metadata } });
+      await prisma.wikiPage.create({ data: { ...(title === 'Hidden quest sentinel' ? { id: hiddenQuestId } : {}), campaignId, title, parentId, visibility, blocks: [], metadata } });
     }
+    await prisma.wikiPage.create({ data: { campaignId, parentId: hiddenQuestId, title: 'Hidden ancestor child sentinel',
+      visibility: 'Party', blocks: [], metadata: { questStatus: 'ACTIVE' } } });
+    await prisma.fantasyCalendar.create({ data: { campaignId, name: 'Shared calendar', isMasterTime: true,
+      weekdays: [{ name: 'Dawn', length: 1 }], months: [{ name: 'Bloom', length: 30 }], seasons: [], moons: [], leapDays: [] } });
+    await prisma.campaign.create({ data: { id: otherCampaignId, handle: otherCampaignId, name: 'Other campaign',
+      campaignOwnerUserId: outsiderId, discoverability: 'private', wikiPages: { create: [{ id: otherPageId,
+        title: 'Cross campaign sentinel', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'quests' } }] } } });
     const cookies = new Map<string, string>();
     for (const id of ids) {
       const user = await prisma.user.findUniqueOrThrow({ where: { id } });
@@ -69,12 +77,21 @@ test('campaign router enforces Party-preview guard and campaign boundaries', asy
     const base = `http://127.0.0.1:${address.port}/api/campaigns/${handle}`;
     for (const path of ['/wiki/adventure-hub', `/wiki/adventure-hub/${questsId}`, '/wiki/quests-hub',
       `/wiki/quests-hub/${questsId}`, '/wiki/threads-hub', `/wiki/threads-hub/${threadsId}`,
-      '/adventure/storyboard', '/time-tracking', '/wiki/tree', `/wiki/${secretPageId}`,
+      '/adventure/storyboard', '/wiki/tree', `/wiki/${secretPageId}`,
       `/wiki/character-hub/${secretPageId}`]) {
       for (const id of [ownerId, writerId]) {
         const response = await fetch(`${base}${path}?previewAsPlayer=true`, { headers: { cookie: cookies.get(id)! } });
         assert.equal(response.status, 503, `${id}: ${path}`);
       }
+    }
+    const playerTime = await fetch(`${base}/time-tracking`, { headers: { cookie: cookies.get(playerId)! } });
+    assert.equal(playerTime.status, 200);
+    const playerTimeData = await playerTime.json();
+    assert.match(JSON.stringify(playerTimeData), /Shared calendar/);
+    for (const id of [ownerId, writerId]) {
+      const response = await fetch(`${base}/time-tracking?previewAsPlayer=true`, { headers: { cookie: cookies.get(id)! } });
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), playerTimeData);
     }
     const gmTree = await fetch(`${base}/wiki/tree`, { headers: { cookie: cookies.get(ownerId)! } });
     assert.equal(gmTree.status, 200);
@@ -96,16 +113,26 @@ test('campaign router enforces Party-preview guard and campaign boundaries', asy
       const body = await response.text();
       assert.match(body, new RegExp(shared));
       assert.doesNotMatch(body, new RegExp(hidden));
+      assert.doesNotMatch(body, /Hidden ancestor child sentinel/);
+    }
+    for (const path of [`/wiki/${otherPageId}`, `/wiki/quests-hub/${otherPageId}`,
+      `/wiki/threads-hub/${otherPageId}`, `/wiki/adventure-hub/${otherPageId}`]) {
+      const response = await fetch(`${base}${path}?previewAsPlayer=true`, { headers: { cookie: cookies.get(playerId)! } });
+      assert.ok([403, 404].includes(response.status), `${path}: ${response.status}`);
+      assert.doesNotMatch(await response.text(), /Cross campaign sentinel/);
     }
     const outsider = await fetch(`${base}/wiki/adventure-hub?previewAsPlayer=true`, { headers: { cookie: cookies.get(outsiderId)! } });
     assert.ok([401, 403, 404].includes(outsider.status));
+    const outsiderTime = await fetch(`${base}/time-tracking?previewAsPlayer=true`, { headers: { cookie: cookies.get(outsiderId)! } });
+    assert.ok([401, 403, 404].includes(outsiderTime.status));
+    assert.doesNotMatch(await outsiderTime.text(), /Shared calendar/);
     const anonymous = await fetch(`${base}/wiki/adventure-hub?previewAsPlayer=true`);
     assert.ok([401, 403, 404].includes(anonymous.status));
     const playerLayout = await fetch(`${base}/adventure/storyboard`, { headers: { cookie: cookies.get(playerId)! } });
     assert.equal(playerLayout.status, 403);
   } finally {
     if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
-    await prisma.campaign.deleteMany({ where: { id: campaignId } });
+    await prisma.campaign.deleteMany({ where: { id: { in: [campaignId, otherCampaignId] } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
   }
 });

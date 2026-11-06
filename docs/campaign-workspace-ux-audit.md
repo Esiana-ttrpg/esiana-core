@@ -86,13 +86,13 @@ The shared audience control uses GM/Party labels and explains that the party bas
 
 Party preview is disabled until every Adventure response and secondary request is verified. `resolveAdventureAudience` supplies a reduced request-local viewer; Quest and Thread hub projections and selected Adventure paths use it. Metadata and storyboard projections omit details whose independent access cannot yet be established. These omissions are temporary and require an explicit product decision before the preview is re-enabled.
 
-The Adventure, Quest, Thread and Character hub handlers, raw storyboard, time-tracking, wiki tree and direct wiki-page handlers reject explicit preview requests from elevated callers while the contract is incomplete. Ordinary player access continues through existing campaign authorization. Public content and public campaign access remain separate from workspace perspectives.
+The Adventure, Quest, Thread and Character hub handlers, raw storyboard, wiki tree and direct wiki-page handlers reject explicit preview requests from elevated callers while the contract is incomplete. Time tracking returns the same campaign calendar data available to ordinary players. Ordinary player access continues through existing campaign authorization. Public content and public campaign access remain separate from workspace perspectives.
 Adventure request inventory for the remaining HTTP and client audit:
 
 - `GET /wiki/adventure-hub[/:pageId]`: section-specific Adventure payloads. Preview guard remains active; scenes, arcs, investigation, scene timeline, sessions and timeline need separate response audits.
 - `GET /wiki/quests-hub[/:pageId]` and `/wiki/threads-hub[/:pageId]`: Quest and Thread views. Preview guard remains active; record blocks, lifecycle, associations, backlinks, category metadata and role overrides need endpoint tests.
 - `GET /adventure/storyboard`: raw management layout, guarded by management access, and rejects unsupported Party preview requests. It must not be used as a preview data source without a verified reduced contract.
-- `GET /time-tracking`: QuestHub passes the Party preview parameter to this secondary request. The handler rejects explicit unsupported Party preview requests; its normal response and state lifetime need audit before preview is enabled.
+- `GET /time-tracking`: QuestHub passes the Party preview parameter to this secondary request. Calendar definitions and the current campaign time have the same response for campaign members; a PostgreSQL campaign-router fixture checks manager and writer preview responses against a player's response and checks outsider denial. Other Adventure preview paths remain guarded.
 - Wiki tree/context and related page routes feed navigation and references outside these hub payloads; the browser must not carry a manager-context response into preview, and ordinary page permissions must remain authoritative.
 
 Public is not a workspace perspective. Published campaign access retains its own authorization.

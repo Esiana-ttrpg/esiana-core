@@ -30,7 +30,7 @@ test('HTTP handlers reject unsupported manager previews on primary and secondary
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     for (const path of ['/wiki/adventure-hub', '/wiki/adventure-hub/any', '/wiki/quests-hub', '/wiki/quests-hub/any',
-      '/wiki/threads-hub', '/wiki/threads-hub/any', '/adventure/storyboard', '/time-tracking']) {
+      '/wiki/threads-hub', '/wiki/threads-hub/any', '/adventure/storyboard']) {
       for (const query of ['true', '1']) {
         const response = await fetch(`http://127.0.0.1:${address.port}${path}?previewAsPlayer=${query}`);
         assert.equal(response.status, 503, `${path} should reject the preview`);

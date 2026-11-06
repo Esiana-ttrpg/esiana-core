@@ -5,6 +5,25 @@ import { canViewSharedPartyBaseline, canViewVisibility } from '../../../shared/c
 import { canManageNotebooksFromActor, hasElevatedNarrativeView } from './acl.js';
 import type { WikiVisibilityViewer } from './wikiTree.js';
 
+/** Keep only pages whose entire ancestry is visible to the effective audience. */
+export function filterAdventureAudiencePages<T extends { id: string; parentId: string | null; visibility: string }>(
+  rows: readonly T[], canView: (visibility: string) => boolean,
+): T[] {
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return rows.filter(row => {
+    const seen = new Set<string>();
+    let current: T | undefined = row;
+    while (current) {
+      if (seen.has(current.id) || !canView(current.visibility)) return false;
+      seen.add(current.id);
+      if (!current.parentId) return true;
+      current = byId.get(current.parentId);
+      if (!current) return false;
+    }
+    return false;
+  });
+}
+
 /** Resolve once per request. A preview can only narrow the real campaign actor. */
 export function resolveAdventureAudience(
   scope: CampaignContext,

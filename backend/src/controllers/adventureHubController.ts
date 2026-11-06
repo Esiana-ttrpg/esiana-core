@@ -1,6 +1,6 @@
 import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import { rejectUnverifiedAudiencePreview } from '../lib/adventureAudiencePreview.js';
-import { resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { filterAdventureAudiencePages, resolveAdventureAudience } from '../lib/adventureAudience.js';
 import { restrictArcInputs, restrictStoryboardEdges, restrictStoryboardLayout } from '../lib/adventureStoryboardAudience.js';
 import { restrictSceneMetadata } from '../lib/adventureAudienceMetadata.js';
 import { filterAdventurePreviewEvents } from '../lib/adventureAudienceEvents.js';
@@ -230,7 +230,18 @@ export async function buildAdventureHubResponse(
 
   const lifecycleViewerCtx = audience.narrativeViewer;
   const visibilityViewer = audience.visibilityViewer;
-  const allRows = audience.preview ? sourceRows.filter(row => audience.canViewPage(row.visibility)) : sourceRows;
+  const presence = audience.preview ? await getContentPresenceStateMap(
+    ctx.campaignId, ContentPresenceEntityType.WIKI_PAGE, sourceRows.map(row => row.id),
+  ) : null;
+  const partyRevelation = buildRevelationViewerContext({ role: null, isManagerView: false });
+  const allRows = audience.preview ? filterAdventureAudiencePages(
+    sourceRows.filter(row => isPresenceVisibleToContext(presence?.get(row.id) ?? 'REVEALED', partyRevelation)),
+    audience.canViewPage,
+  ) : sourceRows;
+  if (audience.preview && !allRows.some(row => row.id === category.id)) {
+    res.status(404).json({ error: 'Adventure category page not found' });
+    return;
+  }
 
   const payload: Record<string, unknown> = {
     category: {
@@ -245,9 +256,9 @@ export async function buildAdventureHubResponse(
     activeSection: section,
   };
 
-  const scenesRootId = sourceRows.find((p) => isNarrativeScenesCategoryPage(p.metadata))?.id ?? null;
+  const scenesRootId = allRows.find((p) => isNarrativeScenesCategoryPage(p.metadata))?.id ?? null;
   const threadsRootId =
-    sourceRows.find((p) => parseSystemCategoryKey(p.metadata) === 'narrative_threads')?.id ?? null;
+    allRows.find((p) => parseSystemCategoryKey(p.metadata) === 'narrative_threads')?.id ?? null;
 
   if (section === 'board' || !req.query.section) {
     const questRows: QuestHubPageRow[] = allRows.map((row) => ({
@@ -1075,7 +1086,7 @@ export async function buildAdventureHubResponse(
   }
 
   if (section === 'sessions') {
-    const readyScenes =
+    const sessionSceneRows =
       scenesRootId && allRows.length > 0
         ? collectVisibleSceneSubtreeRows(
             allRows.map((row) => ({
@@ -1091,28 +1102,35 @@ export async function buildAdventureHubResponse(
             scenesRootId,
             visibilityViewer,
           )
-            .filter((row) => parseSceneMetadata(row.metadata).sceneStatus === 'READY')
-            .map((row) => ({
-              id: row.id,
-              title: row.title,
-              sceneStatus: parseSceneMetadata(row.metadata).sceneStatus,
-            }))
         : [];
+    const sessionLifecycle = audience.preview ? await getLifecycleStates(
+      ctx.campaignId, NarrativeLifecycleSubjectKinds.SCENE, sessionSceneRows.map(row => row.id),
+    ) : null;
+    const authorizedSessionScenes = audience.preview
+      ? lifecycleViewerCtx && sessionLifecycle
+        ? filterSceneRowsForViewer(sessionSceneRows, sessionLifecycle, lifecycleViewerCtx)
+        : []
+      : sessionSceneRows;
+    const readyScenes = authorizedSessionScenes
+      .filter((row) => parseSceneMetadata(row.metadata).sceneStatus === 'READY')
+      .map((row) => ({ id: row.id, title: row.title, sceneStatus: parseSceneMetadata(row.metadata).sceneStatus }));
     const { layout } = await loadStoryboardLayout(ctx.campaignId);
     payload.sessions = {
       readyScenes,
       presets: STORYBOARD_PRESETS,
-      storyboardLayout: layout,
+      storyboardLayout: audience.preview
+        ? restrictStoryboardLayout(layout, new Set(authorizedSessionScenes.map(row => row.id)))
+        : layout,
     };
   }
 
   if (section === 'timeline') {
     const overlay = await buildConvergenceOverlay({
-      capabilityOverrides: narrativeCapabilitiesFromActor(ctx.actor),
+      capabilityOverrides: audience.preview ? audience.narrativeViewer?.capabilities : narrativeCapabilitiesFromActor(ctx.actor),
       campaignId: ctx.campaignId,
       campaignHandle,
-      role: ctx.role,
-      allowPlayerChronologyManagement: ctx.allowPlayerChronologyManagement ?? false,
+      role: audience.preview ? null : ctx.role,
+      allowPlayerChronologyManagement: audience.preview ? false : ctx.allowPlayerChronologyManagement ?? false,
       window: { mode: 'YEAR_RANGE', from: '0', to: '9999' },
       domains: [...ADVENTURE_TIMELINE_DOMAINS],
       sessionLinkedOnly: false,
