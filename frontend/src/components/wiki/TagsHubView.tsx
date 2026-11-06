@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Hash, FileText } from 'lucide-react';
 import { fetchTagsHub } from '@/lib/wiki';
@@ -51,9 +51,11 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const lastRequestedTagId = useRef<string | undefined>(initialTagId);
 
   const loadHub = useCallback(
     async (tagId?: string) => {
+      lastRequestedTagId.current = tagId;
       setLoading(true);
       setError(null);
       try {
@@ -128,13 +130,14 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
 
   return (
     <CategoryHubShell
+      headerDensity="compact"
       breadcrumbCrumbs={breadcrumbCrumbs}
       breadcrumbs={
         <WikiPageBreadcrumbs crumbs={breadcrumbCrumbs} campaignHandle={campaignHandle} />
       }
       title={
         <>
-          <Hash className="size-6 text-primary" strokeWidth={1.25} />
+          <Hash className="size-4 text-primary" strokeWidth={1.25} />
           Tags
         </>
       }
@@ -165,86 +168,91 @@ export function TagsHubView({ campaignHandle, initialTagId }: TagsHubViewProps) 
       }
     >
       {error ? (
-        <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-          {error}
-        </p>
-      ) : null}
+        <div role="alert" className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          <p>{error}</p>
+          <button type="button" className="mt-2 underline" onClick={() => void loadHub(lastRequestedTagId.current)}>
+            Try again
+          </button>
+        </div>
+      ) : (
+        <>
+          <section>
+            {tags.length === 0 ? (
+              <p className="text-sm text-muted">
+                No tags yet. Assign tags from any wiki page using the wrench menu.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {(selectedTagId ? tags : filteredTags).map((tag) => (
+                  <TagChip
+                    key={tag.id}
+                    name={tag.name}
+                    label={tag.label}
+                    icon={tag.icon}
+                    iconAssetUrl={tag.iconAssetUrl}
+                    color={tag.color}
+                    count={tag.pageCount}
+                    selected={tag.id === selectedTagId}
+                    onClick={() => handleSelectTag(tag.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
-      <section>
-        {tags.length === 0 ? (
-          <p className="text-sm text-muted">
-            No tags yet. Assign tags from any wiki page using the wrench menu.
-          </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {(selectedTagId ? tags : filteredTags).map((tag) => (
-              <TagChip
-                key={tag.id}
-                name={tag.name}
-                label={tag.label}
-                icon={tag.icon}
-                iconAssetUrl={tag.iconAssetUrl}
-                color={tag.color}
-                count={tag.pageCount}
-                selected={tag.id === selectedTagId}
-                onClick={() => handleSelectTag(tag.id)}
+          {canManage && selectedTag ? (
+            <TagAppearanceEditor
+              campaignHandle={campaignHandle}
+              tag={selectedTag}
+              onUpdated={handleTagUpdated}
+            />
+          ) : null}
+
+          <section>
+            {loading ? (
+              <LoadingSpinner label="Loading pages…" />
+            ) : !selectedTagId ? (
+              <EmptyState
+                icon={Hash}
+                title="Select a tag"
+                description="Choose a tag above to browse connected wiki pages."
               />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {canManage && selectedTag ? (
-        <TagAppearanceEditor
-          campaignHandle={campaignHandle}
-          tag={selectedTag}
-          onUpdated={handleTagUpdated}
-        />
-      ) : null}
-
-      <section>
-        {loading ? (
-          <LoadingSpinner label="Loading pages…" />
-        ) : !selectedTagId ? (
-          <EmptyState
-            icon={Hash}
-            title="Select a tag"
-            description="Choose a tag above to browse connected wiki pages."
-          />
-        ) : filteredPages.length === 0 ? (
-          <EmptyState
-            icon={FileText}
-            title={searchQuery.trim() ? 'No pages match' : 'No pages'}
-            description={
-              searchQuery.trim()
-                ? 'Try a different filter or clear refine.'
-                : 'No wiki pages are assigned this tag yet.'
-            }
-          />
-        ) : (
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredPages.map((page) => (
-              <li key={page.id}>
-                <Link
-                  to={campaignWikiPath(campaignHandle, page.id, flatPages)}
-                  className="region-depth-3 block rounded-md p-4 transition-colors hover:bg-focal-elevated"
-                >
-                  <h3 className="font-medium text-focal-foreground">{page.title}</h3>
-                  {page.snippet ? (
-                    <p className="mt-1.5 line-clamp-3 text-sm text-muted">
-                      {page.snippet}
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-sm italic text-muted">
-                      No description yet.
-                    </p>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+            ) : filteredPages.length === 0 ? (
+              <EmptyState
+                icon={FileText}
+                title={searchQuery.trim() ? 'No pages match' : 'No pages'}
+                description={
+                  searchQuery.trim()
+                    ? 'Try a different filter or clear refine.'
+                    : 'No wiki pages are assigned this tag yet.'
+                }
+              />
+            ) : (
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredPages.map((page) => (
+                  <li key={page.id}>
+                    <Link
+                      to={campaignWikiPath(campaignHandle, page.id, flatPages)}
+                      className="region-depth-3 block rounded-md p-4 transition-colors hover:bg-focal-elevated"
+                    >
+                      <h3 className="font-medium text-focal-foreground">{page.title}</h3>
+                      {page.snippet ? (
+                        <p className="mt-1.5 line-clamp-3 text-sm text-muted">
+                          {page.snippet}
+                        </p>
+                      ) : (
+                        <p className="mt-1.5 text-sm italic text-muted">
+                          No description yet.
+                        </p>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
     </CategoryHubShell>
   );
 }
