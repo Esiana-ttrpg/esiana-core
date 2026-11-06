@@ -20,7 +20,10 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CreatePageModal } from '@/components/CreatePageModal';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { CategoryIndexEmptyStatePanel } from '@/components/wiki/indexBrowse/CategoryIndexEmptyStatePanel';
 import { WorkspaceModeToggle } from '@/components/layout/WorkspaceModeToggle';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
+import { getCategoryEmptyCatalogMessage } from '@/lib/categoryBrowseRegistry';
 import { projectCategoryIndexBrowseChildren } from '@/lib/categoryIndexBrowse';
 import {
   formatWorkspaceHubCountHint,
@@ -45,12 +48,14 @@ export function OrganizationHubView({
   campaignHandle,
 }: OrganizationHubViewProps) {
   const params = useParams<{ campaignHandle?: string }>();
-  const { campaignHandle: wikiCampaignSlug, flatPages, refresh } = useWiki();
+  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, can } = useWiki();
+  const canCreate = can(CampaignCapabilities.PAGE_CREATE);
   const resolvedSlug = readCampaignHandle(params) || wikiCampaignSlug || campaignHandle;
   const navigate = useNavigate();
 
   const [children, setChildren] = useState<CategoryIndexChild[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [groupMode, setGroupMode] = useState<OrganizationGroupMode>('hierarchy');
   const [standings, setStandings] = useState<ReputationStandingCard[]>([]);
@@ -64,9 +69,12 @@ export function OrganizationHubView({
 
   const loadChildren = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const index = await fetchCategoryIndex(resolvedSlug, categoryPageId);
       setChildren(index.children ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load organizations');
     } finally {
       setLoading(false);
     }
@@ -125,17 +133,29 @@ export function OrganizationHubView({
   });
 
   function handleCreate() {
-    setIsCreateOpen(true);
+    if (canCreate) setIsCreateOpen(true);
   }
 
   if (loading) {
     return <LoadingSpinner label="Loading organizations…" />;
   }
 
+  if (error) {
+    return (
+      <div role="alert" className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
+        <p>{error}</p>
+        <button type="button" className="mt-2 underline" onClick={() => void loadChildren()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <CategoryHubShell
         composition="codex"
+        headerDensity="compact"
         catalogGridClass="space-y-6"
         breadcrumbs={
           <WikiPageBreadcrumbs crumbs={indexBreadcrumbs} campaignHandle={resolvedSlug} />
@@ -143,7 +163,7 @@ export function OrganizationHubView({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <Building2 className="size-6 text-primary" strokeWidth={1.25} />
+            <Building2 className="size-4 text-primary" strokeWidth={1.25} />
             Powers &amp; Factions
           </>
         }
@@ -151,6 +171,7 @@ export function OrganizationHubView({
           <CategoryIndexToolbar
             createLabel={`Catalog ${itemLabel}`}
             onCreate={handleCreate}
+            createAction={canCreate ? undefined : null}
             resultCountLabel={resultCountLabel}
             modeControl={
               <WorkspaceModeToggle
@@ -162,7 +183,28 @@ export function OrganizationHubView({
           />
         }
       >
-        {sections.map((section) => (
+        {children.length === 0 && canCreate ? (
+          <CategoryIndexEmptyStatePanel
+            totalCount={0}
+            filteredCount={0}
+            searchQuery=""
+            hasActiveRefine={false}
+            canCreate
+            categoryTitle={categoryTitle}
+            itemLabel={itemLabel}
+            campaignHandle={resolvedSlug}
+            similarEntries={[]}
+            headerCreateLabel={`Catalog ${itemLabel}`}
+            onCreate={handleCreate}
+            onCreateFromSearch={handleCreate}
+            onClearSearch={() => {}}
+            onResetRefine={() => {}}
+          />
+        ) : children.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-surface/40 px-6 py-16 text-center">
+            <p className="text-muted">{getCategoryEmptyCatalogMessage(categoryTitle)}</p>
+          </div>
+        ) : sections.map((section) => (
           <section key={section.label || 'all'}>
             {section.label ? (
               <h2 className="mb-3 text-sm font-semibold text-foreground">{section.label}</h2>
@@ -189,7 +231,7 @@ export function OrganizationHubView({
       </CategoryHubShell>
 
       <CreatePageModal
-        open={isCreateOpen}
+        open={canCreate && isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         campaignHandle={resolvedSlug}
         parentId={categoryPageId}

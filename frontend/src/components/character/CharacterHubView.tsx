@@ -361,6 +361,7 @@ export function CharacterHubView({
     <>
       <CategoryHubShell
         composition="codex"
+        headerDensity="compact"
         inlineContextual={showInlineRail}
         narrativeLayoutClassName={
           showInlineRail ? 'narrative-layout--character-hub-inline' : ''
@@ -376,22 +377,22 @@ export function CharacterHubView({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <Users className="size-6 text-primary" strokeWidth={1.25} />
+            <Users className="size-4 text-primary" strokeWidth={1.25} />
             Characters
           </>
         }
-        beforeActions={
-          isDMUser ? (
-            <PlayerPerspectiveToggle
-              value={playerPreview ? 'party' : 'dm'}
-              onChange={(next) => setPlayerPreview(next !== 'dm')}
-              ariaLabel="Character cast view perspective"
-              previewUnavailableReason="Party preview is temporarily unavailable."
-            />
-          ) : null
-        }
         actions={
           <CategoryIndexToolbar
+            audience={
+              isDMUser ? (
+                <PlayerPerspectiveToggle
+                  value={playerPreview ? 'party' : 'dm'}
+                  onChange={(next) => setPlayerPreview(next !== 'dm')}
+                  ariaLabel="Character cast view perspective"
+                  previewUnavailableReason="Party preview is temporarily unavailable."
+                />
+              ) : null
+            }
             createLabel={`Create ${itemLabel}`}
             onCreate={handleCreate}
             resultCountLabel={resultCountLabel}
