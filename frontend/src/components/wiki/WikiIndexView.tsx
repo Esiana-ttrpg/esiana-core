@@ -78,6 +78,8 @@ import { CategoryIndexDiscoveryBanner, DiscoveryStateBadge } from '@/components/
 import type { CategoryDiscoverySummary } from '@/lib/wiki';
 import { parseLocationMetadata, resolveLocationRegionLabel } from '@/lib/locationMetadata';
 import { groupLocationBrowseChildren, sortLocationBrowseChildren } from '@/lib/locationBrowseState';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
+import { MembershipRoles } from '@shared/campaignPolicy/membershipRoles';
 
 interface WikiIndexViewProps {
   categoryPageId: string;
@@ -117,12 +119,13 @@ function EntityBrowser({
 }: WikiIndexViewProps & { browseUserId?: string | null }) {
   const { t } = useTranslation();
   const params = useParams<{ campaignHandle?: string }>();
-  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign } =
+  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign, can } =
     useWiki();
   const campaignHandle = readCampaignHandle(params) || wikiCampaignSlug;
   const navigate = useNavigate();
   const [urlParams, setUrlParams] = useSearchParams();
   const isLocations = categoryTitle === 'Locations';
+  const compactHeader = isLocations || ['Objects', 'Families', 'Rules/Resources'].includes(categoryTitle);
 
   const [children, setChildren] = useState<CategoryIndexChild[]>([]);
   const [discoverySummary, setDiscoverySummary] =
@@ -152,7 +155,15 @@ function EntityBrowser({
 
   const isDMUser = useElevatedNarrativeView();
 
-  const canCreate = true;
+  const canCreate = Boolean(campaign?.isMember) && campaign?.role !== MembershipRoles.OBSERVER &&
+    can(CampaignCapabilities.PAGE_CREATE);
+
+  useEffect(() => {
+    if (!canCreate) {
+      setIsCreateOpen(false);
+      setCreateInitialTitle(null);
+    }
+  }, [canCreate]);
 
   const facetDefs = useMemo(
     () => getCategoryIndexFacetDefs(categoryTitle, isDMUser),
@@ -373,11 +384,13 @@ function EntityBrowser({
   }, [children, searchQuery, emptyVariant]);
 
   function handleCreate() {
+    if (!canCreate) return;
     setCreateInitialTitle(null);
     setIsCreateOpen(true);
   }
 
   function handleCreateFromSearch(title: string) {
+    if (!canCreate) return;
     setCreateInitialTitle(title);
     setIsCreateOpen(true);
   }
@@ -410,7 +423,7 @@ function EntityBrowser({
   return (
     <>
       <CategoryHubShell
-        headerDensity={isLocations ? 'compact' : 'default'}
+        headerDensity={compactHeader ? 'compact' : 'default'}
         catalogGridClass={
           isLocations && viewMode !== 'card'
             ? 'w-full min-w-0'
@@ -427,7 +440,7 @@ function EntityBrowser({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <FolderOpen className={`${isLocations ? 'size-4' : 'size-6'} text-primary`} strokeWidth={1.25} aria-hidden />
+            <FolderOpen className={`${compactHeader ? 'size-4' : 'size-6'} text-primary`} strokeWidth={1.25} aria-hidden />
             {categoryTitle}
           </>
         }
@@ -435,6 +448,7 @@ function EntityBrowser({
           <CategoryIndexToolbar
             createLabel={`Create ${itemLabel}`}
             onCreate={handleCreate}
+            createAction={canCreate && !error ? undefined : null}
             resultCountLabel={resultCountLabel}
             refineControl={
               facetDefs.length > 0 ? (
@@ -500,13 +514,7 @@ function EntityBrowser({
           ) : null
         }
       >
-      {error && (
-        <p className="mb-4 rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
-          {error}
-        </p>
-      )}
-
-      {discoverySummary && discoverySummary.undiscoveredCount > 0 ? (
+      {!error && discoverySummary && discoverySummary.undiscoveredCount > 0 ? (
         <div className="mb-4">
           <CategoryIndexDiscoveryBanner
             undiscoveredCount={discoverySummary.undiscoveredCount}
@@ -517,7 +525,14 @@ function EntityBrowser({
         </div>
       ) : null}
 
-      {emptyVariant !== null ? (
+      {error ? (
+        <div role="alert" className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          <p>{error}</p>
+          <button type="button" className="mt-2 underline" onClick={() => void loadIndex()}>
+            Try again
+          </button>
+        </div>
+      ) : emptyVariant !== null ? (
         <CategoryIndexEmptyStatePanel
           totalCount={children.length}
           filteredCount={filteredChildren.length}
@@ -610,7 +625,7 @@ function EntityBrowser({
       </CategoryHubShell>
 
       <CreatePageModal
-        open={isCreateOpen}
+        open={canCreate && isCreateOpen}
         campaignHandle={campaignHandle}
         parentId={categoryPageId}
         categoryTitle={categoryTitle}

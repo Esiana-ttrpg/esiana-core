@@ -222,9 +222,10 @@ export function RecentChangesPage() {
   return (
     <div className="space-y-6">
       <WorkspaceHeader
+        compact
         title={
           <>
-            <History className="size-5 text-primary" strokeWidth={1.5} />
+            <History className="size-4 text-primary" strokeWidth={1.5} />
             Recent Changes
           </>
         }
@@ -255,12 +256,18 @@ export function RecentChangesPage() {
       />
 
       {error && (
-        <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-          {error}
-        </p>
+        <div role="alert" className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          <p>{error}</p>
+          {page > 1 ? (
+            <button type="button" disabled={loading} onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="mt-2 inline-flex items-center gap-1 underline disabled:opacity-50">
+              <ChevronLeft className="size-4" /> Previous
+            </button>
+          ) : null}
+        </div>
       )}
 
-      {buckets.length === 0 ? (
+      {!error && (buckets.length === 0 ? (
         <EmptyState
           icon={History}
           title="No changes yet"
@@ -278,7 +285,7 @@ export function RecentChangesPage() {
             />
           ))}
         </div>
-      )}
+      ))}
 
       {showPagination && pagination && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
