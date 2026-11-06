@@ -73,7 +73,22 @@ export function ChronologyCreateEventDialog({
     }),
     [calendarId],
   );
-  if (!calendar || !like) return null;
+  if (!calendar || !like) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div role="dialog" aria-modal="true" aria-labelledby="create-event-unavailable-title"
+          className="w-full max-w-md rounded-xl border border-border bg-background p-5 shadow-2xl">
+          <h2 id="create-event-unavailable-title" className="text-base font-semibold">Create Event</h2>
+          <p className="mt-3 text-sm text-muted">A calendar is required before creating an event.</p>
+          <div className="mt-4 flex justify-end">
+            <button type="button" autoFocus onClick={onClose} className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-surface">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <ChronologyEventForm
       key={calendarId}
