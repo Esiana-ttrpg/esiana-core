@@ -17,6 +17,7 @@ import {
 import { ProgressionTrajectoriesSection } from '@/components/progression/ProgressionTrajectoriesSection';
 import { DevelopmentsSection } from '@/components/progression/DevelopmentsSection';
 import { DevelopmentHistorySection } from '@/components/progression/DevelopmentHistorySection';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const VALID_PROGRESSION_SECTION_IDS = new Set<string>(
   PROGRESSION_SECTIONS.map((section) => section.id),
@@ -25,7 +26,7 @@ const VALID_PROGRESSION_SECTION_IDS = new Set<string>(
 export function ProgressionPage() {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
   const location = useLocation();
-  const { campaign } = useWiki();
+  const { campaign, loading } = useWiki();
 
   const canAccess =
     campaign?.role === CampaignMemberRoles.GAMEMASTER ||
@@ -43,6 +44,10 @@ export function ProgressionPage() {
       patchProgressionSection(campaignHandle, activeSection);
     }
   }, [activeSection, campaignHandle, canAccess, hasSectionParam]);
+
+  if (loading) {
+    return <LoadingSpinner label="Loading Progression…" />;
+  }
 
   if (!canAccess) {
     return <Navigate to={`/campaigns/${campaignHandle}/dashboard`} replace />;

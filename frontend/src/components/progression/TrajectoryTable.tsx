@@ -38,6 +38,7 @@ interface TrajectoryTableProps {
   flatPages: WikiTreeNode[];
   eras: CampaignEra[];
   rows: TrajectoryTableRow[];
+  emptyMessage?: string;
   onPatch: (
     pageId: string,
     eraId: string | null,
@@ -75,6 +76,7 @@ export function TrajectoryTable({
   flatPages,
   eras,
   rows,
+  emptyMessage,
   onPatch,
   onPersistPage,
 }: TrajectoryTableProps) {
@@ -83,7 +85,7 @@ export function TrajectoryTable({
   if (rows.length === 0) {
     return (
       <p className="py-6 text-sm text-muted-foreground">
-        No trajectories yet. Add one when you want to give part of the world a direction over time.
+        {emptyMessage ?? 'No trajectories yet. Add one when you want to give part of the world a direction over time.'}
       </p>
     );
   }

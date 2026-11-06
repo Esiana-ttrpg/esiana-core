@@ -1,6 +1,7 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { CategoryIndexSearchInput } from '@/components/wiki/indexBrowse/CategoryIndexSearchInput';
 import type {
   CategoryIndexFacetDef,
@@ -29,6 +30,8 @@ interface CategoryIndexRefinePopoverProps {
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  /** Use the viewport width for a popover whose trigger can wrap to the left on mobile. */
+  mobileFullWidth?: boolean;
   /** Optional presentation controls; callers apply these to their visible records. */
   grouping?: RefineChoiceControl;
   sorting?: RefineSortControl;
@@ -67,11 +70,41 @@ export function CategoryIndexRefinePopover({
   searchQuery,
   onSearchChange,
   searchPlaceholder,
+  mobileFullWidth = false,
   grouping,
   sorting,
 }: CategoryIndexRefinePopoverProps) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
+  const [searchDraft, setSearchDraft] = useState(searchQuery ?? '');
+  const searchTimer = useRef<number | null>(null);
+  const searchChangeRef = useRef(onSearchChange);
+  searchChangeRef.current = onSearchChange;
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    setSearchDraft(searchQuery ?? '');
+  }, [searchQuery]);
+  useEffect(() => () => {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+  }, []);
+
+  function updateSearchDraft(value: string) {
+    setSearchDraft(value);
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = window.setTimeout(() => {
+      searchTimer.current = null;
+      searchChangeRef.current?.(value);
+    }, 200);
+  }
+
+  function clearSearchDraft() {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    setSearchDraft('');
+  }
 
   const hasTextFilter = Boolean(onSearchChange && (searchQuery?.trim() ?? '').length > 0);
   const hasFacetRefine = hasActiveCategoryIndexRefine(
@@ -84,10 +117,11 @@ export function CategoryIndexRefinePopover({
     (grouping && grouping.value !== grouping.defaultValue) ||
     (sorting && (sorting.value !== sorting.defaultValue || sorting.direction !== sorting.defaultDirection)),
   );
+  const pendingTextFilter = Boolean(onSearchChange && searchDraft.trim());
   const hasFilters = (
     activeCount !== undefined
-      ? activeCount > 0
-      : hasFacetRefine || hasTextFilter);
+      ? activeCount > 0 || pendingTextFilter
+      : hasFacetRefine || hasTextFilter || pendingTextFilter);
   const hasActive = hasPresentationChange || hasFilters;
 
   useEffect(() => {
@@ -119,10 +153,10 @@ export function CategoryIndexRefinePopover({
         }`}
       >
         <SlidersHorizontal className="size-4" />
-        Refine
+        {t('common.refine', { defaultValue: 'Refine' })}
         {hasActive && (
           <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium">
-            {activeCount !== undefined && !hasPresentationChange ? activeCount : '•'}
+            {activeCount !== undefined && !hasPresentationChange ? activeCount + Number(pendingTextFilter && !hasTextFilter) : '•'}
           </span>
         )}
       </button>
@@ -130,15 +164,16 @@ export function CategoryIndexRefinePopover({
       {open && (
         <div
           role="dialog"
-          aria-label="Refine results"
-          className="absolute right-0 z-30 mt-2 max-h-[min(70vh,24rem)] w-[min(100vw-2rem,22rem)] overflow-y-auto rounded-lg border border-border bg-elevated p-3 shadow-lg"
+          aria-label={t('common.refineResults', { defaultValue: 'Refine results' })}
+          className={`absolute right-0 z-30 mt-2 max-h-[min(70vh,24rem)] w-[min(100vw-2rem,22rem)] overflow-y-auto rounded-lg border border-border bg-elevated p-3 shadow-lg ${mobileFullWidth ? 'max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:w-auto' : ''}`}
         >
           {showInPopoverSearch ? (
             <div className="mb-3">
               <CategoryIndexSearchInput
-                value={searchQuery ?? ''}
+                value={searchDraft}
                 placeholder={searchPlaceholder ?? 'Filter list…'}
-                onChange={onSearchChange!}
+                onChange={updateSearchDraft}
+                onClear={() => { clearSearchDraft(); onSearchChange?.(''); }}
               />
             </div>
           ) : null}
@@ -215,6 +250,7 @@ export function CategoryIndexRefinePopover({
             <button
               type="button"
               onClick={() => {
+                clearSearchDraft();
                 if (onResetFilters) { onResetFilters(); return; }
                 if (onResetRefine) {
                   onResetRefine();
@@ -227,12 +263,13 @@ export function CategoryIndexRefinePopover({
               }}
               className="mt-3 text-xs text-muted underline-offset-2 hover:text-primary hover:underline"
             >
-              {grouping || sorting ? 'Reset filters' : 'Reset refine'}
+              {grouping || sorting ? t('common.resetFilters', { defaultValue: 'Reset filters' }) : t('common.resetRefine', { defaultValue: 'Reset refine' })}
             </button>
           )}
           {(grouping || sorting) && hasActive && (
             <button type="button" className="ml-3 mt-3 text-xs text-muted underline-offset-2 hover:text-primary hover:underline"
               onClick={() => {
+                clearSearchDraft();
                 if (onResetAll) { onResetAll(); return; }
                 if (onResetRefine) onResetRefine();
                 else onRefineChange(resetCategoryIndexRefine(facetDefs, children, categoryTitle));
@@ -242,7 +279,7 @@ export function CategoryIndexRefinePopover({
                   sorting.onChange(sorting.defaultValue);
                   sorting.onDirectionChange(sorting.defaultDirection);
                 }
-              }}>Reset all</button>
+              }}>{t('common.resetAll', { defaultValue: 'Reset all' })}</button>
           )}
 
           <p className="mt-3 text-[11px] text-muted">
