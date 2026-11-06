@@ -56,9 +56,29 @@ export function ProgressionSectionTabs({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as Node | null;
+      const inMenu = Boolean(target && menuRef.current?.contains(target));
+      const onTrigger = Boolean(target && triggerRef.current?.contains(target));
+      if (!inMenu && !onTrigger) return;
       if (event.key === 'Escape') {
+        event.preventDefault();
         setMenuOpen(false);
         triggerRef.current?.focus();
+      } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const nextIndex = event.key === 'ArrowDown'
+          ? Math.min(highlightIndex + 1, PROGRESSION_SECTIONS.length - 1)
+          : Math.max(highlightIndex - 1, 0);
+        setHighlightIndex(nextIndex);
+        if (inMenu) menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]')[nextIndex]?.focus();
+      } else if (onTrigger && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        const section = PROGRESSION_SECTIONS[highlightIndex];
+        if (section) {
+          setMenuOpen(false);
+          goToSection(section.id);
+          triggerRef.current?.focus();
+        }
       }
     }
 
@@ -68,7 +88,7 @@ export function ProgressionSectionTabs({
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [menuOpen]);
+  }, [menuOpen, highlightIndex, goToSection]);
 
   return (
     <>
@@ -127,6 +147,7 @@ export function ProgressionSectionTabs({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
+                  onFocus={() => setHighlightIndex(index)}
                   onClick={() => {
                     setMenuOpen(false);
                     goToSection(section.id);

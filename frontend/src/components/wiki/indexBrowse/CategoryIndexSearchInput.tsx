@@ -39,6 +39,7 @@ export function CategoryIndexSearchInput({
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder}
         className="w-full rounded-lg border border-border bg-background py-2.5 pl-9 pr-9 text-sm text-foreground placeholder:text-muted focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
         autoComplete="off"
       />
