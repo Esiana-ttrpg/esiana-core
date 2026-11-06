@@ -20,6 +20,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CreatePageModal } from '@/components/CreatePageModal';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { CategoryIndexEmptyStatePanel } from '@/components/wiki/indexBrowse/CategoryIndexEmptyStatePanel';
 import { WorkspaceModeToggle } from '@/components/layout/WorkspaceModeToggle';
 import { projectCategoryIndexBrowseChildren } from '@/lib/categoryIndexBrowse';
 import {
@@ -136,6 +137,7 @@ export function OrganizationHubView({
     <>
       <CategoryHubShell
         composition="codex"
+        headerDensity="compact"
         catalogGridClass="space-y-6"
         breadcrumbs={
           <WikiPageBreadcrumbs crumbs={indexBreadcrumbs} campaignHandle={resolvedSlug} />
@@ -143,7 +145,7 @@ export function OrganizationHubView({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <Building2 className="size-6 text-primary" strokeWidth={1.25} />
+            <Building2 className="size-4 text-primary" strokeWidth={1.25} />
             Powers &amp; Factions
           </>
         }
@@ -162,7 +164,24 @@ export function OrganizationHubView({
           />
         }
       >
-        {sections.map((section) => (
+        {children.length === 0 ? (
+          <CategoryIndexEmptyStatePanel
+            totalCount={0}
+            filteredCount={0}
+            searchQuery=""
+            hasActiveRefine={false}
+            canCreate
+            categoryTitle={categoryTitle}
+            itemLabel={itemLabel}
+            campaignHandle={resolvedSlug}
+            similarEntries={[]}
+            headerCreateLabel={`Catalog ${itemLabel}`}
+            onCreate={handleCreate}
+            onCreateFromSearch={handleCreate}
+            onClearSearch={() => {}}
+            onResetRefine={() => {}}
+          />
+        ) : sections.map((section) => (
           <section key={section.label || 'all'}>
             {section.label ? (
               <h2 className="mb-3 text-sm font-semibold text-foreground">{section.label}</h2>
