@@ -1,3 +1,5 @@
+import { prisma } from '../lib/prisma.js';
+import { resolveAdventureAudience, filterAdventurePreviewPages } from '../lib/adventureAudience.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import {
@@ -72,11 +74,15 @@ export async function getEntityGraph(
   const depth = Number.isFinite(depthRaw) ? depthRaw : 1;
   const kinds = parseKinds(req.query.kinds);
   const includeSuppressed = req.query.includeSuppressed === 'true';
-  const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, await buildNarrativeViewerContextFromRequest(req));
+  const viewerCtx = audience.narrativeViewer;
+  const authorizedPageIds = audience.preview ? new Set((await filterAdventurePreviewPages(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage)).map(page => page.id)) : undefined;
   if (!viewerCtx) {
     res.status(500).json({ error: 'Unable to resolve viewer context' });
     return;
   }
+  if (authorizedPageIds && !authorizedPageIds.has(entityId)) { res.status(404).json({ error: 'Page not found' }); return; }
   const campaignNow = await resolveCampaignChronologyNow(ctx.campaignId);
 
   const campaignHandle = ctx.campaignHandle ?? ctx.campaignId;
@@ -88,8 +94,9 @@ export async function getEntityGraph(
     depth,
     kinds,
     viewerCtx,
+    authorizedPageIds,
     campaignNow,
-    includeSuppressed,
+    includeSuppressed: audience.preview ? false : includeSuppressed,
   });
 
   res.json(result);
@@ -100,6 +107,9 @@ export async function getEntityGraphDiagnostics(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (resolveAdventureAudience(ctx, req.query.previewAsPlayer, null).preview) {
+    res.status(403).json({ error: 'Diagnostics require the GM perspective' }); return;
+  }
   const checks = parseChecks(req.query.checks);
   const includeSuppressed = req.query.includeSuppressed === 'true';
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
@@ -128,7 +138,10 @@ export async function getEntityGraphProjection(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, await buildNarrativeViewerContextFromRequest(req));
+  const viewerCtx = audience.narrativeViewer;
+  const authorizedPageIds = audience.preview ? new Set((await filterAdventurePreviewPages(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage)).map(page => page.id)) : undefined;
   if (!viewerCtx) {
     res.status(500).json({ error: 'Unable to resolve viewer context' });
     return;
@@ -150,6 +163,7 @@ export async function getEntityGraphProjection(
     campaignHandle,
     window,
     viewerCtx,
+    authorizedPageIds,
   });
   res.json(result);
 }

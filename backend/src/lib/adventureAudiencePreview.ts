@@ -1,6 +1,6 @@
 ﻿import type { Response } from 'express';
 
-/** Fail closed until Adventure, quest and thread preview projections are audited end to end. */
+/** Contain domains whose shared audience projection is not implemented (currently Character). */
 export function rejectUnverifiedAudiencePreview(
   requested: unknown,
   canManage: boolean,

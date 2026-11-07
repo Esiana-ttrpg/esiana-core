@@ -466,6 +466,20 @@ export const campaignScopedRouter = Router({ mergeParams: true });
 
 campaignScopedRouter.use(campaignScopeMiddleware);
 campaignScopedRouter.use(requireCampaignMembership);
+// Ambiguous audience values must not silently select the elevated perspective.
+campaignScopedRouter.use((req, res, next) => {
+  const audience = req.query.previewAsPlayer;
+  if (Object.keys(req.query).some(key => key.startsWith('previewAsPlayer['))) {
+    res.status(400).json({ error: 'Invalid previewAsPlayer audience' }); return;
+  }
+  if (audience !== undefined && !['true', '1', 'false', '0'].includes(String(audience))) {
+    res.status(400).json({ error: 'Invalid previewAsPlayer audience' }); return;
+  }
+  if (audience !== undefined && typeof audience !== 'string') {
+    res.status(400).json({ error: 'Invalid previewAsPlayer audience' }); return;
+  }
+  next();
+});
 campaignScopedRouter.use(rateLimitPolicy('authenticated'));
 campaignScopedRouter.use(rateLimitPolicy('apiKey'));
 campaignScopedRouter.use(rateLimitPolicy('mutation'));

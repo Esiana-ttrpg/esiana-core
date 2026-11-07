@@ -43,7 +43,7 @@ async function mount(children: ReactNode) {
   return { container, unmount: () => act(async () => root.unmount()) };
 }
 
-test('Adventure preview options stay unavailable until server projections are verified', async () => {
+test('Adventure perspective control requests the Party audience', async () => {
   const { AdventurePlayerPreviewToggle } = await import('./AdventurePlayerPreviewToggle');
   const setPerspective = vi.fn();
   workspace.perspective = 'dm';
@@ -52,9 +52,8 @@ test('Adventure preview options stay unavailable until server projections are ve
   try {
     const buttons = Array.from(ui.container.querySelectorAll('button'));
     expect(buttons.map(button => button.textContent)).toEqual(['GM', 'Party']);
-    expect(buttons[1].disabled).toBe(true);
-    expect(ui.container.textContent).toContain('temporarily unavailable');
+    expect(buttons[1].disabled).toBe(false);
     await act(async () => buttons[1].click());
-    expect(setPerspective).not.toHaveBeenCalled();
+    expect(setPerspective).toHaveBeenCalledWith('party');
   } finally { await ui.unmount(); }
 });

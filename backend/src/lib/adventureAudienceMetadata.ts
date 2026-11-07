@@ -2,7 +2,7 @@
 import type { ThreadMetadataFields } from '../../../shared/threadMetadata.js';
 
 /** Associated IDs must have been authorized, including any lifecycle and discovery rules. */
-export function restrictSceneMetadata(scene: SceneMetadataFields, authorizedIds: ReadonlySet<string>): SceneMetadataFields {
+export function restrictSceneMetadata(scene: SceneMetadataFields, authorizedIds: ReadonlySet<string>, sessionIds: ReadonlySet<string> = new Set()): SceneMetadataFields {
   const allowed = (ids: string[]) => ids.filter(id => authorizedIds.has(id));
   return {
     ...scene,
@@ -15,16 +15,20 @@ export function restrictSceneMetadata(scene: SceneMetadataFields, authorizedIds:
     linkedThreadPageIds: allowed(scene.linkedThreadPageIds),
     consequencePageIds: allowed(scene.consequencePageIds),
     followsScenePageIds: allowed(scene.followsScenePageIds),
-    // Conditions, outcomes and session anchors lack their own audience projection.
-    entryConditions: [], exitConditions: [], outcomes: [], plannedSessionId: null, playedSessionId: null,
+    // Conditions and outcomes are GM orchestration; session anchors must be independently authorized.
+    entryConditions: [], exitConditions: [], outcomes: [],
+    plannedSessionId: scene.plannedSessionId && sessionIds.has(scene.plannedSessionId) ? scene.plannedSessionId : null,
+    playedSessionId: scene.playedSessionId && sessionIds.has(scene.playedSessionId) ? scene.playedSessionId : null,
   };
 }
 
-export function restrictThreadMetadata(thread: ThreadMetadataFields, authorizedIds: ReadonlySet<string>): ThreadMetadataFields {
+export function restrictThreadMetadata(thread: ThreadMetadataFields, authorizedIds: ReadonlySet<string>, sessionIds: ReadonlySet<string> = new Set()): ThreadMetadataFields {
   return {
     ...thread,
     relatedPageIds: thread.relatedPageIds.filter(id => authorizedIds.has(id)),
     payoffPageId: thread.payoffPageId && authorizedIds.has(thread.payoffPageId) ? thread.payoffPageId : null,
-    introducedSessionId: null, lastAdvancedSessionId: null, resolvedSessionId: null,
+    introducedSessionId: thread.introducedSessionId && sessionIds.has(thread.introducedSessionId) ? thread.introducedSessionId : null,
+    lastAdvancedSessionId: thread.lastAdvancedSessionId && sessionIds.has(thread.lastAdvancedSessionId) ? thread.lastAdvancedSessionId : null,
+    resolvedSessionId: thread.resolvedSessionId && sessionIds.has(thread.resolvedSessionId) ? thread.resolvedSessionId : null,
   };
 }

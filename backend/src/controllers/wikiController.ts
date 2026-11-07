@@ -1,3 +1,4 @@
+import { projectAdventurePages, projectedWikiTargetIds } from '../lib/adventurePageProjection.js';
 import { ensureChronologyWikiWorkspaces, ChronologyWorkspaceError } from '../lib/chronologyWikiWorkspace.js';
 import { linkChronologyPage } from './chronologyPagesController.js';
 import { chronologyCanManage, chronologyCanView } from '../lib/chronologyAccess.js';
@@ -22,9 +23,7 @@ import {
   loadCalendarEventDescriptionForLorePage,
 } from '../lib/eventLoreWiki.js';
 import { buildWikiTree, canViewWikiPage } from '../lib/wikiTree.js';
-import { rejectUnverifiedAudiencePreview } from '../lib/adventureAudiencePreview.js';
-import { resolveAdventureAudience } from '../lib/adventureAudience.js';
-import { restrictThreadMetadata } from '../lib/adventureAudienceMetadata.js';
+import { filterAdventureAudiencePages, filterAdventurePreviewPages, resolveAdventureAudience } from '../lib/adventureAudience.js';
 import { isHubPageVisible } from '../lib/hubVisibility.js';
 import { normalizeSidebarConfig, isSidebarConfigBlank } from '../lib/sidebarConfig.js';
 import { toInputJsonValue } from '../lib/inputJsonValue.js';
@@ -804,13 +803,13 @@ export async function getWikiTree(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
 
   await ensureQuickAccessCategoryTitle(ctx.campaignId);
   await ensureRemoveLegacyDashboardWikiPage(ctx.campaignId);
   await ensureChronologyWikiWorkspaces(ctx.campaignId);
   await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
+  if (audience.preview) await ensureNarrativeScenesSystemCategoryKey(ctx.campaignId);
   await ensureDowntimeSystemCategoryKey(ctx.campaignId);
 
   const [campaign, pages, members] = await Promise.all([
@@ -862,19 +861,31 @@ export async function getWikiTree(
     });
   }
 
-  sidebarConfig = await enrichSidebarConfigWithIconUrls(sidebarConfig);
+  sidebarConfig = audience.preview ? normalizeSidebarConfig(null) : await enrichSidebarConfigWithIconUrls(sidebarConfig);
 
-  if (!hasElevatedNarrativeView(ctx.actor)) {
+  let treePages = pages;
+  if (audience.preview) {
+    const allowedCategoryKeys = new Set(['quests', 'party', 'narrative_threads', 'narrative_scenes', 'downtime']);
+    treePages = (await filterAdventurePreviewPages(ctx.campaignId, pages, audience.canViewPage))
+      .map(page => {
+        const key = parseSystemCategoryKey(page.metadata);
+        return { ...page, featuredImageId: null, metadata: key && allowedCategoryKeys.has(key) ? { systemCategoryKey: key } : null };
+      });
+  }
+
+  if (!audience.preview && !hasElevatedNarrativeView(ctx.actor)) {
     const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
     const hidden = await hiddenEraIds(ctx.campaignId);
     for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
   }
-  const tree = buildWikiTree(pages, ctx);
+  const tree = buildWikiTree(treePages, audience.visibilityViewer);
 
-  const lastWikiUpdate = pages.reduce<Date | null>((latest, page) => {
+  const lastWikiUpdate = treePages.reduce<Date | null>((latest, page) => {
     if (!latest || page.updatedAt > latest) return page.updatedAt;
     return latest;
   }, null);
+  const visibleIdentityIds = new Set(filterAdventureAudiencePages(treePages, visibility =>
+    canViewWikiPage(visibility, audience.visibilityViewer)).map(page => page.id));
 
   res.json({
     tree,
@@ -900,7 +911,8 @@ export async function getWikiTree(
       campaignIntegrations: parseCampaignIntegrations(campaign.campaignIntegrations),
     },
     players: members.map((m, index) => {
-      const identity = mapMemberToIdentityFields(m, index);
+      const visibleIdentity = !m.identityPage || visibleIdentityIds.has(m.identityPage.id);
+      const identity = mapMemberToIdentityFields(visibleIdentity ? m : { ...m, identityPage: null }, index);
       return {
         id: m.userId,
         label: identity.label,
@@ -1473,10 +1485,31 @@ export async function getWikiPage(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureChronologyWikiWorkspaces(ctx.campaignId);
+
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const pages = await prisma.wikiPage.findMany({
+      where: { campaignId: ctx.campaignId, deletedAt: null }, select: wikiPageDetailSelect,
+    });
+    const visible = await projectAdventurePages(ctx.campaignId, pages, audience.canViewPage);
+    const page = visible.find(row => row.id === pageId);
+    if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    const byId = new Map(visible.map(row => [row.id, row]));
+    const parentChain = (id: string | null): unknown => {
+      const parent = id ? byId.get(id) : undefined;
+      return parent ? { id: parent.id, title: parent.title, parentId: parent.parentId,
+        visibility: parent.visibility, parent: parentChain(parent.parentId) } : null;
+    };
+    res.json({ id: page.id, title: page.title, parentId: page.parentId,
+      workspace: page.workspace, pathKey: page.pathKey, visibility: page.visibility,
+      templateType: page.templateType, metadata: page.metadata, blocks: page.blocks,
+      createdAt: page.createdAt.toISOString(), updatedAt: page.updatedAt.toISOString(),
+      parent: parentChain(page.parentId), tags: await formatTagsForApiEnriched(page.tags),
+      mapAssetId: null, canEdit: false });
+    return;
+  }
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId, deletedAt: null },
@@ -3393,7 +3426,6 @@ async function buildQuestHubResponse(
 ): Promise<void> {
   const ctx = req.campaign!;
   const canManage = canManageNotebooks(ctx.actor);
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer, canManage || hasElevatedNarrativeView(ctx.actor), res)) return;
   const previewAsPlayer =
     req.query.previewAsPlayer === 'true' || req.query.previewAsPlayer === '1';
   const effectiveCanManage = canManage && !previewAsPlayer;
@@ -3426,10 +3458,11 @@ async function buildQuestHubResponse(
       blocks: true,
       createdAt: true,
       updatedAt: true,
+      deletedAt: true,
     },
   });
 
-  const questRows: QuestHubPageRow[] = allRows.map((row) => ({
+  let questRows: QuestHubPageRow[] = allRows.map((row) => ({
     id: row.id,
     title: row.title,
     parentId: row.parentId,
@@ -3442,6 +3475,14 @@ async function buildQuestHubResponse(
 
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
   const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, viewerCtx);
+  if (audience.preview) {
+    const safeRows = await projectAdventurePages(ctx.campaignId, allRows.filter(row => !row.deletedAt), audience.canViewPage);
+    if (!safeRows.some(row => row.id === category.id)) {
+      res.status(404).json({ error: 'Quests category page not found' });
+      return;
+    }
+    questRows = safeRows;
+  }
   const effectiveViewerCtx = audience.narrativeViewer;
   const visibilityViewer = audience.preview ? audience.visibilityViewer : effectiveViewerCtx ?? ctx.role;
 
@@ -3537,8 +3578,8 @@ async function buildQuestHubResponse(
       );
       const quest = audience.preview ? {
         ...parsedQuest,
-        questGiverId: null,
-        factionId: null,
+        questGiverId: parsedQuest.questGiverId,
+        factionId: parsedQuest.factionId,
       } : parsedQuest;
       const lifecycleState = lifecycleMap.get(row.id) ?? null;
       const questGiver = quest.questGiverId
@@ -3618,7 +3659,7 @@ async function buildQuestHubResponse(
       updatedAt: category.updatedAt.toISOString(),
       systemCategoryKey: parseSystemCategoryKey(category.metadata),
     },
-    previewAsPlayer: previewAsPlayer && canManage,
+    previewAsPlayer: audience.preview,
     quests: tree,
   });
 }
@@ -3628,8 +3669,6 @@ export async function getQuestHubBySystemKey(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const questsRootId = await ensureQuestsSystemCategoryKey(ctx.campaignId);
   if (!questsRootId) {
     res.status(404).json({ error: 'Quests category page not found' });
@@ -3643,8 +3682,6 @@ export async function getQuestHubIndex(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureQuestsSystemCategoryKey(ctx.campaignId);
   await buildQuestHubResponse(req, res, pageId);
@@ -3657,7 +3694,6 @@ async function buildThreadHubResponse(
 ): Promise<void> {
   const ctx = req.campaign!;
   const canManage = canManageNotebooks(ctx.actor);
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer, canManage || hasElevatedNarrativeView(ctx.actor), res)) return;
   const previewAsPlayer =
     req.query.previewAsPlayer === 'true' || req.query.previewAsPlayer === '1';
   const effectiveCanManage = canManage && !previewAsPlayer;
@@ -3690,10 +3726,11 @@ async function buildThreadHubResponse(
       blocks: true,
       createdAt: true,
       updatedAt: true,
+      deletedAt: true,
     },
   });
 
-  const threadRows: ThreadHubPageRow[] = allRows.map((row) => ({
+  let threadRows: ThreadHubPageRow[] = allRows.map((row) => ({
     id: row.id,
     title: row.title,
     parentId: row.parentId,
@@ -3706,6 +3743,14 @@ async function buildThreadHubResponse(
 
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
   const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, viewerCtx);
+  if (audience.preview) {
+    const safeRows = await projectAdventurePages(ctx.campaignId, allRows.filter(row => !row.deletedAt), audience.canViewPage);
+    if (!safeRows.some(row => row.id === category.id)) {
+      res.status(404).json({ error: 'Narrative threads category page not found' });
+      return;
+    }
+    threadRows = safeRows;
+  }
   const effectiveViewerCtx = audience.narrativeViewer;
   const visibilityViewer = audience.preview ? audience.visibilityViewer : effectiveViewerCtx ?? ctx.role;
 
@@ -3782,7 +3827,7 @@ async function buildThreadHubResponse(
         effectiveCanManage,
       );
       // Page visibility alone does not establish lifecycle/discovery access to related records.
-      const thread = audience.preview ? restrictThreadMetadata(parsedFields, new Set()) : parsedFields;
+      const thread = parsedFields;
       const lifecycleState = lifecycleMap.get(row.id) ?? null;
       const related = thread.relatedPageIds
         .map((id) => refById.get(id))
@@ -3844,7 +3889,7 @@ async function buildThreadHubResponse(
       updatedAt: category.updatedAt.toISOString(),
       systemCategoryKey: parseSystemCategoryKey(category.metadata),
     },
-    previewAsPlayer: previewAsPlayer && canManage,
+    previewAsPlayer: audience.preview,
     threads,
   });
 }
@@ -3854,8 +3899,6 @@ export async function getThreadHubBySystemKey(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const threadsRootId = await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
   if (!threadsRootId) {
     res.status(404).json({ error: 'Narrative threads category page not found' });
@@ -3869,8 +3912,6 @@ export async function getThreadHubIndex(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooks(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureNarrativeThreadsSystemCategoryKey(ctx.campaignId);
   await buildThreadHubResponse(req, res, pageId);
@@ -5705,12 +5746,50 @@ export async function compileSessionNotes(
   }
 }
 
+/** Derive references from the same projected blocks returned by direct navigation. */
+async function buildPreviewWikiLinks(ctx: CampaignScopedRequest['campaign'], pageId: string) {
+  if (!ctx) return null;
+  const audience = resolveAdventureAudience(ctx, 'true', null);
+  if (!audience.preview) return null;
+  const pages = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null },
+    select: { id: true, title: true, parentId: true, visibility: true, metadata: true, blocks: true,
+      templateType: true, workspace: true, pathKey: true, updatedAt: true } });
+  const visible = await projectAdventurePages(ctx.campaignId, pages, audience.canViewPage);
+  const byId = new Map(visible.map(page => [page.id, page]));
+  if (!byId.has(pageId)) return null;
+  const links = new Map(visible.map(page => [page.id, new Set(projectedWikiTargetIds(page.blocks).filter(id => byId.has(id)))]));
+  const campaignHandle = ctx.campaignHandle ?? ctx.campaignId;
+  const row = (page: typeof visible[number]) => {
+    const ancestors: string[] = [];
+    let parent = page.parentId;
+    while (parent) {
+      const ancestor = byId.get(parent);
+      if (!ancestor) break;
+      ancestors.unshift(ancestor.title);
+      parent = ancestor.parentId;
+    }
+    return { id: page.id, title: page.title, type: page.templateType, parentId: page.parentId,
+      visibility: page.visibility, updatedAt: page.updatedAt.toISOString(),
+      breadcrumbLabel: [...ancestors, page.title].join(' › '), href: buildWikiPageHref(campaignHandle, page) };
+  };
+  const backlinks = visible.filter(page => links.get(page.id)?.has(pageId)).map(row);
+  const outlinks = [...(links.get(pageId) ?? [])].map(id => row(byId.get(id)!));
+  return { backlinks, outlinks };
+}
+
 export async function getWikiBacklinks(
   req: CampaignScopedRequest,
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const links = await buildPreviewWikiLinks(ctx, pageId);
+    if (!links) { res.status(404).json({ error: 'Page not found' }); return; }
+    res.json({ backlinks: links.backlinks, total: links.backlinks.length });
+    return;
+  }
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId },
@@ -5738,6 +5817,13 @@ export async function getWikiOutlinks(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const links = await buildPreviewWikiLinks(ctx, pageId);
+    if (!links) { res.status(404).json({ error: 'Page not found' }); return; }
+    res.json({ outlinks: links.outlinks, brokenOutlinks: [], total: links.outlinks.length });
+    return;
+  }
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId },
@@ -5770,6 +5856,17 @@ export async function getWikiLinkIntegrity(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const pages = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } });
+    const visible = await projectAdventurePages(ctx.campaignId, pages, audience.canViewPage);
+    const page = visible.find(row => row.id === pageId);
+    if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    res.json(await getBrokenLinksForPage({ campaignId: ctx.campaignId, pageId,
+      blocks: page.blocks as Array<Record<string, unknown>> }));
+    return;
+  }
+
 
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId: ctx.campaignId },

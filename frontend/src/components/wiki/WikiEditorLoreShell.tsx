@@ -1,3 +1,4 @@
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -45,6 +46,8 @@ function mapApiMentionTarget(t: MentionTarget): AtTarget {
 }
 
 export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const wiki = useOptionalWiki();
   const { index } = useWikiLinkIndex(campaignHandle);
   const pinnedPageIds = useMemo(
@@ -64,10 +67,10 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
       setMentionTargets([]);
       return;
     }
-    fetchMentionTargets(campaignHandle)
+    fetchMentionTargets(campaignHandle, { previewAsPlayer })
       .then((rows) => setMentionTargets(rows.map(mapApiMentionTarget)))
       .catch(() => setMentionTargets([]));
-  }, [campaignHandle]);
+  }, [campaignHandle, previewAsPlayer]);
 
   const bracketExtension = useMemo(
     () =>

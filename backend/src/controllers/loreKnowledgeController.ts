@@ -1,3 +1,4 @@
+import { resolveAdventureAudience, filterAdventurePreviewPages } from '../lib/adventureAudience.js';
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import {
@@ -173,11 +174,13 @@ export async function getInterpretiveSummary(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  const page = await assertWikiPageInCampaign(ctx.campaignId, pageId);
-  if (!page) {
-    res.status(404).json({ error: 'Page not found' });
-    return;
-  }
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const page = audience.preview
+    ? (await filterAdventurePreviewPages(ctx.campaignId,
+        await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage))
+        .find(row => row.id === pageId)
+    : await assertWikiPageInCampaign(ctx.campaignId, pageId);
+  if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
   const [campaign, defaultDateParts] = await Promise.all([
     prisma.campaign.findUnique({
       where: { id: ctx.campaignId },
@@ -186,7 +189,7 @@ export async function getInterpretiveSummary(
     resolveCampaignChronologyNow(ctx.campaignId),
   ]);
   const viewerCtx = buildNarrativeViewerContext({
-    role: ctx.role ?? null,
+    role: audience.preview ? null : ctx.role ?? null,
     campaignNow: {
       epochMinute: campaign?.currentEpochMinute ?? 0n,
       dateParts: defaultDateParts,
@@ -200,7 +203,7 @@ export async function getInterpretiveSummary(
     ctx.campaignId,
     pageId,
     page.title,
-    ctx.role,
+    audience.preview ? null : ctx.role,
     temporal.effectiveDateParts,
   );
   res.json({
@@ -408,16 +411,17 @@ export async function getPartyKnowledge(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  const page = await assertWikiPageInCampaign(ctx.campaignId, pageId);
-  if (!page) {
-    res.status(404).json({ error: 'Page not found' });
-    return;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const visible = audience.preview ? await filterAdventurePreviewPages(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage) : null;
+  const page = visible ? visible.find(row => row.id === pageId) : await assertWikiPageInCampaign(ctx.campaignId, pageId);
+  if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+  const knowledge = await buildPartyKnowledge(ctx.campaignId, pageId, audience.preview ? null : ctx.role);
+  if (visible) {
+    const ids = new Set(visible.map(row => row.id));
+    knowledge.claims = knowledge.claims.map(claim => ({ ...claim,
+      sources: claim.sources.filter(source => !source.sourceEntityId || ids.has(source.sourceEntityId)) }));
   }
-  const knowledge = await buildPartyKnowledge(
-    ctx.campaignId,
-    pageId,
-    ctx.role,
-  );
   res.json({ knowledge, canonicalTitle: page.title });
 }
 

@@ -237,6 +237,7 @@ export type LocalGraphQueryInput = {
   viewerCtx: NarrativeViewerContext;
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
+  authorizedPageIds?: ReadonlySet<string>;
 };
 
 export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<LocalGraphQueryResult> {
@@ -252,6 +253,10 @@ export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<Loca
     const current = frontier.shift()!;
     const rows = await loadEdgesForNode(input.campaignId, current.node, input.kinds);
     for (const row of rows) {
+      if (input.authorizedPageIds && (!input.authorizedPageIds.has(row.sourceEntityId) ||
+        !input.authorizedPageIds.has(row.targetEntityId) || (row.sourcePageId && !input.authorizedPageIds.has(row.sourcePageId)) ||
+        !row.visibility || !['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.toUpperCase()))) continue;
+      if (input.authorizedPageIds && !projectEdge(rowToEdge(row), input.viewerCtx, input.campaignNow).visible) continue;
       if (seenEdgeIds.has(row.id)) continue;
       seenEdgeIds.add(row.id);
       edgeRows.push(row);
@@ -299,6 +304,7 @@ export async function buildAnalysisSnapshot(input: {
   viewerCtx: NarrativeViewerContext;
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
+  authorizedPageIds?: ReadonlySet<string>;
 }): Promise<GraphAnalysisSnapshot> {
   const rows = await prisma.entityRelation.findMany({
     where: {
@@ -307,7 +313,11 @@ export async function buildAnalysisSnapshot(input: {
     },
   });
 
-  let edges = rows.map(rowToEdge).map((edge) =>
+  const authorizedRows = input.authorizedPageIds ? rows.filter(row =>
+    input.authorizedPageIds!.has(row.sourceEntityId) && input.authorizedPageIds!.has(row.targetEntityId) &&
+    (!row.sourcePageId || input.authorizedPageIds!.has(row.sourcePageId)) && row.visibility &&
+    ['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.toUpperCase())) : rows;
+  let edges = authorizedRows.map(rowToEdge).map((edge) =>
     projectEdge(edge, input.viewerCtx, input.campaignNow),
   );
   if (!input.includeSuppressed) {
@@ -329,6 +339,7 @@ export async function runGraphDiagnostics(input: {
   viewerCtx: NarrativeViewerContext;
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
+  authorizedPageIds?: ReadonlySet<string>;
 }): Promise<GraphDiagnosticsResult> {
   const snapshot = await buildAnalysisSnapshot(input);
   const cycles =

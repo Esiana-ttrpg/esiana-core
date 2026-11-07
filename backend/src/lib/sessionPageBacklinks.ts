@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { projectAdventurePages, projectedWikiTargetIds } from './adventurePageProjection.js';
 import { parseSessionNoteMetadata } from './sessionNoteMetadata.js';
 import {
   buildVisibleBreadcrumbLabel,
@@ -92,6 +93,26 @@ export async function batchSessionBacklinksForPages(input: {
   }
   if (input.targetPageIds.length === 0) return result;
 
+  if (input.canViewPage) {
+    const pages = await projectAdventurePages(input.campaignId,
+      await prisma.wikiPage.findMany({ where: { campaignId: input.campaignId, deletedAt: null } }),
+      input.canViewPage);
+    const byId = new Map(pages.map(page => [page.id, page]));
+    for (const source of pages.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())) {
+      if (!isSessionLogSourcePage(source, byId)) continue;
+      const targets = projectedWikiTargetIds(source.blocks);
+      for (const target of targets) {
+        const bucket = result.get(target);
+        if (!byId.has(target) || !bucket || bucket.length >= limit) continue;
+        bucket.push({ id: source.id, title: source.title, parentId: source.parentId,
+          visibility: source.visibility, updatedAt: source.updatedAt.toISOString(),
+          templateType: source.templateType, timelinePointId: null,
+          href: buildWikiPageHref(input.campaignHandle, source) });
+      }
+    }
+    return result;
+  }
+
   const isElevated = isElevatedWikiRole(input.role);
   const peerVisibility = wikiLinkPeerVisibilityFilter(isElevated);
 
@@ -116,7 +137,7 @@ export async function batchSessionBacklinksForPages(input: {
         where: { campaignId: input.campaignId },
         select: { id: true, visibility: true },
       })
-    ).map((p) => [p.id, input.canViewPage && !input.canViewPage(p.visibility) ? 'DM_Only' : p.visibility]),
+    ).map((p) => [p.id, p.visibility]),
   );
 
   const links = await prisma.wikiLink.findMany({
@@ -145,7 +166,6 @@ export async function batchSessionBacklinksForPages(input: {
 
   for (const link of links) {
     const source = link.sourcePage;
-    if (input.canViewPage && !input.canViewPage(source.visibility)) continue;
     if (!isSessionLogSourcePage(source, parentById)) continue;
 
     const bucket = grouped.get(link.targetPageId) ?? [];

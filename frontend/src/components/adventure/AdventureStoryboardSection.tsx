@@ -38,6 +38,7 @@ export function AdventureStoryboardSection({
 }: AdventureStoryboardSectionProps) {
   const { flatPages, refresh } = useWiki();
   const { playerPreview, isDMUser } = useAdventureWorkspace();
+  const canManage = isDMUser && !playerPreview;
   const location = useLocation();
   const navigate = useNavigate();
   const basePath = campaignAdventureHubPath(campaignHandle);
@@ -144,10 +145,10 @@ export function AdventureStoryboardSection({
   }, [loadViewData, refreshToken]);
 
   const createButton = useMemo(
-    () => (
+    () => canManage ? (
       <WorkspaceActionBar create={{ label: 'New Scene', onClick: () => setIsCreateSceneOpen(true) }} />
-    ),
-    [],
+    ) : null,
+    [canManage],
   );
 
   useEffect(() => {
@@ -191,9 +192,9 @@ export function AdventureStoryboardSection({
           to={adventureViewHref(basePath, 'storyboard', { storyboardLens: lens.id })}
           role="tab"
           aria-selected={activeLens === lens.id}
-          className={({ isActive }) =>
+          className={() =>
             `rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              isActive
+              activeLens === lens.id
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`
@@ -209,6 +210,7 @@ export function AdventureStoryboardSection({
     editorScene && selectedSceneId ? (
       <div className="mt-4">
         <SceneEditorCard
+              readOnly={!canManage}
           key={editorScene.id}
           scene={editorScene}
           campaignHandle={campaignHandle}
@@ -248,7 +250,7 @@ export function AdventureStoryboardSection({
         </ul>
       </section>
 
-      <section className="space-y-2">
+      {canManage && <section className="space-y-2">
         <h3 className="text-sm font-medium">Lane presets</h3>
         <p className="text-xs text-muted-foreground">
           Apply act lanes to the storyboard layout — non-destructive scaffolding for arranging
@@ -269,7 +271,7 @@ export function AdventureStoryboardSection({
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
 
       {loading ? (
         <LoadingSpinner label="Loading storyboard…" />
@@ -281,7 +283,7 @@ export function AdventureStoryboardSection({
             storyboard={scenesData.storyboard}
             palette={scenesData.palette}
             arcFilterOptions={scenesData.arcFilterOptions ?? []}
-            canManage
+            canManage={canManage}
             dramaticTopology={dramaticTopology ?? []}
             onCreateScene={() => setIsCreateSceneOpen(true)}
             onStoryboardLayoutSaved={() => void loadViewData()}
@@ -296,7 +298,7 @@ export function AdventureStoryboardSection({
           <SceneTimelineSection
             campaignHandle={campaignHandle}
             data={timelineData ?? undefined}
-            canManage
+            canManage={canManage}
             onScenesChanged={() => void loadViewData()}
             embeddedInProgression
             selectedSceneId={selectedSceneId}

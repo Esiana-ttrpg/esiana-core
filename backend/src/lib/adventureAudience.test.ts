@@ -32,7 +32,7 @@ test('party preview retains only the actor-authorized shared baseline', () => {
 
 test('a manipulated parameter cannot elevate a player and ordinary context stays unchanged', () => {
   const ordinary = resolveAdventureAudience(context(player), 'true', viewer);
-  assert.equal(ordinary.preview, false);
+  assert.equal(ordinary.preview, true);
   assert.equal(ordinary.canViewPage('DM_Only'), false);
   const manager = resolveAdventureAudience(context(gm), undefined, viewer);
   assert.equal(manager.preview, false);

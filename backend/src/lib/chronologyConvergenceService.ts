@@ -67,6 +67,7 @@ type BuildOverlayInput = {
   allowPlayerChronologyManagement: boolean;
   elevatedNarrativeView?: boolean;
   capabilityOverrides?: Partial<NarrativeViewerCapabilities>;
+  authorizedPageIds?: ReadonlySet<string>;
   window: ChronologyWindowQuery;
   domains: ChronologyDomainKindValue[] | null;
   sessionLinkedOnly: boolean;
@@ -303,9 +304,10 @@ async function collectWorldAnchors(
 
 async function collectSessionAnchors(
   campaignId: string,
+  authorizedPageIds?: ReadonlySet<string>,
 ): Promise<CanonicalChronologyAnchor[]> {
   const points = await (prisma as any).campaignSessionTimeline.findMany({
-    where: { campaignId },
+    where: { campaignId, ...(authorizedPageIds ? { wikiPageId: { in: [...authorizedPageIds] } } : {}) },
     orderBy: { sequenceOrder: 'asc' },
     select: {
       id: true,
@@ -417,10 +419,12 @@ async function collectFactionControlAnchors(
 
 async function collectOrgRelationAnchors(
   campaignId: string,
+  authorizedPageIds?: ReadonlySet<string>,
 ): Promise<CanonicalChronologyAnchor[]> {
   const orgPages = await prisma.wikiPage.findMany({
     where: {
       campaignId,
+      ...(authorizedPageIds ? { id: { in: [...authorizedPageIds] } } : {}),
       ...buildCategoryIndexWhereClause('Organizations'),
     },
     select: {
@@ -428,7 +432,7 @@ async function collectOrgRelationAnchors(
       title: true,
       metadata: true,
     },
-    take: 500,
+    ...(authorizedPageIds ? {} : { take: 500 }),
   });
 
   const anchors: CanonicalChronologyAnchor[] = [];
@@ -436,6 +440,7 @@ async function collectOrgRelationAnchors(
     if (!isOrganizationMetadataPresent(page.metadata)) continue;
     const org = parseOrganizationMetadata(page.metadata);
     for (const rel of org.relations) {
+      if (authorizedPageIds && !authorizedPageIds.has(rel.targetOrgId)) continue;
       for (const event of rel.history) {
         anchors.push(
           anchorFromOrgRelationEvent({
@@ -448,7 +453,7 @@ async function collectOrgRelationAnchors(
             relationType: event.relationType,
             stance: event.stance,
             visibility: event.visibility,
-            sourceEventIds: event.sourceEventIds ?? [],
+            sourceEventIds: authorizedPageIds ? [] : event.sourceEventIds ?? [],
             note: event.note ?? null,
           }),
         );
@@ -546,7 +551,7 @@ export async function buildConvergenceOverlay(
     sourcesIncluded.push(ChronologyDomainKind.WORLD_EVENT);
   }
   if (domainEnabled(input.domains, ChronologyDomainKind.SESSION_CHRONICLE)) {
-    anchors.push(...(await collectSessionAnchors(input.campaignId)));
+    anchors.push(...(await collectSessionAnchors(input.campaignId, input.authorizedPageIds)));
     sourcesIncluded.push(ChronologyDomainKind.SESSION_CHRONICLE);
   }
   if (domainEnabled(input.domains, ChronologyDomainKind.MAP_KEYFRAME)) {
@@ -554,7 +559,7 @@ export async function buildConvergenceOverlay(
     sourcesIncluded.push(ChronologyDomainKind.MAP_KEYFRAME);
   }
   if (domainEnabled(input.domains, ChronologyDomainKind.ORG_RELATION)) {
-    anchors.push(...(await collectOrgRelationAnchors(input.campaignId)));
+    anchors.push(...(await collectOrgRelationAnchors(input.campaignId, input.authorizedPageIds)));
     sourcesIncluded.push(ChronologyDomainKind.ORG_RELATION);
   }
   if (domainEnabled(input.domains, ChronologyDomainKind.FACTION_CONTROL)) {
@@ -571,7 +576,7 @@ export async function buildConvergenceOverlay(
   }
 
   const sessionPoints = await (prisma as any).campaignSessionTimeline.findMany({
-    where: { campaignId: input.campaignId },
+    where: { campaignId: input.campaignId, ...(input.authorizedPageIds ? { wikiPageId: { in: [...input.authorizedPageIds] } } : {}) },
     select: { id: true, sequenceOrder: true },
   });
   const sessionTimelinePointIds = new Set<string>(
@@ -612,6 +617,16 @@ export async function buildConvergenceOverlay(
   for (const [k, v] of sessionPresence) mergedPresence.set(k, v);
   for (const [k, v] of mapPresence) mergedPresence.set(k, v);
 
+  if (input.authorizedPageIds) {
+    const presence = await prisma.contentPresenceState.findMany({ where: { campaignId: input.campaignId,
+      entityType: { in: [ContentPresenceEntityType.TIMELINE_EVENT, ContentPresenceEntityType.SESSION_NOTE, ContentPresenceEntityType.MAP_OBJECT] },
+      subEntityId: null } });
+    for (const row of presence) {
+      if (row.availableFromEpochMinute != null && row.availableFromEpochMinute > viewerCtx.campaignNow.epochMinute) {
+        mergedPresence.set(row.entityId, 'HIDDEN');
+      }
+    }
+  }
   const convergenceWikiPageIds: string[] = [];
   for (const anchor of anchors) {
     const payload = anchor.domainPayload;

@@ -1,8 +1,7 @@
+import { projectAdventurePages } from '../lib/adventurePageProjection.js';
 import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
-import { rejectUnverifiedAudiencePreview } from '../lib/adventureAudiencePreview.js';
-import { filterAdventureAudiencePages, resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { filterAdventurePreviewPages, resolveAdventureAudience } from '../lib/adventureAudience.js';
 import { restrictArcInputs, restrictStoryboardEdges, restrictStoryboardLayout } from '../lib/adventureStoryboardAudience.js';
-import { restrictSceneMetadata } from '../lib/adventureAudienceMetadata.js';
 import { filterAdventurePreviewEvents } from '../lib/adventureAudienceEvents.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
@@ -185,7 +184,6 @@ export async function buildAdventureHubResponse(
 ): Promise<void> {
   const ctx = req.campaign!;
   const canManage = canManageNotebooksFromActor(ctx.actor);
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer, canManage || hasElevatedNarrativeView(ctx.actor), res)) return;
   const previewAsPlayer =
     req.query.previewAsPlayer === 'true' || req.query.previewAsPlayer === '1';
   const effectiveCanManage = canManage && !previewAsPlayer;
@@ -230,14 +228,9 @@ export async function buildAdventureHubResponse(
 
   const lifecycleViewerCtx = audience.narrativeViewer;
   const visibilityViewer = audience.visibilityViewer;
-  const presence = audience.preview ? await getContentPresenceStateMap(
-    ctx.campaignId, ContentPresenceEntityType.WIKI_PAGE, sourceRows.map(row => row.id),
-  ) : null;
-  const partyRevelation = buildRevelationViewerContext({ role: null, isManagerView: false });
-  const allRows = audience.preview ? filterAdventureAudiencePages(
-    sourceRows.filter(row => isPresenceVisibleToContext(presence?.get(row.id) ?? 'REVEALED', partyRevelation)),
-    audience.canViewPage,
-  ) : sourceRows;
+  const allRows = audience.preview
+    ? await projectAdventurePages(ctx.campaignId, sourceRows, audience.canViewPage)
+    : sourceRows;
   if (audience.preview && !allRows.some(row => row.id === category.id)) {
     res.status(404).json({ error: 'Adventure category page not found' });
     return;
@@ -252,7 +245,7 @@ export async function buildAdventureHubResponse(
       updatedAt: category.updatedAt.toISOString(),
       systemCategoryKey: parseSystemCategoryKey(category.metadata),
     },
-    previewAsPlayer: previewAsPlayer && canManage,
+    previewAsPlayer: audience.preview,
     activeSection: section,
   };
 
@@ -309,7 +302,7 @@ export async function buildAdventureHubResponse(
           parseQuestMetadata(row.metadata),
           hasElevatedNarrativeView(ctx.actor) && !previewAsPlayer,
         );
-        const quest = audience.preview ? { ...parsedQuest, questGiverId: null, factionId: null } : parsedQuest;
+        const quest = audience.preview ? parsedQuest : parsedQuest;
         const lifecycleState = questLifecycleMap.get(row.id) ?? null;
         const questGiver = quest.questGiverId ? refById.get(quest.questGiverId) : undefined;
         const faction = quest.factionId ? refById.get(quest.factionId) : undefined;
@@ -384,7 +377,7 @@ export async function buildAdventureHubResponse(
       const parsed = parseSceneMetadataWithWarnings(row.metadata);
       const sceneFields = sanitizeSceneMetadataForRole(parsed.fields, effectiveCanManage);
       // Association visibility alone does not establish lifecycle or discovery access.
-      const scene = audience.preview ? restrictSceneMetadata(sceneFields, new Set()) : sceneFields;
+      const scene = sceneFields;
       const lifecycleState = sceneLifecycleMap.get(row.id) ?? null;
       const mapRefs = (ids: string[]) =>
         ids
@@ -575,9 +568,11 @@ export async function buildAdventureHubResponse(
       select: { id: true, title: true, visibility: true },
       ...(audience.preview ? {} : { take: 200 }),
     });
-    const eventPresence = audience.preview ? await getContentPresenceStateMap(
-      ctx.campaignId, ContentPresenceEntityType.TIMELINE_EVENT, eventRows.map(event => event.id),
-    ) : null;
+    const eventPresence = audience.preview ? new Map<string, import('../../../shared/contentPresence.js').ContentRevelationState>((await prisma.contentPresenceState.findMany({
+      where: { campaignId: ctx.campaignId, entityType: ContentPresenceEntityType.TIMELINE_EVENT, subEntityId: null },
+      select: { entityId: true, state: true, availableFromEpochMinute: true },
+    })).map(row => [row.entityId, row.availableFromEpochMinute != null &&
+      row.availableFromEpochMinute > lifecycleViewerCtx!.campaignNow.epochMinute ? 'HIDDEN' : row.state as import('../../../shared/contentPresence.js').ContentRevelationState])) : null;
     const calendarEvents = audience.preview
       ? filterAdventurePreviewEvents(eventRows, audience.canViewPage, eventPresence!, lifecycleViewerCtx).slice(0, 200)
       : eventRows;
@@ -917,7 +912,7 @@ export async function buildAdventureHubResponse(
       select: {
         id: true,
         sequenceOrder: true,
-        wikiPage: { select: { title: true } },
+        wikiPage: { select: { id: true, title: true } },
         schedule: { select: { plannedStartAt: true } },
       },
     });
@@ -955,7 +950,7 @@ export async function buildAdventureHubResponse(
     });
 
     payload.sceneTimeline = buildSceneTimelineProjection({
-      sessions: timelineRows.map((row) => ({
+      sessions: timelineRows.filter(row => !audience.preview || (row.wikiPage && allRows.some(page => page.id === row.wikiPage!.id))).map((row) => ({
         id: row.id,
         title: row.wikiPage?.title ?? 'Session',
         sequenceOrder: row.sequenceOrder,
@@ -994,7 +989,7 @@ export async function buildAdventureHubResponse(
       select: {
         id: true,
         sequenceOrder: true,
-        wikiPage: { select: { title: true } },
+        wikiPage: { select: { id: true, title: true } },
         schedule: { select: { plannedStartAt: true } },
       },
     });
@@ -1126,6 +1121,7 @@ export async function buildAdventureHubResponse(
 
   if (section === 'timeline') {
     const overlay = await buildConvergenceOverlay({
+      authorizedPageIds: audience.preview ? new Set(allRows.map(row => row.id)) : undefined,
       capabilityOverrides: audience.preview ? audience.narrativeViewer?.capabilities : narrativeCapabilitiesFromActor(ctx.actor),
       campaignId: ctx.campaignId,
       campaignHandle,
@@ -1249,8 +1245,6 @@ export async function getAdventureHubBySystemKey(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooksFromActor(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const questsRootId = await ensureQuestsSystemCategoryKey(ctx.campaignId);
   if (!questsRootId) {
     res.status(404).json({ error: 'Adventure category page not found' });
@@ -1264,8 +1258,6 @@ export async function getAdventureHubIndex(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooksFromActor(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
   const pageId = String(req.params.pageId);
   await ensureQuestsSystemCategoryKey(ctx.campaignId);
   await buildAdventureHubResponse(req, res, pageId);
@@ -1276,8 +1268,14 @@ export async function getStoryboardLayout(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  if (rejectUnverifiedAudiencePreview(req.query.previewAsPlayer,
-    canManageNotebooksFromActor(ctx.actor) || hasElevatedNarrativeView(ctx.actor), res)) return;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const pages = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } });
+    const visible = await projectAdventurePages(ctx.campaignId, pages, audience.canViewPage);
+    const { layout } = await loadStoryboardLayout(ctx.campaignId);
+    res.json({ layoutPageId: null, layout: restrictStoryboardLayout(layout, new Set(visible.map(page => page.id))) });
+    return;
+  }
   if (!canManageNotebooksFromActor(ctx.actor)) {
     res.status(403).json({ error: 'Forbidden' });
     return;

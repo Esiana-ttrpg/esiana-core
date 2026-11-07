@@ -21,6 +21,7 @@ export function AdventureScenesSection({
 }: AdventureScenesSectionProps) {
   const { flatPages, refresh } = useWiki();
   const { playerPreview, isDMUser } = useAdventureWorkspace();
+  const canManage = isDMUser && !playerPreview;
   const loadGeneration = useRef(0);
   const [scenesData, setScenesData] = useState<AdventureHubPayload['scenes'] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,10 +52,10 @@ export function AdventureScenesSection({
   }, [loadViewData, refreshToken]);
 
   const createButton = useMemo(
-    () => (
+    () => canManage ? (
       <WorkspaceActionBar create={{ label: 'New Scene', onClick: () => setIsCreateSceneOpen(true) }} />
-    ),
-    [],
+    ) : null,
+    [canManage],
   );
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export function AdventureScenesSection({
         <div className="space-y-3">
           {outlineScenes.map((scene) => (
             <SceneEditorCard
+              readOnly={!canManage}
               key={scene.id}
               scene={scene}
               campaignHandle={campaignHandle}

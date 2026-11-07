@@ -1,3 +1,5 @@
+import { readAdventurePerspective } from '@/lib/workspacePersistence';
+import type { AdventurePreviewPerspective } from '@/lib/adventurePreview';
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -32,7 +34,7 @@ import {
   CANVAS_ATMOSPHERE_AMBIENT_CLASS,
   WORKSPACE_SURFACE_CLASS,
 } from '@/lib/surfaceLayout';
-import { AdventureWorkspaceProvider } from '@/contexts/AdventureWorkspaceContext';
+import { AdventureWorkspaceProvider, useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { WorkspaceContextStrip } from '@/components/layout/WorkspaceContextStrip';
 import { WorkspaceRail } from '@/components/layout/WorkspaceRail';
 import { useWorkspaceChrome } from '@/hooks/useWorkspaceChrome';
@@ -343,13 +345,17 @@ function CampaignLayoutShell() {
  */
 export function CampaignLayout() {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
+  return <AudienceScopedCampaignLayout key={campaignHandle} campaignHandle={campaignHandle} />;
+}
 
+function AudienceScopedCampaignLayout({ campaignHandle }: { campaignHandle: string }) {
+  const [perspective, setPerspective] = useState<AdventurePreviewPerspective>(() => readAdventurePerspective(campaignHandle) ?? 'dm');
   return (
-    <WikiProvider key={campaignHandle}>
+    <WikiProvider key={perspective} previewAsPlayer={perspective === 'party'}>
       <CampaignNavProvider>
         <PluginRuntimeProvider>
           <SceneCompositionProvider>
-            <AdventureWorkspaceProvider>
+            <AdventureWorkspaceProvider perspective={perspective} onPerspectiveChange={setPerspective}>
               <CampaignSettingsChromeProvider>
                 <CampaignLayoutShell />
               </CampaignSettingsChromeProvider>

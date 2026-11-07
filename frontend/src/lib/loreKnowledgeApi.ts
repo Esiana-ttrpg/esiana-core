@@ -63,10 +63,12 @@ export async function fetchInterpretiveSummary(
   campaignHandle: string,
   pageId: string,
   viewDate?: ChronologyDateParts | null,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<InterpretiveSummaryResponse> {
-  const params = viewDate
-    ? `?viewDate=${encodeURIComponent(JSON.stringify(viewDate))}`
-    : '';
+  const query = new URLSearchParams();
+  if (viewDate) query.set("viewDate", JSON.stringify(viewDate));
+  if (options?.previewAsPlayer) query.set("previewAsPlayer", "true");
+  const params = query.size ? `?${query}` : "";
   return apiFetch(`/campaigns/${campaignHandle}/wiki/${pageId}/interpretive-summary${params}`);
 }
 
@@ -249,9 +251,10 @@ export type PartyKnowledgeResponse = {
 export async function fetchPartyKnowledge(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<PartyKnowledgeResponse> {
   const data = await apiFetch<{ knowledge: PartyKnowledgeResponse }>(
-    `/campaigns/${campaignHandle}/wiki/${pageId}/party-knowledge`,
+    `/campaigns/${campaignHandle}/wiki/${pageId}/party-knowledge${options?.previewAsPlayer ? "?previewAsPlayer=true" : ""}`,
   );
   return data.knowledge;
 }

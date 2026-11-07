@@ -13,6 +13,7 @@ import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from '
 import { fetchCampaign } from '@/lib/campaigns';
 import { CampaignMemberRoles } from '@/types/domain';
 import { useWiki } from '@/contexts/WikiContext';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { useActivePage } from '@/contexts/ActivePageContext';
 import {
   buildWikiNavBreadcrumbs,
@@ -258,6 +259,8 @@ export function WikiPage() {
   return <>{page && chronologyWikiDocumentKind(page) && <ChronologyDocumentNavigation pageId={page.id} kind={chronologyWikiDocumentKind(page)!} />}<WikiPageDocument /></>;
 }
 function WikiPageDocument() {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const params = useParams<{
     campaignHandle?: string;
     pageId?: string;
@@ -439,7 +442,7 @@ function WikiPageDocument() {
   const tagsDirty = !wikiTagsInputsEqual(pageTags, savedPageTags);
 
   const { viewerContext, isElevated } = useCampaignActor();
-  const isDMUser = isElevated();
+  const isDMUser = isElevated() && !previewAsPlayer;
   const pageCanEdit = pageData?.canEdit ?? isDMUser;
   const canOpenWorkshop = isWorkshopEligiblePage(pageCanEdit, templateType);
   const confirmWorkshopLeave = shouldConfirmLeaveWikiForWorkshop({
@@ -878,7 +881,7 @@ function WikiPageDocument() {
     }
     const viewDate = viewDateForLore ?? campaignNow;
     let cancelled = false;
-    void fetchInterpretiveSummary(campaignHandle, pageId, viewDate)
+    void fetchInterpretiveSummary(campaignHandle, pageId, viewDate, { previewAsPlayer })
       .then((summary) => {
         if (!cancelled) setInterpretiveSummary(summary);
       })
@@ -888,7 +891,7 @@ function WikiPageDocument() {
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle, pageId, interpretiveSummaryDateKey]);
+  }, [campaignHandle, pageId, interpretiveSummaryDateKey, previewAsPlayer]);
 
   const characterSnapshots = useMemo(
     () =>
@@ -1177,7 +1180,7 @@ function WikiPageDocument() {
     async function loadPage() {
       setPageFetchState('loading');
       try {
-        const result = await fetchWikiPageLayout(campaignHandle, pageId);
+        const result = await fetchWikiPageLayout(campaignHandle, pageId, { previewAsPlayer });
         setPageData(result);
         if (
           params.pathKey &&
@@ -1222,7 +1225,7 @@ function WikiPageDocument() {
           setSearchParams({}, { replace: true });
         }
       } catch {
-        if (shouldCreateDraft && canInitializeEventLore) {
+        if (!previewAsPlayer && shouldCreateDraft && canInitializeEventLore) {
           setPageFetchState('creating');
           try {
             const eventsParentId = resolveEventsWikiParentId(flatPages);
@@ -1273,6 +1276,7 @@ function WikiPageDocument() {
     void loadPage();
   }, [
     campaignHandle,
+    previewAsPlayer,
     pageId,
     params.pathKey,
     loading,
@@ -1579,6 +1583,7 @@ function WikiPageDocument() {
     const renderer = (
       <WikiPageRendererSlot
         blocks={displayBlocks}
+        isDMUser={isDMUser}
         templateType={templateType}
         isEditingPage={isEditingPage}
         showGridLines={showGridLines}

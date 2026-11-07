@@ -17,6 +17,7 @@ interface SceneEditorCardProps {
   defaultExpanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   onSaved?: () => void;
+  readOnly?: boolean;
 }
 
 function LinkedEntityChips({ scene }: { scene: SceneHubNode }) {
@@ -58,6 +59,7 @@ export function SceneEditorCard({
   defaultExpanded = false,
   onExpandedChange,
   onSaved,
+  readOnly = false,
 }: SceneEditorCardProps) {
   const { flatPages } = useWiki();
   const summaryId = useId();
@@ -87,6 +89,7 @@ export function SceneEditorCard({
   }
 
   function scheduleSummarySave(value: string) {
+    if (readOnly) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       void updateSceneMetadata(campaignHandle, scene.id, {
@@ -150,6 +153,7 @@ export function SceneEditorCard({
               Summary
             </span>
             <textarea
+              readOnly={readOnly}
               value={summaryDraft}
               onChange={(event) => {
                 setSummaryDraft(event.target.value);
@@ -163,7 +167,7 @@ export function SceneEditorCard({
 
           <LinkedEntityChips scene={scene} />
 
-          <SceneMetadataEditor
+          {!readOnly && <SceneMetadataEditor
             campaignHandle={campaignHandle}
             pageId={scene.id}
             pageTitle={scene.title}
@@ -175,7 +179,7 @@ export function SceneEditorCard({
               setSummaryDraft(parseSceneMetadata(next).summary ?? '');
               onSaved?.();
             }}
-          />
+          />}
 
           <div className="flex justify-end pt-1">
             <Link
