@@ -83,9 +83,15 @@ export async function getWikiLinkIndex(
   if (audience.preview) {
     const pages = await projectAdventurePages(ctx.campaignId,
       await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null }, include: { aliases: true } }), audience.canViewPage);
+    const inboundCounts = new Map<string, number>();
+    for (const source of pages) {
+      for (const targetId of new Set(projectedWikiTargetIds(source.blocks))) {
+        inboundCounts.set(targetId, (inboundCounts.get(targetId) ?? 0) + 1);
+      }
+    }
     res.json({ entries: pages.flatMap(page => [page.title, ...page.aliases.map(alias => alias.alias)].map(label => ({
       pageId: page.id, title: page.title, label, normalizedLabel: normalizeAlias(label), templateType: page.templateType,
-      inboundLinkCount: pages.filter(source => projectedWikiTargetIds(source.blocks).includes(page.id)).length,
+      inboundLinkCount: inboundCounts.get(page.id) ?? 0,
     }))) });
     return;
   }
