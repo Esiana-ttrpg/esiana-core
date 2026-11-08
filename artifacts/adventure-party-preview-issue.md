@@ -1,8 +1,8 @@
 ﻿# Adventure Party Preview — Complete and Verify Reduced-Context Projections
 
-Party preview is intentionally disabled. The existing reduced-context code is a foundation and must not be treated as an end-to-end authorization contract. Preserve ordinary player access and published public campaign experiences.
+Adventure Party preview is enabled. The four core 503 paths now return reduced responses. Implementation and executed verification are recorded in [Adventure Party verification](../docs/adventure-party-preview-verification.md). Ordinary player access and published public campaign experiences retain their existing authorization.
 
-## Work
+## Acceptance scope
 
 - Apply the server-resolved shared-party audience to every Adventure, Quest, Thread, Scene and related data request, including time tracking and direct page navigation. It must only narrow the requesting actor's permissions and must not impersonate an individual player.
 - Filter hidden records, independent relationship visibility, lifecycle and revelation before deriving storyboard, graph, arc and calendar results, counts and metadata. Project authored layout details only where their access can be established; decide whether remaining omissions are an acceptable Party experience.
@@ -13,4 +13,4 @@ Party preview is intentionally disabled. The existing reduced-context code is a 
 
 ## Context
 
-`docs/campaign-workspace-ux-audit.md` records the current containment, request inventory, reduced-context infrastructure and test-database limitations. Character Party preview is separately disabled pending its own domain audit; do not infer its safety from Adventure's tests.
+`docs/campaign-workspace-ux-audit.md` records the current implementation and links to the PostgreSQL/browser verification. Character Party preview is separately disabled pending its own domain audit; do not infer its safety from Adventure's tests.

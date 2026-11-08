@@ -141,6 +141,9 @@ export async function buildRelationsProjection(input: {
   campaignHandle: string;
   window: ProjectionWindow;
   viewerCtx: NarrativeViewerContext;
+  authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
   campaignNow?: ChronologyDateParts;
 }): Promise<RelationsRenderModel & { projectionVersion: string }> {
   const settings = await getOrCreateSystemSettings();
@@ -157,6 +160,9 @@ export async function buildRelationsProjection(input: {
     campaignId: input.campaignId,
     kinds,
     viewerCtx: input.viewerCtx,
+    authorizedPageIds: input.authorizedPageIds,
+    authorizedEntityKeys: input.authorizedEntityKeys,
+    generatedWikiPairs: input.generatedWikiPairs,
     campaignNow: atDate,
     includeSuppressed: false,
   });
@@ -196,8 +202,8 @@ export async function buildRelationsProjection(input: {
     caps,
     edges,
     nodePreviews: previewsFromSnapshot(snapshot.edges, previews),
-    orgPages,
-    reputationByFaction,
+    orgPages: input.authorizedPageIds ? orgPages.filter(page => input.authorizedPageIds!.has(page.id)) : orgPages,
+    reputationByFaction: input.authorizedPageIds ? Object.fromEntries(Object.entries(reputationByFaction).filter(([id]) => input.authorizedPageIds!.has(id))) : reputationByFaction,
   });
 
   return { ...model, projectionVersion: RELATIONS_PROJECTION_VERSION };

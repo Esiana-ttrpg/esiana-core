@@ -16,6 +16,7 @@ import type { WikiPageBlock, WikiPageLayoutPayload, WikiTag, WikiTagInput, WikiT
 export interface WikiPageRendererSlotProps {
   blocks: WikiPageBlock[];
   templateType: string;
+  isDMUser?: boolean;
   isEditingPage: boolean;
   showGridLines: boolean;
   onShowGridLinesChange: (next: boolean) => void;
@@ -72,6 +73,7 @@ export function WikiPageRendererSlot({
     <WikiPageRenderer
       blocks={props.blocks}
       templateType={props.templateType}
+      isDMUser={props.isDMUser}
       isEditingPage={props.isEditingPage}
       isEditingLayout={props.isEditingPage}
       showGridLines={props.showGridLines}

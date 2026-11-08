@@ -1,3 +1,5 @@
+import { resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { loadAdventureGraphAudience } from '../lib/adventureGraphAudience.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import {
@@ -10,6 +12,7 @@ import {
 import { buildNarrativeViewerContextFromRequest } from '../lib/narrativeProjectionContext.js';
 import { resolveCampaignChronologyNow } from '../lib/chronologyDefaults.js';
 import { queryLocalGraph, runGraphDiagnostics } from '../lib/entityGraphService.js';
+import { nodeRefKey } from '../../../shared/entityGraph.js';
 import { rebuildEntityRelationsForCampaign } from '../lib/entityRelationSyncService.js';
 import {
   buildRelationsProjection,
@@ -72,10 +75,15 @@ export async function getEntityGraph(
   const depth = Number.isFinite(depthRaw) ? depthRaw : 1;
   const kinds = parseKinds(req.query.kinds);
   const includeSuppressed = req.query.includeSuppressed === 'true';
-  const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, await buildNarrativeViewerContextFromRequest(req));
+  const viewerCtx = audience.narrativeViewer;
+  const authorized = audience.preview ? await loadAdventureGraphAudience(ctx.campaignId, audience.canViewPage, viewerCtx) : null;
   if (!viewerCtx) {
     res.status(500).json({ error: 'Unable to resolve viewer context' });
     return;
+  }
+  if (authorized && !authorized.entityKeys.has(nodeRefKey({ entityType, entityId }))) {
+    res.status(404).json({ error: 'Entity not found' }); return;
   }
   const campaignNow = await resolveCampaignChronologyNow(ctx.campaignId);
 
@@ -88,8 +96,11 @@ export async function getEntityGraph(
     depth,
     kinds,
     viewerCtx,
+    authorizedPageIds: authorized?.pageIds,
+    authorizedEntityKeys: authorized?.entityKeys,
+    generatedWikiPairs: authorized?.generatedWikiPairs,
     campaignNow,
-    includeSuppressed,
+    includeSuppressed: audience.preview ? false : includeSuppressed,
   });
 
   res.json(result);
@@ -100,6 +111,9 @@ export async function getEntityGraphDiagnostics(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  if (resolveAdventureAudience(ctx, req.query.previewAsPlayer, null).preview) {
+    res.status(403).json({ error: 'Diagnostics require the GM perspective' }); return;
+  }
   const checks = parseChecks(req.query.checks);
   const includeSuppressed = req.query.includeSuppressed === 'true';
   const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
@@ -128,7 +142,9 @@ export async function getEntityGraphProjection(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  const viewerCtx = await buildNarrativeViewerContextFromRequest(req);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, await buildNarrativeViewerContextFromRequest(req));
+  const viewerCtx = audience.narrativeViewer;
+  const authorized = audience.preview ? await loadAdventureGraphAudience(ctx.campaignId, audience.canViewPage, viewerCtx) : null;
   if (!viewerCtx) {
     res.status(500).json({ error: 'Unable to resolve viewer context' });
     return;
@@ -150,6 +166,9 @@ export async function getEntityGraphProjection(
     campaignHandle,
     window,
     viewerCtx,
+    authorizedPageIds: authorized?.pageIds,
+    authorizedEntityKeys: authorized?.entityKeys,
+    generatedWikiPairs: authorized?.generatedWikiPairs,
   });
   res.json(result);
 }

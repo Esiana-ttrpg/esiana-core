@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
 import { fetchAdventureHub, type AdventureHubPayload } from '@/lib/adventure';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { SceneEditorCard } from '@/components/progression/SceneEditorCard';
 import { CreateSceneModal } from '@/components/adventure/CreateSceneModal';
 import { useWiki } from '@/contexts/WikiContext';
+import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 
 interface AdventureScenesSectionProps {
   campaignHandle: string;
@@ -19,35 +20,42 @@ export function AdventureScenesSection({
   onHeaderActionsChange,
 }: AdventureScenesSectionProps) {
   const { flatPages, refresh } = useWiki();
+  const { playerPreview, isDMUser } = useAdventureWorkspace();
+  const canManage = isDMUser && !playerPreview;
+  const loadGeneration = useRef(0);
   const [scenesData, setScenesData] = useState<AdventureHubPayload['scenes'] | null>(null);
   const [loading, setLoading] = useState(false);
   const [isCreateSceneOpen, setIsCreateSceneOpen] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const loadViewData = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     setLoading(true);
+    setScenesData(null);
     try {
       const payload = await fetchAdventureHub(campaignHandle, {
         pageId: questsCategoryId,
         section: 'scenes',
+        previewAsPlayer: isDMUser && playerPreview,
       });
-      setScenesData(payload.scenes ?? null);
+      if (generation === loadGeneration.current) setScenesData(payload.scenes ?? null);
     } catch {
-      setScenesData(null);
+      if (generation === loadGeneration.current) setScenesData(null);
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
-  }, [campaignHandle, questsCategoryId]);
+  }, [campaignHandle, questsCategoryId, isDMUser, playerPreview]);
 
   useEffect(() => {
     void loadViewData();
+    return () => { loadGeneration.current += 1; };
   }, [loadViewData, refreshToken]);
 
   const createButton = useMemo(
-    () => (
+    () => canManage ? (
       <WorkspaceActionBar create={{ label: 'New Scene', onClick: () => setIsCreateSceneOpen(true) }} />
-    ),
-    [],
+    ) : null,
+    [canManage],
   );
 
   useEffect(() => {
@@ -77,6 +85,7 @@ export function AdventureScenesSection({
         <div className="space-y-3">
           {outlineScenes.map((scene) => (
             <SceneEditorCard
+              readOnly={!canManage}
               key={scene.id}
               scene={scene}
               campaignHandle={campaignHandle}

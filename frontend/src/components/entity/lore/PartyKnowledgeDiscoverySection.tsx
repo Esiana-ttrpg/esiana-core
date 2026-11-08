@@ -1,3 +1,4 @@
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { LoreStickySubheader, loreClaimText } from '@/components/entity/lore/LoreKnowledgeUi';
@@ -82,6 +83,8 @@ export function PartyKnowledgeDiscoverySection({
   isDMUser: isDMUserProp,
   onRevealEntry,
 }: PartyKnowledgeDiscoverySectionProps) {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
   const [data, setData] = useState<PartyKnowledgeResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,11 +93,11 @@ export function PartyKnowledgeDiscoverySection({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setData(await fetchPartyKnowledge(campaignHandle, pageId));
+      setData(await fetchPartyKnowledge(campaignHandle, pageId, { previewAsPlayer }));
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, pageId]);
+  }, [campaignHandle, pageId, previewAsPlayer]);
 
   useEffect(() => {
     void load();

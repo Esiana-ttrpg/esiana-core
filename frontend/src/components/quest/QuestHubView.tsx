@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Eye,
@@ -147,25 +147,31 @@ export function QuestHubView({
     });
   }, [categoryPageId, categoryTitle, pageById]);
 
+  const requestGeneration = useRef(0);
   const loadHub = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError(null);
+    setData(null);
     try {
       const payload = await fetchQuestHub(campaignHandle, {
         pageId: categoryPageId,
         previewAsPlayer,
       });
-      setData(payload);
+      if (generation === requestGeneration.current) setData(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load quest hub');
-      setData(null);
+      if (generation === requestGeneration.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load quest hub');
+        setData(null);
+      }
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }, [campaignHandle, categoryPageId, previewAsPlayer]);
 
   useEffect(() => {
     void loadHub();
+    return () => { requestGeneration.current += 1; };
   }, [loadHub]);
 
   useEffect(() => {

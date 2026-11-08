@@ -1,5 +1,5 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, GitBranch, Network } from 'lucide-react';
 import { useWiki } from '@/contexts/WikiContext';
@@ -103,25 +103,31 @@ export function ThreadHubView({
     });
   }, [categoryPageId, categoryTitle, pageById]);
 
+  const requestGeneration = useRef(0);
   const load = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError(null);
+    setData(null);
     try {
       const payload = await fetchThreadHub(campaignHandle, {
         pageId: categoryPageId,
         previewAsPlayer: isDMUser && playerPreview,
       });
-      setData(payload);
+      if (generation === requestGeneration.current) setData(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load threads');
-      setData(null);
+      if (generation === requestGeneration.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load threads');
+        setData(null);
+      }
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }, [campaignHandle, categoryPageId, isDMUser, playerPreview]);
 
   useEffect(() => {
     void load();
+    return () => { requestGeneration.current += 1; };
   }, [load]);
 
   const filteredNodes = useMemo(() => {

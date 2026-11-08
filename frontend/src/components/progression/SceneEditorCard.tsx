@@ -7,6 +7,7 @@ import type { SceneHubNode } from '@/lib/adventure';
 import { campaignWikiPath } from '@/lib/campaignPaths';
 import { parseSceneMetadata } from '@/lib/sceneMetadata';
 import { updateSceneMetadata } from '@/lib/wiki';
+import { flushSceneSummaryDraft, pendingSceneSummaryDraft, queueSceneSummaryDraft } from '@/lib/sceneSummaryDrafts';
 import { SceneBeatChip } from '@/components/scene/SceneBeatChip';
 import { SceneMetadataEditor } from '@/components/scene/SceneMetadataEditor';
 
@@ -17,6 +18,7 @@ interface SceneEditorCardProps {
   defaultExpanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   onSaved?: () => void;
+  readOnly?: boolean;
 }
 
 function LinkedEntityChips({ scene }: { scene: SceneHubNode }) {
@@ -58,26 +60,31 @@ export function SceneEditorCard({
   defaultExpanded = false,
   onExpandedChange,
   onSaved,
+  readOnly = false,
 }: SceneEditorCardProps) {
   const { flatPages } = useWiki();
   const summaryId = useId();
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const isExpanded = expanded ?? internalExpanded;
-  const [summaryDraft, setSummaryDraft] = useState(scene.scene.summary ?? '');
+  const [summaryDraft, setSummaryDraft] = useState(() => pendingSceneSummaryDraft(`${campaignHandle}:${scene.id}`) ?? scene.scene.summary ?? '');
   const [metadata, setMetadata] = useState<Record<string, unknown>>(() => ({
     ...scene.scene,
   }));
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  const summaryVersionRef = useRef(0);
+  const summarySaveKey = `${campaignHandle}:${scene.id}`;
 
   useEffect(() => {
-    setSummaryDraft(scene.scene.summary ?? '');
-  }, [scene.id, scene.scene.summary]);
+    setSummaryDraft(pendingSceneSummaryDraft(summarySaveKey) ?? scene.scene.summary ?? '');
+  }, [summarySaveKey, scene.scene.summary]);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      mountedRef.current = false;
+      void flushSceneSummaryDraft(summarySaveKey).catch(() => {});
     };
-  }, []);
+  }, [summarySaveKey]);
 
   function setExpanded(next: boolean) {
     if (expanded === undefined) {
@@ -87,15 +94,17 @@ export function SceneEditorCard({
   }
 
   function scheduleSummarySave(value: string) {
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      void updateSceneMetadata(campaignHandle, scene.id, {
+    if (readOnly) return;
+    const version = ++summaryVersionRef.current;
+    queueSceneSummaryDraft(summarySaveKey, async () => {
+      const result = await updateSceneMetadata(campaignHandle, scene.id, {
         summary: value.trim() || null,
-      }).then((result) => {
+      });
+      if (mountedRef.current && version === summaryVersionRef.current) {
         setMetadata(result.metadata);
         onSaved?.();
-      });
-    }, 500);
+      }
+    }, value);
   }
 
   const summaryPreview =
@@ -150,6 +159,7 @@ export function SceneEditorCard({
               Summary
             </span>
             <textarea
+              readOnly={readOnly}
               value={summaryDraft}
               onChange={(event) => {
                 setSummaryDraft(event.target.value);
@@ -163,7 +173,7 @@ export function SceneEditorCard({
 
           <LinkedEntityChips scene={scene} />
 
-          <SceneMetadataEditor
+          {!readOnly && <SceneMetadataEditor
             campaignHandle={campaignHandle}
             pageId={scene.id}
             pageTitle={scene.title}
@@ -175,7 +185,7 @@ export function SceneEditorCard({
               setSummaryDraft(parseSceneMetadata(next).summary ?? '');
               onSaved?.();
             }}
-          />
+          />}
 
           <div className="flex justify-end pt-1">
             <Link

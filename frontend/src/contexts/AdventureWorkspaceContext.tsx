@@ -30,7 +30,11 @@ interface AdventureWorkspaceContextValue {
 
 const AdventureWorkspaceContext = createContext<AdventureWorkspaceContextValue | null>(null);
 
-export function AdventureWorkspaceProvider({ children }: { children: ReactNode }) {
+export function AdventureWorkspaceProvider({ children, perspective: controlledPerspective, onPerspectiveChange }: {
+  children: ReactNode;
+  perspective?: AdventurePreviewPerspective;
+  onPerspectiveChange?: (value: AdventurePreviewPerspective) => void | Promise<void>;
+}) {
   const adventureRoute = useAdventureRoute();
   const { hasElevatedView, campaignHandle } = useWiki();
   const [perspective, setPerspectiveState] = useState<AdventurePreviewPerspective | null>(() =>
@@ -48,15 +52,17 @@ export function AdventureWorkspaceProvider({ children }: { children: ReactNode }
   const setPerspective = useCallback(
     (next: AdventurePreviewPerspective) => {
       if (next !== 'dm' && !ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE) return;
-      setPerspectiveState(next);
-      if (campaignHandle) patchAdventurePerspective(campaignHandle, next);
+      void Promise.resolve(onPerspectiveChange?.(next)).then(() => {
+        setPerspectiveState(next);
+        if (campaignHandle) patchAdventurePerspective(campaignHandle, next);
+      }).catch(() => {});
     },
-    [campaignHandle],
+    [campaignHandle, onPerspectiveChange],
   );
 
   const effectivePerspective: AdventurePreviewPerspective = !isDMUser
     ? 'party'
-    : ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE ? perspective ?? 'dm' : 'dm';
+    : ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE ? controlledPerspective ?? perspective ?? 'dm' : 'dm';
 
   const value = useMemo(
     () => ({

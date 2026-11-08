@@ -235,8 +235,10 @@ export async function removePluginCharacterPage(
 
 export async function fetchWikiTreePayload(
   campaignHandle: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<WikiTreePayload> {
-  return apiFetch<WikiTreePayload>(`/campaigns/${campaignHandle}/wiki/tree`);
+  const query = options?.previewAsPlayer ? '?previewAsPlayer=true' : '';
+  return apiFetch<WikiTreePayload>(`/campaigns/${campaignHandle}/wiki/tree${query}`);
 }
 
 export interface CategoryLocationAncestor {
@@ -762,7 +764,7 @@ export async function ensureSessionAuthorNote(
 
 export async function fetchCombinedSessionNotes(
   campaignHandle: string,
-  params: { timelinePointId?: string; sessionGroupId?: string; pageId?: string },
+  params: { timelinePointId?: string; sessionGroupId?: string; pageId?: string; previewAsPlayer?: boolean },
 ): Promise<CombinedSessionNotesPayload> {
   const query = new URLSearchParams();
   if (params.timelinePointId) {
@@ -772,6 +774,7 @@ export async function fetchCombinedSessionNotes(
     query.set('sessionGroupId', params.sessionGroupId);
   }
   if (params.pageId) query.set('pageId', params.pageId);
+  if (params.previewAsPlayer) query.set('previewAsPlayer', 'true');
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return apiFetch<CombinedSessionNotesPayload>(
     `/campaigns/${campaignHandle}/wiki/session-notes/combined${suffix}`,
@@ -1080,8 +1083,10 @@ export async function createArcPage(
 export async function fetchWikiPageLayout(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<WikiPageLayoutPayload> {
-  return apiFetch<WikiPageLayoutPayload>(`/campaigns/${campaignHandle}/wiki/${pageId}`);
+  const query = options?.previewAsPlayer ? '?previewAsPlayer=true' : '';
+  return apiFetch<WikiPageLayoutPayload>(`/campaigns/${campaignHandle}/wiki/${pageId}${query}`);
 }
 
 export async function updateWikiPage(
@@ -1187,9 +1192,11 @@ export {
 export async function fetchWikiBacklinks(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<WikiBacklink[]> {
+  const query = options?.previewAsPlayer ? '?previewAsPlayer=true' : '';
   const data = await apiFetch<{ backlinks: WikiBacklink[]; total?: number }>(
-    `/campaigns/${campaignHandle}/wiki/${pageId}/backlinks`,
+    `/campaigns/${campaignHandle}/wiki/${pageId}/backlinks${query}`,
   );
   return data.backlinks ?? [];
 }
@@ -1203,9 +1210,11 @@ export interface WikiOutlinksPayload {
 export async function fetchWikiOutlinks(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<WikiOutlinksPayload> {
+  const query = options?.previewAsPlayer ? '?previewAsPlayer=true' : '';
   return apiFetch<WikiOutlinksPayload>(
-    `/campaigns/${campaignHandle}/wiki/${pageId}/outlinks`,
+    `/campaigns/${campaignHandle}/wiki/${pageId}/outlinks${query}`,
   );
 }
 

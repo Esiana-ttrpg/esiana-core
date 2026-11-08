@@ -1,3 +1,6 @@
+import { resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { projectAdventurePages, projectedWikiTargetIds } from '../lib/adventurePageProjection.js';
+import { countWordsInBlocks } from '../lib/wikiLinkExtract.js';
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { normalizeAlias } from '../lib/normalizeAlias.js';
@@ -30,6 +33,9 @@ export async function getMentionTargets(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const visibleIds = audience.preview ? new Set((await projectAdventurePages(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage)).map(page => page.id)) : null;
   const members = await prisma.campaignMember.findMany({
     where: { campaignId: ctx.campaignId },
     include: {
@@ -55,7 +61,7 @@ export async function getMentionTargets(
       label: userLabel,
       targetUserId: m.user.id,
     });
-    if (m.identityPage) {
+    if (m.identityPage && (!visibleIds || visibleIds.has(m.identityPage.id))) {
       targets.push({
         mentionType: 'CHARACTER',
         label: m.identityPage.title,
@@ -73,6 +79,22 @@ export async function getWikiLinkIndex(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const pages = await projectAdventurePages(ctx.campaignId,
+      await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null }, include: { aliases: true } }), audience.canViewPage);
+    const inboundCounts = new Map<string, number>();
+    for (const source of pages) {
+      for (const targetId of new Set(projectedWikiTargetIds(source.blocks))) {
+        inboundCounts.set(targetId, (inboundCounts.get(targetId) ?? 0) + 1);
+      }
+    }
+    res.json({ entries: pages.flatMap(page => [page.title, ...page.aliases.map(alias => alias.alias)].map(label => ({
+      pageId: page.id, title: page.title, label, normalizedLabel: normalizeAlias(label), templateType: page.templateType,
+      inboundLinkCount: inboundCounts.get(page.id) ?? 0,
+    }))) });
+    return;
+  }
   const entries = await getWikiLinkIndexForViewer({
     campaignId: ctx.campaignId,
     role: ctx.role,
@@ -85,6 +107,19 @@ export async function getMentionSnippet(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const rows = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null }, include: { aliases: true } });
+    const pages = await projectAdventurePages(ctx.campaignId, rows, audience.canViewPage);
+    const page = pages.find(row => row.id === String(req.params.pageId));
+    if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    const targetId = typeof req.query.targetPageId === 'string' ? req.query.targetPageId.trim() : '';
+    if (!targetId) { res.status(400).json({ error: 'targetPageId required' }); return; }
+    if (!pages.some(row => row.id === targetId)) { res.status(404).json({ error: 'Page not found' }); return; }
+    res.json({ snippet: extractMentionSnippetFromBlocks(page.blocks as Array<Record<string, unknown>>, targetId) });
+    return;
+  }
+
   const sourcePageId = String(req.params.pageId);
   const targetPageId =
     typeof req.query.targetPageId === 'string'
@@ -127,6 +162,25 @@ export async function getWikiPagePreview(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  if (audience.preview) {
+    const rows = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null }, include: { aliases: true } });
+    const pages = await projectAdventurePages(ctx.campaignId, rows, audience.canViewPage);
+    const page = pages.find(row => row.id === String(req.params.pageId));
+    if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    const metadata = page.metadata as Record<string, unknown>;
+    const summary = typeof metadata.summary === 'string' ? metadata.summary
+      : typeof metadata.description === 'string' ? metadata.description : null;
+    res.json({ preview: { id: page.id, title: page.title, templateType: page.templateType,
+      codexType: resolveWikiCodexType({ templateType: page.templateType, metadata: page.metadata }),
+      visibility: page.visibility, updatedAt: page.updatedAt.toISOString(),
+      aliases: page.aliases.map(alias => alias.alias),
+      summary,
+      inboundLinkCount: pages.filter(source => projectedWikiTargetIds(source.blocks).includes(page.id)).length,
+      wordCount: countWordsInBlocks(page.blocks as Array<Record<string, unknown>>).wordCount } });
+    return;
+  }
+
   const pageId = String(req.params.pageId);
 
   const page = await prisma.wikiPage.findFirst({

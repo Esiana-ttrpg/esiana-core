@@ -13,6 +13,7 @@ import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from '
 import { fetchCampaign } from '@/lib/campaigns';
 import { CampaignMemberRoles } from '@/types/domain';
 import { useWiki } from '@/contexts/WikiContext';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { useActivePage } from '@/contexts/ActivePageContext';
 import {
   buildWikiNavBreadcrumbs,
@@ -258,6 +259,8 @@ export function WikiPage() {
   return <>{page && chronologyWikiDocumentKind(page) && <ChronologyDocumentNavigation pageId={page.id} kind={chronologyWikiDocumentKind(page)!} />}<WikiPageDocument /></>;
 }
 function WikiPageDocument() {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const params = useParams<{
     campaignHandle?: string;
     pageId?: string;
@@ -326,6 +329,7 @@ function WikiPageDocument() {
   >('loading');
   const [blocks, setBlocks] = useState<WikiPageBlock[]>([]);
   const savedBlocksRef = useRef<WikiPageBlock[]>([]);
+  const pageLoadGenerationRef = useRef(0);
   const [semanticDirty, setSemanticDirty] = useState(false);
   const [templateType, setTemplateType] = useState('DEFAULT');
   const [isDirty, setIsDirty] = useState(false);
@@ -439,7 +443,7 @@ function WikiPageDocument() {
   const tagsDirty = !wikiTagsInputsEqual(pageTags, savedPageTags);
 
   const { viewerContext, isElevated } = useCampaignActor();
-  const isDMUser = isElevated();
+  const isDMUser = isElevated() && !previewAsPlayer;
   const pageCanEdit = pageData?.canEdit ?? isDMUser;
   const canOpenWorkshop = isWorkshopEligiblePage(pageCanEdit, templateType);
   const confirmWorkshopLeave = shouldConfirmLeaveWikiForWorkshop({
@@ -593,6 +597,7 @@ function WikiPageDocument() {
     loading: sessionCombinedLoading,
     refetch: refetchSessionCombined,
   } = useSessionCombined(campaignHandle, {
+    previewAsPlayer,
     pageId:
       isSessionNotePage && !sessionTimelineRedirectId ? pageId : undefined,
   });
@@ -878,7 +883,7 @@ function WikiPageDocument() {
     }
     const viewDate = viewDateForLore ?? campaignNow;
     let cancelled = false;
-    void fetchInterpretiveSummary(campaignHandle, pageId, viewDate)
+    void fetchInterpretiveSummary(campaignHandle, pageId, viewDate, { previewAsPlayer })
       .then((summary) => {
         if (!cancelled) setInterpretiveSummary(summary);
       })
@@ -888,7 +893,7 @@ function WikiPageDocument() {
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle, pageId, interpretiveSummaryDateKey]);
+  }, [campaignHandle, pageId, interpretiveSummaryDateKey, previewAsPlayer]);
 
   const characterSnapshots = useMemo(
     () =>
@@ -1044,6 +1049,7 @@ function WikiPageDocument() {
       <InterpretiveLoreReadSection
         campaignHandle={campaignHandle}
         pageId={pageId}
+        previewAsPlayer={previewAsPlayer}
         flatPages={flatPages}
         memberRole={wikiCampaign?.role ?? campaign?.role ?? undefined}
         allowPlayerChronologyManagement={
@@ -1058,6 +1064,7 @@ function WikiPageDocument() {
     pageData,
     campaignHandle,
     pageId,
+    previewAsPlayer,
     flatPages,
     wikiCampaign?.role,
     wikiCampaign?.allowPlayerChronologyManagement,
@@ -1165,6 +1172,8 @@ function WikiPageDocument() {
   }, [campaignHandle]);
 
   useEffect(() => {
+    const generation = ++pageLoadGenerationRef.current;
+    const isCurrent = () => generation === pageLoadGenerationRef.current;
     if (!campaignHandle) return;
     if (!pageId) {
       if (params.pathKey && !loading) {
@@ -1176,8 +1185,10 @@ function WikiPageDocument() {
 
     async function loadPage() {
       setPageFetchState('loading');
+      setPageData(null);
       try {
-        const result = await fetchWikiPageLayout(campaignHandle, pageId);
+        const result = await fetchWikiPageLayout(campaignHandle, pageId, { previewAsPlayer });
+        if (!isCurrent()) return;
         setPageData(result);
         if (
           params.pathKey &&
@@ -1222,7 +1233,8 @@ function WikiPageDocument() {
           setSearchParams({}, { replace: true });
         }
       } catch {
-        if (shouldCreateDraft && canInitializeEventLore) {
+        if (!isCurrent()) return;
+        if (!previewAsPlayer && shouldCreateDraft && canInitializeEventLore) {
           setPageFetchState('creating');
           try {
             const eventsParentId = resolveEventsWikiParentId(flatPages);
@@ -1232,9 +1244,12 @@ function WikiPageDocument() {
               parentId: eventsParentId,
               templateType: 'DEFAULT',
             });
+            if (!isCurrent()) return;
             await refresh();
+            if (!isCurrent()) return;
             setSearchParams({}, { replace: true });
             const created = await fetchWikiPageLayout(campaignHandle, pageId);
+            if (!isCurrent()) return;
             setPageData(created);
             const serverBlocks = created.blocks ?? [];
             const template = created.templateType ?? 'DEFAULT';
@@ -1262,6 +1277,7 @@ function WikiPageDocument() {
             setIsEditingPage(true);
             return;
           } catch (createError) {
+            if (!isCurrent()) return;
             console.error('Failed to initialize event lore page:', createError);
           }
         }
@@ -1271,8 +1287,10 @@ function WikiPageDocument() {
     }
 
     void loadPage();
+    return () => { if (isCurrent()) pageLoadGenerationRef.current += 1; };
   }, [
     campaignHandle,
+    previewAsPlayer,
     pageId,
     params.pathKey,
     loading,
@@ -1579,6 +1597,7 @@ function WikiPageDocument() {
     const renderer = (
       <WikiPageRendererSlot
         blocks={displayBlocks}
+        isDMUser={isDMUser}
         templateType={templateType}
         isEditingPage={isEditingPage}
         showGridLines={showGridLines}
@@ -2048,6 +2067,8 @@ function WikiPageDocument() {
 
     return (
       <SessionNoteEditor
+        readOnly={previewAsPlayer}
+        isDMUser={!previewAsPlayer && isDMUser}
         campaignHandle={campaignHandle}
         pageId={pageId}
         pageData={pageData}

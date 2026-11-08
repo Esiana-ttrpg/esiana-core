@@ -5,7 +5,7 @@ import { MembershipRoles } from '../../../shared/campaignPolicy/membershipRoles.
 import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
 import type { NarrativeViewerContext } from '../../../shared/narrativeProjection.js';
 import type { CampaignContext } from '../types/api.js';
-import { resolveAdventureAudience } from './adventureAudience.js';
+import { filterAdventureAudiencePages, resolveAdventureAudience } from './adventureAudience.js';
 import { collectVisibleQuestSubtreeRows, type QuestHubPageRow } from './questHubTree.js';
 
 const base = { campaignOwnerUserId: 'owner', discoverability: 'private', allowPlayerChronologyManagement: false };
@@ -32,7 +32,7 @@ test('party preview retains only the actor-authorized shared baseline', () => {
 
 test('a manipulated parameter cannot elevate a player and ordinary context stays unchanged', () => {
   const ordinary = resolveAdventureAudience(context(player), 'true', viewer);
-  assert.equal(ordinary.preview, false);
+  assert.equal(ordinary.preview, true);
   assert.equal(ordinary.canViewPage('DM_Only'), false);
   const manager = resolveAdventureAudience(context(gm), undefined, viewer);
   assert.equal(manager.preview, false);
@@ -50,4 +50,18 @@ test('party projection excludes private quests and descendants of private parent
   const visible = collectVisibleQuestSubtreeRows(rows, 'root', audience.visibilityViewer);
   assert.deepEqual(visible.map(item => item.id).sort(), ['party', 'public']);
   assert.equal(visible.length, 2);
+});
+
+test('audience pages exclude hidden ancestors, missing parents and cycles', () => {
+  const rows = [
+    { id: 'root', parentId: null, visibility: 'Party' },
+    { id: 'visible', parentId: 'root', visibility: 'Public' },
+    { id: 'hidden', parentId: 'root', visibility: 'DM_Only' },
+    { id: 'child', parentId: 'hidden', visibility: 'Party' },
+    { id: 'orphan', parentId: 'missing', visibility: 'Party' },
+    { id: 'cycle-a', parentId: 'cycle-b', visibility: 'Party' },
+    { id: 'cycle-b', parentId: 'cycle-a', visibility: 'Party' },
+  ];
+  const audience = resolveAdventureAudience(context(gm), 'true', viewer);
+  assert.deepEqual(filterAdventureAudiencePages(rows, audience.canViewPage).map(row => row.id), ['root', 'visible']);
 });

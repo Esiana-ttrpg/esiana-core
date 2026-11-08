@@ -21,6 +21,7 @@ import { StoryboardSection } from '@/components/adventure/StoryboardSection';
 import { SceneTimelineSection } from '@/components/adventure/SceneTimelineSection';
 import { CreateSceneModal } from '@/components/adventure/CreateSceneModal';
 import { useWiki } from '@/contexts/WikiContext';
+import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import type { StoryboardViewV1 } from '@/lib/sceneMetadata';
 
 interface AdventureStoryboardSectionProps {
@@ -36,6 +37,8 @@ export function AdventureStoryboardSection({
   onHeaderActionsChange,
 }: AdventureStoryboardSectionProps) {
   const { flatPages, refresh } = useWiki();
+  const { playerPreview, isDMUser } = useAdventureWorkspace();
+  const canManage = isDMUser && !playerPreview;
   const location = useLocation();
   const navigate = useNavigate();
   const basePath = campaignAdventureHubPath(campaignHandle);
@@ -80,14 +83,17 @@ export function AdventureStoryboardSection({
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'scene-timeline',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'scenes',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'sessions',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
         ]);
         if (requestId !== loadRequestIdRef.current) return;
@@ -100,10 +106,12 @@ export function AdventureStoryboardSection({
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'scenes',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
           fetchAdventureHub(campaignHandle, {
             pageId: questsCategoryId,
             section: 'sessions',
+            previewAsPlayer: isDMUser && playerPreview,
           }),
         ]);
         if (requestId !== loadRequestIdRef.current) return;
@@ -126,7 +134,7 @@ export function AdventureStoryboardSection({
         setLoading(false);
       }
     }
-  }, [activeLens, campaignHandle, questsCategoryId]);
+  }, [activeLens, campaignHandle, questsCategoryId, isDMUser, playerPreview]);
 
   useEffect(() => {
     void loadViewData();
@@ -137,10 +145,10 @@ export function AdventureStoryboardSection({
   }, [loadViewData, refreshToken]);
 
   const createButton = useMemo(
-    () => (
+    () => canManage ? (
       <WorkspaceActionBar create={{ label: 'New Scene', onClick: () => setIsCreateSceneOpen(true) }} />
-    ),
-    [],
+    ) : null,
+    [canManage],
   );
 
   useEffect(() => {
@@ -154,8 +162,8 @@ export function AdventureStoryboardSection({
   const editorScene = selectedSceneId ? sceneById.get(selectedSceneId) ?? null : null;
 
   const readyScenes =
-    (sessionsData?.readyScenes as Array<{ id: string; title: string; sceneStatus?: string }>) ??
-    [];
+    ((sessionsData?.readyScenes as Array<{ id: string; title: string; sceneStatus?: string }>) ?? [])
+      .filter((scene) => sceneById.has(scene.id));
 
   const currentLayout: StoryboardViewV1 | undefined =
     scenesData?.storyboard?.layout ??
@@ -184,9 +192,9 @@ export function AdventureStoryboardSection({
           to={adventureViewHref(basePath, 'storyboard', { storyboardLens: lens.id })}
           role="tab"
           aria-selected={activeLens === lens.id}
-          className={({ isActive }) =>
+          className={() =>
             `rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              isActive
+              activeLens === lens.id
                 ? 'bg-primary/15 text-primary'
                 : 'text-muted-foreground hover:text-foreground'
             }`
@@ -202,6 +210,7 @@ export function AdventureStoryboardSection({
     editorScene && selectedSceneId ? (
       <div className="mt-4">
         <SceneEditorCard
+              readOnly={!canManage}
           key={editorScene.id}
           scene={editorScene}
           campaignHandle={campaignHandle}
@@ -241,7 +250,7 @@ export function AdventureStoryboardSection({
         </ul>
       </section>
 
-      <section className="space-y-2">
+      {canManage && <section className="space-y-2">
         <h3 className="text-sm font-medium">Lane presets</h3>
         <p className="text-xs text-muted-foreground">
           Apply act lanes to the storyboard layout — non-destructive scaffolding for arranging
@@ -262,7 +271,7 @@ export function AdventureStoryboardSection({
             </li>
           ))}
         </ul>
-      </section>
+      </section>}
 
       {loading ? (
         <LoadingSpinner label="Loading storyboard…" />
@@ -274,7 +283,7 @@ export function AdventureStoryboardSection({
             storyboard={scenesData.storyboard}
             palette={scenesData.palette}
             arcFilterOptions={scenesData.arcFilterOptions ?? []}
-            canManage
+            canManage={canManage}
             dramaticTopology={dramaticTopology ?? []}
             onCreateScene={() => setIsCreateSceneOpen(true)}
             onStoryboardLayoutSaved={() => void loadViewData()}
@@ -289,7 +298,7 @@ export function AdventureStoryboardSection({
           <SceneTimelineSection
             campaignHandle={campaignHandle}
             data={timelineData ?? undefined}
-            canManage
+            canManage={canManage}
             onScenesChanged={() => void loadViewData()}
             embeddedInProgression
             selectedSceneId={selectedSceneId}

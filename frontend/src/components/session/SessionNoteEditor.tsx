@@ -53,6 +53,7 @@ interface SessionNoteEditorProps {
   combinedLoading?: boolean;
   onCombinedRefresh?: () => void;
   isDMUser?: boolean;
+  readOnly?: boolean;
   onPageUpdated: (patch: Partial<WikiPageLayoutPayload>) => void;
 }
 
@@ -65,6 +66,7 @@ export function SessionNoteEditor({
   combinedLoading = false,
   onCombinedRefresh,
   isDMUser: isDMUserProp,
+  readOnly = false,
   onPageUpdated,
 }: SessionNoteEditorProps) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
@@ -124,7 +126,7 @@ export function SessionNoteEditor({
     currentUserId !== null &&
     activeMemberId === currentUserId;
 
-  const canEditCurrent = isViewingOwn && viewMarkdown === null;
+  const canEditCurrent = !readOnly && isViewingOwn && viewMarkdown === null;
 
   const locationPageId =
     combined?.session.locationPageId ?? sessionMeta.locationPageId ?? null;
@@ -148,13 +150,13 @@ export function SessionNoteEditor({
 
   useEffect(() => {
     const ownRequested = openOwnNotes && currentUserId !== null && sessionMeta.sessionNoteAuthorId === currentUserId;
-    setIsEditing(ownRequested && requestEditing);
+    setIsEditing(!readOnly && ownRequested && requestEditing);
     setTitle(pageData.title);
     setContent(getSessionNoteMarkdown(pageData.blocks ?? []));
     setIsDirty(false);
     setActiveMemberId(ownRequested ? currentUserId : SESSION_COMBINED_VIEW_ID);
     setViewMarkdown(null);
-  }, [pageData.id, currentUserId, openOwnNotes, requestEditing]);
+  }, [pageData.id, currentUserId, openOwnNotes, requestEditing, readOnly]);
 
   useEffect(() => {
     if (isEditing || isViewingOther || isCombinedView) return;
@@ -390,7 +392,7 @@ export function SessionNoteEditor({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
         <section className="min-w-0 space-y-4">
-          {timelinePointId && <SessionAudioPanel campaignHandle={campaignHandle} timelineId={timelinePointId} />}
+          {timelinePointId && !readOnly && <SessionAudioPanel campaignHandle={campaignHandle} timelineId={timelinePointId} />}
           {isCombinedView ? (
             combinedLoading && !combined ? (
               <LoadingSpinner label="Loading combined session notes…" />
