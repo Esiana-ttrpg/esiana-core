@@ -2,7 +2,7 @@ import { projectAdventurePages } from '../lib/adventurePageProjection.js';
 import { narrativeCapabilitiesFromActor } from '../lib/narrativeProjectionContext.js';
 import { filterAdventurePreviewPages, resolveAdventureAudience } from '../lib/adventureAudience.js';
 import { restrictArcInputs, restrictStoryboardEdges, restrictStoryboardLayout } from '../lib/adventureStoryboardAudience.js';
-import { filterAdventurePreviewEvents } from '../lib/adventureAudienceEvents.js';
+import { filterAdventurePreviewEvents, visibleAdventureEventIds } from '../lib/adventureAudienceEvents.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { ADVENTURE_HUB_TITLE } from '../lib/adventureConstants.js';
@@ -1268,12 +1268,15 @@ export async function getStoryboardLayout(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer,
+    await buildNarrativeViewerContextFromRequest(req));
   if (audience.preview) {
     const pages = await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } });
     const visible = await projectAdventurePages(ctx.campaignId, pages, audience.canViewPage);
+    const eventIds = await visibleAdventureEventIds(ctx.campaignId, audience.canViewPage, audience.narrativeViewer);
     const { layout } = await loadStoryboardLayout(ctx.campaignId);
-    res.json({ layoutPageId: null, layout: restrictStoryboardLayout(layout, new Set(visible.map(page => page.id))) });
+    res.json({ layoutPageId: null, layout: restrictStoryboardLayout(layout,
+      new Set([...visible.map(page => page.id), ...eventIds])) });
     return;
   }
   if (!canManageNotebooksFromActor(ctx.actor)) {

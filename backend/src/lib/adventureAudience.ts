@@ -6,6 +6,7 @@ import type { WikiVisibilityViewer } from './wikiTree.js';
 import { prisma } from './prisma.js';
 import { ContentPresenceEntityType, ContentRevelationStates } from '../../../shared/contentPresence.js';
 import { parseSystemCategoryKey } from './wikiSystemCategory.js';
+import { isWorkshopDraftMetadata, isWorkshopDraftsRootMetadata } from '../../../shared/workshopDocument.js';
 
 /** Keep only pages whose entire ancestry is visible to the effective audience. */
 export function filterAdventureAudiencePages<T extends { id: string; parentId: string | null; visibility: string }>(
@@ -59,6 +60,7 @@ export async function filterAdventurePreviewPages<T extends { id: string; parent
   }
   return filterAdventureAudiencePages(rows.filter(row => {
     if (hidden.has(row.id)) return false;
+    if (isWorkshopDraftMetadata(row.metadata) || isWorkshopDraftsRootMetadata(row.metadata)) return false;
     const metadata = row.metadata;
     return !(metadata && typeof metadata === 'object' && !Array.isArray(metadata) &&
       (metadata as Record<string, unknown>).orchestrationOnly === true);

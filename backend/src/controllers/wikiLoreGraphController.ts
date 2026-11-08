@@ -107,7 +107,7 @@ export async function getMentionSnippet(
     const pages = await projectAdventurePages(ctx.campaignId, rows, audience.canViewPage);
     const page = pages.find(row => row.id === String(req.params.pageId));
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
-    const targetId = typeof req.query.targetPageId === 'string' ? req.query.targetPageId : '';
+    const targetId = typeof req.query.targetPageId === 'string' ? req.query.targetPageId.trim() : '';
     if (!targetId) { res.status(400).json({ error: 'targetPageId required' }); return; }
     if (!pages.some(row => row.id === targetId)) { res.status(404).json({ error: 'Page not found' }); return; }
     res.json({ snippet: extractMentionSnippetFromBlocks(page.blocks as Array<Record<string, unknown>>, targetId) });
@@ -163,10 +163,13 @@ export async function getWikiPagePreview(
     const page = pages.find(row => row.id === String(req.params.pageId));
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
     const metadata = page.metadata as Record<string, unknown>;
+    const summary = typeof metadata.summary === 'string' ? metadata.summary
+      : typeof metadata.description === 'string' ? metadata.description : null;
     res.json({ preview: { id: page.id, title: page.title, templateType: page.templateType,
+      codexType: resolveWikiCodexType({ templateType: page.templateType, metadata: page.metadata }),
       visibility: page.visibility, updatedAt: page.updatedAt.toISOString(),
       aliases: page.aliases.map(alias => alias.alias),
-      summary: metadata.summary ?? metadata.description ?? null,
+      summary,
       inboundLinkCount: pages.filter(source => projectedWikiTargetIds(source.blocks).includes(page.id)).length,
       wordCount: countWordsInBlocks(page.blocks as Array<Record<string, unknown>>).wordCount } });
     return;

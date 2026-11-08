@@ -1,4 +1,7 @@
 import { resolveAdventureAudience, filterAdventurePreviewPages } from '../lib/adventureAudience.js';
+import { visibleAdventureEventIds } from '../lib/adventureAudienceEvents.js';
+import { isVisibleAdventureKnowledgeSource } from '../lib/adventureKnowledgeSource.js';
+import { buildNarrativeViewerContextFromRequest } from '../lib/narrativeProjectionContext.js';
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import {
@@ -411,7 +414,8 @@ export async function getPartyKnowledge(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer,
+    await buildNarrativeViewerContextFromRequest(req));
   const visible = audience.preview ? await filterAdventurePreviewPages(ctx.campaignId,
     await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage) : null;
   const page = visible ? visible.find(row => row.id === pageId) : await assertWikiPageInCampaign(ctx.campaignId, pageId);
@@ -419,8 +423,24 @@ export async function getPartyKnowledge(
   const knowledge = await buildPartyKnowledge(ctx.campaignId, pageId, audience.preview ? null : ctx.role);
   if (visible) {
     const ids = new Set(visible.map(row => row.id));
+    const [eventIds, sessions] = await Promise.all([
+      visibleAdventureEventIds(ctx.campaignId, audience.canViewPage, audience.narrativeViewer),
+      prisma.campaignSessionTimeline.findMany({ where: { campaignId: ctx.campaignId },
+        select: { id: true, wikiPageId: true } }),
+    ]);
+    const sessionIds = new Set(sessions.filter(row => ids.has(row.wikiPageId))
+      .flatMap(row => [row.id, row.wikiPageId]));
+    const allowedSources = { pageIds: ids, eventIds, sessionIds };
+    const keepSource = (source: { sourceEntityId?: string | null;
+      sourceEntityType?: string | null; sourceType?: string | null }) =>
+      isVisibleAdventureKnowledgeSource(source, allowedSources);
     knowledge.claims = knowledge.claims.map(claim => ({ ...claim,
-      sources: claim.sources.filter(source => !source.sourceEntityId || ids.has(source.sourceEntityId)) }));
+      sources: claim.sources.filter(keepSource) }));
+    knowledge.groups = Object.fromEntries(Object.entries(knowledge.groups).map(([key, claims]) =>
+      [key, claims.map(claim => {
+        const sources = (claim as typeof claim & { sources?: typeof knowledge.claims[number]['sources'] }).sources;
+        return sources ? { ...claim, sources: sources.filter(keepSource) } : claim;
+      })])) as typeof knowledge.groups;
   }
   res.json({ knowledge, canonicalTitle: page.title });
 }

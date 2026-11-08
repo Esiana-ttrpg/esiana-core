@@ -28,7 +28,7 @@ export async function projectAdventurePages<T extends Page>(
     (row.availableFromEpochMinute != null && row.availableFromEpochMinute > campaign.currentEpochMinute))
     .map(row => `${row.entityId}:${row.subEntityId ?? ''}`));
 
-  const hiddenRelations = new Set(relations.filter(row => !row.visibility || !canView(row.visibility))
+  const hiddenRelations = new Set(relations.filter(row => row.visibility != null && !canView(row.visibility))
     .flatMap(row => [`${row.sourceEntityId}:${row.targetEntityId}`, `${row.targetEntityId}:${row.sourceEntityId}`]));
 
   // References are authorized against the complete campaign projection, including
@@ -66,7 +66,7 @@ export async function projectAdventurePages<T extends Page>(
     const raw = page.metadata && typeof page.metadata === 'object' ? page.metadata as Record<string, unknown> : {};
     // Unknown plugin/editor metadata has no Party disclosure contract.
     let metadata: Record<string, unknown> = {};
-    for (const key of ['systemCategoryKey', 'icon', 'description', 'summary', 'fields']) {
+    for (const key of ['systemCategoryKey', 'entityCategory', 'icon', 'description', 'summary', 'fields']) {
       if (raw[key] !== undefined) metadata[key] = raw[key];
     }
     if (isQuestMetadataPresent(raw)) metadata = { ...metadata, ...sanitizeQuestMetadataForRole(parseQuestMetadata(raw), false) };

@@ -1,5 +1,5 @@
-import { prisma } from '../lib/prisma.js';
-import { resolveAdventureAudience, filterAdventurePreviewPages } from '../lib/adventureAudience.js';
+import { resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { loadAdventureGraphAudience } from '../lib/adventureGraphAudience.js';
 import type { Response } from 'express';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import {
@@ -12,6 +12,7 @@ import {
 import { buildNarrativeViewerContextFromRequest } from '../lib/narrativeProjectionContext.js';
 import { resolveCampaignChronologyNow } from '../lib/chronologyDefaults.js';
 import { queryLocalGraph, runGraphDiagnostics } from '../lib/entityGraphService.js';
+import { nodeRefKey } from '../../../shared/entityGraph.js';
 import { rebuildEntityRelationsForCampaign } from '../lib/entityRelationSyncService.js';
 import {
   buildRelationsProjection,
@@ -76,13 +77,14 @@ export async function getEntityGraph(
   const includeSuppressed = req.query.includeSuppressed === 'true';
   const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, await buildNarrativeViewerContextFromRequest(req));
   const viewerCtx = audience.narrativeViewer;
-  const authorizedPageIds = audience.preview ? new Set((await filterAdventurePreviewPages(ctx.campaignId,
-    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage)).map(page => page.id)) : undefined;
+  const authorized = audience.preview ? await loadAdventureGraphAudience(ctx.campaignId, audience.canViewPage, viewerCtx) : null;
   if (!viewerCtx) {
     res.status(500).json({ error: 'Unable to resolve viewer context' });
     return;
   }
-  if (authorizedPageIds && !authorizedPageIds.has(entityId)) { res.status(404).json({ error: 'Page not found' }); return; }
+  if (authorized && !authorized.entityKeys.has(nodeRefKey({ entityType, entityId }))) {
+    res.status(404).json({ error: 'Entity not found' }); return;
+  }
   const campaignNow = await resolveCampaignChronologyNow(ctx.campaignId);
 
   const campaignHandle = ctx.campaignHandle ?? ctx.campaignId;
@@ -94,7 +96,9 @@ export async function getEntityGraph(
     depth,
     kinds,
     viewerCtx,
-    authorizedPageIds,
+    authorizedPageIds: authorized?.pageIds,
+    authorizedEntityKeys: authorized?.entityKeys,
+    generatedWikiPairs: authorized?.generatedWikiPairs,
     campaignNow,
     includeSuppressed: audience.preview ? false : includeSuppressed,
   });
@@ -140,8 +144,7 @@ export async function getEntityGraphProjection(
   const ctx = req.campaign!;
   const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, await buildNarrativeViewerContextFromRequest(req));
   const viewerCtx = audience.narrativeViewer;
-  const authorizedPageIds = audience.preview ? new Set((await filterAdventurePreviewPages(ctx.campaignId,
-    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage)).map(page => page.id)) : undefined;
+  const authorized = audience.preview ? await loadAdventureGraphAudience(ctx.campaignId, audience.canViewPage, viewerCtx) : null;
   if (!viewerCtx) {
     res.status(500).json({ error: 'Unable to resolve viewer context' });
     return;
@@ -163,7 +166,9 @@ export async function getEntityGraphProjection(
     campaignHandle,
     window,
     viewerCtx,
-    authorizedPageIds,
+    authorizedPageIds: authorized?.pageIds,
+    authorizedEntityKeys: authorized?.entityKeys,
+    generatedWikiPairs: authorized?.generatedWikiPairs,
   });
   res.json(result);
 }

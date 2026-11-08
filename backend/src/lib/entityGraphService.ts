@@ -51,6 +51,8 @@ type EntityRelationRow = {
   sourcePageId: string | null;
 };
 
+const INHERITED_RELATION_DOMAINS = new Set(['wiki_link', 'wiki_metadata', 'calendar', 'map', 'downtime']);
+
 export function rowToEdge(row: EntityRelationRow): EntityGraphEdge {
   return {
     id: row.id,
@@ -238,7 +240,39 @@ export type LocalGraphQueryInput = {
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
   authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
 };
+
+export function authorizedGraphRow(row: EntityRelationRow, input: {
+  authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
+}): boolean {
+  if (!input.authorizedEntityKeys) {
+    if (!input.authorizedPageIds) return true;
+    return input.authorizedPageIds.has(row.sourceEntityId) &&
+      input.authorizedPageIds.has(row.targetEntityId) &&
+      (!row.sourcePageId || input.authorizedPageIds.has(row.sourcePageId)) &&
+      !!row.visibility && ['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.toUpperCase());
+  }
+  const keys = input.authorizedEntityKeys;
+  if (row.visibility && !['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.trim().toUpperCase())) return false;
+  if (['wiki_link', 'wiki_metadata'].includes(row.sourceDomain) &&
+    !input.generatedWikiPairs?.has(`${row.sourceEntityId}:${row.targetEntityId}`)) return false;
+  return keys.has(`${row.sourceEntityType}:${row.sourceEntityId}`) &&
+    keys.has(`${row.targetEntityType}:${row.targetEntityId}`) &&
+    (!row.sourcePageId || !!input.authorizedPageIds?.has(row.sourcePageId));
+}
+
+// Generated edges inherit their already-authorized endpoints when no separate
+// relationship visibility was authored. Explicit relationship visibility stays intact.
+export function rowForAudience(row: EntityRelationRow, authorizedEntityKeys?: ReadonlySet<string>): EntityRelationRow {
+  return authorizedEntityKeys && row.visibility == null && INHERITED_RELATION_DOMAINS.has(row.sourceDomain)
+    ? { ...row, visibility: 'PUBLIC',
+      payload: ['wiki_link', 'wiki_metadata'].includes(row.sourceDomain)
+        ? { kind: row.relationKind } : row.payload } : row;
+}
 
 export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<LocalGraphQueryResult> {
   const depth = Math.min(Math.max(input.depth ?? 1, 1), 2);
@@ -253,13 +287,12 @@ export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<Loca
     const current = frontier.shift()!;
     const rows = await loadEdgesForNode(input.campaignId, current.node, input.kinds);
     for (const row of rows) {
-      if (input.authorizedPageIds && (!input.authorizedPageIds.has(row.sourceEntityId) ||
-        !input.authorizedPageIds.has(row.targetEntityId) || (row.sourcePageId && !input.authorizedPageIds.has(row.sourcePageId)) ||
-        !row.visibility || !['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.toUpperCase()))) continue;
-      if (input.authorizedPageIds && !projectEdge(rowToEdge(row), input.viewerCtx, input.campaignNow).visible) continue;
+      if (!authorizedGraphRow(row, input)) continue;
+      const projectedRow = rowForAudience(row, input.authorizedEntityKeys);
+      if (input.authorizedEntityKeys && !projectEdge(rowToEdge(projectedRow), input.viewerCtx, input.campaignNow).visible) continue;
       if (seenEdgeIds.has(row.id)) continue;
       seenEdgeIds.add(row.id);
-      edgeRows.push(row);
+      edgeRows.push(projectedRow);
       if (current.depth >= depth) continue;
 
       const edge = rowToEdge(row);
@@ -305,6 +338,8 @@ export async function buildAnalysisSnapshot(input: {
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
   authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
 }): Promise<GraphAnalysisSnapshot> {
   const rows = await prisma.entityRelation.findMany({
     where: {
@@ -313,10 +348,8 @@ export async function buildAnalysisSnapshot(input: {
     },
   });
 
-  const authorizedRows = input.authorizedPageIds ? rows.filter(row =>
-    input.authorizedPageIds!.has(row.sourceEntityId) && input.authorizedPageIds!.has(row.targetEntityId) &&
-    (!row.sourcePageId || input.authorizedPageIds!.has(row.sourcePageId)) && row.visibility &&
-    ['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.toUpperCase())) : rows;
+  const authorizedRows = rows.filter(row => authorizedGraphRow(row, input))
+    .map(row => rowForAudience(row, input.authorizedEntityKeys));
   let edges = authorizedRows.map(rowToEdge).map((edge) =>
     projectEdge(edge, input.viewerCtx, input.campaignNow),
   );

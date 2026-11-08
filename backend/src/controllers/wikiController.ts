@@ -1,4 +1,6 @@
 import { projectAdventurePages, projectedWikiTargetIds } from '../lib/adventurePageProjection.js';
+import { hiddenEraIds, redactEraReferences } from '../lib/eraDisclosure.js';
+import { isWorkshopInfrastructurePage } from '../lib/workshopDraftService.js';
 import { ensureChronologyWikiWorkspaces, ChronologyWorkspaceError } from '../lib/chronologyWikiWorkspace.js';
 import { linkChronologyPage } from './chronologyPagesController.js';
 import { chronologyCanManage, chronologyCanView } from '../lib/chronologyAccess.js';
@@ -866,7 +868,8 @@ export async function getWikiTree(
   let treePages = pages;
   if (audience.preview) {
     const allowedCategoryKeys = new Set(['quests', 'party', 'narrative_threads', 'narrative_scenes', 'downtime']);
-    treePages = (await filterAdventurePreviewPages(ctx.campaignId, pages, audience.canViewPage))
+    treePages = (await filterAdventurePreviewPages(ctx.campaignId,
+      pages.filter(page => !isWorkshopInfrastructurePage(page.metadata)), audience.canViewPage))
       .map(page => {
         const key = parseSystemCategoryKey(page.metadata);
         return { ...page, featuredImageId: null, metadata: key && allowedCategoryKeys.has(key) ? { systemCategoryKey: key } : null };
@@ -1504,7 +1507,8 @@ export async function getWikiPage(
     };
     res.json({ id: page.id, title: page.title, parentId: page.parentId,
       workspace: page.workspace, pathKey: page.pathKey, visibility: page.visibility,
-      templateType: page.templateType, metadata: page.metadata, blocks: page.blocks,
+      templateType: page.templateType,
+      metadata: redactEraReferences(page.metadata, await hiddenEraIds(ctx.campaignId)), blocks: page.blocks,
       createdAt: page.createdAt.toISOString(), updatedAt: page.updatedAt.toISOString(),
       parent: parentChain(page.parentId), tags: await formatTagsForApiEnriched(page.tags),
       mapAssetId: null, canEdit: false });

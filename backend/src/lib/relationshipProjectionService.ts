@@ -142,6 +142,8 @@ export async function buildRelationsProjection(input: {
   window: ProjectionWindow;
   viewerCtx: NarrativeViewerContext;
   authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
   campaignNow?: ChronologyDateParts;
 }): Promise<RelationsRenderModel & { projectionVersion: string }> {
   const settings = await getOrCreateSystemSettings();
@@ -159,6 +161,8 @@ export async function buildRelationsProjection(input: {
     kinds,
     viewerCtx: input.viewerCtx,
     authorizedPageIds: input.authorizedPageIds,
+    authorizedEntityKeys: input.authorizedEntityKeys,
+    generatedWikiPairs: input.generatedWikiPairs,
     campaignNow: atDate,
     includeSuppressed: false,
   });
