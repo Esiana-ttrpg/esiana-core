@@ -1,6 +1,9 @@
 FROM node:26-alpine3.24 AS build
 WORKDIR /app
 
+# Build the production SQLite driver when a prebuilt binary is unavailable.
+RUN apk add --no-cache python3 make g++
+
 # Node 26 images no longer bundle Corepack; pin pnpm to packageManager.
 RUN npm install -g pnpm@9.15.9
 
