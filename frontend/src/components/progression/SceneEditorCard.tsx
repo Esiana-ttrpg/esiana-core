@@ -7,7 +7,7 @@ import type { SceneHubNode } from '@/lib/adventure';
 import { campaignWikiPath } from '@/lib/campaignPaths';
 import { parseSceneMetadata } from '@/lib/sceneMetadata';
 import { updateSceneMetadata } from '@/lib/wiki';
-import { flushSceneSummaryDraft, queueSceneSummaryDraft } from '@/lib/sceneSummaryDrafts';
+import { flushSceneSummaryDraft, pendingSceneSummaryDraft, queueSceneSummaryDraft } from '@/lib/sceneSummaryDrafts';
 import { SceneBeatChip } from '@/components/scene/SceneBeatChip';
 import { SceneMetadataEditor } from '@/components/scene/SceneMetadataEditor';
 
@@ -66,7 +66,7 @@ export function SceneEditorCard({
   const summaryId = useId();
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const isExpanded = expanded ?? internalExpanded;
-  const [summaryDraft, setSummaryDraft] = useState(scene.scene.summary ?? '');
+  const [summaryDraft, setSummaryDraft] = useState(() => pendingSceneSummaryDraft(`${campaignHandle}:${scene.id}`) ?? scene.scene.summary ?? '');
   const [metadata, setMetadata] = useState<Record<string, unknown>>(() => ({
     ...scene.scene,
   }));
@@ -75,8 +75,8 @@ export function SceneEditorCard({
   const summarySaveKey = `${campaignHandle}:${scene.id}`;
 
   useEffect(() => {
-    setSummaryDraft(scene.scene.summary ?? '');
-  }, [scene.id, scene.scene.summary]);
+    setSummaryDraft(pendingSceneSummaryDraft(summarySaveKey) ?? scene.scene.summary ?? '');
+  }, [summarySaveKey, scene.scene.summary]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -104,7 +104,7 @@ export function SceneEditorCard({
         setMetadata(result.metadata);
         onSaved?.();
       }
-    });
+    }, value);
   }
 
   const summaryPreview =

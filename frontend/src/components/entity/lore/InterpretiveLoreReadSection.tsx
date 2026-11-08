@@ -43,6 +43,7 @@ export function InterpretiveLoreReadSection({
         flatPages={flatPages}
         memberRole={memberRole}
         allowPlayerChronologyManagement={allowPlayerChronologyManagement}
+        previewAsPlayer={previewAsPlayer}
         error={errors.claims}
       />
     </div>

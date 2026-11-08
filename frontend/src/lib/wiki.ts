@@ -764,7 +764,7 @@ export async function ensureSessionAuthorNote(
 
 export async function fetchCombinedSessionNotes(
   campaignHandle: string,
-  params: { timelinePointId?: string; sessionGroupId?: string; pageId?: string },
+  params: { timelinePointId?: string; sessionGroupId?: string; pageId?: string; previewAsPlayer?: boolean },
 ): Promise<CombinedSessionNotesPayload> {
   const query = new URLSearchParams();
   if (params.timelinePointId) {
@@ -774,6 +774,7 @@ export async function fetchCombinedSessionNotes(
     query.set('sessionGroupId', params.sessionGroupId);
   }
   if (params.pageId) query.set('pageId', params.pageId);
+  if (params.previewAsPlayer) query.set('previewAsPlayer', 'true');
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return apiFetch<CombinedSessionNotesPayload>(
     `/campaigns/${campaignHandle}/wiki/session-notes/combined${suffix}`,

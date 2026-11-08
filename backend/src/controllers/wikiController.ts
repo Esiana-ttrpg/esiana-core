@@ -1,4 +1,5 @@
 import { projectAdventurePages, projectedWikiTargetIds } from '../lib/adventurePageProjection.js';
+import { visibleAdventureSessionIds } from '../lib/adventureSessionAudience.js';
 import { hiddenEraIds, redactEraReferences } from '../lib/eraDisclosure.js';
 import { isWorkshopInfrastructurePage } from '../lib/workshopDraftService.js';
 import { ensureChronologyWikiWorkspaces, ChronologyWorkspaceError } from '../lib/chronologyWikiWorkspace.js';
@@ -5560,7 +5561,8 @@ export async function getCombinedSessionNotes(
   res: Response,
 ): Promise<void> {
   const ctx = req.campaign!;
-  const canManage = canManageNotebooks(ctx.actor);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const canManage = !audience.preview && canManageNotebooks(ctx.actor);
 
   const timelinePointId =
     typeof req.query.timelinePointId === 'string'
@@ -5584,6 +5586,22 @@ export async function getCombinedSessionNotes(
     return;
   }
 
+  const projectedPages = audience.preview ? await projectAdventurePages(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage) : null;
+  const projectedById = projectedPages ? new Map(projectedPages.map(row => [row.id, row])) : null;
+  if (projectedById && ((pageId && !projectedById.has(pageId)) ||
+    (groupCtx.anchorPageId && !projectedById.has(groupCtx.anchorPageId)))) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+  if (projectedById && groupCtx.timelinePointId) {
+    const sessionIds = await visibleAdventureSessionIds(ctx.campaignId, new Set(projectedById.keys()));
+    if (!sessionIds.has(groupCtx.timelinePointId)) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+  }
+
   const campaignRow = await prisma.campaign.findUnique({
     where: { id: ctx.campaignId },
     select: {
@@ -5596,7 +5614,7 @@ export async function getCombinedSessionNotes(
   });
   const primaryCalendar = campaignRow?.fantasyCalendars[0] ?? null;
 
-  const [members, authorPages, sessionHeader, knownEntities] = await Promise.all([
+  const [members, authorPageRows, rawSessionHeader, rawKnownEntities] = await Promise.all([
     loadSessionRosterMembers(ctx.campaignId),
     fetchAuthorPagesForSession(
       ctx.campaignId,
@@ -5614,9 +5632,31 @@ export async function getCombinedSessionNotes(
     }),
   ]);
 
+  const authorPages = projectedById ? authorPageRows.flatMap(page => {
+    const projected = projectedById.get(page.id);
+    if (!projected) return [];
+    const metadata = parseSessionNoteMetadata(page.metadata);
+    return [{ ...page, blocks: projected.blocks, metadata: {
+      sessionNoteAuthorId: metadata.sessionNoteAuthorId,
+      fantasyEpochMinute: metadata.fantasyEpochMinute,
+    } }];
+  }) : authorPageRows;
+  if (projectedById && authorPages.length === 0 && !groupCtx.anchorPageId) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+  const sessionHeader = projectedById && rawSessionHeader.locationPageId &&
+    !projectedById.has(rawSessionHeader.locationPageId)
+    ? { ...rawSessionHeader, locationPageId: null, locationTitle: null } : rawSessionHeader;
+  const knownEntities = projectedById ? rawKnownEntities.filter(row => projectedById.has(row.pageId)) : rawKnownEntities;
+
   const rosterMembers = members
     .filter((m) => rosterRolesForPerspectives(m.role))
-    .map((member, index) => mapSessionRosterMember(member, index));
+    .map((member, index) => {
+      const mapped = mapSessionRosterMember(member, index);
+      return projectedById && mapped.identityPageId && !projectedById.has(mapped.identityPageId)
+        ? { ...mapped, identityPageId: null } : mapped;
+    });
 
   const entityIdSet = new Set<string>();
   for (const page of authorPages) {
@@ -5636,7 +5676,7 @@ export async function getCombinedSessionNotes(
       ? await prisma.wikiPage.findMany({
           where: {
             campaignId: ctx.campaignId,
-            id: { in: [...entityIdSet] },
+            id: { in: [...entityIdSet].filter(id => !projectedById || projectedById.has(id)) },
           },
           select: { id: true, title: true },
         })
@@ -5669,7 +5709,19 @@ export async function getCombinedSessionNotes(
     );
   }
 
-  const references = await getAggregatedReferencesForPages({
+  const references = projectedById ? (() => {
+    const byId = new Map(projectedPages!.map(page => [page.id, page]));
+    const links = new Map(projectedPages!.map(page => [page.id,
+      new Set(projectedWikiTargetIds(page.blocks).filter(id => byId.has(id)))]));
+    const row = (page: NonNullable<typeof projectedPages>[number]) => ({ id: page.id, title: page.title,
+      parentId: page.parentId, visibility: page.visibility, updatedAt: page.updatedAt.toISOString(),
+      breadcrumbLabel: page.title, href: buildWikiPageHref(campaignRow?.handle ?? ctx.campaignHandle ?? '', page) });
+    const sourceIds = new Set(built.referenceSourcePageIds);
+    return { backlinks: projectedPages!.filter(page =>
+      [...(links.get(page.id) ?? [])].some(id => sourceIds.has(id))).map(row),
+      outlinks: [...new Set([...sourceIds].flatMap(id => [...(links.get(id) ?? [])]))]
+        .map(id => row(byId.get(id)!)), brokenOutlinks: [] };
+  })() : await getAggregatedReferencesForPages({
     campaignId: ctx.campaignId,
     campaignHandle: campaignRow?.handle ?? ctx.campaignHandle ?? '',
     sourcePageIds: built.referenceSourcePageIds,

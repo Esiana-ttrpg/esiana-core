@@ -6,6 +6,7 @@ export interface UseSessionCombinedParams {
   timelinePointId?: string;
   sessionGroupId?: string;
   pageId?: string;
+  previewAsPlayer?: boolean;
 }
 
 export function useSessionCombined(
@@ -21,6 +22,7 @@ export function useSessionCombined(
     params.timelinePointId ?? '',
     params.sessionGroupId ?? '',
     params.pageId ?? '',
+    params.previewAsPlayer ? 'party' : 'normal',
   ].join('|');
 
   const refetch = useCallback(async () => {
@@ -42,7 +44,7 @@ export function useSessionCombined(
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, params.timelinePointId, params.sessionGroupId, params.pageId]);
+  }, [campaignHandle, params.timelinePointId, params.sessionGroupId, params.pageId, params.previewAsPlayer]);
 
   useEffect(() => {
     void refetch();

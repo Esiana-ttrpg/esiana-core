@@ -1,7 +1,7 @@
 import { readAdventurePerspective } from '@/lib/workspacePersistence';
 import { flushSceneSummaryDrafts } from '@/lib/sceneSummaryDrafts';
-import { fetchCampaign } from '@/lib/campaigns';
-import { CampaignMemberRoles } from '@/types/domain';
+import { fetchWikiTreePayload } from '@/lib/wiki';
+import { buildCampaignActor, hasElevatedNarrativeView } from '@shared/campaignPolicy/policy';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import type { AdventurePreviewPerspective } from '@/lib/adventurePreview';
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -353,15 +353,25 @@ export function CampaignLayout() {
 }
 
 function AudienceScopedCampaignLayout({ campaignHandle }: { campaignHandle: string }) {
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, user } = useAuth();
   const [resolvedRole, setResolvedRole] = useState<{ handle: string; elevated: boolean } | null>(null);
   const [perspective, setPerspective] = useState<AdventurePreviewPerspective>('dm');
   useEffect(() => {
     if (authLoading || !campaignHandle) return;
     let cancelled = false;
-    void fetchCampaign(campaignHandle).then(campaign => {
+    void fetchWikiTreePayload(campaignHandle).then(({ campaign }) => {
       if (cancelled) return;
-      const elevated = campaign.role === CampaignMemberRoles.GAMEMASTER || campaign.role === CampaignMemberRoles.WRITER;
+      const elevated = Boolean(campaign.campaignOwnerUserId && hasElevatedNarrativeView(buildCampaignActor({
+        kind: user?.id && campaign.role ? 'member' : 'anonymous',
+        userId: user?.id,
+        membershipRole: campaign.role,
+        campaignOwnerUserId: campaign.campaignOwnerUserId!,
+        discoverability: campaign.discoverability ?? 'private',
+        allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement ?? false,
+        chronologyContributor: campaign.chronologyContributor,
+        partyId: campaign.partyId,
+        roleCapabilityOverrides: campaign.roleCapabilityOverrides,
+      })));
       setPerspective(elevated ? readAdventurePerspective(campaignHandle) ?? 'dm' : 'dm');
       setResolvedRole({ handle: campaignHandle, elevated });
     }).catch(() => {
@@ -370,7 +380,7 @@ function AudienceScopedCampaignLayout({ campaignHandle }: { campaignHandle: stri
       setResolvedRole({ handle: campaignHandle, elevated: false });
     });
     return () => { cancelled = true; };
-  }, [authLoading, campaignHandle]);
+  }, [authLoading, campaignHandle, user?.id]);
 
   if (authLoading || resolvedRole?.handle !== campaignHandle) return <LoadingSpinner label="Loading campaign…" />;
   const effectivePerspective = resolvedRole.elevated ? perspective : 'dm';

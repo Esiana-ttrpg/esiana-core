@@ -14,3 +14,16 @@ test('Party reference text removes hidden single-quoted spans and canonical link
   assert.match(result, /havens\/shared-haven/);
   assert.deepEqual(projectedWikiTargetIds({ text: "<span data-id='shared-page'>Shared page</span>" }), ['shared-page']);
 });
+
+test('Party reference text checks canonical workspace routes by segment and path key', () => {
+  const allowed = (id: string, route?: string) =>
+    (route === 'characters' && id === 'guide') || (route === 'pages' && id === 'chronicle');
+  const text = '[Guide](/campaigns/red-sands/characters/guide) ' +
+    '[Hidden location](/campaigns/red-sands/locations/guide) ' +
+    '<a href="/campaigns/red-sands/pages/chronicle">Chronicle</a> ' +
+    '/campaigns/red-sands/locations/secret';
+  const result = redactAdventureReferenceText(text, allowed);
+  assert.match(result, /\[Guide\]/);
+  assert.match(result, /Chronicle/);
+  assert.doesNotMatch(result, /Hidden location|locations\/guide|locations\/secret/);
+});

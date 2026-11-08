@@ -108,6 +108,41 @@ test('campaign router returns reduced Party responses and enforces campaign boun
       { campaignId, sourceEntityType: 'wiki_page', sourceEntityId: linkSourceId, targetEntityType: 'wiki_page', targetEntityId: privateTargetId,
         relationKind: 'WIKI_REFERENCE', sourceDomain: 'wiki', sourceRecordKey: 'hidden-edge-sentinel', sourcePageId: linkSourceId, visibility: 'DM_ONLY' },
     ] });
+    const visibleGroup = await prisma.loreInterpretationGroup.create({ data: {
+      campaignId, pageId: linkSourceId, topic: 'Shared interpretation group',
+    } });
+    const hiddenGroup = await prisma.loreInterpretationGroup.create({ data: {
+      campaignId, pageId: linkSourceId, topic: 'Hidden interpretation group sentinel',
+    } });
+    await prisma.entityHistoricalAlias.createMany({ data: [
+      { stableKey: `shared-alias-${stamp}`, campaignId, pageId: linkSourceId, name: 'Shared alias', visibility: 'PARTY' },
+      { stableKey: `hidden-alias-${stamp}`, campaignId, pageId: linkSourceId, name: 'Hidden alias sentinel', visibility: 'GM_ONLY' },
+      { stableKey: `secret-alias-${stamp}`, campaignId, pageId: linkSourceId, name: 'Secret alias sentinel', visibility: 'PARTY', isSecret: true },
+    ] });
+    await prisma.loreInterpretationAccount.createMany({ data: [
+      { stableKey: `shared-account-${stamp}`, campaignId, pageId: linkSourceId,
+        interpretationGroupId: visibleGroup.id, title: 'Shared account', narrative: 'Shared interpretation', visibility: 'PARTY' },
+      { stableKey: `hidden-account-${stamp}`, campaignId, pageId: linkSourceId,
+        interpretationGroupId: hiddenGroup.id, title: 'Hidden account sentinel', narrative: 'Hidden interpretation', visibility: 'GM_ONLY' },
+    ] });
+    await prisma.loreClaim.create({ data: {
+      stableKey: `shared-claim-${stamp}`, campaignId, pageId: linkSourceId,
+      interpretationGroupId: visibleGroup.id, statement: 'Shared claim', visibility: 'PARTY', knowledgeState: 'KNOWN',
+      sources: { create: [
+        { sourceType: 'WIKI_PAGE', sourceEntityType: 'WIKI_PAGE', sourceEntityId: linkTargetId,
+          label: 'Shared source', visibility: 'PARTY' },
+        { sourceType: 'WIKI_PAGE', sourceEntityType: 'WIKI_PAGE', sourceEntityId: secretPageId,
+          label: 'Hidden source sentinel', visibility: 'PARTY' },
+        { sourceType: 'SESSION_NOTE', sourceEntityType: 'SESSION_NOTE', sourceEntityId: hiddenSessionId,
+          label: 'Hidden session source sentinel', visibility: 'PARTY' },
+      ] },
+    } });
+    await prisma.loreClaim.createMany({ data: [
+      { stableKey: `hidden-claim-${stamp}`, campaignId, pageId: linkSourceId,
+        interpretationGroupId: hiddenGroup.id, statement: 'Hidden claim sentinel', visibility: 'GM_ONLY', knowledgeState: 'KNOWN' },
+      { stableKey: `undiscovered-claim-${stamp}`, campaignId, pageId: linkSourceId,
+        statement: 'Undiscovered claim sentinel', visibility: 'PARTY', knowledgeState: 'UNDISCOVERED' },
+    ] });
     await prisma.narrativeLifecycleState.create({ data: { campaignId, subjectKind: 'scene', subjectId: sceneId, lifecycleState: 'DISCOVERED' } });
     await prisma.fantasyCalendar.create({ data: { campaignId, name: 'Shared calendar', isMasterTime: true,
       weekdays: [{ name: 'Dawn', length: 1 }], months: [{ name: 'Bloom', length: 30 }], seasons: [], moons: [], leapDays: [] } });
@@ -204,13 +239,22 @@ test('campaign router returns reduced Party responses and enforces campaign boun
       for (const path of [`/wiki/${linkSourceId}/preview`, `/wiki/${linkSourceId}/mention-snippet?targetPageId=${linkTargetId}`,
         `/wiki/${linkSourceId}/party-knowledge`, `/wiki/${linkSourceId}/interpretive-summary`,
         `/wiki/${linkSourceId}/historical-aliases`, `/wiki/${linkSourceId}/interpretations`, `/wiki/${linkSourceId}/lore-claims`,
+        `/wiki/session-notes/combined?timelinePointId=${sharedSessionId}`,
         '/wiki/link-index', '/wiki/mention-targets', '/adventure/storyboard']) {
         const response = await fetch(`${base}${path}${path.includes('?') ? '&' : '?'}previewAsPlayer=true`, { headers });
         const body = await response.text();
         assert.equal(response.status, 200, `${path}: ${body}`);
         assert.doesNotMatch(body, /Hidden landmark|Hidden quest sentinel|Locked lifecycle sentinel|Unrevealed sentinel|Uninitialized scene sentinel/);
         assert.doesNotMatch(body, new RegExp(secretPageId));
+        if (['historical-aliases', 'interpretations', 'lore-claims', 'party-knowledge'].some(suffix => path.endsWith(suffix))) {
+          assert.doesNotMatch(body, /Hidden alias sentinel|Secret alias sentinel|Hidden interpretation group sentinel|Hidden account sentinel|Hidden claim sentinel|Undiscovered claim sentinel|Hidden source sentinel|Hidden session source sentinel/);
+          if (path.endsWith('historical-aliases')) assert.match(body, /Shared alias/);
+          if (path.endsWith('interpretations')) assert.match(body, /Shared account/);
+          if (path.endsWith('lore-claims') || path.endsWith('party-knowledge')) assert.match(body, /Shared claim/);
+        }
       }
+      const hiddenCombined = await fetch(`${base}/wiki/session-notes/combined?timelinePointId=${hiddenSessionId}&previewAsPlayer=true`, { headers });
+      assert.equal(hiddenCombined.status, 404);
       for (const hidden of [secretPageId, unrevealedId, draftId, futureId, otherPageId]) {
         for (const path of ['historical-aliases', 'interpretations', 'lore-claims']) {
           const response = await fetch(`${base}/wiki/${hidden}/${path}?previewAsPlayer=true`, { headers });

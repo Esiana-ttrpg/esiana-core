@@ -3,6 +3,9 @@ import type { NarrativeViewerContext } from '../../../shared/narrativeProjection
 import { projectAdventurePages, projectedWikiTargetIds } from './adventurePageProjection.js';
 import { visibleAdventureEventIds } from './adventureAudienceEvents.js';
 import { prisma } from './prisma.js';
+import { ContentPresenceEntityType } from '../../../shared/contentPresence.js';
+import { resolveMapObjectRevelationState } from '../../../shared/narrativeProjection.js';
+import { pickActiveKeyframe } from './mapSceneService.js';
 
 /** Campaign-scoped, type-specific node authorization for Party graph projections. */
 export async function loadAdventureGraphAudience(
@@ -13,17 +16,19 @@ export async function loadAdventureGraphAudience(
     prisma.wikiPage.findMany({ where: { campaignId, deletedAt: null } }),
     visibleAdventureEventIds(campaignId, canView, viewer),
     prisma.mapPin.findMany({ where: { asset: { campaignId } }, select: {
-      id: true, targetPageId: true, asset: { select: { visibility: true } },
-      sceneObject: { select: { visibility: true, revelation: true, layerId: true,
-        targetPageId: true, targetAssetId: true,
-        visibleFromEpochMinute: true, visibleUntilEpochMinute: true,
-        mapAsset: { select: { visibility: true } } } },
+      id: true, targetPageId: true, targetAssetId: true,
+      asset: { select: { visibility: true, interactiveMapPages: { select: { id: true } } } },
+      targetAsset: { select: { visibility: true, interactiveMapPages: { select: { id: true } } } },
+      sceneObject: { select: { id: true } },
     } }),
     prisma.mapSceneObject.findMany({ where: { campaignId }, select: {
       id: true, targetPageId: true, targetAssetId: true, layerId: true,
       visibility: true, revelation: true,
       visibleFromEpochMinute: true, visibleUntilEpochMinute: true,
-      mapAsset: { select: { visibility: true } },
+      mapAsset: { select: { visibility: true, interactiveMapPages: { select: { id: true } } } },
+      keyframes: { orderBy: { effectiveEpochMinute: 'asc' }, select: {
+        id: true, geometryOverride: true, effectiveEpochMinute: true,
+        visibilityOverride: true, revelationOverride: true } },
     } }),
     prisma.mapLayer.findMany({ where: { campaignId, defaultEnabled: true }, select: { id: true } }),
   ]);
@@ -46,6 +51,10 @@ export async function loadAdventureGraphAudience(
   for (const id of eventIds) add(EntityGraphEntityTypes.CALENDAR_EVENT, id);
   const now = viewer?.campaignNow.epochMinute ?? 0n;
   const enabledLayerIds = new Set(layers.map(layer => layer.id));
+  const presenceRows = await prisma.contentPresenceState.findMany({ where: { campaignId,
+    entityType: ContentPresenceEntityType.MAP_OBJECT, subEntityId: null },
+    select: { entityId: true, state: true, availableFromEpochMinute: true } });
+  const presenceById = new Map(presenceRows.map(row => [row.entityId, row]));
   const visibleObject = (row: { visibility: string; revelation: string;
     layerId: string | null; targetPageId: string | null; targetAssetId: string | null;
     visibleFromEpochMinute: bigint | null;
@@ -55,11 +64,30 @@ export async function loadAdventureGraphAudience(
     (!row.targetPageId || pageIds.has(row.targetPageId)) &&
     (row.visibleFromEpochMinute == null || row.visibleFromEpochMinute <= now) &&
     (row.visibleUntilEpochMinute == null || row.visibleUntilEpochMinute >= now);
-  for (const row of objects) if (canView(row.mapAsset.visibility) && visibleObject(row))
-    add(EntityGraphEntityTypes.MAP_SCENE_OBJECT, row.id);
+  const visibleObjectIds = new Set<string>();
+  for (const row of objects) {
+    const frame = pickActiveKeyframe(row.keyframes, now);
+    const presence = presenceById.get(row.id);
+    const presenceOverride = presence
+      ? presence.availableFromEpochMinute != null && presence.availableFromEpochMinute > now
+        ? 'HIDDEN'
+        : ['REVEALED', 'HIDDEN', 'DRAFT'].includes(presence.state) ? presence.state : null
+      : null;
+    const effective = { ...row,
+      visibility: frame?.visibilityOverride ?? row.visibility,
+      revelation: resolveMapObjectRevelationState({ columnRevelation: row.revelation,
+        keyframeRevelation: frame?.revelationOverride, presenceOverride: presenceOverride as 'REVEALED' | 'HIDDEN' | 'DRAFT' | null }) };
+    if (canView(row.mapAsset.visibility) && row.mapAsset.interactiveMapPages.some(page => pageIds.has(page.id)) && visibleObject(effective)) {
+      visibleObjectIds.add(row.id);
+      add(EntityGraphEntityTypes.MAP_SCENE_OBJECT, row.id);
+    }
+  }
   for (const pin of pins) if (canView(pin.asset.visibility) &&
+    pin.asset.interactiveMapPages.some(page => pageIds.has(page.id)) &&
     (!pin.targetPageId || pageIds.has(pin.targetPageId)) &&
-    (!pin.sceneObject || (canView(pin.sceneObject.mapAsset.visibility) && visibleObject(pin.sceneObject))))
+    (!pin.targetAssetId || (pin.targetAsset && canView(pin.targetAsset.visibility) &&
+      pin.targetAsset.interactiveMapPages.some(page => pageIds.has(page.id)))) &&
+    (!pin.sceneObject || visibleObjectIds.has(pin.sceneObject.id)))
     add(EntityGraphEntityTypes.MAP_PIN, pin.id);
   return { pageIds, entityKeys, generatedWikiPairs };
 }

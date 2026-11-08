@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 /** Run with the real-router PostgreSQL fixture and a Vite server proxying ADVENTURE_BROWSER_API_PORT. */
 export async function runAcceptance({ url, handle, emptyHandle, cookies, pageId }) {
-  const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
+  const { chromium } = await import('playwright');
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
   try {
     for (const [index, cookie] of cookies.entries()) {

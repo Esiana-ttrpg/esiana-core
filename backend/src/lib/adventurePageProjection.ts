@@ -1,6 +1,6 @@
 import { extractWikiLinkTargetIdsFromBlocks } from './wikiLinkExtract.js';
 import { prisma } from './prisma.js';
-import { filterAdventurePreviewPages } from './adventureAudience.js';
+import { filterAdventureAudiencePages, filterAdventurePreviewPages } from './adventureAudience.js';
 import { ContentPresenceEntityType } from '../../../shared/contentPresence.js';
 import { isQuestMetadataPresent, parseQuestMetadata, sanitizeQuestMetadataForRole } from './questMetadata.js';
 import { isSceneMetadataPresent, parseSceneMetadata } from './sceneMetadata.js';
@@ -8,19 +8,20 @@ import { isThreadMetadataPresent, parseThreadMetadata } from './threadMetadata.j
 import { restrictSceneMetadata, restrictThreadMetadata } from './adventureAudienceMetadata.js';
 import { isArcMetadataPresent, parseArcMetadata } from './arcMetadata.js';
 import { visibleAdventureSessionIds } from './adventureSessionAudience.js';
+import { workspaceToSegment, type CampaignWorkspaceValue } from '../../../shared/campaignWorkspaceRoutes.js';
 
-type Page = { id: string; parentId: string | null; visibility: string; metadata: unknown; blocks: unknown; pathKey?: string | null };
+type Page = { id: string; parentId: string | null; visibility: string; metadata: unknown; blocks: unknown; pathKey?: string | null; workspace?: string | null };
 const pageReferenceKey = /(?:^pageIds?$|PageIds?$|EntityIds?$|^targetId$|^questGiverId$|^factionId$)/;
 
 export function redactAdventureReferenceText(text: string, allowed: (id: string, route?: string) => boolean): string {
-  const path = /\/(?:c|campaigns?)\/[\w-]+\/(wiki|characters|havens)\/([\w-]+)/i;
+  const path = /\/(?:c|campaigns?)\/[\w-]+\/(wiki|characters|havens|pages|locations)\/([\w-]+)/i;
   let result = text.replace(/<span\b[^>]*data-id=(["'])([^"']+)\1[^>]*>[\s\S]*?<\/span>/gi,
     (match, _quote: string, id: string) => allowed(id) ? match : '');
-  result = result.replace(/\[[^\]\n]*\]\((\/(?:c|campaigns?)\/[\w-]+\/(?:wiki|characters|havens)\/[\w-]+)[^)]*\)/gi,
+  result = result.replace(/\[[^\]\n]*\]\((\/(?:c|campaigns?)\/[\w-]+\/(?:wiki|characters|havens|pages|locations)\/[\w-]+)[^)]*\)/gi,
     (match, url: string) => { const target = path.exec(url); return target && allowed(target[2]!, target[1]!) ? match : ''; });
   result = result.replace(/<a\b[^>]*href=["']([^"']*)["'][^>]*>[\s\S]*?<\/a>/gi,
     (match, url: string) => { const target = path.exec(url); return target && !allowed(target[2]!, target[1]!) ? '' : match; });
-  return result.replace(/\/(?:c|campaigns?)\/[\w-]+\/(wiki|characters|havens)\/([\w-]+)/gi,
+  return result.replace(/\/(?:c|campaigns?)\/[\w-]+\/(wiki|characters|havens|pages|locations)\/([\w-]+)/gi,
     (match, route: string, id: string) => allowed(id, route) ? match : '');
 }
 
@@ -28,10 +29,19 @@ export function redactAdventureReferenceText(text: string, allowed: (id: string,
 export async function projectAdventurePages<T extends Page>(
   campaignId: string, pages: readonly T[], canView: (visibility: string) => boolean,
 ): Promise<T[]> {
-  const visible = await filterAdventurePreviewPages(campaignId, pages, canView);
+  const candidates = await filterAdventurePreviewPages(campaignId, pages, canView);
+  const candidateIds = new Set(candidates.map(page => page.id));
+  const sessionIds = await visibleAdventureSessionIds(campaignId, candidateIds);
+  const sessionPages = await prisma.campaignSessionTimeline.findMany({
+    where: { campaignId, wikiPageId: { in: [...candidateIds] } },
+    select: { id: true, wikiPageId: true },
+  });
+  const unavailableSessionPages = new Set(sessionPages.filter(row => !sessionIds.has(row.id)).map(row => row.wikiPageId));
+  const visible = filterAdventureAudiencePages(candidates.filter(page => !unavailableSessionPages.has(page.id)), canView);
   const ids = new Set(visible.map(page => page.id));
   const allIds = new Set(pages.map(page => page.id));
-  const routeIds = new Map(pages.filter(page => page.pathKey).map(page => [page.pathKey!, page.id]));
+  const routeIds = new Map(visible.filter(page => page.pathKey && page.workspace)
+    .map(page => [`${workspaceToSegment(page.workspace as CampaignWorkspaceValue)}:${page.pathKey}`, page.id]));
   const [presence, campaign, relations] = await Promise.all([
     prisma.contentPresenceState.findMany({ where: { campaignId, entityType: ContentPresenceEntityType.WIKI_BLOCK } }),
     prisma.campaign.findUniqueOrThrow({ where: { id: campaignId }, select: { currentEpochMinute: true } }),
@@ -40,7 +50,6 @@ export async function projectAdventurePages<T extends Page>(
   ]);
   const hiddenRelationIds = new Set(relations.filter(row => !canView(row.visibility!))
     .flatMap(row => [row.id, row.sourceRecordKey]));
-  const sessionIds = await visibleAdventureSessionIds(campaignId, ids);
   const hidden = new Set(presence.filter(row => row.state !== 'REVEALED' ||
     (row.availableFromEpochMinute != null && row.availableFromEpochMinute > campaign.currentEpochMinute))
     .map(row => `${row.entityId}:${row.subEntityId ?? ''}`));
@@ -49,7 +58,8 @@ export async function projectAdventurePages<T extends Page>(
   // ancestors, revelation and lifecycle, rather than against target visibility alone.
   function project(value: unknown, key = '', sourceId = ''): unknown {
     const allowed = (id: string) => ids.has(id);
-    const allowedRoute = (id: string) => allIds.has(id) ? allowed(id) : allowed(routeIds.get(id) ?? id);
+    const allowedRoute = (id: string, route?: string) => allIds.has(id) ? allowed(id) :
+      !!route && allowed(routeIds.get(`${route.toLowerCase()}:${id}`) ?? '');
     if (typeof value === 'string') {
       if (pageReferenceKey.test(key)) return allowed(value) ? value : null;
       return redactAdventureReferenceText(value, allowedRoute);

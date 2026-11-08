@@ -303,6 +303,7 @@ interface LoreClaimsReadPanelProps {
   flatPages?: LorePageLookup[];
   memberRole?: string;
   allowPlayerChronologyManagement?: boolean;
+  previewAsPlayer?: boolean;
   error?: string;
 }
 
@@ -313,12 +314,14 @@ export function LoreClaimsReadPanel({
   flatPages = [],
   memberRole,
   allowPlayerChronologyManagement = false,
+  previewAsPlayer = false,
   error,
 }: LoreClaimsReadPanelProps) {
   const lorePages = asLorePageLookup(flatPages);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEventRecord[]>([]);
 
   useEffect(() => {
+    if (previewAsPlayer) { setCalendarEvents([]); return; }
     void (async () => {
       try {
         const bundle = await fetchTimeTracking(campaignHandle);
@@ -330,7 +333,7 @@ export function LoreClaimsReadPanel({
         setCalendarEvents([]);
       }
     })();
-  }, [campaignHandle]);
+  }, [campaignHandle, previewAsPlayer]);
 
   if (claims.length === 0 && !error) return null;
 
@@ -350,13 +353,13 @@ export function LoreClaimsReadPanel({
               events={calendarEvents}
               campaignHandle={campaignHandle}
             />
-            <LoreClaimCirculationControls
+            {!previewAsPlayer && <LoreClaimCirculationControls
               campaignHandle={campaignHandle}
               subjectPageId={pageId}
               claim={claim}
               flatPages={lorePages}
               calendarEvents={calendarEvents}
-            />
+            />}
           </div>
         ))}
       </div>

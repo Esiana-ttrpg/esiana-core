@@ -1,4 +1,5 @@
 import type { Prisma } from './prismaClient.js';
+import { workspaceToSegment, type CampaignWorkspaceValue } from '../../../shared/campaignWorkspaceRoutes.js';
 import type { ChronologyDateParts } from '../../../shared/chronologyTypes.js';
 import {
   EDGE_TAXONOMY_VERSION,
@@ -269,12 +270,12 @@ export function authorizedGraphRow(row: EntityRelationRow, input: {
 // Generated edges inherit their already-authorized endpoints when no separate
 // relationship visibility was authored. Explicit relationship visibility stays intact.
 export function rowForAudience(row: EntityRelationRow, authorizedEntityKeys?: ReadonlySet<string>,
-  authorizedPageIds?: ReadonlySet<string>): EntityRelationRow {
+  authorizedPageIds?: ReadonlySet<string>, pageRouteAllowed?: (id: string, route?: string) => boolean): EntityRelationRow {
   if (!authorizedEntityKeys && !authorizedPageIds) return row;
   const scrub = (value: unknown, key = ''): unknown => {
     if (typeof value === 'string') {
       if (/PageId$|^pageId$/.test(key)) return authorizedPageIds?.has(value) ? value : null;
-      return redactAdventureReferenceText(value, id => !!authorizedPageIds?.has(id));
+      return redactAdventureReferenceText(value, pageRouteAllowed ?? (id => !!authorizedPageIds?.has(id)));
     }
     if (Array.isArray(value)) return value.map(item => scrub(item, key)).filter(item => item != null);
     if (!value || typeof value !== 'object') return value;
@@ -297,7 +298,19 @@ export function rowForAudience(row: EntityRelationRow, authorizedEntityKeys?: Re
       ? { kind: row.relationKind } : row.payload) };
 }
 
+async function authorizedPageRouteLookup(campaignId: string, authorizedPageIds?: ReadonlySet<string>) {
+  if (!authorizedPageIds) return undefined;
+  const pages = await prisma.wikiPage.findMany({ where: { campaignId, deletedAt: null },
+    select: { id: true, workspace: true, pathKey: true } });
+  const allIds = new Set(pages.map(page => page.id));
+  const routes = new Map(pages.filter(page => authorizedPageIds.has(page.id) && page.workspace && page.pathKey)
+    .map(page => [`${workspaceToSegment(page.workspace as CampaignWorkspaceValue)}:${page.pathKey}`, page.id]));
+  return (id: string, route?: string) => allIds.has(id) ? authorizedPageIds.has(id) :
+    Boolean(route && authorizedPageIds.has(routes.get(`${route.toLowerCase()}:${id}`) ?? ''));
+}
+
 export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<LocalGraphQueryResult> {
+  const pageRouteAllowed = await authorizedPageRouteLookup(input.campaignId, input.authorizedPageIds);
   const depth = Math.min(Math.max(input.depth ?? 1, 1), 2);
   const seenEdgeIds = new Set<string>();
   const edgeRows: EntityRelationRow[] = [];
@@ -311,7 +324,7 @@ export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<Loca
     const rows = await loadEdgesForNode(input.campaignId, current.node, input.kinds);
     for (const row of rows) {
       if (!authorizedGraphRow(row, input)) continue;
-      const projectedRow = rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds);
+      const projectedRow = rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds, pageRouteAllowed);
       if (input.authorizedEntityKeys && !projectEdge(rowToEdge(projectedRow), input.viewerCtx, input.campaignNow).visible) continue;
       if (seenEdgeIds.has(row.id)) continue;
       seenEdgeIds.add(row.id);
@@ -364,6 +377,7 @@ export async function buildAnalysisSnapshot(input: {
   authorizedEntityKeys?: ReadonlySet<string>;
   generatedWikiPairs?: ReadonlySet<string>;
 }): Promise<GraphAnalysisSnapshot> {
+  const pageRouteAllowed = await authorizedPageRouteLookup(input.campaignId, input.authorizedPageIds);
   const rows = await prisma.entityRelation.findMany({
     where: {
       campaignId: input.campaignId,
@@ -372,7 +386,7 @@ export async function buildAnalysisSnapshot(input: {
   });
 
   const authorizedRows = rows.filter(row => authorizedGraphRow(row, input))
-    .map(row => rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds));
+    .map(row => rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds, pageRouteAllowed));
   let edges = authorizedRows.map(rowToEdge).map((edge) =>
     projectEdge(edge, input.viewerCtx, input.campaignNow),
   );

@@ -459,13 +459,14 @@ export async function getPartyKnowledge(
   const knowledge = await buildPartyKnowledge(ctx.campaignId, pageId, audience.preview ? null : ctx.role);
   if (visible) {
     const ids = new Set(visible.map(row => row.id));
-    const [eventIds, sessions] = await Promise.all([
+    const [eventIds, sessionIds] = await Promise.all([
       visibleAdventureEventIds(ctx.campaignId, audience.canViewPage, audience.narrativeViewer),
-      prisma.campaignSessionTimeline.findMany({ where: { campaignId: ctx.campaignId },
-        select: { id: true, wikiPageId: true } }),
+      visibleAdventureSessionIds(ctx.campaignId, ids),
     ]);
-    const sessionIds = new Set(sessions.filter(row => ids.has(row.wikiPageId))
-      .flatMap(row => [row.id, row.wikiPageId]));
+    const sessionPages = await prisma.campaignSessionTimeline.findMany({
+      where: { campaignId: ctx.campaignId, id: { in: [...sessionIds] } }, select: { wikiPageId: true },
+    });
+    for (const row of sessionPages) sessionIds.add(row.wikiPageId);
     const allowedSources = { pageIds: ids, eventIds, sessionIds };
     const keepSource = (source: { sourceEntityId?: string | null;
       sourceEntityType?: string | null; sourceType?: string | null }) =>

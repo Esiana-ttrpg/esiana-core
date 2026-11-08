@@ -597,6 +597,7 @@ function WikiPageDocument() {
     loading: sessionCombinedLoading,
     refetch: refetchSessionCombined,
   } = useSessionCombined(campaignHandle, {
+    previewAsPlayer,
     pageId:
       isSessionNotePage && !sessionTimelineRedirectId ? pageId : undefined,
   });
@@ -2066,6 +2067,8 @@ function WikiPageDocument() {
 
     return (
       <SessionNoteEditor
+        readOnly={previewAsPlayer}
+        isDMUser={!previewAsPlayer && isDMUser}
         campaignHandle={campaignHandle}
         pageId={pageId}
         pageData={pageData}
