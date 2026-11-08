@@ -246,6 +246,16 @@ test('campaign router returns reduced Party responses and enforces campaign boun
         assert.equal(response.status, 200, `${path}: ${body}`);
         assert.doesNotMatch(body, /Hidden landmark|Hidden quest sentinel|Locked lifecycle sentinel|Unrevealed sentinel|Uninitialized scene sentinel/);
         assert.doesNotMatch(body, new RegExp(secretPageId));
+        if (path.startsWith('/wiki/session-notes/combined')) {
+          const combined = JSON.parse(body) as { columns: Array<{
+            userId: string; identityPageId: string | null; displayName: string | null; label: string; playerContext: string;
+          }> };
+          const playerColumn = combined.columns.find(column => column.userId === playerId);
+          assert.ok(playerColumn);
+          assert.equal(playerColumn.identityPageId, null);
+          assert.equal(playerColumn.displayName, null);
+          assert.equal(playerColumn.label, playerColumn.playerContext);
+        }
         if (['historical-aliases', 'interpretations', 'lore-claims', 'party-knowledge'].some(suffix => path.endsWith(suffix))) {
           assert.doesNotMatch(body, /Hidden alias sentinel|Secret alias sentinel|Hidden interpretation group sentinel|Hidden account sentinel|Hidden claim sentinel|Undiscovered claim sentinel|Hidden source sentinel|Hidden session source sentinel/);
           if (path.endsWith('historical-aliases')) assert.match(body, /Shared alias/);

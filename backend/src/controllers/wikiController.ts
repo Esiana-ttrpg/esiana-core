@@ -5653,9 +5653,9 @@ export async function getCombinedSessionNotes(
   const rosterMembers = members
     .filter((m) => rosterRolesForPerspectives(m.role))
     .map((member, index) => {
-      const mapped = mapSessionRosterMember(member, index);
-      return projectedById && mapped.identityPageId && !projectedById.has(mapped.identityPageId)
-        ? { ...mapped, identityPageId: null } : mapped;
+      const visibleIdentity = !projectedById || !member.identityPage ||
+        projectedById.has(member.identityPage.id);
+      return mapSessionRosterMember(visibleIdentity ? member : { ...member, identityPage: null }, index);
     });
 
   const entityIdSet = new Set<string>();
