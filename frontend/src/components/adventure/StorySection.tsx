@@ -264,7 +264,7 @@ export function StorySection({
   }
 
   if (activeView === 'unresolved') {
-    if (!isDMUser) {
+    if (!isDMUser || playerPreview) {
       return (
         <p className="text-sm text-muted-foreground">
           Unresolved narrative drift is available to GMs only.

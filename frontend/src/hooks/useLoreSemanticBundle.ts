@@ -25,6 +25,7 @@ export type LoreSemanticBundleState = {
 async function loadLoreSemanticBundle(
   campaignHandle: string,
   pageId: string,
+  previewAsPlayer: boolean,
 ): Promise<{
   bundle: LoreSemanticBundle;
   errors: LoreSemanticBundleErrors;
@@ -32,9 +33,9 @@ async function loadLoreSemanticBundle(
 }> {
   const [aliasesResult, interpretationsResult, claimsResult] =
     await Promise.allSettled([
-      fetchHistoricalAliases(campaignHandle, pageId),
-      fetchInterpretationsBundle(campaignHandle, pageId),
-      fetchLoreClaims(campaignHandle, pageId),
+      fetchHistoricalAliases(campaignHandle, pageId, { previewAsPlayer }),
+      fetchInterpretationsBundle(campaignHandle, pageId, { previewAsPlayer }),
+      fetchLoreClaims(campaignHandle, pageId, { previewAsPlayer }),
     ]);
 
   const { bundle, errors } = resolveLoreSemanticBundleFromSettled({
@@ -65,6 +66,7 @@ async function loadLoreSemanticBundle(
 export function useLoreSemanticBundle(
   campaignHandle: string,
   pageId: string,
+  previewAsPlayer = false,
 ): LoreSemanticBundleState {
   const [status, setStatus] = useState<LoreSemanticBundleStatus>('idle');
   const [bundle, setBundle] = useState<LoreSemanticBundle | null>(null);
@@ -81,7 +83,7 @@ export function useLoreSemanticBundle(
     setBundle(null);
     setErrors({});
 
-    void loadLoreSemanticBundle(campaignHandle, pageId).then((result) => {
+    void loadLoreSemanticBundle(campaignHandle, pageId, previewAsPlayer).then((result) => {
       if (cancelled) return;
       setBundle(result.bundle);
       setErrors(result.errors);
@@ -91,7 +93,7 @@ export function useLoreSemanticBundle(
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle, pageId, fetchGeneration]);
+  }, [campaignHandle, pageId, previewAsPlayer, fetchGeneration]);
 
   return { status, bundle, errors, refetch };
 }

@@ -25,7 +25,7 @@ The browser test intercepts responses only for its explicit delay and rejection 
 
 In `backend`, set `TEST_DATABASE_URL` to an isolated PostgreSQL database with repository migrations applied, then run `pnpm test:adventure-party`. The test fails if the database URL is missing.
 
-For browser acceptance, run Vite on port 5174 with `VITE_API_PROXY_TARGET=http://127.0.0.1:55440`. Set `ADVENTURE_BROWSER_URL=http://127.0.0.1:5174` for the fixture. Install Playwright, or set `PLAYWRIGHT_MODULE` to its local ESM entry point; the runner uses installed Edge. Set test-process request budgets `RATE_LIMIT_AUTHENTICATED_MAX`, `RATE_LIMIT_PUBLIC_MAX` and `RATE_LIMIT_EXPENSIVE_MAX` to `10000` for repeated automated navigation. Authorization middleware is unchanged. Run `pnpm test:adventure-party` again.
+For browser acceptance, run Vite on port 5174 and set `ADVENTURE_BROWSER_URL=http://127.0.0.1:5174` for the fixture. The fixture and Vite use API port 55440 by default; set `ADVENTURE_BROWSER_API_PORT` in both processes to use another port. `VITE_API_PROXY_TARGET` can explicitly override Vite's API target. Install Playwright, or set `PLAYWRIGHT_MODULE` to its local ESM entry point; the runner uses installed Edge. Set test-process request budgets `RATE_LIMIT_AUTHENTICATED_MAX`, `RATE_LIMIT_PUBLIC_MAX` and `RATE_LIMIT_EXPENSIVE_MAX` to `10000` for repeated automated navigation. Authorization middleware is unchanged. Run `pnpm test:adventure-party` again.
 
 ## Deliberate omissions
 

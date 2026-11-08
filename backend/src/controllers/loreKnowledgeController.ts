@@ -2,6 +2,7 @@ import { resolveAdventureAudience, filterAdventurePreviewPages } from '../lib/ad
 import { visibleAdventureEventIds } from '../lib/adventureAudienceEvents.js';
 import { isVisibleAdventureKnowledgeSource } from '../lib/adventureKnowledgeSource.js';
 import { buildNarrativeViewerContextFromRequest } from '../lib/narrativeProjectionContext.js';
+import { visibleAdventureSessionIds } from '../lib/adventureSessionAudience.js';
 import type { Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import {
@@ -68,12 +69,18 @@ export async function listEntityHistoricalAliases(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  const page = await assertWikiPageInCampaign(ctx.campaignId, pageId);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const page = audience.preview
+    ? (await filterAdventurePreviewPages(ctx.campaignId,
+      await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage))
+        .find(row => row.id === pageId)
+    : await assertWikiPageInCampaign(ctx.campaignId, pageId);
   if (!page) {
     res.status(404).json({ error: 'Page not found' });
     return;
   }
-  const aliases = await listHistoricalAliases(ctx.campaignId, pageId, ctx.role);
+  const aliases = (await listHistoricalAliases(ctx.campaignId, pageId, audience.preview ? null : ctx.role))
+    .filter(alias => !audience.preview || (!alias.isSecret && alias.playerDiscoverable));
   res.json({ aliases, canonicalTitle: page.title });
 }
 
@@ -221,12 +228,23 @@ export async function getInterpretationsBundle(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  const page = await assertWikiPageInCampaign(ctx.campaignId, pageId);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const page = audience.preview
+    ? (await filterAdventurePreviewPages(ctx.campaignId,
+      await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage))
+        .find(row => row.id === pageId)
+    : await assertWikiPageInCampaign(ctx.campaignId, pageId);
   if (!page) {
     res.status(404).json({ error: 'Page not found' });
     return;
   }
-  const bundle = await listInterpretationBundle(ctx.campaignId, pageId, ctx.role);
+  const bundle = await listInterpretationBundle(ctx.campaignId, pageId, audience.preview ? null : ctx.role);
+  if (audience.preview) {
+    const claims = await listLoreClaims(ctx.campaignId, pageId, null);
+    const groupIds = new Set([...bundle.accounts.map(account => account.interpretationGroupId),
+      ...claims.map(claim => claim.interpretationGroupId)]);
+    bundle.groups = bundle.groups.filter(group => groupIds.has(group.id));
+  }
   res.json(bundle);
 }
 
@@ -343,12 +361,30 @@ export async function getLoreClaims(
 ): Promise<void> {
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
-  const page = await assertWikiPageInCampaign(ctx.campaignId, pageId);
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer,
+    await buildNarrativeViewerContextFromRequest(req));
+  const visible = audience.preview ? await filterAdventurePreviewPages(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage) : null;
+  const page = visible ? visible.find(row => row.id === pageId) : await assertWikiPageInCampaign(ctx.campaignId, pageId);
   if (!page) {
     res.status(404).json({ error: 'Page not found' });
     return;
   }
-  const claims = await listLoreClaims(ctx.campaignId, pageId, ctx.role);
+  const claims = await listLoreClaims(ctx.campaignId, pageId, audience.preview ? null : ctx.role);
+  if (visible) {
+    const pageIds = new Set(visible.map(row => row.id));
+    const [eventIds, sessionIds] = await Promise.all([
+      visibleAdventureEventIds(ctx.campaignId, audience.canViewPage, audience.narrativeViewer),
+      visibleAdventureSessionIds(ctx.campaignId, pageIds),
+    ]);
+    const sessionPages = await prisma.campaignSessionTimeline.findMany({
+      where: { campaignId: ctx.campaignId, id: { in: [...sessionIds] } }, select: { wikiPageId: true },
+    });
+    for (const row of sessionPages) sessionIds.add(row.wikiPageId);
+    const allowed = { pageIds, eventIds, sessionIds };
+    for (const claim of claims) claim.sources = claim.sources.filter(source =>
+      isVisibleAdventureKnowledgeSource(source, allowed));
+  }
   res.json({ claims });
 }
 

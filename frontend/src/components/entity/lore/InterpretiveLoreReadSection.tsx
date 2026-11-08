@@ -11,6 +11,7 @@ interface InterpretiveLoreReadSectionProps {
   flatPages?: LorePageLookup[];
   memberRole?: string;
   allowPlayerChronologyManagement?: boolean;
+  previewAsPlayer?: boolean;
 }
 
 export function InterpretiveLoreReadSection({
@@ -19,8 +20,9 @@ export function InterpretiveLoreReadSection({
   flatPages = [],
   memberRole,
   allowPlayerChronologyManagement = false,
+  previewAsPlayer = false,
 }: InterpretiveLoreReadSectionProps) {
-  const { status, bundle, errors } = useLoreSemanticBundle(campaignHandle, pageId);
+  const { status, bundle, errors } = useLoreSemanticBundle(campaignHandle, pageId, previewAsPlayer);
 
   if (status === 'loading' || status === 'idle') {
     return <LoreSemanticStackSkeleton />;

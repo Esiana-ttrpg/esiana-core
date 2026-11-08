@@ -33,7 +33,7 @@ const AdventureWorkspaceContext = createContext<AdventureWorkspaceContextValue |
 export function AdventureWorkspaceProvider({ children, perspective: controlledPerspective, onPerspectiveChange }: {
   children: ReactNode;
   perspective?: AdventurePreviewPerspective;
-  onPerspectiveChange?: (value: AdventurePreviewPerspective) => void;
+  onPerspectiveChange?: (value: AdventurePreviewPerspective) => void | Promise<void>;
 }) {
   const adventureRoute = useAdventureRoute();
   const { hasElevatedView, campaignHandle } = useWiki();
@@ -52,9 +52,10 @@ export function AdventureWorkspaceProvider({ children, perspective: controlledPe
   const setPerspective = useCallback(
     (next: AdventurePreviewPerspective) => {
       if (next !== 'dm' && !ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE) return;
-      setPerspectiveState(next);
-      onPerspectiveChange?.(next);
-      if (campaignHandle) patchAdventurePerspective(campaignHandle, next);
+      void Promise.resolve(onPerspectiveChange?.(next)).then(() => {
+        setPerspectiveState(next);
+        if (campaignHandle) patchAdventurePerspective(campaignHandle, next);
+      }).catch(() => {});
     },
     [campaignHandle, onPerspectiveChange],
   );

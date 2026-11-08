@@ -1,4 +1,8 @@
 import { readAdventurePerspective } from '@/lib/workspacePersistence';
+import { flushSceneSummaryDrafts } from '@/lib/sceneSummaryDrafts';
+import { fetchCampaign } from '@/lib/campaigns';
+import { CampaignMemberRoles } from '@/types/domain';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import type { AdventurePreviewPerspective } from '@/lib/adventurePreview';
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -349,13 +353,43 @@ export function CampaignLayout() {
 }
 
 function AudienceScopedCampaignLayout({ campaignHandle }: { campaignHandle: string }) {
-  const [perspective, setPerspective] = useState<AdventurePreviewPerspective>(() => readAdventurePerspective(campaignHandle) ?? 'dm');
+  const { loading: authLoading } = useAuth();
+  const [resolvedRole, setResolvedRole] = useState<{ handle: string; elevated: boolean } | null>(null);
+  const [perspective, setPerspective] = useState<AdventurePreviewPerspective>('dm');
+  useEffect(() => {
+    if (authLoading || !campaignHandle) return;
+    let cancelled = false;
+    void fetchCampaign(campaignHandle).then(campaign => {
+      if (cancelled) return;
+      const elevated = campaign.role === CampaignMemberRoles.GAMEMASTER || campaign.role === CampaignMemberRoles.WRITER;
+      setPerspective(elevated ? readAdventurePerspective(campaignHandle) ?? 'dm' : 'dm');
+      setResolvedRole({ handle: campaignHandle, elevated });
+    }).catch(() => {
+      if (cancelled) return;
+      setPerspective('dm');
+      setResolvedRole({ handle: campaignHandle, elevated: false });
+    });
+    return () => { cancelled = true; };
+  }, [authLoading, campaignHandle]);
+
+  if (authLoading || resolvedRole?.handle !== campaignHandle) return <LoadingSpinner label="Loading campaign…" />;
+  const effectivePerspective = resolvedRole.elevated ? perspective : 'dm';
+  const changePerspective = async (next: AdventurePreviewPerspective) => {
+    if (!resolvedRole.elevated) return;
+    try {
+      await flushSceneSummaryDrafts();
+    } catch {
+      window.alert('Unable to save the scene summary. Your draft is still available in the GM view.');
+      throw new Error('Scene summary save failed');
+    }
+    setPerspective(next);
+  };
   return (
-    <WikiProvider key={perspective} previewAsPlayer={perspective === 'party'}>
+    <WikiProvider key={effectivePerspective} previewAsPlayer={resolvedRole.elevated && effectivePerspective === 'party'}>
       <CampaignNavProvider>
         <PluginRuntimeProvider>
           <SceneCompositionProvider>
-            <AdventureWorkspaceProvider perspective={perspective} onPerspectiveChange={setPerspective}>
+            <AdventureWorkspaceProvider perspective={effectivePerspective} onPerspectiveChange={changePerspective}>
               <CampaignSettingsChromeProvider>
                 <CampaignLayoutShell />
               </CampaignSettingsChromeProvider>

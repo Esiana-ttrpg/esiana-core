@@ -22,8 +22,9 @@ export type InterpretiveSummaryResponse = InterpretiveLoreSummary & {
 export async function fetchHistoricalAliases(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<{ aliases: EntityHistoricalAliasRecord[]; canonicalTitle: string }> {
-  return apiFetch(`/campaigns/${campaignHandle}/wiki/${pageId}/historical-aliases`);
+  return apiFetch(`/campaigns/${campaignHandle}/wiki/${pageId}/historical-aliases${options?.previewAsPlayer ? '?previewAsPlayer=true' : ''}`);
 }
 
 export async function createHistoricalAlias(
@@ -68,18 +69,20 @@ export async function fetchInterpretiveSummary(
   const query = new URLSearchParams();
   if (viewDate) query.set("viewDate", JSON.stringify(viewDate));
   if (options?.previewAsPlayer) query.set("previewAsPlayer", "true");
-  const params = query.size ? `?${query}` : "";
+  const serialized = query.toString();
+  const params = serialized ? `?${serialized}` : "";
   return apiFetch(`/campaigns/${campaignHandle}/wiki/${pageId}/interpretive-summary${params}`);
 }
 
 export async function fetchInterpretationsBundle(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<{
   groups: LoreInterpretationGroupRecord[];
   accounts: LoreInterpretationAccountRecord[];
 }> {
-  return apiFetch(`/campaigns/${campaignHandle}/wiki/${pageId}/interpretations`);
+  return apiFetch(`/campaigns/${campaignHandle}/wiki/${pageId}/interpretations${options?.previewAsPlayer ? '?previewAsPlayer=true' : ''}`);
 }
 
 export async function createInterpretationGroup(
@@ -151,9 +154,10 @@ export async function deleteInterpretationAccount(
 export async function fetchLoreClaims(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<LoreClaimWithSources[]> {
   const data = await apiFetch<{ claims: LoreClaimWithSources[] }>(
-    `/campaigns/${campaignHandle}/wiki/${pageId}/lore-claims`,
+    `/campaigns/${campaignHandle}/wiki/${pageId}/lore-claims${options?.previewAsPlayer ? '?previewAsPlayer=true' : ''}`,
   );
   return data.claims ?? [];
 }

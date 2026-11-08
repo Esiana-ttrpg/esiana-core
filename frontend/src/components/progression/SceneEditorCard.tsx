@@ -7,6 +7,7 @@ import type { SceneHubNode } from '@/lib/adventure';
 import { campaignWikiPath } from '@/lib/campaignPaths';
 import { parseSceneMetadata } from '@/lib/sceneMetadata';
 import { updateSceneMetadata } from '@/lib/wiki';
+import { flushSceneSummaryDraft, queueSceneSummaryDraft } from '@/lib/sceneSummaryDrafts';
 import { SceneBeatChip } from '@/components/scene/SceneBeatChip';
 import { SceneMetadataEditor } from '@/components/scene/SceneMetadataEditor';
 
@@ -69,17 +70,21 @@ export function SceneEditorCard({
   const [metadata, setMetadata] = useState<Record<string, unknown>>(() => ({
     ...scene.scene,
   }));
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  const summaryVersionRef = useRef(0);
+  const summarySaveKey = `${campaignHandle}:${scene.id}`;
 
   useEffect(() => {
     setSummaryDraft(scene.scene.summary ?? '');
   }, [scene.id, scene.scene.summary]);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      mountedRef.current = false;
+      void flushSceneSummaryDraft(summarySaveKey).catch(() => {});
     };
-  }, []);
+  }, [summarySaveKey]);
 
   function setExpanded(next: boolean) {
     if (expanded === undefined) {
@@ -90,15 +95,16 @@ export function SceneEditorCard({
 
   function scheduleSummarySave(value: string) {
     if (readOnly) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      void updateSceneMetadata(campaignHandle, scene.id, {
+    const version = ++summaryVersionRef.current;
+    queueSceneSummaryDraft(summarySaveKey, async () => {
+      const result = await updateSceneMetadata(campaignHandle, scene.id, {
         summary: value.trim() || null,
-      }).then((result) => {
+      });
+      if (mountedRef.current && version === summaryVersionRef.current) {
         setMetadata(result.metadata);
         onSaved?.();
-      });
-    }, 500);
+      }
+    });
   }
 
   const summaryPreview =

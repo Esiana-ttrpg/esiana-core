@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-/** Run with the real-router PostgreSQL fixture and a Vite server proxying port 55440. */
+/** Run with the real-router PostgreSQL fixture and a Vite server proxying ADVENTURE_BROWSER_API_PORT. */
 export async function runAcceptance({ url, handle, emptyHandle, cookies, pageId }) {
   const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
   const browser = await chromium.launch({ channel: 'msedge', headless: true });
@@ -58,12 +58,15 @@ export async function runAcceptance({ url, handle, emptyHandle, cookies, pageId 
         const gate = new Promise(resolve => { release = resolve; });
         let intercepted;
         const pending = new Promise(resolve => { intercepted = resolve; });
+        let completed;
+        const delivered = new Promise(resolve => { completed = resolve; });
         await page.route('**/wiki/quests-hub/**', async route => {
           if (!route.request().url().includes('previewAsPlayer')) {
             const response = await route.fetch();
             intercepted();
             await gate;
             await route.fulfill({ response });
+            completed();
           } else await route.continue();
         });
         partyActive = false;
@@ -72,6 +75,7 @@ export async function runAcceptance({ url, handle, emptyHandle, cookies, pageId 
         await page.getByRole('button', { name: 'Party', exact: true }).click();
         assert.doesNotMatch(await page.locator('body').innerText(), /Hidden quest sentinel|Hidden landmark/);
         release();
+        await delivered;
         await page.getByText('Shared quest', { exact: true }).first().waitFor();
         assert.doesNotMatch(await page.locator('body').innerText(), /Hidden quest sentinel|Hidden landmark/);
         await page.unroute('**/wiki/quests-hub/**');

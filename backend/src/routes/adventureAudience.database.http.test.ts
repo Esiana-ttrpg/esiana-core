@@ -138,7 +138,10 @@ test('campaign router returns reduced Party responses and enforces campaign boun
       mountRouters(app);
     } else app.use('/api/campaigns/:campaignHandle', campaignScopedRouter);
     server = createServer(app);
-    await new Promise<void>(resolve => server!.listen(process.env.ADVENTURE_BROWSER_URL ? 55440 : 0, '127.0.0.1', resolve));
+    const configuredBrowserPort = Number(process.env.ADVENTURE_BROWSER_API_PORT ?? '55440');
+    assert.ok(Number.isInteger(configuredBrowserPort) && configuredBrowserPort >= 1 && configuredBrowserPort <= 65535,
+      'ADVENTURE_BROWSER_API_PORT must be a valid TCP port');
+    await new Promise<void>(resolve => server!.listen(process.env.ADVENTURE_BROWSER_URL ? configuredBrowserPort : 0, '127.0.0.1', resolve));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const base = `http://127.0.0.1:${address.port}/api/campaigns/${handle}`;
@@ -199,12 +202,20 @@ test('campaign router returns reduced Party responses and enforces campaign boun
     for (const id of [ownerId, writerId]) {
       const headers = { cookie: cookies.get(id)! };
       for (const path of [`/wiki/${linkSourceId}/preview`, `/wiki/${linkSourceId}/mention-snippet?targetPageId=${linkTargetId}`,
-        `/wiki/${linkSourceId}/party-knowledge`, `/wiki/${linkSourceId}/interpretive-summary`, '/wiki/link-index', '/wiki/mention-targets', '/adventure/storyboard']) {
+        `/wiki/${linkSourceId}/party-knowledge`, `/wiki/${linkSourceId}/interpretive-summary`,
+        `/wiki/${linkSourceId}/historical-aliases`, `/wiki/${linkSourceId}/interpretations`, `/wiki/${linkSourceId}/lore-claims`,
+        '/wiki/link-index', '/wiki/mention-targets', '/adventure/storyboard']) {
         const response = await fetch(`${base}${path}${path.includes('?') ? '&' : '?'}previewAsPlayer=true`, { headers });
         const body = await response.text();
         assert.equal(response.status, 200, `${path}: ${body}`);
         assert.doesNotMatch(body, /Hidden landmark|Hidden quest sentinel|Locked lifecycle sentinel|Unrevealed sentinel|Uninitialized scene sentinel/);
         assert.doesNotMatch(body, new RegExp(secretPageId));
+      }
+      for (const hidden of [secretPageId, unrevealedId, draftId, futureId, otherPageId]) {
+        for (const path of ['historical-aliases', 'interpretations', 'lore-claims']) {
+          const response = await fetch(`${base}/wiki/${hidden}/${path}?previewAsPlayer=true`, { headers });
+          assert.equal(response.status, 404, `${hidden}: ${path}`);
+        }
       }
       for (const path of [`/entity-graph?entityType=wiki_page&entityId=${linkSourceId}&includeSuppressed=true`, '/entity-graph/projection']) {
         const response = await fetch(`${base}${path}${path.includes('?') ? '&' : '?'}previewAsPlayer=true`, { headers });

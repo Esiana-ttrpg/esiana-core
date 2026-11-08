@@ -162,8 +162,8 @@ export function AdventureStoryboardSection({
   const editorScene = selectedSceneId ? sceneById.get(selectedSceneId) ?? null : null;
 
   const readyScenes =
-    (sessionsData?.readyScenes as Array<{ id: string; title: string; sceneStatus?: string }>) ??
-    [];
+    ((sessionsData?.readyScenes as Array<{ id: string; title: string; sceneStatus?: string }>) ?? [])
+      .filter((scene) => sceneById.has(scene.id));
 
   const currentLayout: StoryboardViewV1 | undefined =
     scenesData?.storyboard?.layout ??
