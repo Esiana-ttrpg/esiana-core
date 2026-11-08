@@ -7,6 +7,8 @@ import { prisma } from './prisma.js';
 import { ContentPresenceEntityType, ContentRevelationStates } from '../../../shared/contentPresence.js';
 import { parseSystemCategoryKey } from './wikiSystemCategory.js';
 import { isWorkshopDraftMetadata, isWorkshopDraftsRootMetadata } from '../../../shared/workshopDocument.js';
+import { ensureNarrativeScenesSystemCategoryKey } from './ensureNarrativeScenesSystemCategoryKey.js';
+import { buildNarrativeScenesCategoryMetadata } from './wikiSystemCategory.js';
 
 /** Keep only pages whose entire ancestry is visible to the effective audience. */
 export function filterAdventureAudiencePages<T extends { id: string; parentId: string | null; visibility: string }>(
@@ -31,6 +33,10 @@ export function filterAdventureAudiencePages<T extends { id: string; parentId: s
 export async function filterAdventurePreviewPages<T extends { id: string; parentId: string | null; visibility: string; metadata: unknown }>(
   campaignId: string, rows: readonly T[], canView: (visibility: string) => boolean,
 ): Promise<T[]> {
+  const scenesRootId = await ensureNarrativeScenesSystemCategoryKey(campaignId);
+  const normalizedRows = scenesRootId ? rows.map(row => row.id === scenesRootId
+    ? { ...row, metadata: { ...(row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+      ? row.metadata as Record<string, unknown> : {}), ...buildNarrativeScenesCategoryMetadata() } } as T : row) : rows;
   const [presenceRows, lifecycleRows, now, secretPages] = await Promise.all([
     prisma.contentPresenceState.findMany({
       where: { campaignId, entityType: ContentPresenceEntityType.WIKI_PAGE, subEntityId: null },
@@ -44,11 +50,11 @@ export async function filterAdventurePreviewPages<T extends { id: string; parent
     (row.availableFromEpochMinute != null && row.availableFromEpochMinute > now.currentEpochMinute)).map(row => row.entityId));
   for (const row of lifecycleRows) if (row.lifecycleState === 'LOCKED') hidden.add(row.subjectId);
   for (const row of secretPages) hidden.add(row.wikiPageId);
-  const scenesRoot = rows.find(row => parseSystemCategoryKey(row.metadata) === 'narrative_scenes');
+  const scenesRoot = normalizedRows.find(row => parseSystemCategoryKey(row.metadata) === 'narrative_scenes');
   if (scenesRoot) {
-    const parents = new Map(rows.map(row => [row.id, row.parentId]));
+    const parents = new Map(normalizedRows.map(row => [row.id, row.parentId]));
     const lifecycleIds = new Set(lifecycleRows.filter(row => row.subjectKind === 'scene').map(row => row.subjectId));
-    for (const row of rows) {
+    for (const row of normalizedRows) {
       let parent = row.parentId;
       const seen = new Set<string>();
       while (parent && !seen.has(parent)) {
@@ -58,7 +64,7 @@ export async function filterAdventurePreviewPages<T extends { id: string; parent
       }
     }
   }
-  return filterAdventureAudiencePages(rows.filter(row => {
+  return filterAdventureAudiencePages(normalizedRows.filter(row => {
     if (hidden.has(row.id)) return false;
     if (isWorkshopDraftMetadata(row.metadata) || isWorkshopDraftsRootMetadata(row.metadata)) return false;
     const metadata = row.metadata;

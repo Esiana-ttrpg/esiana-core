@@ -7,9 +7,22 @@ import { isSceneMetadataPresent, parseSceneMetadata } from './sceneMetadata.js';
 import { isThreadMetadataPresent, parseThreadMetadata } from './threadMetadata.js';
 import { restrictSceneMetadata, restrictThreadMetadata } from './adventureAudienceMetadata.js';
 import { isArcMetadataPresent, parseArcMetadata } from './arcMetadata.js';
+import { visibleAdventureSessionIds } from './adventureSessionAudience.js';
 
-type Page = { id: string; parentId: string | null; visibility: string; metadata: unknown; blocks: unknown };
-const pageReferenceKey = /(?:^pageIds?$|PageIds?$|EntityIds?$|^questGiverId$|^factionId$)/;
+type Page = { id: string; parentId: string | null; visibility: string; metadata: unknown; blocks: unknown; pathKey?: string | null };
+const pageReferenceKey = /(?:^pageIds?$|PageIds?$|EntityIds?$|^targetId$|^questGiverId$|^factionId$)/;
+
+export function redactAdventureReferenceText(text: string, allowed: (id: string, route?: string) => boolean): string {
+  const path = /\/(?:c|campaigns?)\/[\w-]+\/(wiki|characters|havens)\/([\w-]+)/i;
+  let result = text.replace(/<span\b[^>]*data-id=(["'])([^"']+)\1[^>]*>[\s\S]*?<\/span>/gi,
+    (match, _quote: string, id: string) => allowed(id) ? match : '');
+  result = result.replace(/\[[^\]\n]*\]\((\/(?:c|campaigns?)\/[\w-]+\/(?:wiki|characters|havens)\/[\w-]+)[^)]*\)/gi,
+    (match, url: string) => { const target = path.exec(url); return target && allowed(target[2]!, target[1]!) ? match : ''; });
+  result = result.replace(/<a\b[^>]*href=["']([^"']*)["'][^>]*>[\s\S]*?<\/a>/gi,
+    (match, url: string) => { const target = path.exec(url); return target && !allowed(target[2]!, target[1]!) ? '' : match; });
+  return result.replace(/\/(?:c|campaigns?)\/[\w-]+\/(wiki|characters|havens)\/([\w-]+)/gi,
+    (match, route: string, id: string) => allowed(id, route) ? match : '');
+}
 
 /** One projection for page documents and the inputs to Adventure derivations. */
 export async function projectAdventurePages<T extends Page>(
@@ -17,41 +30,37 @@ export async function projectAdventurePages<T extends Page>(
 ): Promise<T[]> {
   const visible = await filterAdventurePreviewPages(campaignId, pages, canView);
   const ids = new Set(visible.map(page => page.id));
-  const [presence, campaign, relations, sessions] = await Promise.all([
+  const allIds = new Set(pages.map(page => page.id));
+  const routeIds = new Map(pages.filter(page => page.pathKey).map(page => [page.pathKey!, page.id]));
+  const [presence, campaign, relations] = await Promise.all([
     prisma.contentPresenceState.findMany({ where: { campaignId, entityType: ContentPresenceEntityType.WIKI_BLOCK } }),
     prisma.campaign.findUniqueOrThrow({ where: { id: campaignId }, select: { currentEpochMinute: true } }),
-    prisma.entityRelation.findMany({ where: { campaignId }, select: { sourceEntityId: true, targetEntityId: true, visibility: true } }),
-    prisma.campaignSessionTimeline.findMany({ where: { campaignId }, select: { id: true, wikiPageId: true } }),
+    prisma.entityRelation.findMany({ where: { campaignId, visibility: { not: null } },
+      select: { id: true, sourceRecordKey: true, visibility: true } }),
   ]);
-  const sessionIds = new Set(sessions.filter(session => ids.has(session.wikiPageId)).map(session => session.id));
+  const hiddenRelationIds = new Set(relations.filter(row => !canView(row.visibility!))
+    .flatMap(row => [row.id, row.sourceRecordKey]));
+  const sessionIds = await visibleAdventureSessionIds(campaignId, ids);
   const hidden = new Set(presence.filter(row => row.state !== 'REVEALED' ||
     (row.availableFromEpochMinute != null && row.availableFromEpochMinute > campaign.currentEpochMinute))
     .map(row => `${row.entityId}:${row.subEntityId ?? ''}`));
 
-  const hiddenRelations = new Set(relations.filter(row => row.visibility != null && !canView(row.visibility))
-    .flatMap(row => [`${row.sourceEntityId}:${row.targetEntityId}`, `${row.targetEntityId}:${row.sourceEntityId}`]));
-
   // References are authorized against the complete campaign projection, including
   // ancestors, revelation and lifecycle, rather than against target visibility alone.
   function project(value: unknown, key = '', sourceId = ''): unknown {
-    const allowed = (id: string) => ids.has(id) && !hiddenRelations.has(`${sourceId}:${id}`);
+    const allowed = (id: string) => ids.has(id);
+    const allowedRoute = (id: string) => allIds.has(id) ? allowed(id) : allowed(routeIds.get(id) ?? id);
     if (typeof value === 'string') {
       if (pageReferenceKey.test(key)) return allowed(value) ? value : null;
-      let text = value.replace(/<span\b[^>]*data-id="([^"]+)"[^>]*>[\s\S]*?<\/span>/g,
-        (match, id: string) => allowed(id) ? match : '');
-      text = text.replace(/\[[^\]\n]*\]\((\/(?:c|campaigns?)\/[^/\s]+\/(?:wiki|characters)\/([\w-]+))\)/g,
-        (match, _url: string, id: string) => allowed(id) ? match : '');
-      text = text.replace(/<a\b[^>]*href=["'][^"']*\/(?:wiki|characters)\/([\w-]+)["'][^>]*>[\s\S]*?<\/a>/gi,
-        (match, id: string) => allowed(id) ? match : '');
-      return text.replace(/\/(?:c|campaigns?)\/[^/\s]+\/(?:wiki|characters)\/([\w-]+)/g,
-        (match, id: string) => allowed(id) ? match : '');
+      return redactAdventureReferenceText(value, allowedRoute);
     }
     if (Array.isArray(value)) return value.map(item => project(item, key, sourceId)).filter(item => item != null);
     if (!value || typeof value !== 'object') return value;
     const record = value as Record<string, unknown>;
     if (record.isPrivate === true || (typeof record.visibility === 'string' && !canView(record.visibility))) return null;
+    if ([record.id, record.relationId, record.sourceRecordKey].some(id => typeof id === 'string' && hiddenRelationIds.has(id))) return null;
     // Do not retain the cached label/description of an inaccessible reference.
-    if (('label' in record || 'title' in record) && Object.entries(record).some(([name, item]) => pageReferenceKey.test(name) &&
+    if (Object.entries(record).some(([name, item]) => pageReferenceKey.test(name) &&
       typeof item === 'string' && !allowed(item))) return null;
     if (['wikiLink', 'mention'].includes(String(record.type))) {
       const attrs = record.attrs as Record<string, unknown> | undefined;
@@ -86,6 +95,7 @@ export function projectedWikiTargetIds(blocks: unknown): string[] {
     if (typeof value === 'string') {
       if (pageReferenceKey.test(key)) ids.add(value);
       for (const id of extractWikiLinkTargetIdsFromBlocks([{ type: 'text-tiptap', content: { markdown: value } }])) ids.add(id);
+      for (const match of value.matchAll(/<span\b[^>]*data-id=(["'])([^"']+)\1/gi)) ids.add(match[2]!);
     } else if (Array.isArray(value)) value.forEach(item => visit(item, key));
     else if (value && typeof value === 'object') Object.entries(value).forEach(([name, item]) => visit(item, name));
   };

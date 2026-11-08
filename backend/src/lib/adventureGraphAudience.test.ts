@@ -42,3 +42,13 @@ test('generated graph edges inherit authorized endpoints without changing explic
     { kind: 'WIKI_REFERENCE' });
   assert.equal(rowForAudience(row()).visibility, null);
 });
+
+test('Party graph payload removes hidden page references before serializing edges', () => {
+  const projected = rowForAudience(row({ visibility: 'PARTY', payload: {
+    note: '[Secret](/campaigns/red-sands/wiki/secret-page)',
+    related: [{ pageId: 'secret-page', description: 'Secret description' },
+      { pageId: 'shared-page', label: 'Shared label' }],
+  } }), new Set(['calendar_event:shared-event', 'wiki_page:shared-page']), new Set(['shared-page']));
+  assert.deepEqual(projected.payload, { note: '', related: [{ pageId: 'shared-page', label: 'Shared label' }] });
+  assert.equal(projected.sourceRecordKey, projected.id);
+});

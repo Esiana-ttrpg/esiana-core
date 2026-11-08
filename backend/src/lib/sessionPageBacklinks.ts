@@ -94,12 +94,14 @@ export async function batchSessionBacklinksForPages(input: {
   if (input.targetPageIds.length === 0) return result;
 
   if (input.canViewPage) {
-    const pages = await projectAdventurePages(input.campaignId,
-      await prisma.wikiPage.findMany({ where: { campaignId: input.campaignId, deletedAt: null } }),
-      input.canViewPage);
+    const originalPages = await prisma.wikiPage.findMany({ where: { campaignId: input.campaignId, deletedAt: null } });
+    const pages = await projectAdventurePages(input.campaignId, originalPages, input.canViewPage);
+    const originalById = new Map(originalPages.map(page => [page.id, page]));
     const byId = new Map(pages.map(page => [page.id, page]));
+    const sourceParents = new Map(pages.map(page => [page.id,
+      { ...page, metadata: originalById.get(page.id)?.metadata ?? page.metadata }]));
     for (const source of pages.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())) {
-      if (!isSessionLogSourcePage(source, byId)) continue;
+      if (!isSessionLogSourcePage({ ...source, metadata: originalById.get(source.id)?.metadata ?? source.metadata }, sourceParents)) continue;
       const targets = projectedWikiTargetIds(source.blocks);
       for (const target of targets) {
         const bucket = result.get(target);

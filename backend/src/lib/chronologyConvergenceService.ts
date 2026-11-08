@@ -56,6 +56,8 @@ import {
 } from '../../../shared/narrativeProjection.js';
 import { collectDowntimePeriodAnchors } from './downtimePeriodProjectionService.js';
 import { buildWikiPagePathMap } from './wikiPageHrefSelect.js';
+import { visibleAdventureSessionIds } from './adventureSessionAudience.js';
+import { redactAdventureReferenceText } from './adventurePageProjection.js';
 
 const MAX_GENERATED_PER_EVENT = 100;
 const MAX_GENERATED_TOTAL = 2000;
@@ -305,9 +307,11 @@ async function collectWorldAnchors(
 async function collectSessionAnchors(
   campaignId: string,
   authorizedPageIds?: ReadonlySet<string>,
+  authorizedSessionIds?: ReadonlySet<string>,
 ): Promise<CanonicalChronologyAnchor[]> {
   const points = await (prisma as any).campaignSessionTimeline.findMany({
-    where: { campaignId, ...(authorizedPageIds ? { wikiPageId: { in: [...authorizedPageIds] } } : {}) },
+    where: { campaignId, ...(authorizedPageIds ? { wikiPageId: { in: [...authorizedPageIds] } } : {}),
+      ...(authorizedSessionIds ? { id: { in: [...authorizedSessionIds] } } : {}) },
     orderBy: { sequenceOrder: 'asc' },
     select: {
       id: true,
@@ -421,6 +425,13 @@ async function collectOrgRelationAnchors(
   campaignId: string,
   authorizedPageIds?: ReadonlySet<string>,
 ): Promise<CanonicalChronologyAnchor[]> {
+  const pathRows = authorizedPageIds ? await prisma.wikiPage.findMany({
+    where: { campaignId, deletedAt: null }, select: { id: true, pathKey: true },
+  }) : [];
+  const pathIds = new Map(pathRows.filter(row => row.pathKey).map(row => [row.pathKey!, row.id]));
+  const allIds = new Set(pathRows.map(row => row.id));
+  const allowedNoteTarget = (id: string) => authorizedPageIds &&
+    authorizedPageIds.has(allIds.has(id) ? id : pathIds.get(id) ?? id);
   const orgPages = await prisma.wikiPage.findMany({
     where: {
       campaignId,
@@ -454,7 +465,9 @@ async function collectOrgRelationAnchors(
             stance: event.stance,
             visibility: event.visibility,
             sourceEventIds: authorizedPageIds ? [] : event.sourceEventIds ?? [],
-            note: event.note ?? null,
+            note: event.note && authorizedPageIds
+              ? redactAdventureReferenceText(event.note, id => !!allowedNoteTarget(id)) || null
+              : event.note ?? null,
           }),
         );
       }
@@ -545,13 +558,15 @@ export async function buildConvergenceOverlay(
 
   const anchors: CanonicalChronologyAnchor[] = [];
   const sourcesIncluded: ChronologyDomainKindValue[] = [];
+  const authorizedSessionIds = input.authorizedPageIds
+    ? await visibleAdventureSessionIds(input.campaignId, input.authorizedPageIds) : undefined;
 
   if (domainEnabled(input.domains, ChronologyDomainKind.WORLD_EVENT)) {
     anchors.push(...(await collectWorldAnchors(input.campaignId, canManage)));
     sourcesIncluded.push(ChronologyDomainKind.WORLD_EVENT);
   }
   if (domainEnabled(input.domains, ChronologyDomainKind.SESSION_CHRONICLE)) {
-    anchors.push(...(await collectSessionAnchors(input.campaignId, input.authorizedPageIds)));
+    anchors.push(...(await collectSessionAnchors(input.campaignId, input.authorizedPageIds, authorizedSessionIds)));
     sourcesIncluded.push(ChronologyDomainKind.SESSION_CHRONICLE);
   }
   if (domainEnabled(input.domains, ChronologyDomainKind.MAP_KEYFRAME)) {
@@ -576,7 +591,8 @@ export async function buildConvergenceOverlay(
   }
 
   const sessionPoints = await (prisma as any).campaignSessionTimeline.findMany({
-    where: { campaignId: input.campaignId, ...(input.authorizedPageIds ? { wikiPageId: { in: [...input.authorizedPageIds] } } : {}) },
+    where: { campaignId: input.campaignId, ...(input.authorizedPageIds ? { wikiPageId: { in: [...input.authorizedPageIds] } } : {}),
+      ...(authorizedSessionIds ? { id: { in: [...authorizedSessionIds] } } : {}) },
     select: { id: true, sequenceOrder: true },
   });
   const sessionTimelinePointIds = new Set<string>(

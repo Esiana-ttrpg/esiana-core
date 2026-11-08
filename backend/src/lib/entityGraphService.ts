@@ -29,6 +29,7 @@ import {
 } from '../../../shared/narrativeProjection.js';
 import { dateSortKey } from './entityRelationTypes.js';
 import { prisma } from './prisma.js';
+import { redactAdventureReferenceText } from './adventurePageProjection.js';
 import { resolveWikiCodexType } from './resolveWikiCodexType.js';
 import { buildPageNarrativeStatusProjectionMap } from './pageNarrativeStatusService.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
@@ -267,11 +268,33 @@ export function authorizedGraphRow(row: EntityRelationRow, input: {
 
 // Generated edges inherit their already-authorized endpoints when no separate
 // relationship visibility was authored. Explicit relationship visibility stays intact.
-export function rowForAudience(row: EntityRelationRow, authorizedEntityKeys?: ReadonlySet<string>): EntityRelationRow {
-  return authorizedEntityKeys && row.visibility == null && INHERITED_RELATION_DOMAINS.has(row.sourceDomain)
-    ? { ...row, visibility: 'PUBLIC',
-      payload: ['wiki_link', 'wiki_metadata'].includes(row.sourceDomain)
-        ? { kind: row.relationKind } : row.payload } : row;
+export function rowForAudience(row: EntityRelationRow, authorizedEntityKeys?: ReadonlySet<string>,
+  authorizedPageIds?: ReadonlySet<string>): EntityRelationRow {
+  if (!authorizedEntityKeys && !authorizedPageIds) return row;
+  const scrub = (value: unknown, key = ''): unknown => {
+    if (typeof value === 'string') {
+      if (/PageId$|^pageId$/.test(key)) return authorizedPageIds?.has(value) ? value : null;
+      return redactAdventureReferenceText(value, id => !!authorizedPageIds?.has(id));
+    }
+    if (Array.isArray(value)) return value.map(item => scrub(item, key)).filter(item => item != null);
+    if (!value || typeof value !== 'object') return value;
+    const record = value as Record<string, unknown>;
+    if (Object.entries(record).some(([name, item]) => {
+      if (typeof item !== 'string') return false;
+      if (/PageId$|^pageId$/.test(name)) return !authorizedPageIds?.has(item);
+      if (/EntityId$|^entityId$/.test(name)) {
+        const type = record[name.replace(/Id$/, 'Type')];
+        return typeof type === 'string'
+          ? !authorizedEntityKeys?.has(`${type}:${item}`) : !authorizedPageIds?.has(item);
+      }
+      return false;
+    })) return null;
+    return Object.fromEntries(Object.entries(record).map(([name, item]) => [name, scrub(item, name)]));
+  };
+  const inherited = row.visibility == null && INHERITED_RELATION_DOMAINS.has(row.sourceDomain);
+  return { ...row, sourceRecordKey: row.id, visibility: inherited ? 'PUBLIC' : row.visibility,
+    payload: scrub(inherited && ['wiki_link', 'wiki_metadata'].includes(row.sourceDomain)
+      ? { kind: row.relationKind } : row.payload) };
 }
 
 export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<LocalGraphQueryResult> {
@@ -288,7 +311,7 @@ export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<Loca
     const rows = await loadEdgesForNode(input.campaignId, current.node, input.kinds);
     for (const row of rows) {
       if (!authorizedGraphRow(row, input)) continue;
-      const projectedRow = rowForAudience(row, input.authorizedEntityKeys);
+      const projectedRow = rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds);
       if (input.authorizedEntityKeys && !projectEdge(rowToEdge(projectedRow), input.viewerCtx, input.campaignNow).visible) continue;
       if (seenEdgeIds.has(row.id)) continue;
       seenEdgeIds.add(row.id);
@@ -349,7 +372,7 @@ export async function buildAnalysisSnapshot(input: {
   });
 
   const authorizedRows = rows.filter(row => authorizedGraphRow(row, input))
-    .map(row => rowForAudience(row, input.authorizedEntityKeys));
+    .map(row => rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds));
   let edges = authorizedRows.map(rowToEdge).map((edge) =>
     projectEdge(edge, input.viewerCtx, input.campaignNow),
   );
