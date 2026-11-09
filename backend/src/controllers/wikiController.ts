@@ -868,13 +868,9 @@ export async function getWikiTree(
 
   let treePages = pages;
   if (audience.preview) {
-    const allowedCategoryKeys = new Set(['quests', 'party', 'narrative_threads', 'narrative_scenes', 'downtime']);
-    treePages = (await filterAdventurePreviewPages(ctx.campaignId,
+    treePages = (await projectAdventurePages(ctx.campaignId,
       pages.filter(page => !isWorkshopInfrastructurePage(page.metadata)), audience.canViewPage))
-      .map(page => {
-        const key = parseSystemCategoryKey(page.metadata);
-        return { ...page, featuredImageId: null, metadata: key && allowedCategoryKeys.has(key) ? { systemCategoryKey: key } : null };
-      });
+      .map(page => ({ ...page, featuredImageId: null }));
   }
 
   if (!audience.preview && !hasElevatedNarrativeView(ctx.actor)) {

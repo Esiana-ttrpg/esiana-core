@@ -22,6 +22,8 @@ import {
 } from '../lib/characterPages.js';
 import { characterResourceProvenance, isUserDeletableCharacterResource } from '../lib/characterResourceProvenance.js';
 import { resolveCanonicalEntityCategory } from '../../../shared/resolveCanonicalEntityCategory.js';
+import { resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { loadAdventurePageProjection } from '../lib/adventurePageProjection.js';
 
 const characterDb = prisma as typeof prisma & {
   characterPageTab: any;
@@ -36,17 +38,20 @@ function entityCorePage(shell: string, key: string) {
 
 export function canReadCharacterPageTab(
   row: { hidden: boolean; visibility: string | null; coreKey?: string | null },
-  access: { canEdit: boolean; canViewDmOnly: boolean; shell: string },
+  access: { canEdit: boolean; canViewDmOnly: boolean; shell: string; preview?: boolean; canViewPage?: (visibility: string) => boolean },
   role: CampaignMemberRole | null,
 ): boolean {
   const coreDefinition = row.coreKey ? entityCorePage(access.shell, row.coreKey) : undefined;
   return (!coreDefinition?.dmOnly || access.canViewDmOnly)
-    && (access.canEdit || !row.hidden)
-    && (row.visibility == null || canViewWikiPage(row.visibility, role));
+    && ((!access.preview && access.canEdit) || !row.hidden)
+    && (row.visibility == null || (access.canViewPage ? access.canViewPage(row.visibility) : canViewWikiPage(row.visibility, role)));
 }
 
 export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: Response) {
   const ctx = req.campaign!;
+  // Reads may narrow the audience. Mutations continue to use the real actor's
+  // ownership/capabilities; a viewing perspective is never an editing grant.
+  const audience = resolveAdventureAudience(ctx, req.method === 'GET' ? req.query.previewAsPlayer : undefined, null);
   const characterPageId = String(req.params.pageId);
   const page = await prisma.wikiPage.findFirst({
     where: { id: characterPageId, campaignId: ctx.campaignId, deletedAt: null },
@@ -76,8 +81,14 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
     res.status(404).json({ error: 'Managed entity not found' });
     return null;
   }
-  if (!canViewWikiPage(page.visibility, ctx.role)) {
+  if (!canViewWikiPage(page.visibility, ctx)) {
     res.status(403).json({ error: 'Forbidden: character is not visible to your role' });
+    return null;
+  }
+  const audienceProjection = audience.preview ? await loadAdventurePageProjection(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage) : null;
+  if (audienceProjection && !audienceProjection.pages.some(row => row.id === page.id)) {
+    res.status(404).json({ error: 'Entity not found' });
     return null;
   }
   const canEdit = canEditPage(ctx.actor, {
@@ -89,7 +100,10 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
     page,
     shell,
     canEdit,
-    canViewDmOnly: hasElevatedNarrativeView(ctx.actor),
+    preview: audience.preview,
+    canViewPage: audience.canViewPage,
+    audienceProjection,
+    canViewDmOnly: !audience.preview && hasElevatedNarrativeView(ctx.actor),
     canManagePlugins: canManageNotebooksFromActor(ctx.actor),
     isCharacter: shell === 'character',
   };
@@ -179,7 +193,6 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
       },
     } satisfies CharacterPageDescriptor;
   });
-  const elevated = hasElevatedNarrativeView(ctx.actor);
   const storedNonCore: CharacterPageDescriptor[] = rows
     .filter((row: any) => row.origin !== 'CORE')
     .filter((row: any) => access.isCharacter || row.origin !== 'PLUGIN')
@@ -197,7 +210,7 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
   ]);
   const definitions = access.isCharacter ? await listEnabledCampaignCharacterPageDefinitions(ctx.campaignId) : [];
   const virtualPluginPages: CharacterPageDescriptor[] = definitions
-    .filter(() => access.canEdit)
+    .filter(() => access.canEdit && !access.preview)
     .filter(({ pluginId, definition }) => !materializedKeys.has(`${pluginId}:${definition.key}`))
     .map(({ pluginId, definition }, index) => ({
       id: `virtual:${pluginId}:${definition.key}`,
@@ -226,9 +239,10 @@ export async function listCharacterPages(req: CampaignScopedRequest, res: Respon
       },
     }));
   const pages = [...core, ...storedNonCore, ...virtualPluginPages]
-    .filter((page) => elevated || !coreDefinitions.find((corePage) => corePage.key === page.coreKey)?.dmOnly)
-    .filter((page) => access.canEdit || !page.hidden)
-    .filter((page) => page.visibility == null || canViewWikiPage(page.visibility, ctx.role))
+    .filter((page) => canReadCharacterPageTab(page, access, ctx.role))
+    .map((page) => access.audienceProjection ? { ...page,
+      title: access.audienceProjection.projectContent(page.title, access.page.id) as string,
+      ...(page.blocks ? { blocks: access.audienceProjection.projectContent(page.blocks, access.page.id) as Array<Record<string, unknown>> } : {}) } : page)
     .sort((a, b) => a.displayOrder - b.displayOrder || a.title.localeCompare(b.title));
   res.json({ pages, canEdit: access.canEdit, canManagePlugins: access.canManagePlugins });
 }
@@ -610,7 +624,9 @@ export async function getPluginCharacterPageData(req: CampaignScopedRequest, res
     res.status(409).json({ error: 'Plugin provider is unavailable' });
     return;
   }
-  res.json({ data: state.pluginData ?? null, schemaVersion: state.pluginSchemaVersion });
+  res.json({ data: loaded.access.audienceProjection
+    ? loaded.access.audienceProjection.projectContent(state.pluginData ?? null, loaded.access.page.id)
+    : state.pluginData ?? null, schemaVersion: state.pluginSchemaVersion });
 }
 
 export async function updatePluginCharacterPageData(req: CampaignScopedRequest, res: Response): Promise<void> {

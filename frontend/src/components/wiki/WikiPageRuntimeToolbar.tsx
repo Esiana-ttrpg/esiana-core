@@ -11,6 +11,8 @@ import type { PluginPageTarget } from '@/lib/pluginContributions';
 import { listPageActions, meetsPluginRequires } from '@/lib/pluginContributions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOptionalWiki } from '@/contexts/WikiContext';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
+import { PlayerPerspectiveToggle } from '@/components/layout/PlayerPerspectiveToggle';
 
 function toolbarButtonClass(active: boolean): string {
   return `inline-flex h-8 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-all ${
@@ -78,6 +80,7 @@ export function WikiPageRuntimeToolbar({
   const draftRegistry = usePageBlockDraftRegistry();
   const { isAuthenticated } = useAuth();
   const wiki = useOptionalWiki();
+  const audience = useOptionalAdventureWorkspace();
   const hasUnsavedWork =
     isLayoutDirty || (draftRegistry?.hasSemanticDirty ?? false);
   const hasPluginActions = Boolean(
@@ -113,6 +116,10 @@ export function WikiPageRuntimeToolbar({
         aria-label="Page tools"
         data-print-hide
       >
+        {portfolioCharacter && audience?.isDMUser ? (
+          <PlayerPerspectiveToggle value={audience.perspective} onChange={audience.setPerspective}
+            ariaLabel="Character view perspective" />
+        ) : null}
         {!isTagsHub && getExportContext ? (
           <WikiPageExportMenu isTagsHub={isTagsHub} getExportContext={getExportContext} />
         ) : null}

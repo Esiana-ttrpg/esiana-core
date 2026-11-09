@@ -42,9 +42,10 @@ export async function fetchCharacterPages(
   campaignHandle: string,
   characterPageId: string,
   shell = 'character',
+  options?: { previewAsPlayer?: boolean },
 ): Promise<CharacterPagesPayload> {
   return apiFetch<CharacterPagesPayload>(
-    `/campaigns/${campaignHandle}/wiki/${characterPageId}/entity-pages?shell=${encodeURIComponent(shell)}`,
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/entity-pages?shell=${encodeURIComponent(shell)}${options?.previewAsPlayer ? '&previewAsPlayer=true' : ''}`,
   );
 }
 
@@ -62,9 +63,10 @@ export const saveEntityPageBlocks = saveCharacterPageBlocks;
 export async function fetchCharacterFields(
   campaignHandle: string,
   characterPageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<CharacterFieldDescriptor[]> {
   const result = await apiFetch<{ fields: CharacterFieldDescriptor[] }>(
-    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields`,
+    `/campaigns/${campaignHandle}/wiki/${characterPageId}/character-fields${options?.previewAsPlayer ? '?previewAsPlayer=true' : ''}`,
   );
   return result.fields;
 }
@@ -204,8 +206,9 @@ export async function fetchPluginCharacterPageData<T>(
   campaignHandle: string,
   characterPageId: string,
   tabId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<{ data: T; schemaVersion: number }> {
-  return apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}/plugin-data`);
+  return apiFetch(`/campaigns/${campaignHandle}/wiki/${characterPageId}/character-pages/${tabId}/plugin-data${options?.previewAsPlayer ? '?previewAsPlayer=true' : ''}`);
 }
 
 export async function updatePluginCharacterPageData<T>(

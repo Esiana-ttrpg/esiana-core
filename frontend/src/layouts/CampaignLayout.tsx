@@ -359,7 +359,7 @@ function AudienceScopedCampaignLayout({ campaignHandle }: { campaignHandle: stri
   useEffect(() => {
     if (authLoading || !campaignHandle) return;
     let cancelled = false;
-    void fetchWikiTreePayload(campaignHandle).then(({ campaign }) => {
+    void fetchWikiTreePayload(campaignHandle, { previewAsPlayer: readAdventurePerspective(campaignHandle) === 'party' }).then(({ campaign }) => {
       if (cancelled) return;
       const elevated = Boolean(campaign.campaignOwnerUserId && hasElevatedNarrativeView(buildCampaignActor({
         kind: user?.id && campaign.role ? 'member' : 'anonymous',

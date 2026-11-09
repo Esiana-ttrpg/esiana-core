@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { PanelRight, Users } from 'lucide-react';
 import { useWiki } from '@/contexts/WikiContext';
+import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import {
   campaignCategoryChildPath,
   readCampaignHandle,
@@ -44,7 +45,6 @@ import {
   writeCategoryIndexBrowseSnapshot,
   type CategoryIndexViewMode,
 } from '@/lib/categoryIndexBrowseStorage';
-import { CampaignMemberRoles } from '@/types/domain';
 import {
   getCategoryAllowedViews,
   getCategoryDefaultView,
@@ -88,12 +88,14 @@ export function CharacterHubView({
   campaignHandle,
 }: CharacterHubViewProps) {
   const params = useParams<{ campaignHandle?: string }>();
-  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign } =
+  const { campaignHandle: wikiCampaignSlug, flatPages, refresh } =
     useWiki();
   const resolvedSlug = readCampaignHandle(params) || wikiCampaignSlug || campaignHandle;
   const navigate = useNavigate();
 
   const [payload, setPayload] = useState<CharacterHubPayload | null>(null);
+  const requestGeneration = useRef(0);
+  useEffect(() => () => { requestGeneration.current += 1; }, []);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createInitialTitle, setCreateInitialTitle] = useState<string | null>(
@@ -112,7 +114,7 @@ export function CharacterHubView({
   const [railOpen, setRailOpen] = useState(readLargeScreenDefault);
   const [isLargeScreen, setIsLargeScreen] = useState(readLargeScreenDefault);
   const [railWidth, setRailWidth] = useState(loadCharacterHubRailWidth);
-  const [playerPreview, setPlayerPreview] = useState(false);
+  const { playerPreview, isDMUser, perspective, setPerspective } = useAdventureWorkspace();
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)');
@@ -126,9 +128,6 @@ export function CharacterHubView({
   const itemLabel = createItemLabel(categoryTitle);
   const allowedViews = getCategoryAllowedViews(categoryTitle);
 
-  const isDMUser =
-    campaign?.role === CampaignMemberRoles.GAMEMASTER ||
-    campaign?.role === CampaignMemberRoles.WRITER;
   const showDmChrome = isDMUser && !playerPreview;
 
   const facetDefs = useMemo(
@@ -148,18 +147,22 @@ export function CharacterHubView({
   });
 
   const loadHub = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError(null);
+    setPayload(null);
     try {
       const data = await fetchCharacterHub(resolvedSlug, categoryPageId, {
         previewAsPlayer: isDMUser && playerPreview,
       });
+      if (generation !== requestGeneration.current) return;
       setPayload(data);
       setSelectedCharacterId((prev) => prev ?? resolveSpotlightCharacterId(data));
     } catch (err) {
+      if (generation !== requestGeneration.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load characters');
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }, [resolvedSlug, categoryPageId, isDMUser, playerPreview]);
 
@@ -281,7 +284,7 @@ export function CharacterHubView({
     filteredCount: filteredChildren.length,
     searchQuery,
     hasActiveRefine,
-    canCreate: true,
+    canCreate: !(isDMUser && playerPreview),
   });
   const similarEntries = useMemo(
     () => {
@@ -336,11 +339,8 @@ export function CharacterHubView({
     }));
   }
 
-  if (loading) {
-    return <LoadingSpinner label="Loading Characters…" />;
-  }
 
-  const showInlineRail = showDmChrome && railOpen && isLargeScreen;
+  const showInlineRail = railOpen && isLargeScreen;
   const narrativeLayoutStyle = showInlineRail
     ? ({
         '--character-hub-rail-width': `${railWidth}px`,
@@ -353,7 +353,7 @@ export function CharacterHubView({
         campaignHandle: resolvedSlug,
         payload,
         selectedCharacterId,
-        onLocationFilter: handleLocationFilter,
+        onLocationFilter: showDmChrome ? handleLocationFilter : undefined,
       }
     : null;
 
@@ -386,15 +386,15 @@ export function CharacterHubView({
             audience={
               isDMUser ? (
                 <PlayerPerspectiveToggle
-                  value={playerPreview ? 'party' : 'dm'}
-                  onChange={(next) => setPlayerPreview(next !== 'dm')}
+                  value={perspective}
+                  onChange={setPerspective}
                   ariaLabel="Character cast view perspective"
-                  previewUnavailableReason="Party preview is temporarily unavailable."
                 />
               ) : null
             }
             createLabel={`Create ${itemLabel}`}
             onCreate={handleCreate}
+            createAction={isDMUser && playerPreview ? null : undefined}
             resultCountLabel={resultCountLabel}
             refineControl={
               facetDefs.length > 0 ? (
@@ -421,7 +421,7 @@ export function CharacterHubView({
             allowedViews={allowedViews}
             tableViewTitle="Power-user spreadsheet view"
             trailing={
-              showDmChrome ? (
+              (
                 <button
                   type="button"
                   onClick={() => setRailOpen((prev) => !prev)}
@@ -432,7 +432,7 @@ export function CharacterHubView({
                   <PanelRight className="size-4" />
                   <span className="sr-only">Campaign context</span>
                 </button>
-              ) : null
+              )
             }
           />
         }
@@ -459,6 +459,7 @@ export function CharacterHubView({
           ) : null
         }
       >
+        {loading ? <LoadingSpinner label="Loading Characters…" /> : null}
         {error ? (
           <p className="mb-4 rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
             {error}
@@ -475,13 +476,13 @@ export function CharacterHubView({
           </div>
         ) : null}
 
-        {emptyVariant !== null ? (
+        {!loading && emptyVariant !== null ? (
           <CategoryIndexEmptyStatePanel
             totalCount={children.length}
             filteredCount={filteredChildren.length}
             searchQuery={searchQuery}
             hasActiveRefine={hasActiveRefine}
-            canCreate
+            canCreate={!(isDMUser && playerPreview)}
             categoryTitle={categoryTitle}
             itemLabel={itemLabel}
             campaignHandle={resolvedSlug}
@@ -502,7 +503,7 @@ export function CharacterHubView({
             categoryPageId={categoryPageId}
             campaignHandle={resolvedSlug}
             pageById={pageById}
-            onOpenCharacterSettings={handleOpenCharacterSettings}
+            onOpenCharacterSettings={showDmChrome ? handleOpenCharacterSettings : undefined}
             selectedCharacterId={selectedCharacterId}
             onSelectCharacter={setSelectedCharacterId}
           />
@@ -519,7 +520,7 @@ export function CharacterHubView({
         )}
       </CategoryHubShell>
 
-      {showDmChrome && railContentProps && railOpen && !isLargeScreen ? (
+      {railContentProps && railOpen && !isLargeScreen ? (
         <CharacterHubContextRail
           layout="overlay"
           open

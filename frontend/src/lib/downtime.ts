@@ -148,8 +148,8 @@ export async function updateDowntimePerson(
   return response.person;
 }
 
-export async function fetchDowntimePersonByCharacter(campaignHandle: string, characterPageId: string): Promise<{ person: DowntimePersonLine; assignmentOptions: { havens: Array<{ id: string; label: string }>; projects: Array<{ id: string; label: string }> } }> {
-  return apiFetch(`/campaigns/${campaignHandle}/downtime/people/by-character/${characterPageId}`);
+export async function fetchDowntimePersonByCharacter(campaignHandle: string, characterPageId: string, options?: { previewAsPlayer?: boolean }): Promise<{ person: DowntimePersonLine; assignmentOptions: { havens: Array<{ id: string; label: string }>; projects: Array<{ id: string; label: string }> } }> {
+  return apiFetch(`/campaigns/${campaignHandle}/downtime/people/by-character/${characterPageId}${options?.previewAsPlayer ? '?previewAsPlayer=true' : ''}`);
 }
 
 export async function createDowntimeProject(

@@ -14,6 +14,8 @@ import {
   updateDowntimePerson,
 } from '../lib/downtimePeopleService.js';
 import { prisma } from '../lib/prisma.js';
+import { resolveAdventureAudience } from '../lib/adventureAudience.js';
+import { loadAdventurePageProjection } from '../lib/adventurePageProjection.js';
 import { canAssignDowntimePerson } from '../lib/downtimeAuthorization.js';
 
 
@@ -38,13 +40,17 @@ export async function getDowntimePersonByCharacterHandler(
   res: Response,
 ) {
   const ctx = req.campaign!;
+  const audience = resolveAdventureAudience(ctx, req.query.previewAsPlayer, null);
+  const projection = audience.preview ? await loadAdventurePageProjection(ctx.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage) : null;
   const canEditAny = canManageDowntime(ctx.actor);
   const payload = await listDowntimePeople(
     ctx.campaignId,
     ctx.campaignHandle ?? ctx.campaignId,
-    ctx,
-    canEditAny,
-    true,
+    audience.visibilityViewer,
+    !audience.preview && canEditAny,
+    !audience.preview,
+    projection ? new Set(projection.pages.map(page => page.id)) : undefined,
   );
   const matches = payload.people.filter(
     (person) => person.characterPageId === String(req.params.pageId),
@@ -56,7 +62,7 @@ export async function getDowntimePersonByCharacterHandler(
     return;
   }
   res.json({
-    person,
+    person: projection ? projection.projectContent(person, String(req.params.pageId)) : person,
     assignmentOptions: payload.assignmentOptions,
   });
 }

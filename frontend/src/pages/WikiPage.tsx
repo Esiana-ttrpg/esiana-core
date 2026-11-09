@@ -500,7 +500,7 @@ function WikiPageDocument() {
       return;
     }
     let cancelled = false;
-    void fetchCharacterPages(campaignHandle, pageId, entityPageShell.key)
+    void fetchCharacterPages(campaignHandle, pageId, entityPageShell.key, { previewAsPlayer })
       .then((result) => {
         if (!cancelled) setCharacterPages(result.pages);
       })
@@ -510,7 +510,7 @@ function WikiPageDocument() {
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle, entityPageShell.key, managesEntityPages, pageData, pageId]);
+  }, [campaignHandle, entityPageShell.key, managesEntityPages, pageData, pageId, previewAsPlayer]);
 
   const activeCharacterPage = useMemo(
     () => characterPages.find((page) => page.key === pageSubview) ?? null,
@@ -2270,7 +2270,7 @@ function WikiPageDocument() {
           onPagesChange={setCharacterPages}
           onClose={() => {
             setCharacterPageManagerOpen(false);
-            void fetchCharacterPages(campaignHandle, pageId, entityPageShell.key).then((result) => setCharacterPages(result.pages)).catch(() => {});
+            void fetchCharacterPages(campaignHandle, pageId, entityPageShell.key, { previewAsPlayer }).then((result) => setCharacterPages(result.pages)).catch(() => {});
           }}
         />
       ) : null}
