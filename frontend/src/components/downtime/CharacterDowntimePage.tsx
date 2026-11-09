@@ -3,10 +3,13 @@ import type { DowntimePersonLine } from '@shared/downtimeHub';
 import { fetchDowntimePersonByCharacter } from '@/lib/downtime';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AddDowntimePersonModal } from './AddDowntimePersonModal';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 
 type AssignmentOptions = { havens: Array<{ id: string; label: string }>; projects: Array<{ id: string; label: string }> };
 
 export function CharacterDowntimePage({ campaignHandle, characterPageId }: { campaignHandle: string; characterPageId: string }) {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const [person, setPerson] = useState<DowntimePersonLine | null>(null);
   const [options, setOptions] = useState<AssignmentOptions>({ havens: [], projects: [] });
   const [loading, setLoading] = useState(true);
@@ -17,7 +20,7 @@ export function CharacterDowntimePage({ campaignHandle, characterPageId }: { cam
     const requestId = ++requestSequence.current;
     setLoading(true); setError(null);
     try {
-      const payload = await fetchDowntimePersonByCharacter(campaignHandle, characterPageId);
+      const payload = await fetchDowntimePersonByCharacter(campaignHandle, characterPageId, { previewAsPlayer });
       if (requestId !== requestSequence.current) return;
       setPerson(payload.person); setOptions(payload.assignmentOptions);
     } catch (err) {
@@ -26,7 +29,7 @@ export function CharacterDowntimePage({ campaignHandle, characterPageId }: { cam
     } finally {
       if (requestId === requestSequence.current) setLoading(false);
     }
-  }, [campaignHandle, characterPageId]);
+  }, [campaignHandle, characterPageId, previewAsPlayer]);
   useEffect(() => { void load(); return () => { requestSequence.current += 1; }; }, [load]);
   if (loading) return <LoadingSpinner label="Loading Downtime…" />;
   if (error || !person) return <p className="rounded-lg border border-border bg-elevated/20 p-4 text-sm text-muted">{error ?? 'No Hireling relationship is available.'}</p>;

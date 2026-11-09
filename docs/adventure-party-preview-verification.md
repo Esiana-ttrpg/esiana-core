@@ -1,6 +1,6 @@
 # Adventure Party preview verification
 
-Adventure Party preview is enabled. Character Party preview remains disabled.
+Adventure Party preview is enabled. Character Party preview is implemented separately and awaits PostgreSQL HTTP and first-hand browser acceptance.
 
 ## Contract
 
@@ -19,15 +19,15 @@ One wiki provider is mounted per audience. Switching discards the previous works
 - Edge browser against the enabled Vite frontend and the same real-router fixture: populated and empty campaigns, GM/Party/GM switching, Quests/Threads/Scenes/Storyboard, direct pages, refresh and history, delayed GM responses released after Party selection, rejected Party requests, desktop and 390px mobile, horizontal overflow, keyboard switching, and accessible toggle state/group semantics.
 - Backend projection tests: 9 passed; chronology regression tests: 5 passed. Frontend focused tests: 6 passed. Backend and frontend TypeScript checks passed.
 
-These are the last completed database and browser results from before the current review changes. The current checkout has not repeated those checks: `TEST_DATABASE_URL` is not set in this environment, and the browser runner's `playwright` package is not declared or locally resolvable.
+These are the last completed database and browser results from before the current review changes. The current checkout has not repeated the PostgreSQL check because the isolated database is unavailable here. Browser acceptance is now performed first-hand.
 
-The browser test intercepts responses only for its explicit delay and rejection scenarios. Ordinary browser navigation uses the real API and migrated database. This is basic keyboard/semantic acceptance, not a full assistive-technology certification.
+The earlier automated browser result intercepted responses only for its explicit delay and rejection scenarios. Ordinary browser navigation used the real API and migrated database. It was basic keyboard/semantic acceptance, not a full assistive-technology certification.
 
 ## Reproduce
 
 In `backend`, set `TEST_DATABASE_URL` to an isolated PostgreSQL database with repository migrations applied, then run `pnpm test:adventure-party`. The test fails if the database URL is missing.
 
-For browser acceptance, run Vite on port 5174 with `VITE_API_PROXY_TARGET=http://127.0.0.1:55440`, and run the fixture with `ADVENTURE_BROWSER_URL=http://127.0.0.1:5174`. To use another API port, set `ADVENTURE_BROWSER_API_PORT` for the fixture and point Vite's `VITE_API_PROXY_TARGET` to that port. The browser runner imports `playwright` and launches the existing Edge installation. This checkout does not declare `playwright` as a direct dependency; report its absence instead of supplying a machine-specific module path. If automated navigation needs higher request budgets, set `RATE_LIMIT_AUTHENTICATED_MAX`, `RATE_LIMIT_PUBLIC_MAX` and `RATE_LIMIT_EXPENSIVE_MAX` to `10000` only for the fixture process. Authorization middleware and production rate limits remain unchanged. Run `pnpm test:adventure-party` again.
+For first-hand browser acceptance, use a migrated campaign with a GM, a writer and an ordinary player. Check GM/Party/GM switching, direct links, refresh, hidden pages and relationships, ordinary-player access, mobile layout and keyboard operation. Recheck the PostgreSQL fixture with `pnpm test:adventure-party` after the database is available.
 
 ## Deliberate omissions
 

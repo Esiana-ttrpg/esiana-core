@@ -868,19 +868,14 @@ export async function getWikiTree(
 
   let treePages = pages;
   if (audience.preview) {
-    const allowedCategoryKeys = new Set(['quests', 'party', 'narrative_threads', 'narrative_scenes', 'downtime']);
-    treePages = (await filterAdventurePreviewPages(ctx.campaignId,
+    treePages = (await projectAdventurePages(ctx.campaignId,
       pages.filter(page => !isWorkshopInfrastructurePage(page.metadata)), audience.canViewPage))
-      .map(page => {
-        const key = parseSystemCategoryKey(page.metadata);
-        return { ...page, featuredImageId: null, metadata: key && allowedCategoryKeys.has(key) ? { systemCategoryKey: key } : null };
-      });
+      .map(page => ({ ...page, featuredImageId: null }));
   }
 
-  if (!audience.preview && !hasElevatedNarrativeView(ctx.actor)) {
-    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+  if (audience.preview || !hasElevatedNarrativeView(ctx.actor)) {
     const hidden = await hiddenEraIds(ctx.campaignId);
-    for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
+    for (const page of treePages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
   }
   const tree = buildWikiTree(treePages, audience.visibilityViewer);
 

@@ -59,10 +59,10 @@ export function buildHirelingCharacterRouting(title: string, existingCharacterPa
   };
 }
 
-function present(row: any, handle: string, role: WikiVisibilityViewer, canEdit: boolean) {
-  const target = row.haven && row.haven.wikiPage.deletedAt == null && canViewWikiPage(row.haven.wikiPage.visibility, role)
+function present(row: any, handle: string, role: WikiVisibilityViewer, canEdit: boolean, authorizedPageIds?: ReadonlySet<string>) {
+  const target = row.haven && (!authorizedPageIds || authorizedPageIds.has(row.haven.wikiPage.id)) && row.haven.wikiPage.deletedAt == null && canViewWikiPage(row.haven.wikiPage.visibility, role)
     ? { kind: 'haven' as const, id: row.haven.id, label: row.haven.wikiPage.title, href: buildWikiPageHref(handle, row.haven.wikiPage) }
-    : row.project && row.project.wikiPage.deletedAt == null && canViewWikiPage(row.project.wikiPage.visibility, role)
+    : row.project && (!authorizedPageIds || authorizedPageIds.has(row.project.wikiPage.id)) && row.project.wikiPage.deletedAt == null && canViewWikiPage(row.project.wikiPage.visibility, role)
       ? { kind: 'project' as const, id: row.project.id, label: row.project.wikiPage.title, href: buildWikiPageHref(handle, row.project.wikiPage) }
       : null;
   const compensationLabel = row.compensationUnpaid
@@ -88,7 +88,7 @@ function present(row: any, handle: string, role: WikiVisibilityViewer, canEdit: 
   };
 }
 
-export async function listDowntimePeople(campaignId: string, handle: string, role: WikiVisibilityViewer, canEdit: boolean, includeCharacterOptions = false) {
+export async function listDowntimePeople(campaignId: string, handle: string, role: WikiVisibilityViewer, canEdit: boolean, includeCharacterOptions = false, authorizedPageIds?: ReadonlySet<string>) {
   const [rows, havens, projects, pages] = await Promise.all([
     prisma.downtimePersonRelationship.findMany({ where: { campaignId }, include, orderBy: [{ status: 'asc' }, { characterPage: { title: 'asc' } }] }),
     prisma.downtimeHaven.findMany({ where: { campaignId }, include: { wikiPage: { select: { title: true, visibility: true, deletedAt: true, ownerType: true, ownerUserId: true, ownerPartyId: true } } }, orderBy: { wikiPage: { title: 'asc' } } }),
@@ -101,6 +101,7 @@ export async function listDowntimePeople(campaignId: string, handle: string, rol
   ]);
   const pageById = new Map(pages.map((page) => [page.id, page]));
   const people = rows
+    .filter((row) => !authorizedPageIds || authorizedPageIds.has(row.characterPage.id))
     .filter((row) => row.relationshipType === 'HIRELING')
     .filter((row) => row.characterPage.deletedAt == null && canViewWikiPage(row.characterPage.visibility, role))
     .map((row) => present(row, handle, role,
@@ -108,7 +109,7 @@ export async function listDowntimePeople(campaignId: string, handle: string, rol
         ? canEditDowntimePerson(role.actor, ownershipFromWiki(row.characterPage)) &&
           (!row.haven || canEditDowntimeResource(role.actor, ownershipFromWiki(row.haven.wikiPage))) &&
           (!row.project || canEditDowntimeResource(role.actor, ownershipFromWiki(row.project.wikiPage)))
-        : canEdit));
+        : canEdit, authorizedPageIds));
   const active = people.filter((person) => person.status === 'ACTIVE');
   return {
     people,
@@ -118,7 +119,7 @@ export async function listDowntimePeople(campaignId: string, handle: string, rol
       canEditDowntimePerson(role.actor, ownershipFromWiki(page)))
       .map((page) => ({ id: page.id, label: page.title })) } : {}),
     summary: { active: active.length, assignedToProjects: active.filter((p) => p.assignment?.kind === 'project').length, assignedToHavens: active.filter((p) => p.assignment?.kind === 'haven').length, unassigned: active.filter((p) => !p.assignment).length },
-    assignmentOptions: {
+    assignmentOptions: authorizedPageIds ? { havens: [], projects: [] } : {
       havens: havens.filter((row) => row.wikiPage.deletedAt == null && canViewWikiPage(row.wikiPage.visibility, role) &&
         (!(role && typeof role === 'object' && 'actor' in role && role.actor) ||
           canEditDowntimeResource(role.actor, ownershipFromWiki(row.wikiPage)))).map((row) => ({ id: row.id, label: row.wikiPage.title })),

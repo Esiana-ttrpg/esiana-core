@@ -11,6 +11,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
   assert.equal((globalThis as { prisma?: unknown }).prisma, undefined,
     'Run separately so the test database is selected before Prisma initialization');
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+  process.env.NODE_ENV = 'test';
   // An independently generated SQLite client lets this suite use an isolated
   // database without replacing the working tree's generated Prisma client.
   if (process.env.TEST_SQLITE_CLIENT_URL) {
@@ -24,6 +25,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
   const { env } = await import('../config/env.js');
   const { signAuthTokenForUser } = await import('../middleware/auth.js');
   const { campaignScopedRouter } = await import('./campaignScoped.js');
+  const { createCharacterAudienceFixture, verifyCharacterAudienceHttp } = await import('./characterAudience.database.fixture.js');
   const stamp = randomUUID();
   const ids = ['owner', 'player', 'outsider', 'writer'].map(name => `${name}-${stamp}`);
   const [ownerId, playerId, outsiderId, writerId] = ids;
@@ -31,6 +33,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
   const handle = `audience-${stamp}`;
   const questsId = `quests-${stamp}`;
   const threadsId = `threads-${stamp}`;
+  const charactersId = `characters-${stamp}`;
   const secretPageId = `secret-${stamp}`;
   const hiddenQuestId = `hidden-quest-${stamp}`;
   const otherCampaignId = `other-${stamp}`;
@@ -49,6 +52,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
   const linkTargetId = `target-${stamp}`;
   const privateTargetId = `private-target-${stamp}`;
   const futureLinkTargetId = `future-link-target-${stamp}`;
+  const hiddenEraId = `hidden-era-${stamp}`;
   let server: ReturnType<typeof createServer> | undefined;
   try {
     for (const id of ids) await prisma.user.create({ data: { id, email: `${id}@example.invalid` } });
@@ -58,6 +62,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
       wikiPages: { create: [
         { id: questsId, title: 'Quests', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'quests' } },
         { id: threadsId, title: 'Narrative Threads', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'narrative_threads' } },
+        { id: charactersId, title: 'Characters', visibility: 'Party', blocks: [], metadata: {} },
         { id: sceneRootId, title: 'Scenes', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'narrative_scenes' } },
         { title: 'Public landmark', visibility: 'Public', blocks: [], metadata: {} },
         { title: 'Party landmark', visibility: 'Party', blocks: [], metadata: { hiddenMetadataSentinel: 'private-metadata-sentinel' } },
@@ -144,8 +149,13 @@ test('campaign router returns reduced Party responses and enforces campaign boun
         statement: 'Undiscovered claim sentinel', visibility: 'PARTY', knowledgeState: 'UNDISCOVERED' },
     ] });
     await prisma.narrativeLifecycleState.create({ data: { campaignId, subjectKind: 'scene', subjectId: sceneId, lifecycleState: 'DISCOVERED' } });
-    await prisma.fantasyCalendar.create({ data: { campaignId, name: 'Shared calendar', isMasterTime: true,
+    const calendar = await prisma.fantasyCalendar.create({ data: { campaignId, name: 'Shared calendar', isMasterTime: true,
       weekdays: [{ name: 'Dawn', length: 1 }], months: [{ name: 'Bloom', length: 30 }], seasons: [], moons: [], leapDays: [] } });
+    await prisma.campaignEra.create({ data: { campaignId, id: hiddenEraId, calendarId: calendar.id,
+      name: 'Hidden era sentinel', sortOrder: 1, visibility: 'DM_ONLY' } });
+    await prisma.wikiPage.update({ where: { id: linkSourceId }, data: { metadata: {
+      fields: [{ id: 'hidden-era-field', eraId: hiddenEraId, eraSnapshot: { name: 'Hidden era sentinel', visibility: 'DM_ONLY' } }],
+    } } });
     await prisma.contentPresenceState.createMany({ data: [
       { campaignId, entityType: ContentPresenceEntityType.WIKI_PAGE, entityId: draftId, state: 'DRAFT' },
       { campaignId, entityType: ContentPresenceEntityType.WIKI_PAGE, entityId: unrevealedId, state: 'HIDDEN' },
@@ -161,6 +171,8 @@ test('campaign router returns reduced Party responses and enforces campaign boun
         { userId: ownerId, role: 'GAMEMASTER' }, { userId: writerId, role: 'WRITER' }, { userId: playerId, role: 'PARTICIPANT' }] },
       wikiPages: { create: [{ title: 'Quests', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'quests' } },
         { title: 'Threads', visibility: 'Party', blocks: [], metadata: { systemCategoryKey: 'narrative_threads' } }] } } });
+    const characterFixture = await createCharacterAudienceFixture(prisma, { campaignId, categoryId: charactersId, ownerId, playerId, secretPageId });
+    await prisma.wikiPage.create({ data: { campaignId: emptyCampaignId, title: 'Characters', visibility: 'Party', blocks: [] } });
     const cookies = new Map<string, string>();
     for (const id of ids) {
       const user = await prisma.user.findUniqueOrThrow({ where: { id } });
@@ -168,15 +180,9 @@ test('campaign router returns reduced Party responses and enforces campaign boun
     }
     const app = express();
     app.use(express.json(), cookieParser());
-    if (process.env.ADVENTURE_BROWSER_URL) {
-      const { mountRouters } = await import('../mountRouters.js');
-      mountRouters(app);
-    } else app.use('/api/campaigns/:campaignHandle', campaignScopedRouter);
+    app.use('/api/campaigns/:campaignHandle', campaignScopedRouter);
     server = createServer(app);
-    const configuredBrowserPort = Number(process.env.ADVENTURE_BROWSER_API_PORT ?? '55440');
-    assert.ok(Number.isInteger(configuredBrowserPort) && configuredBrowserPort >= 1 && configuredBrowserPort <= 65535,
-      'ADVENTURE_BROWSER_API_PORT must be a valid TCP port');
-    await new Promise<void>(resolve => server!.listen(process.env.ADVENTURE_BROWSER_URL ? configuredBrowserPort : 0, '127.0.0.1', resolve));
+    await new Promise<void>(resolve => server!.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const base = `http://127.0.0.1:${address.port}/api/campaigns/${handle}`;
@@ -220,8 +226,6 @@ test('campaign router returns reduced Party responses and enforces campaign boun
         const response = await fetch(`${base}/wiki/${hidden}?previewAsPlayer=true`, { headers });
         assert.equal(response.status, 404);
       }
-      const character = await fetch(`${base}/wiki/character-hub/${secretPageId}?previewAsPlayer=true`, { headers });
-      assert.equal(character.status, 503);
     }
     for (const id of [ownerId, writerId]) {
       for (const requested of ['true', '1']) {
@@ -232,6 +236,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
         assert.match(body, /Shared scene/);
         assert.doesNotMatch(body, /Hidden landmark|Hidden ancestor child sentinel|Unrevealed sentinel|Future sentinel|private-metadata-sentinel|Locked lifecycle sentinel|Locked ancestor child sentinel|Uninitialized scene sentinel/);
         assert.doesNotMatch(body, new RegExp(`${secretPageId}|${unrevealedId}|${futureId}|${lockedId}`));
+        assert.doesNotMatch(body, new RegExp(`${hiddenEraId}|Hidden era sentinel|hidden-era-field`));
       }
     }
     for (const id of [ownerId, writerId]) {
@@ -309,7 +314,9 @@ test('campaign router returns reduced Party responses and enforces campaign boun
     }
     const gmTree = await fetch(`${base}/wiki/tree`, { headers: { cookie: cookies.get(ownerId)! } });
     assert.equal(gmTree.status, 200);
-    assert.match(await gmTree.text(), /Hidden landmark/);
+    const gmTreeText = await gmTree.text();
+    assert.match(gmTreeText, /Hidden landmark/);
+    assert.match(gmTreeText, new RegExp(hiddenEraId));
     const playerTree = await fetch(`${base}/wiki/tree`, { headers: { cookie: cookies.get(playerId)! } });
     assert.equal(playerTree.status, 200);
     const treeText = await playerTree.text();
@@ -351,13 +358,12 @@ test('campaign router returns reduced Party responses and enforces campaign boun
     assert.ok([401, 403, 404].includes(anonymous.status));
     const playerLayout = await fetch(`${base}/adventure/storyboard`, { headers: { cookie: cookies.get(playerId)! } });
     assert.equal(playerLayout.status, 403);
-    if (process.env.ADVENTURE_BROWSER_URL) {
-      const { runAcceptance } = await import('../../scripts/adventure-browser-acceptance.mjs');
-      await runAcceptance({ url: process.env.ADVENTURE_BROWSER_URL, handle, emptyHandle: emptyCampaignId, cookies: [ownerId, writerId, playerId].map(id => cookies.get(id)!), pageId: linkSourceId });
-    }
+    await verifyCharacterAudienceHttp({ base, fixture: characterFixture, managerCookies: [ownerId, writerId].map(id => cookies.get(id)!),
+      playerCookie: cookies.get(playerId)!, outsiderCookie: cookies.get(outsiderId)!, otherPageId, secretPageId });
   } finally {
     if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
     await prisma.campaign.deleteMany({ where: { id: { in: [campaignId, otherCampaignId, emptyCampaignId] } } });
     await prisma.user.deleteMany({ where: { id: { in: ids } } });
+    await prisma.$disconnect();
   }
 });

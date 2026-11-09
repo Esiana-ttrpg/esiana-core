@@ -12,6 +12,7 @@ export type FetchLocalEntityGraphParams = {
   depth?: number;
   kinds?: EntityRelationKind[];
   includeSuppressed?: boolean;
+  previewAsPlayer?: boolean;
 };
 
 export async function fetchLocalEntityGraph(
@@ -28,6 +29,7 @@ export async function fetchLocalEntityGraph(
   if (params.includeSuppressed) {
     search.set('includeSuppressed', 'true');
   }
+  if (params.previewAsPlayer) search.set('previewAsPlayer', 'true');
   return apiFetch<LocalGraphQueryResult>(
     `/campaigns/${params.campaignHandle}/entity-graph?${search.toString()}`,
   );

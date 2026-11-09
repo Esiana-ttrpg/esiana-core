@@ -96,20 +96,18 @@ export async function batchSessionBacklinksForPages(input: {
   if (input.canViewPage) {
     const originalPages = await prisma.wikiPage.findMany({ where: { campaignId: input.campaignId, deletedAt: null } });
     const pages = await projectAdventurePages(input.campaignId, originalPages, input.canViewPage);
-    const originalById = new Map(originalPages.map(page => [page.id, page]));
     const byId = new Map(pages.map(page => [page.id, page]));
-    const sourceParents = new Map(pages.map(page => [page.id,
-      { ...page, metadata: originalById.get(page.id)?.metadata ?? page.metadata }]));
+    const sourceParents = byId;
     for (const source of pages.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())) {
-      if (!isSessionLogSourcePage({ ...source, metadata: originalById.get(source.id)?.metadata ?? source.metadata }, sourceParents)) continue;
+      if (!isSessionLogSourcePage(source, sourceParents)) continue;
       const targets = projectedWikiTargetIds(source.blocks);
       for (const target of targets) {
         const bucket = result.get(target);
         if (!byId.has(target) || !bucket || bucket.length >= limit) continue;
         bucket.push({ id: source.id, title: source.title, parentId: source.parentId,
           visibility: source.visibility, updatedAt: source.updatedAt.toISOString(),
-          templateType: source.templateType, timelinePointId: null,
-          href: buildWikiPageHref(input.campaignHandle, source) });
+          templateType: source.templateType, timelinePointId: resolveTimelinePointId(source),
+          href: resolveSessionHref(input.campaignHandle, source) });
       }
     }
     return result;

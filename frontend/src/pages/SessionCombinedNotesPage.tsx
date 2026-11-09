@@ -15,10 +15,13 @@ import { SessionAggregateNotesView } from '@/components/session/SessionAggregate
 import { SessionNotesSidebar } from '@/components/session/SessionNotesSidebar';
 import { SESSION_COMBINED_VIEW_ID } from '@/utils/sessionNoteConstants';
 import type { SessionNotePerspectiveEntry } from '@/types/wiki';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 
 type ViewMode = 'grid' | 'snapshot';
 
 export function SessionCombinedNotesPage() {
+  const audience = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(audience?.isDMUser && audience.playerPreview);
   const { campaignHandle = '', timelinePointId = '' } = useParams<{
     campaignHandle: string;
     timelinePointId: string;
@@ -118,11 +121,12 @@ export function SessionCombinedNotesPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-6">
-          <SessionAudioPanel campaignHandle={campaignHandle} timelineId={timelinePointId} />
+          {!previewAsPlayer && <SessionAudioPanel campaignHandle={campaignHandle} timelineId={timelinePointId} />}
           {viewMode === 'snapshot' ? (
             <SessionSnapshotExporter payload={data} campaignName={campaignName} />
           ) : (
             <SessionAggregateNotesView
+              readOnly={previewAsPlayer}
               campaignHandle={campaignHandle}
               payload={data}
               onRefresh={() => void refetch()}

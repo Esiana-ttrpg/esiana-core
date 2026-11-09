@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { fetchCombinedSessionNotes } from '@/lib/wiki';
 import type { CombinedSessionNotesPayload } from '@/types/wiki';
 
@@ -13,6 +14,9 @@ export function useSessionCombined(
   campaignHandle: string,
   params: UseSessionCombinedParams,
 ) {
+  const audience = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(params.previewAsPlayer || (audience?.isDMUser && audience.playerPreview));
+  const generationRef = useRef(0);
   const [data, setData] = useState<CombinedSessionNotesPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,11 +26,12 @@ export function useSessionCombined(
     params.timelinePointId ?? '',
     params.sessionGroupId ?? '',
     params.pageId ?? '',
-    params.previewAsPlayer ? 'party' : 'normal',
+    previewAsPlayer ? 'party' : 'normal',
   ].join('|');
 
   const refetch = useCallback(async () => {
     if (!campaignHandle) return;
+    const generation = ++generationRef.current;
     if (!params.timelinePointId && !params.sessionGroupId && !params.pageId) {
       setData(null);
       setLoading(false);
@@ -36,18 +41,21 @@ export function useSessionCombined(
     setLoading(true);
     setError(null);
     try {
-      const payload = await fetchCombinedSessionNotes(campaignHandle, params);
+      const payload = await fetchCombinedSessionNotes(campaignHandle, { ...params, previewAsPlayer });
+      if (generation !== generationRef.current) return;
       setData(payload);
     } catch (err) {
+      if (generation !== generationRef.current) return;
       setData(null);
       setError(err instanceof Error ? err.message : 'Failed to load session data');
     } finally {
-      setLoading(false);
+      if (generation === generationRef.current) setLoading(false);
     }
-  }, [campaignHandle, params.timelinePointId, params.sessionGroupId, params.pageId, params.previewAsPlayer]);
+  }, [campaignHandle, params.timelinePointId, params.sessionGroupId, params.pageId, previewAsPlayer]);
 
   useEffect(() => {
     void refetch();
+    return () => { generationRef.current += 1; };
   }, [refetch, queryKey]);
 
   return { data, loading, error, refetch };

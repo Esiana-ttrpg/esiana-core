@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Ensures untrusted outbound fetch stays in networkFetch.ts (plus explicit trusted-URL files).
+ * Ensures untrusted outbound fetch stays in networkFetch.ts (plus explicit trusted URLs and the loopback HTTP fixture).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,6 +14,8 @@ const ALLOWED_RELATIVE = new Set([
   path.normalize('controllers/systemController.ts'),
   path.normalize('lib/capacityProfiling/runCapacityProfile.ts'),
   path.normalize('lib/sampleData/networkExecutor.ts'),
+  // Test-only requests to the fixture's loopback Express server.
+  path.normalize('routes/characterAudience.database.fixture.ts'),
 ]);
 
 const FETCH_PATTERN = /\bfetch\s*\(/;

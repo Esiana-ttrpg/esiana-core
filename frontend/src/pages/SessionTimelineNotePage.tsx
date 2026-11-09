@@ -18,8 +18,17 @@ import { CampaignMemberRoles } from '@/types/domain';
 import type { CampaignDetail } from '@/types/campaign';
 import type { WikiPageLayoutPayload } from '@/types/wiki';
 import type { UpcomingSessionSummary } from '@/types/notifications';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
+import { SessionCombinedNotesPage } from '@/pages/SessionCombinedNotesPage';
 
 export function SessionTimelineNotePage() {
+  const audience = useOptionalAdventureWorkspace();
+  // Character/Adventure session references retain the shared audience and must
+  // not initialize the GM's personal author note as a side effect of reading.
+  return audience?.isDMUser && audience.playerPreview ? <SessionCombinedNotesPage /> : <AuthorSessionTimelineNotePage />;
+}
+
+function AuthorSessionTimelineNotePage() {
   const params = useParams<{ campaignHandle?: string; timelinePointId?: string }>();
   const campaignHandle = readCampaignHandle(params);
   const timelinePointId = params.timelinePointId ?? '';

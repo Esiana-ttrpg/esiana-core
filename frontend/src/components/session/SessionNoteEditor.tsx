@@ -398,6 +398,7 @@ export function SessionNoteEditor({
               <LoadingSpinner label="Loading combined session notes…" />
             ) : combined ? (
               <SessionCombinedInlineView
+                readOnly={readOnly}
                 campaignHandle={campaignHandle}
                 payload={combined}
                 canManage={isDMUser}

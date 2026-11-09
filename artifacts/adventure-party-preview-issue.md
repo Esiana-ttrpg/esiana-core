@@ -13,4 +13,4 @@ Adventure Party preview is enabled. The four core 503 paths now return reduced r
 
 ## Context
 
-`docs/campaign-workspace-ux-audit.md` records the current implementation and links to the PostgreSQL/browser verification. Character Party preview is separately disabled pending its own domain audit; do not infer its safety from Adventure's tests.
+`docs/campaign-workspace-ux-audit.md` records the current implementation and links to the PostgreSQL/browser verification. Character Party preview is implemented separately and awaits its own PostgreSQL HTTP and first-hand browser acceptance; do not infer its safety from Adventure's tests.
