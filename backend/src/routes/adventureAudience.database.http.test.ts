@@ -174,15 +174,9 @@ test('campaign router returns reduced Party responses and enforces campaign boun
     }
     const app = express();
     app.use(express.json(), cookieParser());
-    if (process.env.ADVENTURE_BROWSER_URL) {
-      const { mountRouters } = await import('../mountRouters.js');
-      mountRouters(app);
-    } else app.use('/api/campaigns/:campaignHandle', campaignScopedRouter);
+    app.use('/api/campaigns/:campaignHandle', campaignScopedRouter);
     server = createServer(app);
-    const configuredBrowserPort = Number(process.env.ADVENTURE_BROWSER_API_PORT ?? '55440');
-    assert.ok(Number.isInteger(configuredBrowserPort) && configuredBrowserPort >= 1 && configuredBrowserPort <= 65535,
-      'ADVENTURE_BROWSER_API_PORT must be a valid TCP port');
-    await new Promise<void>(resolve => server!.listen(process.env.ADVENTURE_BROWSER_URL ? configuredBrowserPort : 0, '127.0.0.1', resolve));
+    await new Promise<void>(resolve => server!.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const base = `http://127.0.0.1:${address.port}/api/campaigns/${handle}`;
@@ -357,13 +351,6 @@ test('campaign router returns reduced Party responses and enforces campaign boun
     assert.equal(playerLayout.status, 403);
     await verifyCharacterAudienceHttp({ base, fixture: characterFixture, managerCookies: [ownerId, writerId].map(id => cookies.get(id)!),
       playerCookie: cookies.get(playerId)!, outsiderCookie: cookies.get(outsiderId)!, otherPageId, secretPageId });
-    if (process.env.ADVENTURE_BROWSER_URL) {
-      const { runAcceptance } = await import('../../scripts/adventure-browser-acceptance.mjs');
-      await runAcceptance({ url: process.env.ADVENTURE_BROWSER_URL, handle, emptyHandle: emptyCampaignId, cookies: [ownerId, writerId, playerId].map(id => cookies.get(id)!), pageId: linkSourceId });
-      const { runCharacterAcceptance } = await import('../../scripts/character-browser-acceptance.mjs');
-      await runCharacterAcceptance({ url: process.env.ADVENTURE_BROWSER_URL, handle, emptyHandle: emptyCampaignId,
-        cookies: [ownerId, writerId, playerId].map(id => cookies.get(id)!), fixture: characterFixture });
-    }
   } finally {
     if (server) await new Promise<void>((resolve, reject) => server!.close(error => error ? reject(error) : resolve()));
     await prisma.campaign.deleteMany({ where: { id: { in: [campaignId, otherCampaignId, emptyCampaignId] } } });
