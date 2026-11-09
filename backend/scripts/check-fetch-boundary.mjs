@@ -25,6 +25,9 @@ function shouldSkip(relativePath) {
   if (normalized.includes(`${path.sep}mocks${path.sep}`)) return true;
   if (normalized.endsWith('.test.ts')) return true;
   if (normalized.endsWith('.spec.ts')) return true;
+  // This fixture is imported only by the database HTTP test and sends requests
+  // to its loopback Express server, like the .test.ts file that imports it.
+  if (normalized === path.normalize('routes/characterAudience.database.fixture.ts')) return true;
   return false;
 }
 
