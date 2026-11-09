@@ -73,7 +73,8 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
   }
   const flatPages = await prisma.wikiPage.findMany({
     where: { campaignId: ctx.campaignId, deletedAt: null },
-    select: { id: true, title: true, parentId: true, templateType: true, metadata: true, workspace: true },
+    select: { id: true, title: true, parentId: true, templateType: true, metadata: true,
+      workspace: true, visibility: true, blocks: true, pathKey: true },
   });
   const entityCategory = resolveCanonicalEntityCategory(page, flatPages);
   const shell = entityCategory ? ENTITY_CATEGORY_TO_SHELL[entityCategory] : undefined;
@@ -86,7 +87,7 @@ export async function loadCharacterPageAccess(req: CampaignScopedRequest, res: R
     return null;
   }
   const audienceProjection = audience.preview ? await loadAdventurePageProjection(ctx.campaignId,
-    await prisma.wikiPage.findMany({ where: { campaignId: ctx.campaignId, deletedAt: null } }), audience.canViewPage) : null;
+    flatPages, audience.canViewPage) : null;
   if (audienceProjection && !audienceProjection.pages.some(row => row.id === page.id)) {
     res.status(404).json({ error: 'Entity not found' });
     return null;

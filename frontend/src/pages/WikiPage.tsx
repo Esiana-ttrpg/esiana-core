@@ -2190,6 +2190,7 @@ function WikiPageDocument() {
             isDMUser={isDMUser}
             isTagsHub={isTagsHub}
             isLayoutDirty={isDirty}
+            hasPendingPerspectiveEdits={tagsDirty || characterPageTitleDraft.trim() !== resolvedTitle.trim()}
             isSaving={isSaving}
             onSavePage={handleSavePage}
             isPinned={isPinned}

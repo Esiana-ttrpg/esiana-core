@@ -873,10 +873,9 @@ export async function getWikiTree(
       .map(page => ({ ...page, featuredImageId: null }));
   }
 
-  if (!audience.preview && !hasElevatedNarrativeView(ctx.actor)) {
-    const { hiddenEraIds, redactEraReferences } = await import('../lib/eraDisclosure.js');
+  if (audience.preview || !hasElevatedNarrativeView(ctx.actor)) {
     const hidden = await hiddenEraIds(ctx.campaignId);
-    for (const page of pages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
+    for (const page of treePages) page.metadata = redactEraReferences(page.metadata, hidden) as typeof page.metadata;
   }
   const tree = buildWikiTree(treePages, audience.visibilityViewer);
 

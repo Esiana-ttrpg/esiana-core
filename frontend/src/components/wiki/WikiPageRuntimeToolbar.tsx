@@ -31,6 +31,7 @@ interface WikiPageRuntimeToolbarProps {
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;
+  hasPendingPerspectiveEdits?: boolean;
   isSaving: boolean;
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;
@@ -57,6 +58,7 @@ export function WikiPageRuntimeToolbar({
   isDMUser: isDMUserProp,
   isTagsHub,
   isLayoutDirty = false,
+  hasPendingPerspectiveEdits = false,
   isSaving,
   onSavePage,
   isPinned,
@@ -104,6 +106,14 @@ export function WikiPageRuntimeToolbar({
     navigate(campaignWorkshopPath(campaignHandle, { fromPageId: pageId }));
   };
 
+  const handleCharacterPerspectiveChange = (next: 'dm' | 'party') => {
+    if (!audience || next === audience.perspective || isSaving) return;
+    if ((hasUnsavedWork || hasPendingPerspectiveEdits) && !window.confirm(
+      'You have unsaved character changes. Switching perspective will discard them. Continue?',
+    )) return;
+    audience.setPerspective(next);
+  };
+
   const showReadBar = isDMUser || !isTagsHub;
 
   if (!showReadBar) return null;
@@ -117,7 +127,7 @@ export function WikiPageRuntimeToolbar({
         data-print-hide
       >
         {portfolioCharacter && audience?.isDMUser ? (
-          <PlayerPerspectiveToggle value={audience.perspective} onChange={audience.setPerspective}
+          <PlayerPerspectiveToggle value={audience.perspective} onChange={handleCharacterPerspectiveChange}
             ariaLabel="Character view perspective" />
         ) : null}
         {!isTagsHub && getExportContext ? (

@@ -52,6 +52,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
   const linkTargetId = `target-${stamp}`;
   const privateTargetId = `private-target-${stamp}`;
   const futureLinkTargetId = `future-link-target-${stamp}`;
+  const hiddenEraId = `hidden-era-${stamp}`;
   let server: ReturnType<typeof createServer> | undefined;
   try {
     for (const id of ids) await prisma.user.create({ data: { id, email: `${id}@example.invalid` } });
@@ -148,8 +149,13 @@ test('campaign router returns reduced Party responses and enforces campaign boun
         statement: 'Undiscovered claim sentinel', visibility: 'PARTY', knowledgeState: 'UNDISCOVERED' },
     ] });
     await prisma.narrativeLifecycleState.create({ data: { campaignId, subjectKind: 'scene', subjectId: sceneId, lifecycleState: 'DISCOVERED' } });
-    await prisma.fantasyCalendar.create({ data: { campaignId, name: 'Shared calendar', isMasterTime: true,
+    const calendar = await prisma.fantasyCalendar.create({ data: { campaignId, name: 'Shared calendar', isMasterTime: true,
       weekdays: [{ name: 'Dawn', length: 1 }], months: [{ name: 'Bloom', length: 30 }], seasons: [], moons: [], leapDays: [] } });
+    await prisma.campaignEra.create({ data: { campaignId, id: hiddenEraId, calendarId: calendar.id,
+      name: 'Hidden era sentinel', sortOrder: 1, visibility: 'DM_ONLY' } });
+    await prisma.wikiPage.update({ where: { id: linkSourceId }, data: { metadata: {
+      fields: [{ id: 'hidden-era-field', eraId: hiddenEraId, eraSnapshot: { name: 'Hidden era sentinel', visibility: 'DM_ONLY' } }],
+    } } });
     await prisma.contentPresenceState.createMany({ data: [
       { campaignId, entityType: ContentPresenceEntityType.WIKI_PAGE, entityId: draftId, state: 'DRAFT' },
       { campaignId, entityType: ContentPresenceEntityType.WIKI_PAGE, entityId: unrevealedId, state: 'HIDDEN' },
@@ -230,6 +236,7 @@ test('campaign router returns reduced Party responses and enforces campaign boun
         assert.match(body, /Shared scene/);
         assert.doesNotMatch(body, /Hidden landmark|Hidden ancestor child sentinel|Unrevealed sentinel|Future sentinel|private-metadata-sentinel|Locked lifecycle sentinel|Locked ancestor child sentinel|Uninitialized scene sentinel/);
         assert.doesNotMatch(body, new RegExp(`${secretPageId}|${unrevealedId}|${futureId}|${lockedId}`));
+        assert.doesNotMatch(body, new RegExp(`${hiddenEraId}|Hidden era sentinel|hidden-era-field`));
       }
     }
     for (const id of [ownerId, writerId]) {
@@ -307,7 +314,9 @@ test('campaign router returns reduced Party responses and enforces campaign boun
     }
     const gmTree = await fetch(`${base}/wiki/tree`, { headers: { cookie: cookies.get(ownerId)! } });
     assert.equal(gmTree.status, 200);
-    assert.match(await gmTree.text(), /Hidden landmark/);
+    const gmTreeText = await gmTree.text();
+    assert.match(gmTreeText, /Hidden landmark/);
+    assert.match(gmTreeText, new RegExp(hiddenEraId));
     const playerTree = await fetch(`${base}/wiki/tree`, { headers: { cookie: cookies.get(playerId)! } });
     assert.equal(playerTree.status, 200);
     const treeText = await playerTree.text();
