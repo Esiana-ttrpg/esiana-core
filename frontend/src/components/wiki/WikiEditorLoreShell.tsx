@@ -31,10 +31,12 @@ import {
 } from './extensions/atMentionSuggestionPlugin';
 import { WikiAmbientRecognitionExtension } from './extensions/wikiAmbientRecognition';
 import { useOptionalWiki } from '@/contexts/WikiContext';
-import { collectWikiLinkTargetIdsFromEditor } from './extensions/wikiReferenceInsertion';
 import { OPEN_SOURCE_PICKER_EVENT, SourcePicker, type SourcePickerRequest } from './SourcePicker';
 import { SOURCE_REFERENCE_INTERACT_EVENT } from './extensions/SourceReferenceExtension';
 import { SourceReferencePopover, type SourceInteraction } from './SourceReferencePopover';
+
+export const OPEN_WIKI_PROVIDER_EVENT = 'esiana:open-wiki-editor-provider';
+export type WikiProviderKind = 'commands' | 'references' | 'mentions';
 
 function mapApiMentionTarget(t: MentionTarget): AtTarget {
   return {
@@ -45,15 +47,53 @@ function mapApiMentionTarget(t: MentionTarget): AtTarget {
   };
 }
 
+function AtMentionSuggestionPopover({ editor, state, targets, onClose }: {
+  editor: Editor;
+  state: AtSuggestionState;
+  targets: AtTarget[];
+  onClose: () => void;
+}) {
+  const matches = useMemo(() => filterMentionTargets(targets, state.query), [targets, state.query]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  useEffect(() => setSelectedIndex(0), [state.query]);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+      else if (event.key === 'ArrowDown' && matches.length) { event.preventDefault(); setSelectedIndex((value) => (value + 1) % matches.length); }
+      else if (event.key === 'ArrowUp' && matches.length) { event.preventDefault(); setSelectedIndex((value) => (value - 1 + matches.length) % matches.length); }
+      else if (event.key === 'Enter' && matches[selectedIndex]) {
+        event.preventDefault();
+        insertSocialMention(editor.view, state, matches[selectedIndex]);
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [editor, matches, selectedIndex, state, onClose]);
+
+  return createPortal(
+    <div className="fixed z-[200] min-w-[200px] rounded-lg border border-border bg-background shadow-lg" style={{ top: state.top, left: state.left }} role="listbox" aria-label="Mention">
+      <div className={`border-b border-border px-3 py-2 ${META_SECTION_LABEL_CLASS}`}>Mention</div>
+      <ul className="max-h-48 overflow-y-auto py-1">
+        {matches.map((target, index) => <li key={`${target.mentionType}-${target.label}`}>
+          <button type="button" role="option" aria-selected={selectedIndex === index}
+            className={`w-full px-3 py-1.5 text-left text-sm hover:bg-muted/30 ${selectedIndex === index ? 'bg-primary/10' : ''}`}
+            onMouseEnter={() => setSelectedIndex(index)}
+            onMouseDown={(event) => { event.preventDefault(); insertSocialMention(editor.view, state, target); onClose(); }}>
+            @{target.label}<span className="ml-1 text-xs text-muted">{target.mentionType === 'character' ? 'character' : 'player'}</span>
+          </button>
+        </li>)}
+      </ul>
+    </div>,
+    editor.view.dom.closest('dialog[open]') ?? document.body,
+  );
+}
+
 export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) {
   const adventure = useOptionalAdventureWorkspace();
   const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const wiki = useOptionalWiki();
   const { index } = useWikiLinkIndex(campaignHandle);
-  const pinnedPageIds = useMemo(
-    () => (wiki?.pinnedShortcuts ?? []).map((pin) => pin.pageId),
-    [wiki?.pinnedShortcuts],
-  );
   const [bracketState, setBracketState] = useState<BracketSuggestionState | null>(null);
   const [slashState, setSlashState] = useState<SlashSuggestionState | null>(null);
   const [atState, setAtState] = useState<AtSuggestionState | null>(null);
@@ -135,18 +175,6 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
     [resolveEntryByLabel],
   );
 
-  const openMentionFromSlash = useCallback((editor: Editor | null) => {
-    if (!editor || !slashState) return;
-    const { from, to } = slashState;
-    editor
-      .chain()
-      .focus()
-      .deleteRange({ from, to })
-      .insertContent('@')
-      .run();
-    setSlashState(null);
-  }, [slashState]);
-
   const BracketPopover = useCallback(
     ({ editor }: { editor: Editor | null }) => {
       if (!bracketState || !editor) return null;
@@ -173,77 +201,26 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
   const SlashPopover = useCallback(
     ({ editor }: { editor: Editor | null }) => {
       if (!slashState || !editor) return null;
-      const suggestionOptions = {
-        currentPageLinkedIds: collectWikiLinkTargetIdsFromEditor(editor),
-        pinnedPageIds,
-      };
       return (
         <WikiSlashSuggestionPopover
+          editor={editor}
           portalContainer={editor.view.dom.closest('dialog[open]') ?? undefined}
           state={slashState}
-          index={index}
-          suggestionOptions={suggestionOptions}
-          onSelect={(entry) => {
-            insertWikiReference(editor.view, slashState, entry);
-            setSlashState(null);
-          }}
-          onCreateStub={(label) => {
-            insertWikiReferenceAtRange(editor, slashState, label);
-            setSlashState(null);
-          }}
-          onMentionPlayer={() => openMentionFromSlash(editor)}
           onSource={() => {
             const selection = editor.state.selection;
-            setSourceRequest({ editor, doc: editor.state.doc, range: selection.empty ? { from: slashState.from, to: slashState.from } : { from: selection.from, to: selection.to }, replaceRange: { from: slashState.from, to: slashState.to } });
+            setSourceRequest({ editor, doc: editor.state.doc, range: { from: selection.from, to: selection.to } });
           }}
           onClose={() => setSlashState(null)}
         />
       );
     },
-    [slashState, index, insertWikiReferenceAtRange, openMentionFromSlash, pinnedPageIds],
+    [slashState],
   );
 
   const AtPopover = useCallback(
     ({ editor }: { editor: Editor | null }) => {
       if (!atState || !editor) return null;
-      const matches = filterMentionTargets(mentionTargets, atState.query);
-      return createPortal(
-        <div
-          className="fixed z-[200] min-w-[200px] rounded-lg border border-border bg-background shadow-lg"
-          style={{ top: atState.top, left: atState.left }}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              setAtState(null);
-            }
-          }}
-        >
-          <div className={`border-b border-border px-3 py-2 ${META_SECTION_LABEL_CLASS}`}>
-            Mention
-          </div>
-          <ul className="max-h-48 overflow-y-auto py-1">
-            {matches.map((t) => (
-              <li key={`${t.mentionType}-${t.label}`}>
-                <button
-                  type="button"
-                  className="w-full px-3 py-1.5 text-left text-sm hover:bg-muted/30"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    insertSocialMention(editor.view, atState, t);
-                    setAtState(null);
-                  }}
-                >
-                  @{t.label}
-                  <span className="ml-1 text-xs text-muted">
-                    {t.mentionType === 'character' ? 'character' : 'player'}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>,
-        editor.view.dom.closest('dialog[open]') ?? document.body,
-      );
+      return <AtMentionSuggestionPopover editor={editor} state={atState} targets={mentionTargets} onClose={() => setAtState(null)} />;
     },
     [atState, mentionTargets],
   );
@@ -273,12 +250,26 @@ export function useWikiEditorLoreExtensions(campaignHandle: string | undefined) 
           if (editor && detail?.editor === editor) setSourceRequest({ editor, doc: editor.state.doc, range: { from: editor.state.selection.from, to: editor.state.selection.to } });
         };
         window.addEventListener(OPEN_SOURCE_PICKER_EVENT, listener);
+        const providerListener = (event: Event) => {
+          const detail = (event as CustomEvent<{ editor: Editor; provider: WikiProviderKind }>).detail;
+          if (!editor || detail?.editor !== editor) return;
+          const selection = editor.state.selection;
+          const position = selection.from;
+          const coords = editor.view.coordsAtPos(position);
+          const insertionState = { active: true, query: '', from: position, to: position, top: coords.bottom + 4, left: coords.left };
+          const replacementState = { ...insertionState, to: selection.to };
+          setBracketState(detail.provider === 'references' ? replacementState : null);
+          setSlashState(detail.provider === 'commands' ? insertionState : null);
+          setAtState(detail.provider === 'mentions' ? replacementState : null);
+          editor.commands.focus();
+        };
+        window.addEventListener(OPEN_WIKI_PROVIDER_EVENT, providerListener);
         const sourceListener = (event: Event) => {
           const detail = (event as CustomEvent<Omit<SourceInteraction, 'editor'> & { editorView: Editor['view'] }>).detail;
           if (editor && detail?.editorView === editor.view) setSourceInteraction({ ...detail, editor });
         };
         window.addEventListener(SOURCE_REFERENCE_INTERACT_EVENT, sourceListener);
-        return () => { window.removeEventListener(OPEN_SOURCE_PICKER_EVENT, listener); window.removeEventListener(SOURCE_REFERENCE_INTERACT_EVENT, sourceListener); };
+        return () => { window.removeEventListener(OPEN_SOURCE_PICKER_EVENT, listener); window.removeEventListener(OPEN_WIKI_PROVIDER_EVENT, providerListener); window.removeEventListener(SOURCE_REFERENCE_INTERACT_EVENT, sourceListener); };
       }, [editor]);
       const current = lorePopoverState.current;
       const CurrentBracketPopover = current.BracketPopover;
@@ -316,8 +307,8 @@ export function WikiSyntaxHint({
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-[10px] text-muted">
       <span>
         <span className="text-foreground/80">[[Name]]</span> links the codex ·{' '}
-        <span className="text-foreground/80">/Name</span> quick reference ·{' '}
-        <span className="text-foreground/80">@Name</span> notifies a player ·{' '}
+        <span className="text-foreground/80">/</span> inserts content ·{' '}
+        <span className="text-foreground/80">@Name</span> mentions a member or character ·{' '}
         <span className="text-foreground/80">/source</span> cites a source
       </span>
       {onAmbientToggle ? (
