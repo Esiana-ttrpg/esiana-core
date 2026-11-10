@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import {
@@ -34,8 +34,9 @@ function ToolbarButton({ children, onClick, active, title, className = '' }: {
   </button>;
 }
 
-function LabeledButton({ label, title, onClick, className = '' }: { label: React.ReactNode; title: string; onClick: () => void; className?: string }) {
+function LabeledButton({ label, title, onClick, className = '', ariaExpanded, ariaHaspopup }: { label: React.ReactNode; title: string; onClick: () => void; className?: string; ariaExpanded?: boolean; ariaHaspopup?: 'menu' }) {
   return <button type="button" title={title} onMouseDown={(event) => event.preventDefault()} onClick={onClick}
+    aria-expanded={ariaExpanded} aria-haspopup={ariaHaspopup}
     className={`shrink-0 rounded-md border border-border/60 px-2 py-1 text-xs font-medium text-muted hover:bg-elevated hover:text-foreground ${className}`}>
     {label}
   </button>;
@@ -43,7 +44,7 @@ function LabeledButton({ label, title, onClick, className = '' }: { label: React
 
 function MenuAction({ children, onClick, className = '' }: { children: React.ReactNode; onClick: () => void; className?: string }) {
   return <button type="button" className={`w-full rounded-md px-2 py-1.5 text-left text-xs text-muted hover:bg-elevated hover:text-foreground ${className}`}
-    onMouseDown={(event) => event.preventDefault()} onClick={onClick}>{children}</button>;
+    data-menu-action onMouseDown={(event) => event.preventDefault()} onClick={onClick}>{children}</button>;
 }
 
 function openProvider(editor: Editor, provider: WikiProviderKind) {
@@ -143,6 +144,29 @@ export function WikiEditorToolbar({ editor, wikiTree = [], workshopFromPageId, p
   const flatPages = useMemo(() => wiki?.flatPages ?? flattenWikiTree(wikiTree), [wiki?.flatPages, wikiTree]);
   const [paragraphOpen, setParagraphOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const paragraphMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!paragraphOpen && !moreOpen) return;
+    const dismissOnPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (target instanceof Element && target.closest('[data-editor-color-picker], [data-toolbar-nested-menu]')) return;
+      if (paragraphOpen && !paragraphMenuRef.current?.contains(target)) setParagraphOpen(false);
+      if (moreOpen && !moreMenuRef.current?.contains(target)) setMoreOpen(false);
+    };
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setParagraphOpen(false);
+      setMoreOpen(false);
+    };
+    document.addEventListener('mousedown', dismissOnPointerDown);
+    document.addEventListener('keydown', dismissOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', dismissOnPointerDown);
+      document.removeEventListener('keydown', dismissOnEscape);
+    };
+  }, [moreOpen, paragraphOpen]);
 
   if (!editor) return null;
 
@@ -167,8 +191,8 @@ export function WikiEditorToolbar({ editor, wikiTree = [], workshopFromPageId, p
 
   return <div>
     <div className="relative flex min-w-0 max-w-full items-center gap-0.5 overflow-visible border-b border-border bg-surface/80 px-2 py-1.5">
-      <div className="relative shrink-0">
-        <LabeledButton label={<><span className="hidden min-[360px]:inline">Paragraph</span><span className="min-[360px]:hidden">¶</span></>} title="Paragraph styles" onClick={() => setParagraphOpen((open) => !open)} />
+      <div ref={paragraphMenuRef} className="relative shrink-0">
+        <LabeledButton label={<><span className="hidden min-[360px]:inline">Paragraph</span><span className="min-[360px]:hidden">¶</span></>} title="Paragraph styles" ariaExpanded={paragraphOpen} ariaHaspopup="menu" onClick={() => setParagraphOpen((open) => !open)} />
         {paragraphOpen ? <div className="absolute left-0 top-full z-30 mt-1 w-44 rounded-lg border border-border bg-background p-1 shadow-xl">
           <MenuAction onClick={() => { editor.chain().focus().setParagraph().run(); setParagraphOpen(false); }}>Paragraph</MenuAction>
           {[1, 2, 3].map((level) => <MenuAction key={level} onClick={() => { editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run(); setParagraphOpen(false); }}>Heading {level}</MenuAction>)}
@@ -190,9 +214,10 @@ export function WikiEditorToolbar({ editor, wikiTree = [], workshopFromPageId, p
       <ToolbarButton className="hidden md:block" onClick={link} active={editor.isActive('link')} title="Link"><Link className="size-4" /></ToolbarButton>
       <div className="hidden xl:block"><EditorColorPickerToolbarButton kind="highlight" /></div>
 
-      <div className="relative ml-auto shrink-0">
-        <LabeledButton label="More" title="More editor actions" onClick={() => setMoreOpen((open) => !open)} />
-        {moreOpen ? <div className="absolute right-0 top-full z-40 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-xl border border-border bg-background p-1.5 shadow-xl">
+      <div ref={moreMenuRef} className="relative ml-auto shrink-0">
+        <LabeledButton label="More" title="More editor actions" ariaExpanded={moreOpen} ariaHaspopup="menu" onClick={() => setMoreOpen((open) => !open)} />
+        {moreOpen ? <div className="absolute right-0 top-full z-40 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-xl border border-border bg-background p-1.5 shadow-xl"
+          onClick={(event) => { if ((event.target as Element).closest('[data-menu-action]')) setMoreOpen(false); }}>
           <MenuAction className="md:hidden" onClick={() => openProvider(editor, 'references')}>[[ References</MenuAction>
           <MenuAction className="lg:hidden" onClick={() => openProvider(editor, 'mentions')}>@ Mentions</MenuAction>
           <MenuAction className="sm:hidden" onClick={() => editor.chain().focus().toggleBulletList().run()}>Bullet list</MenuAction>

@@ -120,6 +120,7 @@ export function AdmonitionToolbarDropdown({ editor }: AdmonitionToolbarDropdownP
         ? createPortal(
             <div
               ref={menuRef}
+              data-toolbar-nested-menu
               className="fixed z-[200] w-72 rounded-xl border border-border bg-background/95 p-2 shadow-xl"
               style={{ top: position.top, left: position.left }}
               role="listbox"

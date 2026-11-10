@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/react';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
@@ -15,8 +15,13 @@ interface WikiSlashSuggestionPopoverProps {
 export function WikiSlashSuggestionPopover({ editor, state, portalContainer, onSource, onClose }: WikiSlashSuggestionPopoverProps) {
   const commands = useMemo(() => filterWikiEditorCommands(state.query), [state.query]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const selectedButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => setSelectedIndex(0), [state.query]);
+
+  useEffect(() => {
+    selectedButtonRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [selectedIndex]);
 
   const run = (command: WikiEditorCommand) => {
     command.run(editor, { from: state.from, to: state.to }, { openSourcePicker: onSource });
@@ -71,6 +76,7 @@ export function WikiSlashSuggestionPopover({ editor, state, portalContainer, onS
               const selected = index === selectedIndex;
               return (
                 <button
+                  ref={selectedIndex === index ? selectedButtonRef : null}
                   key={command.id}
                   type="button"
                   role="option"

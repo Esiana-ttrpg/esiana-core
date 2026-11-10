@@ -82,7 +82,17 @@ export const WIKI_EDITOR_COMMANDS: WikiEditorCommand[] = [
     run: (editor, range) => {
       withTriggerRemoved(editor, range).run();
       const href = window.prompt('Paste a URL');
-      if (href?.trim()) editor.chain().focus().setLink({ href: href.trim() }).run();
+      const normalizedHref = href?.trim();
+      if (!normalizedHref) return;
+      if (editor.state.selection.empty) {
+        editor.chain().focus().insertContent({
+          type: 'text',
+          text: normalizedHref,
+          marks: [{ type: 'link', attrs: { href: normalizedHref } }],
+        }).run();
+        return;
+      }
+      editor.chain().focus().setLink({ href: normalizedHref }).run();
     },
   },
   {
