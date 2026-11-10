@@ -2104,6 +2104,74 @@ body {
   padding-left: 1.5em;
 }
 
+.tiptap ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+.tiptap li[data-type='taskItem'] {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tiptap li[data-type='taskItem'] > label {
+  display: inline-flex;
+  margin-top: 0.55rem;
+  user-select: none;
+}
+
+.tiptap li[data-type='taskItem'] > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tiptap li[data-type='taskItem'][data-checked='true'] > div {
+  color: var(--color-focal-muted);
+  text-decoration: line-through;
+}
+
+.tiptap [data-type='details'] {
+  background: rgb(var(--color-surface-rgb) / 0.32);
+  border: 1px solid rgb(var(--color-border-rgb) / 0.5);
+  border-radius: 0.6rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.75rem;
+}
+
+.tiptap [data-type='details'] > button {
+  align-self: start;
+  color: var(--color-focal-muted);
+  margin: 0.42rem 0.45rem 0 0;
+}
+
+.tiptap [data-type='details'] > button::before {
+  content: '›';
+  display: block;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.tiptap [data-type='details'].is-open > button::before {
+  transform: rotate(90deg);
+}
+
+.tiptap [data-type='details'] summary {
+  cursor: text;
+  font-weight: 600;
+  list-style: none;
+  padding: 0.2rem 0;
+}
+
+.tiptap [data-type='detailsContent'] {
+  border-top: 1px solid rgb(var(--color-border-rgb) / 0.35);
+  margin-top: 0.4rem;
+  padding-top: 0.35rem;
+}
+
 .tiptap code {
   font-size: 0.9em;
   background: rgb(var(--color-focal-rgb) / 0.15);

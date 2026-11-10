@@ -1,5 +1,6 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { createPortal } from 'react-dom';
+import { useEffect, useState } from 'react';
 import type { WikiLinkIndexEntry } from '@/lib/wikiLoreGraph';
 import type { BracketSuggestionState } from './extensions/wikiBracketSuggestionPlugin';
 import { resolveWikiSuggestion } from './extensions/wikiReferenceInsertion';
@@ -23,6 +24,19 @@ export function WikiBracketSuggestionPopover({
   onClose,
 }: WikiBracketSuggestionPopoverProps) {
   const matches = resolveWikiSuggestion(state.query, index);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => setSelectedIndex(0), [state.query]);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+      else if (event.key === 'ArrowDown' && matches.length) { event.preventDefault(); setSelectedIndex((value) => (value + 1) % matches.length); }
+      else if (event.key === 'ArrowUp' && matches.length) { event.preventDefault(); setSelectedIndex((value) => (value - 1 + matches.length) % matches.length); }
+      else if (event.key === 'Enter' && matches[selectedIndex]) { event.preventDefault(); onSelect(matches[selectedIndex]); onClose(); }
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [matches, selectedIndex, onSelect, onClose]);
 
   return createPortal(
     <div
@@ -42,6 +56,8 @@ export function WikiBracketSuggestionPopover({
       <ul className="max-h-48 overflow-y-auto py-1">
         <WikiCodexSuggestionList
           matches={matches}
+          selectedIndex={selectedIndex}
+          onHighlight={setSelectedIndex}
           onSelect={(entry) => {
             onSelect(entry);
             onClose();
