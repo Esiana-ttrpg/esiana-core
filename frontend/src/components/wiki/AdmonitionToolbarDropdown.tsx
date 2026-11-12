@@ -50,7 +50,11 @@ export function AdmonitionToolbarDropdown({ editor }: AdmonitionToolbarDropdownP
     const anchor = anchorRef.current;
     if (!anchor) return;
     const rect = anchor.getBoundingClientRect();
-    setPosition({ top: rect.bottom + 4, left: rect.left });
+    const viewportMargin = 8;
+    const menuWidth = menuRef.current?.getBoundingClientRect().width ?? 0;
+    const maximumLeft = Math.max(viewportMargin, window.innerWidth - menuWidth - viewportMargin);
+    const left = Math.min(Math.max(rect.left, viewportMargin), maximumLeft);
+    setPosition({ top: rect.bottom + 4, left });
   };
 
   useLayoutEffect(() => {
@@ -121,7 +125,7 @@ export function AdmonitionToolbarDropdown({ editor }: AdmonitionToolbarDropdownP
             <div
               ref={menuRef}
               data-toolbar-nested-menu
-              className="fixed z-[200] w-72 rounded-xl border border-border bg-background/95 p-2 shadow-xl"
+              className="fixed z-[200] w-[min(18rem,calc(100vw-1rem))] rounded-xl border border-border bg-background/95 p-2 shadow-xl"
               style={{ top: position.top, left: position.left }}
               role="listbox"
               aria-label={isInsideAdmonition ? 'Change callout type' : 'Insert callout'}

@@ -12,6 +12,55 @@
   grid-template-areas: "current" "projects" "funds" "havens" "reputation" "operations" "activity";
 }
 
+/* Wiki editor toolbar disclosure follows the editor container, not the viewport. */
+.wiki-toolbar-container {
+  container-type: inline-size;
+}
+
+.wiki-toolbar-group {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+
+.wiki-toolbar-desktop,
+.wiki-toolbar-tablet {
+  display: none;
+  margin-inline-start: 0.125rem;
+  border-inline-start: 1px solid var(--color-border);
+  padding-inline-start: 0.25rem;
+}
+
+.wiki-toolbar-mobile {
+  display: flex;
+}
+
+.wiki-toolbar-responsive-overflow,
+.wiki-toolbar-mobile-only {
+  display: block;
+}
+
+@container (min-width: 48rem) {
+  .wiki-toolbar-mobile,
+  .wiki-toolbar-mobile-only {
+    display: none;
+  }
+
+  .wiki-toolbar-tablet {
+    display: flex;
+  }
+}
+
+@container (min-width: 56rem) {
+  .wiki-toolbar-tablet,
+  .wiki-toolbar-responsive-overflow {
+    display: none;
+  }
+
+  .wiki-toolbar-desktop {
+    display: flex;
+  }
+}
+
 .downtime-party-sheet__current { grid-area: current; }
 .downtime-party-sheet__projects { grid-area: projects; }
 .downtime-party-sheet__funds { grid-area: funds; }
