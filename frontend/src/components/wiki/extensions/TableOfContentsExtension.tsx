@@ -1,6 +1,6 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { mergeAttributes, Node } from '@tiptap/core';
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { NodeViewWrapper, ReactNodeViewRenderer } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { useMemo } from 'react';
 
@@ -38,7 +38,7 @@ function buildTocTree(headings: TocHeading[]) {
   return root;
 }
 
-function TocListView({ editor }: { editor: Editor | null }) {
+export function TocListView({ editor }: { editor: Editor | null }) {
   const headings = useMemo(() => {
     if (!editor) return [] as TocHeading[];
     const result: TocHeading[] = [];
@@ -99,12 +99,12 @@ function TocListView({ editor }: { editor: Editor | null }) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-background/40 p-3">
+    <NodeViewWrapper className="rounded-lg border border-border bg-background/40 p-3">
       <div className={`mb-2 ${META_SECTION_LABEL_CLASS}`}>
         Table of Contents
       </div>
       {headings.length ? <TocUl items={tocTree} /> : null}
-    </div>
+    </NodeViewWrapper>
   );
 }
 
