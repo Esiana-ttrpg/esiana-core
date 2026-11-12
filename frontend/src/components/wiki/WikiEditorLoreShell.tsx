@@ -303,24 +303,17 @@ export function WikiSyntaxHint({
   ambientEnabled?: boolean;
   onAmbientToggle?: (v: boolean) => void;
 }) {
+  if (!onAmbientToggle) return null;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5 text-[10px] text-muted">
-      <span>
-        <span className="text-foreground/80">[[Name]]</span> links the codex ·{' '}
-        <span className="text-foreground/80">/</span> inserts content ·{' '}
-        <span className="text-foreground/80">@Name</span> mentions a member or character ·{' '}
-        <span className="text-foreground/80">/source</span> cites a source
-      </span>
-      {onAmbientToggle ? (
-        <label className="flex items-center gap-1.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={ambientEnabled}
-            onChange={(e) => onAmbientToggle(e.target.checked)}
-          />
-          Ambient hints
-        </label>
-      ) : null}
+    <div className="flex items-center justify-end border-b border-border px-3 py-1.5 text-[10px] text-muted">
+      <label className="flex cursor-pointer items-center gap-1.5">
+        <input
+          type="checkbox"
+          checked={ambientEnabled}
+          onChange={(e) => onAmbientToggle(e.target.checked)}
+        />
+        Ambient hints
+      </label>
     </div>
   );
 }

@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import {
-  AlignCenter, AlignLeft, AlignRight, Bold, CheckSquare, ChevronDown, Code,
-  Eraser, Highlighter, Italic, Link, List, ListOrdered, Minus,
-  PenLine, Quote, Strikethrough, Underline,
+  AlignCenter, AlignLeft, AlignRight, Bold, BookOpen, CheckSquare, Code,
+  Eraser, Italic, LayoutGrid, Link, List, ListOrdered, ListTree,
+  Minus, PanelTopClose, PenLine, Quote, Sparkles, Strikethrough, Underline,
 } from 'lucide-react';
 import { useOptionalWiki } from '@/contexts/WikiContext';
 import { campaignWikiPath, campaignWorkshopPath, readCampaignHandle } from '@/lib/campaignPaths';
@@ -45,6 +45,14 @@ function LabeledButton({ label, title, onClick, className = '', ariaExpanded, ar
 function MenuAction({ children, onClick, className = '' }: { children: React.ReactNode; onClick: () => void; className?: string }) {
   return <button type="button" className={`w-full rounded-md px-2 py-1.5 text-left text-xs text-muted hover:bg-elevated hover:text-foreground ${className}`}
     data-menu-action onMouseDown={(event) => event.preventDefault()} onClick={onClick}>{children}</button>;
+}
+
+function ToolbarGroup({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) {
+  return <div role="group" aria-label={label} className={`wiki-toolbar-group items-center gap-0.5 ${className}`}>{children}</div>;
+}
+
+function MenuHeading({ children }: { children: React.ReactNode }) {
+  return <div className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted/75">{children}</div>;
 }
 
 function openProvider(editor: Editor, provider: WikiProviderKind) {
@@ -144,16 +152,16 @@ export function WikiEditorToolbar({ editor, wikiTree = [], workshopFromPageId, p
   const flatPages = useMemo(() => wiki?.flatPages ?? flattenWikiTree(wikiTree), [wiki?.flatPages, wikiTree]);
   const [paragraphOpen, setParagraphOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const paragraphMenuRef = useRef<HTMLDivElement | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!paragraphOpen && !moreOpen) return;
     const dismissOnPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (target instanceof Element && target.closest('[data-editor-color-picker], [data-toolbar-nested-menu]')) return;
-      if (paragraphOpen && !paragraphMenuRef.current?.contains(target)) setParagraphOpen(false);
-      if (moreOpen && !moreMenuRef.current?.contains(target)) setMoreOpen(false);
+      if (!(target instanceof Element) || !target.closest('[data-toolbar-popover-root]')) {
+        setParagraphOpen(false);
+        setMoreOpen(false);
+      }
     };
     const dismissOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
@@ -189,58 +197,125 @@ export function WikiEditorToolbar({ editor, wikiTree = [], workshopFromPageId, p
     navigate(campaignWorkshopPath(campaignHandle, { fromPageId: workshopFromPageId }));
   };
 
-  return <div>
-    <div className="relative flex min-w-0 max-w-full items-center gap-0.5 overflow-visible border-b border-border bg-surface/80 px-2 py-1.5">
-      <div ref={paragraphMenuRef} className="relative shrink-0">
-        <LabeledButton label={<><span className="hidden min-[360px]:inline">Paragraph</span><span className="min-[360px]:hidden">¶</span></>} title="Paragraph styles" ariaExpanded={paragraphOpen} ariaHaspopup="menu" onClick={() => setParagraphOpen((open) => !open)} />
-        {paragraphOpen ? <div className="absolute left-0 top-full z-30 mt-1 w-44 rounded-lg border border-border bg-background p-1 shadow-xl">
-          <MenuAction onClick={() => { editor.chain().focus().setParagraph().run(); setParagraphOpen(false); }}>Paragraph</MenuAction>
-          {[1, 2, 3].map((level) => <MenuAction key={level} onClick={() => { editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run(); setParagraphOpen(false); }}>Heading {level}</MenuAction>)}
-          <MenuAction onClick={() => { editor.chain().focus().toggleBlockquote().run(); setParagraphOpen(false); }}><span className="inline-flex items-center gap-2"><Quote className="size-3.5" />Quote</span></MenuAction>
-          <MenuAction onClick={() => { editor.chain().focus().toggleCodeBlock().run(); setParagraphOpen(false); }}><span className="inline-flex items-center gap-2"><Code className="size-3.5" />Code block</span></MenuAction>
-        </div> : null}
-      </div>
+  const citeSource = () => window.dispatchEvent(new CustomEvent(OPEN_SOURCE_PICKER_EVENT, { detail: { editor } }));
+  const insertTable = () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  const insertToc = () => editor.chain().focus().insertContent({ type: 'toc' }).run();
+  const insertDetails = () => editor.chain().focus().setDetails().run();
+  const closeMoreAfter = (action: () => void) => () => { action(); setMoreOpen(false); };
 
-      <LabeledButton label={<><span className="hidden min-[360px]:inline">/ Commands</span><span className="min-[360px]:hidden">/</span></>} title="Open command menu" onClick={() => openProvider(editor, 'commands')} />
-      <LabeledButton label="[[ References" title="Open wiki reference picker" onClick={() => openProvider(editor, 'references')} className="hidden md:block" />
-      <LabeledButton label="@ Mentions" title="Open member and character picker" onClick={() => openProvider(editor, 'mentions')} className="hidden lg:block" />
-      <span className="mx-1 hidden h-5 w-px shrink-0 bg-elevated sm:block" />
-      <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold"><Bold className="size-4" /></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic"><Italic className="size-4" /></ToolbarButton>
-      <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline"><Underline className="size-4" /></ToolbarButton>
-      <ToolbarButton className="hidden sm:block" onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list"><List className="size-4" /></ToolbarButton>
-      <ToolbarButton className="hidden sm:block" onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list"><ListOrdered className="size-4" /></ToolbarButton>
-      <ToolbarButton className="hidden lg:block" onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Checklist"><CheckSquare className="size-4" /></ToolbarButton>
-      <ToolbarButton className="hidden md:block" onClick={link} active={editor.isActive('link')} title="Link"><Link className="size-4" /></ToolbarButton>
-      <div className="hidden xl:block"><EditorColorPickerToolbarButton kind="highlight" /></div>
+  const paragraphControl = (
+    <div data-toolbar-popover-root className="relative shrink-0">
+      <LabeledButton label={<><span className="hidden min-[360px]:inline">Paragraph</span><span className="min-[360px]:hidden">¶</span></>} title="Paragraph styles" ariaExpanded={paragraphOpen} ariaHaspopup="menu" onClick={() => setParagraphOpen((open) => !open)} />
+      {paragraphOpen ? <div role="menu" className="absolute left-0 top-full z-40 mt-1 w-44 rounded-lg border border-border bg-background p-1 shadow-xl">
+        <MenuAction onClick={() => { editor.chain().focus().setParagraph().run(); setParagraphOpen(false); }}>Paragraph</MenuAction>
+        {[1, 2, 3].map((level) => <MenuAction key={level} onClick={() => { editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 }).run(); setParagraphOpen(false); }}>Heading {level}</MenuAction>)}
+        <MenuAction onClick={() => { editor.chain().focus().toggleBlockquote().run(); setParagraphOpen(false); }}><span className="inline-flex items-center gap-2"><Quote className="size-3.5" />Quote</span></MenuAction>
+        <MenuAction onClick={() => { editor.chain().focus().toggleCodeBlock().run(); setParagraphOpen(false); }}><span className="inline-flex items-center gap-2"><Code className="size-3.5" />Code block</span></MenuAction>
+      </div> : null}
+    </div>
+  );
 
-      <div ref={moreMenuRef} className="relative ml-auto shrink-0">
-        <LabeledButton label="More" title="More editor actions" ariaExpanded={moreOpen} ariaHaspopup="menu" onClick={() => setMoreOpen((open) => !open)} />
-        {moreOpen ? <div className="absolute right-0 top-full z-40 mt-1 max-h-[70vh] w-56 overflow-y-auto rounded-xl border border-border bg-background p-1.5 shadow-xl"
-          onClick={(event) => { if ((event.target as Element).closest('[data-menu-action]')) setMoreOpen(false); }}>
-          <MenuAction className="md:hidden" onClick={() => openProvider(editor, 'references')}>[[ References</MenuAction>
-          <MenuAction className="lg:hidden" onClick={() => openProvider(editor, 'mentions')}>@ Mentions</MenuAction>
-          <MenuAction className="sm:hidden" onClick={() => editor.chain().focus().toggleBulletList().run()}>Bullet list</MenuAction>
-          <MenuAction className="sm:hidden" onClick={() => editor.chain().focus().toggleOrderedList().run()}>Numbered list</MenuAction>
-          <MenuAction className="lg:hidden" onClick={() => editor.chain().focus().toggleTaskList().run()}>Checklist</MenuAction>
-          <MenuAction className="md:hidden" onClick={link}>Link</MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().setDetails().run()}>Collapsible details</MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().toggleStrike().run()}><span className="inline-flex items-center gap-2"><Strikethrough className="size-3.5" />Strikethrough</span></MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().unsetAllMarks().run()}><span className="inline-flex items-center gap-2"><Eraser className="size-3.5" />Clear formatting</span></MenuAction>
-          <div className="my-1 border-t border-border" />
-          <MenuAction onClick={() => editor.chain().focus().setTextAlign('left').run()}><span className="inline-flex items-center gap-2"><AlignLeft className="size-3.5" />Align left</span></MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().setTextAlign('center').run()}><span className="inline-flex items-center gap-2"><AlignCenter className="size-3.5" />Align center</span></MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().setTextAlign('right').run()}><span className="inline-flex items-center gap-2"><AlignRight className="size-3.5" />Align right</span></MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().setHorizontalRule().run()}><span className="inline-flex items-center gap-2"><Minus className="size-3.5" />Divider</span></MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>Insert table</MenuAction>
-          <MenuAction onClick={() => editor.chain().focus().insertContent({ type: 'toc' }).run()}>Table of contents</MenuAction>
-          <MenuAction onClick={() => window.dispatchEvent(new CustomEvent(OPEN_SOURCE_PICKER_EVENT, { detail: { editor } }))}>Source citation</MenuAction>
-          <MenuAction onClick={autoLink}>Auto-Link</MenuAction>
-          <div className="flex items-center gap-1 px-1 py-1"><EditorColorPickerToolbarButton kind="text" /><span className="xl:hidden"><EditorColorPickerToolbarButton kind="highlight" /></span><Highlighter className="ml-auto size-3.5 text-muted" /></div>
-          <div className="px-1 py-1"><AdmonitionToolbarDropdown editor={editor} /></div>
-          {canOpenWorkshop ? <MenuAction onClick={workshop}><span className="inline-flex items-center gap-2"><PenLine className="size-3.5" />Workshop</span></MenuAction> : null}
-        </div> : null}
-      </div>
+  const overflowMenu = (
+    <div data-toolbar-popover-root className="relative ml-auto shrink-0">
+      <LabeledButton label="More" title="More editor actions" ariaExpanded={moreOpen} ariaHaspopup="menu" onClick={() => setMoreOpen((open) => !open)} />
+      {moreOpen ? <div role="menu" className="absolute right-0 top-full z-40 mt-1 max-h-[70vh] w-60 overflow-y-auto rounded-xl border border-border bg-background p-1.5 shadow-xl">
+        <div className="wiki-toolbar-mobile-only">
+          <MenuHeading>Formatting</MenuHeading>
+          <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().toggleStrike().run())}>Strikethrough</MenuAction>
+          <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().toggleBulletList().run())}>Bullet list</MenuAction>
+          <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().toggleOrderedList().run())}>Numbered list</MenuAction>
+          <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().toggleTaskList().run())}>Checklist</MenuAction>
+          <MenuAction onClick={closeMoreAfter(link)}>Link</MenuAction>
+        </div>
+        <MenuHeading>Formatting and alignment</MenuHeading>
+        <div className="flex items-center gap-1 px-2 py-1"><EditorColorPickerToolbarButton kind="text" /><EditorColorPickerToolbarButton kind="highlight" /><span className="ml-1 text-xs text-muted">Color and highlight</span></div>
+        <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().unsetAllMarks().run())}>Clear formatting</MenuAction>
+        <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().setTextAlign('left').run())}>Align left</MenuAction>
+        <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().setTextAlign('center').run())}>Align center</MenuAction>
+        <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().setTextAlign('right').run())}>Align right</MenuAction>
+        <MenuHeading>Insert</MenuHeading>
+        <MenuAction onClick={closeMoreAfter(citeSource)}>Source citation</MenuAction>
+        <MenuAction onClick={closeMoreAfter(insertTable)}>Table</MenuAction>
+        <MenuAction onClick={closeMoreAfter(insertToc)}>Table of contents</MenuAction>
+        <MenuAction onClick={closeMoreAfter(insertDetails)}>Collapsible details</MenuAction>
+        <div className="px-2 py-1"><AdmonitionToolbarDropdown editor={editor} /></div>
+        <MenuAction onClick={closeMoreAfter(() => editor.chain().focus().setHorizontalRule().run())}>Divider</MenuAction>
+        <MenuHeading>Providers</MenuHeading>
+        <MenuAction onClick={closeMoreAfter(() => openProvider(editor, 'references'))}>[[ References</MenuAction>
+        <MenuAction onClick={closeMoreAfter(() => openProvider(editor, 'mentions'))}>@ Mentions</MenuAction>
+        <MenuHeading>Tools</MenuHeading>
+        <MenuAction onClick={closeMoreAfter(autoLink)}>Auto-Link</MenuAction>
+        {canOpenWorkshop ? <MenuAction onClick={closeMoreAfter(workshop)}>Workshop</MenuAction> : null}
+      </div> : null}
+    </div>
+  );
+
+  return <div className="wiki-toolbar-container">
+    <div className="relative flex min-w-0 max-w-full flex-wrap items-center gap-1 overflow-visible border-b border-border bg-surface/80 px-2 py-1.5">
+      {paragraphControl}
+
+      <ToolbarGroup label="Text formatting" className="wiki-toolbar-desktop">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold"><Bold className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic"><Italic className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline"><Underline className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough"><Strikethrough className="size-4" /></ToolbarButton>
+        <EditorColorPickerToolbarButton kind="highlight" />
+        <EditorColorPickerToolbarButton kind="text" />
+        <ToolbarButton onClick={() => editor.chain().focus().unsetAllMarks().run()} title="Clear formatting"><Eraser className="size-4" /></ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarGroup label="Lists" className="wiki-toolbar-desktop">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list"><List className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list"><ListOrdered className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Checklist"><CheckSquare className="size-4" /></ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarGroup label="Alignment" className="wiki-toolbar-desktop">
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align left"><AlignLeft className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Align center"><AlignCenter className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align right"><AlignRight className="size-4" /></ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarGroup label="Insert" className="wiki-toolbar-desktop">
+        <ToolbarButton onClick={link} active={editor.isActive('link')} title="Link"><Link className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={citeSource} title="Source citation"><BookOpen className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={insertTable} title="Insert table"><LayoutGrid className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={insertToc} title="Table of contents"><ListTree className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={insertDetails} title="Collapsible details"><PanelTopClose className="size-4" /></ToolbarButton>
+        <AdmonitionToolbarDropdown editor={editor} />
+        <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Divider"><Minus className="size-4" /></ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarGroup label="Providers" className="wiki-toolbar-desktop">
+        <LabeledButton label="/ Commands" title="Open command menu" onClick={() => openProvider(editor, 'commands')} />
+        <LabeledButton label="[[ References" title="Open wiki reference picker" onClick={() => openProvider(editor, 'references')} />
+        <LabeledButton label="@ Mentions" title="Open member and character picker" onClick={() => openProvider(editor, 'mentions')} />
+      </ToolbarGroup>
+      <ToolbarGroup label="Editor tools" className="wiki-toolbar-desktop">
+        <ToolbarButton onClick={autoLink} title="Auto-Link"><Sparkles className="size-4" /></ToolbarButton>
+        {canOpenWorkshop ? <ToolbarButton onClick={workshop} title="Open in Workshop"><PenLine className="size-4" /></ToolbarButton> : null}
+      </ToolbarGroup>
+
+      <ToolbarGroup label="Common formatting" className="wiki-toolbar-tablet">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold"><Bold className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic"><Italic className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline"><Underline className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="Strikethrough"><Strikethrough className="size-4" /></ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarGroup label="Lists" className="wiki-toolbar-tablet">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list"><List className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Numbered list"><ListOrdered className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleTaskList().run()} active={editor.isActive('taskList')} title="Checklist"><CheckSquare className="size-4" /></ToolbarButton>
+      </ToolbarGroup>
+      <ToolbarGroup label="Providers" className="wiki-toolbar-tablet">
+        <LabeledButton label="/ Commands" title="Open command menu" onClick={() => openProvider(editor, 'commands')} />
+        <LabeledButton label="[[ References" title="Open wiki reference picker" onClick={() => openProvider(editor, 'references')} />
+        <LabeledButton label="@ Mentions" title="Open member and character picker" onClick={() => openProvider(editor, 'mentions')} />
+      </ToolbarGroup>
+
+      <ToolbarGroup label="Core formatting" className="wiki-toolbar-mobile">
+        <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold"><Bold className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic"><Italic className="size-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline"><Underline className="size-4" /></ToolbarButton>
+      </ToolbarGroup>
+      <div className="wiki-toolbar-mobile"><LabeledButton label="/" title="Open command menu" onClick={() => openProvider(editor, 'commands')} /></div>
+      <div className="wiki-toolbar-responsive-overflow">{overflowMenu}</div>
     </div>
     <ContextualToolbar editor={editor} campaignHandle={campaignHandle} flatPages={flatPages} />
   </div>;
