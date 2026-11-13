@@ -60,7 +60,7 @@
     "multer": "^2.5.0",
     "music-metadata": "^12.3.2",
     "nodemailer": "^10.3.1",
-    "openid-client": "^6.8.8",
+    "openid-client": "^6.8.9",
     "pg": "^8.16.3",
     "sharp": "^0.35.5",
     "swagger-ui-express": "^5.0.1",
