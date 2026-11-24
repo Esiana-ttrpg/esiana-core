@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+## [1.10.0] - Unreleased
+
+### Added
+
+- **Yearly Wrapped** ? Explore a personalized annual retrospective of your creative activity, with story slides, a year archive, and an optional seasonal invitation. Coverage is identified when historical data is incomplete; writing coverage for 2026 begins in November.
+- **Wrapped Sharing** ? Download a share card as a PNG or share it on supported devices. Publishing a Wrapped edition to your public profile is optional and can be reversed; published editions remain frozen until republished.
+- **Personal Statistics** ? Explore writing, worldbuilding, maps, chronology, sessions, and participation across accessible campaigns, with activity visualizations and a personal statistics export.
+- **Wiki Editor** ? Added task lists and collapsible details to the rich-text editor.
+
+### Improved
+
+- **Wiki Editor** ? Updated Tiptap packages and refined toolbar layout, mobile responsiveness, accessibility, and link editing.
+- **Campaign Visibility** ? Expanded audience controls and previews for campaign content, including Adventures and Characters, with more consistent visibility across wiki and graph views.
+- **Workspaces** ? Refined headers, navigation, filtering, loading and error states across maps, chronology, wiki, downtime, progression, and other campaign hubs.
+- **Campaign Creation** ? Improved mobile and desktop layouts and date and time inputs in the campaign wizard.
+- **Downtime** ? Expanded resource management and refined project permissions.
+
+### Fixed
+
+- Improved Party audience handling in adventure previews, references, session rosters, and related campaign views.
+- Added build dependencies for the production SQLite driver when a prebuilt binary is unavailable in the Docker build.
+
+### Database
+
+- Seven migrations add writing contributions and sessions, map and chronology authorship, and Wrapped snapshots and publication settings. Schema migrations run at startup; maintainers should review them and verify upgrades on both supported database providers before tagging.
+
 ## [1.9.0] - 2026-11-01
 
 ### Added
