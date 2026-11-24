@@ -59,7 +59,11 @@ test('OPDS route controls, audience authorization and credential lifecycle', { s
     const basic = { authorization: `Basic ${Buffer.from(`reader:${party.secret}`).toString('base64')}` };
     assert.equal((await request('/opds/me', basic)).status, 200);
     assert.equal((await request('/opds/me/', basic)).status, 200);
-    const apiToken = await (await request('/api/user/tokens', memberHeaders, 'POST', { name: 'Ordinary API key', durationDays: 30, scopes: ['campaign:read'] })).json();
+    const apiTokenResponse = await request('/api/user/tokens', memberHeaders, 'POST', { name: 'Ordinary API key', durationDays: 30, scopes: ['campaign:read'] });
+    assert.equal(apiTokenResponse.status, 201);
+    const apiToken = await apiTokenResponse.json();
+    assert.equal(typeof apiToken.secret, 'string');
+    assert.ok(apiToken.secret.length > 0);
     assert.equal((await request('/opds/me', { authorization: `Bearer ${apiToken.secret}` })).status, 401, 'ordinary API keys are not reader credentials');
     await prisma.userToken.delete({ where: { id: apiToken.token.id } });
     assert.equal((await request('/api/user/schedule', bearer)).status, 401, 'OPDS secret must not authenticate general APIs');
@@ -116,8 +120,11 @@ test('OPDS route controls, audience authorization and credential lifecycle', { s
     assert.ok(listed.credentials.length); assert.doesNotMatch(JSON.stringify(listed), /tokenHash|secret/);
     assert.equal((await request(`/api/admin/users/${member.id}/opds/credentials/${adminRevoke.credential.id}`, adminHeaders, 'DELETE')).status, 200);
     assert.equal((await request('/opds/me', { authorization: `Bearer ${adminRevoke.secret}` })).status, 401);
-    await issue(memberHeaders); await issue(memberHeaders);
+    const bulkFirst = await issue(memberHeaders); const bulkSecond = await issue(memberHeaders);
     assert.equal((await request('/api/user/opds/credentials', memberHeaders, 'DELETE', { confirmation: 'REVOKE ALL OPDS CREDENTIALS' })).status, 200);
+    for (const credential of [bulkFirst, bulkSecond]) {
+      assert.equal((await request('/opds/me', { authorization: `Bearer ${credential.secret}` })).status, 401);
+    }
     assert.equal((await request('/opds/me', gmBearer)).status, 200, 'user bulk revocation cannot affect another user');
     await issue(memberHeaders);
     await request(`/api/admin/users/${member.id}/opds/credentials`, adminHeaders, 'DELETE');

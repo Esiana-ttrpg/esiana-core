@@ -103,8 +103,9 @@ opdsRouter.get(['/me/:id', '/campaigns/:id', '/me/:id/:module', '/campaigns/:id/
   const audience = resolveAdventureAudience(context, undefined, null);
   const summaries = await prisma.wikiPage.findMany({ where: { campaignId: campaign.id, deletedAt: null }, orderBy: { id: 'asc' },
     select: { id: true, title: true, parentId: true, visibility: true, metadata: true, workspace: true, pathKey: true, templateType: true, updatedAt: true } });
-  const detail = req.params.pageId ? await prisma.wikiPage.findFirst({ where: { campaignId: campaign.id, id: String(req.params.pageId), deletedAt: null }, select: { id: true, blocks: true } }) : null;
-  const source = summaries.map(row => ({ ...row, blocks: detail?.id === row.id ? detail.blocks : [] }));
+  const detail = req.params.pageId ? await prisma.wikiPage.findFirst({ where: { campaignId: campaign.id, id: String(req.params.pageId), deletedAt: null }, select: { id: true, visibility: true, blocks: true } }) : null;
+  const source = summaries.map(row => ({ ...row, visibility: detail?.id === row.id ? detail.visibility : row.visibility,
+    blocks: detail?.id === row.id ? detail.blocks : [] }));
   const pages = hasElevatedNarrativeView(context.actor) ? source : await projectAdventurePages(campaign.id, source, audience.canViewPage);
   const base = `/opds/${personal ? 'me' : 'campaigns'}/${campaign.id}`;
   if (req.params.pageId) {

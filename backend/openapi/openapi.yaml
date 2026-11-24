@@ -62,9 +62,7 @@ paths:
       tags:
         - Administration
       summary: DELETE /api/admin/opds/credentials
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters: []
@@ -76,7 +74,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -89,6 +87,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required:
                 - confirmation
               properties:
@@ -98,9 +97,7 @@ paths:
       tags:
         - Administration
       summary: GET /api/admin/opds/credentials
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters: []
@@ -112,7 +109,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -124,9 +121,7 @@ paths:
       tags:
         - Administration
       summary: DELETE /api/admin/users/{userId}/opds/credentials
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters:
@@ -143,7 +138,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -154,9 +149,7 @@ paths:
       tags:
         - Administration
       summary: GET /api/admin/users/{userId}/opds/credentials
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters:
@@ -172,8 +165,37 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - credentials
+                properties:
+                  credentials:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        scopes:
+                          type: array
+                          items:
+                            type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        expiresAt:
+                          type: string
+                          format: date-time
+                        lastUsedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -185,9 +207,7 @@ paths:
       tags:
         - Administration
       summary: DELETE /api/admin/users/{userId}/opds/credentials/{credentialId}
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters:
@@ -209,7 +229,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -221,9 +241,7 @@ paths:
       tags:
         - User Account
       summary: DELETE /api/user/opds/credentials
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters: []
@@ -235,7 +253,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -246,9 +264,7 @@ paths:
       tags:
         - User Account
       summary: GET /api/user/opds/credentials
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters: []
@@ -259,8 +275,37 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - credentials
+                properties:
+                  credentials:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        scopes:
+                          type: array
+                          items:
+                            type: string
+                        createdAt:
+                          type: string
+                          format: date-time
+                        expiresAt:
+                          type: string
+                          format: date-time
+                        lastUsedAt:
+                          type:
+                            - string
+                            - "null"
+                          format: date-time
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -271,9 +316,7 @@ paths:
       tags:
         - User Account
       summary: POST /api/user/opds/credentials
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters: []
@@ -284,8 +327,40 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - secret
+                  - credential
+                properties:
+                  secret:
+                    type: string
+                    minLength: 1
+                    description: One-time reader secret. Returned only at creation.
+                  credential:
+                    type: object
+                    required:
+                      - id
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      scopes:
+                        type: array
+                        items:
+                          type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                      expiresAt:
+                        type: string
+                        format: date-time
+                      lastUsedAt:
+                        type:
+                          - string
+                          - "null"
+                        format: date-time
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -298,6 +373,7 @@ paths:
           application/json:
             schema:
               type: object
+              additionalProperties: false
               required:
                 - name
               properties:
@@ -310,9 +386,7 @@ paths:
       tags:
         - User Account
       summary: DELETE /api/user/opds/credentials/{credentialId}
-      description: Manage isolated read-only OPDS reader credentials. Secrets are
-        returned only at creation. Administrators never receive credential
-        secrets.
+      description: Manage isolated read-only OPDS reader credentials. Secrets are returned only at creation. Administrators never receive credential secrets.
       security:
         - cookieAuth: []
       parameters:
@@ -329,7 +403,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Session authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -341,10 +415,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -362,7 +433,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -374,10 +445,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/campaigns
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -395,7 +463,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -407,10 +475,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/campaigns/{id}
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -433,7 +498,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -445,10 +510,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/campaigns/{id}/{module}
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -476,7 +538,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -488,10 +550,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/campaigns/{id}/pages/{pageId}
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -513,7 +572,7 @@ paths:
               schema:
                 type: string
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -525,10 +584,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/campaigns/{id}/pages/{pageId}/manifest.json
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -550,7 +606,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -562,10 +618,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/me
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - opdsBasic: []
         - opdsBearer: []
@@ -584,7 +637,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Isolated reader credential required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -596,10 +649,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/me/{id}
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - opdsBasic: []
         - opdsBearer: []
@@ -623,7 +673,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Isolated reader credential required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -635,10 +685,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/me/{id}/{module}
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - opdsBasic: []
         - opdsBearer: []
@@ -667,7 +714,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Isolated reader credential required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -679,10 +726,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/me/{id}/pages/{pageId}
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - opdsBasic: []
         - opdsBearer: []
@@ -705,7 +749,7 @@ paths:
               schema:
                 type: string
         "401":
-          description: Session or isolated reader credential required
+          description: Isolated reader credential required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -717,10 +761,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/me/{id}/pages/{pageId}/manifest.json
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - opdsBasic: []
         - opdsBearer: []
@@ -743,7 +784,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Isolated reader credential required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -755,10 +796,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/recruiting
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -776,7 +814,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -788,10 +826,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/recruiting/{id}
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -808,7 +843,7 @@ paths:
               schema:
                 type: string
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -820,10 +855,7 @@ paths:
       tags:
         - OPDS
       summary: GET /opds/recruiting/{id}/manifest.json
-      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
-        membership, current permissions and audience projection apply. Public
-        routes require the instance login gate and public OPDS flags to allow
-        access.
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign membership, current permissions and audience projection apply. Public routes require the instance login gate and public OPDS flags to allow access.
       security:
         - {}
       parameters:
@@ -840,7 +872,7 @@ paths:
               schema:
                 type: object
         "401":
-          description: Session or isolated reader credential required
+          description: Authentication required
         "403":
           description: Insufficient privileges or personal OPDS disabled
         "404":
@@ -853,8 +885,7 @@ paths:
       tags:
         - Wiki
       summary: Read effective campaign audio configuration
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -902,8 +933,7 @@ paths:
       tags:
         - Wiki
       summary: Update campaign audio configuration
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -994,8 +1024,7 @@ paths:
       tags:
         - Wiki
       summary: List permitted provider names, capabilities, and models
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1055,8 +1084,7 @@ paths:
       tags:
         - Wiki
       summary: Read campaign processing usage
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1106,13 +1134,10 @@ paths:
         - Wiki
       summary: List visible session recordings
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
@@ -1257,13 +1282,10 @@ paths:
         - Wiki
       summary: Create a session recording
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
@@ -1294,9 +1316,7 @@ paths:
             minLength: 1
             maxLength: 200
             pattern: ^[A-Za-z0-9._:-]+$
-          description: Persist and reuse this key when retrying creation. Scoped to campaign, authenticated user, and operation
-            for 72 hours. An identical normalized request returns the original resource without reserving storage twice.
-            Changed input returns 409; a deleted resource returns 410.
+          description: Persist and reuse this key when retrying creation. Scoped to campaign, authenticated user, and operation for 72 hours. An identical normalized request returns the original resource without reserving storage twice. Changed input returns 409; a deleted resource returns 410.
       responses:
         "201":
           description: Success
@@ -1425,8 +1445,7 @@ paths:
                     - uploader_and_managers
                 consentAcknowledged:
                   const: true
-                  description: Uploader confirms participants were informed and permission was obtained to upload and share this
-                    recording.
+                  description: Uploader confirms participants were informed and permission was obtained to upload and share this recording.
               required:
                 - title
                 - consentAcknowledged
@@ -1442,8 +1461,7 @@ paths:
       tags:
         - Wiki
       summary: Read an authorized recording
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1572,8 +1590,7 @@ paths:
       tags:
         - Wiki
       summary: Update recording metadata
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1727,8 +1744,7 @@ paths:
       tags:
         - Wiki
       summary: Delete recording metadata while retaining physical media
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1779,13 +1795,10 @@ paths:
         - Wiki
       summary: Create a chapter from a playback or segment position
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
@@ -1894,8 +1907,7 @@ paths:
       tags:
         - Wiki
       summary: Edit a timestamped chapter
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -1976,8 +1988,7 @@ paths:
       tags:
         - Wiki
       summary: Delete a chapter
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2032,8 +2043,7 @@ paths:
       tags:
         - Wiki
       summary: Preview file order and affected annotations
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2100,8 +2110,7 @@ paths:
       tags:
         - Wiki
       summary: Commit reviewed file order and annotation resolutions
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2191,8 +2200,7 @@ paths:
       tags:
         - Wiki
       summary: Read a permitted published transcript or editor revision
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2251,19 +2259,15 @@ paths:
         - Wiki
       summary: Save a manual or imported transcript draft
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
 
-        curl --fail-with-body -X POST
-        "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/transcript/revisions" \
+        curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/transcript/revisions" \
           -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
           --data '{"expectedRevision":0,"segments":[{"startMs":0,"endMs":500,"text":"Neris discovers a letter.","speaker":"Neris"}]}'
         ```
@@ -2400,8 +2404,7 @@ paths:
         - lang: Shell
           label: curl
           source: >-
-            curl --fail-with-body -X POST
-            "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/transcript/revisions" \
+            curl --fail-with-body -X POST "$ESIANA_URL/api/campaigns/$CAMPAIGN/audio/recordings/$RECORDING_ID/transcript/revisions" \
               -H "Authorization: Bearer $ESIANA_TOKEN" -H 'Content-Type: application/json' \
               --data '{"expectedRevision":0,"segments":[{"startMs":0,"endMs":500,"text":"Neris discovers a letter.","speaker":"Neris"}]}'
   /api/campaigns/{campaignHandle}/audio/recordings/{recordingId}/transcript/publish:
@@ -2409,8 +2412,7 @@ paths:
       tags:
         - Wiki
       summary: Publish a revision with renewed provider authorization when applicable
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2479,8 +2481,7 @@ paths:
       tags:
         - Wiki
       summary: Request permitted timestamped transcription
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2547,8 +2548,7 @@ paths:
       tags:
         - Wiki
       summary: Read content-neutral transcription status
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2602,8 +2602,7 @@ paths:
       tags:
         - Wiki
       summary: Review retained provider output under transcript content permissions
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2662,8 +2661,7 @@ paths:
       tags:
         - Wiki
       summary: Cancel transcription without deleting campaign content
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2729,8 +2727,7 @@ paths:
       tags:
         - Wiki
       summary: Retry an interrupted or failed transcription
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -2797,13 +2794,10 @@ paths:
         - Wiki
       summary: Reserve quota and begin a resumable audio or backup upload
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
@@ -2830,9 +2824,7 @@ paths:
             minLength: 1
             maxLength: 200
             pattern: ^[A-Za-z0-9._:-]+$
-          description: Persist and reuse this key when retrying creation. Scoped to campaign, authenticated user, and operation
-            for 72 hours. An identical normalized request returns the original resource without reserving storage twice.
-            Changed input returns 409; a deleted resource returns 410.
+          description: Persist and reuse this key when retrying creation. Scoped to campaign, authenticated user, and operation for 72 hours. An identical normalized request returns the original resource without reserving storage twice. Changed input returns 409; a deleted resource returns 410.
       responses:
         "201":
           description: Success
@@ -2906,13 +2898,10 @@ paths:
         - Wiki
       summary: Read authoritative upload status and offset
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
@@ -2979,13 +2968,10 @@ paths:
         - Wiki
       summary: Append at most 8 MiB at the authoritative byte offset
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
@@ -3070,8 +3056,7 @@ paths:
       tags:
         - Wiki
       summary: Cancel an unfinished upload and release its reservation
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3122,13 +3107,10 @@ paths:
         - Wiki
       summary: Validate and idempotently finalize uploaded media or backup archive
       description: >-
-        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does
-        not confer content access. Times are integer milliseconds.
+        Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
 
 
-        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require
-        campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session
-        disclosure, operation permissions, storage quotas, or upload ownership.
+        External clients authenticate with an ordinary campaign member’s scoped API token. Read operations require campaign:read; mutations require campaign:write. Token scopes never replace campaign membership, session disclosure, operation permissions, storage quotas, or upload ownership.
 
 
         ```bash
@@ -3138,9 +3120,7 @@ paths:
         ```
 
 
-        Finalization is inherently idempotent by upload ID: retries after completion return the same file/asset. A
-        concurrent finalization can return 409 upload_busy; check progress and retry. No new idempotency key is needed.
-        All authorization checks still run.
+        Finalization is inherently idempotent by upload ID: retries after completion return the same file/asset. A concurrent finalization can return 409 upload_busy; check progress and retry. No new idempotency key is needed. All authorization checks still run.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3207,8 +3187,7 @@ paths:
       tags:
         - Administration
       summary: Read global audio governance settings
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3291,8 +3270,7 @@ paths:
       tags:
         - Administration
       summary: Update global audio governance settings
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3422,8 +3400,7 @@ paths:
       tags:
         - Administration
       summary: Inspect content-neutral physical audio usage and upload health
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3467,8 +3444,7 @@ paths:
       tags:
         - Administration
       summary: Explicitly purge an unreferenced physical audio asset
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3513,8 +3489,7 @@ paths:
       tags:
         - Administration
       summary: Administratively remove a recording without reading its content
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3559,8 +3534,7 @@ paths:
       tags:
         - Administration
       summary: List global processing connections with masked credentials
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3603,8 +3577,7 @@ paths:
       tags:
         - Administration
       summary: Create a global processing connection
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3707,8 +3680,7 @@ paths:
       tags:
         - Administration
       summary: Update global endpoint, policy, and encrypted credential
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3816,8 +3788,7 @@ paths:
       tags:
         - Administration
       summary: Test endpoint reachability without sending campaign audio
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3866,8 +3837,7 @@ paths:
       tags:
         - Administration
       summary: Declare a model and its explicit capabilities
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3940,8 +3910,7 @@ paths:
       tags:
         - Administration
       summary: List campaign provider access policies
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -3985,8 +3954,7 @@ paths:
       tags:
         - Administration
       summary: Explicitly grant or revoke selected campaigns
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -4072,8 +4040,7 @@ paths:
       tags:
         - Administration
       summary: Read campaign-attributed processing metrics without content
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -4122,8 +4089,7 @@ paths:
       tags:
         - Administration
       summary: Aggregate all campaign processing consumption without content
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -4167,8 +4133,7 @@ paths:
       tags:
         - Administration
       summary: Cancel an operational job without accessing campaign content
-      description: Requires authenticated campaign membership and the relevant audio capability. Global provider
-        administration does not confer content access. Times are integer milliseconds.
+      description: Requires authenticated campaign membership and the relevant audio capability. Global provider administration does not confer content access. Times are integer milliseconds.
       security:
         - cookieAuth: []
         - bearerAuth: []
@@ -4302,9 +4267,7 @@ paths:
       summary: Discover visible recordings associated with attendance or upload
       security:
         - cookieAuth: []
-      description: Grouped by campaign/session. Uses existing session and recording
-        visibility checks. Attendance or association is discovery only and is
-        never required to submit a concern.
+      description: Grouped by campaign/session. Uses existing session and recording visibility checks. Attendance or association is discovery only and is never required to submit a concern.
       responses:
         "200":
           description: Success
@@ -4341,9 +4304,7 @@ paths:
       summary: List own requests, or a capability-authorized campaign inbox
       security:
         - cookieAuth: []
-      description: Without campaign, returns only the authenticated requester's
-        history, including after departure. With campaign, requires current
-        safety.manage. Global administration grants no access.
+      description: Without campaign, returns only the authenticated requester's history, including after departure. With campaign, requires current safety.manage. Global administration grants no access.
       parameters:
         - in: query
           name: campaign
@@ -4390,10 +4351,7 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/SafetyPrivacyCreate"
-      description: Requires safety.submit for current members, or retained
-        participation eligibility for former members. Does not change or delete
-        related content. Notifications contain only neutral wording and an
-        authenticated request link.
+      description: Requires safety.submit for current members, or retained participation eligibility for former members. Does not change or delete related content. Notifications contain only neutral wording and an authenticated request link.
       responses:
         "201":
           description: Success
@@ -4444,10 +4402,7 @@ paths:
           name: id
           required: true
           schema: *a1
-      description: Only the requester (including former members) or a current
-        safety.manage reviewer may read this. Records the viewed revision for the
-        reviewer unread count. Does not hydrate related content or bypass content
-        permissions.
+      description: Only the requester (including former members) or a current safety.manage reviewer may read this. Records the viewed revision for the reviewer unread count. Does not hydrate related content or bypass content permissions.
       responses:
         "200":
           description: Success
@@ -4598,11 +4553,11 @@ paths:
         - name: entityType
           in: path
           required: true
-          schema: { type: string, enum: [events, eras] }
+          schema: {type: string, enum: [events, eras]}
         - name: entityId
           in: path
           required: true
-          schema: { type: string }
+          schema: {type: string}
       requestBody:
         required: true
         content:
@@ -4611,7 +4566,7 @@ paths:
               type: object
               required: [pageId]
               properties:
-                pageId: { type: [string, "null"] }
+                pageId: {type: [string, "null"]}
       responses:
         '200':
           description: Page linked or unlinked
@@ -4785,10 +4740,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  events: { type: integer }
-                  trajectories: { type: integer }
-                  recurringRules: { type: integer }
-                  overviewWords: { type: integer }
+                  events: {type: integer}
+                  trajectories: {type: integer}
+                  recurringRules: {type: integer}
+                  overviewWords: {type: integer}
         '404':
           description: Era unavailable
   /api/calendar/sessions:
@@ -4840,13 +4795,13 @@ paths:
           description: RFC 5545 calendar attachment
           headers:
             Content-Disposition:
-              schema: { type: string }
+              schema: {type: string}
           content:
             text/calendar:
-              schema: { type: string }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+              schema: {type: string}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "429": {$ref: "#/components/responses/RateLimited"}
       x-esiana-authorization:
         boundary: authenticated-user
         requires:
@@ -4864,10 +4819,10 @@ paths:
           description: Current subscription status; the secret URL is never returned after issuance
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CalendarSubscriptionStatusResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+              schema: {$ref: "#/components/schemas/CalendarSubscriptionStatusResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "429": {$ref: "#/components/responses/RateLimited"}
       x-esiana-authorization:
         boundary: authenticated-user
         requires: [Authenticated application user session]
@@ -4883,15 +4838,15 @@ paths:
           description: Subscription created; copy the returned URL now
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+              schema: {$ref: "#/components/schemas/CalendarSubscriptionIssuedResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
         "409":
           description: A subscription is already active
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+              schema: {$ref: "#/components/schemas/ErrorResponse"}
+        "429": {$ref: "#/components/responses/RateLimited"}
       x-esiana-authorization:
         boundary: authenticated-user
         requires: [Authenticated application user session]
@@ -4906,10 +4861,10 @@ paths:
           description: Subscription revoked, or already absent
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/OkResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+              schema: {$ref: "#/components/schemas/OkResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "429": {$ref: "#/components/responses/RateLimited"}
       x-esiana-authorization:
         boundary: authenticated-user
         requires: [Authenticated application user session]
@@ -4926,15 +4881,15 @@ paths:
           description: Existing subscription regenerated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
+              schema: {$ref: "#/components/schemas/CalendarSubscriptionIssuedResponse"}
         "201":
           description: Subscription created because none existed
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/CalendarSubscriptionIssuedResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+              schema: {$ref: "#/components/schemas/CalendarSubscriptionIssuedResponse"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "429": {$ref: "#/components/responses/RateLimited"}
       x-esiana-authorization:
         boundary: authenticated-user
         requires: [Authenticated application user session]
@@ -4949,7 +4904,7 @@ paths:
           in: path
           required: true
           description: High-entropy private subscription credential.
-          schema: { type: string }
+          schema: {type: string}
       security:
         - {}
       responses:
@@ -4957,9 +4912,9 @@ paths:
           description: RFC 5545 calendar feed
           content:
             text/calendar:
-              schema: { type: string }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/RateLimited" }
+              schema: {type: string}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "429": {$ref: "#/components/responses/RateLimited"}
       x-esiana-authorization:
         boundary: private-capability-url
         requires:
@@ -8862,12 +8817,12 @@ paths:
       tags: [Chronology]
       summary: Get campaign chronology settings
       operationId: get_api_campaigns_campaignHandle_chronology_settings
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security: [{cookieAuth: []}, {bearerAuth: []}]
       parameters:
         - name: campaignHandle
           in: path
           required: true
-          schema: { type: string }
+          schema: {type: string}
       responses:
         "200":
           description: Campaign-scoped event defaults
@@ -8876,22 +8831,22 @@ paths:
               schema:
                 type: object
                 properties:
-                  settings: { $ref: "#/components/schemas/ChronologySettings" }
+                  settings: {$ref: "#/components/schemas/ChronologySettings"}
     put:
       tags: [Chronology]
       summary: Update campaign chronology settings
       operationId: put_api_campaigns_campaignHandle_chronology_settings
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security: [{cookieAuth: []}, {bearerAuth: []}]
       parameters:
         - name: campaignHandle
           in: path
           required: true
-          schema: { type: string }
+          schema: {type: string}
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ChronologySettingsUpdate" }
+            schema: {$ref: "#/components/schemas/ChronologySettingsUpdate"}
       responses:
         "200":
           description: Updated campaign chronology settings
@@ -8900,7 +8855,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  settings: { $ref: "#/components/schemas/ChronologySettings" }
+                  settings: {$ref: "#/components/schemas/ChronologySettings"}
   /api/campaigns/{campaignHandle}/chronology/categories:
     get:
       tags:
@@ -10134,26 +10089,26 @@ paths:
       summary: List campaign Hirelings
       operationId: listDowntimeHirelings
       description: Returns visibility-filtered Hireling relationships and visible Haven/Project assignment options.
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security: [{cookieAuth: []}, {bearerAuth: []}]
       parameters:
         - $ref: "#/components/parameters/campaignHandle"
       responses:
         "200":
           description: Hireling roster
-          content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingRoster" } } }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+          content: {application/json: {schema: {$ref: "#/components/schemas/DowntimeHirelingRoster"}}}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
     post:
       tags: [Downtime]
       summary: Create or link a Hireling
       operationId: createDowntimeHireling
       description: Atomically creates an optional Character and its Hireling relationship, or links an existing campaign Character.
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security: [{cookieAuth: []}, {bearerAuth: []}]
       parameters:
         - $ref: "#/components/parameters/campaignHandle"
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingCreateInput" } } }
+        content: {application/json: {schema: {$ref: "#/components/schemas/DowntimeHirelingCreateInput"}}}
       responses:
         "201":
           description: Hireling created
@@ -10162,19 +10117,19 @@ paths:
               schema:
                 type: object
                 required: [person]
-                properties: { person: { $ref: "#/components/schemas/DowntimeHireling" } }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
+                properties: {person: {$ref: "#/components/schemas/DowntimeHireling"}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
   /api/campaigns/{campaignHandle}/downtime/people/by-character/{pageId}:
     get:
       tags: [Downtime]
       summary: Get a Hireling by Character
       operationId: getDowntimeHirelingByCharacter
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security: [{cookieAuth: []}, {bearerAuth: []}]
       parameters:
         - $ref: "#/components/parameters/campaignHandle"
-        - { name: pageId, in: path, required: true, schema: { type: string } }
+        - {name: pageId, in: path, required: true, schema: {type: string}}
       responses:
         "200":
           description: Character-context Hireling presentation
@@ -10184,24 +10139,24 @@ paths:
                 type: object
                 required: [person, assignmentOptions]
                 properties:
-                  person: { $ref: "#/components/schemas/DowntimeHireling" }
-                  assignmentOptions: { $ref: "#/components/schemas/DowntimeHirelingAssignmentOptions" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+                  person: {$ref: "#/components/schemas/DowntimeHireling"}
+                  assignmentOptions: {$ref: "#/components/schemas/DowntimeHirelingAssignmentOptions"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /api/campaigns/{campaignHandle}/downtime/people/{id}:
     patch:
       tags: [Downtime]
       summary: Update a Hireling
       operationId: updateDowntimeHireling
       description: Inactive or Former status clears the current assignment; returning to Active does not restore it. Character pages and tags are not synchronized.
-      security: [{ cookieAuth: [] }, { bearerAuth: [] }]
+      security: [{cookieAuth: []}, {bearerAuth: []}]
       parameters:
         - $ref: "#/components/parameters/campaignHandle"
-        - { name: id, in: path, required: true, schema: { type: string } }
+        - {name: id, in: path, required: true, schema: {type: string}}
       requestBody:
         required: true
-        content: { application/json: { schema: { $ref: "#/components/schemas/DowntimeHirelingUpdateInput" } } }
+        content: {application/json: {schema: {$ref: "#/components/schemas/DowntimeHirelingUpdateInput"}}}
       responses:
         "200":
           description: Hireling updated
@@ -10210,11 +10165,11 @@ paths:
               schema:
                 type: object
                 required: [person]
-                properties: { person: { $ref: "#/components/schemas/DowntimeHireling" } }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+                properties: {person: {$ref: "#/components/schemas/DowntimeHireling"}}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /api/campaigns/{campaignHandle}/downtime/projects:
     get:
       tags:
@@ -14043,11 +13998,7 @@ paths:
           schema:
             type: string
           description: >-
-            Omit to use default layer visibility. An empty value hides all
-            explicitly layered objects; a comma-separated list enables only
-            the selected layers. Unlayered objects retain their existing
-            visibility rules. This filter does not grant authorization or
-            bypass temporal or revelation filtering.
+            Omit to use default layer visibility. An empty value hides all explicitly layered objects; a comma-separated list enables only the selected layers. Unlayered objects retain their existing visibility rules. This filter does not grant authorization or bypass temporal or revelation filtering.
       responses:
         "200":
           description: Successful response
@@ -27897,10 +27848,7 @@ components:
           type: array
           items: *a1
           maxItems: 1000
-      description: Related content type and reference must be supplied together.
-        References are opaque user-supplied text; they do not grant content access.
-        recipientIds must exactly match the disclosed eligible reviewers; refresh
-        recipients on 409.
+      description: Related content type and reference must be supplied together. References are opaque user-supplied text; they do not grant content access. recipientIds must exactly match the disclosed eligible reviewers; refresh recipients on 409.
     SafetyPrivacyStatusUpdate:
       type: object
       additionalProperties: false
@@ -27913,121 +27861,119 @@ components:
         expectedRevision:
           type: integer
           minimum: 0
-      description: Managers may change status; resolving or declining requires a
-        nonblank visible reason. Requesters may reopen resolved or declined
-        requests. Revision conflicts return 409.
+      description: Managers may change status; resolving or declining requires a nonblank visible reason. Requesters may reopen resolved or declined requests. Revision conflicts return 409.
     IdLabel:
       type: object
       required: [id, label]
       properties:
-        id: { type: string }
-        label: { type: string }
+        id: {type: string}
+        label: {type: string}
     DowntimeHirelingFeature:
       type: object
       required: [id, title]
       properties:
-        id: { type: string }
-        title: { type: string, minLength: 1, maxLength: 120 }
-        description: { type: [string, "null"], maxLength: 1000 }
+        id: {type: string}
+        title: {type: string, minLength: 1, maxLength: 120}
+        description: {type: [string, "null"], maxLength: 1000}
     DowntimeHirelingAssignmentOptions:
       type: object
       required: [havens, projects]
       properties:
-        havens: { type: array, items: { $ref: "#/components/schemas/IdLabel" } }
-        projects: { type: array, items: { $ref: "#/components/schemas/IdLabel" } }
+        havens: {type: array, items: {$ref: "#/components/schemas/IdLabel"}}
+        projects: {type: array, items: {$ref: "#/components/schemas/IdLabel"}}
     DowntimeHireling:
       type: object
       required: [id, characterPageId, characterName, characterHref, relationshipType, status, compensation, features, canEdit]
       properties:
-        id: { type: string }
-        characterPageId: { type: string }
-        characterName: { type: string }
-        characterHref: { type: string }
-        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER] }
-        role: { type: [string, "null"] }
-        status: { type: string, enum: [ACTIVE, INACTIVE, FORMER] }
+        id: {type: string}
+        characterPageId: {type: string}
+        characterName: {type: string}
+        characterHref: {type: string}
+        relationshipType: {type: string, enum: [HIRELING, FOLLOWER, MEMBER]}
+        role: {type: [string, "null"]}
+        status: {type: string, enum: [ACTIVE, INACTIVE, FORMER]}
         assignment:
           oneOf:
             - type: object
               required: [kind, id, label, href]
               properties:
-                kind: { type: string, enum: [haven, project] }
-                id: { type: string }
-                label: { type: string }
-                href: { type: string }
+                kind: {type: string, enum: [haven, project]}
+                id: {type: string}
+                label: {type: string}
+                href: {type: string}
             - type: "null"
         compensation:
           type: object
           required: [amount, currency, cadence, unpaid, label]
           properties:
-            amount: { type: [integer, "null"], minimum: 0 }
-            currency: { type: [string, "null"] }
-            cadence: { type: [string, "null"] }
-            unpaid: { type: boolean }
-            label: { type: string }
-        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
-        notes: { type: [string, "null"] }
-        startedAtEpochMinute: { type: [string, "null"] }
-        endedAtEpochMinute: { type: [string, "null"] }
-        canEdit: { type: boolean }
+            amount: {type: [integer, "null"], minimum: 0}
+            currency: {type: [string, "null"]}
+            cadence: {type: [string, "null"]}
+            unpaid: {type: boolean}
+            label: {type: string}
+        features: {type: array, items: {$ref: "#/components/schemas/DowntimeHirelingFeature"}}
+        notes: {type: [string, "null"]}
+        startedAtEpochMinute: {type: [string, "null"]}
+        endedAtEpochMinute: {type: [string, "null"]}
+        canEdit: {type: boolean}
     DowntimeHirelingCreateInput:
       type: object
       required: [relationshipType]
       properties:
-        characterPageId: { type: string, description: Existing campaign Character; mutually exclusive with characterName. }
-        characterName: { type: string, description: Minimal Character name for atomic creation; mutually exclusive with characterPageId. }
-        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER], default: HIRELING }
-        role: { type: string, maxLength: 200 }
-        havenId: { type: [string, "null"] }
-        projectId: { type: [string, "null"], description: Mutually exclusive with havenId. }
-        compensationAmount: { type: integer, minimum: 0 }
-        compensationCurrency: { type: string }
-        compensationCadence: { type: string, enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL] }
-        compensationUnpaid: { type: boolean }
-        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
-        notes: { type: [string, "null"], maxLength: 5000 }
-        addHirelingTag: { type: boolean, default: false, description: Explicit opt-in only; never synchronized afterward. }
+        characterPageId: {type: string, description: Existing campaign Character; mutually exclusive with characterName.}
+        characterName: {type: string, description: Minimal Character name for atomic creation; mutually exclusive with characterPageId.}
+        relationshipType: {type: string, enum: [HIRELING, FOLLOWER, MEMBER], default: HIRELING}
+        role: {type: string, maxLength: 200}
+        havenId: {type: [string, "null"]}
+        projectId: {type: [string, "null"], description: Mutually exclusive with havenId.}
+        compensationAmount: {type: integer, minimum: 0}
+        compensationCurrency: {type: string}
+        compensationCadence: {type: string, enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL]}
+        compensationUnpaid: {type: boolean}
+        features: {type: array, items: {$ref: "#/components/schemas/DowntimeHirelingFeature"}}
+        notes: {type: [string, "null"], maxLength: 5000}
+        addHirelingTag: {type: boolean, default: false, description: Explicit opt-in only; never synchronized afterward.}
     DowntimeHirelingUpdateInput:
       type: object
       properties:
-        relationshipType: { type: string, enum: [HIRELING, FOLLOWER, MEMBER] }
-        role: { type: [string, "null"], maxLength: 200 }
-        status: { type: string, enum: [ACTIVE, INACTIVE, FORMER] }
-        havenId: { type: [string, "null"] }
-        projectId: { type: [string, "null"], description: Mutually exclusive with havenId. }
-        compensationAmount: { type: [integer, "null"], minimum: 0 }
-        compensationCurrency: { type: [string, "null"] }
-        compensationCadence: { type: [string, "null"], enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL, null] }
-        compensationUnpaid: { type: boolean }
-        features: { type: array, items: { $ref: "#/components/schemas/DowntimeHirelingFeature" } }
-        notes: { type: [string, "null"], maxLength: 5000 }
+        relationshipType: {type: string, enum: [HIRELING, FOLLOWER, MEMBER]}
+        role: {type: [string, "null"], maxLength: 200}
+        status: {type: string, enum: [ACTIVE, INACTIVE, FORMER]}
+        havenId: {type: [string, "null"]}
+        projectId: {type: [string, "null"], description: Mutually exclusive with havenId.}
+        compensationAmount: {type: [integer, "null"], minimum: 0}
+        compensationCurrency: {type: [string, "null"]}
+        compensationCadence: {type: [string, "null"], enum: [ONE_TIME, WEEKLY, MONTHLY, SEASONAL, null]}
+        compensationUnpaid: {type: boolean}
+        features: {type: array, items: {$ref: "#/components/schemas/DowntimeHirelingFeature"}}
+        notes: {type: [string, "null"], maxLength: 5000}
     DowntimeHirelingRoster:
       type: object
       required: [people, summary, assignmentOptions]
       properties:
-        people: { type: array, items: { $ref: "#/components/schemas/DowntimeHireling" } }
+        people: {type: array, items: {$ref: "#/components/schemas/DowntimeHireling"}}
         summary:
           type: object
           required: [active, assignedToProjects, assignedToHavens, unassigned]
           properties:
-            active: { type: integer, minimum: 0 }
-            assignedToProjects: { type: integer, minimum: 0 }
-            assignedToHavens: { type: integer, minimum: 0 }
-            unassigned: { type: integer, minimum: 0 }
-        assignmentOptions: { $ref: "#/components/schemas/DowntimeHirelingAssignmentOptions" }
+            active: {type: integer, minimum: 0}
+            assignedToProjects: {type: integer, minimum: 0}
+            assignedToHavens: {type: integer, minimum: 0}
+            unassigned: {type: integer, minimum: 0}
+        assignmentOptions: {$ref: "#/components/schemas/DowntimeHirelingAssignmentOptions"}
     CampaignCalendarDate:
       type: object
       required: [year, month, day]
       properties:
-        year: { type: integer, minimum: 1, maximum: 10000 }
-        month: { type: integer, minimum: 0, description: Zero-based month in the selected calendar and year. }
-        day: { type: integer, minimum: 1 }
+        year: {type: integer, minimum: 1, maximum: 10000}
+        month: {type: integer, minimum: 0, description: Zero-based month in the selected calendar and year.}
+        day: {type: integer, minimum: 1}
     ChronologyEraInput:
       type: object
       required: [calendarId, name, startDate, endDate, visibility, isCurrent]
       properties:
-        calendarId: { type: string }
-        name: { type: string, minLength: 1, maxLength: 120 }
+        calendarId: {type: string}
+        name: {type: string, minLength: 1, maxLength: 120}
         startDate:
           oneOf:
             - $ref: '#/components/schemas/CampaignCalendarDate'
@@ -28037,24 +27983,24 @@ components:
           oneOf:
             - $ref: '#/components/schemas/CampaignCalendarDate'
             - type: 'null'
-        visibility: { type: string, enum: [PUBLIC, PARTY, DM_ONLY] }
-        isCurrent: { type: boolean }
-        description: { type: [string, "null"], description: Explicit authored chronology description; omission preserves the existing value. Independent of linked wiki prose. }
+        visibility: {type: string, enum: [PUBLIC, PARTY, DM_ONLY]}
+        isCurrent: {type: boolean}
+        description: {type: [string, "null"], description: Explicit authored chronology description; omission preserves the existing value. Independent of linked wiki prose.}
     ChronologyEra:
       allOf:
         - $ref: '#/components/schemas/ChronologyEraInput'
         - type: object
           properties:
-            id: { type: string }
-            calendarName: { type: string }
-            isMasterTime: { type: boolean }
-            sortOrder: { type: integer }
-            status: { type: string, enum: [PAST, PRESENT, FUTURE] }
-            overview: { type: string, readOnly: true, description: Authorized display projection; never accepted as an authored description. }
-            overviewPageId: { type: [string, "null"], description: Optional visible authored page. }
-            slug: { type: string }
-            slugAliases: { type: array, items: { type: string } }
-            canManage: { type: boolean }
+            id: {type: string}
+            calendarName: {type: string}
+            isMasterTime: {type: boolean}
+            sortOrder: {type: integer}
+            status: {type: string, enum: [PAST, PRESENT, FUTURE]}
+            overview: {type: string, readOnly: true, description: Authorized display projection; never accepted as an authored description.}
+            overviewPageId: {type: [string, "null"], description: Optional visible authored page.}
+            slug: {type: string}
+            slugAliases: {type: array, items: {type: string}}
+            canManage: {type: boolean}
     CalendarSubscriptionStatusResponse:
       type: object
       required: [subscription]
@@ -28064,10 +28010,10 @@ components:
             - type: object
               required: [active, createdAt, updatedAt, lastAccessAt]
               properties:
-                active: { type: boolean, const: true }
-                createdAt: { type: string, format: date-time }
-                updatedAt: { type: string, format: date-time }
-                lastAccessAt: { type: [string, "null"], format: date-time }
+                active: {type: boolean, const: true}
+                createdAt: {type: string, format: date-time}
+                updatedAt: {type: string, format: date-time}
+                lastAccessAt: {type: [string, "null"], format: date-time}
             - type: "null"
     CalendarSubscriptionIssuedResponse:
       type: object
@@ -28077,13 +28023,13 @@ components:
           type: object
           required: [active, url, createdAt, updatedAt]
           properties:
-            active: { type: boolean, const: true }
+            active: {type: boolean, const: true}
             url:
               type: string
               format: uri
               description: Secret subscription URL, returned only when issued or regenerated.
-            createdAt: { type: string, format: date-time }
-            updatedAt: { type: string, format: date-time }
+            createdAt: {type: string, format: date-time}
+            updatedAt: {type: string, format: date-time}
     SessionCalendarEvent:
       type: object
       required:
@@ -28126,9 +28072,9 @@ components:
           type: object
           required: [id, name, handle]
           properties:
-            id: { type: string }
-            name: { type: string }
-            handle: { type: string }
+            id: {type: string}
+            name: {type: string}
+            handle: {type: string}
         href:
           type: string
         venue:
@@ -28136,10 +28082,10 @@ components:
             - type: object
               required: [type, label, url, locationPageId]
               properties:
-                type: { type: [string, "null"] }
-                label: { type: [string, "null"] }
-                url: { type: [string, "null"] }
-                locationPageId: { type: [string, "null"] }
+                type: {type: [string, "null"]}
+                label: {type: [string, "null"]}
+                url: {type: [string, "null"]}
+                locationPageId: {type: [string, "null"]}
             - type: "null"
         sequenceOrder:
           type: integer
@@ -28437,32 +28383,32 @@ components:
       type: object
       required: [manualEventImportance, downtimeEventImportance, progressionEventImportance]
       properties:
-        id: { type: string }
-        campaignId: { type: string }
-        manualEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
-        downtimeEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
-        progressionEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        id: {type: string}
+        campaignId: {type: string}
+        manualEventImportance: {$ref: "#/components/schemas/CalendarEventImportance"}
+        downtimeEventImportance: {$ref: "#/components/schemas/CalendarEventImportance"}
+        progressionEventImportance: {$ref: "#/components/schemas/CalendarEventImportance"}
       description: Campaign-scoped defaults copied only onto newly created chronology events. Defaults are MINOR, NOTICE, and NOTICE respectively.
     ChronologySettingsUpdate:
       type: object
       properties:
-        manualEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
-        downtimeEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
-        progressionEventImportance: { $ref: "#/components/schemas/CalendarEventImportance" }
+        manualEventImportance: {$ref: "#/components/schemas/CalendarEventImportance"}
+        downtimeEventImportance: {$ref: "#/components/schemas/CalendarEventImportance"}
+        progressionEventImportance: {$ref: "#/components/schemas/CalendarEventImportance"}
     CalendarEventCategory:
       type: object
       required: [id, campaignId, name]
       properties:
-        id: { type: string }
-        campaignId: { type: string }
-        name: { type: string }
-        color: { type: string, nullable: true }
+        id: {type: string}
+        campaignId: {type: string}
+        name: {type: string}
+        color: {type: string, nullable: true}
         icon:
           type: string
           nullable: true
           enum: [tag, swords, landmark, users, compass, triangle-alert, search, heart, cake, crown, null]
           description: Supported category icon key. POST and PATCH accept this field; null uses the default icon.
-        sortOrder: { type: integer }
+        sortOrder: {type: integer}
       description: Campaign-scoped, freely editable event category. New campaigns receive nine defaults once. Existing campaigns receive missing non-legacy defaults; missing Personal is preserved because prior deletion or customization cannot be established. Null categoryId means virtual Uncategorized. Category PATCH also accepts orderedCategoryIds containing every campaign category ID exactly once to save display order, and rejects requests combining that field with name, color, or icon. Legacy saved Uncategorized categories retain their IDs and can be edited; creating or renaming another category to Uncategorized is rejected. Categories are independent of importance.
     ApiResponse:
       description: Endpoint-specific JSON response. See the operation description and examples.

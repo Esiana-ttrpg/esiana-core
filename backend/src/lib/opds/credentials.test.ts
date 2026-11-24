@@ -13,6 +13,12 @@ test('reader credential digests are isolated from general API token authenticati
 test('reader authentication parses Basic password and Bearer without accepting URL credentials', () => {
   assert.equal(parseReaderSecret(`Basic ${Buffer.from('reader:secret').toString('base64')}`), 'secret');
   assert.equal(parseReaderSecret('Bearer secret'), 'secret');
+  for (const scheme of ['basic', 'bAsIc', 'BASIC']) {
+    assert.equal(parseReaderSecret(`${scheme} ${Buffer.from('reader:SeCrEt').toString('base64')}`), 'SeCrEt');
+  }
+  for (const scheme of ['bearer', 'bEaReR', 'BEARER']) {
+    assert.equal(parseReaderSecret(`${scheme} SeCrEt`), 'SeCrEt');
+  }
   assert.equal(parseReaderSecret(undefined), null);
   assert.equal(parseReaderSecret('Basic invalid!'), null);
   assert.equal(parseReaderSecret(`Basic ${Buffer.from('no-colon').toString('base64')}`), null);

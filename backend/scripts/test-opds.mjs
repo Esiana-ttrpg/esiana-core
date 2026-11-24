@@ -27,7 +27,7 @@ try {
   }
   db.close();
   const result = spawnSync(process.execPath, ['--import', 'tsx', '--import', './scripts/session-audio-test-env.mjs', '--test', '--test-concurrency=1',
-    'src/routes/opds.http.test.ts', 'src/lib/opds/feed.test.ts', 'src/lib/opds/pageContent.test.ts', 'src/lib/opds/credentials.test.ts', 'src/lib/opds/reading.test.ts', 'src/lib/rateLimit/coverage.test.ts'], { cwd: backend, stdio: 'inherit', env: fixtureEnv });
+    'scripts/sync-opds-openapi.test.mjs', 'src/routes/opds.http.test.ts', 'src/lib/opds/feed.test.ts', 'src/lib/opds/pageContent.test.ts', 'src/lib/opds/credentials.test.ts', 'src/lib/opds/reading.test.ts', 'src/lib/rateLimit/coverage.test.ts'], { cwd: backend, stdio: 'inherit', env: fixtureEnv });
   process.exitCode = result.status ?? 1;
 } finally {
   if (db?.open) db.close();

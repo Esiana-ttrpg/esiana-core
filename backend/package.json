@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:opds": "node scripts/test-opds.mjs",
+    "test:opds": "pnpm --filter @esiana/ssrf-guard build && pnpm --filter @esiana/plugin-source-policy build && node scripts/test-opds.mjs",
     "test:adventure-party": "node --import tsx --test src/routes/adventureAudience.database.http.test.ts",
     "test:downtime-permissions": "node --import tsx scripts/test-downtime-permissions.mjs",
     "test:api-token-content": "node scripts/test-api-token-content.mjs",

@@ -14,8 +14,8 @@ export function generateReaderSecret(): string {
 /** Accept Basic for reader clients and Bearer for clients with custom headers. */
 export function parseReaderSecret(header: string | undefined): string | null {
   if (!header) return null;
-  if (header.startsWith('Bearer ')) return header.slice(7).trim() || null;
-  if (!header.startsWith('Basic ')) return null;
+  if (/^Bearer /i.test(header)) return header.slice(7).trim() || null;
+  if (!/^Basic /i.test(header)) return null;
   const encoded = header.slice(6);
   if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return null;
   const decoded = Buffer.from(encoded, 'base64').toString('utf8');
