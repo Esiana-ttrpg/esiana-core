@@ -9,6 +9,7 @@ export type RelationsProjectionParams = {
   focus?: string;
   at?: string;
   includeHistorical?: boolean;
+  previewAsPlayer?: boolean;
 };
 
 export type RelationsProjectionResult = RelationsRenderModel & {
@@ -25,6 +26,7 @@ export async function fetchRelationsProjection(
   if (params.focus) search.set('focus', params.focus);
   if (params.at) search.set('at', params.at);
   if (params.includeHistorical) search.set('includeHistorical', 'true');
+  if (params.previewAsPlayer) search.set('previewAsPlayer', 'true');
   const qs = search.toString();
   return apiFetch<RelationsProjectionResult>(
     `/campaigns/${params.campaignHandle}/entity-graph/projection${qs ? `?${qs}` : ''}`,

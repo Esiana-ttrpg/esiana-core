@@ -25,13 +25,14 @@ function emptyOverview(): DowntimeHubOverviewPayload {
   };
 }
 
-function render(overview: DowntimeHubOverviewPayload, canManage = false): string {
+function render(overview: DowntimeHubOverviewPayload, canManage = false, canCreate = canManage): string {
   return renderToStaticMarkup(
     <MemoryRouter>
       <DowntimeOverviewSection
         campaignHandle="winter-road"
         overview={overview}
         canManage={canManage}
+        canCreate={canCreate}
         canContributeToLedger={canManage}
         onCreateProject={() => undefined}
         onCreateHaven={() => undefined}
@@ -62,4 +63,13 @@ test('DowntimeOverviewSection exposes contextual actions and pending event revie
   assert.match(html, /Add entry/);
   assert.match(html, /3 events awaiting review/);
   assert.match(html, /section=worldEvents/);
+});
+
+test('creation controls follow Create independently of Manage', () => {
+  const player = render(emptyOverview(), false, true);
+  assert.match(player, /Start a project/);
+  assert.match(player, /Add a haven/);
+  const revoked = render(emptyOverview(), true, false);
+  assert.doesNotMatch(revoked, /Start a project/);
+  assert.doesNotMatch(revoked, /Add a haven/);
 });

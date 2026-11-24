@@ -36,6 +36,9 @@ export function AdminGeneralSettingsForm() {
   const [relationsMaxVisibleNodes, setRelationsMaxVisibleNodes] = useState('');
   const [relationsMaxVisibleEdges, setRelationsMaxVisibleEdges] = useState('');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [wrappedEnabled, setWrappedEnabled] = useState(true);
+  const [publicWrappedPublishingEnabled, setPublicWrappedPublishingEnabled] =
+    useState(true);
   const [systemBannerText, setSystemBannerText] = useState('');
   const [bannerDuration, setBannerDuration] = useState<BannerDuration>('3h');
   const [bannerExpiresAt, setBannerExpiresAt] = useState('');
@@ -87,6 +90,8 @@ export function AdminGeneralSettingsForm() {
   function applySettings(row: SystemSettings) {
     setAllowRegistrations(row.registration.allowRegistrations);
     setRequireLogin(row.publicAccess?.requireLogin ?? true);
+    setWrappedEnabled(row.wrapped?.enabled ?? true);
+    setPublicWrappedPublishingEnabled(row.wrapped?.publicPublishingEnabled ?? true);
     setAllowedDomains(row.registration.allowedDomains);
     setSmtpHost(row.smtp.host);
     setSmtpPort(String(row.smtp.port));
@@ -190,6 +195,10 @@ export function AdminGeneralSettingsForm() {
       const updated = await updateAdminSettings({
         registration: { allowRegistrations, allowedDomains },
         publicAccess: { requireLogin },
+        wrapped: {
+          enabled: wrappedEnabled,
+          publicPublishingEnabled: publicWrappedPublishingEnabled,
+        },
         smtp: {
           host: smtpHost,
           port: parsedSmtpPort,
@@ -245,6 +254,25 @@ export function AdminGeneralSettingsForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      <AdminSectionCard
+        title="Yearly Wrapped"
+        description="Storytelling retrospectives built on Personal Statistics. Disabling public publishing hides previously published editions without deleting private snapshots."
+        icon={Bell}
+      >
+        <div className="space-y-4">
+          <ToggleRow
+            label="Yearly Wrapped enabled"
+            checked={wrappedEnabled}
+            onChange={setWrappedEnabled}
+          />
+          <ToggleRow
+            label="Public Wrapped publishing enabled"
+            checked={publicWrappedPublishingEnabled}
+            onChange={setPublicWrappedPublishingEnabled}
+          />
+        </div>
+      </AdminSectionCard>
+
       {/* 1. System Status Alerts */}
       <AdminSectionCard
         title="System Status Alerts"

@@ -49,8 +49,10 @@ export function formatCampaignDateLabel(
 
 export async function fetchTimeTracking(
   campaignHandle: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<TimeTrackingBundle> {
-  return apiFetch<TimeTrackingBundle>(`/campaigns/${campaignHandle}/time-tracking`);
+  const query = options?.previewAsPlayer ? '?previewAsPlayer=true' : '';
+  return apiFetch<TimeTrackingBundle>(`/campaigns/${campaignHandle}/time-tracking${query}`);
 }
 
 export async function advanceCampaignTime(

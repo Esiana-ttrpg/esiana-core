@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type SetStateAction } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useWiki } from '@/contexts/WikiContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   campaignCategoryChildPath,
   readCampaignHandle,
@@ -51,6 +52,12 @@ import {
 import {
   readCategoryIndexBrowseSnapshot,
   writeCategoryIndexBrowseSnapshot,
+  readWorkspaceBrowseState,
+  resolveWorkspaceBrowseUrl,
+  updateStoredWorkspaceBrowseState,
+  writeWorkspaceBrowseUrl,
+  type WorkspaceBrowseState,
+  type WorkspaceBrowseConfig,
   type CategoryIndexViewMode,
 } from '@/lib/categoryIndexBrowseStorage';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
@@ -69,6 +76,10 @@ import {
 import { resolveCategoryIndexEmptyVariant } from '@/lib/categoryIndexEmptyState';
 import { CategoryIndexDiscoveryBanner, DiscoveryStateBadge } from '@/components/wiki/indexBrowse/CategoryIndexDiscoveryBanner';
 import type { CategoryDiscoverySummary } from '@/lib/wiki';
+import { parseLocationMetadata, resolveLocationRegionLabel } from '@/lib/locationMetadata';
+import { groupLocationBrowseChildren, sortLocationBrowseChildren } from '@/lib/locationBrowseState';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
+import { MembershipRoles } from '@shared/campaignPolicy/membershipRoles';
 
 interface WikiIndexViewProps {
   categoryPageId: string;
@@ -88,16 +99,33 @@ interface WikiIndexViewProps {
  * @see projectCategoryIndexBrowseChildren
  * @see entityBrowserProjection.test.ts
  */
-export function EntityBrowserView({
+export function EntityBrowserView(props: WikiIndexViewProps) {
+  return props.categoryTitle === 'Locations' ? <LocationsBrowser {...props} /> : <EntityBrowser {...props} />;
+}
+
+function LocationsBrowser(props: WikiIndexViewProps) {
+  const { user } = useAuth();
+  const { campaignHandle: wikiCampaignSlug } = useWiki();
+  const params = useParams<{ campaignHandle?: string }>();
+  const campaignHandle = readCampaignHandle(params) || wikiCampaignSlug;
+  return <EntityBrowser key={`${user?.id ?? 'public'}:${campaignHandle}:${props.categoryPageId}`}
+    {...props} browseUserId={user?.id ?? null} />;
+}
+
+function EntityBrowser({
   categoryPageId,
   categoryTitle,
-}: WikiIndexViewProps) {
+  browseUserId,
+}: WikiIndexViewProps & { browseUserId?: string | null }) {
   const { t } = useTranslation();
   const params = useParams<{ campaignHandle?: string }>();
-  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign } =
+  const { campaignHandle: wikiCampaignSlug, flatPages, refresh, campaign, can } =
     useWiki();
   const campaignHandle = readCampaignHandle(params) || wikiCampaignSlug;
   const navigate = useNavigate();
+  const [urlParams, setUrlParams] = useSearchParams();
+  const isLocations = categoryTitle === 'Locations';
+  const compactHeader = isLocations || ['Objects', 'Families', 'Rules/Resources'].includes(categoryTitle);
 
   const [children, setChildren] = useState<CategoryIndexChild[]>([]);
   const [discoverySummary, setDiscoverySummary] =
@@ -108,9 +136,9 @@ export function EntityBrowserView({
     null,
   );
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [refineState, setRefineState] = useState<CategoryIndexRefineState>({});
-  const [viewMode, setViewMode] = useState<CategoryIndexViewMode>(() =>
+  const [legacySearch, setLegacySearch] = useState('');
+  const [legacyRefine, setLegacyRefine] = useState<CategoryIndexRefineState>({});
+  const [legacyView, setLegacyView] = useState<CategoryIndexViewMode>(() =>
     getCategoryDefaultView(categoryTitle),
   );
   const [browseHydrated, setBrowseHydrated] = useState(false);
@@ -127,12 +155,48 @@ export function EntityBrowserView({
 
   const isDMUser = useElevatedNarrativeView();
 
-  const canCreate = true;
+  const canCreate = Boolean(campaign?.isMember) && campaign?.role !== MembershipRoles.OBSERVER &&
+    can(CampaignCapabilities.PAGE_CREATE);
+
+  useEffect(() => {
+    if (!canCreate) {
+      setIsCreateOpen(false);
+      setCreateInitialTitle(null);
+    }
+  }, [canCreate]);
 
   const facetDefs = useMemo(
     () => getCategoryIndexFacetDefs(categoryTitle, isDMUser),
     [categoryTitle, isDMUser],
   );
+
+  const browseConfig = useMemo<WorkspaceBrowseConfig>(() => ({
+    defaults: { searchQuery: '', refineState: {}, group: 'none', sort: 'name', direction: 'asc', viewMode: getCategoryDefaultView(categoryTitle) },
+    groups: ['none', 'region'], sorts: ['name', 'updated'], views: allowedViews,
+    facetIds: facetDefs.map(facet => facet.id),
+  }), [categoryTitle, allowedViews, facetDefs]);
+  const scope = useMemo(() => browseUserId ? { userId: browseUserId, campaignHandle, workspaceId: categoryPageId } : null,
+    [browseUserId, campaignHandle, categoryPageId]);
+  const locationBrowse = useMemo(() => {
+    const saved = scope ? readWorkspaceBrowseState(scope, browseConfig) : browseConfig.defaults;
+    return resolveWorkspaceBrowseUrl(saved, urlParams, browseConfig);
+  }, [scope, browseConfig, urlParams]);
+  function updateLocationBrowse(update: Partial<WorkspaceBrowseState>) {
+    const next = { ...locationBrowse, ...update };
+    if (scope) updateStoredWorkspaceBrowseState(scope, browseConfig, update);
+    setUrlParams(writeWorkspaceBrowseUrl(urlParams, next));
+  }
+  const searchQuery = isLocations ? locationBrowse.searchQuery : legacySearch;
+  const refineState = useMemo(() => isLocations
+    ? mergeRefineStateWithNewOptions(locationBrowse.refineState, facetDefs, children, categoryTitle)
+    : legacyRefine, [isLocations, locationBrowse.refineState, facetDefs, children, categoryTitle, legacyRefine]);
+  const viewMode = isLocations ? locationBrowse.viewMode : legacyView;
+  const setSearchQuery = (value: string) => isLocations ? updateLocationBrowse({ searchQuery: value }) : setLegacySearch(value);
+  const setRefineState = (value: SetStateAction<CategoryIndexRefineState>) => {
+    if (isLocations) updateLocationBrowse({ refineState: typeof value === 'function' ? value(refineState) : value });
+    else setLegacyRefine(value);
+  };
+  const setViewMode = (value: CategoryIndexViewMode) => isLocations ? updateLocationBrowse({ viewMode: value }) : setLegacyView(value);
 
   const pageById = useMemo(
     () => buildWikiPageLookup(flatPages),
@@ -178,13 +242,13 @@ export function EntityBrowserView({
       campaignHandle,
       categoryPageId,
     );
-    if (snapshot?.searchQuery !== undefined) {
+    if (!isLocations && snapshot?.searchQuery !== undefined) {
       setSearchQuery(snapshot.searchQuery);
     }
-    if (snapshot?.viewMode) {
+    if (!isLocations && snapshot?.viewMode) {
       setViewMode(snapshot.viewMode);
     }
-    if (snapshot?.refineState) {
+    if (!isLocations && snapshot?.refineState) {
       setRefineState(snapshot.refineState);
     }
     if (snapshot?.columnKeys) {
@@ -193,10 +257,10 @@ export function EntityBrowserView({
       );
     }
     setBrowseHydrated(true);
-  }, [campaignHandle, categoryPageId, browseHydrated, categoryTitle]);
+  }, [campaignHandle, categoryPageId, browseHydrated, categoryTitle, isLocations]);
 
   useEffect(() => {
-    if (children.length === 0 || facetDefs.length === 0) return;
+    if (isLocations || children.length === 0 || facetDefs.length === 0) return;
     setRefineState((prev) => {
       const hasKeys = Object.keys(prev).length > 0;
       if (!hasKeys) {
@@ -209,7 +273,7 @@ export function EntityBrowserView({
         categoryTitle,
       );
     });
-  }, [children, facetDefs, categoryTitle]);
+  }, [children, facetDefs, categoryTitle, isLocations]);
 
   useEffect(() => {
     if (!browseHydrated || !campaignHandle) return;
@@ -227,6 +291,7 @@ export function EntityBrowserView({
     refineState,
     viewMode,
     selectedOptionalColumnKeys,
+    isLocations,
   ]);
 
   const hasActiveRefine = useMemo(
@@ -241,15 +306,27 @@ export function EntityBrowserView({
   );
 
   const filteredChildren = useMemo(
-    () =>
-      projectCategoryIndexBrowseChildren(children, {
+    () => {
+      const result = projectCategoryIndexBrowseChildren(children, {
         searchQuery,
         refineState,
         facetDefs,
         categoryTitle,
-      }),
-    [children, searchQuery, refineState, facetDefs, categoryTitle],
+      });
+      if (!isLocations || viewMode === 'hierarchy') return result;
+      return sortLocationBrowseChildren(result, locationBrowse.sort, locationBrowse.direction);
+    },
+    [children, searchQuery, refineState, facetDefs, categoryTitle, isLocations, viewMode, locationBrowse.sort, locationBrowse.direction],
   );
+
+  const locationGroups = useMemo(() => {
+    if (!isLocations || viewMode === 'hierarchy' || locationBrowse.group !== 'region') return null;
+    return groupLocationBrowseChildren(filteredChildren, child => {
+      const location = parseLocationMetadata(child.metadata);
+      return { regionPageId: location.regionPageId, region: location.region,
+        label: resolveLocationRegionLabel(location, flatPages) };
+    });
+  }, [isLocations, viewMode, locationBrowse.group, filteredChildren, flatPages]);
 
   const activeRefineChips = useMemo(
     () =>
@@ -307,11 +384,13 @@ export function EntityBrowserView({
   }, [children, searchQuery, emptyVariant]);
 
   function handleCreate() {
+    if (!canCreate) return;
     setCreateInitialTitle(null);
     setIsCreateOpen(true);
   }
 
   function handleCreateFromSearch(title: string) {
+    if (!canCreate) return;
     setCreateInitialTitle(title);
     setIsCreateOpen(true);
   }
@@ -344,8 +423,11 @@ export function EntityBrowserView({
   return (
     <>
       <CategoryHubShell
+        headerDensity={compactHeader ? 'compact' : 'default'}
         catalogGridClass={
-          isEntityCatalogCategory(categoryTitle) && viewMode === 'card'
+          isLocations && viewMode !== 'card'
+            ? 'w-full min-w-0'
+            : isEntityCatalogCategory(categoryTitle) && viewMode === 'card'
             ? 'entity-catalog-grid'
             : 'hub-stagger-grid'
         }
@@ -358,7 +440,7 @@ export function EntityBrowserView({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <FolderOpen className="size-6 text-primary" strokeWidth={1.25} />
+            <FolderOpen className={`${compactHeader ? 'size-4' : 'size-6'} text-primary`} strokeWidth={1.25} aria-hidden />
             {categoryTitle}
           </>
         }
@@ -366,6 +448,7 @@ export function EntityBrowserView({
           <CategoryIndexToolbar
             createLabel={`Create ${itemLabel}`}
             onCreate={handleCreate}
+            createAction={canCreate && !error ? undefined : null}
             resultCountLabel={resultCountLabel}
             refineControl={
               facetDefs.length > 0 ? (
@@ -378,6 +461,22 @@ export function EntityBrowserView({
                   searchQuery={searchQuery}
                   onSearchChange={setSearchQuery}
                   searchPlaceholder={getCategoryIndexSearchPlaceholder(categoryTitle)}
+                  grouping={isLocations && viewMode !== 'hierarchy' ? {
+                    value: locationBrowse.group, defaultValue: 'none',
+                    options: [{ value: 'none', label: 'None' }, { value: 'region', label: 'Region' }],
+                    onChange: group => updateLocationBrowse({ group }),
+                  } : undefined}
+                  sorting={isLocations && viewMode !== 'hierarchy' ? {
+                    value: locationBrowse.sort, defaultValue: 'name',
+                    options: [{ value: 'name', label: 'Name' }, { value: 'updated', label: 'Updated' }],
+                    direction: locationBrowse.direction, defaultDirection: 'asc',
+                    onChange: sort => updateLocationBrowse({ sort }),
+                    onDirectionChange: direction => updateLocationBrowse({ direction }),
+                  } : undefined}
+                  onResetFilters={isLocations ? () => updateLocationBrowse({ searchQuery: '', refineState: {} }) : undefined}
+                  onResetAll={isLocations ? () => updateLocationBrowse({
+                    searchQuery: '', refineState: {}, group: 'none', sort: 'name', direction: 'asc',
+                  }) : undefined}
                   onResetRefine={() => {
                     setRefineState(
                       resetCategoryIndexRefine(facetDefs, children, categoryTitle),
@@ -415,13 +514,7 @@ export function EntityBrowserView({
           ) : null
         }
       >
-      {error && (
-        <p className="mb-4 rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
-          {error}
-        </p>
-      )}
-
-      {discoverySummary && discoverySummary.undiscoveredCount > 0 ? (
+      {!error && discoverySummary && discoverySummary.undiscoveredCount > 0 ? (
         <div className="mb-4">
           <CategoryIndexDiscoveryBanner
             undiscoveredCount={discoverySummary.undiscoveredCount}
@@ -432,7 +525,14 @@ export function EntityBrowserView({
         </div>
       ) : null}
 
-      {emptyVariant !== null ? (
+      {error ? (
+        <div role="alert" className="rounded-lg bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          <p>{error}</p>
+          <button type="button" className="mt-2 underline" onClick={() => void loadIndex()}>
+            Try again
+          </button>
+        </div>
+      ) : emptyVariant !== null ? (
         <CategoryIndexEmptyStatePanel
           totalCount={children.length}
           filteredCount={filteredChildren.length}
@@ -453,6 +553,24 @@ export function EntityBrowserView({
             )
           }
         />
+      ) : locationGroups ? (
+        <div className="col-span-full space-y-6">
+          {locationGroups.map(({ key, label, children: items }) => (
+            <section key={key} aria-label={label}>
+              <h2 className="mb-2 text-sm font-medium text-muted">{label}</h2>
+              {viewMode === 'table' ? <IndexGridView
+                children={items} categoryPageId={categoryPageId} categoryTitle={categoryTitle}
+                campaignHandle={campaignHandle} pageById={pageById} allIndexChildren={children}
+                selectedOptionalColumnKeys={selectedOptionalColumnKeys} onMetadataSaved={loadIndex} /> : (
+                <div className="entity-catalog-grid">
+                  {items.map(child => <EntityCatalogTile key={child.id} child={child}
+                    categoryPageId={categoryPageId} categoryTitle={categoryTitle} campaignHandle={campaignHandle}
+                    pageById={pageById} allIndexChildren={children} />)}
+                </div>
+              )}
+            </section>
+          ))}
+        </div>
       ) : viewMode === 'table' ? (
         <IndexGridView
           children={filteredChildren}
@@ -461,6 +579,7 @@ export function EntityBrowserView({
           campaignHandle={campaignHandle}
           pageById={pageById}
           allIndexChildren={children}
+          onMetadataSaved={loadIndex}
           selectedOptionalColumnKeys={selectedOptionalColumnKeys}
           onOpenCharacterSettings={
             categoryTitle === 'Characters' ? handleOpenCharacterSettings : undefined
@@ -506,7 +625,7 @@ export function EntityBrowserView({
       </CategoryHubShell>
 
       <CreatePageModal
-        open={isCreateOpen}
+        open={canCreate && isCreateOpen}
         campaignHandle={campaignHandle}
         parentId={categoryPageId}
         categoryTitle={categoryTitle}

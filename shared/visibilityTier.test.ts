@@ -13,6 +13,9 @@ test('resolveVisibilityTierLabel maps wiki and chronology visibility strings', (
   assert.equal(resolveVisibilityTierLabel({ pageVisibility: 'Party' }), 'party');
   assert.equal(resolveVisibilityTierLabel({ pageVisibility: 'DM_Only' }), 'staff');
   assert.equal(resolveVisibilityTierLabel({ pageVisibility: 'DM_ONLY' }), 'staff');
+  assert.equal(resolveVisibilityTierLabel({ pageVisibility: 'UPLOADER_AND_MANAGERS' }), 'restricted');
+  assert.equal(resolveVisibilityTierLabel({ pageVisibility: 'unknown' }), 'restricted');
+  assert.equal(resolveVisibilityTierLabel({ pageVisibility: 'CAMPAIGN' }), 'party');
   assert.equal(
     resolveVisibilityTierLabel({
       pageVisibility: 'Party',

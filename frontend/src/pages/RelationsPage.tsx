@@ -111,9 +111,10 @@ export function RelationsPage() {
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
       <WorkspaceHeader
+        compact
         title={
           <>
-            <GitBranch className="size-6 text-primary" aria-hidden />
+            <GitBranch className="size-4 text-primary" aria-hidden />
             Relations
           </>
         }
@@ -166,8 +167,9 @@ export function RelationsPage() {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted">Focus:</span>
+        <label className="text-muted" htmlFor="relations-focus">Focus:</label>
         <select
+          id="relations-focus"
           className="rounded-md border border-border bg-background px-2 py-1 text-foreground"
           value={focus}
           onChange={(e) => navigate({ focus: e.target.value, level: 'summary' })}
@@ -179,8 +181,9 @@ export function RelationsPage() {
             </option>
           ))}
         </select>
-        <span className="ml-2 text-muted">Time:</span>
+        <label className="ml-2 text-muted" htmlFor="relations-time">Time:</label>
         <select
+          id="relations-time"
           className="rounded-md border border-border bg-background px-2 py-1 text-foreground"
           value={at === 'current' ? 'current' : 'custom'}
           onChange={(e) => {

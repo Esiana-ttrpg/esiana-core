@@ -455,7 +455,7 @@ export function StoryboardCanvas({
         >
           <Background />
           <Controls />
-          <MiniMap />
+          <MiniMap className="hidden sm:block" />
         </ReactFlow>
       </div>
       <StoryboardEdgeInspector
@@ -469,8 +469,8 @@ export function StoryboardCanvas({
         }
       />
       <p className="text-[10px] text-muted-foreground/70">
-        Drag moves layout only. Scene sequence edges edit followsScenePageIds on the source scene.
-        Hover edges for relation kind; click for provenance.
+        {readOnly ? 'Select a scene to read its details, or an edge to explore its connection.' :
+          'Drag to arrange the board. Connect scenes to edit their sequence. Select an edge to explore its connection.'}
       </p>
     </div>
   );

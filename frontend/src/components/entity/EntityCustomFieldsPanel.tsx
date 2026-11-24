@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState, type ReactNode } from 'react';
 import { normalizeFieldPageId, formatCustomFieldValue, type CharacterFieldDescriptor } from '@shared/characterPages';
 import { fetchEntityFields, updateEntityField } from '@/lib/wiki';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { EntityFactRow, EntityFactRowList, EntityWikiInfobox, ENTITY_FACT_EDIT_FIELD_CLASS } from './shells/EntityFactRow';
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 
@@ -70,6 +71,8 @@ function FieldValue({ field, canEdit, onSave }: {
 }
 
 export function EntityCustomFieldsPanel({ campaignHandle, entityPageId, activePageId, canEdit, refreshKey, layout = 'sidebox', children }: EntityCustomFieldsPanelProps) {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const [fields, setFields] = useState<CharacterFieldDescriptor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,12 +88,12 @@ export function EntityCustomFieldsPanel({ campaignHandle, entityPageId, activePa
   useEffect(() => {
     let active = true;
     setLoading(true); setError(null); setFields([]);
-    void fetchEntityFields(campaignHandle, entityPageId)
+    void fetchEntityFields(campaignHandle, entityPageId, { previewAsPlayer })
       .then((all) => { if (active) setFields(all.filter((field) => field.capabilities.readable && normalizeFieldPageId(field.pageId) === normalizeFieldPageId(activePageId))); })
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Unable to load custom fields'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [activePageId, campaignHandle, entityPageId, refreshKey, retry]);
+  }, [activePageId, campaignHandle, entityPageId, refreshKey, retry, previewAsPlayer]);
 
   const box = error ? (
     <div className="mb-4 text-sm text-destructive" role="alert"><p>{error}</p><button type="button" className="mt-2 text-primary" onClick={() => setRetry((value) => value + 1)}>Retry</button></div>

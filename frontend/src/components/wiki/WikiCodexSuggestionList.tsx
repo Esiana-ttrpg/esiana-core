@@ -5,12 +5,16 @@ interface WikiCodexSuggestionListProps {
   matches: WikiLinkIndexEntry[];
   onSelect: (entry: WikiLinkIndexEntry) => void;
   emptyLabel?: string;
+  selectedIndex?: number;
+  onHighlight?: (index: number) => void;
 }
 
 export function WikiCodexSuggestionList({
   matches,
   onSelect,
   emptyLabel = 'No matches',
+  selectedIndex,
+  onHighlight,
 }: WikiCodexSuggestionListProps) {
   if (matches.length === 0) {
     return <li className="px-3 py-2 text-xs text-muted">{emptyLabel}</li>;
@@ -18,11 +22,14 @@ export function WikiCodexSuggestionList({
 
   return (
     <>
-      {matches.map((entry) => (
+      {matches.map((entry, index) => (
         <li key={`${entry.pageId}-${entry.label}`}>
           <button
             type="button"
-            className="w-full px-3 py-1.5 text-left text-sm hover:bg-muted/30"
+            role="option"
+            aria-selected={selectedIndex === index}
+            className={`w-full px-3 py-1.5 text-left text-sm hover:bg-muted/30 ${selectedIndex === index ? 'bg-primary/10' : ''}`}
+            onMouseEnter={() => onHighlight?.(index)}
             onMouseDown={(e) => {
               e.preventDefault();
               onSelect(entry);

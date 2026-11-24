@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpRight, Link2, RefreshCw, Users } from 'lucide-react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useOptionalWiki } from '@/contexts/WikiContext';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { campaignWikiPath } from '@/lib/campaignPaths';
 import {
   buildEntityRelationshipProjection,
@@ -107,6 +108,8 @@ export function ReferencesWidget({
   }>();
   const pageId = pageIdProp ?? params.pageId ?? params.characterId ?? '';
   const wiki = useOptionalWiki();
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const campaignHandle = campaignHandleProp ?? wiki?.campaignHandle ?? '';
   const isAggregateMode = aggregateReferences != null;
   const [searchParams] = useSearchParams();
@@ -244,37 +247,43 @@ export function ReferencesWidget({
 
   const [loading, setLoading] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const requestGeneration = useRef(0);
 
   const loadReferences = useCallback(async () => {
     if (isAggregateMode) return;
     if (!campaignHandle || !pageId) return;
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setBacklinksError(null);
     setOutlinksError(null);
     setBacklinks(null);
     setOutlinks(null);
+    setBrokenOutlinks([]);
 
     try {
       const [backlinkData, outlinkPayload] = await Promise.all([
-        fetchWikiBacklinks(campaignHandle, pageId),
-        fetchWikiOutlinks(campaignHandle, pageId),
+        fetchWikiBacklinks(campaignHandle, pageId, { previewAsPlayer }),
+        fetchWikiOutlinks(campaignHandle, pageId, { previewAsPlayer }),
       ]);
+      if (generation !== requestGeneration.current) return;
       setBacklinks(backlinkData);
       setOutlinks(outlinkPayload.outlinks);
       setBrokenOutlinks(outlinkPayload.brokenOutlinks);
     } catch (err) {
+      if (generation !== requestGeneration.current) return;
       const message =
         err instanceof Error ? err.message : 'Unable to load references.';
       setBacklinksError(message);
       setOutlinksError(message);
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
-  }, [campaignHandle, pageId, isAggregateMode]);
+  }, [campaignHandle, pageId, isAggregateMode, previewAsPlayer]);
 
   useEffect(() => {
     if (isAggregateMode) return;
     void loadReferences();
+    return () => { requestGeneration.current += 1; };
   }, [loadReferences, reloadToken, isAggregateMode]);
 
   useEffect(() => {

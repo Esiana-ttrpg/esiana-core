@@ -3,13 +3,22 @@ import { reserveChronologyRoute } from '../lib/chronologyRoutes.js';
 import type { Response } from 'express';
 import { Prisma } from '../lib/prismaClient.js';
 import { prisma } from '../lib/prisma.js';
-import { canManageChronology } from '../lib/acl.js';
+import {
+  canEditChronologyEvent,
+  canDeleteChronologyEvent,
+} from '../../../shared/campaignPolicy/policy.js';
 import { chronologyCanView, chronologyElevated } from '../lib/chronologyAccess.js';
 import type { CampaignScopedRequest } from '../middleware/campaignScope.js';
 import { chronologyVisibilityFilter } from '../lib/chronologyVisibility.js';
 import { convertEpochToCalendarState } from '../lib/timeEngine.js';
 import { CoreDomainEvents, dispatchDomainEvent } from '../lib/domainEvents/index.js';
 import { CALENDAR_EVENT_IMPORTANCES, type CalendarEventImportance } from '../../../shared/calendarEventImportance.js';
+import {
+  ChronologyActivityEntity,
+  chronologyActorCreateFields,
+  chronologyActorUpdateFields,
+  logChronologyActivity,
+} from '../lib/chronologyAuthorship.js';
 
 function parseImportance(value: unknown): CalendarEventImportance | null {
   return typeof value === 'string' && (CALENDAR_EVENT_IMPORTANCES as readonly string[]).includes(value.toUpperCase())
@@ -218,10 +227,6 @@ export async function listCalendarEvents(
     return;
   }
 
-  const canManage = canManageChronology(
-    req.campaign?.role ?? null,
-    req.campaign?.allowPlayerChronologyManagement ?? false,
-  );
   const events = await prisma.calendarEvent.findMany({
     where: {
       calendarId,
@@ -437,6 +442,7 @@ export async function createCalendarEvent(
         targetDay,
         targetEpochMinute,
         recurrenceRule,
+        ...chronologyActorCreateFields(req.user?.id),
       },
     });
     const { syncEntityRelationsForCalendarEvent } = await import(
@@ -445,6 +451,16 @@ export async function createCalendarEvent(
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
     await reserveChronologyRoute(tx, campaignId, 'events', event.id, event.title);
     return event;
+  });
+
+  logChronologyActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: ChronologyActivityEntity.EVENT,
+    entityId: created.id,
+    entityName: created.title,
+    parentContext: calendarId,
   });
 
   dispatchDomainEvent({
@@ -482,6 +498,10 @@ export async function updateCalendarEvent(
   });
   if (!existing || !chronologyCanView(req.campaign!, existing.visibility)) {
     res.status(404).json({ error: 'Event not found' });
+    return;
+  }
+  if (!canEditChronologyEvent(req.campaign!.actor, existing.createdByUserId)) {
+    res.status(403).json({ error: 'Forbidden: event edit not permitted' });
     return;
   }
 
@@ -659,6 +679,7 @@ export async function updateCalendarEvent(
         targetDay: body.targetDay === undefined ? existing.targetDay : toInt(body.targetDay),
         targetEpochMinute,
         recurrenceRule,
+        ...chronologyActorUpdateFields(req.user?.id),
       },
     });
     const { syncEntityRelationsForCalendarEvent } = await import(
@@ -667,6 +688,16 @@ export async function updateCalendarEvent(
     await syncEntityRelationsForCalendarEvent(tx, campaignId, event.id);
     await reserveChronologyRoute(tx, campaignId, 'events', event.id, event.title);
     return event;
+  });
+
+  logChronologyActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: ChronologyActivityEntity.EVENT,
+    entityId: updated.id,
+    entityName: updated.title,
+    parentContext: calendarId,
   });
 
   res.json({ event: serializeEvent(updated) });
@@ -692,10 +723,20 @@ export async function deleteCalendarEvent(
 
   const existing = await prisma.calendarEvent.findFirst({
     where: { id: eventId, calendarId },
-    select: { id: true, visibility: true, wikiPageId: true },
+    select: {
+      id: true,
+      visibility: true,
+      wikiPageId: true,
+      title: true,
+      createdByUserId: true,
+    },
   });
   if (!existing || !chronologyCanView(req.campaign!, existing.visibility)) {
     res.status(404).json({ error: 'Event not found' });
+    return;
+  }
+  if (!canDeleteChronologyEvent(req.campaign!.actor, existing.createdByUserId)) {
+    res.status(403).json({ error: 'Forbidden: event delete not permitted' });
     return;
   }
 
@@ -707,6 +748,15 @@ export async function deleteCalendarEvent(
     if (existing.wikiPageId) await ownChronologyWikiPage(tx, campaignId, 'event', existing.wikiPageId);
     await clearEntityRelationsForCalendarEvent(tx, campaignId, eventId);
     await tx.calendarEvent.delete({ where: { id: eventId } });
+  });
+  logChronologyActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'DELETE',
+    entityType: ChronologyActivityEntity.EVENT,
+    entityId: existing.id,
+    entityName: existing.title,
+    parentContext: calendarId,
   });
   res.json({ ok: true });
 }

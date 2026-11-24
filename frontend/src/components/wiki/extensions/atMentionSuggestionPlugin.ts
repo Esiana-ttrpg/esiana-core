@@ -27,9 +27,9 @@ export function findAtQuery(view: EditorView): AtSuggestionState | null {
     undefined,
     '\ufffc',
   );
-  const match = /@([A-Za-z0-9][\w\s'-]{0,40})$/.exec(textBefore);
+  const match = /(?:^|\s)@([A-Za-z0-9][\w\s'-]{0,40})?$/.exec(textBefore);
   if (!match) return null;
-  const query = match[1];
+  const query = match[1] ?? '';
   const atStart = from - query.length - 1;
   const coords = view.coordsAtPos(from);
   return {

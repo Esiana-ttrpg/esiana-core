@@ -11,6 +11,8 @@ import type { PluginPageTarget } from '@/lib/pluginContributions';
 import { listPageActions, meetsPluginRequires } from '@/lib/pluginContributions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOptionalWiki } from '@/contexts/WikiContext';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
+import { PlayerPerspectiveToggle } from '@/components/layout/PlayerPerspectiveToggle';
 
 function toolbarButtonClass(active: boolean): string {
   return `inline-flex h-8 items-center gap-1.5 rounded-md border px-2 text-xs font-medium transition-all ${
@@ -29,6 +31,7 @@ interface WikiPageRuntimeToolbarProps {
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;
+  hasPendingPerspectiveEdits?: boolean;
   isSaving: boolean;
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;
@@ -55,6 +58,7 @@ export function WikiPageRuntimeToolbar({
   isDMUser: isDMUserProp,
   isTagsHub,
   isLayoutDirty = false,
+  hasPendingPerspectiveEdits = false,
   isSaving,
   onSavePage,
   isPinned,
@@ -78,6 +82,7 @@ export function WikiPageRuntimeToolbar({
   const draftRegistry = usePageBlockDraftRegistry();
   const { isAuthenticated } = useAuth();
   const wiki = useOptionalWiki();
+  const audience = useOptionalAdventureWorkspace();
   const hasUnsavedWork =
     isLayoutDirty || (draftRegistry?.hasSemanticDirty ?? false);
   const hasPluginActions = Boolean(
@@ -101,6 +106,14 @@ export function WikiPageRuntimeToolbar({
     navigate(campaignWorkshopPath(campaignHandle, { fromPageId: pageId }));
   };
 
+  const handleCharacterPerspectiveChange = (next: 'dm' | 'party') => {
+    if (!audience || next === audience.perspective || isSaving) return;
+    if ((hasUnsavedWork || hasPendingPerspectiveEdits) && !window.confirm(
+      'You have unsaved character changes. Switching perspective will discard them. Continue?',
+    )) return;
+    audience.setPerspective(next);
+  };
+
   const showReadBar = isDMUser || !isTagsHub;
 
   if (!showReadBar) return null;
@@ -113,6 +126,10 @@ export function WikiPageRuntimeToolbar({
         aria-label="Page tools"
         data-print-hide
       >
+        {portfolioCharacter && audience?.isDMUser ? (
+          <PlayerPerspectiveToggle value={audience.perspective} onChange={handleCharacterPerspectiveChange}
+            ariaLabel="Character view perspective" />
+        ) : null}
         {!isTagsHub && getExportContext ? (
           <WikiPageExportMenu isTagsHub={isTagsHub} getExportContext={getExportContext} />
         ) : null}

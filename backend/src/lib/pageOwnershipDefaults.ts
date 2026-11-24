@@ -46,6 +46,21 @@ export function resolveDefaultPageOwnership(input: {
     };
   }
 
+  // Downtime haven/project: non-staff creators get USER ownership so Edit own
+  // covers nested spaces/upgrades/hirelings/progress without downtime.manage.
+  if (
+    (input.templateType === 'DOWNTIME_HAVEN' ||
+      input.templateType === 'DOWNTIME_PROJECT') &&
+    !isStaff
+  ) {
+    return {
+      ownerType: PageOwnerTypes.USER,
+      ownerUserId: createdByUserId,
+      ownerPartyId: null,
+      createdByUserId,
+    };
+  }
+
   if (isStaff) {
     return {
       ownerType: PageOwnerTypes.STAFF,

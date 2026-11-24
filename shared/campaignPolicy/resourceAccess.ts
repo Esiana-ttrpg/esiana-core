@@ -105,6 +105,17 @@ export function canViewVisibility(
   return canViewVisibilityFromCaps(caps, visibility, options);
 }
 
+/** Shared-party preview is a restriction on the real actor, never an authorization grant.
+ * Ownership/uploader-specific content is deliberately outside this baseline. */
+export function canViewSharedPartyBaseline(
+  actor: CampaignActor,
+  visibility: string | null | undefined,
+): boolean {
+  const tier = normalizeVisibilityTier(visibility);
+  return (tier === 'public' || (tier === 'campaign' && actor.kind === 'member')) &&
+    canViewVisibility(actor, visibility);
+}
+
 function moduleManageCap(module: ResourceModule): CampaignCapability | null {
   switch (module) {
     case 'quest':

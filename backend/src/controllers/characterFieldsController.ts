@@ -197,7 +197,7 @@ export async function ensurePluginFields(campaignId: string, characterPageId: st
 export async function listCharacterFields(req: CampaignScopedRequest, res: Response): Promise<void> {
   const access = await loadCharacterPageAccess(req, res);
   if (!access) return;
-  if (access.isCharacter) await ensurePluginFields(req.campaign!.campaignId, access.page.id, await listEnabledCampaignCharacterPageDefinitions(req.campaign!.campaignId));
+  if (access.isCharacter && !access.preview) await ensurePluginFields(req.campaign!.campaignId, access.page.id, await listEnabledCampaignCharacterPageDefinitions(req.campaign!.campaignId));
   const rows = await fieldsDb.characterField.findMany({
     where: { campaignId: req.campaign!.campaignId, characterPageId: access.page.id },
     include: { pageTab: true },
@@ -222,7 +222,12 @@ export async function listCharacterFields(req: CampaignScopedRequest, res: Respo
   res.json({ fields: visibleRows.map((row: any) => descriptor(
     row,
     access.canEdit && (row.origin !== 'PLUGIN' || available.has(`${row.pluginId}:${row.sourceKey}`)),
-  )) });
+  )).map((field: CharacterFieldDescriptor) => access.audienceProjection ? {
+    ...field,
+    label: access.audienceProjection.projectContent(field.label, access.page.id) as string,
+    value: access.audienceProjection.projectContent(field.value, access.page.id),
+    validation: access.audienceProjection.projectContent(field.validation, access.page.id) as CharacterFieldValidation,
+  } : field) });
 }
 
 export async function createCustomCharacterField(req: CampaignScopedRequest, res: Response): Promise<void> {

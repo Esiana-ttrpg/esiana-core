@@ -63,7 +63,7 @@ interface WikiContextValue {
 
 const WikiContext = createContext<WikiContextValue | null>(null);
 
-export function WikiProvider({ children }: { children: ReactNode }) {
+export function WikiProvider({ children, previewAsPlayer = false }: { children: ReactNode; previewAsPlayer?: boolean }) {
   const params = useParams<{ campaignHandle?: string; campaignId?: string }>();
   const campaignHandle = readCampaignHandle(params);
   const { user } = useAuth();
@@ -88,13 +88,18 @@ export function WikiProvider({ children }: { children: ReactNode }) {
     setLoading(initialLoadCompletedFor.current !== campaignHandle);
     setError(null);
     setPinsLoading(true);
-    void fetchPersonalPins(campaignHandle).then((pins) => {
-      if (generation !== refreshGenerationRef.current) return;
-      setPinnedShortcuts(pins);
+    if (previewAsPlayer) {
+      setPinnedShortcuts([]);
       setPinsLoading(false);
-    });
+    } else {
+      void fetchPersonalPins(campaignHandle).then((pins) => {
+        if (generation !== refreshGenerationRef.current) return;
+        setPinnedShortcuts(pins);
+        setPinsLoading(false);
+      });
+    }
     try {
-      const data = await fetchWikiTreePayload(campaignHandle);
+      const data = await fetchWikiTreePayload(campaignHandle, { previewAsPlayer });
       if (generation !== refreshGenerationRef.current) return;
       setTree(data.tree ?? []);
       setCampaign(data.campaign ?? null);
@@ -116,14 +121,14 @@ export function WikiProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }
-  }, [campaignHandle]);
+  }, [campaignHandle, previewAsPlayer]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   useEffect(() => {
-    if (!campaignHandle || typeof EventSource === 'undefined') return;
+    if (!campaignHandle || previewAsPlayer || typeof EventSource === 'undefined') return;
 
     const source = new EventSource(
       `/api/campaigns/${encodeURIComponent(campaignHandle)}/events`,
@@ -159,7 +164,7 @@ export function WikiProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(refreshTimer);
       source.close();
     };
-  }, [campaignHandle, refresh]);
+  }, [campaignHandle, previewAsPlayer, refresh]);
 
   const flatPages = useMemo(() => flattenWikiTree(tree), [tree]);
 

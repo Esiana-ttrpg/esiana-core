@@ -8,17 +8,14 @@ import {
   type ReactNode,
 } from 'react';
 import { useWiki } from '@/contexts/WikiContext';
-import { useBranding } from '@/contexts/BrandingContext';
 import { useAdventureRoute } from '@/hooks/useAdventureRoute';
 import {
   adventureHidesGmChrome,
-  adventurePublicPreviewEligible,
-  adventurePublicPreviewGate,
-  isAdventurePublicPreview,
+  ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE,
   type AdventurePreviewPerspective,
 } from '@/lib/adventurePreview';
-import type { PublicPreviewGate } from '@shared/campaignPolicy/publicAccess';
 import {
+  clearLegacyAdventurePerspectives,
   patchAdventurePerspective,
   readAdventurePerspective,
 } from '@/lib/workspacePersistence';
@@ -28,23 +25,25 @@ interface AdventureWorkspaceContextValue {
   perspective: AdventurePreviewPerspective;
   setPerspective: (value: AdventurePreviewPerspective) => void;
   playerPreview: boolean;
-  publicPreview: boolean;
-  publicPreviewEligible: boolean;
-  publicPreviewGate: PublicPreviewGate;
   isDMUser: boolean;
 }
 
 const AdventureWorkspaceContext = createContext<AdventureWorkspaceContextValue | null>(null);
 
-export function AdventureWorkspaceProvider({ children }: { children: ReactNode }) {
+export function AdventureWorkspaceProvider({ children, perspective: controlledPerspective, onPerspectiveChange }: {
+  children: ReactNode;
+  perspective?: AdventurePreviewPerspective;
+  onPerspectiveChange?: (value: AdventurePreviewPerspective) => void | Promise<void>;
+}) {
   const adventureRoute = useAdventureRoute();
-  const { hasElevatedView, campaignHandle, campaign } = useWiki();
-  const { instanceRequiresLogin } = useBranding();
-  const [perspective, setPerspectiveState] = useState<AdventurePreviewPerspective>(() =>
+  const { hasElevatedView, campaignHandle } = useWiki();
+  const [perspective, setPerspectiveState] = useState<AdventurePreviewPerspective | null>(() =>
     readAdventurePerspective(campaignHandle),
   );
 
   const isDMUser = hasElevatedView;
+
+  useEffect(() => { clearLegacyAdventurePerspectives(); }, []);
 
   useEffect(() => {
     setPerspectiveState(readAdventurePerspective(campaignHandle));
@@ -52,15 +51,18 @@ export function AdventureWorkspaceProvider({ children }: { children: ReactNode }
 
   const setPerspective = useCallback(
     (next: AdventurePreviewPerspective) => {
-      setPerspectiveState(next);
-      if (campaignHandle) patchAdventurePerspective(campaignHandle, next);
+      if (next !== 'dm' && !ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE) return;
+      void Promise.resolve(onPerspectiveChange?.(next)).then(() => {
+        setPerspectiveState(next);
+        if (campaignHandle) patchAdventurePerspective(campaignHandle, next);
+      }).catch(() => {});
     },
-    [campaignHandle],
+    [campaignHandle, onPerspectiveChange],
   );
 
-  const effectivePerspective: AdventurePreviewPerspective = isDMUser
-    ? perspective
-    : 'dm';
+  const effectivePerspective: AdventurePreviewPerspective = !isDMUser
+    ? 'party'
+    : ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE ? controlledPerspective ?? perspective ?? 'dm' : 'dm';
 
   const value = useMemo(
     () => ({
@@ -68,19 +70,11 @@ export function AdventureWorkspaceProvider({ children }: { children: ReactNode }
       perspective: effectivePerspective,
       setPerspective,
       playerPreview: adventureHidesGmChrome(effectivePerspective),
-      publicPreview: isAdventurePublicPreview(effectivePerspective),
-      publicPreviewEligible: adventurePublicPreviewEligible(campaign?.discoverability),
-      publicPreviewGate: adventurePublicPreviewGate(
-        campaign?.discoverability,
-        instanceRequiresLogin,
-      ),
       isDMUser,
     }),
     [
       adventureRoute,
-      campaign?.discoverability,
       effectivePerspective,
-      instanceRequiresLogin,
       isDMUser,
       setPerspective,
     ],

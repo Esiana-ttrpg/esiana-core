@@ -3,7 +3,7 @@ import { act, type ReactNode } from 'react';
 import { parseHTML } from 'linkedom';
 import { MemoryRouter } from 'react-router-dom';
 import { SessionNoteEditor } from './SessionNoteEditor';
-import type { WikiPageLayoutPayload } from '@/types/wiki';
+import type { CombinedSessionNotesPayload, WikiPageLayoutPayload } from '@/types/wiki';
 
 const mocks = vi.hoisted(() => ({ refresh: vi.fn(async () => {}), save: vi.fn() }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
@@ -12,7 +12,10 @@ vi.mock('@/hooks/useWikiCampaignPolicy', () => ({ useElevatedNarrativeView: () =
 vi.mock('@/lib/wiki', () => ({ updateSessionNotePage: mocks.save, saveWikiPageMetadata: vi.fn() }));
 vi.mock('@/components/wiki/WikiTipTapEditor', () => ({ WikiTipTapEditor: () => <textarea data-testid="own-note-editor" /> }));
 vi.mock('@/components/wiki/WikiMarkdown', () => ({ WikiMarkdown: () => <p>Note preview</p> }));
-vi.mock('@/components/session/SessionCombinedInlineView', () => ({ SessionCombinedInlineView: () => <p>Combined notes</p> }));
+vi.mock('@/components/session/SessionCombinedInlineView', () => ({
+  SessionCombinedInlineView: ({ readOnly }: { readOnly?: boolean }) =>
+    <p data-testid="combined-notes" data-read-only={String(readOnly)}>Combined notes</p>,
+}));
 vi.mock('@/components/session/SessionNotesSidebar', () => ({ SessionNotesSidebar: () => null }));
 vi.mock('@/components/session/SessionAudioPanel', () => ({ SessionAudioPanel: () => null }));
 vi.mock('@/components/layout/WikiWorkspaceShell', () => ({ WikiWorkspaceShell: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
@@ -39,5 +42,26 @@ test.each(['me', 'another-author'])('dashboard edit intent only opens the authen
     </MemoryRouter>));
     expect(Boolean(container.querySelector('[data-testid="own-note-editor"]'))).toBe(authorId === 'me');
     expect(mocks.save).not.toHaveBeenCalled();
+  } finally { await act(async () => root.unmount()); }
+});
+
+test.each([true, false])('inline combined notes receive readOnly=%s', async readOnly => {
+  const { window } = parseHTML('<html><body><div id="root"></div></body></html>');
+  for (const [key, value] of Object.entries({ window, document: window.document, HTMLElement: window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, key);
+    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+    restore.push(() => { if (previous) Object.defineProperty(globalThis, key, previous); else Reflect.deleteProperty(globalThis, key); });
+  }
+  const { createRoot } = await import('react-dom/client');
+  const container = window.document.getElementById('root')!;
+  const root = createRoot(container);
+  const page = { id: 'author-note', title: 'My notes', createdAt: '2026-10-24T00:00:00Z', updatedAt: '2026-10-24T00:00:00Z',
+    metadata: {}, blocks: [],
+  } as unknown as WikiPageLayoutPayload;
+  const combined = { session: { title: 'Shared session', timelinePointId: 'session-3', locationPageId: null }, columns: [] } as unknown as CombinedSessionNotesPayload;
+  try {
+    await act(async () => root.render(<MemoryRouter><SessionNoteEditor campaignHandle="review" pageId={page.id}
+      pageData={page} timelinePointId="session-3" combined={combined} readOnly={readOnly} onPageUpdated={vi.fn()} /></MemoryRouter>));
+    expect(container.querySelector('[data-testid="combined-notes"]')?.getAttribute('data-read-only')).toBe(String(readOnly));
   } finally { await act(async () => root.unmount()); }
 });

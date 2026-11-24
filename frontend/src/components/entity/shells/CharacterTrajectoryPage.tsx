@@ -10,7 +10,8 @@ export function CharacterTrajectoryPage({
   campaignHandle, pageId, pageMetadata, isDMUser: isDMUserProp, isEditingPage, onMetadataSaved,
 }: Pick<EntityOverviewProps, 'campaignHandle' | 'pageId' | 'pageMetadata' | 'isDMUser' | 'isEditingPage' | 'onMetadataSaved'>) {
   const isDMUser = useElevatedNarrativeView(isDMUserProp);
-  const canEdit = isDMUser && isEditingPage;
+  // Ownership / capability already gate isEditingPage.
+  const canEdit = isEditingPage;
   const [trajectoryDraft, setTrajectoryDraft] = useState<CharacterIdentityFields>(() =>
     parseCharacterMetadata(pageMetadata),
   );
@@ -19,7 +20,9 @@ export function CharacterTrajectoryPage({
     setTrajectoryDraft(parseCharacterMetadata(pageMetadata));
   }, [pageMetadata]);
 
-  if (!isDMUser) return null;
+  if (!canEdit && trajectoryDraft.eraTrajectories.length === 0 && !isDMUser) {
+    return null;
+  }
   return (
     <>
       {canEdit || trajectoryDraft.eraTrajectories.length > 0 ? (

@@ -48,6 +48,17 @@ test('resolveEffectiveTimezone prefers user over system default', () => {
   );
 });
 
+test('personal statistics reuse resolveEffectiveTimezone rather than a stats-specific setting', () => {
+  assert.equal(
+    resolveEffectiveTimezone({
+      userTimezone: 'Pacific/Auckland',
+      systemDefaultTimezone: 'America/New_York',
+    }),
+    'Pacific/Auckland',
+  );
+  assert.equal(DEFAULT_TIMEZONE, 'UTC');
+});
+
 test('ownershipTransferExpiresAt is seven days from anchor', () => {
   const anchor = Date.parse('2026-05-30T12:00:00.000Z');
   const expires = ownershipTransferExpiresAt(anchor);

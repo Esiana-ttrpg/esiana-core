@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { fetchAdventureHub, type AdventureHubPayload } from '@/lib/adventure';
 import {
   adventureViewHref,
@@ -31,12 +32,17 @@ interface AdventureViewProps {
 }
 
 export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewProps) {
+  const { perspective } = useAdventureWorkspace();
+  const { user } = useAuth();
+  return <AdventureViewContents key={JSON.stringify([user?.id ?? null, campaignHandle, categoryPageId, perspective])}
+    campaignHandle={campaignHandle} categoryPageId={categoryPageId} />;
+}
+
+function AdventureViewContents({ campaignHandle, categoryPageId }: AdventureViewProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isDMUser, playerPreview, publicPreview, publicPreviewGate } =
+  const { isDMUser, playerPreview } =
     useAdventureWorkspace();
-  const publicPreviewCampaignBlocked = publicPreview && publicPreviewGate === 'campaign';
-  const publicPreviewInstanceNotice = publicPreview && publicPreviewGate === 'instance-notice';
 
   const basePath = campaignAdventureHubPath(campaignHandle);
   const activeView = readStoryViewFromSearch(location.search, campaignHandle);
@@ -66,11 +72,6 @@ export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewP
     headerActionsRef.current = actions;
     setHeaderActions(actions);
   }, []);
-
-  useEffect(() => {
-    headerActionsRef.current = null;
-    setHeaderActions(null);
-  }, [activeView, threadsLens]);
 
   const showRefineToolbar = activeView === 'unresolved';
   const storyRefineActive =
@@ -157,80 +158,49 @@ export function AdventureView({ campaignHandle, categoryPageId }: AdventureViewP
       <CategoryHubShell
         composition="hub"
         title="Adventure Board"
-        beforeActions={isDMUser ? <AdventurePlayerPreviewToggle /> : null}
+        headerDensity="compact"
         belowToolbar={
           <StoryViewTabs basePath={basePath} activeView={activeView} isDMUser={isDMUser} />
         }
         actions={
-          <>
-            {headerActions}
-            {showRefineToolbar ? (
-              <WorkspaceActionBar
-                refine={
-                  <CategoryIndexRefinePopover
-                    facetDefs={[]}
-                    refineState={{}}
-                    children={[]}
-                    categoryTitle="Adventure"
-                    onRefineChange={() => {}}
-                    activeCount={storyRefineActive ? 1 : undefined}
-                    onResetRefine={() => handleFiltersChange({ search: '', recent: false })}
-                    searchQuery={filters.search ?? ''}
-                    onSearchChange={(value) => handleFiltersChange({ search: value })}
-                    searchPlaceholder="Filter narrative state…"
-                    customBody={
-                      <StoryNarrativeFilterPanel
-                        filters={filters}
-                        onFiltersChange={handleFiltersChange}
-                      />
-                    }
+          <WorkspaceActionBar
+            audience={isDMUser ? <AdventurePlayerPreviewToggle /> : null}
+            refine={
+              showRefineToolbar ? <CategoryIndexRefinePopover
+                facetDefs={[]}
+                refineState={{}}
+                children={[]}
+                categoryTitle="Adventure"
+                onRefineChange={() => {}}
+                activeCount={storyRefineActive ? 1 : undefined}
+                onResetRefine={() => handleFiltersChange({ search: '', recent: false })}
+                searchQuery={filters.search ?? ''}
+                onSearchChange={(value) => handleFiltersChange({ search: value })}
+                searchPlaceholder="Filter narrative stateâ€¦"
+                customBody={
+                  <StoryNarrativeFilterPanel
+                    filters={filters}
+                    onFiltersChange={handleFiltersChange}
                   />
                 }
-              />
-            ) : null}
-          </>
+              /> : null
+            }
+            trailing={headerActions}
+          />
         }
         contextual={contextualRail}
         inlineContextual={showContextualRail}
         catalogGridClass="adventure-shell-body min-h-[560px] w-full min-w-0"
       >
-        {publicPreviewCampaignBlocked ? (
-          <div className="rounded-lg border border-border bg-surface/40 px-4 py-6 text-sm">
-            <p className="font-medium text-foreground">Public campaign access is off</p>
-            <p className="mt-2 text-muted">
-              This campaign does not allow visitors without an account. Public
-              preview stays selected and shows what they would see: nothing in
-              Adventure until campaign public access is enabled. The instance
-              administrator must also allow public access.
-            </p>
-          </div>
-        ) : (
-          <>
-            {publicPreviewInstanceNotice ? (
-              <div className="mb-4 rounded-lg border border-border bg-surface/40 px-4 py-4 text-sm">
-                <p className="font-medium text-foreground">
-                  Public access is currently unavailable
-                </p>
-                <p className="mt-2 text-muted">
-                  This instance requires visitors to sign in. Public preview stays
-                  selected and shows content that would be eligible if the instance
-                  administrator allowed anonymous access. Private campaigns and
-                  restricted resources stay hidden.
-                </p>
-              </div>
-            ) : null}
-            <StorySection
-              campaignHandle={campaignHandle}
-              categoryPageId={categoryPageId}
-              activeView={activeView}
-              threadsLens={threadsLens}
-              filters={filters}
-              onThreadsLensChange={setThreadsLens}
-              onHeaderActionsChange={handleHeaderActionsChange}
-            />
-          </>
-        )}
-
+        <StorySection
+          campaignHandle={campaignHandle}
+          categoryPageId={categoryPageId}
+          activeView={activeView}
+          threadsLens={threadsLens}
+          filters={filters}
+          onThreadsLensChange={setThreadsLens}
+          onHeaderActionsChange={handleHeaderActionsChange}
+        />
         {showContextualRail ? (
           <footer className="mt-4 border-t border-border pt-2 text-xs text-muted-foreground lg:hidden">
             {pressureCount > 0

@@ -1,9 +1,8 @@
-import { canViewWikiPage } from './wikiTree.js';
-import type { CampaignMemberRole } from '../types/domain.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from './wikiTree.js';
 
 export function canViewMapAsset(
   visibility: string,
-  role: CampaignMemberRole | null,
+  role: WikiVisibilityViewer,
 ): boolean {
   return canViewWikiPage(visibility, role);
 }

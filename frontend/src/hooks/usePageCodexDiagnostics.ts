@@ -1,3 +1,4 @@
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DiscoveryStateProjection } from '@shared/discoveryProjection';
 import type { ContinuityIssue } from '@shared/continuityIssue';
@@ -35,6 +36,8 @@ export function usePageCodexDiagnostics(
   enabled: boolean,
   isDMUser: boolean,
 ): PageCodexDiagnosticsState {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const [issues, setIssues] = useState<ContinuityIssue[]>([]);
   const [unresolved, setUnresolved] = useState<UnresolvedWikilinkRow[]>([]);
   const [partyKnowledge, setPartyKnowledge] = useState<PartyKnowledgeResponse | null>(
@@ -59,7 +62,7 @@ export function usePageCodexDiagnostics(
       isDMUser
         ? fetchUnresolvedWikilinks(campaignHandle, { sourcePageId: pageId })
         : Promise.resolve([]),
-      fetchPartyKnowledge(campaignHandle, pageId).catch(() => null),
+      fetchPartyKnowledge(campaignHandle, pageId, { previewAsPlayer }).catch(() => null),
     ])
       .then(([continuity, unresolvedRows, knowledge]) => {
         setIssues(continuity.issues);
@@ -70,7 +73,7 @@ export function usePageCodexDiagnostics(
         setError(err instanceof Error ? err.message : 'Failed to load diagnostics');
       })
       .finally(() => setLoading(false));
-  }, [campaignHandle, enabled, isDMUser, pageId]);
+  }, [campaignHandle, enabled, isDMUser, pageId, previewAsPlayer]);
 
   useEffect(() => {
     reload();

@@ -341,6 +341,7 @@ export function AncestryHubView({
     <>
       <CategoryHubShell
         composition="codex"
+        headerDensity="compact"
         catalogGridClass="space-y-8"
         breadcrumbs={
           <WikiPageBreadcrumbs
@@ -351,7 +352,7 @@ export function AncestryHubView({
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <Users className="size-6 text-primary" strokeWidth={1.25} />
+            <Users className="size-4 text-primary" strokeWidth={1.25} />
             Peoples &amp; Lineages
           </>
         }

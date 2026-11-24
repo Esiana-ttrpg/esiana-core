@@ -9,6 +9,7 @@ import { isPageUnderNarrativeScenesCategory } from '@/lib/adventureLayout';
 import { isSceneMetadataPresent } from '@shared/sceneMetadata';
 import { normalizeEntityCategoryKey } from '@/lib/entityCategoryKeys';
 import { legacyTemplateTypeToEntityCategory } from '@shared/wikiTemplateType';
+import { isCharacterEntityPage } from '@shared/resolveCanonicalEntityCategory';
 
 export type InspectorProfile =
   | 'CHARACTER'
@@ -758,6 +759,9 @@ export function resolveSurfaceProfileKey(input: {
   flatPages: WikiTreeNode[];
 }): SurfaceProfileKey {
   const { pageId, templateType, metadata, flatPages } = input;
+  // Shared fields such as summary/gmNotes do not turn a canonical character
+  // into a Scene, including when reading an audience-projected document.
+  if (isCharacterEntityPage({ id: pageId, title: '', templateType, metadata }, flatPages)) return 'character';
 
   if (isPageUnderNarrativeThreadsCategory(pageId, flatPages)) return 'thread';
   if (isPageUnderQuestsCategory(pageId, flatPages)) return 'quest';

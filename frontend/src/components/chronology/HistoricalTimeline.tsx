@@ -56,6 +56,7 @@ interface HistoricalTimelineProps {
   bundle: ChronologyTimelineBundle;
   timeBundle: TimeTrackingBundle;
   canManage: boolean;
+  canReveal?: boolean;
   onBrowseAnchorChange: (date: ChronologyDateParts, calendarId?: string) => void;
   onMutated: () => void | Promise<void>;
   onDeleted: () => void | Promise<void>;
@@ -67,7 +68,7 @@ export function HistoricalTimeline(props: HistoricalTimelineProps) {
   return <HistoricalWorkspace key={props.campaignHandle} {...props} />;
 }
 
-function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, onBrowseAnchorChange,
+function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, canReveal = false, onBrowseAnchorChange,
   onMutated, onDeleted, onRevealEvent, categoryFooter, session, navigationRequest, onInspectionChange }: HistoricalTimelineProps) {
   const text = useComparisonText();
   const [params] = useSearchParams();
@@ -434,7 +435,7 @@ function HistoricalWorkspace({ campaignHandle, bundle, timeBundle, canManage, on
       })}</ul>
     </ChronologyInspector>}
     <ChronologyEventSidebar campaignHandle={campaignHandle} timeBundle={native ? timeBundle : undefined} baseEvent={selectedBase} calendarName={source?.name} categories={bundle.categories}
-      editableEvents={bundle.baseEvents} calendarLike={source?.axis?.calendar ?? null} canManage={canManage}
+      editableEvents={bundle.baseEvents} calendarLike={source?.axis?.calendar ?? null} canManage={canManage} canReveal={canReveal}
       open={!!selectedBase && !clusterKeys} occurrence={occurrence} dateSeed={occurrence?.start ?? null} comparisonContext={context}
       onClose={() => setSelectedKey(null)} onMutated={onMutated} onDeleted={async () => { setSelectedKey(null); await onDeleted(); }} onRevealEvent={onRevealEvent} />
   </div>;

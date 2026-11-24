@@ -122,6 +122,9 @@ export async function syncWikiLinksForSourcePage(
     narrativeAuthority?: import('./temporalProvenance.js').TemporalAuthority;
     eventAt?: Date;
     isInitialCreate?: boolean;
+    previousBlocks?: unknown;
+    writingSourceId?: string;
+    skipWritingContribution?: boolean;
   },
 ): Promise<void> {
   const { syncWikiPageSubstrate } = await import('./wikiPageSubstrateService.js');

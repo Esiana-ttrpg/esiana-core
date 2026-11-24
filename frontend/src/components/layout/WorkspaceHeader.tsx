@@ -21,6 +21,7 @@ export interface WorkspaceHeaderProps {
   afterActions?: ReactNode;
   belowToolbar?: ReactNode;
   activeFilters?: ReactNode;
+  compact?: boolean;
 }
 
 export function WorkspaceHeader({
@@ -34,11 +35,14 @@ export function WorkspaceHeader({
   afterActions,
   belowToolbar,
   activeFilters,
+  compact = false,
 }: WorkspaceHeaderProps) {
-  const titleClass = `${TYPE_DISPLAY_CLASS} flex items-center gap-2 ${WORKSPACE_TITLE_COMPACT_CLASS}`;
+  const titleClass = compact
+    ? `${TYPE_META_CLASS} flex items-center gap-2 text-sm font-medium text-focal-foreground`
+    : `${TYPE_DISPLAY_CLASS} flex items-center gap-2 ${WORKSPACE_TITLE_COMPACT_CLASS}`;
 
   return (
-    <header className={WORKSPACE_HEADER_ROOT_CLASS}>
+    <header className={`${WORKSPACE_HEADER_ROOT_CLASS}${compact ? ' workspace-header--compact' : ''}`}>
       {breadcrumbs ? <div className="min-w-0">{breadcrumbs}</div> : null}
 
       <div className={WORKSPACE_HEADER_TITLE_ACTIONS_CLASS}>
@@ -59,7 +63,7 @@ export function WorkspaceHeader({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className={`flex flex-wrap items-center justify-end gap-2 ${compact ? 'min-w-0 max-w-full' : 'shrink-0'}`}>
           {beforeActions}
           {actions}
           {afterActions}

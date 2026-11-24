@@ -8,6 +8,7 @@ import {
   updatePluginCharacterPageData,
 } from '@/lib/wiki';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 
 interface PluginCharacterPageHostProps {
   campaignHandle: string;
@@ -26,6 +27,8 @@ export function PluginCharacterPageHost({
   character,
   page,
 }: PluginCharacterPageHostProps) {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const rootRef = useRef<HTMLDivElement>(null);
   const [displayMode, setDisplayMode] = useState<CharacterPageDisplayMode>('standard');
   const [pluginData, setPluginData] = useState<unknown>();
@@ -50,8 +53,8 @@ export function PluginCharacterPageHost({
     setLoadedPageId(null);
     setError(null);
     void Promise.all([
-      fetchPluginCharacterPageData(campaignHandle, character.id, page.id),
-      fetchCharacterFields(campaignHandle, character.id),
+      fetchPluginCharacterPageData(campaignHandle, character.id, page.id, { previewAsPlayer }),
+      fetchCharacterFields(campaignHandle, character.id, { previewAsPlayer }),
     ]).then(([result, allFields]) => {
       if (!controller.signal.aborted) {
         setPluginData(result.data);
@@ -64,7 +67,7 @@ export function PluginCharacterPageHost({
       if (!controller.signal.aborted) setLoading(false);
     });
     return () => controller.abort();
-  }, [campaignHandle, character.id, page.id]);
+  }, [campaignHandle, character.id, page.id, previewAsPlayer]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -85,13 +88,14 @@ export function PluginCharacterPageHost({
       fields,
       permissions: {
         canRead: true,
-        canEdit: page.capabilities.canEdit,
-        canChangeVisibility: page.capabilities.canEdit,
+        canEdit: !previewAsPlayer && page.capabilities.canEdit,
+        canChangeVisibility: !previewAsPlayer && page.capabilities.canEdit,
         coreActions: [],
       },
       displayMode,
       signal: controller.signal,
       async updatePluginData(data) {
+        if (previewAsPlayer) throw new Error('Switch to GM to edit.');
         const result = await updatePluginCharacterPageData(
           campaignHandle,
           character.id,
@@ -103,6 +107,7 @@ export function PluginCharacterPageHost({
         return result;
       },
       async updateField(fieldId, value) {
+        if (previewAsPlayer) throw new Error('Switch to GM to edit.');
         const updated = await updateCharacterField(campaignHandle, character.id, fieldId, value);
         if (!controller.signal.aborted) {
           setFields((current) => current.map((field) => field.id === updated.id ? updated : field));
@@ -124,7 +129,7 @@ export function PluginCharacterPageHost({
     // changes must not tear it down, because doing so discards renderer-local
     // edits. A page identity change or reload is the only remount boundary.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignHandle, character.id, error, loadedPageId, loading, page.id]);
+  }, [campaignHandle, character.id, error, loadedPageId, loading, page.id, previewAsPlayer]);
 
   return (
     <section className="min-w-0" aria-label={page.title}>

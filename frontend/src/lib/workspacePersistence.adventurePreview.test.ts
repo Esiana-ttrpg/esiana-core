@@ -19,7 +19,7 @@ describe('adventure perspective persistence', () => {
     }
   });
 
-  it('round-trips Public without coercing it to Player', () => {
+  it('persists Party and discards a legacy Public perspective', () => {
     (globalThis as { window: unknown }).window = {
       localStorage: {
         getItem: (key: string) => store.get(key) ?? null,
@@ -29,12 +29,14 @@ describe('adventure perspective persistence', () => {
       },
     };
 
-    assert.equal(readAdventurePerspective('matrix-review'), 'dm');
-    patchAdventurePerspective('matrix-review', 'public');
-    assert.equal(readAdventurePerspective('matrix-review'), 'public');
+    assert.equal(readAdventurePerspective('matrix-review'), null);
+    store.set('esiana:workspace:matrix-review', JSON.stringify({ adventurePerspective: 'public', threadsLens: 'activity' }));
+    assert.equal(readAdventurePerspective('matrix-review'), null);
+    assert.deepEqual(JSON.parse(store.get('esiana:workspace:matrix-review')!), { threadsLens: 'activity' });
     patchAdventurePerspective('matrix-review', 'party');
     assert.equal(readAdventurePerspective('matrix-review'), 'party');
-    patchAdventurePerspective('matrix-review', 'public');
-    assert.equal(readAdventurePerspective('matrix-review'), 'public');
+    store.set('esiana:workspace:matrix-review', JSON.stringify({ adventurePerspective: 'public' }));
+    assert.equal(readAdventurePerspective('matrix-review'), null);
+    assert.equal('adventurePerspective' in JSON.parse(store.get('esiana:workspace:matrix-review')!), false);
   });
 });

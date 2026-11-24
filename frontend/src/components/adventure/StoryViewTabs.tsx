@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ChevronDown } from 'lucide-react';
 import { useId, useRef, useState, useEffect } from 'react';
 import {
@@ -55,15 +55,15 @@ export function StoryViewTabs({ basePath, activeView, isDMUser: isDMUserProp }: 
         aria-label="Story views"
       >
         {visibleViews.map((view) => (
-          <NavLink
+          <Link
             key={view.id}
             to={adventureViewHref(basePath, view.id)}
             role="tab"
             aria-selected={activeView === view.id}
-            className={({ isActive }) => tabClass(isActive)}
+            className={tabClass(activeView === view.id)}
           >
             {view.label}
-          </NavLink>
+          </Link>
         ))}
       </div>
 
@@ -91,18 +91,16 @@ export function StoryViewTabs({ basePath, activeView, isDMUser: isDMUserProp }: 
             className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border bg-surface py-1 shadow-xl"
           >
             {visibleViews.map((view) => (
-              <NavLink
+              <Link
                 key={view.id}
                 to={adventureViewHref(basePath, view.id)}
                 role="option"
                 aria-selected={activeView === view.id}
                 onClick={() => setMenuOpen(false)}
-                className={({ isActive }) =>
-                  `block px-3 py-2 text-sm ${isActive ? 'font-medium text-primary' : 'text-foreground hover:bg-elevated/60'}`
-                }
+                className={`block px-3 py-2 text-sm ${activeView === view.id ? 'font-medium text-primary' : 'text-foreground hover:bg-elevated/60'}`}
               >
                 {view.label}
-              </NavLink>
+              </Link>
             ))}
           </div>
         ) : null}

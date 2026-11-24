@@ -1,9 +1,12 @@
 import { trajectoryKey } from '@shared/factionMomentumMetadata';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CircleHelp, Plus } from 'lucide-react';
+import { CircleHelp } from 'lucide-react';
 import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
+import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
 import {
   fetchCampaignMomentum,
 } from '@/lib/progressionApi';
@@ -284,53 +287,43 @@ export function ProgressionTrajectoriesSection({
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-foreground">Trajectories</h2>
-          <p className="text-sm text-muted-foreground">Where is the world going?</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to={platformGuidePath('world-development')}
-            aria-label="Trajectories help"
-            title="Trajectories help"
-            className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
+      <WorkspaceHeader compact title="Trajectories" subtitle="Where is the world going?" actions={
+        <WorkspaceActionBar
+          refine={<CategoryIndexRefinePopover
+            mobileFullWidth
+            facetDefs={[]}
+            refineState={{}}
+            children={[]}
+            categoryTitle="Trajectories"
+            onRefineChange={() => {}}
+            activeCount={Number(categoryFilter !== 'all') + Number(Boolean(search.trim()))}
+            searchQuery={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search trajectories…"
+            onResetRefine={() => { setCategoryFilter('all'); setSearch(''); }}
+            customBody={<label className="block text-sm text-foreground">
+              Type
+              <select aria-label="Filter by type" value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+                className="mt-1 w-full rounded-md border border-border/70 bg-background px-2.5 py-1 text-foreground">
+                <option value="all">All</option>
+                <option value="organizations">Organizations</option>
+                <option value="characters">Characters</option>
+                <option value="locations">Locations</option>
+              </select>
+            </label>}
+          />}
+          trailing={<Link to={platformGuidePath('world-development')} aria-label="Trajectories help"
+            title="Trajectories help" className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground">
             <CircleHelp className="size-4" aria-hidden />
-          </Link>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="size-3.5" aria-hidden />
-            Trajectory
-          </button>
-        </div>
-      </header>
+          </Link>}
+          create={{ label: 'Trajectory', onClick: () => setCreateOpen(true) }}
+        />
+      } />
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <span>Era: {currentLabel}</span>
         <Link to={`/campaigns/${campaignHandle}/chronology?view=eras`} className="text-primary hover:underline">Manage eras</Link>
-        <select
-          aria-label="Filter by type"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
-          className="rounded-md border border-border/70 bg-background px-2.5 py-1 text-foreground"
-        >
-          <option value="all">All</option>
-          <option value="organizations">Organizations</option>
-          <option value="characters">Characters</option>
-          <option value="locations">Locations</option>
-        </select>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search…"
-          aria-label="Search trajectories"
-          className="rounded-md border border-border/70 bg-background px-2.5 py-1 text-foreground"
-        />
       </div>
 
 
@@ -340,6 +333,7 @@ export function ProgressionTrajectoriesSection({
         flatPages={flatPages}
         eras={eras}
         rows={filteredRows}
+        emptyMessage={rows.length > 0 && filteredRows.length === 0 ? 'No trajectories match your filters.' : undefined}
         onPatch={handlePatch}
         onPersistPage={handlePersistPage}
       />

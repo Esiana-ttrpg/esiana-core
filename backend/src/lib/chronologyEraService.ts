@@ -9,8 +9,12 @@ import type { CampaignContext } from '../types/api.js';
 import type { ChronologyEra, EraDate, EraDeletionImpact, EraInput } from '../../../shared/chronologyEras.js';
 import { parseCampaignMomentumState } from '../../../shared/factionMomentumMetadata.js';
 import { calendarEpochMinuteForDate, convertEpochToCalendarState, getMonthsForYear, parseMonths, parseLeapRules } from './timeEngine.js';
-import { chronologyCanManage, chronologyCanView, chronologyElevated } from './chronologyAccess.js';
+import { chronologyCanManage, chronologyCanView, chronologyElevated, chronologyCanCreateEra } from './chronologyAccess.js';
 import { canViewWikiPage } from './wikiTree.js';
+import {
+  ChronologyActivityEntity,
+  logChronologyActivity,
+} from './chronologyAuthorship.js';
 
 const DAY = 1440n;
 type Db = Prisma.TransactionClient;
@@ -122,7 +126,8 @@ async function lock(db: Db, campaignId: string) {
 }
 
 export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, userId?: string, id?: string) {
-  requireManager(ctx);
+  if (id) requireManager(ctx);
+  else if (!chronologyCanCreateEra(ctx)) throw new EraError('Era creation is not permitted.', 403);
   await ensureChronologyEras(ctx.campaignId);
   return prisma.$transaction(async db => {
     await lock(db, ctx.campaignId);
@@ -144,6 +149,7 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
     if (input.description != null && typeof input.description !== 'string') throw new EraError('Description must be text.');
     // Setting current must not silently mutate a hidden current era.
     if (input.isCurrent) {
+      if (!chronologyCanManage(ctx)) throw new EraError('Changing the current era requires chronology management.', 403);
       const current = await db.campaignEra.findFirst({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true } });
       if (current && !chronologyCanView(ctx, current.visibility)) throw new EraError('The current era cannot be changed with your access.', 403);
       await db.campaignEra.updateMany({ where: { campaignId: ctx.campaignId, calendarId: calendar.id, isCurrent: true }, data: { isCurrent: false } });
@@ -157,6 +163,15 @@ export async function saveChronologyEra(ctx: CampaignContext, input: EraInput, u
           createdByUserId: userId } });
     await syncEraProjection(db, ctx.campaignId);
     await reserveChronologyRoute(db, ctx.campaignId, 'eras', era.id, name);
+    logChronologyActivity({
+      campaignId: ctx.campaignId,
+      userId,
+      actionType: existing ? 'UPDATE' : 'CREATE',
+      entityType: ChronologyActivityEntity.ERA,
+      entityId: era.id,
+      entityName: name,
+      parentContext: calendar.id,
+    });
     return era.id;
   });
 }
@@ -252,6 +267,15 @@ export async function deleteChronologyEra(
     const remaining = await db.campaignEra.findMany({ where: { campaignId: ctx.campaignId, calendarId: era.calendarId }, orderBy: { sortOrder: 'asc' } });
     for (const [sortOrder, row] of remaining.entries()) await db.campaignEra.update({ where: { campaignId_id: { campaignId: ctx.campaignId, id: row.id } }, data: { sortOrder } });
     await syncEraProjection(db, ctx.campaignId);
+    logChronologyActivity({
+      campaignId: ctx.campaignId,
+      userId: ctx.actor.kind === 'member' ? ctx.actor.userId : null,
+      actionType: 'DELETE',
+      entityType: ChronologyActivityEntity.ERA,
+      entityId: id,
+      entityName: era.name,
+      parentContext: era.calendarId,
+    });
   };
   if (options.tx) await remove(options.tx);
   else await prisma.$transaction(remove);

@@ -1,5 +1,8 @@
 /**
- * Discriminated union for stat API values — distinguishes unknown, zero, and measured amounts.
+ * Discriminated union for stat API values — distinguishes unknown, zero,
+ * measured, estimated, and partial amounts.
+ *
+ * Campaign statistics continue to emit `value` / `zero` / `unavailable` only.
  */
 
 export type MetricUnavailableReason =
@@ -10,11 +13,21 @@ export type MetricUnavailableReason =
 export type MetricValue =
   | { status: 'value'; amount: number }
   | { status: 'zero'; amount: 0 }
+  | { status: 'estimated'; amount: number }
+  | { status: 'partial'; amount: number }
   | { status: 'unavailable'; reason: MetricUnavailableReason };
 
 export function metricValue(amount: number): MetricValue {
   if (amount === 0) return { status: 'zero', amount: 0 };
   return { status: 'value', amount };
+}
+
+export function metricEstimated(amount: number): MetricValue {
+  return { status: 'estimated', amount };
+}
+
+export function metricPartial(amount: number): MetricValue {
+  return { status: 'partial', amount };
 }
 
 export function metricUnavailable(reason: MetricUnavailableReason): MetricValue {

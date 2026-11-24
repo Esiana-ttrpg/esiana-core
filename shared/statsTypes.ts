@@ -45,10 +45,385 @@ export type LinkableCampaign = {
   isLookingForGroup: boolean;
 };
 
+/**
+ * Owner-only period ranking of campaigns by meaningful activity
+ * (active days first, then qualified contribution events — not raw word counts).
+ */
+export type ActiveCampaignSummary = {
+  id: string;
+  name: string;
+  handle: string;
+  href: string;
+  coverImageUrl: string | null;
+  /** Distinct civil days with qualifying activity in the reporting timezone. */
+  activeDays: number;
+  /** Count of qualifying activity events (writing, pages, maps, chronology, play). */
+  contributions: number;
+  /** Distinct wiki pages touched in the window. */
+  pagesTouched: number;
+};
+
 export type CreatorAttributionResponse = {
   computedAt: string;
   refreshCadence: 'realtime';
   metrics: Partial<Record<MetricId, MetricValue>>;
   worldbuildingMix: WorldbuildingMixEntry[];
   linkableCampaigns: LinkableCampaign[];
+};
+
+export type PersonalStatisticsVisibility =
+  | 'owner'
+  | 'viewerAuthorized'
+  | 'public';
+
+export type PersonalStatisticsRangeMode =
+  | 'all_time'
+  | 'year'
+  | 'month'
+  | 'custom';
+
+export type StatsCategory =
+  | 'writing'
+  | 'worldbuilding'
+  | 'maps'
+  | 'chronology'
+  | 'campaigns';
+
+export type WritingDayCompleteness = 'measured' | 'partial' | 'none';
+
+export type WritingHeatmapDay = {
+  date: string;
+  weekday: number;
+  wordsAdded: number;
+  wordsRemoved: number;
+  sessionCount: number;
+  sessionMinutes: number;
+  completeness: WritingDayCompleteness;
+};
+
+export type WritingWeeklyRhythmBucket = {
+  weekday: number;
+  wordsAdded: number;
+  sessionMinutes: number;
+};
+
+export type WritingHourlyBucket = {
+  hour: number;
+  wordsAdded: number;
+  sessionMinutes: number;
+};
+
+export type WritingAddedRemovedPoint = {
+  date: string;
+  wordsAdded: number;
+  wordsRemoved: number;
+  completeness: WritingDayCompleteness;
+};
+
+export type WritingVisualizationDocument = {
+  id: string;
+  title: string;
+  href: string;
+  /** Authorized featured-image thumbnail when the viewer may see the page. */
+  thumbnailUrl?: string | null;
+};
+
+export type WritingVisualizationSession = {
+  id: string;
+  date: string;
+  startedAt: string;
+  endedAt: string | null;
+  activeDurationMs: number;
+  completeness: string;
+  documents: WritingVisualizationDocument[];
+};
+
+/** Ranked pages touched in the reporting window (contributions + sessions). */
+export type WritingMostWorkedDocument = WritingVisualizationDocument & {
+  contributions: number;
+};
+
+export type WritingVisualizations = {
+  timeZone: string;
+  window: { start: string; end: string };
+  heatmap: WritingHeatmapDay[];
+  weeklyRhythm: WritingWeeklyRhythmBucket[];
+  hourly: WritingHourlyBucket[];
+  addedRemovedTrend: WritingAddedRemovedPoint[];
+  sessions: WritingVisualizationSession[];
+  mostWorkedDocuments: WritingMostWorkedDocument[];
+};
+
+/** Mutually exclusive worldbuilding domains. Factions are organization-backed. */
+export const WORLDBUILDING_DOMAINS = [
+  'characters',
+  'locations',
+  'organizations',
+  'families',
+  'factions',
+  'relationships',
+  'creatures',
+  'events',
+  'eras',
+  'custom',
+] as const;
+
+export type WorldbuildingDomain = (typeof WORLDBUILDING_DOMAINS)[number];
+
+export type WorldbuildingDomainStats = {
+  domain: WorldbuildingDomain;
+  /** Lifetime pages (or LINK_CREATED for relationships) this user created. */
+  created: MetricValue;
+  /** PAGE_CREATED (or LINK_CREATED) in the reporting window. */
+  periodCreated: MetricValue;
+  /** PAGE_EDITED in the reporting window. Owner-only. */
+  periodEdited: MetricValue;
+  /** Human word contributions on classified documents in the window. Owner-only. */
+  periodContributed: MetricValue;
+};
+
+export const CARTOGRAPHY_DOMAINS = [
+  'maps',
+  'markers',
+  'regions',
+  'layers',
+  'labels',
+  'locationsMapped',
+] as const;
+
+export type CartographyDomain = (typeof CARTOGRAPHY_DOMAINS)[number];
+
+export type CartographyDomainStats = {
+  domain: CartographyDomain;
+  created: MetricValue;
+  periodCreated: MetricValue;
+  periodEdited: MetricValue;
+};
+
+export type CartographyThumbnail = {
+  id: string;
+  href: string;
+  thumbnailUrl: string | null;
+  label: string;
+};
+
+/**
+ * Calendar/operational chronology — distinct from worldbuilding wiki event/era
+ * pages. Timeline contributions are calendar events with a linked wiki page
+ * (subset of events). World-advance batch stamps are excluded from events.
+ */
+export const CHRONOLOGY_DOMAINS = [
+  'events',
+  'eras',
+  'timelineContributions',
+  'timeAdvances',
+] as const;
+
+export type ChronologyDomain = (typeof CHRONOLOGY_DOMAINS)[number];
+
+export type ChronologyDomainStats = {
+  domain: ChronologyDomain;
+  created: MetricValue;
+  periodCreated: MetricValue;
+  periodEdited: MetricValue;
+  /** In-world minutes advanced. Present on timeAdvances only. */
+  minutesAdvanced?: MetricValue;
+  /** In-world minutes advanced in the reporting window. Owner-only. */
+  periodMinutesAdvanced?: MetricValue;
+};
+
+/**
+ * Session and campaign participation. Membership alone is not attendance.
+ * Planned schedule ranges may be estimated; actual play stays unavailable.
+ */
+export const PARTICIPATION_DOMAINS = [
+  'campaignsParticipated',
+  'campaignsGmed',
+  'sessionsAttended',
+  'sessionsHosted',
+] as const;
+
+export type ParticipationDomain = (typeof PARTICIPATION_DOMAINS)[number];
+
+export type ParticipationDomainStats = {
+  domain: ParticipationDomain;
+  total: MetricValue;
+  periodTotal: MetricValue;
+  /** Sum of planned start→end minutes when both ends exist. Sessions only. */
+  plannedDurationMinutes?: MetricValue;
+  periodPlannedDurationMinutes?: MetricValue;
+  /** Always unavailable — scheduled ranges are not measured play. */
+  playedDurationMinutes?: MetricValue;
+};
+
+export type ParticipationHistoryEntry = {
+  timelinePointId: string;
+  campaignId: string;
+  plannedStartAt: string | null;
+  plannedEndAt: string | null;
+  roles: Array<'attended' | 'hosted'>;
+  plannedDurationMinutes: number | null;
+};
+
+/**
+ * Period-specific creative tendencies derived from writing, worldbuilding,
+ * cartography, chronology, and participation. Normalized scores, not rankings.
+ * Owner-only — never used for public leaderboards.
+ */
+export const PERSONAL_ARCHETYPE_RULESET_VERSION = 1 as const;
+
+export const PERSONAL_ARCHETYPE_IDS = [
+  'chronicler',
+  'worldsmith',
+  'cartographer',
+  'timekeeper',
+  'storyweaver',
+  'adventurer',
+  'wanderer',
+] as const;
+
+export type PersonalArchetypeId = (typeof PERSONAL_ARCHETYPE_IDS)[number];
+
+export type PersonalArchetypeScore = {
+  id: PersonalArchetypeId;
+  /**
+   * L1 share among measured axes in [0, 1]. `0` means measured zero activity.
+   * `null` means the axis is unavailable (not silently zero).
+   * Measured scores among available axes sum to 1 when any activity exists.
+   */
+  score: number | null;
+  availability: 'measured' | 'unavailable';
+};
+
+export type PersonalArchetypes = {
+  rulesetVersion: typeof PERSONAL_ARCHETYPE_RULESET_VERSION;
+  scores: PersonalArchetypeScore[];
+  dominantId: PersonalArchetypeId | null;
+};
+
+export type PersonalStatisticsResponse = {
+  version: 1;
+  computedAt: string;
+  refreshCadence: 'realtime';
+  timeZone: string;
+  visibilityContext: PersonalStatisticsVisibility;
+  range: {
+    mode: PersonalStatisticsRangeMode;
+    start: string | null;
+    end: string;
+  };
+  campaignId: string | null;
+  snapshot: Partial<Record<MetricId, MetricValue>>;
+  period: Partial<Record<MetricId, MetricValue>>;
+  habits: Partial<Record<MetricId, MetricValue>>;
+  worldbuildingMix: WorldbuildingMixEntry[];
+  /**
+   * Per-domain creations / edits / word contributions. Companion to the locked
+   * 13 IDs — does not redefine attribution.charactersCreated and siblings.
+   */
+  worldbuilding: WorldbuildingDomainStats[];
+  /**
+   * Cartography creations and editing activity. Companion structured stats —
+   * not new locked MetricIds. Thumbnails are owner-only.
+   */
+  cartography: CartographyDomainStats[];
+  cartographyThumbnails?: CartographyThumbnail[] | null;
+  /**
+   * Chronology calendar events, eras, timeline-linked events, and time advances.
+   * Companion structured stats — not new locked MetricIds. Distinct from
+   * worldbuilding wiki event/era domains.
+   */
+  chronology: ChronologyDomainStats[];
+  /**
+   * Campaign and session participation. Companion structured stats — not new
+   * locked MetricIds. History is owner-only.
+   */
+  participation: ParticipationDomainStats[];
+  participationHistory?: ParticipationHistoryEntry[] | null;
+  /**
+   * Owner-only period archetypes. Omitted for public / viewerAuthorized and
+   * when the window has no measurable activity.
+   */
+  archetypes?: PersonalArchetypes | null;
+  linkableCampaigns: LinkableCampaign[];
+  /**
+   * Owner-only: up to three campaigns ranked by period activity, with artwork.
+   * Omitted for public / viewerAuthorized and when the window is skipped.
+   */
+  activeCampaigns?: ActiveCampaignSummary[] | null;
+  /** Owner-only writing charts. Omitted for public and compatibility adapters. */
+  visualizations?: WritingVisualizations | null;
+};
+
+export type PersonalStatisticsExportMetricDefinition = {
+  id: string;
+  unit: string;
+  source: string;
+  timeSemantics: string;
+  attributionRules: string;
+  historicalCompleteness: string;
+  reportingClock: string;
+  aggregation: string;
+};
+
+export type PersonalStatisticsExportContribution = {
+  id: string;
+  occurredAt: string;
+  campaignId: string;
+  documentId: string;
+  sourceId: string;
+  wordsAdded: number;
+  wordsRemoved: number;
+  netChange: number;
+  origin: string;
+  availability: string;
+  writingSessionId: string | null;
+  narrativeEventId: string | null;
+};
+
+export type PersonalStatisticsExportDailyAggregate = {
+  date: string;
+  wordsAdded: number;
+  wordsRemoved: number;
+  netChange: number;
+  sessionCount: number;
+  sessionMinutes: number;
+  completeness: WritingDayCompleteness;
+};
+
+export type PersonalStatisticsExportSession = {
+  id: string;
+  campaignId: string;
+  startedAt: string;
+  endedAt: string | null;
+  activeDurationMs: number;
+  completeness: string;
+  documentIds: string[];
+};
+
+export type PersonalStatisticsExportJson = {
+  version: 1;
+  exportedAt: string;
+  timeZone: string;
+  visibilityContext: 'owner';
+  range: PersonalStatisticsResponse['range'];
+  campaignId: string | null;
+  provenance: {
+    timestamps: 'UTC';
+    reportingClock: 'real_world';
+    notes: string[];
+  };
+  metricDefinitions: PersonalStatisticsExportMetricDefinition[];
+  snapshot: PersonalStatisticsResponse['snapshot'];
+  period: PersonalStatisticsResponse['period'];
+  habits: PersonalStatisticsResponse['habits'];
+  worldbuilding: WorldbuildingDomainStats[];
+  cartography: CartographyDomainStats[];
+  chronology: ChronologyDomainStats[];
+  participation: ParticipationDomainStats[];
+  participationHistory: ParticipationHistoryEntry[];
+  archetypes: PersonalArchetypes | null;
+  contributions: PersonalStatisticsExportContribution[];
+  dailyAggregates: PersonalStatisticsExportDailyAggregate[];
+  writingSessions: PersonalStatisticsExportSession[];
 };

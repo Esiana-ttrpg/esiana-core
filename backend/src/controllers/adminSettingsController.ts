@@ -202,6 +202,16 @@ export async function patchAdminSettings(
     }
   }
 
+  const wrapped = body.wrapped as Record<string, unknown> | undefined;
+  if (wrapped && typeof wrapped === 'object') {
+    const enabled = optionalBoolean(wrapped.enabled);
+    if (enabled !== undefined) data.wrappedEnabled = enabled;
+    const publicPublishingEnabled = optionalBoolean(wrapped.publicPublishingEnabled);
+    if (publicPublishingEnabled !== undefined) {
+      data.publicWrappedPublishingEnabled = publicPublishingEnabled;
+    }
+  }
+
   const urlImports = body.urlImports as Record<string, unknown> | undefined;
   if (urlImports && typeof urlImports === 'object') {
     const enabled = optionalBoolean(urlImports.enabled);

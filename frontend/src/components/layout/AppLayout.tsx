@@ -11,6 +11,7 @@ import {
   type MasterPageWidth,
 } from '@/lib/pageWidthPreference';
 import { GlobalPluginRuntimeProvider } from '@/plugins/GlobalPluginRuntimeProvider';
+import { WrappedSeasonalInviteBanner } from '@/components/wrapped/WrappedSeasonalInviteBanner';
 
 export function AppLayout() {
   const [pageWidth, setPageWidth] = useState<MasterPageWidth>(() =>
@@ -77,6 +78,7 @@ export function AppLayout() {
           </div>
         ) : null}
         <AppHeader />
+        <WrappedSeasonalInviteBanner />
         <main
           className={`flex-1 bg-background py-8 ${pageWidthContainerClasses(pageWidth)}`}
         >

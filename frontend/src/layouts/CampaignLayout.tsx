@@ -1,9 +1,16 @@
+import { readAdventurePerspective } from '@/lib/workspacePersistence';
+import { flushSceneSummaryDrafts } from '@/lib/sceneSummaryDrafts';
+import { fetchWikiTreePayload } from '@/lib/wiki';
+import { buildCampaignActor, hasElevatedNarrativeView } from '@shared/campaignPolicy/policy';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import type { AdventurePreviewPerspective } from '@/lib/adventurePreview';
 import { Outlet, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { CampaignRecencyRecorder } from '@/components/layout/CampaignRecencyRecorder';
 import { Footer } from '@/components/layout/Footer';
 import { SystemAnnouncementBanner } from '@/components/layout/SystemAnnouncementBanner';
+import { WrappedSeasonalInviteBanner } from '@/components/wrapped/WrappedSeasonalInviteBanner';
 import { WikiProvider, useWiki } from '@/contexts/WikiContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { campaignAppearanceFromApi, useBranding } from '@/contexts/BrandingContext';
@@ -31,7 +38,7 @@ import {
   CANVAS_ATMOSPHERE_AMBIENT_CLASS,
   WORKSPACE_SURFACE_CLASS,
 } from '@/lib/surfaceLayout';
-import { AdventureWorkspaceProvider } from '@/contexts/AdventureWorkspaceContext';
+import { AdventureWorkspaceProvider, useAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { WorkspaceContextStrip } from '@/components/layout/WorkspaceContextStrip';
 import { WorkspaceRail } from '@/components/layout/WorkspaceRail';
 import { useWorkspaceChrome } from '@/hooks/useWorkspaceChrome';
@@ -285,6 +292,7 @@ function CampaignLayoutShell() {
       <SystemAnnouncementBanner />
       <div data-print-hide>
         <AppHeader />
+        <WrappedSeasonalInviteBanner />
       </div>
       <div className={`${CANVAS_ATMOSPHERE_AMBIENT_CLASS} flex min-h-0 flex-1`}>
         <div className="hidden min-h-0 shrink-0 self-stretch lg:flex" data-print-hide>
@@ -341,13 +349,57 @@ function CampaignLayoutShell() {
  */
 export function CampaignLayout() {
   const { campaignHandle = '' } = useParams<{ campaignHandle: string }>();
+  return <AudienceScopedCampaignLayout key={campaignHandle} campaignHandle={campaignHandle} />;
+}
 
+function AudienceScopedCampaignLayout({ campaignHandle }: { campaignHandle: string }) {
+  const { loading: authLoading, user } = useAuth();
+  const [resolvedRole, setResolvedRole] = useState<{ handle: string; elevated: boolean } | null>(null);
+  const [perspective, setPerspective] = useState<AdventurePreviewPerspective>('dm');
+  useEffect(() => {
+    if (authLoading || !campaignHandle) return;
+    let cancelled = false;
+    void fetchWikiTreePayload(campaignHandle, { previewAsPlayer: readAdventurePerspective(campaignHandle) === 'party' }).then(({ campaign }) => {
+      if (cancelled) return;
+      const elevated = Boolean(campaign.campaignOwnerUserId && hasElevatedNarrativeView(buildCampaignActor({
+        kind: user?.id && campaign.role ? 'member' : 'anonymous',
+        userId: user?.id,
+        membershipRole: campaign.role,
+        campaignOwnerUserId: campaign.campaignOwnerUserId!,
+        discoverability: campaign.discoverability ?? 'private',
+        allowPlayerChronologyManagement: campaign.allowPlayerChronologyManagement ?? false,
+        chronologyContributor: campaign.chronologyContributor,
+        partyId: campaign.partyId,
+        roleCapabilityOverrides: campaign.roleCapabilityOverrides,
+      })));
+      setPerspective(elevated ? readAdventurePerspective(campaignHandle) ?? 'dm' : 'dm');
+      setResolvedRole({ handle: campaignHandle, elevated });
+    }).catch(() => {
+      if (cancelled) return;
+      setPerspective('dm');
+      setResolvedRole({ handle: campaignHandle, elevated: false });
+    });
+    return () => { cancelled = true; };
+  }, [authLoading, campaignHandle, user?.id]);
+
+  if (authLoading || resolvedRole?.handle !== campaignHandle) return <LoadingSpinner label="Loading campaign…" />;
+  const effectivePerspective = resolvedRole.elevated ? perspective : 'dm';
+  const changePerspective = async (next: AdventurePreviewPerspective) => {
+    if (!resolvedRole.elevated) return;
+    try {
+      await flushSceneSummaryDrafts();
+    } catch {
+      window.alert('Unable to save the scene summary. Your draft is still available in the GM view.');
+      throw new Error('Scene summary save failed');
+    }
+    setPerspective(next);
+  };
   return (
-    <WikiProvider key={campaignHandle}>
+    <WikiProvider key={effectivePerspective} previewAsPlayer={resolvedRole.elevated && effectivePerspective === 'party'}>
       <CampaignNavProvider>
         <PluginRuntimeProvider>
           <SceneCompositionProvider>
-            <AdventureWorkspaceProvider>
+            <AdventureWorkspaceProvider perspective={effectivePerspective} onPerspectiveChange={changePerspective}>
               <CampaignSettingsChromeProvider>
                 <CampaignLayoutShell />
               </CampaignSettingsChromeProvider>

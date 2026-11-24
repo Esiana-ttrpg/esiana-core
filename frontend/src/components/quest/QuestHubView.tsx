@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Eye,
@@ -40,8 +40,7 @@ import {
   type QuestHubTypeFilters,
 } from '@/lib/questHubFilters';
 import { useCampaignActor } from '@/hooks/useCampaignActor';
-import { filterNodesByPreviewVisibility } from '@/lib/adventurePreview';
-import { resolveActorCapabilities } from '@shared/campaignPolicy/policy';
+import { ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE } from '@/lib/adventurePreview';
 import type { QuestHubNode, QuestHubPayload, WikiTreeNode } from '@/types/wiki';
 import type { FantasyCalendarLike } from '@/lib/timeEngine';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
@@ -76,7 +75,6 @@ interface QuestHubViewProps {
   embedded?: boolean;
   storyFilters?: StoryFilterState;
   playerPreview?: boolean;
-  publicPreview?: boolean;
   /** Hoist toolbar into Adventure hub header when embedded. */
   onHeaderToolbarChange?: (toolbar: ReactNode | null) => void;
 }
@@ -97,17 +95,15 @@ export function QuestHubView({
   categoryPageId,
   embedded = false,
   playerPreview: playerPreviewProp,
-  publicPreview = false,
   onHeaderToolbarChange,
 }: QuestHubViewProps) {
   const { flatPages, refresh, campaign } = useWiki();
   const navigate = useNavigate();
   const [playerPreviewLocal, setPlayerPreviewLocal] = useState(false);
   const playerPreview = playerPreviewProp ?? playerPreviewLocal;
-  const { previewAsPlayer, previewAsPublic, previewActor, isElevated } =
+  const { previewAsPlayer, isElevated } =
     useCampaignActor({
-      previewAsPlayer: playerPreview && !publicPreview,
-      previewAsPublic: publicPreview,
+      previewAsPlayer: playerPreview,
     });
   const isDMUser = isElevated();
 
@@ -151,30 +147,37 @@ export function QuestHubView({
     });
   }, [categoryPageId, categoryTitle, pageById]);
 
+  const requestGeneration = useRef(0);
   const loadHub = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError(null);
+    setData(null);
     try {
       const payload = await fetchQuestHub(campaignHandle, {
         pageId: categoryPageId,
-        previewAsPlayer: previewAsPlayer || previewAsPublic,
+        previewAsPlayer,
       });
-      setData(payload);
+      if (generation === requestGeneration.current) setData(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load quest hub');
-      setData(null);
+      if (generation === requestGeneration.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load quest hub');
+        setData(null);
+      }
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
-  }, [campaignHandle, categoryPageId, previewAsPlayer, previewAsPublic]);
+  }, [campaignHandle, categoryPageId, previewAsPlayer]);
 
   useEffect(() => {
     void loadHub();
+    return () => { requestGeneration.current += 1; };
   }, [loadHub]);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchTimeTracking(campaignHandle)
+    setCalendarLike(null);
+    void fetchTimeTracking(campaignHandle, { previewAsPlayer })
       .then((bundle) => {
         if (!cancelled) {
           setCalendarLike(resolveMasterCalendarLike(bundle));
@@ -186,7 +189,7 @@ export function QuestHubView({
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle]);
+  }, [campaignHandle, previewAsPlayer]);
 
   useEffect(() => {
     if (!campaignHandle || !categoryPageId || browseHydrated) return;
@@ -255,16 +258,10 @@ export function QuestHubView({
     setData((prev) => (prev ? { ...prev, quests } : prev));
   }, []);
 
-  const previewCapabilities = useMemo(
-    () => (previewActor ? resolveActorCapabilities(previewActor) : null),
-    [previewActor],
-  );
-
   const visibleQuests = useMemo(() => {
     if (!data) return [];
-    if (!previewAsPublic || !previewCapabilities) return data.quests;
-    return filterNodesByPreviewVisibility(data.quests, previewCapabilities);
-  }, [data, previewAsPublic, previewCapabilities]);
+    return data.quests;
+  }, [data]);
 
   const visibleHubData = useMemo(
     () => (data ? { ...data, quests: visibleQuests } : null),
@@ -527,6 +524,8 @@ export function QuestHubView({
           isDMUser && !embedded ? (
             <button
               type="button"
+              disabled={!ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE}
+              title={ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE ? undefined : 'Party preview is temporarily unavailable.'}
               onClick={() => setPlayerPreviewLocal((prev) => !prev)}
               className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                 playerPreview

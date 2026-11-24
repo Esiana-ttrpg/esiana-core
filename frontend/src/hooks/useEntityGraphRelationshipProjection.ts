@@ -16,6 +16,7 @@ import {
 } from '@/lib/entityProjectionQueries';
 import type { ChronologyDateParts } from '@/lib/entityRelationTypes';
 import { fetchLocalEntityGraph } from '@/lib/entityGraphApi';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { buildProjectionProvenance } from '@/lib/projectionProvenance';
 
 function otherWikiPageId(edge: EntityGraphEdge, pageId: string): string | null {
@@ -165,6 +166,8 @@ export function useEntityGraphRelationshipProjection(input: {
   isDMUser: boolean;
   enabled?: boolean;
 }): EntityRelationshipProjection {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const clientProjection = useMemo(
     () =>
       buildEntityRelationshipProjection(
@@ -197,6 +200,7 @@ export function useEntityGraphRelationshipProjection(input: {
       entityType: EntityGraphEntityTypes.WIKI_PAGE,
       entityId: input.pageId,
       depth: 1,
+      previewAsPlayer,
     })
       .then((graph) => {
         if (cancelled) return;
@@ -223,6 +227,7 @@ export function useEntityGraphRelationshipProjection(input: {
     input.flatPages,
     input.campaignNow,
     input.enabled,
+    previewAsPlayer,
   ]);
 
   return serverProjection ?? clientProjection;

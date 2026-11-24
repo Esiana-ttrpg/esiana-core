@@ -73,6 +73,8 @@ model User {
   sessionTimelinePoints CampaignSessionTimeline[]
   campaignActivities    CampaignActivity[]
   writingDailyRollups   UserWritingDailyRollup[]
+  writingContributions  WritingContribution[]
+  writingSessions       WritingSession[]
   apiLogs               ApiLog[]
   apiRequestLogs        ApiRequestLog[]
   sessionAttendance     SessionAttendance[]
@@ -99,9 +101,27 @@ model User {
   partyRegionVisitsCreated  PartyRegionVisit[] @relation("VisitCreatedBy")
   campaignPins              UserCampaignPin[]
   hubAttentionDismissals    UserHubAttentionDismissal[]
+  wrappedSnapshots          UserWrappedSnapshot[]
   wikiPagesOwned            WikiPage[] @relation("WikiPageOwnerUser")
   wikiPagesCreated          WikiPage[] @relation("WikiPageCreatedBy")
   assetsUploaded            Asset[]    @relation("AssetUploadedBy")
+  mapPinsCreated            MapPin[]   @relation("MapPinCreatedBy")
+  mapPinsUpdated            MapPin[]   @relation("MapPinUpdatedBy")
+  mapLayersCreated          MapLayer[] @relation("MapLayerCreatedBy")
+  mapLayersUpdated          MapLayer[] @relation("MapLayerUpdatedBy")
+  mapObjectGroupsCreated    MapObjectGroup[] @relation("MapObjectGroupCreatedBy")
+  mapObjectGroupsUpdated    MapObjectGroup[] @relation("MapObjectGroupUpdatedBy")
+  mapSceneObjectsCreated    MapSceneObject[] @relation("MapSceneObjectCreatedBy")
+  mapSceneObjectsUpdated    MapSceneObject[] @relation("MapSceneObjectUpdatedBy")
+  mapObjectKeyframesCreated MapObjectKeyframe[] @relation("MapObjectKeyframeCreatedBy")
+  mapObjectKeyframesUpdated MapObjectKeyframe[] @relation("MapObjectKeyframeUpdatedBy")
+  mapPresetsCreated         MapPresentationPreset[] @relation("MapPresentationPresetCreatedBy")
+  mapPresetsUpdated         MapPresentationPreset[] @relation("MapPresentationPresetUpdatedBy")
+  calendarEventsCreated     CalendarEvent[] @relation("CalendarEventCreatedBy")
+  calendarEventsUpdated     CalendarEvent[] @relation("CalendarEventUpdatedBy")
+  campaignErasCreated       CampaignEra[] @relation("CampaignEraCreatedBy")
+  campaignErasUpdated       CampaignEra[] @relation("CampaignEraUpdatedBy")
+  timeAdvancesInitiated     TimeAdvanceSimulationRun[] @relation("TimeAdvanceInitiatedBy")
   journalPublicationsCreated  JournalPublication[] @relation("JournalPublicationCreatedBy")
   journalPublicationsReleased JournalPublication[] @relation("JournalPublicationReleasedBy")
   journalSeriesCreated        JournalSeries[]      @relation("JournalSeriesCreatedBy")
@@ -213,6 +233,10 @@ model SystemSetting {
   maintenanceMode         Boolean   @default(false)
   systemBannerText        String?
   systemBannerExpiresAt   DateTime?
+  /// Yearly Wrapped feature kill-switch (owner invite, assembly, viewer).
+  wrappedEnabled                   Boolean @default(true)
+  /// When false, previously published editions are inaccessible anonymously.
+  publicWrappedPublishingEnabled   Boolean @default(true)
 
   pluginRegistryUrl String @default("https://github.com/Esiana-ttrpg/community-plugins/registry.json")
 
@@ -600,6 +624,8 @@ model Campaign {
   tags               Tag[]
   sessionTimelinePoints CampaignSessionTimeline[]
   activities           CampaignActivity[]
+  writingContributions WritingContribution[]
+  writingSessions      WritingSession[]
   pluginSettings       CampaignPluginSetting[]
   apiRequestLogs       ApiRequestLog[]
   notifications        Notification[]
@@ -1192,9 +1218,12 @@ model CampaignEra {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   calendar FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Restrict)
   overview WikiPage? @relation(fields: [overviewPageId], references: [id], onDelete: SetNull)
+  createdBy User? @relation("CampaignEraCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("CampaignEraUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   @@id([campaignId, id])
   @@index([campaignId, calendarId, sortOrder])
+  @@index([createdByUserId])
 }
 
 /// Layer 1 — pending world event prompts from pressure projection (human-approved only).
@@ -1325,16 +1354,19 @@ model TimeAdvanceSimulationRun {
   source              String
   /// world-advance batchId when applicable
   sourceRef           String?
+  initiatedByUserId   String?
   semanticsVersion    String @default("time-hooks-v1")
   /// Compact GlobalTimeSimulationReceipt — operational/diagnostic only
   receipt             Json
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  initiatedBy User?    @relation("TimeAdvanceInitiatedBy", fields: [initiatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 
   @@unique([campaignId, source, sourceRef, nextEpochMinute])
   @@index([campaignId, createdAt])
+  @@index([initiatedByUserId])
 }
 
 /// Layer 3 — idempotency receipts for world-advance batch effects.
@@ -1406,6 +1438,72 @@ model UserWritingDailyRollup {
   @@index([userId, date])
 }
 
+/// Measured or reconstructed word change for one save/publication. No document body.
+model WritingContribution {
+  id               String   @id @default(cuid())
+  userId           String
+  campaignId       String
+  /// Source registry id (wiki.page, workshop.apply, session_note, …).
+  sourceId         String
+  documentId       String
+  occurredAt       DateTime
+  wordsAdded       Int      @default(0)
+  wordsRemoved     Int      @default(0)
+  netChange        Int      @default(0)
+  /// Dedupes against the PAGE_CREATED / PAGE_EDITED event for this save.
+  narrativeEventId String?  @unique
+  /// human | integration | automation | import | system
+  origin           String
+  /// measured | reconstructed | incomplete
+  availability     String
+  writingSessionId String?
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign       Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  writingSession WritingSession? @relation(fields: [writingSessionId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@index([campaignId, occurredAt])
+  @@index([userId, campaignId, occurredAt])
+  @@index([documentId, occurredAt])
+  @@index([writingSessionId])
+}
+
+/// Inferred writing session. 15 minutes without activity ends it; duration is focused intervals only.
+model WritingSession {
+  id               String    @id @default(cuid())
+  userId           String
+  campaignId       String
+  startedAt        DateTime
+  endedAt          DateTime?
+  lastActivityAt   DateTime
+  activeDurationMs Int       @default(0)
+  /// JSON: WritingSessionInterval[]
+  intervals        Json      @default("[]")
+  /// JSON: document ids touched during this session
+  documentIds      Json      @default("[]")
+  /// open | closed
+  status           String    @default("open")
+  /// measured | partial | unavailable
+  completeness     String    @default("measured")
+  /// Set while status is open so each user/campaign has at most one live session.
+  openLock         String?   @unique
+  intervalVersion  Int       @default(0)
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign      Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contributions WritingContribution[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, campaignId, status, lastActivityAt])
+  @@index([userId, startedAt])
+  @@index([campaignId, startedAt])
+}
+
 model FantasyCalendar {
   eras CampaignEra[]
   id           String  @id @default(uuid())
@@ -1473,6 +1571,8 @@ model CalendarEvent {
   targetEpochMinute BigInt?
   recurrenceRule Json?
   metadata       Json?
+  createdByUserId String?
+  updatedByUserId String?
 
   calendar     FantasyCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
   category     CalendarEventCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -1480,6 +1580,8 @@ model CalendarEvent {
   dependents   CalendarEvent[] @relation("CalendarEventPrerequisite")
   rumorCirculations RumorCirculation[]
   acceptedFromWorldEventSuggestion CampaignWorldEventSuggestion? @relation("CampaignWorldEventSuggestionAcceptedEvent")
+  createdBy User? @relation("CalendarEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("CalendarEventUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1494,6 +1596,7 @@ model CalendarEvent {
   @@index([targetEpochMinute])
   @@index([wikiPageId])
   @@index([targetYear, targetMonth, targetDay])
+  @@index([createdByUserId])
 }
 
 model Party {
@@ -2515,11 +2618,15 @@ model MapPin {
   pinType       String  @default("Location")
   x_coordinate  Float
   y_coordinate  Float
+  createdByUserId String?
+  updatedByUserId String?
 
   asset       Asset            @relation("MapPinOnAsset", fields: [assetId], references: [id], onDelete: Cascade)
   targetPage  WikiPage?        @relation(fields: [targetPageId], references: [id], onDelete: SetNull)
   targetAsset Asset?           @relation("MapPinNestedMap", fields: [targetAssetId], references: [id], onDelete: SetNull)
   sceneObject MapSceneObject?  @relation("MapPinSceneObject")
+  createdBy   User?            @relation("MapPinCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy   User?            @relation("MapPinUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2527,6 +2634,7 @@ model MapPin {
   @@index([assetId])
   @@index([targetPageId])
   @@index([targetAssetId])
+  @@index([createdByUserId])
 }
 
 /// Diegetic overlay stack on a map (borders, routes, ruins). Affects presence when disabled.
@@ -2538,16 +2646,21 @@ model MapLayer {
   sortOrder      Int     @default(0)
   defaultEnabled Boolean @default(true)
   color          String?
+  createdByUserId String?
+  updatedByUserId String?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
-  objects  MapSceneObject[]
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  objects   MapSceneObject[]
+  createdBy User?     @relation("MapLayerCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapLayerUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([mapAssetId])
   @@index([campaignId])
+  @@index([createdByUserId])
 }
 
 /// Editor-only organization for scene objects (does not affect presence).
@@ -2558,16 +2671,21 @@ model MapObjectGroup {
   name       String
   color      String?
   sortOrder  Int    @default(0)
+  createdByUserId String?
+  updatedByUserId String?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
-  objects  MapSceneObject[]
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  objects   MapSceneObject[]
+  createdBy User?     @relation("MapObjectGroupCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapObjectGroupUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([mapAssetId])
   @@index([campaignId])
+  @@index([createdByUserId])
 }
 
 /// Unified map primitive: pins (via mapPinId), regions, labels, paths, tokens.
@@ -2590,6 +2708,8 @@ model MapSceneObject {
   pinType                 String?
   visibleFromEpochMinute  BigInt?
   visibleUntilEpochMinute BigInt?
+  createdByUserId         String?
+  updatedByUserId         String?
 
   campaign  Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
@@ -2597,6 +2717,8 @@ model MapSceneObject {
   group     MapObjectGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   mapPin    MapPin?         @relation("MapPinSceneObject", fields: [mapPinId], references: [id], onDelete: Cascade)
   keyframes MapObjectKeyframe[]
+  createdBy User?     @relation("MapSceneObjectCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapSceneObjectUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2609,6 +2731,7 @@ model MapSceneObject {
   @@index([targetAssetId])
   @@index([visibleFromEpochMinute])
   @@index([visibleUntilEpochMinute])
+  @@index([createdByUserId])
 }
 
 /// Explicit temporal override at a chronology instant (no morphing — discrete swaps).
@@ -2620,13 +2743,18 @@ model MapObjectKeyframe {
   styleOverride        Json?
   visibilityOverride   String?
   revelationOverride   String?
+  createdByUserId      String?
+  updatedByUserId      String?
 
   sceneObject MapSceneObject @relation(fields: [sceneObjectId], references: [id], onDelete: Cascade)
+  createdBy   User?          @relation("MapObjectKeyframeCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy   User?          @relation("MapObjectKeyframeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([sceneObjectId, effectiveEpochMinute])
+  @@index([createdByUserId])
 }
 
 /// Layer 3 — era shortcut for map chronology scrub (anchor epoch + default layer toggles).
@@ -2639,15 +2767,20 @@ model MapPresentationPreset {
   /// JSON string[] of MapLayer ids enabled when this preset is selected (empty = no override).
   enabledLayerIds   Json   @default("[]")
   sortOrder         Int    @default(0)
+  createdByUserId   String?
+  updatedByUserId   String?
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  mapAsset Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  campaign  Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mapAsset  Asset     @relation(fields: [mapAssetId], references: [id], onDelete: Cascade)
+  createdBy User?     @relation("MapPresentationPresetCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy User?     @relation("MapPresentationPresetUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([mapAssetId])
   @@index([campaignId])
+  @@index([createdByUserId])
 }
 
 /// Canonical cross-system reveal state for maps, wiki pages/blocks, timeline, journals, and search.
@@ -2717,6 +2850,32 @@ model UserHubAttentionDismissal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, dismissKey])
+}
+
+/// Annual Wrapped calculation snapshot (metrics + slide IDs only; no titles/art).
+model UserWrappedSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  year           Int
+  schemaVersion  Int      @default(1)
+  /// preview | completed
+  edition        String
+  payload        Json
+  generatedAt    DateTime @default(now())
+  regeneratedAt  DateTime?
+  /// Explicit publication: frozen public presentation, independent of private payload.
+  publishedAt            DateTime?
+  publishedPayload       Json?
+  publishedOwnerName     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year])
+  @@index([userId, year])
+  @@index([publishedAt])
 }
 
 // ---------------------------------------------------------------------------

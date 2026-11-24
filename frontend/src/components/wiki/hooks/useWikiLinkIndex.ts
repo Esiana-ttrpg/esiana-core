@@ -1,7 +1,10 @@
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { useEffect, useState } from 'react';
 import { fetchWikiLinkIndex, type WikiLinkIndexEntry } from '@/lib/wikiLoreGraph';
 
 export function useWikiLinkIndex(campaignHandle: string | undefined) {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const [index, setIndex] = useState<WikiLinkIndexEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -12,7 +15,7 @@ export function useWikiLinkIndex(campaignHandle: string | undefined) {
     }
     let cancelled = false;
     setLoading(true);
-    fetchWikiLinkIndex(campaignHandle)
+    fetchWikiLinkIndex(campaignHandle, { previewAsPlayer })
       .then((entries) => {
         if (!cancelled) setIndex(entries);
       })
@@ -25,7 +28,7 @@ export function useWikiLinkIndex(campaignHandle: string | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [campaignHandle]);
+  }, [campaignHandle, previewAsPlayer]);
 
   return { index, loading };
 }

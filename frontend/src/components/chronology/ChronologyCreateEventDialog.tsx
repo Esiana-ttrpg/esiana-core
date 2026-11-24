@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChronologyEventForm } from './ChronologyEventManagePanel';
+import { ChronologyEventDialog } from './ChronologyEventDialog';
 import { calendarRowToLike } from '@/lib/chronologyCalendar';
 import {
   nowFromCalendarState,
@@ -39,7 +40,15 @@ export function ChronologyCreateEventDialog({
       )?.id,
   );
   const status = useRef({ dirty: false, busy: false });
-  const calendar = calendars.find((row) => row.id === calendarId);
+  const calendar = calendars.find((row) => row.id === calendarId) ??
+    calendars.find((row) => row.isMasterTime) ?? calendars[0];
+  const effectiveCalendarId = calendar?.id;
+  useEffect(() => {
+    if (calendarId !== effectiveCalendarId) {
+      status.current = { dirty: false, busy: false };
+      setCalendarId(effectiveCalendarId);
+    }
+  }, [calendarId, effectiveCalendarId]);
   const like = useMemo(
     () => (calendar ? calendarRowToLike(calendar) : null),
     [calendar],
@@ -47,7 +56,7 @@ export function ChronologyCreateEventDialog({
   const draft = useMemo(
     (): TimelineBaseEventRecord => ({
       id: '',
-      calendarId: calendarId ?? '',
+      calendarId: effectiveCalendarId ?? '',
       title: '',
       description: '',
       categoryId: null,
@@ -71,12 +80,18 @@ export function ChronologyCreateEventDialog({
       updatedAt: '',
       tags: [],
     }),
-    [calendarId],
+    [effectiveCalendarId],
   );
-  if (!calendar || !like) return null;
+  if (!calendar || !like) {
+    return (
+      <ChronologyEventDialog title="Create Event" dirty={false} busy={false} onClose={onClose}>
+        <p className="text-sm text-muted">A calendar is required before creating an event.</p>
+      </ChronologyEventDialog>
+    );
+  }
   return (
     <ChronologyEventForm
-      key={calendarId}
+      key={effectiveCalendarId}
       campaignHandle={campaignHandle}
       baseEvent={draft}
       categories={categories}
@@ -94,7 +109,7 @@ export function ChronologyCreateEventDialog({
         <label className="block space-y-1 text-xs">
           <span className="font-semibold text-muted">Calendar track</span>
           <select
-            value={calendarId}
+            value={effectiveCalendarId}
             className="block w-full rounded border border-border bg-background p-2"
             onChange={(event) => {
               if (

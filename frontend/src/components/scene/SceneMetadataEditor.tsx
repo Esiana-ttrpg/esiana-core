@@ -11,6 +11,7 @@ import {
   type NarrativeLifecycleState,
 } from '@shared/narrativeLifecycle';
 import { SceneCardProperties } from '@/components/scene/SceneCardProperties';
+import { trackSceneMetadataSave } from '@/lib/sceneSummaryDrafts';
 import type { WikiTreeNode } from '@/types/wiki';
 
 interface SceneMetadataEditorProps {
@@ -68,7 +69,7 @@ export function SceneMetadataEditor({
     setSaving(true);
     setError(null);
     try {
-      const result = await updateSceneMetadata(campaignHandle, pageId, patch);
+      const result = await trackSceneMetadataSave(updateSceneMetadata(campaignHandle, pageId, patch));
       const next = parseSceneMetadata(result.metadata);
       setDraft(next);
       setWarnings(result.metadataWarnings ?? []);
@@ -91,7 +92,7 @@ export function SceneMetadataEditor({
     setSaving(true);
     setError(null);
     try {
-      const result = await patchSceneLifecycle(campaignHandle, pageId, next, pageTitle);
+      const result = await trackSceneMetadataSave(patchSceneLifecycle(campaignHandle, pageId, next, pageTitle));
       setLifecycleState(result.lifecycleState as NarrativeLifecycleState);
       if (result.sceneStatus) {
         setDraft((prev) => {

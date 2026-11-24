@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { projectAdventurePages, projectedWikiTargetIds } from './adventurePageProjection.js';
 import {
   parseCharacterMetadata,
   resolveCharacterStatus,
@@ -291,15 +292,22 @@ export async function loadCharacterHubPayload(input: {
   categoryPageId: string;
   role: string | null;
   previewAsPlayer?: boolean;
+  canManage: boolean;
+  isElevated: boolean;
+  canViewPage: (visibility: string) => boolean;
 }): Promise<CharacterHubPayload | null> {
-  const { canManage, isElevated, previewAsPlayer } = resolveCharacterHubEffectiveView(
-    input,
-  );
+  const previewAsPlayer = Boolean(input.previewAsPlayer);
+  const canManage = input.canManage && !previewAsPlayer;
+  const isElevated = input.isElevated && !previewAsPlayer;
+  const reduced = previewAsPlayer || !isElevated || !input.canViewPage('DM_Only');
+  const projectedPages = reduced ? await projectAdventurePages(input.campaignId,
+    await prisma.wikiPage.findMany({ where: { campaignId: input.campaignId, deletedAt: null } }), input.canViewPage) : null;
+  const projectedById = projectedPages ? new Map(projectedPages.map(page => [page.id, page])) : null;
   const visibilityWhere = wikiPageVisibilityFilter(isElevated);
   const peerVisibility = wikiLinkPeerVisibilityFilter(isElevated);
 
   const category = await prisma.wikiPage.findFirst({
-    where: { id: input.categoryPageId, campaignId: input.campaignId },
+    where: { id: input.categoryPageId, campaignId: input.campaignId, deletedAt: null },
     select: {
       id: true,
       title: true,
@@ -312,15 +320,16 @@ export async function loadCharacterHubPayload(input: {
     },
   });
 
-  if (!category || category.title !== 'Characters') {
+  if (!category || category.title !== 'Characters' || (projectedById && !projectedById.has(category.id)) ||
+    !input.canViewPage(category.visibility)) {
     return null;
   }
 
-  const [children, graphRows, timelineRows, questAndScenePages] =
+  let [children, graphRows, timelineRows, questAndScenePages] =
     await Promise.all([
       prisma.wikiPage.findMany({
         where: {
-          campaignId: input.campaignId,
+          campaignId: input.campaignId, deletedAt: null,
           id: { not: input.categoryPageId },
           ...buildCategoryIndexWhereClause(category.title, input.categoryPageId),
           ...(visibilityWhere ?? {}),
@@ -383,6 +392,21 @@ export async function loadCharacterHubPayload(input: {
       }),
     ]);
 
+  if (projectedPages && projectedById) {
+    children = children.flatMap(child => {
+      const projected = projectedById.get(child.id);
+      return projected ? [projected] : [];
+    });
+    graphRows = projectedPages;
+    questAndScenePages = questAndScenePages.flatMap(page => {
+      const projected = projectedById.get(page.id);
+      return projected ? [projected] : [];
+    });
+    timelineRows = timelineRows.flatMap((row: any) => {
+      const page = row.wikiPage && projectedById.get(row.wikiPage.id);
+      return page ? [{ ...row, wikiPage: page }] : [];
+    });
+  }
   children.sort((a, b) => compareWikiTitles(a.title, b.title, category.title));
 
   const titleById = new Map(graphRows.map((p) => [p.id, p.title]));
@@ -400,7 +424,7 @@ export async function loadCharacterHubPayload(input: {
     children.map((child) => child.id),
   );
 
-  const visibleChildren = canManage
+  const visibleChildren = canManage || reduced
     ? children
     : children.filter((child) =>
         isPageVisibleToParty(presenceMap, child.id, input.role ?? null),
@@ -412,6 +436,7 @@ export async function loadCharacterHubPayload(input: {
     campaignHandle: input.campaignHandle,
     targetPageIds: characterIdList,
     role: input.role,
+    ...(reduced ? { canViewPage: input.canViewPage } : {}),
     limitPerTarget: 5,
   });
 
@@ -422,7 +447,9 @@ export async function loadCharacterHubPayload(input: {
     ]),
   );
 
-  const sessionLinks = await prisma.wikiLink.findMany({
+  const sessionLinks = projectedPages ? projectedPages.flatMap(sourcePage =>
+    projectedWikiTargetIds(sourcePage.blocks).filter(id => characterIdList.includes(id))
+      .map(targetPageId => ({ sourcePageId: sourcePage.id, targetPageId, sourcePage }))) : await prisma.wikiLink.findMany({
     where: {
       campaignId: input.campaignId,
       targetPageId: { in: characterIdList },
@@ -550,7 +577,7 @@ export async function loadCharacterHubPayload(input: {
     const anchor = row.wikiPage;
     if (!anchor) continue;
     if (
-      !canManage &&
+      !canManage && !reduced &&
       anchor.visibility !== 'PUBLIC' &&
       anchor.visibility !== 'PARTY'
     ) {
@@ -601,7 +628,7 @@ export async function loadCharacterHubPayload(input: {
 
   const sessionBlocksByPageId = new Map<string, unknown>();
   if (lastSeenSourcePageIds.size > 0) {
-    const sessionPages = await prisma.wikiPage.findMany({
+    const sessionPages = projectedPages ? projectedPages.filter(page => lastSeenSourcePageIds.has(page.id)) : await prisma.wikiPage.findMany({
       where: {
         campaignId: input.campaignId,
         id: { in: [...lastSeenSourcePageIds] },
@@ -721,7 +748,7 @@ export async function loadCharacterHubPayload(input: {
     }
   }
 
-  const discoverySummary = canManage
+  const discoverySummary = canManage || reduced
     ? null
     : {
         discoveredCount: visibleChildren.length,
@@ -748,7 +775,7 @@ export async function loadCharacterHubPayload(input: {
         updatedAt: child.updatedAt.toISOString(),
         type: child.templateType,
         metadata: child.metadata ?? undefined,
-        snippet: canManage
+        snippet: canManage || reduced
           ? buildContentSnippet(
               (Array.isArray(child.blocks)
                 ? child.blocks

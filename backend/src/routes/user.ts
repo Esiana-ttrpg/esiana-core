@@ -38,7 +38,20 @@ import {
   putUserTemplateResource,
 } from '../controllers/userCampaignDefaultsController.js';
 import { getUserHub } from '../controllers/hubController.js';
-import { getOwnerCreatorAttribution, getOwnerUserActivity } from '../controllers/statsController.js';
+import {
+  getOwnerCreatorAttribution,
+  getOwnerPersonalStatistics,
+  getOwnerPersonalStatisticsExport,
+  getOwnerUserActivity,
+} from '../controllers/statsController.js';
+import {
+  deleteOwnerWrappedYearPublish,
+  getOwnerWrappedSeasonalInvite,
+  getOwnerWrappedYear,
+  getOwnerWrappedYears,
+  postOwnerWrappedYearPublish,
+  postOwnerWrappedYearRegenerate,
+} from '../controllers/wrappedController.js';
 import {
   pinCampaign,
   reorderCampaignPins,
@@ -139,6 +152,14 @@ userRouter.use(rateLimitPolicy('mutation'));
 
 userRouter.get('/hub', getUserHub);
 userRouter.get('/creator-attribution', getOwnerCreatorAttribution);
+userRouter.get('/statistics/export', getOwnerPersonalStatisticsExport);
+userRouter.get('/statistics', getOwnerPersonalStatistics);
+userRouter.get('/wrapped/years', getOwnerWrappedYears);
+userRouter.get('/wrapped/seasonal-invite', getOwnerWrappedSeasonalInvite);
+userRouter.get('/wrapped/:year', getOwnerWrappedYear);
+userRouter.post('/wrapped/:year/regenerate', postOwnerWrappedYearRegenerate);
+userRouter.post('/wrapped/:year/publish', postOwnerWrappedYearPublish);
+userRouter.delete('/wrapped/:year/publish', deleteOwnerWrappedYearPublish);
 userRouter.get('/activity', getOwnerUserActivity);
 userRouter.put('/campaigns/:campaignId/pin', pinCampaign);
 userRouter.delete('/campaigns/:campaignId/pin', unpinCampaign);

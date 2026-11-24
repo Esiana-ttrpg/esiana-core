@@ -23,6 +23,14 @@ describe('entityCategoryKeys', () => {
 });
 
 describe('resolveEntitySurfaceProfile', () => {
+  it('keeps canonical Characters in their shell despite shared narrative field names', () => {
+    for (const metadata of [
+      { entityCategory: 'characters', gmNotes: 'Private author notes', summary: 'A navigator' },
+      { entityCategory: 'characters', profession: 'Navigator' },
+    ]) {
+      assert.equal(resolveSurfaceProfileKey({ pageId: 'mira', templateType: 'CHARACTER', metadata, flatPages: [] }), 'character');
+    }
+  });
   const flatPages = [
     {
       id: 'bestiary-root',

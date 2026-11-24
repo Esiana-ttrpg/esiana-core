@@ -1,5 +1,4 @@
-import { TYPE_DISPLAY_CLASS } from '@/lib/surfaceLayout';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { DevelopmentHistoryRow } from '@shared/worldDevelopmentPresentation';
 import type { WorldEventSuggestionTerminalStatus } from '@shared/worldEventSuggestionMetadata';
@@ -9,6 +8,9 @@ import {
 } from '@/lib/worldDevelopmentApi';
 import { useWiki } from '@/contexts/WikiContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
+import { WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
+import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
 
 const FILTERS: { id: WorldEventSuggestionTerminalStatus; label: string }[] = [
   { id: 'accepted', label: 'Accepted' },
@@ -25,19 +27,28 @@ export function DevelopmentHistorySection({ campaignHandle }: DevelopmentHistory
   const { canManageWiki } = useWiki();
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<DevelopmentHistoryRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const requestId = useRef(0);
   const [activeFilters, setActiveFilters] = useState<WorldEventSuggestionTerminalStatus[]>([]);
   const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
+    setError(null);
     try {
       const data = await fetchDevelopmentHistory(campaignHandle, {
         status: activeFilters.length > 0 ? activeFilters : undefined,
         q: query.trim() || undefined,
       });
-      setHistory(data.history);
+      if (currentRequest === requestId.current) setHistory(data.history);
+    } catch (err) {
+      if (currentRequest === requestId.current) {
+        setHistory([]);
+        setError(err instanceof Error ? err.message : 'Failed to load development history');
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   }, [activeFilters, campaignHandle, query]);
 
@@ -48,6 +59,7 @@ export function DevelopmentHistorySection({ campaignHandle }: DevelopmentHistory
       return;
     }
     void load();
+    return () => { requestId.current += 1; };
   }, [canManageWiki, load]);
 
   if (!canManageWiki) {
@@ -62,40 +74,39 @@ export function DevelopmentHistorySection({ campaignHandle }: DevelopmentHistory
 
   return (
     <div className="space-y-4">
-      <header>
-        <h2 className={TYPE_DISPLAY_CLASS}>History</h2>
-        <p className="text-sm text-muted-foreground">
-          What developments happened?
-        </p>
-      </header>
-
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((filter) => (
-          <button
-            key={filter.id}
-            type="button"
-            onClick={() => toggleFilter(filter.id)}
-            className={`rounded-full border px-3 py-1 text-xs ${
-              activeFilters.includes(filter.id)
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground'
-            }`}
-          >
-            {filter.label}
-          </button>
-        ))}
-      </div>
-
-      <input
-        type="search"
-        placeholder="Search developments…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full max-w-md rounded-md border border-border bg-background px-3 py-2 text-sm"
-      />
+      <WorkspaceHeader compact title="History" subtitle="What developments happened?" actions={
+        <WorkspaceActionBar refine={<CategoryIndexRefinePopover
+          mobileFullWidth
+          facetDefs={[]}
+          refineState={{}}
+          children={[]}
+          categoryTitle="Development history"
+          onRefineChange={() => {}}
+          activeCount={activeFilters.length + Number(Boolean(query.trim()))}
+          searchQuery={query}
+          onSearchChange={setQuery}
+          searchPlaceholder="Search developments…"
+          onResetRefine={() => { setActiveFilters([]); setQuery(''); }}
+          customBody={<div className="flex flex-wrap gap-2">
+            {FILTERS.map((filter) => (
+              <button key={filter.id} type="button" aria-pressed={activeFilters.includes(filter.id)}
+                onClick={() => toggleFilter(filter.id)}
+                className={`rounded-full border px-3 py-1 text-xs ${activeFilters.includes(filter.id)
+                  ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>
+                {filter.label}
+              </button>
+            ))}
+          </div>}
+        />} />
+      } />
 
       {loading ? (
         <LoadingSpinner label="Loading history…" />
+      ) : error ? (
+        <div role="alert" className="text-sm text-destructive">
+          <p>{error}</p>
+          <button type="button" onClick={() => void load()} className="mt-2 underline">Try again</button>
+        </div>
       ) : history.length === 0 ? (
         <p className="text-sm text-muted-foreground">No matching history entries.</p>
       ) : (

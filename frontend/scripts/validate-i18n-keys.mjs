@@ -13,7 +13,8 @@ const frontendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const i18nRoot = path.join(frontendRoot, 'src', 'i18n');
 const enRoot = path.join(i18nRoot, 'en');
 
-const KEY_PATTERN = /^[a-z]+(?:\.[a-z]+)*\.[a-z][a-zA-Z0-9]*$/;
+const KEY_PATTERN =
+  /^[a-z]+(?:\.[a-z]+)*\.[a-z][a-zA-Z0-9]*(?:_(?:one|other))?$/;
 const reportLocales = process.argv.includes('--report-locales');
 
 function expectedKeyPrefix(relativeJsonPath) {

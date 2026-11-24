@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js';
+import { projectAdventurePages, projectedWikiTargetIds } from './adventurePageProjection.js';
 import { parseSessionNoteMetadata } from './sessionNoteMetadata.js';
 import {
   buildVisibleBreadcrumbLabel,
@@ -81,6 +82,8 @@ export async function batchSessionBacklinksForPages(input: {
   campaignHandle: string;
   targetPageIds: string[];
   role: string | null;
+  /** Additional request-scoped restriction, applied before grouping and limits. */
+  canViewPage?: (visibility: string) => boolean;
   limitPerTarget?: number;
 }): Promise<Map<string, SessionPageBacklinkRow[]>> {
   const limit = input.limitPerTarget ?? 10;
@@ -89,6 +92,26 @@ export async function batchSessionBacklinksForPages(input: {
     result.set(id, []);
   }
   if (input.targetPageIds.length === 0) return result;
+
+  if (input.canViewPage) {
+    const originalPages = await prisma.wikiPage.findMany({ where: { campaignId: input.campaignId, deletedAt: null } });
+    const pages = await projectAdventurePages(input.campaignId, originalPages, input.canViewPage);
+    const byId = new Map(pages.map(page => [page.id, page]));
+    const sourceParents = byId;
+    for (const source of pages.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())) {
+      if (!isSessionLogSourcePage(source, sourceParents)) continue;
+      const targets = projectedWikiTargetIds(source.blocks);
+      for (const target of targets) {
+        const bucket = result.get(target);
+        if (!byId.has(target) || !bucket || bucket.length >= limit) continue;
+        bucket.push({ id: source.id, title: source.title, parentId: source.parentId,
+          visibility: source.visibility, updatedAt: source.updatedAt.toISOString(),
+          templateType: source.templateType, timelinePointId: resolveTimelinePointId(source),
+          href: resolveSessionHref(input.campaignHandle, source) });
+      }
+    }
+    return result;
+  }
 
   const isElevated = isElevatedWikiRole(input.role);
   const peerVisibility = wikiLinkPeerVisibilityFilter(isElevated);

@@ -1,3 +1,5 @@
+import { narrativeCapabilitiesFromActor } from './narrativeProjectionContext.js';
+import type { CampaignActor } from '../../../shared/campaignPolicy/policy.js';
 import { prisma } from './prisma.js';
 import { campaignWikiHref } from './dashboardPaths.js';
 import { wikiPageHrefSelect } from './wikiPageHrefSelect.js';
@@ -76,10 +78,11 @@ export async function buildFactionConflictFeed(input: {
   campaignHandle: string;
   role: CampaignMemberRole | null;
   allowPlayerChronologyManagement?: boolean;
+  actor?: CampaignActor;
   config?: Record<string, unknown>;
 }): Promise<FactionConflictFeedResult> {
   const { sortBy, limit } = normalizeFactionConflictConfig(input.config);
-  const dm = isDmRole(input.role);
+  const dm = input.actor ? Boolean(narrativeCapabilitiesFromActor(input.actor).isElevatedWiki) : isDmRole(input.role);
 
   const [dateParts, orgPages, overlay] = await Promise.all([
     resolveCampaignChronologyNow(input.campaignId),
@@ -95,6 +98,7 @@ export async function buildFactionConflictFeed(input: {
       },
     }),
     buildConvergenceOverlay({
+      capabilityOverrides: input.actor ? narrativeCapabilitiesFromActor(input.actor) : undefined,
       campaignId: input.campaignId,
       campaignHandle: input.campaignHandle,
       role: input.role,

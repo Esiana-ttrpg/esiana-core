@@ -14,6 +14,7 @@ export async function batchSessionBacklinksForQuests(input: {
   campaignHandle: string;
   targetPageIds: string[];
   role: string | null;
+  canViewPage?: (visibility: string) => boolean;
   limitPerTarget?: number;
 }): Promise<Map<string, QuestHubBacklinkRow[]>> {
   return batchSessionBacklinksForPages(input);

@@ -9,7 +9,7 @@ export function AdventureContextStrip() {
 
   return (
     <span className="text-muted-foreground">
-      {workspace.publicPreview ? 'Public preview' : 'Player preview'}
+      Party preview
       <span className="mx-1.5 opacity-50" aria-hidden>
         •
       </span>

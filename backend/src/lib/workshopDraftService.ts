@@ -341,6 +341,10 @@ export async function applyWorkshopDraftToPage(input: {
   const nextBlocks = applyProseToPageBlocks(anchor.blocks, bodyMarkdown);
   if (!nextBlocks) return null;
 
+  const previousBlocks = Array.isArray(anchor.blocks)
+    ? (anchor.blocks as Array<Record<string, unknown>>)
+    : [];
+
   await prisma.wikiPage.update({
     where: { id: anchor.id },
     data: { blocks: nextBlocks as never },
@@ -352,6 +356,8 @@ export async function applyWorkshopDraftToPage(input: {
     blocks: nextBlocks,
     actorUserId: input.authorUserId,
     emitEvents: true,
+    previousBlocks,
+    writingSourceId: 'workshop.apply',
   });
 
   const nextMeta: WorkshopDraftMetadata = {
@@ -457,6 +463,8 @@ export async function formalizeWorkshopDraft(input: {
     blocks: shell.blocks,
     actorUserId: input.authorUserId,
     emitEvents: true,
+    previousBlocks: [],
+    writingSourceId: 'workshop.formalize',
   });
 
   return { formalizedPageId: page.id, target: input.target };

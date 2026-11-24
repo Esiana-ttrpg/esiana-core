@@ -10,7 +10,7 @@ import {
   SYSTEM_CATEGORY_DOWNTIME,
 } from '@/lib/wikiSystemCategory';
 import { useWiki } from '@/contexts/WikiContext';
-import { CampaignMemberRoles } from '@/types/domain';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import type { WikiTreeNode } from '@/types/wiki';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ProjectOverviewView } from '@/components/downtime/ProjectOverviewView';
@@ -50,12 +50,12 @@ export function ProjectWikiPageView({
   pageTitle,
   flatPages,
 }: ProjectWikiPageViewProps) {
-  const { campaign } = useWiki();
-  const canManage =
-    campaign?.role === CampaignMemberRoles.GAMEMASTER ||
-    campaign?.role === CampaignMemberRoles.WRITER;
+  const { can } = useWiki();
+  const canManageAdmin = can(CampaignCapabilities.DOWNTIME_MANAGE);
 
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [canDeleteResource, setCanDeleteResource] = useState(false);
+  const [canEditResource, setCanEditResource] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,13 +80,17 @@ export function ProjectWikiPageView({
     try {
       const project = await fetchDowntimeProjectByWikiPage(campaignHandle, wikiPageId);
       setProjectId(project.id);
+      setCanDeleteResource(Boolean(project.canDelete));
+      setCanEditResource(Boolean(project.canEdit));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load project.');
       setProjectId(null);
+      setCanDeleteResource(false);
+      setCanEditResource(false);
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, wikiPageId]);
+  }, [campaignHandle, wikiPageId, can]);
 
   useEffect(() => {
     void loadProject();
@@ -118,7 +122,9 @@ export function ProjectWikiPageView({
       downtimeCategoryPageId={downtimeCategoryPageId}
       breadcrumbs={breadcrumbs}
       flatPages={flatPages}
-      canManage={canManage}
+      canManageEffects={canManageAdmin}
+      canDelete={canDeleteResource}
+      canManage={canEditResource}
     />
   );
 }

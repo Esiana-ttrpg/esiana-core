@@ -1,5 +1,9 @@
 import { campaignAdminCapabilitiesFor } from './campaignAdminGrants.js';
-import { CampaignCapabilities, type CampaignCapability } from './capabilities.js';
+import {
+  CampaignCapabilities,
+  CHRONOLOGY_CONTRIBUTION_CAPABILITIES,
+  type CampaignCapability,
+} from './capabilities.js';
 import {
   allowsAnonymousCampaignView,
   normalizeDiscoverability,
@@ -132,7 +136,17 @@ export function resolveActorCapabilities(
     actor.isCampaignOwner,
     isGamemaster,
   );
-  return new Set([...withOverrides, ...adminCaps]);
+  const caps = new Set([...withOverrides, ...adminCaps]);
+  // Structural chronology management implies all contribution capabilities.
+  if (caps.has(CampaignCapabilities.CHRONOLOGY_EDIT)) {
+    for (const c of CHRONOLOGY_CONTRIBUTION_CAPABILITIES) {
+      const explicitlyRevoked = actor.campaign.roleCapabilityOverrides?.some(
+        (row) => row.role === role && row.capability === c && row.effect === 'REVOKE',
+      );
+      if (!explicitlyRevoked) caps.add(c);
+    }
+  }
+  return caps;
 }
 
 export function can(
@@ -165,6 +179,40 @@ export function canManageWikiAsStaff(actor: CampaignActor): boolean {
 
 export function canManageChronology(actor: CampaignActor): boolean {
   return can(actor, CampaignCapabilities.CHRONOLOGY_EDIT);
+}
+
+export function canCreateChronologyEvent(actor: CampaignActor): boolean {
+  return can(actor, CampaignCapabilities.CHRONOLOGY_EVENT_CREATE);
+}
+
+export function canCreateChronologyEra(actor: CampaignActor): boolean {
+  return can(actor, CampaignCapabilities.CHRONOLOGY_ERA_CREATE);
+}
+
+export function canEditChronologyEvent(
+  actor: CampaignActor,
+  createdByUserId?: string | null,
+): boolean {
+  if (can(actor, CampaignCapabilities.CHRONOLOGY_EVENT_EDIT)) return true;
+  if (!can(actor, CampaignCapabilities.CHRONOLOGY_EVENT_EDIT_OWNED)) return false;
+  return (
+    actor.kind === 'member' &&
+    createdByUserId != null &&
+    createdByUserId === actor.userId
+  );
+}
+
+export function canDeleteChronologyEvent(
+  actor: CampaignActor,
+  createdByUserId?: string | null,
+): boolean {
+  if (can(actor, CampaignCapabilities.CHRONOLOGY_EDIT)) return true;
+  if (!can(actor, CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED)) return false;
+  return (
+    actor.kind === 'member' &&
+    createdByUserId != null &&
+    createdByUserId === actor.userId
+  );
 }
 
 export function canModifyCampaignSettings(actor: CampaignActor): boolean {

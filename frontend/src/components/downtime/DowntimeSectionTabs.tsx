@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { DOWNTIME_HUB_TITLE } from '@shared/downtimeHub';
 import {
@@ -19,6 +19,7 @@ type DowntimeTabEntry =
   | { kind: 'section'; id: DowntimeSectionId; label: string; href: string };
 
 export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSectionTabsProps) {
+  const navigate = useNavigate();
   const listboxId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -65,22 +66,30 @@ export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSection
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as Node | null;
+      const inMenu = Boolean(target && menuRef.current?.contains(target));
+      const onTrigger = Boolean(target && triggerRef.current?.contains(target));
+      if (!inMenu && !onTrigger) return;
+
       if (event.key === 'Escape') {
+        event.preventDefault();
         setMenuOpen(false);
         triggerRef.current?.focus();
         return;
       }
-      if (!menuOpen) return;
 
-      if (event.key === 'ArrowDown') {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
-        setHighlightIndex((prev) => Math.min(prev + 1, tabs.length - 1));
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        setHighlightIndex((prev) => Math.max(prev - 1, 0));
+        const nextIndex = event.key === 'ArrowDown'
+          ? Math.min(highlightIndex + 1, tabs.length - 1)
+          : Math.max(highlightIndex - 1, 0);
+        setHighlightIndex(nextIndex);
+        if (inMenu) menuRef.current?.querySelectorAll<HTMLAnchorElement>('[role="option"]')[nextIndex]?.focus();
       } else if (event.key === 'Enter' || event.key === ' ') {
+        if (inMenu && event.key === 'Enter') return;
         event.preventDefault();
         if (tabs[highlightIndex]) {
+          navigate(tabs[highlightIndex].href);
           setMenuOpen(false);
           triggerRef.current?.focus();
         }
@@ -93,7 +102,7 @@ export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSection
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [menuOpen, highlightIndex, tabs]);
+  }, [menuOpen, highlightIndex, navigate, tabs]);
 
   function isTabActive(tab: DowntimeTabEntry): boolean {
     if (tab.kind === 'overview') return activeSection == null;
@@ -109,16 +118,15 @@ export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSection
           aria-label="Downtime sections"
         >
           {tabs.map((tab) => (
-            <NavLink
+            <Link
               key={tab.kind === 'overview' ? 'overview' : tab.id}
               to={tab.href}
-              end={tab.kind === 'overview'}
               role="tab"
               aria-selected={isTabActive(tab)}
-              className={({ isActive }) => workspaceRailTabClass(isActive)}
+              className={workspaceRailTabClass(isTabActive(tab))}
             >
               {tab.label}
-            </NavLink>
+            </Link>
           ))}
         </div>
         <div
@@ -156,12 +164,12 @@ export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSection
               const isSelected = isTabActive(tab);
               const isHighlighted = index === highlightIndex;
               return (
-                <NavLink
+                <Link
                   key={tab.kind === 'overview' ? 'overview' : tab.id}
                   to={tab.href}
-                  end={tab.kind === 'overview'}
                   role="option"
                   aria-selected={isSelected}
+                  onFocus={() => setHighlightIndex(index)}
                   onClick={() => setMenuOpen(false)}
                   className={`flex w-full items-center gap-3 px-3 py-2.5 text-sm ${
                     isHighlighted ? 'bg-elevated/80' : ''
@@ -171,7 +179,7 @@ export function DowntimeSectionTabs({ basePath, activeSection }: DowntimeSection
                   {isSelected ? (
                     <Check className="size-4 shrink-0 text-primary" aria-hidden />
                   ) : null}
-                </NavLink>
+                </Link>
               );
             })}
           </div>

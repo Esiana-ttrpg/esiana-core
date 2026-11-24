@@ -31,7 +31,7 @@ import { LedgerSortControl } from '@/components/downtime/LedgerSortControl';
 import { CreateProjectModal } from '@/components/downtime/CreateProjectModal';
 import { CreateHavenModal } from '@/components/downtime/CreateHavenModal';
 import { AddLedgerEntryModal } from '@/components/downtime/AddLedgerEntryModal';
-import { CampaignMemberRoles } from '@/types/domain';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { isCharacterEntityPage } from '@shared/resolveCanonicalEntityCategory';
 import { formatWorkspaceHubCountHint } from '@/lib/workspaceHeaderPolicy';
 import {
@@ -55,7 +55,7 @@ function sectionLabel(section: DowntimeSectionId): string {
 }
 
 export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewProps) {
-  const { flatPages, refresh, campaign } = useWiki();
+  const { flatPages, refresh, can, campaign } = useWiki();
   const location = useLocation();
   const ledgerSectionRef = useRef<DowntimeLedgerSectionHandle>(null);
 
@@ -72,12 +72,13 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   );
   const [ledgerSort, setLedgerSort] = useState<LedgerSortMode>('newest');
 
-  const canManage =
-    campaign?.role === CampaignMemberRoles.GAMEMASTER ||
-    campaign?.role === CampaignMemberRoles.WRITER;
+  const canManage = can(CampaignCapabilities.DOWNTIME_MANAGE);
+  const canCreate = Boolean(campaign?.isMember) && can(CampaignCapabilities.CAMPAIGN_VIEW) &&
+    (can(CampaignCapabilities.WIKI_VIEW_PARTY) || can(CampaignCapabilities.NARRATIVE_ELEVATED_VIEW)) &&
+    (can(CampaignCapabilities.DOWNTIME_CREATE) || canManage);
 
   const canContributeToLedger =
-    canManage || campaign?.role === CampaignMemberRoles.PARTICIPANT;
+    canManage || can(CampaignCapabilities.LEDGER_CONTRIBUTE);
 
   const characterOptions = useMemo(
     () => flatPages
@@ -166,7 +167,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   ]);
 
   const sectionTrailing = useMemo(() => {
-    if (activeSection === 'ledger' && sectionData?.ledger) {
+    if (activeSection === 'ledger' && !loadingSection && sectionData?.ledger) {
       return (
         <div className="flex flex-wrap items-center gap-2">
           {canManage ? (
@@ -223,6 +224,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
   }, [
     activeSection,
     sectionData,
+    loadingSection,
     canManage,
     canContributeToLedger,
   ]);
@@ -239,11 +241,11 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
         }}
         createAction={
           activeSection === 'projects' || activeSection === 'havens' || activeSection === 'people'
-            ? canManage
+            ? canCreate
               ? undefined
               : null
             : activeSection === 'ledger'
-              ? canContributeToLedger
+              ? canContributeToLedger && !loadingSection && sectionData?.ledger
                 ? undefined
                 : null
               : null
@@ -288,6 +290,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
           headerConfig && activeSection ? (
             <WorkspaceHeader
               title={headerConfig.displayTitle}
+              compact
               actions={activeSection ? sectionToolbar : undefined}
               activeFilters={activeFilters}
             />
@@ -311,6 +314,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
             <DowntimeOverviewSection
               campaignHandle={campaignHandle}
               overview={sectionData.overview}
+              canCreate={canCreate}
               canManage={canManage}
               canContributeToLedger={canContributeToLedger}
               onCreateProject={() => setIsCreateProjectOpen(true)}
@@ -362,6 +366,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
       </WikiWorkspaceShell>
 
       <CreateProjectModal
+        canManageEffects={canManage}
         open={isCreateProjectOpen}
         campaignHandle={campaignHandle}
         flatPages={flatPages}
@@ -377,7 +382,7 @@ export function DowntimeView({ campaignHandle, categoryPageId }: DowntimeViewPro
       <AddDowntimePersonModal
         open={isCreatePersonOpen}
         campaignHandle={campaignHandle}
-        characters={characterOptions}
+        characters={sectionData?.people?.characterOptions ?? []}
         havens={sectionData?.people?.assignmentOptions.havens ?? []}
         projects={sectionData?.people?.assignmentOptions.projects ?? []}
         onClose={() => setIsCreatePersonOpen(false)}

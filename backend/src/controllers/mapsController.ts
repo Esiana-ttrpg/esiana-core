@@ -16,16 +16,21 @@ import {
   loadMapPinForPreview,
 } from '../lib/mapPinPreview.js';
 import { canViewMapAsset } from '../lib/mapAssetVisibility.js';
-import { normalizeImageCredit } from '../../../shared/imageCredit.js';
 import {
-  CampaignMemberRoles,
-  type CampaignMemberRole,
-} from '../types/domain.js';
+  logMapActivity,
+  mapActorCreateFields,
+  mapActorUpdateFields,
+  MapActivityEntity,
+} from '../lib/mapAuthorship.js';
+import { normalizeImageCredit } from '../../../shared/imageCredit.js';
+import { type CampaignMemberRole } from '../types/domain.js';
 import {
   buildPageDiscoveryMap,
   isPageVisibleToParty,
 } from '../lib/discoveryProjectionService.js';
 import { ContentRevelationStates } from '../../../shared/contentPresence.js';
+import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilities.js';
+import { can, resolveActorCapabilities } from '../../../shared/campaignPolicy/policy.js';
 
 const mapPinInclude = {
   targetPage: {
@@ -202,9 +207,10 @@ export async function listCampaignMaps(
   });
 
   const campaignId = req.campaign!.campaignId;
-  const role = req.campaign!.role as CampaignMemberRole | null;
-  const canManage =
-    role === CampaignMemberRoles.GAMEMASTER || role === CampaignMemberRoles.WRITER;
+  const canManage = can(
+    req.campaign!.actor,
+    CampaignCapabilities.MAPS_EDIT,
+  );
 
   const enriched = await Promise.all(
     assets.map((asset) => enrichMapAssetSummary(campaignId, asset)),
@@ -216,7 +222,7 @@ export async function listCampaignMaps(
   const presenceMap = await buildPageDiscoveryMap(campaignId, linkedPageIds);
 
   function isMapDiscoveredForParty(map: (typeof enriched)[number]): boolean {
-    if (!canViewMapAsset(map.visibility, role)) return false;
+    if (!canViewMapAsset(map.visibility, req.campaign!)) return false;
     if (map.linkedPage?.id) {
       return isPageVisibleToParty(presenceMap, map.linkedPage.id);
     }
@@ -224,13 +230,13 @@ export async function listCampaignMaps(
   }
 
   const roleVisible = enriched.filter((map) =>
-    canViewMapAsset(map.visibility, role),
+    canViewMapAsset(map.visibility, req.campaign!),
   );
   const partyMaps = canManage
-    ? enriched
-    : enriched.filter((map) => isMapDiscoveredForParty(map));
+    ? roleVisible
+    : roleVisible.filter((map) => isMapDiscoveredForParty(map));
 
-  const undiscoveredCount = canManage ? 0 : enriched.length - partyMaps.length;
+  const undiscoveredCount = canManage ? 0 : roleVisible.length - partyMaps.length;
 
   const maps = partyMaps.map((map) => {
     const linkedPageId = map.linkedPage?.id;
@@ -266,10 +272,9 @@ export async function getCampaignMap(
   }
 
   const campaignId = req.campaign!.campaignId;
-  const role = req.campaign!.role as CampaignMemberRole | null;
   const enriched = await enrichMapAssetSummary(campaignId, asset);
 
-  if (!canViewMapAsset(enriched.visibility, role)) {
+  if (!canViewMapAsset(enriched.visibility, req.campaign!)) {
     res.status(404).json({ error: 'Map not found' });
     return;
   }
@@ -277,6 +282,7 @@ export async function getCampaignMap(
   res.json({
     map: enriched,
     linkedWikiPages: enriched.linkedPage ? [enriched.linkedPage] : [],
+    canEdit: can(req.campaign!.actor, CampaignCapabilities.MAPS_EDIT),
   });
 }
 
@@ -292,7 +298,8 @@ export async function listMapPins(
   }
 
   const role = req.campaign!.role as CampaignMemberRole | null;
-  if (!canViewMapAsset(asset.visibility, role)) {
+  const capabilities = resolveActorCapabilities(req.campaign!.actor);
+  if (!canViewMapAsset(asset.visibility, req.campaign!)) {
     res.status(404).json({ error: 'Map not found' });
     return;
   }
@@ -306,7 +313,7 @@ export async function listMapPins(
   });
 
   const serialized = pins
-    .map((pin) => serializeMapPinForRole(pin, role))
+    .map((pin) => serializeMapPinForRole(pin, role, capabilities))
     .filter((pin): pin is NonNullable<typeof pin> => pin !== null);
 
   res.json({ pins: serialized });
@@ -321,7 +328,7 @@ export async function getMapPinPreview(
   const campaignId = req.campaign!.campaignId;
 
   const pin = await loadMapPinForPreview(campaignId, pinId);
-  const payload = pin ? buildMapPinPreviewPayload(pin, role) : null;
+  const payload = pin ? buildMapPinPreviewPayload(pin, role, resolveActorCapabilities(req.campaign!.actor)) : null;
 
   if (!payload) {
     res.status(404).json({ error: 'Pin not found' });
@@ -470,8 +477,18 @@ export async function createMapPin(
       pinType,
       x_coordinate: coords.x,
       y_coordinate: coords.y,
+      ...mapActorCreateFields(req.user?.id),
     },
     include: mapPinInclude,
+  });
+  logMapActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'CREATE',
+    entityType: MapActivityEntity.PIN,
+    entityId: pin.id,
+    entityName: pin.label ?? pin.pinType,
+    parentContext: assetId,
   });
 
   if (pin.targetPageId) {
@@ -485,7 +502,7 @@ export async function createMapPin(
 
   const role = req.campaign!.role as CampaignMemberRole | null;
   res.status(201).json({
-    pin: serializeMapPinForRole(pin, role),
+    pin: serializeMapPinForRole(pin, role, resolveActorCapabilities(req.campaign!.actor)),
   });
 }
 
@@ -569,8 +586,17 @@ export async function updateMapPin(
 
   const pin = await prisma.mapPin.update({
     where: { id: pinId },
-    data,
+    data: { ...data, ...mapActorUpdateFields(req.user?.id) },
     include: mapPinInclude,
+  });
+  logMapActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: MapActivityEntity.PIN,
+    entityId: pin.id,
+    entityName: pin.label ?? pin.pinType,
+    parentContext: assetId,
   });
 
   if (revelation) {
@@ -600,7 +626,7 @@ export async function updateMapPin(
   }
 
   const role = req.campaign!.role as CampaignMemberRole | null;
-  res.json({ pin: serializeMapPinForRole(pin, role) });
+  res.json({ pin: serializeMapPinForRole(pin, role, resolveActorCapabilities(req.campaign!.actor)) });
 }
 
 export async function deleteMapPin(
@@ -628,6 +654,15 @@ export async function deleteMapPin(
     const { clearEntityRelationsForMapPin } = await import('../lib/entityRelationSyncService.js');
     await clearEntityRelationsForMapPin(tx, req.campaign!.campaignId, pinId);
     await tx.mapPin.delete({ where: { id: pinId } });
+  });
+  logMapActivity({
+    campaignId: req.campaign!.campaignId,
+    userId: req.user?.id,
+    actionType: 'DELETE',
+    entityType: MapActivityEntity.PIN,
+    entityId: pinId,
+    entityName: pinId,
+    parentContext: assetId,
   });
   res.json({ ok: true });
 }
@@ -714,6 +749,15 @@ export async function updateCampaignMap(
       imageCredit: true,
       createdAt: true,
     },
+  });
+
+  logMapActivity({
+    campaignId,
+    userId: req.user?.id,
+    actionType: 'UPDATE',
+    entityType: MapActivityEntity.ASSET,
+    entityId: updated.id,
+    entityName: updated.displayName ?? updated.id,
   });
 
   const enriched = await enrichMapAssetSummary(campaignId, updated);

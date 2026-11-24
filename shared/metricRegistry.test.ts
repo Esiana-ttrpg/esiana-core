@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   METRIC_REGISTRY,
+  PERSONAL_ATTRIBUTION_METRIC_IDS,
   filterMetricsByPrivacy,
   isMetricAllowedInContext,
   listMetricIds,
@@ -41,11 +42,52 @@ describe('metricRegistry', () => {
     assert.equal(isMetricAllowedInContext('attribution.writingStreak', 'publicProfile'), false);
     assert.equal(isMetricAllowedInContext('attribution.writingStreak', 'ownerProfile'), true);
     assert.equal(isMetricAllowedInContext('period.wordsAdded', 'campaignMember'), true);
+    assert.equal(isMetricAllowedInContext('period.wordsAdded', 'ownerProfile'), true);
+    assert.equal(isMetricAllowedInContext('period.wordsAdded', 'publicProfile'), false);
     assert.equal(isMetricAllowedInContext('attribution.wordsAdded', 'publicProfile'), false);
   });
 
   it('includes phase 2 metric ids in registry', () => {
     assert.ok(METRIC_REGISTRY['period.wordsAdded']);
     assert.ok(METRIC_REGISTRY['attribution.favoriteWritingHour']);
+  });
+
+  it('registers measured companion ids without replacing the locked 13', () => {
+    assert.ok(METRIC_REGISTRY['attribution.wordsAddedMeasured']);
+    assert.ok(METRIC_REGISTRY['attribution.wordsRemoved']);
+    assert.ok(METRIC_REGISTRY['attribution.netChange']);
+    assert.equal(
+      (PERSONAL_ATTRIBUTION_METRIC_IDS as readonly string[]).includes(
+        'attribution.wordsAddedMeasured',
+      ),
+      false,
+    );
+    assert.equal(isMetricAllowedInContext('attribution.wordsAddedMeasured', 'publicProfile'), false);
+    assert.equal(isMetricAllowedInContext('attribution.wordsAddedMeasured', 'ownerProfile'), true);
+  });
+
+  it('locks the 13 personal attribution ids with 1.10 contract fields', () => {
+    assert.equal(PERSONAL_ATTRIBUTION_METRIC_IDS.length, 13);
+    for (const id of PERSONAL_ATTRIBUTION_METRIC_IDS) {
+      const def = METRIC_REGISTRY[id];
+      assert.equal(def.id, id);
+      assert.equal(def.reportingClock, 'real_world');
+      assert.ok(def.unit);
+      assert.ok(def.source);
+      assert.ok(def.timeSemantics);
+      assert.ok(def.attributionRules);
+      assert.ok(def.historicalCompleteness);
+    }
+  });
+
+  it('requires every registry entry to declare the 1.10 contract fields', () => {
+    for (const def of Object.values(METRIC_REGISTRY)) {
+      assert.equal(typeof def.unit, 'string');
+      assert.equal(typeof def.source, 'string');
+      assert.equal(typeof def.timeSemantics, 'string');
+      assert.equal(typeof def.attributionRules, 'string');
+      assert.equal(typeof def.historicalCompleteness, 'string');
+      assert.equal(typeof def.reportingClock, 'string');
+    }
   });
 });

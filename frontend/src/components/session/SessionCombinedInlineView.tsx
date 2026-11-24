@@ -2,6 +2,7 @@ import { SessionAggregateNotesView } from '@/components/session/SessionAggregate
 import type { CombinedSessionNotesPayload } from '@/types/wiki';
 
 interface SessionCombinedInlineViewProps {
+  readOnly?: boolean;
   campaignHandle: string;
   payload: CombinedSessionNotesPayload;
   canManage: boolean;
@@ -10,6 +11,7 @@ interface SessionCombinedInlineViewProps {
 }
 
 export function SessionCombinedInlineView({
+  readOnly = false,
   campaignHandle,
   payload,
   onRefresh,
@@ -17,6 +19,7 @@ export function SessionCombinedInlineView({
 }: SessionCombinedInlineViewProps) {
   return (
     <SessionAggregateNotesView
+      readOnly={readOnly}
       campaignHandle={campaignHandle}
       payload={payload}
       onRefresh={onRefresh}

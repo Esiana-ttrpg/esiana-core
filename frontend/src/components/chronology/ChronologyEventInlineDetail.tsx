@@ -49,7 +49,7 @@ export function ChronologyEventInlineDetail({
   occurrence,
   timeBundle,
   showConditions = true,
-  canManage = false,
+  canManage: _canManage = false,
   categories = [],
   editableEvents = [],
   calendarLike = null,
@@ -57,6 +57,8 @@ export function ChronologyEventInlineDetail({
   onMutated,
   onDeleted,
 }: ChronologyEventInlineDetailProps) {
+  const canManage = baseEvent.canEdit ?? false;
+  const canDelete = baseEvent.canDelete ?? false;
   const descriptionPreview = truncateChronologyDescription(
     baseEvent.description,
   );
@@ -154,7 +156,7 @@ export function ChronologyEventInlineDetail({
 
       {showConditions && <ConditionTreeReadOnly value={baseEvent.conditions} />}
 
-      {canManage && calendarLike ? (
+      {(canManage || canDelete) && calendarLike ? (
         <ChronologyEventManagePanel
           campaignHandle={campaignHandle}
           baseEvent={baseEvent}

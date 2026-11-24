@@ -52,6 +52,7 @@ async function persistRun(
       nextEpochMinute: BigInt(context.nextEpochMinute),
       source: context.source,
       sourceRef: context.batchId ?? null,
+      initiatedByUserId: context.actorUserId ?? null,
       semanticsVersion: TIME_HOOKS_SEMANTICS_VERSION,
       receipt: JSON.parse(JSON.stringify(receipt)),
     },

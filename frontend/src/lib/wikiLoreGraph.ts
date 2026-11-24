@@ -53,9 +53,10 @@ export interface MentionTarget {
 
 export async function fetchMentionTargets(
   campaignHandle: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<MentionTarget[]> {
   const data = await apiFetch<{ targets: MentionTarget[] }>(
-    `/campaigns/${campaignHandle}/wiki/mention-targets`,
+    `/campaigns/${campaignHandle}/wiki/mention-targets${options?.previewAsPlayer ? "?previewAsPlayer=true" : ""}`,
   );
   return data.targets ?? [];
 }
@@ -96,9 +97,10 @@ export async function listWikiPageAliases(
 
 export async function fetchWikiLinkIndex(
   campaignHandle: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<WikiLinkIndexEntry[]> {
   const data = await apiFetch<{ entries: WikiLinkIndexEntry[] }>(
-    `/campaigns/${campaignHandle}/wiki/link-index`,
+    `/campaigns/${campaignHandle}/wiki/link-index${options?.previewAsPlayer ? "?previewAsPlayer=true" : ""}`,
   );
   return data.entries ?? [];
 }
@@ -106,9 +108,10 @@ export async function fetchWikiLinkIndex(
 export async function fetchWikiPagePreview(
   campaignHandle: string,
   pageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<WikiPagePreview> {
   const data = await apiFetch<{ preview: WikiPagePreview }>(
-    `/campaigns/${campaignHandle}/wiki/${pageId}/preview`,
+    `/campaigns/${campaignHandle}/wiki/${pageId}/preview${options?.previewAsPlayer ? "?previewAsPlayer=true" : ""}`,
   );
   return data.preview;
 }
@@ -117,8 +120,10 @@ export async function fetchMentionSnippet(
   campaignHandle: string,
   sourcePageId: string,
   targetPageId: string,
+  options?: { previewAsPlayer?: boolean },
 ): Promise<string | null> {
   const params = new URLSearchParams({ targetPageId });
+  if (options?.previewAsPlayer) params.set("previewAsPlayer", "true");
   const data = await apiFetch<{ snippet: string | null }>(
     `/campaigns/${campaignHandle}/wiki/${sourcePageId}/mention-snippet?${params}`,
   );

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { GripVertical, X } from 'lucide-react';
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock';
 import {
@@ -134,7 +135,7 @@ export function WorkspaceContextRail({
     );
   }
 
-  return (
+  const overlay = (
     <>
       <button
         type="button"
@@ -153,4 +154,9 @@ export function WorkspaceContextRail({
       </aside>
     </>
   );
+  // Keep the overlay in the campaign theme while placing it beside the app
+  // header in the stacking order. Nested workspace containers can otherwise
+  // put its close button underneath the sticky mobile header.
+  const themeShell = document.querySelector('.campaign-theme-shell');
+  return createPortal(overlay, themeShell ?? document.body);
 }

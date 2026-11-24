@@ -1,6 +1,7 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { CategoryIndexSearchInput } from '@/components/wiki/indexBrowse/CategoryIndexSearchInput';
 import type {
   CategoryIndexFacetDef,
@@ -23,10 +24,30 @@ interface CategoryIndexRefinePopoverProps {
   customBody?: ReactNode;
   activeCount?: number;
   onResetRefine?: () => void;
+  onResetFilters?: () => void;
+  onResetAll?: () => void;
   /** In-popover list filter — only when meaningful refine (facets or custom body) exists */
   searchQuery?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  /** Keep the popover within the viewport when its trigger wraps on mobile. */
+  mobileFullWidth?: boolean;
+  /** Optional presentation controls; callers apply these to their visible records. */
+  grouping?: RefineChoiceControl;
+  sorting?: RefineSortControl;
+}
+
+export interface RefineChoiceControl {
+  value: string;
+  defaultValue: string;
+  options: readonly { value: string; label: string }[];
+  onChange: (value: string) => void;
+}
+
+export interface RefineSortControl extends RefineChoiceControl {
+  direction: 'asc' | 'desc';
+  defaultDirection: 'asc' | 'desc';
+  onDirectionChange: (direction: 'asc' | 'desc') => void;
 }
 
 function chipClass(active: boolean): string {
@@ -44,12 +65,46 @@ export function CategoryIndexRefinePopover({
   customBody,
   activeCount,
   onResetRefine,
+  onResetFilters,
+  onResetAll,
   searchQuery,
   onSearchChange,
   searchPlaceholder,
+  mobileFullWidth = false,
+  grouping,
+  sorting,
 }: CategoryIndexRefinePopoverProps) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
+  const [searchDraft, setSearchDraft] = useState(searchQuery ?? '');
+  const searchTimer = useRef<number | null>(null);
+  const searchChangeRef = useRef(onSearchChange);
+  searchChangeRef.current = onSearchChange;
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    setSearchDraft(searchQuery ?? '');
+  }, [searchQuery]);
+  useEffect(() => () => {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+  }, []);
+
+  function updateSearchDraft(value: string) {
+    setSearchDraft(value);
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = window.setTimeout(() => {
+      searchTimer.current = null;
+      searchChangeRef.current?.(value);
+    }, 200);
+  }
+
+  function clearSearchDraft() {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+    setSearchDraft('');
+  }
 
   const hasTextFilter = Boolean(onSearchChange && (searchQuery?.trim() ?? '').length > 0);
   const hasFacetRefine = hasActiveCategoryIndexRefine(
@@ -58,10 +113,16 @@ export function CategoryIndexRefinePopover({
     children,
     categoryTitle,
   );
-  const hasActive =
+  const hasPresentationChange = Boolean(
+    (grouping && grouping.value !== grouping.defaultValue) ||
+    (sorting && (sorting.value !== sorting.defaultValue || sorting.direction !== sorting.defaultDirection)),
+  );
+  const pendingTextFilter = Boolean(onSearchChange && searchDraft.trim());
+  const hasFilters = (
     activeCount !== undefined
-      ? activeCount > 0
-      : hasFacetRefine || hasTextFilter;
+      ? activeCount > 0 || pendingTextFilter
+      : hasFacetRefine || hasTextFilter || pendingTextFilter);
+  const hasActive = hasPresentationChange || hasFilters;
 
   useEffect(() => {
     if (!open) return;
@@ -74,7 +135,7 @@ export function CategoryIndexRefinePopover({
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [open]);
 
-  if (facetDefs.length === 0 && !customBody) return null;
+  if (facetDefs.length === 0 && !customBody && !grouping && !sorting) return null;
 
   const showInPopoverSearch = Boolean(onSearchChange && searchPlaceholder);
 
@@ -92,10 +153,10 @@ export function CategoryIndexRefinePopover({
         }`}
       >
         <SlidersHorizontal className="size-4" />
-        Refine
+        {t('common.refine', { defaultValue: 'Refine' })}
         {hasActive && (
           <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium">
-            {activeCount ?? '•'}
+            {activeCount !== undefined && !hasPresentationChange ? activeCount + Number(pendingTextFilter && !hasTextFilter) : '•'}
           </span>
         )}
       </button>
@@ -103,15 +164,16 @@ export function CategoryIndexRefinePopover({
       {open && (
         <div
           role="dialog"
-          aria-label="Refine results"
-          className="absolute right-0 z-30 mt-2 max-h-[min(70vh,24rem)] w-[min(100vw-2rem,22rem)] overflow-y-auto rounded-lg border border-border bg-elevated p-3 shadow-lg"
+          aria-label={t('common.refineResults', { defaultValue: 'Refine results' })}
+          className={`absolute right-0 z-30 mt-2 max-h-[min(70vh,24rem)] w-[min(100vw-2rem,22rem)] overflow-y-auto rounded-lg border border-border bg-elevated p-3 shadow-lg ${mobileFullWidth ? 'max-sm:fixed max-sm:left-4 max-sm:right-4 max-sm:top-4 max-sm:mt-0 max-sm:max-h-[calc(100dvh-2rem)] max-sm:w-auto' : ''}`}
         >
           {showInPopoverSearch ? (
             <div className="mb-3">
               <CategoryIndexSearchInput
-                value={searchQuery ?? ''}
+                value={searchDraft}
                 placeholder={searchPlaceholder ?? 'Filter list…'}
-                onChange={onSearchChange!}
+                onChange={updateSearchDraft}
+                onClear={() => { clearSearchDraft(); onSearchChange?.(''); }}
               />
             </div>
           ) : null}
@@ -155,10 +217,41 @@ export function CategoryIndexRefinePopover({
             </div>
           )}
 
-          {hasActive && (
+          {grouping ? (
+            <label className={`mt-3 block ${META_SECTION_LABEL_CLASS}`}>
+              Group by
+              <select value={grouping.value} onChange={event => grouping.onChange(event.target.value)}
+                className="mt-1 block w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-foreground">
+                {grouping.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+          ) : null}
+          {sorting ? (
+            <div className="mt-3 flex gap-2">
+              <label className={`min-w-0 flex-1 ${META_SECTION_LABEL_CLASS}`}>
+                Sort by
+                <select value={sorting.value} onChange={event => sorting.onChange(event.target.value)}
+                  className="mt-1 block w-full rounded border border-border bg-surface px-2 py-1.5 text-sm text-foreground">
+                  {sorting.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label className={META_SECTION_LABEL_CLASS}>
+                Direction
+                <select value={sorting.direction} onChange={event => sorting.onDirectionChange(event.target.value as 'asc' | 'desc')}
+                  className="mt-1 block rounded border border-border bg-surface px-2 py-1.5 text-sm text-foreground">
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
+
+          {hasFilters && (
             <button
               type="button"
               onClick={() => {
+                clearSearchDraft();
+                if (onResetFilters) { onResetFilters(); return; }
                 if (onResetRefine) {
                   onResetRefine();
                 } else {
@@ -170,8 +263,23 @@ export function CategoryIndexRefinePopover({
               }}
               className="mt-3 text-xs text-muted underline-offset-2 hover:text-primary hover:underline"
             >
-              Reset refine
+              {grouping || sorting ? t('common.resetFilters', { defaultValue: 'Reset filters' }) : t('common.resetRefine', { defaultValue: 'Reset refine' })}
             </button>
+          )}
+          {(grouping || sorting) && hasActive && (
+            <button type="button" className="ml-3 mt-3 text-xs text-muted underline-offset-2 hover:text-primary hover:underline"
+              onClick={() => {
+                clearSearchDraft();
+                if (onResetAll) { onResetAll(); return; }
+                if (onResetRefine) onResetRefine();
+                else onRefineChange(resetCategoryIndexRefine(facetDefs, children, categoryTitle));
+                onSearchChange?.('');
+                if (grouping) grouping.onChange(grouping.defaultValue);
+                if (sorting) {
+                  sorting.onChange(sorting.defaultValue);
+                  sorting.onDirectionChange(sorting.defaultDirection);
+                }
+              }}>{t('common.resetAll', { defaultValue: 'Reset all' })}</button>
           )}
 
           <p className="mt-3 text-[11px] text-muted">

@@ -7,6 +7,7 @@ export type VisibilityTierLabel =
   | 'public'
   | 'party'
   | 'staff'
+  | 'restricted'
   | 'draft'
   | 'future';
 
@@ -34,6 +35,11 @@ export const VISIBILITY_TIER_CHIP_SPEC: Record<
   staff: {
     label: 'GM only',
     tone: 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100',
+    lucideIcon: 'Eye',
+  },
+  restricted: {
+    label: 'Restricted',
+    tone: 'border-border/60 bg-surface/60 text-muted',
     lucideIcon: 'Eye',
   },
   draft: {
@@ -68,8 +74,9 @@ export function resolveVisibilityTierLabel(input: {
   if (visibility === 'DM_Only' || upper === 'DM_ONLY' || upper === 'GM_ONLY') {
     return 'staff';
   }
-  if (visibility === 'Party' || upper === 'PARTY') return 'party';
-  return 'public';
+  if (visibility === 'Party' || upper === 'PARTY' || upper === 'CAMPAIGN') return 'party';
+  if (upper === 'PUBLIC') return 'public';
+  return 'restricted';
 }
 
 export function visibilityTierLabelFromProjection(

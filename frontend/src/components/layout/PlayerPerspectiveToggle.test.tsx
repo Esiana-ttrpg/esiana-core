@@ -34,56 +34,20 @@ async function mount(children: ReactNode) {
 }
 
 function Harness() {
-  const [perspective, setPerspective] = useState<'dm' | 'party' | 'public'>('dm');
-  const visible = perspective === 'public' ? 'Public quest' : perspective === 'party' ? 'Public quest' : 'GM quest';
-  return (
-    <div>
-      <PlayerPerspectiveToggle
-        value={perspective}
-        onChange={setPerspective}
-        publicLabel="Public"
-        ariaLabel="Adventure view perspective"
-      />
-      <p data-testid="content">{visible}</p>
-      <p data-testid="state">{perspective}</p>
-    </div>
-  );
+  const [perspective, setPerspective] = useState<'dm' | 'party'>('dm');
+  return <><PlayerPerspectiveToggle value={perspective} onChange={setPerspective} />
+    <p data-testid="state">{perspective}</p></>;
 }
 
-test('Public stays selected even when visible content matches Player', async () => {
+test('switches between GM and Party', async () => {
   const ui = await mount(<Harness />);
   try {
-    const buttons = () =>
-      Array.from(ui.container.querySelectorAll<HTMLButtonElement>('button'));
-    const [gm, player, pub] = buttons();
-
-    expect(gm.getAttribute('aria-pressed')).toBe('true');
-    expect(player.getAttribute('aria-pressed')).toBe('false');
-    expect(pub.getAttribute('aria-pressed')).toBe('false');
-
-    await act(async () => {
-      player.click();
-    });
+    const buttons = [...ui.container.querySelectorAll('button')];
+    expect(buttons.map(button => button.textContent)).toEqual(['GM', 'Party']);
+    await act(async () => buttons[1].click());
+    expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
     expect(ui.container.querySelector('[data-testid="state"]')?.textContent).toBe('party');
-    expect(ui.container.querySelector('[data-testid="content"]')?.textContent).toBe('Public quest');
-    expect(buttons()[1].getAttribute('aria-pressed')).toBe('true');
-    expect(buttons()[2].getAttribute('aria-pressed')).toBe('false');
-
-    await act(async () => {
-      buttons()[2].click();
-    });
-    expect(ui.container.querySelector('[data-testid="state"]')?.textContent).toBe('public');
-    expect(ui.container.querySelector('[data-testid="content"]')?.textContent).toBe('Public quest');
-    expect(buttons()[0].getAttribute('aria-pressed')).toBe('false');
-    expect(buttons()[1].getAttribute('aria-pressed')).toBe('false');
-    expect(buttons()[2].getAttribute('aria-pressed')).toBe('true');
-
-    await act(async () => {
-      buttons()[0].click();
-    });
+    await act(async () => buttons[0].click());
     expect(ui.container.querySelector('[data-testid="state"]')?.textContent).toBe('dm');
-    expect(buttons()[0].getAttribute('aria-pressed')).toBe('true');
-  } finally {
-    await ui.unmount();
-  }
+  } finally { await ui.unmount(); }
 });

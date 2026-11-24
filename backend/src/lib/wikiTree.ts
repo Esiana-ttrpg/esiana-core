@@ -6,6 +6,7 @@ import { CampaignCapabilities } from '../../../shared/campaignPolicy/capabilitie
 import { roleCapabilitiesFor } from '../../../shared/campaignPolicy/roleGrants.js';
 import { canViewVisibilityFromCaps } from '../../../shared/campaignPolicy/resourceAccess.js';
 import { isMembershipRole } from '../../../shared/campaignPolicy/membershipRoles.js';
+import { resolveActorCapabilities } from '../../../shared/campaignPolicy/policy.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import type { CampaignContext } from '../types/api.js';
 
@@ -36,6 +37,10 @@ function capsFromViewer(
   viewer: WikiVisibilityViewer,
 ): ReadonlySet<(typeof CampaignCapabilities)[keyof typeof CampaignCapabilities]> {
   if (viewer && typeof viewer === 'object') {
+    // Prefer actor so campaign capability overrides are honored.
+    if ('actor' in viewer && viewer.actor) {
+      return resolveActorCapabilities(viewer.actor);
+    }
     if ('capabilities' in viewer && viewer.capabilities) {
       return new Set(
         [...viewer.capabilities] as Array<
@@ -54,6 +59,7 @@ function capsFromViewer(
   if (!role) {
     return new Set([CampaignCapabilities.CAMPAIGN_VIEW]);
   }
+  // Raw role strings cannot see overrides — prefer passing CampaignContext/actor.
   return roleCapabilitiesFor(role);
 }
 

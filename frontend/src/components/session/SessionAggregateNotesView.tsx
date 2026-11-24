@@ -25,6 +25,7 @@ import type {
 } from '@/types/wiki';
 
 interface SessionAggregateNotesViewProps {
+  readOnly?: boolean;
   campaignHandle: string;
   payload: CombinedSessionNotesPayload;
   onRefresh?: () => void;
@@ -239,6 +240,7 @@ function AuthorSeparatedProse({
 }
 
 export function SessionAggregateNotesView({
+  readOnly = false,
   campaignHandle,
   payload,
   onRefresh,
@@ -246,8 +248,8 @@ export function SessionAggregateNotesView({
 }: SessionAggregateNotesViewProps) {
   const { user } = useAuth();
   const { campaign, tree } = useWiki();
-  const currentUserId = user?.id ?? null;
-  const role = campaign?.role;
+  const currentUserId = readOnly ? null : user?.id ?? null;
+  const role = readOnly ? null : campaign?.role;
   const aggregate = payload.aggregate;
 
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
@@ -277,6 +279,7 @@ export function SessionAggregateNotesView({
   const otherPassages = aggregate?.otherPassages ?? [];
 
   async function openEdit(pageId: string) {
+    if (readOnly) return;
     const col = columnsByPageId.get(pageId);
     setEditingPageId(pageId);
     setEditContent(col?.markdown ?? '');
@@ -284,6 +287,7 @@ export function SessionAggregateNotesView({
   }
 
   async function saveEdit() {
+    if (readOnly) return;
     if (!editingPageId) return;
     setSaving(true);
     try {
@@ -300,6 +304,7 @@ export function SessionAggregateNotesView({
   }
 
   async function submitAddToMyNotes() {
+    if (readOnly) return;
     if (!timelinePointId || !addDraft.trim()) return;
     setAdding(true);
     try {
@@ -454,7 +459,7 @@ export function SessionAggregateNotesView({
   return (
     <div className="space-y-8">
       {body}
-      <div className="border-t border-border pt-4">
+      {!readOnly && <div className="border-t border-border pt-4">
         {showAdd ? (
           <div className="space-y-3">
             <textarea
@@ -498,7 +503,7 @@ export function SessionAggregateNotesView({
             Add to my notes
           </button>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

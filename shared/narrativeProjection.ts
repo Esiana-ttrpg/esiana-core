@@ -177,6 +177,8 @@ export type BuildNarrativeViewerContextInput = {
   role: string | null;
   campaignNow: CampaignChronologyNow;
   allowPlayerChronologyManagement?: boolean;
+  /** When set, overrides role-derived elevated / chronology-manage flags (honors capability grants). */
+  capabilityOverrides?: Partial<NarrativeViewerCapabilities>;
 };
 
 export function isElevatedRole(role: string | null | undefined): boolean {
@@ -192,31 +194,35 @@ export function derivePerspective(
 export function buildNarrativeViewerCapabilities(
   role: string | null,
   allowPlayerChronologyManagement = false,
+  capabilityOverrides?: Partial<NarrativeViewerCapabilities>,
 ): NarrativeViewerCapabilities {
-  const elevated = isElevatedRole(role);
+  const elevated = capabilityOverrides?.isElevatedWiki ?? isElevatedRole(role);
   const canManageChronology =
-    elevated ||
-    (role === 'PARTICIPANT' && allowPlayerChronologyManagement) ||
-    (role === 'Player' && allowPlayerChronologyManagement);
+    capabilityOverrides?.canManageChronology ??
+    (elevated ||
+      (role === 'PARTICIPANT' && allowPlayerChronologyManagement) ||
+      (role === 'Player' && allowPlayerChronologyManagement));
   return {
     canManageChronology,
-    canRevealContent: elevated,
-    canUseGhostMode: elevated,
+    canRevealContent: capabilityOverrides?.canRevealContent ?? elevated,
+    canUseGhostMode: capabilityOverrides?.canUseGhostMode ?? elevated,
     isElevatedWiki: elevated,
-    isElevatedMap: elevated,
+    isElevatedMap: capabilityOverrides?.isElevatedMap ?? elevated,
   };
 }
 
 export function buildNarrativeViewerContext(
   input: BuildNarrativeViewerContextInput,
 ): NarrativeViewerContext {
-  const elevated = isElevatedRole(input.role);
+  const elevated =
+    input.capabilityOverrides?.isElevatedWiki ?? isElevatedRole(input.role);
   return {
     perspective: derivePerspective(elevated),
     role: input.role,
     capabilities: buildNarrativeViewerCapabilities(
       input.role,
       input.allowPlayerChronologyManagement,
+      input.capabilityOverrides,
     ),
     campaignNow: input.campaignNow,
   };

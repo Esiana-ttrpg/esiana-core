@@ -14,6 +14,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
 import { useOptionalWiki } from '@/contexts/WikiContext';
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { campaignWikiPath } from '@/lib/campaignPaths';
 import { formatWikiPageKind } from '@/lib/formatWikiPageKind';
 import { resolveWikiCodexType } from '@/lib/resolveWikiCodexType';
@@ -90,6 +91,8 @@ export function WikiLinkNodeView({
   const isEditing = editor.isEditable;
   const touch = isTouchDevice();
   const wiki = useOptionalWiki();
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const navigate = useNavigate();
   const campaignHandle = wiki?.campaignHandle ?? '';
   const flatPages = wiki?.flatPages ?? [];
@@ -164,14 +167,14 @@ export function WikiLinkNodeView({
       if (!campaignHandle || !pageId) return;
       setPreviewLoading(true);
       try {
-        setPreview(await fetchWikiPagePreview(campaignHandle, pageId));
+        setPreview(await fetchWikiPagePreview(campaignHandle, pageId, { previewAsPlayer }));
       } catch {
         setPreview(null);
       } finally {
         setPreviewLoading(false);
       }
     },
-    [campaignHandle],
+    [campaignHandle, previewAsPlayer],
   );
 
   const clearLongPress = useCallback(() => {

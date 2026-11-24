@@ -1,5 +1,5 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Eye, EyeOff, GitBranch, Network } from 'lucide-react';
 import { useWiki } from '@/contexts/WikiContext';
@@ -40,6 +40,7 @@ import type { StoryFilterState } from '@/lib/workspacePersistence';
 import { useElevatedNarrativeView } from '@/hooks/useWikiCampaignPolicy';
 import { ThreadsLensViewToggle } from '@/components/thread/ThreadsLensViewToggle';
 import { campaignAdventureHubPath } from '@/lib/campaignPaths';
+import { ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE } from '@/lib/adventurePreview';
 
 interface ThreadHubViewProps {
   campaignHandle: string;
@@ -102,25 +103,31 @@ export function ThreadHubView({
     });
   }, [categoryPageId, categoryTitle, pageById]);
 
+  const requestGeneration = useRef(0);
   const load = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setError(null);
+    setData(null);
     try {
       const payload = await fetchThreadHub(campaignHandle, {
         pageId: categoryPageId,
         previewAsPlayer: isDMUser && playerPreview,
       });
-      setData(payload);
+      if (generation === requestGeneration.current) setData(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load threads');
-      setData(null);
+      if (generation === requestGeneration.current) {
+        setError(err instanceof Error ? err.message : 'Failed to load threads');
+        setData(null);
+      }
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }, [campaignHandle, categoryPageId, isDMUser, playerPreview]);
 
   useEffect(() => {
     void load();
+    return () => { requestGeneration.current += 1; };
   }, [load]);
 
   const filteredNodes = useMemo(() => {
@@ -190,6 +197,7 @@ export function ThreadHubView({
         viewControl={threadsLensViewControl}
         refineControl={
           <CategoryIndexRefinePopover
+            mobileFullWidth
             facetDefs={[]}
             refineState={{}}
             children={[]}
@@ -211,7 +219,7 @@ export function ThreadHubView({
         }
         trailing={
           isDMUser && !embedded ? (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {resolvedAdventureBase ? (
                 <Link
                   to={adventureViewHref(resolvedAdventureBase, 'threads')}
@@ -231,6 +239,8 @@ export function ThreadHubView({
               ) : null}
               <button
                 type="button"
+                disabled={!ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE}
+                title={ADVENTURE_AUDIENCE_PREVIEW_AVAILABLE ? undefined : 'Party preview is temporarily unavailable.'}
                 onClick={() => setPlayerPreviewLocal((value) => !value)}
                 className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
               >
@@ -282,7 +292,9 @@ export function ThreadHubView({
         <p className="text-sm text-muted">
           {searchQuery || refineCount > 0
             ? 'No threads match your filters.'
-            : 'No narrative threads yet. Create one to track open story pressure.'}
+            : isDMUser
+              ? 'No narrative threads yet. Create one to track open story pressure.'
+              : 'No narrative threads yet.'}
         </p>
       ) : (
         <div className="space-y-8">
@@ -410,13 +422,14 @@ export function ThreadHubView({
   return (
     <>
       <CategoryHubShell
+        headerDensity="compact"
         breadcrumbs={
           <WikiPageBreadcrumbs crumbs={indexBreadcrumbs} campaignHandle={campaignHandle} />
         }
         breadcrumbCrumbs={indexBreadcrumbs}
         title={
           <>
-            <GitBranch className="size-6 text-amber-400" strokeWidth={1.25} />
+            <GitBranch className="size-4 text-amber-400" strokeWidth={1.25} />
             {categoryTitle}
           </>
         }

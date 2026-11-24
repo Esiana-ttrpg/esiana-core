@@ -5,6 +5,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableCell } from '@tiptap/extension-table-cell';
 import TextAlign from '@tiptap/extension-text-align';
+import { TaskItem, TaskList } from '@tiptap/extension-list';
 import type { Extensions } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { EditorHighlightExtension } from './extensions/EditorHighlightExtension';
@@ -14,6 +15,11 @@ import { TableOfContentsExtension } from './extensions/TableOfContentsExtension'
 import { WikiLinkExtension } from './extensions/WikiLinkExtension';
 import { SocialMentionExtension } from './extensions/SocialMentionExtension';
 import { SourceReferenceAtom, SourceReferenceMark } from './extensions/SourceReferenceExtension';
+import {
+  DetailsContent,
+  DetailsSummary,
+  WikiDetailsExtension,
+} from './extensions/WikiDetailsExtension';
 
 export const WIKI_EDITOR_PROSE_CLASS =
   'tiptap prose prose-invert prose-sm max-w-none focus:outline-none px-4 py-3 text-foreground';
@@ -36,6 +42,11 @@ export function buildWikiEditorExtensions(loreExtensions: Extensions = []): Exte
     SocialMentionExtension,
     SourceReferenceMark,
     SourceReferenceAtom,
+    WikiDetailsExtension.configure({ persist: false }) as unknown as Extensions[number],
+    DetailsSummary as unknown as Extensions[number],
+    DetailsContent as unknown as Extensions[number],
+    TaskList,
+    TaskItem.configure({ nested: true }),
     ...loreExtensions,
     TextAlign.configure({
       types: ['heading', 'paragraph'],

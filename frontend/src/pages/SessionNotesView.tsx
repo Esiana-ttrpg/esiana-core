@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BookOpen,
-  ChevronDown,
   FileUp,
   FolderInput,
   Plus,
@@ -111,7 +110,6 @@ export function SessionNotesView() {
     return null;
   }
   const [searchQuery, setSearchQuery] = useState('');
-  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
   const [showCreateArcDialog, setShowCreateArcDialog] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [noteDeleteTarget, setNoteDeleteTarget] = useState<{
@@ -121,7 +119,6 @@ export function SessionNotesView() {
   const [showCreatePageDialog, setShowCreatePageDialog] = useState(false);
   const [showCreateSessionDialog, setShowCreateSessionDialog] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const createMenuRef = useRef<HTMLDivElement>(null);
 
   const canManageRole =
     campaign?.role === CampaignMemberRoles.GAMEMASTER ||
@@ -151,22 +148,6 @@ export function SessionNotesView() {
       setBulkDestinationBookId('__uncategorized__');
     }
   }, [isOrganizing]);
-
-  useEffect(() => {
-    if (!isCreateMenuOpen) return;
-
-    function handlePointerDown(event: MouseEvent) {
-      if (
-        createMenuRef.current &&
-        !createMenuRef.current.contains(event.target as Node)
-      ) {
-        setIsCreateMenuOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, [isCreateMenuOpen]);
 
   const filteredIndex = useMemo(() => {
     if (!data) return null;
@@ -353,12 +334,10 @@ export function SessionNotesView() {
   const hasSessions = hasTimelineSessions(data);
 
   function openCreatePageDialog() {
-    setIsCreateMenuOpen(false);
     setShowCreatePageDialog(true);
   }
 
   function openCreateSessionDialog() {
-    setIsCreateMenuOpen(false);
     setShowCreateSessionDialog(true);
   }
 
@@ -369,6 +348,8 @@ export function SessionNotesView() {
     }
     if (canManageRole) {
       openCreateSessionDialog();
+    } else {
+      openCreatePageDialog();
     }
   }
 
@@ -479,7 +460,21 @@ export function SessionNotesView() {
           <CategoryIndexToolbar
             createLabel={t('campaign.timeline.sessionNotesCreateNewPage')}
             onCreate={openCreatePageDialog}
-            createAction={campaign?.isMember ? undefined : null}
+            createAction={null}
+            createMenu={campaign?.isMember ? {
+              label: 'Create',
+              actions: [
+                { label: t('campaign.timeline.sessionNotesCreateNewPage'), onClick: openCreatePageDialog },
+                { label: t('campaign.timeline.sessionNotesUploadPage'), onClick: () => setShowUploadModal(true) },
+                ...(canManageRole ? [
+                  { label: t('campaign.timeline.sessionNotesCreateNewSession'), onClick: openCreateSessionDialog },
+                  { label: 'Schedule next session', onClick: () => setShowScheduleModal(true) },
+                ] : []),
+                ...(canManage ? [
+                  { label: 'Create New Heading/Group', onClick: () => setShowCreateArcDialog(true) },
+                ] : []),
+              ],
+            } : undefined}
             resultCountLabel={hasAnyNotes ? resultCountLabel : null}
             refineControl={
               hasAnyNotes ? (
@@ -524,83 +519,6 @@ export function SessionNotesView() {
                       {t('campaign.timeline.sessionNotesOrganize')}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setShowUploadModal(true)}
-                    className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface/40 px-3 py-2 text-sm text-foreground hover:bg-surface"
-                  >
-                    <FileUp className="size-4" />
-                    {t('campaign.timeline.sessionNotesUploadPage')}
-                  </button>
-                  <div className="relative shrink-0" ref={createMenuRef}>
-                    <div className="flex items-stretch overflow-hidden rounded-lg border border-border bg-surface/40 text-sm text-foreground transition-colors hover:bg-surface">
-                      <button
-                        type="button"
-                        onClick={openCreatePageDialog}
-                        className="flex cursor-pointer items-center justify-center border-r border-border px-3 py-2"
-                        aria-label={t('campaign.timeline.sessionNotesCreatePageAria')}
-                      >
-                        <Plus className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsCreateMenuOpen((open) => !open)}
-                        className="flex cursor-pointer items-center justify-center px-2 py-2 hover:bg-elevated/80"
-                        aria-label={t('campaign.timeline.sessionNotesOpenCreateMenuAria')}
-                        aria-expanded={isCreateMenuOpen}
-                      >
-                        <ChevronDown className="size-3.5" />
-                      </button>
-                    </div>
-                    {isCreateMenuOpen ? (
-                      <div className="absolute right-0 z-50 mt-2 w-48 animate-in rounded-lg border border-border bg-surface py-1 shadow-2xl fade-in slide-in-from-top-2">
-                        <button
-                          type="button"
-                          onClick={openCreatePageDialog}
-                          className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
-                        >
-                          <span aria-hidden>📝</span>
-                          {t('campaign.timeline.sessionNotesCreateNewPage')}
-                        </button>
-                        {canManageRole ? (
-                          <button
-                            type="button"
-                            onClick={openCreateSessionDialog}
-                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
-                          >
-                            <span aria-hidden>📅</span>
-                            {t('campaign.timeline.sessionNotesCreateNewSession')}
-                          </button>
-                        ) : null}
-                        {canManageRole ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsCreateMenuOpen(false);
-                              setShowScheduleModal(true);
-                            }}
-                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
-                          >
-                            <span aria-hidden>🗓️</span>
-                            Schedule next session
-                          </button>
-                        ) : null}
-                        {canManage ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsCreateMenuOpen(false);
-                              setShowCreateArcDialog(true);
-                            }}
-                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left text-xs text-foreground hover:bg-elevated"
-                          >
-                            <span aria-hidden>📖</span>
-                            Create New Heading/Group
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
                 </>
               ) : null
             }

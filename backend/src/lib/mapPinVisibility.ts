@@ -42,14 +42,16 @@ function resolveNestedAssetVisibility(
 export function isPinVisibleToRole(
   pin: MapPinVisibilityContext,
   role: CampaignMemberRole | null,
+  capabilities?: ReadonlySet<string>,
 ): boolean {
-  if (pin.targetPage && !canViewWikiPage(pin.targetPage.visibility, role)) {
+  const viewer = capabilities ? { capabilities } : role;
+  if (pin.targetPage && !canViewWikiPage(pin.targetPage.visibility, viewer)) {
     return false;
   }
 
   if (
     pin.targetAsset?.visibility &&
-    !canViewWikiPage(pin.targetAsset.visibility, role)
+    !canViewWikiPage(pin.targetAsset.visibility, viewer)
   ) {
     return false;
   }
@@ -57,7 +59,7 @@ export function isPinVisibleToRole(
   const nestedVisibility = resolveNestedAssetVisibility(pin.targetAsset);
   if (
     nestedVisibility &&
-    !canViewWikiPage(nestedVisibility, role)
+    !canViewWikiPage(nestedVisibility, viewer)
   ) {
     return false;
   }
@@ -100,11 +102,13 @@ export function serializeMapPinForRole(
   } | null;
   },
   role: CampaignMemberRole | null,
+  capabilities?: ReadonlySet<string>,
 ): SerializedMapPin | null {
+  const viewer = capabilities ? { capabilities } : role;
   if (!pin.targetPageId && !pin.targetAssetId) return null;
 
-  const elevated = isElevatedMapRole(role);
-  const visible = isPinVisibleToRole(pin, role);
+  const elevated = isElevatedMapRole(role, capabilities);
+  const visible = isPinVisibleToRole(pin, role, capabilities);
 
   if (!visible && !elevated) return null;
 
@@ -128,20 +132,20 @@ export function serializeMapPinForRole(
   if (!elevated) {
     if (
       pin.targetPage &&
-      !canViewWikiPage(pin.targetPage.visibility, role)
+      !canViewWikiPage(pin.targetPage.visibility, viewer)
     ) {
       serialized.targetPageId = null;
       serialized.targetPageTitle = null;
     }
     if (
       pin.targetAsset?.visibility &&
-      !canViewWikiPage(pin.targetAsset.visibility, role)
+      !canViewWikiPage(pin.targetAsset.visibility, viewer)
     ) {
       serialized.targetAssetId = null;
       serialized.targetMapTitle = null;
     }
     const nestedVisibility = resolveNestedAssetVisibility(pin.targetAsset);
-    if (nestedVisibility && !canViewWikiPage(nestedVisibility, role)) {
+    if (nestedVisibility && !canViewWikiPage(nestedVisibility, viewer)) {
       serialized.targetAssetId = null;
       serialized.targetMapTitle = null;
     }

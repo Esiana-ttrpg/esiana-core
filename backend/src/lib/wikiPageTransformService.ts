@@ -158,6 +158,7 @@ export async function transformWikiPageInCampaign(input: {
     blocks: transformed.blocks,
     actorUserId,
     emitEvents: true,
+    previousBlocks: page.blocks,
   });
 
   if (targetModuleKey === 'quests') {
@@ -307,6 +308,7 @@ async function promoteEventLoreToQuest(input: {
     blocks: questBlocks,
     actorUserId,
     emitEvents: true,
+    previousBlocks: [],
   });
 
   await createDefaultQuestLifecycle(campaignId, newQuestId, {

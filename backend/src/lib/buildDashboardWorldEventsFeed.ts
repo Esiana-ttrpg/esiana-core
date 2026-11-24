@@ -1,3 +1,5 @@
+import { narrativeCapabilitiesFromActor } from './narrativeProjectionContext.js';
+import type { CampaignActor } from '../../../shared/campaignPolicy/policy.js';
 import { prisma } from './prisma.js';
 import { buildConvergenceOverlay } from './chronologyConvergenceService.js';
 import {
@@ -115,6 +117,7 @@ export async function buildDashboardWorldEventsFeed(input: {
   campaignHandle: string;
   role: CampaignMemberRole | null;
   allowPlayerChronologyManagement?: boolean;
+  actor?: CampaignActor;
   config?: Record<string, unknown>;
 }): Promise<DashboardWorldEventsFeedResult> {
   const { typeFilters, limit, sortBy } = normalizeWorldEventsConfig(input.config);
@@ -122,6 +125,7 @@ export async function buildDashboardWorldEventsFeed(input: {
 
   const [overlay, categoryNames, campaign] = await Promise.all([
     buildConvergenceOverlay({
+      capabilityOverrides: input.actor ? narrativeCapabilitiesFromActor(input.actor) : undefined,
       campaignId: input.campaignId,
       campaignHandle: input.campaignHandle,
       role: input.role,

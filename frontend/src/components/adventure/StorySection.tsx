@@ -44,7 +44,7 @@ export function StorySection({
   onHeaderActionsChange,
 }: StorySectionProps) {
   const { flatPages } = useWiki();
-  const { playerPreview, publicPreview, isDMUser } = useAdventureWorkspace();
+  const { playerPreview, isDMUser } = useAdventureWorkspace();
 
   const threadsCategoryId = useMemo(
     () =>
@@ -122,7 +122,6 @@ export function StorySection({
     categoryPageId,
     isDMUser,
     playerPreview,
-    publicPreview,
     threadsLens,
   ]);
 
@@ -172,14 +171,13 @@ export function StorySection({
         campaignHandle={campaignHandle}
         categoryPageId={categoryPageId}
         playerPreview={playerPreview}
-        publicPreview={publicPreview}
         onHeaderToolbarChange={onHeaderActionsChange}
       />
     );
   }
 
   if (activeView === 'scenes') {
-    if (!isDMUser || playerPreview) {
+    if (!isDMUser) {
       return (
         <p className="text-sm text-muted-foreground">Scenes are available to GMs only.</p>
       );
@@ -194,7 +192,7 @@ export function StorySection({
   }
 
   if (activeView === 'storyboard') {
-    if (!isDMUser || playerPreview) {
+    if (!isDMUser) {
       return (
         <p className="text-sm text-muted-foreground">Storyboard is available to GMs only.</p>
       );
@@ -277,7 +275,7 @@ export function StorySection({
   }
 
   if (activeView === 'investigation') {
-    if (!isDMUser || playerPreview) {
+    if (!isDMUser) {
       return (
         <p className="text-sm text-muted-foreground">
           Investigation topology is available to GMs only.

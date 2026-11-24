@@ -3,6 +3,7 @@ import { Plus, Settings } from 'lucide-react';
 import { campaignChronologyPath } from '@/lib/campaignPaths';
 import { chronologyViewParams } from '@/lib/chronologyNavigation';
 import type { TimelineOccurrenceRecord } from '@/lib/chronologyApi';
+import { WORKSPACE_CREATE_BUTTON_CLASS, WorkspaceActionBar } from '@/components/layout/WorkspaceActionBar';
 
 export type ChronologyView = 'calendar' | 'timeline' | 'eras' | 'events' | 'feed';
 
@@ -99,27 +100,21 @@ export function UniverseHeader({
       </div>
       {contextLabel && <p className="text-xs text-muted">{contextLabel}</p>}
 
-      <div className="flex items-center gap-2">
-        {canCreateEvent && (
-          <button
-            type="button"
-            onClick={onCreateEvent}
-            title="Create Event"
-            className="inline-flex items-center justify-center rounded-lg bg-primary p-2 text-background hover:bg-primary-hover"
-          >
-            <Plus className="size-4" />
-            <span className="ml-1 text-xs">Create Event</span>
-          </button>
-        )}
-        <Link
+      <WorkspaceActionBar
+        trailing={<Link
           to={settingsHref}
           title="Chronology Engine Settings"
           aria-label="Chronology Engine Settings"
           className="inline-flex items-center justify-center rounded-lg border border-border bg-background p-2 text-muted hover:text-foreground"
         >
           <Settings className="size-4" />
-        </Link>
-      </div>
+        </Link>}
+        create={canCreateEvent ? (
+          <button type="button" onClick={onCreateEvent} className={`${WORKSPACE_CREATE_BUTTON_CLASS} !px-2 !py-1.5 !text-xs`}>
+            <Plus className="size-4" aria-hidden /> Create Event
+          </button>
+        ) : null}
+      />
     </header>
   );
 }

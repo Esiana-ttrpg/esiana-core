@@ -46,6 +46,7 @@ import type { WorldPressureProjection } from '../../../shared/worldPressureProje
 import type { DashboardChronometerSummary } from './buildDashboardChronometer.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
 import { prisma } from './prisma.js';
+import { canViewWikiPage, type WikiVisibilityViewer } from './wikiTree.js';
 import { listPendingLedgerSuggestions } from './ledgerSuggestionService.js';
 import type { CampaignMemberRole } from '../types/domain.js';
 import type { CampaignLedgerSuggestionDetail } from './ledgerMetadata.js';
@@ -72,13 +73,14 @@ async function hydrateProjectPageLink(
   campaignId: string,
   campaignHandle: string,
   pageId: string | null,
+  viewer?: WikiVisibilityViewer,
 ): Promise<DowntimeProjectOverviewLink | null> {
   if (!pageId) return null;
   const page = await prisma.wikiPage.findFirst({
     where: { id: pageId, campaignId, deletedAt: null },
-    select: { id: true, title: true, workspace: true, pathKey: true },
+    select: { id: true, title: true, workspace: true, pathKey: true, visibility: true },
   });
-  if (!page) return null;
+  if (!page || (viewer !== undefined && !canViewWikiPage(page.visibility, viewer))) return null;
   return {
     pageId: page.id,
     label: page.title,
@@ -113,6 +115,7 @@ export async function buildProjectOverviewPayload(input: {
   campaignId: string;
   campaignHandle: string;
   role: CampaignMemberRole | null;
+  viewer?: WikiVisibilityViewer;
   assignedPeople: DowntimeProjectOverviewPayload['assignedPeople'];
 }): Promise<DowntimeProjectOverviewPayload> {
   const { project, wikiMetadata, blocks, campaignId, campaignHandle, role, assignedPeople } = input;
@@ -123,8 +126,8 @@ export async function buildProjectOverviewPayload(input: {
   }
 
   const [owner, haven, pendingSuggestions] = await Promise.all([
-    hydrateProjectPageLink(campaignId, campaignHandle, project.ownerPageId),
-    hydrateProjectPageLink(campaignId, campaignHandle, project.havenPageId),
+    hydrateProjectPageLink(campaignId, campaignHandle, project.ownerPageId, input.viewer),
+    hydrateProjectPageLink(campaignId, campaignHandle, project.havenPageId, input.viewer),
     listPendingLedgerSuggestions(campaignId, campaignHandle, role, { limit: 20 }),
   ]);
 

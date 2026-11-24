@@ -36,6 +36,7 @@ interface WikiPageEditorHeaderProps {
   isDMUser?: boolean;
   isTagsHub: boolean;
   isLayoutDirty?: boolean;
+  hasPendingPerspectiveEdits?: boolean;
   isSaving: boolean;
   onSavePage?: () => void | Promise<void>;
   isPinned: boolean;

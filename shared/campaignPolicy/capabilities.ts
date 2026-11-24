@@ -23,6 +23,10 @@ export const CampaignCapabilities = {
   QUEST_EDIT: 'quest.edit',
   THREAD_EDIT: 'thread.edit',
   MAPS_EDIT: 'maps.edit',
+  /** Create havens, projects, and hireling relationships (not campaign admin). */
+  DOWNTIME_CREATE: 'downtime.create',
+  DOWNTIME_DELETE_OWNED: 'downtime.delete_owned',
+  /** Administer any downtime resource and campaign downtime settings. */
   DOWNTIME_MANAGE: 'downtime.manage',
   ADVENTURE_STORYBOARD_EDIT: 'adventure.storyboard.edit',
   JOURNAL_PLANNER_ACCESS: 'journal_planner.access',
@@ -40,7 +44,14 @@ export const CampaignCapabilities = {
 
   LEDGER_CONTRIBUTE: 'ledger.contribute',
 
+  /** Structural chronology management: eras/timelines/calendar configuration. */
   CHRONOLOGY_EDIT: 'chronology.edit',
+  CHRONOLOGY_EVENT_CREATE: 'chronology.event.create',
+  CHRONOLOGY_EVENT_EDIT_OWNED: 'chronology.event.edit_owned',
+  CHRONOLOGY_EVENT_EDIT: 'chronology.event.edit',
+  CHRONOLOGY_EVENT_DELETE_OWNED: 'chronology.event.delete_owned',
+  CHRONOLOGY_ERA_CREATE: 'chronology.era.create',
+
   DISCOVERY_REVEAL: 'discovery.reveal',
   NARRATIVE_ELEVATED_VIEW: 'narrative.elevated_view',
 
@@ -57,3 +68,12 @@ export type CampaignCapability =
 
 export const ALL_CAMPAIGN_CAPABILITIES: readonly CampaignCapability[] =
   Object.values(CampaignCapabilities);
+
+/** Chronology contribution capabilities implied by full chronology management. */
+export const CHRONOLOGY_CONTRIBUTION_CAPABILITIES: readonly CampaignCapability[] = [
+  CampaignCapabilities.CHRONOLOGY_EVENT_CREATE,
+  CampaignCapabilities.CHRONOLOGY_EVENT_EDIT_OWNED,
+  CampaignCapabilities.CHRONOLOGY_EVENT_EDIT,
+  CampaignCapabilities.CHRONOLOGY_EVENT_DELETE_OWNED,
+  CampaignCapabilities.CHRONOLOGY_ERA_CREATE,
+];

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { BookOpen, Link2, Newspaper, PenLine } from 'lucide-react';
 import { CategoryHubShell } from '@/components/wiki/indexBrowse/CategoryHubShell';
 import { CategoryIndexToolbar } from '@/components/wiki/indexBrowse/CategoryIndexToolbar';
+import { CategoryIndexRefinePopover } from '@/components/wiki/indexBrowse/CategoryIndexRefinePopover';
 import { CategoryIndexViewToggle } from '@/components/wiki/indexBrowse/CategoryIndexViewToggle';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -233,7 +234,7 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     'rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground';
 
   const refineControl = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-2">
       <select
         aria-label={t('journal.library.filterType')}
         className={selectClass}
@@ -411,9 +412,10 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
     <>
       <CategoryHubShell
       composition="hub"
+      headerDensity="compact"
       title={
         <span className="inline-flex items-center gap-2">
-          <BookOpen className="size-6 text-primary" aria-hidden />
+          <BookOpen className="size-4 text-primary" aria-hidden />
           {t('journal.library.title')}
         </span>
       }
@@ -454,7 +456,22 @@ export function JournalLibraryTab({ campaignHandle }: JournalLibraryTabProps) {
                   </button>
                 ))}
               </div>
-              {refineControl}
+              <CategoryIndexRefinePopover
+                mobileFullWidth
+                facetDefs={[]}
+                refineState={{}}
+                children={[]}
+                categoryTitle="Journals"
+                onRefineChange={() => {}}
+                customBody={refineControl}
+                activeCount={[typeFilter, seriesFilter, tagFilter, originFilter].filter(Boolean).length}
+                onResetRefine={() => {
+                  setTypeFilter('');
+                  setSeriesFilter('');
+                  setTagFilter('');
+                  setOriginFilter('');
+                }}
+              />
             </div>
           }
           sortControl={sortControl}

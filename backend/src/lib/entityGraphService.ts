@@ -1,4 +1,5 @@
 import type { Prisma } from './prismaClient.js';
+import { workspaceToSegment, type CampaignWorkspaceValue } from '../../../shared/campaignWorkspaceRoutes.js';
 import type { ChronologyDateParts } from '../../../shared/chronologyTypes.js';
 import {
   EDGE_TAXONOMY_VERSION,
@@ -29,6 +30,7 @@ import {
 } from '../../../shared/narrativeProjection.js';
 import { dateSortKey } from './entityRelationTypes.js';
 import { prisma } from './prisma.js';
+import { redactAdventureReferenceText } from './adventurePageProjection.js';
 import { resolveWikiCodexType } from './resolveWikiCodexType.js';
 import { buildPageNarrativeStatusProjectionMap } from './pageNarrativeStatusService.js';
 import { buildWikiPageHref } from './wikiLinkService.js';
@@ -50,6 +52,8 @@ type EntityRelationRow = {
   sourceRecordKey: string;
   sourcePageId: string | null;
 };
+
+const INHERITED_RELATION_DOMAINS = new Set(['wiki_link', 'wiki_metadata', 'calendar', 'map', 'downtime']);
 
 export function rowToEdge(row: EntityRelationRow): EntityGraphEdge {
   return {
@@ -237,9 +241,76 @@ export type LocalGraphQueryInput = {
   viewerCtx: NarrativeViewerContext;
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
+  authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
 };
 
+export function authorizedGraphRow(row: EntityRelationRow, input: {
+  authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
+}): boolean {
+  if (!input.authorizedEntityKeys) {
+    if (!input.authorizedPageIds) return true;
+    return input.authorizedPageIds.has(row.sourceEntityId) &&
+      input.authorizedPageIds.has(row.targetEntityId) &&
+      (!row.sourcePageId || input.authorizedPageIds.has(row.sourcePageId)) &&
+      !!row.visibility && ['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.toUpperCase());
+  }
+  const keys = input.authorizedEntityKeys;
+  if (row.visibility && !['PUBLIC', 'PARTY', 'CAMPAIGN'].includes(row.visibility.trim().toUpperCase())) return false;
+  if (['wiki_link', 'wiki_metadata'].includes(row.sourceDomain) &&
+    !input.generatedWikiPairs?.has(`${row.sourceEntityId}:${row.targetEntityId}`)) return false;
+  return keys.has(`${row.sourceEntityType}:${row.sourceEntityId}`) &&
+    keys.has(`${row.targetEntityType}:${row.targetEntityId}`) &&
+    (!row.sourcePageId || !!input.authorizedPageIds?.has(row.sourcePageId));
+}
+
+// Generated edges inherit their already-authorized endpoints when no separate
+// relationship visibility was authored. Explicit relationship visibility stays intact.
+export function rowForAudience(row: EntityRelationRow, authorizedEntityKeys?: ReadonlySet<string>,
+  authorizedPageIds?: ReadonlySet<string>, pageRouteAllowed?: (id: string, route?: string) => boolean): EntityRelationRow {
+  if (!authorizedEntityKeys && !authorizedPageIds) return row;
+  const scrub = (value: unknown, key = ''): unknown => {
+    if (typeof value === 'string') {
+      if (/PageId$|^pageId$/.test(key)) return authorizedPageIds?.has(value) ? value : null;
+      return redactAdventureReferenceText(value, pageRouteAllowed ?? (id => !!authorizedPageIds?.has(id)));
+    }
+    if (Array.isArray(value)) return value.map(item => scrub(item, key)).filter(item => item != null);
+    if (!value || typeof value !== 'object') return value;
+    const record = value as Record<string, unknown>;
+    if (Object.entries(record).some(([name, item]) => {
+      if (typeof item !== 'string') return false;
+      if (/PageId$|^pageId$/.test(name)) return !authorizedPageIds?.has(item);
+      if (/EntityId$|^entityId$/.test(name)) {
+        const type = record[name.replace(/Id$/, 'Type')];
+        return typeof type === 'string'
+          ? !authorizedEntityKeys?.has(`${type}:${item}`) : !authorizedPageIds?.has(item);
+      }
+      return false;
+    })) return null;
+    return Object.fromEntries(Object.entries(record).map(([name, item]) => [name, scrub(item, name)]));
+  };
+  const inherited = row.visibility == null && INHERITED_RELATION_DOMAINS.has(row.sourceDomain);
+  return { ...row, sourceRecordKey: row.id, visibility: inherited ? 'PUBLIC' : row.visibility,
+    payload: scrub(inherited && ['wiki_link', 'wiki_metadata'].includes(row.sourceDomain)
+      ? { kind: row.relationKind } : row.payload) };
+}
+
+async function authorizedPageRouteLookup(campaignId: string, authorizedPageIds?: ReadonlySet<string>) {
+  if (!authorizedPageIds) return undefined;
+  const pages = await prisma.wikiPage.findMany({ where: { campaignId, deletedAt: null },
+    select: { id: true, workspace: true, pathKey: true } });
+  const allIds = new Set(pages.map(page => page.id));
+  const routes = new Map(pages.filter(page => authorizedPageIds.has(page.id) && page.workspace && page.pathKey)
+    .map(page => [`${workspaceToSegment(page.workspace as CampaignWorkspaceValue)}:${page.pathKey}`, page.id]));
+  return (id: string, route?: string) => allIds.has(id) ? authorizedPageIds.has(id) :
+    Boolean(route && authorizedPageIds.has(routes.get(`${route.toLowerCase()}:${id}`) ?? ''));
+}
+
 export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<LocalGraphQueryResult> {
+  const pageRouteAllowed = await authorizedPageRouteLookup(input.campaignId, input.authorizedPageIds);
   const depth = Math.min(Math.max(input.depth ?? 1, 1), 2);
   const seenEdgeIds = new Set<string>();
   const edgeRows: EntityRelationRow[] = [];
@@ -252,9 +323,12 @@ export async function queryLocalGraph(input: LocalGraphQueryInput): Promise<Loca
     const current = frontier.shift()!;
     const rows = await loadEdgesForNode(input.campaignId, current.node, input.kinds);
     for (const row of rows) {
+      if (!authorizedGraphRow(row, input)) continue;
+      const projectedRow = rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds, pageRouteAllowed);
+      if (input.authorizedEntityKeys && !projectEdge(rowToEdge(projectedRow), input.viewerCtx, input.campaignNow).visible) continue;
       if (seenEdgeIds.has(row.id)) continue;
       seenEdgeIds.add(row.id);
-      edgeRows.push(row);
+      edgeRows.push(projectedRow);
       if (current.depth >= depth) continue;
 
       const edge = rowToEdge(row);
@@ -299,7 +373,11 @@ export async function buildAnalysisSnapshot(input: {
   viewerCtx: NarrativeViewerContext;
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
+  authorizedPageIds?: ReadonlySet<string>;
+  authorizedEntityKeys?: ReadonlySet<string>;
+  generatedWikiPairs?: ReadonlySet<string>;
 }): Promise<GraphAnalysisSnapshot> {
+  const pageRouteAllowed = await authorizedPageRouteLookup(input.campaignId, input.authorizedPageIds);
   const rows = await prisma.entityRelation.findMany({
     where: {
       campaignId: input.campaignId,
@@ -307,7 +385,9 @@ export async function buildAnalysisSnapshot(input: {
     },
   });
 
-  let edges = rows.map(rowToEdge).map((edge) =>
+  const authorizedRows = rows.filter(row => authorizedGraphRow(row, input))
+    .map(row => rowForAudience(row, input.authorizedEntityKeys, input.authorizedPageIds, pageRouteAllowed));
+  let edges = authorizedRows.map(rowToEdge).map((edge) =>
     projectEdge(edge, input.viewerCtx, input.campaignNow),
   );
   if (!input.includeSuppressed) {
@@ -329,6 +409,7 @@ export async function runGraphDiagnostics(input: {
   viewerCtx: NarrativeViewerContext;
   campaignNow: ChronologyDateParts;
   includeSuppressed?: boolean;
+  authorizedPageIds?: ReadonlySet<string>;
 }): Promise<GraphDiagnosticsResult> {
   const snapshot = await buildAnalysisSnapshot(input);
   const cycles =

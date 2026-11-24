@@ -82,6 +82,8 @@ Only load these documents when relevant. Active docs describe **current decision
 | UX decisions | `docs/experience-doctrine.md` |
 | Density limits | `docs/density-doctrine.md` |
 | Theme / surface tokens | `docs/design-tokens.md`, `docs/surface-hierarchy.md` (theme work only) |
+| Personal statistics | `docs/personal-statistics.md` |
+| Yearly Wrapped | `docs/yearly-wrapped.md` |
 | Plugins | `../docs/plugin-development/getting-started.md` (docs wiki) |
 | Git / release process | `GOVERNANCE.md` |
 

@@ -1,0 +1,562 @@
+# Personal statistics
+
+Personal Statistics is the owner-facing and public-profile view of a user's
+creative work across authorized campaigns. It is a **projection** of campaign
+activity records, not a separate measurement system.
+
+This document freezes Esiana 1.10 PR 1: current metric IDs and formulas,
+known inaccuracies, campaign activity coverage, timezone reuse, the proposed
+migration, and review gates for later PRs. **No calculation in this PR
+changes.** Compatibility endpoints stay:
+
+- `GET /api/user/creator-attribution` (owner, includes habits)
+- `GET /api/users/:id/creator-attribution` (public strip; public-campaign counts only)
+- `GET /api/user/statistics?range=&from=&to=&campaignId=&version=1` (owner, versioned)
+
+Related campaign-scoped contract: [campaign-statistics.md](./campaign-statistics.md).
+
+## Compatibility
+
+All 13 existing personal metric IDs and formulas remain as implemented in
+`buildUserCreatorAttribution` and `buildRollupHabits`. Companion metrics may
+be added later under new IDs. Do not silently redefine these IDs.
+
+| Metric ID | UI label | Current formula | Kind | Known inaccuracy |
+| --- | --- | --- | --- | --- |
+| `attribution.totalWordsCreated` | Words written | `SUM(WikiPageStats.wordCount)` on undeleted pages where `createdByUserId = user` in current non-archived memberships | Current-state snapshot, creator-attributed | Later editors' words on those pages inflate the total. Words the user added on other people's pages do not count. |
+| `attribution.pagesCreated` | Pages created | `COUNT` of the same created-page set | Current-state snapshot | Soft-deleted pages drop out. Includes `DEFAULT` and `SESSION_NOTE`. No visibility filter. |
+| `attribution.totalEdits` | Edits | `COUNT(NarrativeEvent PAGE_EDITED)` by `actorUserId` in those campaigns | Historical lifetime | Creates do not count. Soft-deleted pages' historical edits still count. Owner-only. |
+| `attribution.charactersCreated` | Characters | Created pages whose `resolveWikiCodexType({ templateType, metadata })` is `CHARACTER` | Current-state snapshot | Page `id` is not passed, so tree-based category resolution does not run. Retyping a page moves the count. |
+| `attribution.locationsCreated` | Locations | Same set, `LOCATION` | Current-state snapshot | Same category-resolution limit. |
+| `attribution.organizationsCreated` | Organizations | Same set, `ORGANIZATION` | Current-state snapshot | Same category-resolution limit. |
+| `attribution.connectionsCreated` | Connections | `COUNT(NarrativeEvent LINK_CREATED)` by this actor | Historical lifetime | Uses events, not the live `WikiLink` table. |
+| `attribution.campaignsContributedCount` | Tables contributed to | Distinct current non-archived membership campaign IDs that appear on created pages **or** any `NarrativeEvent` by this actor | Current membership ∩ historical activity | Membership alone does not count. Leaving a table drops it. **Public responses currently include private-campaign totals** (see Privacy). |
+| `attribution.wordsAdded` | Words added (30 days) | `SUM(UserWritingDailyRollup.wordsAdded)` over UTC days in the last 30 days | Historical window | Positive net deltas only. Wiki save and writing-session flush can increment the same words twice. UTC buckets. Owner-only. |
+| `attribution.writingStreak` | Writing streak | Consecutive UTC days backward from today with `editsCount > 0` or `wordsAdded > 0` or `sessionCount > 0`, lookback 120 days | Historical window | UTC, not the user's timezone. A focused session with no save still counts. Owner-only. |
+| `attribution.writingCadence` | Weekly rhythm | `round((activeDays30 / 30) * 7, 1)` | Historical window | Denominator is always 30. Not a weekday histogram. Owner-only. |
+| `attribution.substantialRevisions` | Deep rewrites (30 days) | `SUM(substantialRevisions)` over 30 UTC days | Historical window | Per-save increment, not unique pages. Threshold is 40% **net word-count** change (`revisionMetrics`). Same-length rewrites do not qualify. Owner-only. |
+| `attribution.favoriteWritingHour` | Favorite writing time | UTC hour 0–23 with the most `sessionMinutes` among 30-day rows that have `peakHourUtc` | Historical estimate | Only writing-session flushes set hour/minutes; wiki saves do not. Stored UTC; UI converts with the browser timezone. Owner-only. |
+
+When no `UserWritingDailyRollup` rows exist, the five habit metrics are
+`unavailable` / `not_yet_tracked`. Favorite hour is `unavailable` /
+`insufficient_data` when rollup rows exist but no session minutes were
+recorded.
+
+Worldbuilding mix (overview copy, not one of the 13) counts created pages
+excluding `DEFAULT` and `SESSION_NOTE`, sorted by count.
+
+## Editor activity map
+
+There is **no wiki revision-history model**. Saves overwrite `WikiPage.blocks`.
+Historical words added versus removed cannot be reconstructed.
+
+| Surface | Persist path | Substrate / events | Daily rollup | Notes |
+| --- | --- | --- | --- | --- |
+| Wiki page body | Explicit save → `PATCH .../layout` | `syncWikiPageSubstrate` emits `PAGE_CREATED` / `PAGE_EDITED` / `LINK_CREATED` when `narrativeSource === 'user'` | Yes — net word delta | Last write wins. No optimistic lock. |
+| Workshop draft | 800ms autosave | Substrate with `emitEvents: false` | No edit increment | Apply/formalize emits `PAGE_EDITED`. |
+| Session note | Explicit save | Substrate; per-author `SESSION_NOTE` page | Yes | File upload creates a note without typing. |
+| Journals workspace page | Explicit wiki save | Same as wiki | Yes | |
+| Journal publication | Explicit save of `contentMarkdown` | Outside substrate | No | Instrumentation is off on the planner editor. |
+| Character canvas tab | `PUT .../entity-pages/:tabId/blocks` | Does **not** call substrate | No | Independently stored rich-text. |
+| Writing-session ping | Blur → `POST .../authoring/writing-session` | `CampaignActivity` `WRITING_SESSION` | Yes — client `wordDelta` plus session minutes | Can double-count words with the subsequent save. Ends on blur, not 15-minute idle. |
+| Import / restore / seed / migration / repair | Bulk create/update | Provenance on `NarrativeEvent.source`; many paths set `emitEvents: false` | No when events are suppressed | Pages still receive current `WikiPageStats.wordCount`. |
+| Plugin content-sync | Create/update wiki or journal | Wiki path **does** emit substrate events with `actorUserId` | Yes on wiki collections | Origin is integration, not silent human writing. Timeline-event collection has no actor column. |
+
+Word count today is whitespace-split markdown (`countWordsInBlocks`), not a
+formatting-aware prose diff. `NarrativeEvent.metadata` stores net `wordDelta`
+only.
+
+## Privacy — existing public aggregate exposure
+
+**Release blocker. Remediated in PR 2.**
+
+Three visibility contexts:
+
+1. **Public campaign** — `discoverability = public` (legacy `unlisted` is private).
+2. **Viewer-authorized campaign** — public campaigns plus campaigns the
+   current viewer also belongs to.
+3. **Private / hidden campaign** — owner-only; never enters public aggregates.
+
+`GET /api/users/:id/creator-attribution` and any public-profile aggregate
+use the **public** context for counts. Shared membership is not enough to
+put a private campaign into public totals. `linkableCampaigns` remains
+separately gated (public GM campaigns plus shared memberships).
+
+Owner `GET /api/user/creator-attribution` and `GET /api/user/statistics`
+use the **owner** context (all current non-archived memberships, optional
+`campaignId` filter). Habits stay owner-only.
+
+`WikiPage.visibility` is still unused for these counts. Hidden wiki inside
+a public campaign the creator belongs to can still appear in public
+snapshot totals.
+
+## Timezone reuse
+
+Personal statistics must **not** add a timezone setting or API override.
+
+Esiana already resolves reporting timezones in
+`backend/src/lib/timezone.ts` `resolveEffectiveTimezone`, used by profile
+serialization (`effectiveTimezone`) and notifications:
+
+1. **User timezone** — `User.timezone` when configured.
+2. **Global admin default** — `SystemSetting.defaultTimezone`.
+3. **UTC** — `DEFAULT_TIMEZONE` only if neither configuration is available.
+
+All activity timestamps continue to be stored in UTC (`NarrativeEvent.createdAt`,
+`CampaignActivity.createdAt`, future contribution/session rows).
+
+PR 2 will pass the resolved zone into the statistics service. That zone
+determines calendar-day boundaries, writing streaks, weekly rhythms, favorite
+writing hours, monthly and yearly periods, and writing-session display.
+
+`UserWritingDailyRollup.date` remains a legacy UTC bucket. PR 2 rebuilds
+habit day boundaries from `NarrativeEvent.createdAt` and
+`CampaignActivity` writing-session timestamps in the resolved timezone.
+Changing `User.timezone` or the inherited admin default regroups those
+UTC instants; the original rows are not rewritten.
+
+`GET /api/user/statistics` reports the resolved `timeZone`. It does not
+accept a timezone override. Range modes are half-open UTC intervals
+derived from that zone. Lifetime views have `range.start = null`.
+
+## Campaign activity coverage matrix
+
+Every supported module has an explicit disposition. Milestone B acceptance:
+no silent omissions.
+
+Disposition:
+
+- **Tracked** — a durable actor and action already exist (cited).
+- **Intentionally excluded** — with a reason.
+- **Blocked** — missing instrumentation; named dependency.
+
+| Module | Disposition | Authoritative record today | Gap |
+| --- | --- | --- | --- |
+| Wiki pages (`PAGES` and typed workspaces) | Tracked | `WikiPage.createdByUserId`; `WikiPageStats.lastEditedByUserId`; `NarrativeEvent` `PAGE_CREATED` / `PAGE_EDITED`; `CampaignActivity` `WIKI_PAGE` | Net word delta only; no added/removed; last writer overwrites. |
+| Characters workspace | Tracked | Same wiki substrate; codex type `CHARACTER` | Tree category not used in personal counts. |
+| Locations workspace | Tracked | Same; `LOCATION` | Same. |
+| Organizations workspace | Tracked | Same; `ORGANIZATION` | Same. |
+| Families, ancestries, objects, bestiary, rules, adventures, threads, havens, projects | Tracked (wiki create/edit) | Same substrate when the page is a wiki page | Pass 6 computes dedicated family and creature (bestiary) domain stats. Ancestries, objects, rules, adventures, threads, havens, and projects remain in mix only. |
+| Events / eras wiki pages | Tracked (wiki create/edit) | Wiki substrate; `chronologyWikiDocumentKind` + `EVENTS` / `ERAS` workspace | Pass 6 domain stats. Calendar events and time advances remain Pass 8. |
+| Custom workspaces (`CampaignWorkspace.CUSTOM`) | Tracked (wiki create/edit) | Wiki substrate when content is a `WikiPage`; contributions via `wiki.page` | Classified from `WikiPage.workspace`. No extra table query. |
+| Workshop drafts | Partial / blocked for words | Autosave updates stats with `emitEvents: false`; apply/formalize emits `PAGE_EDITED` | Active writing time during unpublished editing is not durably attributed. Word contributions should commit at apply/formalize and dedupe. |
+| Session notes | Tracked | Per-author `SESSION_NOTE` + substrate | Uploads look like human saves. |
+| Journals workspace pages | Tracked | Wiki substrate | |
+| Journal publications | Blocked | `JournalPublication.createdByUserId` / `releasedByUserId` | No word-contribution or session instrumentation. Needs a source-registry extractor. |
+| Character canvas tabs | Blocked | `CharacterPageTab.blocks`; `origin` `CORE` / `CUSTOM` / `PLUGIN` / `API` | No actor on save; outside substrate. Independently stored rich-text — required future source-registry target. |
+| Character custom fields | Blocked | `CharacterField` with `origin` | Structured fields, not prose. Actor missing on update. |
+| Plugin content-sync (wiki collections) | Tracked as integration | Substrate events with `actorUserId` | Must be origin `integration`, not silent human writing. |
+| Plugin content-sync (journal / timeline-events) | Partial | Journal has `createdByUserId`; calendar events leave actors null on sync | Integration origin must not count as human chronology authorship. |
+| Relationships / entity graph | Tracked (creates) | `NarrativeEvent LINK_CREATED`; `WikiLink.createdByUserId` | Pass 6 uses `LINK_CREATED` only. Derived `EntityRelation` is not authorship. Link edits stay `not_yet_tracked`. |
+| Maps (asset create) | Tracked | `Asset.uploadedByUserId` where `type = 'map'` | Pass 7 counts uploads. Metadata edits log `MAP_ASSET` activity. |
+| Map pins, layers, groups, scene objects, keyframes, presets | Tracked (from Pass 7) | Additive `createdByUserId` / `updatedByUserId`; `CampaignActivity` `MAP_*` | Pre-instrumentation rows stay unattributed. Historical edits are `not_yet_tracked` until an activity row exists. Import/restore leave actors null. |
+| Map exploration (pan / zoom / cursor) | Intentionally excluded | None | Not meaningful authorship; do not log. |
+| Chronology eras | Tracked (from Pass 8) | `CampaignEra.createdByUserId` / `updatedByUserId`; `CampaignActivity` `CAMPAIGN_ERA` | Pre-instrumentation edits stay untracked until an activity row exists. |
+| Calendar events | Tracked (from Pass 8) | Additive `createdByUserId` / `updatedByUserId`; `CampaignActivity` `CALENDAR_EVENT` | Import / plugin sync leave actors null. World-advance batch stamps are excluded from event totals. |
+| Time advances (world-advance) | Tracked | `TimeAdvanceSimulationRun` unique on `(campaignId, source, sourceRef, nextEpochMinute)` with `initiatedByUserId`; `WorldAdvanceReceipt` | Idempotent. Count runs by `createdAt`, never `targetEpochMinute`. |
+| Time advances (manual clock) | Tracked (from Pass 8) | `TimeAdvanceSimulationRun.initiatedByUserId`; `CampaignActivity` `TIME_TRACKING` | Hook receipts without `batchId` may still duplicate at the run layer; personal stats use initiated runs. |
+| Sessions (timeline + schedule) | Tracked | `CampaignSessionTimeline.authorId`; `CampaignSessionSchedule` status | Planned range is not play duration. |
+| Session attendance | Tracked | `SessionAttendance.status` | RSVP, not proof of showing up. Auto-RSVP writes `ATTENDING`. |
+| Session recordings / transcripts | Intentionally excluded as play duration | `SessionRecording.durationMs` is audio length | Do not use as session duration. Upload is attributed via `uploadedByUserId`. |
+| Session play duration | Intentionally excluded / unavailable | None measured | Campaign statistics already mark `playedDuration` `not_yet_tracked`. |
+| Downtime projects / havens / people | Partial | `updatedByUserId` (and some create actors) | No personal-stat projection yet; not silently omitted. |
+| Campaign ledger entries | Tracked | `createdByUserId` / `updatedByUserId`; `CampaignActivity` | |
+| Tags | Blocked | `Tag` has no actor | Meaningful tag create/edit needs attribution if counted later. |
+| Content presence / reveal | Tracked as discovery | `ContentPresenceState.revealedByUserId` | Discovery, not cartography or writing authorship. |
+| Recruitment / safety / settings | Intentionally excluded | Administrative, not creative contribution | |
+| Keystrokes, cursors, idle editor time, hidden-tab time | Intentionally excluded | None | Surveillance. The 15-minute rule only groups sessions. |
+
+## Proposed migration (not applied in this PR)
+
+Do not introduce a wiki revision-history table. Do not store document bodies
+in the statistics layer. Extend existing records; add specialized writing
+rows only where current records cannot answer the question.
+
+### Shared activity contract
+
+Prefer extending `CampaignActivity` and `NarrativeEvent` over a parallel
+event table:
+
+- Actor, campaign, action, affected entity
+- Real-world timestamp and source module
+- Create / update / delete or a documented domain action
+- Origin: `human` | `integration` | `automation` | `import` | `system`
+- Deduplication identity
+- Optional quantitative measurements
+- Authorization / visibility context
+
+`CampaignActivity.entityType` already accepts module strings
+(`WIKI_PAGE`, `TIME_TRACKING`, `WRITING_SESSION`, …). Map and chronology
+writes should use that contract once actor columns exist.
+
+### Additive actor columns
+
+| Record | Columns to add |
+| --- | --- |
+| `MapPin`, `MapLayer`, `MapObjectGroup`, `MapSceneObject`, `MapObjectKeyframe`, `MapPresentationPreset` | `createdByUserId`, `updatedByUserId` |
+| `CalendarEvent` | `createdByUserId`, `updatedByUserId` |
+| Other coverage-matrix **Blocked** rows | Actor on the authoritative write |
+
+### Specialized writing records
+
+```
+WritingContribution
+  userId, campaignId
+  sourceId            // registry id, not a wiki-only enum
+  documentId
+  occurredAt          // UTC real-world
+  wordsAdded, wordsRemoved, netChange
+  narrativeEventId?   // dedupe
+  origin              // human | import | automation | integration
+  availability        // measured | reconstructed | incomplete
+  writingSessionId?
+  // no document body, no private title required
+
+WritingSession
+  userId
+  startedAt, endedAt  // UTC
+  activeDurationMs    // focused intervals only
+  clientInstanceKey
+  completeness        // measured | partial | unavailable
+```
+
+`UserWritingDailyRollup` remains a derived UTC/legacy bucket until PR 2
+rebuilds groupings from the resolved timezone. Contribution and session rows
+are the future source of truth for habits.
+
+Historical backfill may copy `NarrativeEvent.metadata.wordDelta` into
+**net-only** contribution rows marked `reconstructed` / `incomplete`. Do not
+invent added versus removed. Unknown authorship stays unknown.
+
+## Source registry
+
+The contribution interface is a platform writing contract, not a wiki-only
+query list. Each source registers: stable `id`, storage location, prose
+extractor, actor resolution, publication/save boundary, and visibility
+context. Independently stored rich-text (character tabs, journal
+publications, plugin bodies) must be able to register later. Omissions are
+coverage-matrix rows, not hardcoded service limits.
+
+Implemented in PR 3 (`backend/src/lib/stats/writing/sourceRegistry.ts`):
+
+- `wiki.page`, `session_note`, `journal.wiki_page` — explicit wiki save
+- `workshop.apply` / `workshop.formalize` — publication boundary
+- `journal.publication` and `character.tab` — registered, not extracted yet
+
+## Review gates before PR 2–4
+
+Persistent activity records wait for explicit review of:
+
+1. **Public aggregate privacy** — three visibility contexts; no private
+   totals on public profiles. PR 2 remediates the leak documented above.
+2. **Workshop attribution** — session time during editing; word
+   contributions at apply/formalize; dedupe so publication does not
+   double-count. A two-hour unpublished workshop session still earns
+   session credit.
+3. **Word-diff semantics** — measured change between two versions is not
+   original authorship. Required tests: substantial same-length rewrites,
+   reordered paragraphs, formatting-only edits, replacements, deletions,
+   concurrent last-write-wins.
+4. **Active-time instrumentation** — 15 minutes groups sessions only.
+   Bounded heartbeats; server-side interval merge; no time while idle,
+   disconnected, or the tab is hidden.
+
+PR 2 also integrates `resolveEffectiveTimezone` and remediates public
+aggregates. No statistics-specific timezone setting.
+
+## Companion metric IDs
+
+The 13 locked IDs are unchanged as identifiers. PR 3 registers owner-only
+companions; they do not replace `attribution.wordsAdded` or
+`attribution.totalWordsCreated`.
+
+| Metric ID | Meaning |
+| --- | --- |
+| `attribution.wordsAddedMeasured` | Measured added tokens from save/publication diffs only |
+| `attribution.wordsRemoved` | Measured (or reconstructed net-negative) removed tokens |
+| `attribution.netChange` | `added - removed` for this save; not original authorship |
+
+Pass 6 does **not** add those domain counts as MetricIds. They live on
+`PersonalStatisticsResponse.worldbuilding[]` so the locked 13 IDs stay
+untouched. Compatibility `/creator-attribution` still returns only those 13.
+
+Still reserved as MetricIds:
+
+- Period-scoped created/edited companions on the metric registry
+- Domain metrics for maps, chronology calendars, and sessions (Pass 6–9
+  companions). Archetypes are structured `PersonalArchetypes`, not MetricIds.
+
+## PR 3 — Writing contributions
+
+Word-level added/removed is computed at the source's authoritative
+save/publication boundary:
+
+1. Extract prose through the registered extractor (wiki blocks today)
+2. Ignore formatting-only markup, wiki-link targets, and non-prose blocks
+3. Tokenize on Unicode word boundaries
+4. Multiset diff → `wordsAdded`, `wordsRemoved`, `netChange`
+5. Formatting-only change → `0 / 0 / 0` (the save may still count as an edit)
+
+A word diff measures change between two versions of this save. It is not
+proof of original authorship. Collaborative last-write-wins attributes only
+this save's delta.
+
+Workshop autosave still uses `emitEvents: false` and does not write
+contributions. Apply and formalize commit words against the published page
+(formalize vs empty published prose so draft autosaves are not recounted).
+Import, restore, seed, migration, repair, and plugin content-sync are
+skipped.
+
+`WritingContribution` stores measurements only — no document body or
+private title. Rows dedupe on `narrativeEventId`.
+
+Client writing-session `wordDelta` no longer increments rollup or habit
+word totals. Session minutes still count. Unmatched historical
+`NarrativeEvent.metadata.wordDelta` projects as **net-only**
+`reconstructed` / `incomplete` values. Do not invent added versus removed.
+
+`attribution.wordsAdded` now sums contribution added words (with
+reconstructed fallback) and is `partial` when any reconstructed rows are
+included. Compatibility `/creator-attribution` still returns only the 13
+locked IDs.
+
+## PR 4 — Automatic writing sessions
+
+Sessions are inferred, not flushed on every blur.
+
+- Qualifying activity is a user-origin contribution **or** a focused,
+  visible, connected editor-update heartbeat. Workshop typing counts even
+  when the draft is never published.
+- A session starts on the first qualifying activity and ends after **15
+  minutes** without one. That window groups sessions; it is not active time.
+- Documents in the same campaign belong to one session. Tabs share it.
+- `activeDurationMs` is the union of focused intervals. Hidden tabs,
+  blur, disconnects, and idle gaps are excluded. Overlapping tabs do not
+  double-count.
+- Heartbeats are throttled (30s). No keystrokes, cursors, or document
+  bodies are stored.
+- Words still come from `WritingContribution` rows linked by
+  `writingSessionId`, not client `wordDelta`.
+- Pre-instrumentation duration is not backfilled from
+  `NarrativeEvent.createdAt` gaps. Legacy blur payloads remain `partial`.
+
+The break-nudge UX in `useEditorInstrumentation` is unchanged.
+
+## PR 5 — Writing visualizations and basic export
+
+Owner Writing tab charts use the same `queryPersonalStatistics` projection.
+They are omitted from public profiles and from `/creator-attribution`.
+
+| Chart | Source | Notes |
+| --- | --- | --- |
+| Daily contribution heatmap | `WritingContribution` + `WritingSession` grouped on reporting-timezone civil days | Day click lists that day's sessions and authorized document links (titles owner-only). Lifetime views clip to 371 days. |
+| Weekly rhythm | Same points, Monday–Sunday | Session minutes and added words. |
+| Hourly distribution | Session start and contribution time in `timeZone` | Not in-world clocks. |
+| Added vs removed trend | Daily `wordsAdded` / `wordsRemoved` | Measured change, not original authorship. Reconstructed days are `partial`. |
+
+Charts are custom SVG on surface tokens (`--stats-writing` and the small category palette). Each chart ships a table alternative. Heatmaps, hours, session history, and private titles stay owner-only.
+
+`GET /api/user/statistics/export?format=json|csv&version=1` is owner-only.
+Milestone A shipped writing contributions, daily aggregates, and sessions.
+Pass 6–10 added companion domains to the same export; Pass 12 documents the
+full multi-domain contract. Unmatched historical `NarrativeEvent` wordDelta
+rows are reconstructed as net-only contribution details (deduped on
+`narrativeEventId`). It never includes document bodies, private titles, other
+users' activity, or campaign names. Campaigns appear as ids only. Heatmap
+document links run through `canViewWikiPage` with per-campaign capabilities.
+
+## Pass 6 — Worldbuilding aggregations
+
+Same `queryPersonalStatistics` service, range, privacy, and export contract.
+The 13 locked attribution IDs are unchanged, including
+`resolveWikiCodexType({ templateType, metadata })` without page id for
+`attribution.charactersCreated` / `locationsCreated` / `organizationsCreated`.
+
+`worldbuilding[]` reports creations vs meaningful edits vs attributable
+word contributions, separately, for:
+
+| Domain | Created | Period created | Period edited | Period contributed |
+| --- | --- | --- | --- | --- |
+| Characters, locations, organizations, families, creatures | Lifetime created pages in that exclusive domain | `PAGE_CREATED` | `PAGE_EDITED` | Human `WritingContribution` words (reconstructed nets are `partial`) |
+| Events, eras | Wiki pages whose `chronologyWikiDocumentKind` is event/era, or `EVENTS` / `ERAS` workspace | Same | Same | Same |
+| Custom wiki | `WikiPage.workspace === CUSTOM` via `wiki.page` / workshop sources | Same | Same | Same |
+| Relationships | Lifetime `LINK_CREATED` | `LINK_CREATED` in window | `unavailable` / `not_yet_tracked` | `unavailable` / `not_yet_tracked` (the create is the contribution) |
+| Factions | `unavailable` / `not_yet_tracked` | Same | Same | Same |
+
+Classifier is mutually exclusive: chronology kind, then workspace, then
+metadata-only codex. A custom page with character metadata counts as
+custom, not a character. Quests, journals, session notes, and other
+structural templates are omitted from these domains.
+
+Factions are organization-backed (reputation / momentum on organization
+wiki pages). Counting them as a peer would double-count wiki-backed
+entities, so the row is explicit and untracked.
+
+Public visibility still sees lifetime `created`. Period edits and word
+contributions are owner-only (`unavailable` / `private`). Export JSON/CSV
+gains a `worldbuilding` section. Portfolio artwork is not part of this
+aggregation pass.
+
+## Pass 7 — Cartography aggregations
+
+Same service, range, privacy, and export contract. Locked 13 IDs unchanged.
+
+`cartography[]` reports maps uploaded, markers (pins), regions, layers,
+labels, and location-linked pins. Location-mapped is a subset of markers,
+not a second exclusive domain. Scene-object pins synced from `MapPin` are
+not counted again.
+
+Creates use `Asset.uploadedByUserId` for maps and `createdByUserId` on
+pins, layers, regions, and labels. Import, restore, and seed leave those
+actors null. Period edits use `CampaignActivity` `MAP_*` `UPDATE` rows.
+If this user has never produced a map activity row, period edits are
+`unavailable` / `not_yet_tracked` rather than a silent zero.
+
+Pan, zoom, and cursor exploration are not logged. Owner statistics may
+include up to six authorized map thumbnails (`canViewWikiPage` on asset
+visibility, designed fallback when `thumbnailUrl` is missing). Export
+omits thumbnails and map titles.
+
+## Pass 8 — Chronology aggregations
+
+Same service, range, privacy, and export contract. Locked 13 IDs unchanged.
+
+`chronology[]` reports calendar events created, eras defined, timeline
+contributions (calendar events with a linked wiki page — a subset of
+events), and time advances initiated. Worldbuilding wiki event/era pages
+remain in Pass 6 domains and are not double-counted here. World-advance
+batch stamps are excluded from calendar-event totals.
+
+Creates use `createdByUserId` on calendar events and eras. Time advances
+use `TimeAdvanceSimulationRun.initiatedByUserId` and sum in-world minutes
+from `nextEpochMinute - previousEpochMinute`. Filter personal activity by
+`createdAt`, never by `targetEpochMinute`. Period edits use
+`CampaignActivity` `CALENDAR_EVENT` / `CAMPAIGN_ERA` `UPDATE` rows; if this
+user has never produced one, period edits are `unavailable` /
+`not_yet_tracked`. Timeline-contribution and time-advance period edits stay
+untracked. Export JSON/CSV gains a `chronology` section.
+
+## Pass 9 — Campaigns and sessions
+
+Same service, range, privacy, and export contract. Locked 13 IDs unchanged.
+
+`participation[]` reports campaigns participated (distinct campaigns with at
+least one completed session where the user is `ATTENDING`), campaigns
+created/GM'd (`campaignOwnerUserId` ∪ `GAMEMASTER` membership), sessions
+attended (`SessionAttendance` `ATTENDING` on schedules with status
+`COMPLETED`), and sessions hosted (`CampaignSessionTimeline.authorId` on
+completed schedules). Membership alone is not attendance.
+
+Period filters use `plannedStartAt` (campaign create / GM join `createdAt` for
+GM'd counts). Planned start→end duration is `estimated` when both ends exist;
+actual play duration stays `unavailable` / `not_yet_tracked`. Session
+recording `durationMs` is never used. Owner-only `participationHistory`
+lists recent attended/hosted sessions without titles. Export JSON/CSV gains
+`participation` and `participationHistory` sections.
+
+## Pass 10 — Archetypes
+
+Same service and reporting window. Locked 13 IDs unchanged. Owner-only —
+never shown on public profiles and never used for leaderboards.
+
+`archetypes` is derived from period writing, worldbuilding, cartography,
+chronology, and participation companions already on the personal statistics
+response. Ruleset `rulesetVersion: 1` applies deterministic soft weights, then
+L1-normalizes scores so they sum to 1 for that window. Scores describe
+creative tendencies (Chronicler, Worldsmith, Cartographer, Timekeeper,
+Storyweaver, Adventurer, Wanderer), not productivity rankings. Windows with
+no measurable activity omit the field. Export JSON/CSV gains an `archetypes`
+section with the ruleset version and normalized scores.
+
+## Pass 11 — Profile Statistics redesign
+
+Owner Statistics tab (profile destination, not Campaign Home chrome) is a
+Writing-first composition: prominent reporting-window control (month / year /
+all time / custom), summary orbit, writing heatmap as gravitational center,
+habits, archetypes, then worldbuilding, cartography (with authorized map
+artwork), chronology, participation, featured session pages, and export.
+
+Category accents reuse `--stats-writing` / `--stats-worldbuilding` /
+`--stats-maps` / `--stats-chronology` / `--stats-campaigns`
+(`frontend/src/lib/statsCategoryPalette.ts`).
+
+Public profiles keep basic totals on Overview only — no habits, hours,
+heatmaps, session lists, private titles, archetypes, or hidden-campaign
+leakage. The Statistics tab remains owner-only.
+
+Owner presentation is a creative dashboard (`CreativeStatisticsDashboard`):
+headline metrics, Your Worlds (most-active campaigns), Writing Rhythm,
+Creative Footprint, Worlds You've Shaped, and Adventures Together.
+
+Visual storytelling (Hardcover-inspired, presentation-only):
+- Period headline cards compare the selected window to the preceding equivalent
+  duration (not lifetime totals). Lifetime cards appear only for All time.
+- Active campaigns (`activeCampaigns`) rank up to three campaigns by period
+  active days, then qualified contribution events (writing, page craft, maps,
+  chronology, play — not raw word volume). Cards use campaign hero artwork
+  with a themed name fallback; the whole card links to the campaign dashboard.
+- Creative tendencies use a radar chart. Ruleset v1 soft-weights mixed units,
+  L1-normalizes measured axes, and keeps unavailable axes as `score: null`
+  (never silent zeros).
+- Hourly chart defaults to the active-hour window with ±1h padding and an
+  optional full 24-hour view.
+- Most-worked gallery reuses authorized wiki featured images and map
+  thumbnails from existing visualization/cartography payloads.
+- Chart data keeps screen-reader alternatives; large duplicate tables under
+  charts are avoided.
+
+Exports and the shared statistics API remain the contract; previous-period
+comparisons reuse the same owner statistics endpoint.
+
+## Pass 12 — Comprehensive exports and validation
+
+Same owner service, range, privacy, and timezone rules. Locked 13 IDs
+unchanged. `GET /api/user/creator-attribution` and
+`GET /api/users/:id/creator-attribution` remain as compatibility adapters.
+
+### Export contract (`version=1`)
+
+`GET /api/user/statistics/export?format=json|csv&version=1&range=&from=&to=&campaignId=`
+is **owner-only** (authenticated subject = export subject). There is no
+privileged cross-user export on this route.
+
+| Field / section | Unit / shape | Notes |
+| --- | --- | --- |
+| `version` | integer `1` | Bump only with an additive schema change |
+| `exportedAt` | UTC ISO-8601 | Generation time |
+| `timeZone` | IANA id | Resolved via `resolveEffectiveTimezone`; never a query override |
+| `range` | `mode`, `start`, `end` | Half-open; `start` null for all-time; timestamps UTC |
+| `campaignId` | string \| null | Optional membership-scoped filter |
+| `provenance` | `timestamps: UTC`, `reportingClock: real_world`, notes[] | Interprets units and incompleteness |
+| `metricDefinitions[]` | registry fields | unit, source, timeSemantics, attribution, completeness, clock, aggregation |
+| `snapshot` / `period` / `habits` | `MetricValue` map | status + amount or unavailable reason |
+| `worldbuilding[]` / `cartography[]` / `chronology[]` / `participation[]` | domain rows | Same companion shapes as the statistics API |
+| `participationHistory[]` | session ids + planned times | No titles |
+| `archetypes` | rulesetVersion, dominantId, scores[{id,score,availability}] | `score: null` when unavailable |
+| `contributions[]` | words added/removed/net | Includes reconstructed net-only historical rows |
+| `dailyAggregates[]` | civil `date` in `timeZone` | words, sessionCount, sessionMinutes, completeness |
+| `writingSessions[]` | `activeDurationMs` | Focused union only; idle gaps excluded |
+
+CSV is sectioned (`[worldbuilding]`, `[cartography]`, …) with the same
+domains. Comment headers document sections, units, and civil-day semantics.
+Filenames: `esiana-personal-statistics.{json,csv}`.
+
+**Never exported:** document bodies, private titles, campaign names,
+visualizations, active-campaign artwork, other users’ activity, or
+hidden-campaign metadata beyond opaque campaign ids the owner already knows.
+
+### Validation coverage
+
+| Concern | Where it is enforced |
+| --- | --- |
+| Ranges and time zones | `reportingRange.test.ts`, `zonedTime.test.ts`; custom `to` exclusive |
+| Attribution / privacy | `visibility.test.ts`; public aggregates exclude private campaigns |
+| Session idle exclusion | `shared/writingSession.test.ts` — 15-minute idle ends sessions; blur closes intervals without idle tail |
+| Multi-tab dedupe | Same — overlapping tab intervals union, do not sum |
+| Historical incompleteness | Export reconstruction tests; `availability` / day `completeness` |
+| Permission / scope changes | Membership + discoverability re-projected each query; out-of-scope `campaignId` → unknown empty set |
+| Export / API parity | Export JSON mirrors companion domains from `queryPersonalStatistics`; charts (`visualizations`, `activeCampaigns`) stay screen-only |
+| Accessible chart alternatives | Writing + domain charts ship `sr-only` lists or visible tables; tendencies include a text list under the radar |
+| Performance bounds | Lifetime heatmap clips to 371 civil days; export skips visualization assembly |
+
+Owner Statistics UI downloads use the same range params as the dashboard.

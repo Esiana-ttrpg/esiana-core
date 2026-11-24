@@ -20,6 +20,7 @@ import {
 } from '@/lib/visualAtlas';
 import { ImageCreditDisplay } from '@/components/media/ImageCreditDisplay';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { WorkspaceHeader } from '@/components/layout/WorkspaceHeader';
 import { hasImageCredit, IMAGE_CREDIT_DISCLAIMER } from '@shared/imageCredit';
 
 export function VisualAtlasPage() {
@@ -56,18 +57,15 @@ export function VisualAtlasPage() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
-      <header className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Images className="size-6 text-primary" aria-hidden />
-          <h1 className="text-2xl font-semibold text-foreground">Visual Atlas</h1>
-        </div>
+      <WorkspaceHeader compact title={<><Images className="size-4 text-primary" aria-hidden />Visual Atlas</>} />
+      <div className="space-y-2">
         <p className="max-w-2xl text-sm text-muted">
           A read-only view of portraits, artwork, maps, and handout covers from your
           lore pages. Images are owned by their source pages — edit them there. Optional
           credits thank artists and tools when you can.
         </p>
         <p className="max-w-2xl text-xs text-muted">{IMAGE_CREDIT_DISCLAIMER}</p>
-      </header>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {VISUAL_ATLAS_FILTERS.map((chip) => {
@@ -76,6 +74,7 @@ export function VisualAtlasPage() {
             <button
               key={chip.id}
               type="button"
+              aria-pressed={active}
               onClick={() => setFilter(chip.id)}
               className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                 active
@@ -92,9 +91,12 @@ export function VisualAtlasPage() {
       {loading ? <LoadingSpinner label="Loading Visual Atlas…" /> : null}
 
       {error ? (
-        <p className="rounded border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">
-          {error}
-        </p>
+        <div role="alert" className="rounded border border-red-700 bg-red-950/40 p-3 text-sm text-red-200">
+          <p>{error}</p>
+          <button type="button" className="mt-2 underline" onClick={() => void reload()}>
+            Try again
+          </button>
+        </div>
       ) : null}
 
       {!loading && !error && payload ? (

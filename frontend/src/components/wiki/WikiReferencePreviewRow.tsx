@@ -1,3 +1,4 @@
+import { useOptionalAdventureWorkspace } from '@/contexts/AdventureWorkspaceContext';
 import { META_FIELD_LABEL_CLASS } from '@/lib/surfaceLayout';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
@@ -30,6 +31,8 @@ export function WikiReferencePreviewRow({
   breadcrumbLabel,
   icon: Icon,
 }: WikiReferencePreviewRowProps) {
+  const adventure = useOptionalAdventureWorkspace();
+  const previewAsPlayer = Boolean(adventure?.isDMUser && adventure.playerPreview);
   const [hoverOpen, setHoverOpen] = useState(false);
   const [preview, setPreview] = useState<WikiPagePreview | null>(null);
   const [snippet, setSnippet] = useState<string | null>(null);
@@ -48,11 +51,11 @@ export function WikiReferencePreviewRow({
     setLoading(true);
     try {
       const tasks: Promise<void>[] = [
-        fetchWikiPagePreview(campaignHandle, sourcePageId).then(setPreview),
+        fetchWikiPagePreview(campaignHandle, sourcePageId, { previewAsPlayer }).then(setPreview),
       ];
       if (targetPageId) {
         tasks.push(
-          fetchMentionSnippet(campaignHandle, sourcePageId, targetPageId).then(
+          fetchMentionSnippet(campaignHandle, sourcePageId, targetPageId, { previewAsPlayer }).then(
             (s) => setSnippet(s),
           ),
         );
@@ -64,7 +67,7 @@ export function WikiReferencePreviewRow({
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, sourcePageId, targetPageId]);
+  }, [campaignHandle, sourcePageId, targetPageId, previewAsPlayer]);
 
   const handleMouseEnter = useCallback(() => {
     clearHoverTimer();

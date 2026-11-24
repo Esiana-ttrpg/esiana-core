@@ -20,9 +20,8 @@ import { MapPlaceObjectLayer } from '@/components/maps/MapPlaceObjectLayer';
 import { MapSceneObjectEditorSheet } from '@/components/maps/MapSceneObjectEditorSheet';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { MascotErrorPanel } from '@/components/errors/MascotErrorPanel';
-import { fetchCampaign } from '@/lib/campaigns';
-import { CampaignMemberRoles } from '@/types/domain';
 import { useWiki } from '@/contexts/WikiContext';
+import { CampaignCapabilities } from '@shared/campaignPolicy/capabilities';
 import { flattenWikiTree } from '@/lib/wiki';
 import { isPageUnderOrganizationsCategory } from '@/lib/questHubLayout';
 import { useMapScene } from '@/hooks/useMapScene';
@@ -44,14 +43,16 @@ export function MapViewerPage() {
   const campaignHandle = readCampaignHandle(params);
   const assetId = params.assetId ?? '';
   const navigate = useNavigate();
-  const { tree, flatPages, campaign: wikiCampaign } = useWiki();
+  const { tree, flatPages, campaign: wikiCampaign, can: wikiCan } = useWiki();
 
   const [detail, setDetail] = useState<CampaignMapDetail | null>(null);
   const [campaignMaps, setCampaignMaps] = useState<CampaignMapAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadedCanEdit, setCanEdit] = useState(false);
-  const canEdit = wikiCampaign ? wikiCampaign.role === CampaignMemberRoles.GAMEMASTER || wikiCampaign.role === CampaignMemberRoles.WRITER : loadedCanEdit;
+  const canEdit = wikiCampaign
+    ? wikiCan(CampaignCapabilities.MAPS_EDIT)
+    : loadedCanEdit;
   const [breadcrumbs, setBreadcrumbs] = useState<MapBreadcrumbItem[]>([]);
   const [timeTracking, setTimeTracking] = useState<TimeTrackingBundle | null>(null);
   const [campaignEpochMinute, setCampaignEpochMinute] = useState<string | null>(null);
@@ -172,18 +173,15 @@ export function MapViewerPage() {
     setError(null);
     Promise.all([
       fetchCampaignMap(campaignHandle, assetId),
-      fetchCampaign(campaignHandle),
       fetchCampaignMaps(campaignHandle).then((data) => data.maps),
       fetchTimeTracking(campaignHandle).catch(() => null),
     ])
-      .then(([mapDetail, campaign, maps, tracking]) => {
+      .then(([mapDetail, maps, tracking]) => {
         if (cancelled) return;
         setDetail(mapDetail);
         setCampaignMaps(maps);
-        const elevated =
-          campaign.role === CampaignMemberRoles.GAMEMASTER ||
-          campaign.role === CampaignMemberRoles.WRITER;
-        setCanEdit(elevated);
+        // Fallback when WikiContext is not yet hydrated; prefer wikiCan(MAPS_EDIT).
+        setCanEdit(Boolean(mapDetail.canEdit));
         if (tracking) {
           setTimeTracking(tracking);
           setCampaignEpochMinute(tracking.currentEpochMinute);

@@ -10,7 +10,6 @@ import {
   SYSTEM_CATEGORY_DOWNTIME,
 } from '@/lib/wikiSystemCategory';
 import { useWiki } from '@/contexts/WikiContext';
-import { CampaignMemberRoles } from '@/types/domain';
 import type { WikiTreeNode } from '@/types/wiki';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { HavenOverviewView } from '@/components/downtime/HavenOverviewView';
@@ -50,12 +49,10 @@ export function HavenWikiPageView({
   pageTitle,
   flatPages,
 }: HavenWikiPageViewProps) {
-  const { campaign } = useWiki();
-  const canManage =
-    campaign?.role === CampaignMemberRoles.GAMEMASTER ||
-    campaign?.role === CampaignMemberRoles.WRITER;
+  const { can } = useWiki();
 
   const [havenId, setHavenId] = useState<string | null>(null);
+  const [canEditResource, setCanEditResource] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,13 +77,15 @@ export function HavenWikiPageView({
     try {
       const haven = await fetchDowntimeHavenByWikiPage(campaignHandle, wikiPageId);
       setHavenId(haven.id);
+      setCanEditResource(Boolean(haven.canEdit));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load haven.');
       setHavenId(null);
+      setCanEditResource(false);
     } finally {
       setLoading(false);
     }
-  }, [campaignHandle, wikiPageId]);
+  }, [campaignHandle, wikiPageId, can]);
 
   useEffect(() => {
     void loadHaven();
@@ -118,7 +117,7 @@ export function HavenWikiPageView({
       downtimeCategoryPageId={downtimeCategoryPageId}
       breadcrumbs={breadcrumbs}
       flatPages={flatPages}
-      canManage={canManage}
+      canManage={canEditResource}
     />
   );
 }
