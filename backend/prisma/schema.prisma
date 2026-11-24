@@ -194,6 +194,11 @@ model ApiRequestLog {
 /// Singleton row (`id` = "GLOBAL_CONFIG") for core platform governance settings.
 model SystemSetting {
   id String @id @default("GLOBAL_CONFIG")
+  opdsEnabled Boolean @default(false)
+  opdsPublicEnabled Boolean @default(false)
+  opdsPersonalEnabled Boolean @default(false)
+  opdsRecruitingEnabled Boolean @default(false)
+  opdsCampaignsEnabled Boolean @default(false)
 
   allowRegistrations Boolean @default(true)
   /// When true, visitors must sign in before public-facing campaign content.
@@ -337,6 +342,15 @@ model CampaignJoinRequest {
   @@index([campaignId])
   @@index([userId])
   @@index([campaignId, status])
+}
+
+model OpdsAuditLog {
+  id String @id @default(cuid())
+  actorUserId String
+  targetUserId String?
+  action String
+  count Int
+  createdAt DateTime @default(now())
 }
 
 model UserToken {

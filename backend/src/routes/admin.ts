@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { listReaderCredentials, revokeReaderCredentials, revokeAllInstanceReaderCredentials, readerCredentialStats } from '../controllers/opdsCredentialsController.js';
 import { processingAdminRouter } from './processingProviders.js';
 import { audioAdminRouter } from './audioSettings.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -66,6 +67,11 @@ export const adminRouter = Router();
 /** Shared admin gate + default rate policy. Preserves requireAuth → verifySystemAdmin order. */
 const adminGate = [requireAuth, verifySystemAdmin, rateLimitPolicy('admin')] as const;
 const adminExpensive = rateLimitPolicy('expensive');
+adminRouter.get('/opds/credentials', ...adminGate, readerCredentialStats);
+adminRouter.delete('/opds/credentials', ...adminGate, revokeAllInstanceReaderCredentials);
+adminRouter.get('/users/:userId/opds/credentials', ...adminGate, listReaderCredentials);
+adminRouter.delete('/users/:userId/opds/credentials', ...adminGate, revokeReaderCredentials);
+adminRouter.delete('/users/:userId/opds/credentials/:credentialId', ...adminGate, revokeReaderCredentials);
 adminRouter.use('/providers', ...adminGate, processingAdminRouter);
 adminRouter.use('/audio', ...adminGate, audioAdminRouter);
 

@@ -6,6 +6,7 @@ import YAML from 'yaml';
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'options', 'head']);
 
 export const CORE_ROUTER_MOUNTS = Object.freeze({
+  opdsRouter: ['/opds', 'src/routes/opds.ts'],
   safetyPrivacyRouter: ['/api/safety-privacy', 'src/routes/safetyPrivacy.ts'],
   healthRouter: ['/api/health', 'src/routes/health.ts'],
   publicDirectoryRouter: ['/api/public-directory', 'src/routes/publicDirectory.ts'],
@@ -97,8 +98,9 @@ export function extractRouterRoutes(source, routerName, filename = 'route.ts') {
     if (call) {
       const method = call.method.toLowerCase();
       if (call.target === routerName && HTTP_METHODS.has(method)) {
-        const routePath = literalText(node.arguments[0]);
-        if (routePath !== undefined) routes.push({
+        const argument = node.arguments[0];
+        const routePaths = argument?.type === 'ArrayExpression' ? argument.elements.map(literalText) : [literalText(argument)];
+        for (const routePath of routePaths) if (routePath !== undefined) routes.push({
           method,
           routePath,
           line: node.loc.start.line,
@@ -147,7 +149,7 @@ export function inventoryStaticAppMounts(backendRoot) {
       const call = memberCall(node);
       if (call?.target === 'app' && call.method === 'use') {
         const mountPath = literalText(node.arguments[0]);
-        if (mountPath?.startsWith('/api/') && node.arguments[1]) {
+        if ((mountPath?.startsWith('/api/') || mountPath === '/opds') && node.arguments[1]) {
           mounts.push({
             path: mountPath,
             routerExpression: source.slice(node.arguments[1].start, node.arguments[1].end),
@@ -162,7 +164,7 @@ export function inventoryStaticAppMounts(backendRoot) {
         node.key.type === 'Identifier' && node.key.name === 'path'
       ) {
         const mountPath = literalText(node.value);
-        if (mountPath?.startsWith('/api/')) {
+        if (mountPath?.startsWith('/api/') || mountPath === '/opds') {
           mounts.push({
             path: mountPath,
             routerExpression: 'listRouterMounts',

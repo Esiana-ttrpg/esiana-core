@@ -14,6 +14,15 @@ Product version is defined in [`package.json`](./package.json).
 
 ## Reporting a vulnerability
 
+### Tracked separately: general API bearer scope enforcement
+
+Some general-purpose API routes authenticate bearer credentials without checking
+their scopes. A limited scope on a `UserToken` must therefore not be treated as
+an application-wide access boundary. OPDS reader authentication uses a keyed,
+domain-separated credential digest that general API authentication cannot
+validate. Completing scope enforcement across the general API is a separate
+security task; OPDS must not depend on that migration.
+
 **Do not** open public GitHub issues for security vulnerabilities.
 
 Report privately via [GitHub Security Advisories](https://github.com/Esiana-ttrpg/esiana-core/security/advisories/new) for this repository.

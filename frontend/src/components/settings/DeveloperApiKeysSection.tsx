@@ -1,4 +1,5 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
+import { OpdsCredentials } from './OpdsCredentials';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Key, Trash2 } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -307,6 +308,7 @@ export function DeveloperApiKeysSection() {
           </ul>
         )}
       </div>
+      <OpdsCredentials />
     </section>
   );
 }

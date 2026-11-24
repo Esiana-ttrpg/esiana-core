@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- OPDS 2.0 campaign reading with default-off public and personal catalogs, recruitment listings, and shared page descriptions and lore through HTML and Readium Web Publication manifests.
+- Isolated reader credentials in Developer Keys, administrator route controls, individual and bulk revocation, and audited instance-wide revocation. Account deletion invalidates reader credentials immediately.
+- Reader connection and manual Thorium acceptance instructions in the documentation repository. First-hand reader acceptance remains a release check.
+
 ## [1.10.0] - Unreleased
 
 ### Added
@@ -26,7 +32,7 @@
 
 ### Database
 
-- Seven migrations add writing contributions and sessions, map and chronology authorship, and Wrapped snapshots and publication settings. Schema migrations run at startup; maintainers should review them and verify upgrades on both supported database providers before tagging.
+- Eight migrations add writing contributions and sessions, map and chronology authorship, Wrapped snapshots and publication settings, and OPDS controls and revocation auditing. Schema migrations run at startup; maintainers should review them and verify upgrades on both supported database providers before tagging.
 
 ## [1.9.0] - 2026-11-01
 

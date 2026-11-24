@@ -60,7 +60,7 @@ export async function listUserTokens(
     orderBy: { createdAt: 'desc' },
   });
 
-  res.json({ tokens: tokens.map(serializeTokenListItem) });
+  res.json({ tokens: tokens.filter(row => !Array.isArray(row.scopes) || !row.scopes.includes('opds:read')).map(serializeTokenListItem) });
 }
 
 export async function createUserToken(

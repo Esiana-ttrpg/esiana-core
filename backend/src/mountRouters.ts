@@ -1,4 +1,5 @@
 import { safetyPrivacyRouter } from './routes/safetyPrivacy.js';
+import { opdsRouter } from './routes/opds.js';
 import type { Express, Router as ExpressRouter } from 'express';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
@@ -47,6 +48,7 @@ export interface RouterMount {
  */
 export function listRouterMounts(): RouterMount[] {
   const mounts: RouterMount[] = [
+    { path: '/opds', router: opdsRouter },
     {
       path: '/uploads/:filename',
       router: null,
