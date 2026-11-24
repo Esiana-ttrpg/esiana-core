@@ -594,8 +594,11 @@ export async function deleteUserAccount(
   // Step B: purge avatar file first so no orphaned upload remains.
   deleteUploadedFileFromUrl(user.avatarUrl);
 
-  // Step C: remove account row (relations cascade in schema).
-  await prisma.user.delete({ where: { id: user.id } });
+  // Revoke external credentials in the same transaction as account deletion.
+  await prisma.$transaction([
+    prisma.userToken.deleteMany({ where: { userId: user.id } }),
+    prisma.user.delete({ where: { id: user.id } }),
+  ]);
   clearAuthCookie(res);
   res.json({ ok: true });
 }

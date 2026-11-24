@@ -84,6 +84,12 @@ export async function patchAdminSettings(
 ): Promise<void> {
   const body = req.body as Record<string, unknown>;
   const data: Record<string, unknown> = {};
+  const opds = body.opds as Record<string, unknown> | undefined;
+  if (opds && typeof opds === 'object') {
+    for (const key of ['enabled', 'publicEnabled', 'personalEnabled', 'recruitingEnabled', 'campaignsEnabled']) {
+      if (typeof opds[key] === 'boolean') data[`opds${key[0]!.toUpperCase()}${key.slice(1)}`] = opds[key];
+    }
+  }
 
   const registration = body.registration as Record<string, unknown> | undefined;
   if (registration && typeof registration === 'object') {

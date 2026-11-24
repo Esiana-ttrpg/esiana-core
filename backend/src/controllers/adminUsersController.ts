@@ -150,6 +150,7 @@ export async function deleteAdminUser(
   }
 
   await prisma.$transaction([
+    prisma.userToken.deleteMany({ where: { userId } }),
     prisma.pluginConnectionAuthState.deleteMany({ where: { initiatorId: userId } }),
     prisma.user.delete({ where: { id: userId } }),
   ]);

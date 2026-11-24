@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { createReaderCredential, listReaderCredentials, revokeReaderCredentials } from '../controllers/opdsCredentialsController.js';
 import {
   authenticateApiOrSession,
   requireAuth,
@@ -183,6 +184,10 @@ userRouter.post('/password', authPasswordChangeLimiter, addPasswordAuth);
 userRouter.delete('/password', authPasswordChangeLimiter, removePasswordAuth);
 
 userRouter.get('/tokens', listUserTokens);
+userRouter.get('/opds/credentials', listReaderCredentials);
+userRouter.post('/opds/credentials', apiTokenMintLimiter, createReaderCredential);
+userRouter.delete('/opds/credentials', revokeReaderCredentials);
+userRouter.delete('/opds/credentials/:credentialId', revokeReaderCredentials);
 userRouter.post('/tokens', apiTokenMintLimiter, createUserToken);
 userRouter.delete('/tokens/:tokenId', revokeUserToken);
 userRouter.get('/developer/quota', getUserDeveloperQuota);

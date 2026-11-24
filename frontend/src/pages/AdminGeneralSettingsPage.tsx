@@ -1,4 +1,5 @@
 import { Settings2, Shield } from 'lucide-react';
+import { OpdsAdminSettings } from '@/components/admin/OpdsAdminSettings';
 import { AdminGeneralSettingsForm } from '@/components/admin/AdminGeneralSettingsForm';
 
 export function AdminGeneralSettingsPage() {
@@ -17,6 +18,7 @@ export function AdminGeneralSettingsPage() {
         </p>
       </header>
       <AdminGeneralSettingsForm />
+      <OpdsAdminSettings />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { META_SECTION_LABEL_CLASS } from '@/lib/surfaceLayout';
+import { OpdsCredentials } from '@/components/settings/OpdsCredentials';
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Shield, Trash2, UserCog, Users } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -232,6 +233,7 @@ export function UserManagementPage() {
                               <Trash2 className="size-3.5" />
                               Delete
                             </button>
+                            <details className="min-w-64"><summary className="cursor-pointer text-primary">Reader credentials</summary><OpdsCredentials userId={row.id} /></details>
                           </div>
                         </td>
                       </tr>

@@ -30,6 +30,7 @@ servers:
   - url: http://localhost:3001
     description: Local backend
 tags:
+  - name: OPDS
   - name: Safety & Privacy
   - name: Administration
   - name: Authentication
@@ -56,6 +57,796 @@ tags:
   - name: Import
   - name: System
 paths:
+  /api/admin/opds/credentials:
+    delete:
+      tags:
+        - Administration
+      summary: DELETE /api/admin/opds/credentials
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - confirmation
+              properties:
+                confirmation:
+                  const: REVOKE ALL OPDS CREDENTIALS
+    get:
+      tags:
+        - Administration
+      summary: GET /api/admin/opds/credentials
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /api/admin/users/{userId}/opds/credentials:
+    delete:
+      tags:
+        - Administration
+      summary: DELETE /api/admin/users/{userId}/opds/credentials
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+    get:
+      tags:
+        - Administration
+      summary: GET /api/admin/users/{userId}/opds/credentials
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /api/admin/users/{userId}/opds/credentials/{credentialId}:
+    delete:
+      tags:
+        - Administration
+      summary: DELETE /api/admin/users/{userId}/opds/credentials/{credentialId}
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: credentialId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /api/user/opds/credentials:
+    delete:
+      tags:
+        - User Account
+      summary: DELETE /api/user/opds/credentials
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+    get:
+      tags:
+        - User Account
+      summary: GET /api/user/opds/credentials
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters: []
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+    post:
+      tags:
+        - User Account
+      summary: POST /api/user/opds/credentials
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters: []
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+  /api/user/opds/credentials/{credentialId}:
+    delete:
+      tags:
+        - User Account
+      summary: DELETE /api/user/opds/credentials/{credentialId}
+      description: Manage isolated read-only OPDS reader credentials. Secrets are
+        returned only at creation. Administrators never receive credential
+        secrets.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: credentialId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/campaigns:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/campaigns
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/campaigns/{id}:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/campaigns/{id}
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/campaigns/{id}/{module}:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/campaigns/{id}/{module}
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/campaigns/{id}/pages/{pageId}:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/campaigns/{id}/pages/{pageId}
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/campaigns/{id}/pages/{pageId}/manifest.json:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/campaigns/{id}/pages/{pageId}/manifest.json
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/webpub+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/me:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/me
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - opdsBasic: []
+        - opdsBearer: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/me/{id}:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/me/{id}
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - opdsBasic: []
+        - opdsBearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/me/{id}/{module}:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/me/{id}/{module}
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - opdsBasic: []
+        - opdsBearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: module
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/me/{id}/pages/{pageId}:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/me/{id}/pages/{pageId}
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - opdsBasic: []
+        - opdsBearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/me/{id}/pages/{pageId}/manifest.json:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/me/{id}/pages/{pageId}/manifest.json
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - opdsBasic: []
+        - opdsBearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/webpub+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/recruiting:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/recruiting
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+      responses:
+        "200":
+          description: Success
+          content:
+            application/opds+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/recruiting/{id}:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/recruiting/{id}
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            text/html:
+              schema:
+                type: string
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
+  /opds/recruiting/{id}/manifest.json:
+    get:
+      tags:
+        - OPDS
+      summary: GET /opds/recruiting/{id}/manifest.json
+      description: Dynamic OPDS 2.0 campaign reading. Disabled by default. Campaign
+        membership, current permissions and audience projection apply. Public
+        routes require the instance login gate and public OPDS flags to allow
+        access.
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/webpub+json:
+              schema:
+                type: object
+        "401":
+          description: Session or isolated reader credential required
+        "403":
+          description: Insufficient privileges or personal OPDS disabled
+        "404":
+          description: Route disabled or content inaccessible
+        "429":
+          description: Rate limited
   # BEGIN GENERATED SESSION AUDIO API
   /api/campaigns/{campaignHandle}/audio/settings:
     get:
@@ -26788,6 +27579,14 @@ paths:
           $ref: "#/components/responses/RateLimited"
 components:
   securitySchemes:
+    opdsBasic:
+      type: http
+      scheme: basic
+      description: Any username and an isolated OPDS reader secret as password.
+    opdsBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Isolated OPDS reader secret (not a general API token)
     cookieAuth:
       type: apiKey
       in: cookie

@@ -44,6 +44,13 @@ export async function bootstrapSystemSettings(): Promise<SystemSetting> {
 
 export function serializeSystemSettings(row: SystemSetting) {
   return {
+    opds: {
+      enabled: row.opdsEnabled,
+      publicEnabled: row.opdsPublicEnabled,
+      personalEnabled: row.opdsPersonalEnabled,
+      recruitingEnabled: row.opdsRecruitingEnabled,
+      campaignsEnabled: row.opdsCampaignsEnabled,
+    },
     id: row.id,
     registration: {
       allowRegistrations: row.allowRegistrations,
