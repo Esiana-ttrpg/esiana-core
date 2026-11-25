@@ -3,6 +3,7 @@ import express, { type Express } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { env } from './config/env.js';
+import { configuredCorsOrigins } from './config/corsOrigins.js';
 import {
   mountPluginHost,
   syncGlobalSystemPluginsFromDisk,
@@ -46,7 +47,7 @@ export async function createApp(): Promise<Express> {
 
   app.use(
     cors({
-      origin: env.corsOrigin,
+      origin: configuredCorsOrigins(env.corsOrigin, env.corsAdditionalOrigins),
       credentials: true,
       exposedHeaders: ['Retry-After'],
     }),
