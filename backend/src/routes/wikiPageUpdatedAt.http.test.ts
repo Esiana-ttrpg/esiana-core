@@ -86,6 +86,21 @@ test('wiki mutation APIs advance the tree change marker for content and metadata
     });
     assert.ok(afterLayout.updatedAt > baseline);
 
+    const expectedUpdatedAt = afterLayout.updatedAt.toISOString();
+    const concurrent = await Promise.all(['First', 'Second'].map((text) => fetch(`${baseUrl}/wiki/${pageId}/layout/revisioned`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ expectedUpdatedAt, blocks: [{ type: 'text-tiptap', content: { markdown: text } }] }),
+    })));
+    assert.deepEqual(concurrent.map((response) => response.status).sort(), [200, 409]);
+    const winner = await concurrent.find((response) => response.status === 200)!.json();
+    const conflict = await concurrent.find((response) => response.status === 409)!.json();
+    assert.ok(winner.updatedAt);
+    assert.ok(conflict.currentUpdatedAt);
+    const malformed = await fetch(`${baseUrl}/wiki/${pageId}/layout`, {
+      method: 'PATCH', headers, body: JSON.stringify({ expectedUpdatedAt: 'not a date', blocks: [] }),
+    });
+    assert.equal(malformed.status, 400);
+
     const metadataResponse = await fetch(`${baseUrl}/wiki/${pageId}/metadata`, {
       method: 'PATCH',
       headers,

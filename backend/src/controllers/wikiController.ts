@@ -2078,9 +2078,22 @@ export async function updateWikiPageLayout(
   const ctx = req.campaign!;
   const pageId = String(req.params.pageId);
   const { temporal, rest } = extractTemporalFromBody(req.body);
-  const { blocks } = rest as {
+  const { blocks, expectedUpdatedAt } = rest as {
     blocks?: Array<Record<string, unknown>>;
+    expectedUpdatedAt?: unknown;
   };
+  let expectedRevision: Date | undefined;
+  if (expectedUpdatedAt !== undefined) {
+    if (typeof expectedUpdatedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(expectedUpdatedAt)) {
+      res.status(400).json({ error: 'expectedUpdatedAt must be an ISO timestamp' });
+      return;
+    }
+    expectedRevision = new Date(expectedUpdatedAt);
+    if (Number.isNaN(expectedRevision.getTime()) || expectedRevision.toISOString() !== expectedUpdatedAt) {
+      res.status(400).json({ error: 'expectedUpdatedAt must be an ISO timestamp' });
+      return;
+    }
+  }
 
   let resolvedTemporal;
   try {
@@ -2151,17 +2164,27 @@ export async function updateWikiPageLayout(
     return;
   }
 
-  const updatedPage = await prisma.wikiPage.update({
-    where: { id: page.id },
-    data: {
-      blocks: normalizedLayoutBlocks.blocks as any,
-    },
-    select: {
-      blocks: true,
-      templateType: true,
-      updatedAt: true,
-    },
+  const result = await prisma.$transaction(async (tx) => {
+    const write = await tx.wikiPage.updateMany({
+      where: { id: page.id, campaignId: ctx.campaignId, ...(expectedRevision ? { updatedAt: expectedRevision } : {}) },
+      data: { blocks: normalizedLayoutBlocks.blocks as any, ...(expectedRevision ? { updatedAt: new Date(Math.max(Date.now(), expectedRevision.getTime() + 1)) } : {}) },
+    });
+    if (!write.count) {
+      const current = await tx.wikiPage.findFirst({ where: { id: page.id, campaignId: ctx.campaignId }, select: { updatedAt: true } });
+      return { current, updated: null };
+    }
+    const updated = await tx.wikiPage.findFirstOrThrow({
+      where: { id: page.id, campaignId: ctx.campaignId },
+      select: { blocks: true, templateType: true, updatedAt: true },
+    });
+    return { current: null, updated };
   });
+  if (!result.updated) {
+    if (!result.current) { res.status(404).json({ error: 'Page not found' }); return; }
+    res.status(409).json({ error: 'Page changed since the supplied revision', currentUpdatedAt: result.current.updatedAt.toISOString() });
+    return;
+  }
+  const updatedPage = result.updated;
 
   await syncWikiLinksForSourcePage(prisma, {
     campaignId: ctx.campaignId,
@@ -2205,7 +2228,7 @@ export async function updateWikiPageLayout(
     }),
   });
 
-  res.json({ blocks: responseBlocks, templateType: responseTemplateType });
+  res.json({ blocks: responseBlocks, templateType: responseTemplateType, updatedAt: updatedPage.updatedAt.toISOString() });
 }
 
 export async function updateWikiPageVisibility(

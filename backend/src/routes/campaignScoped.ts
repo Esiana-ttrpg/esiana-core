@@ -1354,6 +1354,21 @@ campaignScopedRouter.patch(
   updateWikiPageLayout,
 );
 
+// Dedicated conditional route lets API clients detect support safely: older
+// servers return 404 rather than silently ignoring a concurrency precondition.
+campaignScopedRouter.patch(
+  '/wiki/:pageId/layout/revisioned',
+  requirePageEditAny,
+  (req, res, next) => {
+    if (typeof req.body?.expectedUpdatedAt !== 'string') {
+      res.status(400).json({ error: 'expectedUpdatedAt is required' });
+      return;
+    }
+    next();
+  },
+  updateWikiPageLayout,
+);
+
 campaignScopedRouter.patch(
   '/wiki/:pageId/visibility',
   requirePageVisibilityEdit,
