@@ -33,6 +33,7 @@ export const env = {
   cookieSameSite:
     (process.env.COOKIE_SAME_SITE as 'strict' | 'lax' | 'none') ?? 'lax',
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  corsAdditionalOrigins: process.env.CORS_ADDITIONAL_ORIGINS ?? '',
   uploadsDir: resolvePath(
     process.env.UPLOADS_DIR ?? '../uploads',
     backendRoot,
